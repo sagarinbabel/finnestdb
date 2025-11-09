@@ -1,0 +1,563 @@
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f5f5f5;
+    --bg-tertiary: #e9e9e9;
+    --text-primary: #1a1a1a;
+    --text-secondary: #666666;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --border: #e0e0e0;
+    --card-bg: #ffffff;
+    --shadow: rgba(0, 0, 0, 0.1);
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+}
+
+[data-theme="dark"] {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-tertiary: #3a3a3a;
+    --text-primary: #f5f5f5;
+    --text-secondary: #b0b0b0;
+    --accent: #3b82f6;
+    --accent-hover: #60a5fa;
+    --border: #404040;
+    --card-bg: #2d2d2d;
+    --shadow: rgba(0, 0, 0, 0.3);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.page {
+    display: none;
+    min-height: 100vh;
+}
+
+.page.active {
+    display: block;
+}
+
+/* Landing Page */
+.landing-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 2rem;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.landing-header {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.landing-header h1 {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    color: var(--accent);
+}
+
+.tagline {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+}
+
+.hero {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.hero h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.features {
+    list-style: none;
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+}
+
+.features li {
+    margin: 0.5rem 0;
+}
+
+.auth-section {
+    position: relative;
+}
+
+.theme-toggle-container {
+    position: absolute;
+    top: -3rem;
+    right: 0;
+}
+
+.login-form {
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px var(--shadow);
+}
+
+.login-form h3 {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 1rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.form-group textarea {
+    resize: vertical;
+    font-family: inherit;
+}
+
+.help-text {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+/* Theme Toggle */
+.theme-toggle {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 2.5rem;
+    height: 2.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: all 0.2s;
+}
+
+.theme-toggle:hover {
+    background: var(--bg-tertiary);
+}
+
+/* Buttons */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+}
+
+.btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+    background: var(--bg-tertiary);
+}
+
+.btn-large {
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+}
+
+.btn-link {
+    background: none;
+    color: var(--accent);
+    text-decoration: underline;
+    padding: 0.5rem;
+}
+
+.btn-review {
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    min-width: 100px;
+}
+
+.btn-again {
+    background: var(--danger);
+    color: white;
+}
+
+.btn-hard {
+    background: var(--warning);
+    color: white;
+}
+
+.btn-good {
+    background: var(--success);
+    color: white;
+}
+
+.btn-easy {
+    background: var(--accent);
+    color: white;
+}
+
+.btn-ignore,
+.btn-known {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+/* Dashboard */
+.app-header {
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    color: var(--accent);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-menu {
+    color: var(--text-secondary);
+}
+
+.dashboard-main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* KPI Tiles */
+.kpi-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.kpi-tile {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px var(--shadow);
+    border: 1px solid var(--border);
+}
+
+.kpi-tile h3 {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.kpi-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--accent);
+}
+
+/* Actions Section */
+.actions-section {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+/* Decks Section */
+.decks-section h2 {
+    margin-bottom: 1rem;
+}
+
+.decks-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.deck-item {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.deck-info h3 {
+    margin-bottom: 0.5rem;
+}
+
+.deck-info p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.deck-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--card-bg);
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 16px var(--shadow);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    line-height: 1;
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 1.5rem;
+}
+
+/* Review Page */
+.review-main {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.card-container {
+    margin-bottom: 2rem;
+}
+
+.card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px var(--shadow);
+    border: 1px solid var(--border);
+    min-height: 400px;
+    position: relative;
+    overflow: hidden;
+}
+
+.card-front,
+.card-back {
+    padding: 2rem;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-back {
+    display: none;
+}
+
+.card.flipped .card-front {
+    display: none;
+}
+
+.card.flipped .card-back {
+    display: flex;
+}
+
+.card-badge {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: var(--accent);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.card-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.card-content p {
+    font-size: 1.25rem;
+    line-height: 1.8;
+    margin-bottom: 1rem;
+}
+
+.highlight {
+    background: var(--accent);
+    color: white;
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+}
+
+.card-lemma {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    color: var(--accent);
+}
+
+.card-meaning {
+    font-size: 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.card-grammar {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    font-style: italic;
+}
+
+.card-examples {
+    margin-bottom: 1rem;
+}
+
+.card-examples h4 {
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.card-examples ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.card-examples li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.card-deck-counts {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-top: 1rem;
+}
+
+.review-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .landing-header h1 {
+        font-size: 2rem;
+    }
+
+    .kpi-section {
+        grid-template-columns: 1fr;
+    }
+
+    .actions-section {
+        flex-direction: column;
+    }
+
+    .review-actions {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .deck-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+

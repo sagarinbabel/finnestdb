@@ -1,0 +1,35 @@
+# Build artifacts
+finnestdb
+finnestdb.exe
+*.db
+*.db-shm
+*.db-wal
+
+# Rust
+parser/target/
+parser/Cargo.lock
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
