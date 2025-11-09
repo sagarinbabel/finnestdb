@@ -2,6 +2,32 @@
 
 This guide will help you set up and run the FinEstDB stub project locally.
 
+## Table of Contents
+
+- [Prerequisites](#prerequisites)
+- [Installation Steps](#installation-steps)
+  - [1. Clone the Repository](#1-clone-the-repository)
+  - [2. Install Dependencies](#2-install-dependencies)
+  - [3. Build the Project](#3-build-the-project)
+- [Running the Server](#running-the-server)
+  - [Using Make](#using-make)
+  - [Manual Run](#manual-run)
+- [Accessing the Application](#accessing-the-application)
+- [Using the Application](#using-the-application)
+  - [Creating a Deck](#creating-a-deck)
+  - [Reviewing Cards](#reviewing-cards)
+  - [Theme Toggle](#theme-toggle)
+- [Project Structure](#project-structure)
+- [Troubleshooting](#troubleshooting)
+  - [Build Errors](#build-errors)
+  - [Runtime Errors](#runtime-errors)
+  - [Browser Issues](#browser-issues)
+- [Development Notes](#development-notes)
+  - [Stub Limitations](#stub-limitations)
+  - [Next Steps](#next-steps)
+- [Support](#support)
+- [License](#license)
+
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:

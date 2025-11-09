@@ -2,6 +2,25 @@
 
 This document describes what has been implemented in the stub version of FinEstDB.
 
+## Table of Contents
+
+- [Project Plan](#project-plan)
+  - [Overview](#overview)
+  - [Project Structure](#project-structure)
+  - [Implementation Steps](#implementation-steps)
+- [Implementation Summary](#implementation-summary)
+  - [What Was Built](#what-was-built)
+- [Key Features Implemented](#key-features-implemented)
+- [Stub Limitations](#stub-limitations)
+- [Technical Details](#technical-details)
+  - [Rust Parser](#rust-parser)
+  - [Go Server](#go-server)
+  - [Frontend](#frontend)
+- [File Structure](#file-structure)
+- [Next Steps for Full Implementation](#next-steps-for-full-implementation)
+- [Usage](#usage)
+- [Notes for Collaborators](#notes-for-collaborators)
+
 ## Project Plan
 
 ### Overview

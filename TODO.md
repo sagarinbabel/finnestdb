@@ -2,6 +2,19 @@
 
 This document tracks findings from the PRD review and action items for future implementation.
 
+## Table of Contents
+
+- [Critical Findings](#critical-findings)
+  - [1. Synchronous Deck Creation Blocking Issue](#1-synchronous-deck-creation-blocking-issue)
+  - [2. Disambiguation Model Specification Missing](#2-disambiguation-model-specification-missing)
+  - [3. MWE Handling Underspecified](#3-mwe-handling-underspecified)
+  - [4. Example Generation FFI Contract Incomplete](#4-example-generation-ffi-contract-incomplete)
+- [Implementation Priorities](#implementation-priorities)
+  - [High Priority](#high-priority)
+  - [Medium Priority](#medium-priority)
+  - [Low Priority](#low-priority)
+- [Notes](#notes)
+
 ## Critical Findings
 
 ### 1. Synchronous Deck Creation Blocking Issue
