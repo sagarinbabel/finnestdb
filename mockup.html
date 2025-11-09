@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinEstDB - Finnish & Estonian Language Learning</title>
+    <style>
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f5f5;
+            --bg-card: #ffffff;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --border-color: #e0e0e0;
+            --accent-primary: #2563eb;
+            --accent-hover: #1d4ed8;
+            --success: #16a34a;
+            --warning: #ea580c;
+            --danger: #dc2626;
+            --highlight-bg: #fef3c7;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+            --accent-primary: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #22c55e;
+            --warning: #f97316;
+            --danger: #ef4444;
+            --highlight-bg: #713f12;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px var(--shadow);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        .btn-large {
+            padding: 0.75rem 2rem;
+            font-size: 1rem;
+        }
+
+        .btn-success { background: var(--success); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-danger { background: var(--danger); color: white; }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 1.25rem;
+            transition: color 0.2s;
+        }
+
+        .icon-btn:hover {
+            color: var(--text-primary);
+        }
+
+        /* Landing Page */
+        .landing {
+            min-height: calc(100vh - 4rem);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .hero {
+            max-width: 600px;
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .feature-list {
+            list-style: none;
+            margin: 2rem 0;
+            text-align: left;
+            display: inline-block;
+        }
+
+        .feature-list li {
+            margin: 0.75rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            color: var(--text-secondary);
+        }
+
+        .feature-list li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Dashboard */
+        .dashboard {
+            padding: 2rem 0;
+            display: none;
+        }
+
+        .dashboard.active {
+            display: block;
+        }
+
+        .kpi-tiles {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .kpi-tile {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px var(--shadow);
+        }
+
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .kpi-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+        }
+
+        .kpi-sublabel {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .primary-actions {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        /* Deck List */
+        .deck-list {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        .deck-list-header {
+            padding: 1rem;
+            background: var(--bg-secondary);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .deck-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .deck-item:last-child {
+            border-bottom: none;
+        }
+
+        .deck-info {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .deck-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .deck-meta {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .deck-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .deck-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-fi { background: #dbeafe; color: #1e40af; }
+        .badge-et { background: #fce7f3; color: #9f1239; }
+        .badge-new { background: var(--success); color: white; }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 0.5rem;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px var(--shadow);
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .form-textarea {
+            min-height: 150px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        /* Learning Interface */
+        .learning {
+            display: none;
+            padding: 2rem 0;
+        }
+
+        .learning.active {
+            display: block;
+        }
+
+        .learning-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .progress-bar {
+            background: var(--bg-secondary);
+            height: 0.5rem;
+            border-radius: 1rem;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .progress-fill {
+            background: var(--accent-primary);
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .card-container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .flashcard {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            box-shadow: 0 4px 6px var(--shadow);
+            margin-bottom: 2rem;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .flashcard:hover {
+            transform: translateY(-2px);
+        }
+
+        .card-badge {
+            align-self: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .card-sentence {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            line-height: 1.8;
+        }
+
+        .card-word-only {
+            font-size: 2.5rem;
+            font-weight: 600;
+        }
+
+        .highlight {
+            background: var(--highlight-bg);
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-weight: 600;
+        }
+
+        .card-back {
+            display: none;
+        }
+
+        .card-back.visible {
+            display: block;
+            width: 100%;
+        }
+
+        .card-meaning {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--accent-primary);
+        }
+
+        .card-grammar {
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .card-lemma {
+            font-style: italic;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-examples {
+            text-align: left;
+            width: 100%;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .card-examples-title {
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .example-item {
+            margin-bottom: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 0.375rem;
+        }
+
+        .example-text {
+            margin-bottom: 0.25rem;
+        }
+
+        .example-source {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .answer-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .btn-answer {
+            flex: 1;
+            min-width: 100px;
+            padding: 1rem;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .secondary-buttons {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Deck Summary */
+        .deck-summary {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .summary-stat {
+            text-align: center;
+        }
+
+        .summary-stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        .summary-stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .mwe-list {
+            margin-top: 1rem;
+        }
+
+        .mwe-item {
+            padding: 0.5rem;
+            background: var(--bg-secondary);
+            border-radius: 0.375rem;
+            margin-bottom: 0.5rem;
+            font-style: italic;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .kpi-value {
+                font-size: 2rem;
+            }
+
+            .card-sentence {
+                font-size: 1.25rem;
+            }
+
+            .card-word-only {
+                font-size: 2rem;
+            }
+
+            .btn-answer {
+                min-width: 80px;
+                padding: 0.75rem;
+                font-size: 0.875rem;
+            }
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">FinEstDB</div>
+                <div class="header-actions">
+                    <button class="icon-btn" id="themeToggle" title="Toggle theme">🌓</button>
+                    <button class="btn btn-secondary hidden" id="logoutBtn">Log out</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Landing Page -->
+        <section class="landing container" id="landingPage">
+            <div class="hero">
+                <h1>Learn Finnish & Estonian<br>from Real Texts</h1>
+                <p>Upload your texts, parse them automatically, and master vocabulary with intelligent spaced repetition.</p>
+
+                <ul class="feature-list">
+                    <li>Upload text → Smart morphological parsing → Flashcard decks</li>
+                    <li>Advanced FSRS-6 spaced repetition algorithm</li>
+                    <li>Context-aware example sentences and grammar explanations</li>
+                    <li>Multi-word expression (idiom) recognition</li>
+                    <li>Open source and privacy-focused</li>
+                </ul>
+
+                <div class="cta-buttons">
+                    <button class="btn btn-primary btn-large" id="createAccountBtn">Create Account</button>
+                    <button class="btn btn-secondary btn-large" id="loginBtn">Log In</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard -->
+        <section class="dashboard container" id="dashboardPage">
+            <h2 style="margin-bottom: 2rem;">Dashboard</h2>
+
+            <!-- KPI Tiles -->
+            <div class="kpi-tiles">
+                <div class="kpi-tile">
+                    <div class="kpi-value" id="knownCount">0</div>
+                    <div class="kpi-label">Words Known</div>
+                    <div class="kpi-sublabel">Based on FSRS stability ≥ 30 days</div>
+                </div>
+                <div class="kpi-tile">
+                    <div class="kpi-value" id="dueCount">0</div>
+                    <div class="kpi-label">Words to Review</div>
+                    <div class="kpi-sublabel">Due now</div>
+                </div>
+                <div class="kpi-tile">
+                    <div class="kpi-value" id="newCapacity">0</div>
+                    <div class="kpi-label">Words to Learn Today</div>
+                    <div class="kpi-sublabel"><span id="backlogSize">0</span> in backlog</div>
+                </div>
+            </div>
+
+            <!-- Primary Actions -->
+            <div class="primary-actions">
+                <button class="btn btn-primary btn-large" id="learnBtn">Start Learning</button>
+                <button class="btn btn-secondary btn-large" id="createDeckBtn">Upload & Create Deck</button>
+            </div>
+
+            <!-- Deck List -->
+            <div class="deck-list">
+                <div class="deck-list-header">Your Decks</div>
+                <div id="deckListContainer">
+                    <!-- Decks will be inserted here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Learning Interface -->
+        <section class="learning container" id="learningPage">
+            <div class="learning-header">
+                <h2>Learning Session</h2>
+                <button class="btn btn-secondary" id="exitLearningBtn">Exit</button>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+
+            <div class="card-container">
+                <div class="flashcard" id="flashcard">
+                    <span class="badge badge-new card-badge" id="cardBadge">NEW</span>
+
+                    <div id="cardFront">
+                        <div class="card-sentence" id="cardSentence">
+                            <span class="highlight">Toissapäivänä</span> menin pankkiin.
+                        </div>
+                    </div>
+
+                    <div class="card-back" id="cardBack">
+                        <div class="card-meaning" id="cardMeaning">the day before yesterday</div>
+                        <div class="card-grammar" id="cardGrammar">Essive singular (-nä)</div>
+                        <div class="card-lemma" id="cardLemma">Lemma: toissapäivä</div>
+
+                        <div class="card-examples">
+                            <div class="card-examples-title">Examples from your decks:</div>
+                            <div id="examplesList">
+                                <div class="example-item">
+                                    <div class="example-text">Toissapäivänä menin pankkiin.</div>
+                                    <div class="example-source">1× Everyday FI</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="answerSection">
+                    <button class="btn btn-primary btn-large" id="showAnswerBtn" style="width: 100%; margin-bottom: 1rem;">Show Answer</button>
+
+                    <div class="hidden" id="ratingButtons">
+                        <div class="answer-buttons">
+                            <button class="btn btn-danger btn-answer" id="againBtn">Again</button>
+                            <button class="btn btn-warning btn-answer" id="hardBtn">Hard</button>
+                            <button class="btn btn-success btn-answer" id="goodBtn">Good</button>
+                            <button class="btn btn-primary btn-answer" id="easyBtn">Easy</button>
+                        </div>
+                        <div class="secondary-buttons">
+                            <button class="btn btn-secondary" id="ignoreBtn">Ignore</button>
+                            <button class="btn btn-secondary" id="markKnownBtn">Mark as Known</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Create Deck Modal -->
+    <div class="modal" id="createDeckModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New Deck</h3>
+                <button class="icon-btn" id="closeModalBtn">✕</button>
+            </div>
+            <div class="modal-body">
+                <form id="createDeckForm">
+                    <div class="form-group">
+                        <label class="form-label">Deck Title*</label>
+                        <input type="text" class="form-input" id="deckTitle" placeholder="e.g., Everyday Finnish" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Language*</label>
+                        <select class="form-select" id="deckLanguage" required>
+                            <option value="FI">Finnish (FI)</option>
+                            <option value="ET">Estonian (ET)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Text Content* (Max 2 MB)</label>
+                        <textarea class="form-textarea" id="deckText" placeholder="Paste your Finnish or Estonian text here...
+
+Example:
+Toissapäivänä menin pankkiin. Osoittautui, että se oli kiinni. No, leuka rintaan ja kohti uusia pettymyksiä!"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Or Upload File (.txt, .md)</label>
+                        <input type="file" class="form-input" id="deckFile" accept=".txt,.md">
+                    </div>
+                </form>
+
+                <div id="deckSummaryContainer" class="hidden">
+                    <div class="deck-summary">
+                        <h4 style="margin-bottom: 1rem;">Parsing Results</h4>
+                        <div class="summary-stats">
+                            <div class="summary-stat">
+                                <div class="summary-stat-value" id="totalTokens">0</div>
+                                <div class="summary-stat-label">Total Tokens</div>
+                            </div>
+                            <div class="summary-stat">
+                                <div class="summary-stat-value" id="uniqueLemmas">0</div>
+                                <div class="summary-stat-label">Unique Lemmas</div>
+                            </div>
+                            <div class="summary-stat">
+                                <div class="summary-stat-value" id="newWords">0</div>
+                                <div class="summary-stat-label">New Words</div>
+                            </div>
+                            <div class="summary-stat">
+                                <div class="summary-stat-value" id="knownWords">0</div>
+                                <div class="summary-stat-label">Known Words</div>
+                            </div>
+                        </div>
+
+                        <div id="mweContainer" class="hidden">
+                            <div class="card-examples-title">Multi-Word Expressions Found:</div>
+                            <div class="mwe-list" id="mweList"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelDeckBtn">Cancel</button>
+                <button class="btn btn-primary" id="parseDeckBtn">Parse Text</button>
+                <button class="btn btn-primary hidden" id="saveDeckBtn">Create Deck</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme management
+        const themeToggle = document.getElementById('themeToggle');
+        const html = document.documentElement;
+
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', currentTheme);
+
+        themeToggle.addEventListener('click', () => {
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', currentTheme);
+            localStorage.setItem('theme', currentTheme);
+        });
+
+        // Mock data
+        let appState = {
+            isLoggedIn: false,
+            user: null,
+            decks: [],
+            currentCard: null,
+            cardsInSession: [],
+            currentCardIndex: 0,
+            knownCount: 1234,
+            dueCount: 87,
+            newCapacity: 12,
+            backlogSize: 450
+        };
+
+        // Sample deck data
+        const sampleDecks = [
+            {
+                id: 'd1',
+                title: 'Everyday Finnish',
+                lang: 'FI',
+                known: 420,
+                unique: 980,
+                due: 20
+            },
+            {
+                id: 'd2',
+                title: 'Estonian News Articles',
+                lang: 'ET',
+                known: 156,
+                unique: 543,
+                due: 12
+            }
+        ];
+
+        // Sample cards for learning
+        const sampleCards = [
+            {
+                id: 'c1',
+                isNew: true,
+                mode: 'sentence',
+                front: {
+                    text: 'Toissapäivänä menin pankkiin.',
+                    highlight: 'Toissapäivänä'
+                },
+                back: {
+                    lemma: 'toissapäivä',
+                    meaning: 'the day before yesterday',
+                    grammar: 'Essive singular (-nä)',
+                    examples: [
+                        { text: 'Toissapäivänä menin pankkiin.', source: 'Everyday FI' }
+                    ]
+                }
+            },
+            {
+                id: 'c2',
+                isNew: false,
+                mode: 'word',
+                front: {
+                    word: 'pankki'
+                },
+                back: {
+                    lemma: 'pankki',
+                    meaning: 'bank',
+                    grammar: 'Noun',
+                    examples: [
+                        { text: 'Toissapäivänä menin pankkiin.', source: 'Everyday FI' },
+                        { text: 'Pankki on auki kello 9-16.', source: 'Everyday FI' }
+                    ]
+                }
+            },
+            {
+                id: 'c3',
+                isNew: true,
+                mode: 'sentence',
+                front: {
+                    text: 'No, leuka rintaan ja kohti uusia pettymyksiä!',
+                    highlight: 'leuka rintaan ja kohti uusia pettymyksiä'
+                },
+                back: {
+                    lemma: '[MWE]',
+                    meaning: 'chin up and towards new disappointments (idiom: to persevere despite setbacks)',
+                    grammar: 'Multi-word expression',
+                    examples: [
+                        { text: 'No, leuka rintaan ja kohti uusia pettymyksiä!', source: 'Everyday FI' }
+                    ]
+                }
+            }
+        ];
+
+        // Page navigation
+        function showPage(pageId) {
+            document.querySelectorAll('.landing, .dashboard, .learning').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        // Login/Signup (mock)
+        function login() {
+            appState.isLoggedIn = true;
+            appState.user = { email: 'demo@example.com' };
+            appState.decks = [...sampleDecks];
+            appState.knownCount = 1234;
+            appState.dueCount = 87;
+            appState.newCapacity = 12;
+            appState.backlogSize = 450;
+
+            document.getElementById('logoutBtn').classList.remove('hidden');
+            updateDashboard();
+            showPage('dashboardPage');
+        }
+
+        document.getElementById('createAccountBtn').addEventListener('click', login);
+        document.getElementById('loginBtn').addEventListener('click', login);
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            appState.isLoggedIn = false;
+            document.getElementById('logoutBtn').classList.add('hidden');
+            showPage('landingPage');
+        });
+
+        // Dashboard
+        function updateDashboard() {
+            document.getElementById('knownCount').textContent = appState.knownCount;
+            document.getElementById('dueCount').textContent = appState.dueCount;
+            document.getElementById('newCapacity').textContent = appState.newCapacity;
+            document.getElementById('backlogSize').textContent = appState.backlogSize;
+
+            const deckListContainer = document.getElementById('deckListContainer');
+            if (appState.decks.length === 0) {
+                deckListContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-secondary);">No decks yet. Create your first deck!</div>';
+            } else {
+                deckListContainer.innerHTML = appState.decks.map(deck => `
+                    <div class="deck-item">
+                        <div class="deck-info">
+                            <div class="deck-title">
+                                ${deck.title}
+                                <span class="badge badge-${deck.lang.toLowerCase()}">${deck.lang}</span>
+                            </div>
+                            <div class="deck-meta">
+                                Progress: ${deck.known}/${deck.unique} words
+                                ${deck.due > 0 ? `• <strong>${deck.due} due</strong>` : ''}
+                            </div>
+                        </div>
+                        <div class="deck-actions">
+                            ${deck.due > 0 ? '<button class="btn btn-primary">Review</button>' : ''}
+                            <button class="btn btn-secondary">Details</button>
+                            <button class="btn btn-danger">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // Create Deck Modal
+        const createDeckModal = document.getElementById('createDeckModal');
+        const createDeckForm = document.getElementById('createDeckForm');
+
+        document.getElementById('createDeckBtn').addEventListener('click', () => {
+            createDeckModal.classList.add('active');
+            document.getElementById('deckSummaryContainer').classList.add('hidden');
+            document.getElementById('parseDeckBtn').classList.remove('hidden');
+            document.getElementById('saveDeckBtn').classList.add('hidden');
+        });
+
+        document.getElementById('closeModalBtn').addEventListener('click', () => {
+            createDeckModal.classList.remove('active');
+            createDeckForm.reset();
+        });
+
+        document.getElementById('cancelDeckBtn').addEventListener('click', () => {
+            createDeckModal.classList.remove('active');
+            createDeckForm.reset();
+        });
+
+        // Parse deck (simulated)
+        document.getElementById('parseDeckBtn').addEventListener('click', () => {
+            const text = document.getElementById('deckText').value;
+            const title = document.getElementById('deckTitle').value;
+
+            if (!text || !title) {
+                alert('Please provide both a title and text content.');
+                return;
+            }
+
+            // Simulate parsing
+            const words = text.split(/\s+/).filter(w => w.length > 0);
+            const uniqueWords = new Set(words.map(w => w.toLowerCase())).size;
+
+            // Detect the sample MWE
+            const hasMWE = text.includes('leuka rintaan') && text.includes('pettymyksiä');
+
+            document.getElementById('totalTokens').textContent = words.length;
+            document.getElementById('uniqueLemmas').textContent = uniqueWords;
+            document.getElementById('newWords').textContent = Math.floor(uniqueWords * 0.7);
+            document.getElementById('knownWords').textContent = Math.floor(uniqueWords * 0.3);
+
+            if (hasMWE) {
+                document.getElementById('mweContainer').classList.remove('hidden');
+                document.getElementById('mweList').innerHTML = `
+                    <div class="mwe-item">
+                        "leuka rintaan ja kohti uusia pettymyksiä" — chin up and towards new disappointments
+                    </div>
+                `;
+            } else {
+                document.getElementById('mweContainer').classList.add('hidden');
+            }
+
+            document.getElementById('deckSummaryContainer').classList.remove('hidden');
+            document.getElementById('parseDeckBtn').classList.add('hidden');
+            document.getElementById('saveDeckBtn').classList.remove('hidden');
+        });
+
+        // Save deck
+        document.getElementById('saveDeckBtn').addEventListener('click', () => {
+            const title = document.getElementById('deckTitle').value;
+            const lang = document.getElementById('deckLanguage').value;
+            const uniqueLemmas = parseInt(document.getElementById('uniqueLemmas').textContent);
+            const newWords = parseInt(document.getElementById('newWords').textContent);
+
+            const newDeck = {
+                id: 'd' + (appState.decks.length + 1),
+                title: title,
+                lang: lang,
+                known: 0,
+                unique: uniqueLemmas,
+                due: newWords
+            };
+
+            appState.decks.push(newDeck);
+            appState.backlogSize += newWords;
+
+            updateDashboard();
+            createDeckModal.classList.remove('active');
+            createDeckForm.reset();
+
+            alert('Deck created successfully!');
+        });
+
+        // Learning
+        document.getElementById('learnBtn').addEventListener('click', () => {
+            appState.cardsInSession = [...sampleCards];
+            appState.currentCardIndex = 0;
+            showCard();
+            showPage('learningPage');
+        });
+
+        document.getElementById('exitLearningBtn').addEventListener('click', () => {
+            showPage('dashboardPage');
+        });
+
+        function showCard() {
+            if (appState.currentCardIndex >= appState.cardsInSession.length) {
+                alert('Session complete! Great work!');
+                showPage('dashboardPage');
+                return;
+            }
+
+            const card = appState.cardsInSession[appState.currentCardIndex];
+            const progress = ((appState.currentCardIndex) / appState.cardsInSession.length) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+
+            // Show badge
+            const badge = document.getElementById('cardBadge');
+            if (card.isNew) {
+                badge.textContent = 'NEW';
+                badge.className = 'badge badge-new card-badge';
+            } else {
+                badge.textContent = 'REVIEW';
+                badge.className = 'badge badge-fi card-badge';
+            }
+
+            // Show front
+            const frontEl = document.getElementById('cardFront');
+            if (card.mode === 'word') {
+                frontEl.innerHTML = `<div class="card-word-only">${card.front.word}</div>`;
+            } else {
+                const highlightedText = card.front.text.replace(
+                    card.front.highlight,
+                    `<span class="highlight">${card.front.highlight}</span>`
+                );
+                frontEl.innerHTML = `<div class="card-sentence">${highlightedText}</div>`;
+            }
+
+            // Prepare back
+            document.getElementById('cardMeaning').textContent = card.back.meaning;
+            document.getElementById('cardGrammar').textContent = card.back.grammar;
+            document.getElementById('cardLemma').textContent = 'Lemma: ' + card.back.lemma;
+
+            const examplesList = card.back.examples.map(ex => `
+                <div class="example-item">
+                    <div class="example-text">${ex.text}</div>
+                    <div class="example-source">1× ${ex.source}</div>
+                </div>
+            `).join('');
+            document.getElementById('examplesList').innerHTML = examplesList;
+
+            // Reset state
+            document.getElementById('cardBack').classList.remove('visible');
+            document.getElementById('showAnswerBtn').classList.remove('hidden');
+            document.getElementById('ratingButtons').classList.add('hidden');
+        }
+
+        document.getElementById('showAnswerBtn').addEventListener('click', () => {
+            document.getElementById('cardBack').classList.add('visible');
+            document.getElementById('showAnswerBtn').classList.add('hidden');
+            document.getElementById('ratingButtons').classList.remove('hidden');
+        });
+
+        // Answer buttons
+        function handleAnswer(quality) {
+            console.log('Answer quality:', quality);
+            appState.currentCardIndex++;
+            showCard();
+        }
+
+        document.getElementById('againBtn').addEventListener('click', () => handleAnswer(0));
+        document.getElementById('hardBtn').addEventListener('click', () => handleAnswer(1));
+        document.getElementById('goodBtn').addEventListener('click', () => handleAnswer(2));
+        document.getElementById('easyBtn').addEventListener('click', () => handleAnswer(3));
+
+        document.getElementById('ignoreBtn').addEventListener('click', () => {
+            if (confirm('Ignore this word? It will be hidden from all queues.')) {
+                appState.currentCardIndex++;
+                showCard();
+            }
+        });
+
+        document.getElementById('markKnownBtn').addEventListener('click', () => {
+            if (confirm('Mark this word as known? It will be treated as mature in FSRS.')) {
+                appState.knownCount++;
+                appState.currentCardIndex++;
+                showCard();
+            }
+        });
+    </script>
+</body>
+</html>
