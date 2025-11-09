@@ -2,6 +2,15 @@
 
 A language learning application for Finnish and Estonian using spaced repetition (FSRS).
 
+## Table of Contents
+
+- [Stub Project](#stub-project)
+  - [Quick Start](#quick-start)
+  - [Features (Stub)](#features-stub)
+  - [Project Structure](#project-structure)
+  - [Documentation](#documentation)
+- [License](#license)
+
 ## Stub Project
 
 This is a stub implementation demonstrating the core UI and basic parsing functionality.
