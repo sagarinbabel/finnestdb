@@ -43,14 +43,18 @@ func (d *DB) BatchLookupForms(forms []string, lang string) map[string][2]string 
 	defer stmt.Close()
 
 	for _, form := range forms {
+		// Dictionary rows are stored in lowercase (kaikki.org normalization).
+		// Normalize the lookup key so sentence-initial capitals ("Kirjassa")
+		// and proper nouns resolve correctly.
+		lower := strings.ToLower(form)
 		var lemma, pos string
-		if err := stmt.QueryRow(form, lang).Scan(&lemma, &pos); err == nil {
-			result[form] = [2]string{lemma, pos}
+		if err := stmt.QueryRow(lower, lang).Scan(&lemma, &pos); err == nil {
+			result[form] = [2]string{lemma, pos} // keyed by original form
 			continue
 		}
-		// Finnish possessive suffix fallback.
+		// Finnish possessive suffix fallback (operates on already-lowercased form).
 		if lang == "FI" {
-			if resolved, ok := tryStripPossessive(stmt, form, lang); ok {
+			if resolved, ok := tryStripPossessive(stmt, lower, lang); ok {
 				result[form] = resolved
 			}
 		}
@@ -61,10 +65,11 @@ func (d *DB) BatchLookupForms(forms []string, lang string) map[string][2]string 
 // tryStripPossessive attempts to resolve a Finnish surface form by stripping
 // possessive suffixes and re-looking up the stripped form. Returns the resolved
 // (lemma, pos) and true if a dictionary match is found after stripping.
+//
+// form must already be lowercased — BatchLookupForms normalises before calling.
 func tryStripPossessive(stmt *sql.Stmt, form, lang string) ([2]string, bool) {
-	lower := strings.ToLower(form)
 	for _, suffix := range finnishPossessiveSuffixes {
-		if !strings.HasSuffix(lower, suffix) {
+		if !strings.HasSuffix(form, suffix) {
 			continue
 		}
 		stripped := form[:len(form)-len(suffix)]

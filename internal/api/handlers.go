@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -199,21 +198,39 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Store sentences
-	for _, sentence := range result.Sentences {
-		// Reconstruct sentence text from tokens
-		sentenceText := ""
-		for i, token := range sentence.Tokens {
-			if i > 0 {
-				sentenceText += " "
-			}
-			sentenceText += token.Form
+	// Convert to CGO-free type; reuse the shared helper.
+	sentences := toParsedSentences(result)
+
+	// Batch-resolve forms to (lemma, pos) for occurrence tracking.
+	uniqueForms := collectUniqueForms(sentences)
+	formResolutions := a.store.BatchLookupForms(uniqueForms, req.Lang)
+
+	// Store sentences and occurrence records.
+	for _, sent := range sentences {
+		if sent.Text == "" {
+			continue
 		}
-		if sentenceText != "" {
-			_, err := a.store.CreateSentence(deckID, sentenceText, req.Lang)
-			if err != nil {
-				// Log error but continue
-				fmt.Fprintf(os.Stderr, "Error creating sentence: %v\n", err)
+		sentenceID, err := a.store.CreateSentence(deckID, sent.Text, req.Lang)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error creating sentence: %v\n", err)
+			continue
+		}
+		for tokenIx, token := range sent.Tokens {
+			var lemma, pos string
+			if resolved, ok := formResolutions[token.Form]; ok {
+				lemma, pos = resolved[0], resolved[1]
+			} else {
+				lemma = strings.ToLower(token.StubLemma)
+				if lemma == "" {
+					lemma = strings.ToLower(token.Form)
+				}
+				pos = token.StubPOS
+			}
+			if lemma == "" {
+				continue
+			}
+			if err := a.store.CreateOccurrence(deckID, sentenceID, tokenIx, lemma, pos); err != nil {
+				fmt.Fprintf(os.Stderr, "Error creating occurrence: %v\n", err)
 			}
 		}
 	}
@@ -294,10 +311,12 @@ type ParseRequest struct {
 }
 
 type WordEntry struct {
-	Lemma string   `json:"lemma"`
-	POS   string   `json:"pos"`
-	Forms []string `json:"forms"`
-	Count int      `json:"count"`
+	Lemma           string   `json:"lemma"`
+	POS             string   `json:"pos"`
+	Forms           []string `json:"forms"`
+	Count           int      `json:"count"`
+	Gloss           string   `json:"gloss,omitempty"`
+	ExampleSentence string   `json:"example_sentence,omitempty"`
 }
 
 type ParseResponse struct {
@@ -343,55 +362,88 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Aggregate tokens by (lemma, pos)
-	type key struct{ lemma, pos string }
-	counts := make(map[key]int)
-	formSets := make(map[key]map[string]struct{})
+	// Step 1: reconstruct sentence texts and convert to CGO-free type.
+	sentences := toParsedSentences(result)
+
+	// Step 2: collect unique surface forms for batch DB lookup.
+	uniqueForms := collectUniqueForms(sentences)
+
+	// Step 3: batch-resolve forms → (lemma, pos) via dictionary.
+	formResolutions := a.store.BatchLookupForms(uniqueForms, req.Lang)
+
+	// Step 4: batch-fetch glosses for resolved lemmas.
+	lemmaKeys := resolvedLemmaKeys(formResolutions)
+	glosses := a.store.BatchLookupGlosses(lemmaKeys, req.Lang)
+
+	// Step 5: enrich — aggregate counts, forms, glosses, example sentences.
+	words := enrichWords(sentences, formResolutions, glosses)
+
+	// Total token count (sum over all words).
 	totalTokens := 0
-
-	for _, sentence := range result.Sentences {
-		for _, token := range sentence.Tokens {
-			if strings.TrimSpace(token.Lemma) == "" {
-				continue
-			}
-			k := key{lemma: strings.ToLower(token.Lemma), pos: token.POS}
-			counts[k]++
-			totalTokens++
-			if formSets[k] == nil {
-				formSets[k] = make(map[string]struct{})
-			}
-			formSets[k][token.Form] = struct{}{}
-		}
+	for _, w := range words {
+		totalTokens += w.Count
 	}
-
-	words := make([]WordEntry, 0, len(counts))
-	for k, count := range counts {
-		forms := make([]string, 0, len(formSets[k]))
-		for f := range formSets[k] {
-			forms = append(forms, f)
-		}
-		sort.Strings(forms)
-		words = append(words, WordEntry{
-			Lemma: k.lemma,
-			POS:   k.pos,
-			Forms: forms,
-			Count: count,
-		})
-	}
-
-	// Sort by count descending, then lemma alphabetically for stable ordering
-	sort.Slice(words, func(i, j int) bool {
-		if words[i].Count != words[j].Count {
-			return words[i].Count > words[j].Count
-		}
-		return words[i].Lemma < words[j].Lemma
-	})
 
 	json.NewEncoder(w).Encode(ParseResponse{
 		Lang:        req.Lang,
 		TotalTokens: totalTokens,
 		Words:       words,
 	})
+}
+
+// toParsedSentences converts parserffi output to the CGO-free ParsedSentence
+// type used by enrichWords. Sentence text is reconstructed by space-joining
+// token forms (matching the reconstruction done in HandleCreateDeck).
+func toParsedSentences(result *parserffi.AnalysisResult) []ParsedSentence {
+	sentences := make([]ParsedSentence, 0, len(result.Sentences))
+	for _, s := range result.Sentences {
+		tokens := make([]ParsedToken, 0, len(s.Tokens))
+		parts := make([]string, 0, len(s.Tokens))
+		for _, t := range s.Tokens {
+			if t.Form == "" {
+				continue
+			}
+			tokens = append(tokens, ParsedToken{
+				Form:      t.Form,
+				StubLemma: t.Lemma,
+				StubPOS:   t.POS,
+			})
+			parts = append(parts, t.Form)
+		}
+		text := strings.Join(parts, " ")
+		if text != "" {
+			sentences = append(sentences, ParsedSentence{Tokens: tokens, Text: text})
+		}
+	}
+	return sentences
+}
+
+// collectUniqueForms returns the deduplicated set of surface forms across all sentences.
+func collectUniqueForms(sentences []ParsedSentence) []string {
+	seen := make(map[string]struct{})
+	for _, s := range sentences {
+		for _, t := range s.Tokens {
+			seen[t.Form] = struct{}{}
+		}
+	}
+	forms := make([]string, 0, len(seen))
+	for f := range seen {
+		forms = append(forms, f)
+	}
+	return forms
+}
+
+// resolvedLemmaKeys extracts unique LemmaKey values from a form resolution map.
+func resolvedLemmaKeys(formResolutions map[string][2]string) []store.LemmaKey {
+	seen := make(map[store.LemmaKey]struct{}, len(formResolutions))
+	for _, v := range formResolutions {
+		seen[store.LemmaKey{Lemma: v[0], POS: v[1]}] = struct{}{}
+	}
+	keys := make([]store.LemmaKey, 0, len(seen))
+	for k := range seen {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 func (a *API) SetupRoutes(mux *http.ServeMux) {
