@@ -561,3 +561,114 @@ body {
     }
 }
 
+
+/* ── Parse page ──────────────────────────────────────────────────────────── */
+
+.parse-main {
+    max-width: 700px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.parse-form-section h2 {
+    margin-bottom: 0.25rem;
+}
+
+.parse-description {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+}
+
+.char-count {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: normal;
+    float: right;
+}
+
+.char-count-warn { color: orange; }
+.char-count-over { color: var(--color-error, red); font-weight: bold; }
+
+.lang-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 0.6rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #856404;
+}
+
+[data-theme="dark"] .lang-warning {
+    background: #3a2e00;
+    border-color: #ffc107;
+    color: #ffd966;
+}
+
+.hidden { display: none !important; }
+
+.btn-large {
+    width: 100%;
+    padding: 0.75rem;
+    font-size: 1rem;
+    margin-top: 0.5rem;
+}
+
+/* ── Results page ────────────────────────────────────────────────────────── */
+
+.results-main {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.results-summary {
+    margin-bottom: 1.5rem;
+}
+
+.results-stats {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.results-table-section {
+    overflow-x: auto;
+}
+
+.word-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.word-table th {
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 2px solid var(--border-color);
+    color: var(--text-secondary);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.word-table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+}
+
+.word-table tbody tr:hover {
+    background: var(--hover-bg, rgba(0,0,0,0.04));
+}
+
+[data-theme="dark"] .word-table tbody tr:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.col-lemma  { font-weight: 500; }
+.col-pos    { color: var(--text-secondary); font-size: 0.85rem; }
+.col-forms  { color: var(--text-secondary); font-size: 0.85rem; }
+.col-count  { text-align: right; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 600px) {
+    .col-forms { display: none; }
+}

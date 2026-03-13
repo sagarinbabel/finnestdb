@@ -4,6 +4,9 @@ package parserffi
 #cgo LDFLAGS: -L${SRCDIR}/../../parser/target/release -lparser -ldl -lm
 #include <stdlib.h>
 #include <string.h>
+
+extern char* analyze_text(const char* lang, const char* text);
+extern void free_string(char* ptr);
 */
 import "C"
 import (

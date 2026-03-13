@@ -3,11 +3,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
-	"time"
+	"strings"
 
 	"finnestdb/internal/parserffi"
 	"finnestdb/internal/store"
@@ -286,12 +286,123 @@ func (a *API) HandleCardKnown(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
+const maxTextBytes = 10_000
+
+type ParseRequest struct {
+	Lang string `json:"lang"`
+	Text string `json:"text"`
+}
+
+type WordEntry struct {
+	Lemma string   `json:"lemma"`
+	POS   string   `json:"pos"`
+	Forms []string `json:"forms"`
+	Count int      `json:"count"`
+}
+
+type ParseResponse struct {
+	Lang        string      `json:"lang"`
+	TotalTokens int         `json:"total_tokens"`
+	Words       []WordEntry `json:"words"`
+}
+
+func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req ParseRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if req.Lang != "FI" && req.Lang != "ET" {
+		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Text) == 0 {
+		http.Error(w, "Text is required", http.StatusBadRequest)
+		return
+	}
+
+	if len(req.Text) > maxTextBytes {
+		http.Error(w, fmt.Sprintf("Text exceeds %d character limit", maxTextBytes), http.StatusBadRequest)
+		return
+	}
+
+	result, err := parserffi.AnalyzeText(req.Lang, req.Text)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Parse error: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if result == nil {
+		http.Error(w, "Parser returned no result", http.StatusInternalServerError)
+		return
+	}
+
+	// Aggregate tokens by (lemma, pos)
+	type key struct{ lemma, pos string }
+	counts := make(map[key]int)
+	formSets := make(map[key]map[string]struct{})
+	totalTokens := 0
+
+	for _, sentence := range result.Sentences {
+		for _, token := range sentence.Tokens {
+			if strings.TrimSpace(token.Lemma) == "" {
+				continue
+			}
+			k := key{lemma: strings.ToLower(token.Lemma), pos: token.POS}
+			counts[k]++
+			totalTokens++
+			if formSets[k] == nil {
+				formSets[k] = make(map[string]struct{})
+			}
+			formSets[k][token.Form] = struct{}{}
+		}
+	}
+
+	words := make([]WordEntry, 0, len(counts))
+	for k, count := range counts {
+		forms := make([]string, 0, len(formSets[k]))
+		for f := range formSets[k] {
+			forms = append(forms, f)
+		}
+		sort.Strings(forms)
+		words = append(words, WordEntry{
+			Lemma: k.lemma,
+			POS:   k.pos,
+			Forms: forms,
+			Count: count,
+		})
+	}
+
+	// Sort by count descending, then lemma alphabetically for stable ordering
+	sort.Slice(words, func(i, j int) bool {
+		if words[i].Count != words[j].Count {
+			return words[i].Count > words[j].Count
+		}
+		return words[i].Lemma < words[j].Lemma
+	})
+
+	json.NewEncoder(w).Encode(ParseResponse{
+		Lang:        req.Lang,
+		TotalTokens: totalTokens,
+		Words:       words,
+	})
+}
+
 func (a *API) SetupRoutes(mux *http.ServeMux) {
 	// Auth routes
 	mux.HandleFunc("/api/auth/login", a.HandleLogin)
 
 	// Dashboard
 	mux.HandleFunc("/api/me", a.HandleMe)
+
+	// Parse (word list view)
+	mux.HandleFunc("/api/parse", a.HandleParse)
 
 	// Decks
 	mux.HandleFunc("/api/decks", a.HandleCreateDeck)
