@@ -5,6 +5,7 @@ import (
 	"compress/bzip2"
 	"compress/gzip"
 	"database/sql"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -175,6 +176,45 @@ func TestImportJSONL_PosNormalization(t *testing.T) {
 	}
 	if pos != "VERB" {
 		t.Errorf("pos = %q, want VERB", pos)
+	}
+}
+
+func TestOpenJSONLReader_Plain(t *testing.T) {
+	r, err := openJSONLReader(strings.NewReader("hello"), "dict.jsonl")
+	if err != nil {
+		t.Fatalf("openJSONLReader: %v", err)
+	}
+
+	data, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
+	if string(data) != "hello" {
+		t.Fatalf("got %q, want %q", string(data), "hello")
+	}
+}
+
+func TestOpenJSONLReader_Gzip(t *testing.T) {
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	if _, err := gz.Write([]byte("hello")); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	r, err := openJSONLReader(bytes.NewReader(buf.Bytes()), "dict.jsonl.gz")
+	if err != nil {
+		t.Fatalf("openJSONLReader: %v", err)
+	}
+
+	data, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
+	if string(data) != "hello" {
+		t.Fatalf("got %q, want %q", string(data), "hello")
 	}
 }
 

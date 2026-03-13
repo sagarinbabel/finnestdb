@@ -19,8 +19,9 @@ server: parser
 build: server
 	@echo "Build complete! Run './finnestdb' to start the server"
 
-# Run the server (builds if needed, imports dictionary on first run)
-run: build import-dict-fi import-dict-et
+# Run the server (builds if needed). Dictionary imports are optional and can be
+# started separately with make import-dict-fi / make import-dict-et.
+run: build
 	./finnestdb
 
 # Clean build artifacts
@@ -67,4 +68,3 @@ reimport-dict-et:
 	go run ./cmd/importdict -lang et -db finnestdb.db -reimport
 
 reimport-dict: reimport-dict-fi reimport-dict-et
-

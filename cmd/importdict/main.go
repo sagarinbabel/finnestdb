@@ -4,6 +4,8 @@
 // Usage:
 //
 //	go run ./cmd/importdict -lang fi -db finnestdb.db
+//	go run ./cmd/importdict -lang fi -db finnestdb.db -file ./kaikki.org-fi.jsonl
+//	go run ./cmd/importdict -lang fi -db finnestdb.db -file ./kaikki.org-fi.jsonl.gz
 //	go run ./cmd/importdict -lang fi -db finnestdb.db -file ./kaikki.org-fi.jsonl.bz2
 //	go run ./cmd/importdict -lang fi -db finnestdb.db -custom-glosses ./overrides.csv
 //
@@ -18,6 +20,7 @@ package main
 import (
 	"bufio"
 	"compress/bzip2"
+	"compress/gzip"
 	"database/sql"
 	"encoding/csv"
 	"encoding/json"
@@ -32,10 +35,10 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-// kaikkiURL is the kaikki.org JSONL bz2 download URL for each language code.
+// kaikkiURL is the current kaikki.org dictionary dump URL for each language code.
 var kaikkiURL = map[string]string{
-	"fi": "https://kaikki.org/dictionary/Finnish/kaikki.org-fi-extract-words.jsonl.bz2",
-	"et": "https://kaikki.org/dictionary/Estonian/kaikki.org-et-extract-words.jsonl.bz2",
+	"fi": "https://kaikki.org/dictionary/Finnish/kaikki.org-dictionary-Finnish.jsonl",
+	"et": "https://kaikki.org/dictionary/Estonian/kaikki.org-dictionary-Estonian.jsonl",
 }
 
 // posMap normalizes kaikki.org POS strings (lowercase) to UPOS (uppercase).
@@ -67,6 +70,24 @@ func normalizePos(raw string) string {
 	return strings.ToUpper(strings.TrimSpace(raw))
 }
 
+// openJSONLReader wraps the source in the decompressor implied by its name.
+// Plain .jsonl sources are returned unchanged.
+func openJSONLReader(r io.Reader, source string) (io.Reader, error) {
+	lower := strings.ToLower(source)
+	switch {
+	case strings.HasSuffix(lower, ".bz2"):
+		return bzip2.NewReader(r), nil
+	case strings.HasSuffix(lower, ".gz"):
+		gr, err := gzip.NewReader(r)
+		if err != nil {
+			return nil, err
+		}
+		return gr, nil
+	default:
+		return r, nil
+	}
+}
+
 // kaikkiEntry is the subset of kaikki.org JSONL fields we use.
 // The full schema has many more fields; unrecognized fields are discarded.
 type kaikkiEntry struct {
@@ -96,7 +117,7 @@ func hasPossessiveTag(tags []string) bool {
 func main() {
 	lang := flag.String("lang", "fi", "Language to import: fi or et")
 	dbPath := flag.String("db", "finnestdb.db", "Path to SQLite database")
-	filePath := flag.String("file", "", "Path to local .jsonl.bz2 file (skips download)")
+	filePath := flag.String("file", "", "Path to local .jsonl, .jsonl.gz, or .jsonl.bz2 file (skips download)")
 	customGlosses := flag.String("custom-glosses", "", "Path to CSV file of custom gloss overrides (word,pos,lang,gloss)")
 	reimport := flag.Bool("reimport", false, "Drop existing entries for this lang before importing")
 	flag.Parse()
@@ -140,7 +161,10 @@ func main() {
 			log.Fatalf("open file: %v", err)
 		}
 		defer f.Close()
-		reader = bzip2.NewReader(f)
+		reader, err = openJSONLReader(f, *filePath)
+		if err != nil {
+			log.Fatalf("open reader: %v", err)
+		}
 		log.Printf("Importing %s dictionary from local file: %s", dbLang, *filePath)
 	} else {
 		url := kaikkiURL[langCode]
@@ -153,7 +177,10 @@ func main() {
 		if resp.StatusCode != http.StatusOK {
 			log.Fatalf("download HTTP %d from %s", resp.StatusCode, url)
 		}
-		reader = bzip2.NewReader(resp.Body)
+		reader, err = openJSONLReader(resp.Body, url)
+		if err != nil {
+			log.Fatalf("open reader: %v", err)
+		}
 	}
 
 	count, skipped, err := importJSONL(db, reader, dbLang)
