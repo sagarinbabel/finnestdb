@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"finnestdb/internal/api"
 	"finnestdb/internal/store"
@@ -23,6 +24,23 @@ func main() {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer db.Close()
+
+	// Warn if either dictionary has not been imported yet.
+	// Without the dictionary, lemmatization and definitions will be stubs.
+	// Run: make import-dict-fi   (or make import-dict-et)
+	for _, lang := range []string{"FI", "ET"} {
+		n, err := db.FormsCount(lang)
+		if err != nil {
+			log.Printf("warn: could not check %s dictionary: %v", lang, err)
+			continue
+		}
+		if n == 0 {
+			log.Printf("warn: %s dictionary not imported — lemmatization will use stubs. Run: make import-dict-%s",
+				lang, strings.ToLower(lang))
+		} else {
+			log.Printf("%s dictionary: %d forms loaded", lang, n)
+		}
+	}
 
 	// Initialize API
 	apiHandler := api.NewAPI(db)

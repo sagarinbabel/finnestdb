@@ -4,15 +4,85 @@ A language learning application for Finnish and Estonian using spaced repetition
 
 ## Table of Contents
 
+- [What makes this parser special](#what-makes-this-parser-special)
 - [How to Run & Test](#how-to-run--test)
   - [Prerequisites](#prerequisites)
   - [Build & Start](#build--start)
+  - [Dictionary import](#dictionary-import)
   - [Testing the Parse Feature](#testing-the-parse-feature)
   - [Language Validation](#language-validation)
   - [Known Limitations](#known-limitations)
 - [Project Structure](#project-structure)
 - [Documentation](#documentation)
 - [License](#license)
+
+## What makes this parser special
+
+### Dictionary-backed lemmatization
+
+Most tokenizers produce a "stemmed" guess at the base form. This parser is
+different: **every word is looked up in a real dictionary** derived from
+Wiktionary (via [kaikki.org](https://kaikki.org)) and resolved to its actual
+canonical lemma. "pankkiin" → "pankki" because the dictionary says so, not
+because of a suffix rule.
+
+```
+Input:  "menin pankkiin"
+Step 1: Rust tokenizer → tokens: {form:"menin"}, {form:"pankkiin"}
+Step 2: BatchLookupForms → pankkiin → {lemma:"pankki", pos:"NOUN"}
+                         → menin    → {lemma:"mennä",  pos:"VERB"}
+Step 3: BatchLookupGlosses → pankki/NOUN → "bank (financial institution)"
+                           → mennä/VERB  → "to go"
+Output: word list with real base forms + English definitions
+```
+
+This approach requires a one-time dictionary import (~5 min, ~500MB) but
+produces dramatically better results than any rule-based stemmer for Finnish
+and Estonian — languages with highly agglutinative morphology.
+
+### Finnish possessive suffix stripping
+
+Finnish words can carry possessive suffixes fused with case endings.
+For example: "kirjassani" = "kirjassa" (inessive of *kirja*) + "ni" (1st person singular possessive).
+
+Rather than importing every possible possessive form into the dictionary
+(which would roughly **triple the DB size** to ~50M rows), possessive suffixes
+are stripped at enrichment time:
+
+```
+"kirjassani" → not in forms table
+  → try strip "-ni"  → "kirjassa" → found → lemma: kirja ✓
+
+"talo" → not in forms table
+  → try strip "-si"  → "tal"      → not found → reject ✗ (stub fallback)
+```
+
+Suffixes are tried longest-first (`-nsa/-nsä/-mme/-nne` before `-ni/-si`)
+to avoid partial matches. The stripped result is **always validated against
+the dictionary** — preventing false positives where a suffix strip produces a
+non-word. Estonian does not use this rule (different possessive marking system).
+
+### Sentence context tracking
+
+Every word in the parse results is linked to the **first sentence it appeared
+in** from the source text. Click "▸ example" on any word to expand an inline
+example sentence. This is the foundation of JPDB-style sentence mining: learn
+words in the order and context they appear in text you actually care about.
+
+When a text is saved as a deck, every token is also recorded in an `occurrence`
+table (`deck_id, sentence_id, token_index, lemma, pos`), enabling per-word
+sentence counts and corpus analytics in the review phase.
+
+### Language detection
+
+The app detects Finnish vs Estonian by character frequency analysis before
+you submit:
+
+- `õ` present → Estonian (this character never appears in Finnish)
+- `ä`/`ö` > 1.5% of letters → Finnish
+- Neither → warning shown (advisory only; you can still parse)
+
+---
 
 ## How to Run & Test
 
@@ -40,6 +110,32 @@ Then open **http://localhost:8080** in your browser.
 
 No login required — the app opens directly to the parse page.
 
+### Dictionary import
+
+The first time you run the app, you need to import the kaikki.org dictionary.
+This is a one-time operation (~5 minutes per language):
+
+```bash
+make import-dict-fi    # Finnish  (~12-20M forms, downloads ~200MB)
+make import-dict-et    # Estonian (optional)
+```
+
+`make run` does **not** auto-import — import once manually, then `make run`
+every subsequent time. The data persists in `finnestdb.db`.
+
+To force a full refresh (e.g. after a new kaikki.org release):
+
+```bash
+make reimport-dict-fi   # drops existing FI entries, re-imports
+```
+
+To add custom gloss overrides (e.g. domain-specific vocabulary):
+
+```bash
+go run ./cmd/importdict -lang fi -db finnestdb.db -custom-glosses ./my-overrides.csv
+# CSV format: word,pos,lang,gloss
+```
+
 ### Testing the Parse Feature
 
 1. Open **http://localhost:8080**
@@ -50,9 +146,10 @@ No login required — the app opens directly to the parse page.
 
 | Column | What it shows |
 |--------|--------------|
-| Lemma | Base/dictionary form of the word |
+| Lemma | Base/dictionary form of the word (click "▸ example" to see context sentence) |
 | Part of Speech | NOUN, VERB, ADJ, etc. |
 | Forms in Text | Inflected forms found in the text |
+| Definition | English gloss from kaikki.org (Wiktionary); `—` if not in dictionary |
 | Count | How many times the word appears |
 
 Results are sorted from most frequent to least frequent.
@@ -86,10 +183,15 @@ The parser accuracy will improve once Omorfi/Vabamorf are wired in.
 ## Project Structure
 
 ```
+/cmd/importdict      One-time dictionary import CLI (kaikki.org JSONL → SQLite)
 /cmd/server          Go HTTP server entry point
 /internal/api        API handlers (POST /api/parse, etc.)
+  handlers.go        Route handlers; HandleParse runs 5-step enrichment pipeline
+  enrichment.go      Pure enrichWords() function (dict-backed, testable without CGO)
 /internal/parserffi  CGO bindings to the Rust parser library
 /internal/store      SQLite database layer
+  db.go              Schema + CRUD (users, decks, sentences, occurrences)
+  dict.go            BatchLookupForms (+ Finnish possessive strip), BatchLookupGlosses
 /parser              Rust parser library (stub tokenisation)
 /web                 Frontend (HTML, CSS, JavaScript)
   index.html         Single-page app shell

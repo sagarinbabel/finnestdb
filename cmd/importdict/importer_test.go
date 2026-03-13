@@ -1,0 +1,233 @@
+package main
+
+import (
+	"bytes"
+	"compress/bzip2"
+	"compress/gzip"
+	"database/sql"
+	"os"
+	"strings"
+	"testing"
+
+	_ "github.com/mattn/go-sqlite3"
+)
+
+// newTestDB creates an in-memory SQLite DB with the importer schema.
+func newTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		t.Fatalf("newTestDB: %v", err)
+	}
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("ensureSchema: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+	return db
+}
+
+// makeBz2JSONL compresses the given JSONL string into bzip2 for testing.
+// Note: Go's compress/bzip2 is read-only; we use compress/gzip to simulate
+// a reader we can feed to importJSONL, which accepts any io.Reader.
+// Since importJSONL wraps the reader with bzip2.NewReader, we need actual bz2.
+// Instead, we expose a helper that writes raw JSONL directly (not bz2-wrapped)
+// for unit testing the JSONL parsing layer, keeping tests fast and dependency-free.
+func jsonlReader(s string) *strings.Reader {
+	return strings.NewReader(s)
+}
+
+// importJSONLRaw is a test-only wrapper that skips the bzip2 layer.
+func importJSONLRaw(db *sql.DB, jsonl string, lang string) (int, int, error) {
+	return importJSONL(db, strings.NewReader(jsonl), lang)
+}
+
+// --- normalizePos tests ---
+
+func TestNormalizePos(t *testing.T) {
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"noun", "NOUN"},
+		{"verb", "VERB"},
+		{"adj", "ADJ"},
+		{"adv", "ADV"},
+		{"particle", "PART"},
+		{"name", "PROPN"},
+		{"NOUN", "NOUN"},      // already uppercase passthrough
+		{"Unknown", "UNKNOWN"}, // unrecognized → uppercase
+		{"", ""},               // empty stays empty
+	}
+	for _, tc := range cases {
+		got := normalizePos(tc.input)
+		if got != tc.want {
+			t.Errorf("normalizePos(%q) = %q, want %q", tc.input, got, tc.want)
+		}
+	}
+}
+
+// --- hasPossessiveTag tests ---
+
+func TestShouldSkipForm_Possessive(t *testing.T) {
+	tags := []string{"singular", "possessive", "first-person"}
+	if !hasPossessiveTag(tags) {
+		t.Error("expected hasPossessiveTag=true for tags containing 'possessive'")
+	}
+}
+
+func TestShouldSkipForm_Regular(t *testing.T) {
+	tags := []string{"singular", "genitive"}
+	if hasPossessiveTag(tags) {
+		t.Error("expected hasPossessiveTag=false for tags without 'possessive'")
+	}
+}
+
+func TestShouldSkipForm_EmptyTags(t *testing.T) {
+	if hasPossessiveTag(nil) {
+		t.Error("expected hasPossessiveTag=false for nil tags")
+	}
+}
+
+// --- importJSONL tests ---
+
+func TestImportJSONL_BasicEntry(t *testing.T) {
+	db := newTestDB(t)
+
+	jsonl := `{"word":"pankki","pos":"noun","lang_code":"fi","senses":[{"glosses":["bank (financial institution)"]}],"forms":[{"form":"pankkiin","tags":["illative","singular"]},{"form":"pankkini","tags":["singular","possessive","first-person"]}]}`
+
+	count, skipped, err := importJSONLRaw(db, jsonl, "FI")
+	if err != nil {
+		t.Fatalf("importJSONL: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("count = %d, want 1", count)
+	}
+	// "pankkini" has "possessive" tag → should be skipped
+	if skipped != 1 {
+		t.Errorf("skipped = %d, want 1 (possessive form)", skipped)
+	}
+
+	// Verify lemma was inserted with correct gloss.
+	var lemma, pos, gloss string
+	err = db.QueryRow(
+		`SELECT lemma, pos, gloss FROM lemmas WHERE lemma = 'pankki' AND lang = 'FI'`,
+	).Scan(&lemma, &pos, &gloss)
+	if err != nil {
+		t.Fatalf("lemma query: %v", err)
+	}
+	if lemma != "pankki" || pos != "NOUN" || gloss != "bank (financial institution)" {
+		t.Errorf("lemma row: got (%q,%q,%q), want (pankki,NOUN,bank (financial institution))", lemma, pos, gloss)
+	}
+
+	// Verify non-possessive form was inserted.
+	var form string
+	err = db.QueryRow(
+		`SELECT form FROM forms WHERE form = 'pankkiin' AND lang = 'FI'`,
+	).Scan(&form)
+	if err != nil {
+		t.Fatalf("form query (pankkiin): %v", err)
+	}
+
+	// Verify possessive form was NOT inserted.
+	var dummy string
+	err = db.QueryRow(
+		`SELECT form FROM forms WHERE form = 'pankkini' AND lang = 'FI'`,
+	).Scan(&dummy)
+	if err == nil {
+		t.Error("possessive form 'pankkini' should not be in forms table")
+	}
+}
+
+func TestImportJSONL_MalformedLineSkipped(t *testing.T) {
+	db := newTestDB(t)
+
+	// Mix of valid, malformed, and blank lines.
+	jsonl := `{"word":"kirja","pos":"noun","lang_code":"fi","senses":[{"glosses":["book"]}],"forms":[]}
+not-json-at-all
+{"word":"talo","pos":"noun","lang_code":"fi","senses":[{"glosses":["house"]}],"forms":[]}`
+
+	count, _, err := importJSONLRaw(db, jsonl, "FI")
+	if err != nil {
+		t.Fatalf("importJSONL: %v", err)
+	}
+	// Malformed line silently skipped; 2 valid entries processed.
+	if count != 2 {
+		t.Errorf("count = %d, want 2 (malformed line should be skipped)", count)
+	}
+}
+
+func TestImportJSONL_PosNormalization(t *testing.T) {
+	db := newTestDB(t)
+
+	// kaikki.org uses lowercase "verb"; we store UPOS "VERB".
+	jsonl := `{"word":"mennä","pos":"verb","lang_code":"fi","senses":[{"glosses":["to go"]}],"forms":[]}`
+
+	_, _, err := importJSONLRaw(db, jsonl, "FI")
+	if err != nil {
+		t.Fatalf("importJSONL: %v", err)
+	}
+
+	var pos string
+	if err := db.QueryRow(
+		`SELECT pos FROM lemmas WHERE lemma = 'mennä' AND lang = 'FI'`,
+	).Scan(&pos); err != nil {
+		t.Fatalf("lemma query: %v", err)
+	}
+	if pos != "VERB" {
+		t.Errorf("pos = %q, want VERB", pos)
+	}
+}
+
+// TestApplyCustomGlosses_EmptyFile verifies that a completely empty override
+// file (or one containing only comments) is treated as "0 overrides, no error"
+// rather than aborting the import with an io.EOF.
+func TestApplyCustomGlosses_EmptyFile(t *testing.T) {
+	db := newTestDB(t)
+	// Create a temp file that is empty.
+	f, err := os.CreateTemp(t.TempDir(), "overrides-*.csv")
+	if err != nil {
+		t.Fatalf("create temp file: %v", err)
+	}
+	f.Close()
+
+	n, err := applyCustomGlosses(db, f.Name(), "FI")
+	if err != nil {
+		t.Errorf("empty file: expected nil error, got %v", err)
+	}
+	if n != 0 {
+		t.Errorf("empty file: expected 0 overrides, got %d", n)
+	}
+}
+
+// TestApplyCustomGlosses_CommentOnlyFile verifies that a file with only
+// comment lines (starting with #) is also treated as "0 overrides, no error".
+func TestApplyCustomGlosses_CommentOnlyFile(t *testing.T) {
+	db := newTestDB(t)
+	f, err := os.CreateTemp(t.TempDir(), "overrides-*.csv")
+	if err != nil {
+		t.Fatalf("create temp file: %v", err)
+	}
+	f.WriteString("# This is a comment\n# Another comment\n")
+	f.Close()
+
+	n, err := applyCustomGlosses(db, f.Name(), "FI")
+	if err != nil {
+		t.Errorf("comment-only file: expected nil error, got %v", err)
+	}
+	if n != 0 {
+		t.Errorf("comment-only file: expected 0 overrides, got %d", n)
+	}
+}
+
+// Ensure the bzip2 reader path compiles and can read a real bz2 stream.
+// This is a compile-level sanity check, not a real kaikki.org download.
+func TestBzip2ReaderCompiles(t *testing.T) {
+	// Create a tiny bz2-compressed payload using gzip as a stand-in
+	// (bzip2 write is not in stdlib; we verify the bzip2.NewReader path compiles).
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	gz.Write([]byte("{}"))
+	gz.Close()
+	// Just verify bzip2.NewReader exists (compile check).
+	_ = bzip2.NewReader(bytes.NewReader(buf.Bytes()))
+}

@@ -97,7 +97,8 @@ func (d *DB) initSchema() error {
 		lemma TEXT NOT NULL,
 		pos TEXT NOT NULL,
 		FOREIGN KEY(deck_id) REFERENCES decks(id),
-		FOREIGN KEY(sentence_id) REFERENCES sentences(id)
+		FOREIGN KEY(sentence_id) REFERENCES sentences(id),
+		UNIQUE(deck_id, sentence_id, token_ix)
 	);
 
 	CREATE TABLE IF NOT EXISTS cards (
