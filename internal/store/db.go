@@ -133,6 +133,27 @@ func (d *DB) initSchema() error {
 		PRIMARY KEY(user_id, lemma, pos),
 		FOREIGN KEY(user_id) REFERENCES users(id)
 	);
+
+	-- Dictionary: maps inflected surface forms to their canonical lemma + POS.
+	-- PRIMARY KEY (form, lang) = one lemma per surface form per language (first-import wins).
+	-- Finnish possessive forms (e.g. "kirjassani") are NOT imported here; they are handled
+	-- at enrichment time via suffix stripping (see internal/store/dict.go).
+	CREATE TABLE IF NOT EXISTS forms (
+		form  TEXT NOT NULL,
+		lemma TEXT NOT NULL,
+		pos   TEXT NOT NULL,
+		lang  TEXT NOT NULL,
+		PRIMARY KEY (form, lang)
+	);
+
+	-- Tracks when dictionary data was imported and from which source.
+	CREATE TABLE IF NOT EXISTS dict_metadata (
+		lang        TEXT NOT NULL,
+		source      TEXT NOT NULL,
+		imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		row_count   INTEGER,
+		PRIMARY KEY (lang, source)
+	);
 	`
 
 	_, err := d.db.Exec(schema)
@@ -213,6 +234,27 @@ func (d *DB) GetUserDecks(userID int64) ([]Deck, error) {
 		decks = append(decks, deck)
 	}
 	return decks, rows.Err()
+}
+
+// CreateOccurrence records that a lemma+pos token appeared at position tokenIx
+// within the given sentence (which belongs to the given deck).
+func (d *DB) CreateOccurrence(deckID, sentenceID int64, tokenIx int, lemma, pos string) error {
+	_, err := d.db.Exec(
+		`INSERT OR IGNORE INTO occurrence (deck_id, sentence_id, token_ix, lemma, pos)
+		 VALUES (?, ?, ?, ?, ?)`,
+		deckID, sentenceID, tokenIx, lemma, pos,
+	)
+	return err
+}
+
+// FormsCount returns the number of rows in the forms table for the given lang.
+// Used at startup to detect whether the dictionary has been imported.
+func (d *DB) FormsCount(lang string) (int, error) {
+	var count int
+	err := d.db.QueryRow(
+		`SELECT COUNT(*) FROM forms WHERE lang = ?`, lang,
+	).Scan(&count)
+	return count, err
 }
 
 func (d *DB) Close() error {
