@@ -85,6 +85,47 @@ func TestBatchLookupForms_EmptyTable(t *testing.T) {
 	}
 }
 
+// TestBatchLookupForms_CaseFolding verifies that sentence-initial capitals
+// ("Kirjassa") and fully uppercased tokens resolve correctly even though
+// dictionary rows are stored in lowercase.
+func TestBatchLookupForms_CaseFolding(t *testing.T) {
+	db := newTestDB(t)
+	// Dictionary stores the form in lowercase.
+	seedForms(t, db, [][4]string{
+		{"pankkiin", "pankki", "NOUN", "FI"},
+	})
+
+	// "Pankkiin" is the sentence-start capitalised variant — should still resolve.
+	got := db.BatchLookupForms([]string{"Pankkiin", "PANKKIIN"}, "FI")
+
+	if got["Pankkiin"] != [2]string{"pankki", "NOUN"} {
+		t.Errorf("Pankkiin: got %v, want {pankki NOUN}", got["Pankkiin"])
+	}
+	if got["PANKKIIN"] != [2]string{"pankki", "NOUN"} {
+		t.Errorf("PANKKIIN: got %v, want {pankki NOUN}", got["PANKKIIN"])
+	}
+	// Result map is keyed by original form, not lowercased key.
+	if _, ok := got["pankkiin"]; ok {
+		t.Error("result must be keyed by original form, not lowercased key")
+	}
+}
+
+// TestBatchLookupForms_CaseFoldingPossessiveStrip verifies that a capitalised
+// possessive form ("Kirjassani") is resolved after both lowercasing and suffix
+// stripping.
+func TestBatchLookupForms_CaseFoldingPossessiveStrip(t *testing.T) {
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"kirjassa", "kirja", "NOUN", "FI"},
+	})
+
+	got := db.BatchLookupForms([]string{"Kirjassani"}, "FI")
+
+	if got["Kirjassani"] != [2]string{"kirja", "NOUN"} {
+		t.Errorf("Kirjassani: got %v, want {kirja NOUN}", got["Kirjassani"])
+	}
+}
+
 func TestBatchLookupForms_PossessiveSuffixStrip(t *testing.T) {
 	db := newTestDB(t)
 	// Seed the base form "kirjassa" but NOT "kirjassani".
