@@ -322,26 +322,13 @@ function deleteDeck(deckID: string) {
 // Event listeners
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
-    
+
+    // No login required: load dashboard directly
+    loadDashboard();
+
     // Theme toggles
     document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
     document.getElementById('header-theme-toggle')?.addEventListener('click', toggleTheme);
-    
-    // Login form
-    document.getElementById('login-form')?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = (document.getElementById('email') as HTMLInputElement).value;
-        const password = (document.getElementById('password') as HTMLInputElement).value;
-        
-        try {
-            await login(email, password);
-            showPage('dashboard-page');
-            await loadDashboard();
-        } catch (error) {
-            console.error('Login failed:', error);
-            alert('Login failed');
-        }
-    });
     
     // Dashboard actions
     document.getElementById('learn-btn')?.addEventListener('click', () => startReview());
