@@ -23,10 +23,12 @@ const POS_LABELS: Record<string, string> = {
 };
 
 interface WordEntry {
-    lemma: string;
-    pos:   string;
-    forms: string[];
-    count: number;
+    lemma:             string;
+    pos:               string;
+    forms:             string[];
+    count:             number;
+    gloss?:            string;
+    example_sentence?: string;
 }
 
 interface ParseResponse {
@@ -199,10 +201,22 @@ function showResults(data: ParseResponse, textPreview: string): void {
     tbody.innerHTML = data.words.map(w => {
         const forms = w.forms.slice(0, 3).map(escapeHtml).join(', ')
             + (w.forms.length > 3 ? ` +${w.forms.length - 3}` : '');
+
+        // Example sentence toggle — native <details>, no JS required.
+        const exampleHtml = w.example_sentence
+            ? `<details class="example-details">
+                <summary class="example-toggle">▸ example</summary>
+                <span class="example-text">${escapeHtml(w.example_sentence)}</span>
+               </details>`
+            : '';
+
+        const glossHtml = w.gloss ? escapeHtml(w.gloss) : '<span class="no-gloss">—</span>';
+
         return `<tr>
-            <td class="col-lemma">${escapeHtml(w.lemma)}</td>
+            <td class="col-lemma">${escapeHtml(w.lemma)}${exampleHtml}</td>
             <td class="col-pos">${escapeHtml(posLabel(w.pos))}</td>
             <td class="col-forms">${forms}</td>
+            <td class="col-def">${glossHtml}</td>
             <td class="col-count">${w.count}</td>
         </tr>`;
     }).join('');

@@ -667,8 +667,42 @@ body {
 .col-lemma  { font-weight: 500; }
 .col-pos    { color: var(--text-secondary); font-size: 0.85rem; }
 .col-forms  { color: var(--text-secondary); font-size: 0.85rem; }
+.col-def    { color: var(--text-secondary); font-size: 0.85rem; max-width: 260px; }
 .col-count  { text-align: right; font-variant-numeric: tabular-nums; }
+
+.no-gloss { color: var(--text-secondary); opacity: 0.5; }
+
+/* Example sentence toggle (native <details>, no JS) */
+.example-details {
+    margin-top: 0.25rem;
+}
+
+.example-toggle {
+    font-size: 0.75rem;
+    color: var(--accent);
+    cursor: pointer;
+    user-select: none;
+    list-style: none; /* hide default marker in Firefox */
+}
+
+.example-toggle::-webkit-details-marker { display: none; } /* hide default marker in Chrome */
+
+.example-details[open] .example-toggle {
+    color: var(--text-secondary);
+}
+
+.example-text {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    line-height: 1.5;
+    padding-left: 0.5rem;
+    border-left: 2px solid var(--border);
+}
 
 @media (max-width: 600px) {
     .col-forms { display: none; }
+    .col-def   { display: none; }
 }
