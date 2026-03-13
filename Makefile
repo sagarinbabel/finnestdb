@@ -19,8 +19,8 @@ server: parser
 build: server
 	@echo "Build complete! Run './finnestdb' to start the server"
 
-# Run the server (builds if needed)
-run: build
+# Run the server (builds if needed, imports dictionary on first run)
+run: build import-dict-fi import-dict-et
 	./finnestdb
 
 # Clean build artifacts
