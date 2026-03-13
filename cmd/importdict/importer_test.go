@@ -5,6 +5,7 @@ import (
 	"compress/bzip2"
 	"compress/gzip"
 	"database/sql"
+	"os"
 	"strings"
 	"testing"
 
@@ -174,6 +175,47 @@ func TestImportJSONL_PosNormalization(t *testing.T) {
 	}
 	if pos != "VERB" {
 		t.Errorf("pos = %q, want VERB", pos)
+	}
+}
+
+// TestApplyCustomGlosses_EmptyFile verifies that a completely empty override
+// file (or one containing only comments) is treated as "0 overrides, no error"
+// rather than aborting the import with an io.EOF.
+func TestApplyCustomGlosses_EmptyFile(t *testing.T) {
+	db := newTestDB(t)
+	// Create a temp file that is empty.
+	f, err := os.CreateTemp(t.TempDir(), "overrides-*.csv")
+	if err != nil {
+		t.Fatalf("create temp file: %v", err)
+	}
+	f.Close()
+
+	n, err := applyCustomGlosses(db, f.Name(), "FI")
+	if err != nil {
+		t.Errorf("empty file: expected nil error, got %v", err)
+	}
+	if n != 0 {
+		t.Errorf("empty file: expected 0 overrides, got %d", n)
+	}
+}
+
+// TestApplyCustomGlosses_CommentOnlyFile verifies that a file with only
+// comment lines (starting with #) is also treated as "0 overrides, no error".
+func TestApplyCustomGlosses_CommentOnlyFile(t *testing.T) {
+	db := newTestDB(t)
+	f, err := os.CreateTemp(t.TempDir(), "overrides-*.csv")
+	if err != nil {
+		t.Fatalf("create temp file: %v", err)
+	}
+	f.WriteString("# This is a comment\n# Another comment\n")
+	f.Close()
+
+	n, err := applyCustomGlosses(db, f.Name(), "FI")
+	if err != nil {
+		t.Errorf("comment-only file: expected nil error, got %v", err)
+	}
+	if n != 0 {
+		t.Errorf("comment-only file: expected 0 overrides, got %d", n)
 	}
 }
 

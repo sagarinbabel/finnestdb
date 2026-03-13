@@ -294,11 +294,21 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string) (int, int, error) {
 
 	stmtLemma.Close()
 	stmtForm.Close()
+
+	// Roll back the pending transaction if the stream ended with an error
+	// (IO error, truncated download, line exceeding 4MB buffer, etc.).
+	// Without this check the last partial batch would be committed even
+	// though the CLI exits non-zero, leaving the dictionary silently incomplete.
+	if err := scanner.Err(); err != nil {
+		tx.Rollback()
+		return count, skipped, err
+	}
+
 	if err := tx.Commit(); err != nil {
 		return count, skipped, err
 	}
 	fmt.Println() // newline after progress indicator
-	return count, skipped, scanner.Err()
+	return count, skipped, nil
 }
 
 // applyCustomGlosses reads a CSV file (columns: word,pos,lang,gloss) and
@@ -316,7 +326,11 @@ func applyCustomGlosses(db *sql.DB, filePath, dbLang string) (int, error) {
 	r.TrimLeadingSpace = true
 
 	// Skip header row if present.
+	// An empty file (or one with only comments) is not an error — 0 overrides.
 	header, err := r.Read()
+	if err == io.EOF {
+		return 0, nil
+	}
 	if err != nil {
 		return 0, err
 	}
