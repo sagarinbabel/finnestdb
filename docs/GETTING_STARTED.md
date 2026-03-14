@@ -1,6 +1,6 @@
 # Getting Started with FinEstDB
 
-This guide will help you set up and run the FinEstDB stub project locally.
+This guide will help you set up and run the current parser-focused FinEstDB app locally.
 
 ## Table of Contents
 
@@ -14,8 +14,7 @@ This guide will help you set up and run the FinEstDB stub project locally.
   - [Manual Run](#manual-run)
 - [Accessing the Application](#accessing-the-application)
 - [Using the Application](#using-the-application)
-  - [Creating a Deck](#creating-a-deck)
-  - [Reviewing Cards](#reviewing-cards)
+  - [Parsing Text](#parsing-text)
   - [Theme Toggle](#theme-toggle)
 - [Project Structure](#project-structure)
 - [Troubleshooting](#troubleshooting)
@@ -124,43 +123,26 @@ The server will start on `http://localhost:8080` by default.
 
 1. Open your browser and navigate to: `http://localhost:8080`
 
-2. **Login**: Use the mock login form
-   - **Email**: Any email address (e.g., `test@example.com`)
-   - **Password**: Any password (e.g., `password`)
-   - Note: This is a stub - any credentials will work!
-
-3. **Dashboard**: After logging in, you'll see:
-   - KPI tiles showing Words Known, To Review, and To Learn
-   - "Learn" button to start reviewing cards
-   - "Upload & Create Deck" button to create a new deck
-   - List of your decks
+2. The app opens directly to the **Parse Text** page.
+   - No login is required on the current `main` branch.
+   - Choose **Finnish (FI)** or **Estonian (ET)**.
+   - Paste text or load a `.txt` / `.md` file.
 
 ## Using the Application
 
-### Creating a Deck
+### Parsing Text
 
-1. Click **"Upload & Create Deck"** button
-2. Fill in the form:
-   - **Title**: Give your deck a name (required)
-   - **Language**: Select Finnish (FI) or Estonian (ET)
-   - **Text**: Paste your text or upload a `.txt` or `.md` file (max 2 MB)
-3. Click **"Create Deck"**
-4. The text will be parsed using the Rust parser (basic tokenization and sentence splitting)
-
-### Reviewing Cards
-
-1. Click **"Learn"** button from the dashboard
-2. You'll see a card with:
-   - **Front**: Sentence with highlighted word (or word only)
-   - Click **"Show Answer"** to flip the card
-   - **Back**: Shows lemma, meaning, grammar label, and example sentences
-3. Use the review buttons:
-   - **Again** (0): Failed recall
-   - **Hard** (1): Hesitant recall
-   - **Good** (2): Normal recall (default)
-   - **Easy** (3): Instant recall
-   - **Ignore**: Hide this word forever
-   - **Mark as Known**: Treat as already known
+1. Paste text into the textarea or load a `.txt` / `.md` file.
+2. Keep the input under **300,000 Unicode characters**.
+3. Choose one parser mode:
+   - **Basic Parser**: direct dictionary lookup only after stub parsing
+   - **Custom Parser**: adds possessive, compound, and case-suffix enrichment rules
+4. Click the parser button you want to run.
+5. Review the results page:
+   - parser mode used
+   - coverage score
+   - parse duration
+   - sortable word list with lemmas, forms, definitions, grammar labels, and token counts
 
 ### Theme Toggle
 
@@ -223,9 +205,9 @@ finnestdb/
 ### Browser Issues
 
 **TypeScript not compiling:**
-- The project uses vanilla TypeScript - ensure your browser supports ES modules
-- Modern browsers (Chrome, Firefox, Safari, Edge) should work
-- Check browser console for errors
+- Install frontend dependencies once: `cd web && npm install`
+- Rebuild the frontend: `cd web && npm run build`
+- If the build still fails, check the TypeScript error output directly
 
 **Styles not loading:**
 - Ensure `web/styles.css` exists
@@ -235,24 +217,24 @@ finnestdb/
 
 ### Stub Limitations
 
-This is a stub implementation with the following limitations:
+This is a parser-focused implementation with the following limitations:
 
-- **Authentication**: Mock login only - any credentials work
-- **Parser**: Basic tokenization and sentence splitting only (no morphological analysis, POS tagging, or MWE detection)
-- **FSRS**: Review buttons exist but don't update scheduling (no actual spaced repetition algorithm)
-- **Card Data**: Uses mock data for review interface
-- **Database**: Simplified schema (core tables only)
+- **Current UI**: parse page and results page only
+- **Parser core**: Rust tokenization and heuristic POS guessing, not real morphology
+- **Basic parser mode**: direct dictionary lookup only
+- **Custom parser mode**: rule-based enrichment, still not Omorfi/Vabamorf
+- **Review system**: backend stubs exist, but the current frontend does not expose dashboard/review flows
+- **Accounts**: not part of the current main flow
 
 ### Next Steps
 
-To extend this stub:
+Current direction:
 
-1. Implement real morphological analysis in Rust parser
-2. Add FSRS-6 algorithm for spaced repetition
-3. Implement proper authentication with password hashing
-4. Add email verification and password reset
-5. Implement MWE (multi-word expression) detection
-6. Add sentence generation with inflection
+1. Improve parser quality and observability
+2. Define parser evaluation metrics and annotation workflow
+3. Build a repeatable parser test harness
+4. Design a richer lexical knowledge layer on top of dictionary data
+5. Return to accounts, known-word tracking, and review once parser quality is strong enough
 
 ## Support
 
@@ -264,4 +246,3 @@ For issues or questions, please check:
 ## License
 
 MIT License - See LICENSE file for details.
-

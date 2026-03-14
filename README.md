@@ -1,6 +1,7 @@
 # FinEstDB
 
-A language learning application for Finnish and Estonian using spaced repetition (FSRS).
+A parser workbench for Finnish and Estonian text, focused on dictionary-backed
+lemmatization and parser evaluation.
 
 ## Table of Contents
 
@@ -73,6 +74,21 @@ words in the order and context they appear in text you actually care about.
 When a text is saved as a deck, every token is also recorded in an `occurrence`
 table (`deck_id, sentence_id, token_index, lemma, pos`), enabling per-word
 sentence counts and corpus analytics in the review phase.
+
+### Two parser modes today
+
+The current app exposes two parser modes on the parse page:
+
+- **Basic parser**: Rust tokenization + stub lemma/POS guesses, then direct dictionary lookup only.
+- **Custom parser**: the same Rust parser output, plus enrichment fallbacks in Go:
+  - Finnish possessive suffix stripping
+  - Finnish/Estonian compound splitting
+  - Finnish/Estonian case suffix stripping
+
+So today these are best understood as **two parser modes**, not two completely
+separate morphology engines. The next planned parser milestone is an
+**Omorfi-backed Finnish baseline** that we can compare against the custom mode
+for quality and speed.
 
 ### Language detection
 
@@ -155,19 +171,30 @@ go run ./cmd/importdict -lang fi -db finnestdb.db -custom-glosses ./my-overrides
 
 1. Open **http://localhost:8080**
 2. Select a language: **Finnish (FI)** or **Estonian (ET)**
-3. Paste text into the textarea (up to 10,000 characters — roughly 2 pages)
-4. Click **Parse Text**
+3. Paste text into the textarea (up to 300,000 Unicode characters)
+4. Click **Basic Parser** or **Custom Parser**
 5. You'll see a word list table:
 
 | Column | What it shows |
 |--------|--------------|
+| # | Row number in the current sort order |
 | Lemma | Base/dictionary form of the word (click "▸ example" to see context sentence) |
 | Part of Speech | NOUN, VERB, ADJ, etc. |
 | Forms in Text | Inflected forms found in the text |
-| Definition | English gloss from kaikki.org (Wiktionary); `—` if not in dictionary |
-| Count | How many times the word appears |
+| Definition | English gloss from kaikki.org (Wiktionary); `Missing` if not in dictionary |
+| Grammar | Case or grammar label inferred by enrichment when available |
+| Tokens | How many times the lemma appears in the parsed text |
 
-Results are sorted from most frequent to least frequent.
+The results header also shows:
+- which parser mode was used
+- a coverage proxy score
+- parse duration
+
+`Coverage score` means: **how much of this text produced usable
+dictionary-backed output**.
+
+By default the table is sorted in parser output order, and each column can be
+sorted from the UI.
 
 **Good test texts to try:**
 - Any Finnish Wikipedia article (copy-paste from the browser)
@@ -184,16 +211,26 @@ The app checks whether your pasted text matches the selected language:
 
 The warning is advisory only — you can still parse the text.
 
-### Known Limitations (stub parser)
+### Known Limitations
 
-The current Rust parser is a **basic heuristic stub**. It:
-- Tokenises on whitespace (periods may attach to words as `kauppaan.`)
-- Guesses POS from word endings (rough approximation)
-- Does **not** do real morphological analysis (Omorfi/Vabamorf not yet integrated)
+The current Rust parser is still a **heuristic stub**. It does:
+- NFC normalization
+- sentence splitting with simple punctuation heuristics
+- tokenization that separates leading/trailing punctuation
+- rough POS guessing from word endings
 
-This means lemmas and POS tags will often be incorrect. The infrastructure
-(HTTP endpoint, word list table, language validation) is the thing being tested.
-The parser accuracy will improve once Omorfi/Vabamorf are wired in.
+The two parser modes differ only in how much enrichment happens after that:
+- **Basic parser** stops after direct dictionary lookup
+- **Custom parser** adds possessive, compound, and case-suffix fallback rules
+
+What still does **not** exist yet:
+- real morphological analysis from Omorfi/Vabamorf
+- statistical disambiguation
+- MWE detection
+- gold-set evaluation of parser quality
+
+So the custom mode is stronger than the basic mode for many dictionary-backed
+cases, but it is still not a full morphology parser.
 
 ## Project Structure
 

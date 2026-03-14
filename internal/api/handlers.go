@@ -186,6 +186,16 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(req.Text) == 0 {
+		http.Error(w, "Text is required", http.StatusBadRequest)
+		return
+	}
+
+	if utf8.RuneCountInString(req.Text) > maxTextChars {
+		http.Error(w, fmt.Sprintf("Text exceeds %d character limit", maxTextChars), http.StatusBadRequest)
+		return
+	}
+
 	// Parse text using Rust parser
 	result, err := parserffi.AnalyzeText(req.Lang, req.Text)
 	if err != nil {
