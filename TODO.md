@@ -102,6 +102,22 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
    - [ ] Monitor unknown lemma frequency
    - [ ] Create dashboards/alerts for parser health
 
+7. **Three-part compound splitting**
+   - [ ] Extend `tryCompoundSplit()` to handle recursive/ternary compounds (e.g. "lentokenttäbussi" = lento+kenttä+bussi)
+   - Currently only binary splits are supported, which covers ~90% of Finnish/Estonian compounds
+   - Profile real-world miss rates before implementing — may not be worth the false-positive risk
+
+8. **Consonant gradation rules**
+   - [ ] Add Finnish consonant gradation tables (kk→k, pp→p, tt→t, etc.) to case suffix stripping
+   - Case suffix stripping currently requires an exact stem match in the lemmas table; gradation would allow "kaupassa" → "kauppa" (pp→p at morpheme boundary)
+   - Requires a rule table mapping strong↔weak grade pairs; start with the 15 most common patterns
+
+9. **Bloom filter for compound pre-filtering**
+   - [ ] Profile compound splitting performance on large texts (10k+ tokens) before implementing
+   - Currently each unresolved form triggers up to N×2 SQLite queries for split-point attempts
+   - A Bloom filter over the forms table could eliminate most impossible splits without DB queries
+   - Only implement if profiling shows compound splitting as a bottleneck (>10% of parse time)
+
 ## Notes
 
 - These findings were identified during PRD review and stub implementation

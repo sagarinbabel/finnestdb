@@ -41,9 +41,9 @@ func TestEnrichWords_DictHit(t *testing.T) {
 			},
 		},
 	}
-	formResolutions := map[string][2]string{
-		"pankkiin": {"pankki", "NOUN"},
-		"Menin":    {"mennä", "VERB"},
+	formResolutions := map[string]store.FormResolution{
+		"pankkiin": {Lemma: "pankki", POS: "NOUN", Source: "dict"},
+		"Menin":    {Lemma: "mennä", POS: "VERB", Source: "dict"},
 	}
 	glosses := map[store.LemmaKey]string{
 		{Lemma: "pankki", POS: "NOUN"}: "bank (financial institution)",
@@ -78,7 +78,7 @@ func TestEnrichWords_DictMissUsesStub(t *testing.T) {
 			},
 		},
 	}
-	formResolutions := map[string][2]string{} // empty — no dict hits
+	formResolutions := map[string]store.FormResolution{} // empty — no dict hits (type updated)
 	glosses := map[store.LemmaKey]string{}    // no glosses
 
 	words := enrichWords(sentences, formResolutions, glosses)
@@ -121,12 +121,12 @@ func TestEnrichWords_CountSortingAndFormAggregation(t *testing.T) {
 			},
 		},
 	}
-	formResolutions := map[string][2]string{
-		"Kirja":    {"kirja", "NOUN"},
-		"Kirjassa": {"kirja", "NOUN"}, // both map to same lemma
-		"on":       {"olla", "VERB"},
-		"hyvä":     {"hyvä", "ADJ"},
-		"viisaus":  {"viisaus", "NOUN"},
+	formResolutions := map[string]store.FormResolution{
+		"Kirja":    {Lemma: "kirja", POS: "NOUN", Source: "dict"},
+		"Kirjassa": {Lemma: "kirja", POS: "NOUN", Source: "dict"}, // both map to same lemma
+		"on":       {Lemma: "olla", POS: "VERB", Source: "dict"},
+		"hyvä":     {Lemma: "hyvä", POS: "ADJ", Source: "dict"},
+		"viisaus":  {Lemma: "viisaus", POS: "NOUN", Source: "dict"},
 	}
 	glosses := map[store.LemmaKey]string{
 		{Lemma: "kirja", POS: "NOUN"}: "book",
@@ -185,4 +185,147 @@ func TestCollectUniqueForms_Deduplication(t *testing.T) {
 	if len(seen) != 3 {
 		t.Errorf("expected 3 unique forms, got %d: %v", len(seen), forms)
 	}
+}
+
+// ─── Punctuation handling tests ─────────────────────────────────────────────
+
+// TestEnrichWords_PunctuationSkipped verifies that tokens with StubPOS "PUNCT"
+// do not appear in the enriched word list output.
+func TestEnrichWords_PunctuationSkipped(t *testing.T) {
+	sentences := []ParsedSentence{
+		{
+			Text: "kauppaan).",
+			Tokens: []ParsedToken{
+				{Form: "kauppaan", StubLemma: "kauppaan", StubPOS: "NOUN"},
+				{Form: ")", StubLemma: ")", StubPOS: "PUNCT"},
+				{Form: ".", StubLemma: ".", StubPOS: "PUNCT"},
+			},
+		},
+	}
+	formResolutions := map[string]store.FormResolution{
+		"kauppaan": {Lemma: "kauppa", POS: "NOUN", Source: "dict"},
+	}
+	glosses := map[store.LemmaKey]string{
+		{Lemma: "kauppa", POS: "NOUN"}: "shop",
+	}
+
+	words := enrichWords(sentences, formResolutions, glosses)
+
+	if len(words) != 1 {
+		t.Fatalf("expected 1 word (punct excluded), got %d: %v", len(words), words)
+	}
+	if words[0].Lemma != "kauppa" {
+		t.Errorf("word: got %q, want kauppa", words[0].Lemma)
+	}
+}
+
+// TestCollectUniqueForms_SkipsPunct verifies that PUNCT tokens are excluded
+// from the unique forms sent to dictionary lookup.
+func TestCollectUniqueForms_SkipsPunct(t *testing.T) {
+	sentences := []ParsedSentence{
+		{Tokens: []ParsedToken{
+			{Form: "kirja", StubPOS: "NOUN"},
+			{Form: ".", StubPOS: "PUNCT"},
+			{Form: "(", StubPOS: "PUNCT"},
+		}},
+	}
+	forms := collectUniqueForms(sentences)
+
+	seen := make(map[string]struct{})
+	for _, f := range forms {
+		seen[f] = struct{}{}
+	}
+	if _, ok := seen["."]; ok {
+		t.Error("'.' should be excluded from unique forms")
+	}
+	if _, ok := seen["("]; ok {
+		t.Error("'(' should be excluded from unique forms")
+	}
+	if _, ok := seen["kirja"]; !ok {
+		t.Error("'kirja' should be included in unique forms")
+	}
+	if len(seen) != 1 {
+		t.Errorf("expected 1 unique form, got %d: %v", len(seen), forms)
+	}
+}
+
+// TestToParsedSentences_PunctuationJoining verifies that sentence text
+// reconstruction suppresses spaces around punctuation tokens.
+func TestToParsedSentences_PunctuationJoining(t *testing.T) {
+	// Simulate parserffi output for "Menin kauppaan)."
+	result := &mockAnalysisResult{
+		Sentences: []mockSentence{
+			{Tokens: []mockToken{
+				{Form: "Menin", Lemma: "menin", POS: "VERB", GrammarLabel: "VERB (stub)"},
+				{Form: "kauppaan", Lemma: "kauppaan", POS: "NOUN", GrammarLabel: "NOUN (stub)"},
+				{Form: ")", Lemma: ")", POS: "PUNCT", GrammarLabel: "PUNCT_CLOSE"},
+				{Form: ".", Lemma: ".", POS: "PUNCT", GrammarLabel: "PUNCT_CLOSE"},
+			}},
+		},
+	}
+	sentences := toParsedSentencesMock(result)
+
+	if len(sentences) != 1 {
+		t.Fatalf("expected 1 sentence, got %d", len(sentences))
+	}
+	got := sentences[0].Text
+	want := "Menin kauppaan)."
+	if got != want {
+		t.Errorf("sentence text: got %q, want %q", got, want)
+	}
+}
+
+// ─── Mock types for toParsedSentences test (avoids CGO dependency) ──────────
+
+type mockToken struct {
+	Form, Lemma, POS, GrammarLabel string
+}
+
+type mockSentence struct {
+	Tokens []mockToken
+}
+
+type mockAnalysisResult struct {
+	Sentences []mockSentence
+}
+
+// toParsedSentencesMock mirrors toParsedSentences logic but operates on mock
+// types instead of parserffi types, allowing tests to run without CGO.
+func toParsedSentencesMock(result *mockAnalysisResult) []ParsedSentence {
+	sentences := make([]ParsedSentence, 0, len(result.Sentences))
+	for _, s := range result.Sentences {
+		tokens := make([]ParsedToken, 0, len(s.Tokens))
+		var textParts []string
+		prevWasOpen := false
+
+		for i, t := range s.Tokens {
+			if t.Form == "" {
+				continue
+			}
+			tokens = append(tokens, ParsedToken{
+				Form:      t.Form,
+				StubLemma: t.Lemma,
+				StubPOS:   t.POS,
+			})
+
+			isPunct := t.POS == "PUNCT"
+			isClose := isPunct && t.GrammarLabel == "PUNCT_CLOSE"
+			isOpen := isPunct && t.GrammarLabel == "PUNCT_OPEN"
+
+			if i > 0 && !isClose && !prevWasOpen {
+				textParts = append(textParts, " ")
+			}
+			textParts = append(textParts, t.Form)
+			prevWasOpen = isOpen
+		}
+
+		text := ""
+		for _, p := range textParts {
+			text += p
+		}
+		if text != "" {
+			sentences = append(sentences, ParsedSentence{Tokens: tokens, Text: text})
+		}
+	}
+	return sentences
 }
