@@ -418,6 +418,12 @@ mod tests {
     }
 
     #[test]
+    fn test_tokenize_low_double_quote() {
+        let tokens = forms("„tervetuloa”");
+        assert_eq!(tokens, vec!["„", "tervetuloa", "”"]);
+    }
+
+    #[test]
     fn test_tokenize_all_punct() {
         // A chunk that is entirely punctuation: each char becomes a token.
         let tokens = forms("...");
@@ -460,4 +466,3 @@ mod tests {
         assert!(!token_forms.contains(&"kauppaan)."), "should not contain 'kauppaan).': {:?}", token_forms);
     }
 }
-
