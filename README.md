@@ -113,7 +113,7 @@ No login required — the app opens directly to the parse page.
 
 ### Frontend Build
 
-The browser loads [`web/app.js`](/Users/sagar/Downloads/projects/finnestdb/web/app.js), which is compiled from [`web/app.ts`](/Users/sagar/Downloads/projects/finnestdb/web/app.ts).
+The browser loads [`web/app.js`](web/app.js), which is compiled from [`web/app.ts`](web/app.ts).
 
 If you change the TypeScript, rebuild it with:
 

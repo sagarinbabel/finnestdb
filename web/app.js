@@ -131,6 +131,10 @@ function computeCoverageScore(data) {
     const definedTokens = data.words.reduce((sum, word) => sum + (word.gloss ? word.count : 0), 0);
     const rowCoverage = data.words.length === 0 ? 0 : definedRows / data.words.length;
     const tokenCoverage = data.total_tokens === 0 ? 0 : definedTokens / data.total_tokens;
+    // Weighted proxy score for comparing parsers: tokens are weighted higher (0.7)
+    // because they reflect actual text coverage (a high-frequency word with a definition
+    // contributes more than a rare one). Row coverage (0.3) captures breadth across
+    // unique lemmas. Together they give a single number to compare basic vs custom parser.
     const score = Math.round(((tokenCoverage * 0.7) + (rowCoverage * 0.3)) * 100);
     return {
         score,
@@ -195,11 +199,11 @@ function updateSortButtons() {
         const active = currentSort.key === key;
         btn.classList.toggle('active', active);
         btn.setAttribute('aria-sort', active ? currentSort.dir : 'none');
-        let suffix = '';
-        if (active) {
-            suffix = currentSort.dir === 'asc' ? ' ↑' : ' ↓';
+        // Write the indicator into the dedicated <span> so the label text is never touched.
+        const arrow = btn.querySelector('.sort-arrow');
+        if (arrow) {
+            arrow.textContent = active ? (currentSort.dir === 'asc' ? ' ↑' : ' ↓') : '';
         }
-        btn.textContent = `${btn.textContent?.replace(/ [↑↓]$/, '') || ''}${suffix}`;
     });
 }
 function renderResultsTable(data) {
