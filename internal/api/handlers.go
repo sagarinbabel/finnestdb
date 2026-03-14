@@ -203,7 +203,7 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 
 	// Batch-resolve forms to (lemma, pos) for occurrence tracking.
 	uniqueForms := collectUniqueForms(sentences)
-	formResolutions := a.store.BatchLookupForms(uniqueForms, req.Lang)
+	formResolutions := a.store.BatchLookupForms(uniqueForms, req.Lang, "custom")
 
 	// Store sentences and occurrence records.
 	for _, sent := range sentences {
@@ -216,9 +216,13 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		for tokenIx, token := range sent.Tokens {
+			// Skip punctuation — no occurrence records for ".", ")", etc.
+			if token.StubPOS == "PUNCT" {
+				continue
+			}
 			var lemma, pos string
 			if resolved, ok := formResolutions[token.Form]; ok {
-				lemma, pos = resolved[0], resolved[1]
+				lemma, pos = resolved.Lemma, resolved.POS
 			} else {
 				lemma = strings.ToLower(token.StubLemma)
 				if lemma == "" {
@@ -306,8 +310,9 @@ func (a *API) HandleCardKnown(w http.ResponseWriter, r *http.Request) {
 const maxTextBytes = 10_000
 
 type ParseRequest struct {
-	Lang string `json:"lang"`
-	Text string `json:"text"`
+	Lang   string `json:"lang"`
+	Text   string `json:"text"`
+	Parser string `json:"parser"` // "basic" or "custom"; defaults to "basic"
 }
 
 type WordEntry struct {
@@ -316,6 +321,7 @@ type WordEntry struct {
 	Forms           []string `json:"forms"`
 	Count           int      `json:"count"`
 	Gloss           string   `json:"gloss,omitempty"`
+	GrammarLabel    string   `json:"grammar_label,omitempty"`
 	ExampleSentence string   `json:"example_sentence,omitempty"`
 }
 
@@ -369,7 +375,11 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	uniqueForms := collectUniqueForms(sentences)
 
 	// Step 3: batch-resolve forms → (lemma, pos) via dictionary.
-	formResolutions := a.store.BatchLookupForms(uniqueForms, req.Lang)
+	parserMode := req.Parser
+	if parserMode == "" {
+		parserMode = "basic"
+	}
+	formResolutions := a.store.BatchLookupForms(uniqueForms, req.Lang, parserMode)
 
 	// Step 4: batch-fetch glosses for resolved lemmas.
 	lemmaKeys := resolvedLemmaKeys(formResolutions)
@@ -392,14 +402,21 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 }
 
 // toParsedSentences converts parserffi output to the CGO-free ParsedSentence
-// type used by enrichWords. Sentence text is reconstructed by space-joining
-// token forms (matching the reconstruction done in HandleCreateDeck).
+// type used by enrichWords.
+//
+// Sentence text is reconstructed with smart punctuation joining:
+//   - No space before closing punctuation: . , ; : ! ? ) ] }
+//   - No space after opening punctuation: ( [ {
+//
+// This produces "kauppaan)." instead of "kauppaan ) ."
 func toParsedSentences(result *parserffi.AnalysisResult) []ParsedSentence {
 	sentences := make([]ParsedSentence, 0, len(result.Sentences))
 	for _, s := range result.Sentences {
 		tokens := make([]ParsedToken, 0, len(s.Tokens))
-		parts := make([]string, 0, len(s.Tokens))
-		for _, t := range s.Tokens {
+		var textBuilder strings.Builder
+		prevWasOpen := false // true if previous token was opening punctuation
+
+		for i, t := range s.Tokens {
 			if t.Form == "" {
 				continue
 			}
@@ -408,9 +425,20 @@ func toParsedSentences(result *parserffi.AnalysisResult) []ParsedSentence {
 				StubLemma: t.Lemma,
 				StubPOS:   t.POS,
 			})
-			parts = append(parts, t.Form)
+
+			// Smart spacing: suppress space around punctuation.
+			isPunct := t.POS == "PUNCT"
+			isClose := isPunct && t.GrammarLabel == "PUNCT_CLOSE"
+			isOpen := isPunct && t.GrammarLabel == "PUNCT_OPEN"
+
+			if i > 0 && !isClose && !prevWasOpen {
+				textBuilder.WriteByte(' ')
+			}
+			textBuilder.WriteString(t.Form)
+			prevWasOpen = isOpen
 		}
-		text := strings.Join(parts, " ")
+
+		text := textBuilder.String()
 		if text != "" {
 			sentences = append(sentences, ParsedSentence{Tokens: tokens, Text: text})
 		}
@@ -418,11 +446,15 @@ func toParsedSentences(result *parserffi.AnalysisResult) []ParsedSentence {
 	return sentences
 }
 
-// collectUniqueForms returns the deduplicated set of surface forms across all sentences.
+// collectUniqueForms returns the deduplicated set of surface forms across all
+// sentences, excluding PUNCT tokens (no point looking up "." in the dictionary).
 func collectUniqueForms(sentences []ParsedSentence) []string {
 	seen := make(map[string]struct{})
 	for _, s := range sentences {
 		for _, t := range s.Tokens {
+			if t.StubPOS == "PUNCT" {
+				continue
+			}
 			seen[t.Form] = struct{}{}
 		}
 	}
@@ -434,10 +466,10 @@ func collectUniqueForms(sentences []ParsedSentence) []string {
 }
 
 // resolvedLemmaKeys extracts unique LemmaKey values from a form resolution map.
-func resolvedLemmaKeys(formResolutions map[string][2]string) []store.LemmaKey {
+func resolvedLemmaKeys(formResolutions map[string]store.FormResolution) []store.LemmaKey {
 	seen := make(map[store.LemmaKey]struct{}, len(formResolutions))
 	for _, v := range formResolutions {
-		seen[store.LemmaKey{Lemma: v[0], POS: v[1]}] = struct{}{}
+		seen[store.LemmaKey{Lemma: v.Lemma, POS: v.POS}] = struct{}{}
 	}
 	keys := make([]store.LemmaKey, 0, len(seen))
 	for k := range seen {

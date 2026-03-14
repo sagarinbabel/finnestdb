@@ -131,12 +131,13 @@ function updateLangWarning() {
     }
 }
 
-async function handleParseSubmit(e) {
+async function handleParseSubmit(e, parserMode) {
     e.preventDefault();
 
     const text = document.getElementById('parse-text').value.trim();
     const lang = document.getElementById('parse-lang').value;
-    const btn  = document.getElementById('parse-btn');
+    const btnBasic  = document.getElementById('parse-btn-basic');
+    const btnCustom = document.getElementById('parse-btn-custom');
 
     if (!text) return;
     if (text.length > MAX_CHARS) {
@@ -144,14 +145,17 @@ async function handleParseSubmit(e) {
         return;
     }
 
-    btn.disabled = true;
-    btn.textContent = 'Parsing…';
+    btnBasic.disabled = true;
+    btnCustom.disabled = true;
+    const activeBtn = parserMode === 'custom' ? btnCustom : btnBasic;
+    const origLabel = activeBtn.textContent;
+    activeBtn.textContent = 'Parsing…';
 
     try {
         const resp = await fetch('/api/parse', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lang, text }),
+            body: JSON.stringify({ lang, text, parser: parserMode }),
         });
 
         if (!resp.ok) {
@@ -164,8 +168,9 @@ async function handleParseSubmit(e) {
     } catch (err) {
         alert(`Parse failed: ${err.message}`);
     } finally {
-        btn.disabled = false;
-        btn.textContent = 'Parse Text';
+        btnBasic.disabled = false;
+        btnCustom.disabled = false;
+        activeBtn.textContent = origLabel;
     }
 }
 
@@ -196,12 +201,16 @@ function showResults(data, textPreview) {
             : '';
 
         const glossHtml = w.gloss ? escapeHtml(w.gloss) : '<span class="no-gloss">—</span>';
+        const grammarHtml = w.grammar_label
+            ? `<span class="grammar-label">${escapeHtml(w.grammar_label)}</span>`
+            : '';
 
         return `<tr>
             <td class="col-lemma">${escapeHtml(w.lemma)}${exampleHtml}</td>
             <td class="col-pos">${escapeHtml(posLabel(w.pos))}</td>
             <td class="col-forms">${forms}</td>
             <td class="col-def">${glossHtml}</td>
+            <td class="col-grammar">${grammarHtml}</td>
             <td class="col-count">${w.count}</td>
         </tr>`;
     }).join('');
@@ -246,7 +255,13 @@ document.addEventListener('DOMContentLoaded', () => {
             updateLangWarning();
         });
 
-    // Parse form submit
+    // Parse buttons — both submit the same form with different parser modes.
+    document.getElementById('parse-btn-basic')
+        ?.addEventListener('click', (e) => handleParseSubmit(e, 'basic'));
+    document.getElementById('parse-btn-custom')
+        ?.addEventListener('click', (e) => handleParseSubmit(e, 'custom'));
+
+    // Prevent default form submit (Enter key) — use basic parser as default.
     document.getElementById('parse-form')
-        ?.addEventListener('submit', handleParseSubmit);
+        ?.addEventListener('submit', (e) => handleParseSubmit(e, 'basic'));
 });

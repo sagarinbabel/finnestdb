@@ -54,7 +54,10 @@
                         <input type="file" id="parse-file" accept=".txt,.md">
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-large" id="parse-btn">Parse Text</button>
+                    <div class="parse-buttons">
+                        <button type="submit" class="btn btn-primary btn-parse" id="parse-btn-basic" data-parser="basic">Basic Parser</button>
+                        <button type="submit" class="btn btn-secondary btn-parse" id="parse-btn-custom" data-parser="custom">Custom Parser</button>
+                    </div>
                 </form>
             </section>
         </main>
@@ -88,6 +91,7 @@
                             <th>Part of Speech</th>
                             <th>Forms in Text</th>
                             <th class="col-def">Definition</th>
+                            <th class="col-grammar">Grammar</th>
                             <th class="col-count">Count</th>
                         </tr>
                     </thead>
