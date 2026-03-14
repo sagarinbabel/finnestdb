@@ -1,6 +1,6 @@
 // FinEstDB — parse word list view
 
-const MAX_CHARS = 10_000;
+const MAX_CHARS = 300_000;
 
 const POS_LABELS: Record<string, string> = {
     NOUN:  'Noun',
@@ -28,14 +28,30 @@ interface WordEntry {
     forms:             string[];
     count:             number;
     gloss?:            string;
+    grammar_label?:    string;
     example_sentence?: string;
 }
 
 interface ParseResponse {
     lang:         string;
     total_tokens: number;
+    parse_duration_ms: number;
     words:        WordEntry[];
 }
+
+type SortKey = 'row' | 'lemma' | 'pos' | 'forms' | 'definition' | 'grammar' | 'tokens';
+
+interface SortState {
+    key: SortKey;
+    dir: 'asc' | 'desc';
+}
+
+interface DisplayWordEntry extends WordEntry {
+    originalIndex: number;
+}
+
+let currentResults: ParseResponse | null = null;
+let currentSort: SortState = { key: 'row', dir: 'asc' };
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 
@@ -149,6 +165,161 @@ function setParseButtonsDisabled(disabled: boolean): void {
     });
 }
 
+function compareStrings(a: string, b: string): number {
+    return a.localeCompare(b, undefined, { sensitivity: 'base' });
+}
+
+function formatParserMode(parserMode: 'basic' | 'custom'): string {
+    return parserMode === 'custom' ? 'Custom parser' : 'Basic parser';
+}
+
+function formatParseDuration(parseDurationMs: number): string {
+    if (parseDurationMs < 1000) {
+        return `${parseDurationMs} ms`;
+    }
+
+    return `${(parseDurationMs / 1000).toFixed(parseDurationMs >= 10_000 ? 1 : 2)} s`;
+}
+
+function computeCoverageScore(data: ParseResponse): {
+    score: number;
+    definedRows: number;
+    definedTokens: number;
+    rowCoverage: number;
+    tokenCoverage: number;
+} {
+    const definedRows = data.words.filter(word => Boolean(word.gloss)).length;
+    const definedTokens = data.words.reduce((sum, word) => sum + (word.gloss ? word.count : 0), 0);
+    const rowCoverage = data.words.length === 0 ? 0 : definedRows / data.words.length;
+    const tokenCoverage = data.total_tokens === 0 ? 0 : definedTokens / data.total_tokens;
+    // Weighted proxy score for comparing parsers: tokens are weighted higher (0.7)
+    // because they reflect actual text coverage (a high-frequency word with a definition
+    // contributes more than a rare one). Row coverage (0.3) captures breadth across
+    // unique lemmas. Together they give a single number to compare basic vs custom parser.
+    const score = Math.round(((tokenCoverage * 0.7) + (rowCoverage * 0.3)) * 100);
+
+    return {
+        score,
+        definedRows,
+        definedTokens,
+        rowCoverage,
+        tokenCoverage,
+    };
+}
+
+function sortWords(words: DisplayWordEntry[], sort: SortState): DisplayWordEntry[] {
+    const sorted = [...words];
+    const direction = sort.dir === 'asc' ? 1 : -1;
+
+    sorted.sort((a, b) => {
+        let cmp = 0;
+
+        switch (sort.key) {
+            case 'row':
+                cmp = a.originalIndex - b.originalIndex;
+                break;
+            case 'lemma':
+                cmp = compareStrings(a.lemma, b.lemma);
+                break;
+            case 'pos':
+                cmp = compareStrings(posLabel(a.pos), posLabel(b.pos));
+                break;
+            case 'forms':
+                cmp = compareStrings(a.forms.join(', '), b.forms.join(', '));
+                break;
+            case 'definition': {
+                const aMissing = a.gloss ? 0 : 1;
+                const bMissing = b.gloss ? 0 : 1;
+                cmp = aMissing - bMissing;
+                if (cmp === 0) {
+                    cmp = compareStrings(a.gloss || '', b.gloss || '');
+                }
+                break;
+            }
+            case 'grammar': {
+                const aMissing = a.grammar_label ? 0 : 1;
+                const bMissing = b.grammar_label ? 0 : 1;
+                cmp = aMissing - bMissing;
+                if (cmp === 0) {
+                    cmp = compareStrings(a.grammar_label || '', b.grammar_label || '');
+                }
+                break;
+            }
+            case 'tokens':
+                cmp = a.count - b.count;
+                break;
+        }
+
+        if (cmp === 0) {
+            cmp = a.originalIndex - b.originalIndex;
+        }
+
+        return cmp * direction;
+    });
+
+    return sorted;
+}
+
+function updateSortButtons(): void {
+    document.querySelectorAll<HTMLButtonElement>('.sort-btn').forEach(btn => {
+        const key = btn.dataset.sort as SortKey | undefined;
+        if (!key) return;
+
+        const active = currentSort.key === key;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-sort', active ? currentSort.dir : 'none');
+
+        // Write the indicator into the dedicated <span> so the label text is never touched.
+        const arrow = btn.querySelector<HTMLElement>('.sort-arrow');
+        if (arrow) {
+            arrow.textContent = active ? (currentSort.dir === 'asc' ? ' ↑' : ' ↓') : '';
+        }
+    });
+}
+
+function renderResultsTable(data: ParseResponse): void {
+    const tbody = document.getElementById('word-table-body')!;
+    const help = document.getElementById('results-help')!;
+    const grammarCells = document.querySelectorAll<HTMLElement>('.col-grammar');
+    const baseWords = data.words.map((word, index) => ({ ...word, originalIndex: index }));
+    const sortedWords = sortWords(baseWords, currentSort);
+    const hasGrammar = data.words.some(word => Boolean(word.grammar_label));
+
+    grammarCells.forEach(cell => cell.classList.toggle('is-hidden', !hasGrammar));
+    help.textContent = hasGrammar
+        ? `Coverage score = how much of this text produced usable dictionary-backed output. Rows are unique lemma entries. Tokens are per-row occurrences in the parsed text. Grammar appears only when the custom enrichment inferred a case or related label.`
+        : `Coverage score = how much of this text produced usable dictionary-backed output. Rows are unique lemma entries. Tokens are per-row occurrences in the parsed text. Grammar is hidden because this parse did not produce any grammar labels.`;
+
+    tbody.innerHTML = sortedWords.map((w, index) => {
+        const forms = w.forms.slice(0, 3).map(escapeHtml).join(', ')
+            + (w.forms.length > 3 ? ` +${w.forms.length - 3}` : '');
+
+        const exampleHtml = w.example_sentence
+            ? `<details class="example-details">
+                <summary class="example-toggle">▸ example</summary>
+                <span class="example-text">${escapeHtml(w.example_sentence)}</span>
+               </details>`
+            : '';
+
+        const glossHtml = w.gloss ? escapeHtml(w.gloss) : '<span class="no-gloss">Missing</span>';
+        const grammarHtml = w.grammar_label
+            ? `<span class="grammar-label">${escapeHtml(w.grammar_label)}</span>`
+            : '<span class="no-grammar">—</span>';
+
+        return `<tr>
+            <td class="col-row">${index + 1}</td>
+            <td class="col-lemma">${escapeHtml(w.lemma)}${exampleHtml}</td>
+            <td class="col-pos">${escapeHtml(posLabel(w.pos))}</td>
+            <td class="col-forms">${forms}</td>
+            <td class="col-def">${glossHtml}</td>
+            <td class="col-grammar">${grammarHtml}</td>
+            <td class="col-count">${w.count}</td>
+        </tr>`;
+    }).join('');
+
+    updateSortButtons();
+}
+
 // ── Parse form ─────────────────────────────────────────────────────────────
 
 function updateCharCount(): void {
@@ -226,7 +397,7 @@ async function handleParseSubmit(e: Event, parserMode: 'basic' | 'custom'): Prom
         }
 
         const data: ParseResponse = await resp.json();
-        showResults(data, text.slice(0, 60));
+        showResults(data, text.slice(0, 60), parserMode);
     } catch (err: any) {
         alert(`Parse failed: ${err.message}`);
     } finally {
@@ -237,40 +408,29 @@ async function handleParseSubmit(e: Event, parserMode: 'basic' | 'custom'): Prom
 
 // ── Results rendering ──────────────────────────────────────────────────────
 
-function showResults(data: ParseResponse, textPreview: string): void {
+function showResults(data: ParseResponse, textPreview: string, parserMode: 'basic' | 'custom'): void {
     const langName = data.lang === 'FI' ? 'Finnish' : 'Estonian';
     const preview  = textPreview.replace(/\s+/g, ' ').trim();
     const ellipsis = preview.length >= 60 ? '…' : '';
+    const uniqueLemmas = data.words.length;
+    const coverage = computeCoverageScore(data);
 
     document.getElementById('results-title')!.textContent =
         `"${preview}${ellipsis}" (${langName})`;
+    document.getElementById('results-parser')!.textContent = formatParserMode(parserMode);
+    document.getElementById('results-score')!.textContent =
+        `Coverage score ${coverage.score}%`;
+    document.getElementById('results-duration')!.textContent =
+        `Parse time ${formatParseDuration(data.parse_duration_ms)}`;
 
     document.getElementById('results-stats')!.textContent =
-        `${data.words.length} unique lemmas · ${data.total_tokens} tokens`;
+        `${uniqueLemmas} unique lemmas (rows) · ${data.total_tokens} total tokens · `
+        + `${coverage.definedRows}/${uniqueLemmas} rows with definitions · `
+        + `${coverage.definedTokens}/${data.total_tokens} tokens covered by definitions`;
 
-    const tbody = document.getElementById('word-table-body')!;
-    tbody.innerHTML = data.words.map(w => {
-        const forms = w.forms.slice(0, 3).map(escapeHtml).join(', ')
-            + (w.forms.length > 3 ? ` +${w.forms.length - 3}` : '');
-
-        // Example sentence toggle — native <details>, no JS required.
-        const exampleHtml = w.example_sentence
-            ? `<details class="example-details">
-                <summary class="example-toggle">▸ example</summary>
-                <span class="example-text">${escapeHtml(w.example_sentence)}</span>
-               </details>`
-            : '';
-
-        const glossHtml = w.gloss ? escapeHtml(w.gloss) : '<span class="no-gloss">—</span>';
-
-        return `<tr>
-            <td class="col-lemma">${escapeHtml(w.lemma)}${exampleHtml}</td>
-            <td class="col-pos">${escapeHtml(posLabel(w.pos))}</td>
-            <td class="col-forms">${forms}</td>
-            <td class="col-def">${glossHtml}</td>
-            <td class="col-count">${w.count}</td>
-        </tr>`;
-    }).join('');
+    currentResults = data;
+    currentSort = { key: 'row', dir: 'asc' };
+    renderResultsTable(data);
 
     showPage('results-page');
 }
@@ -332,4 +492,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('parse-form')
         ?.addEventListener('submit', (e) => handleParseSubmit(e, 'basic'));
+
+    document.querySelectorAll<HTMLButtonElement>('.sort-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!currentResults) return;
+
+            const key = btn.dataset.sort as SortKey | undefined;
+            if (!key) return;
+
+            currentSort = currentSort.key === key
+                ? { key, dir: currentSort.dir === 'asc' ? 'desc' : 'asc' }
+                : { key, dir: key === 'tokens' ? 'desc' : 'asc' };
+
+            renderResultsTable(currentResults);
+        });
+    });
+
+    updateSortButtons();
 });

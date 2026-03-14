@@ -8,6 +8,7 @@ A language learning application for Finnish and Estonian using spaced repetition
 - [How to Run & Test](#how-to-run--test)
   - [Prerequisites](#prerequisites)
   - [Build & Start](#build--start)
+  - [Frontend Build](#frontend-build)
   - [Dictionary import](#dictionary-import)
   - [Testing the Parse Feature](#testing-the-parse-feature)
   - [Language Validation](#language-validation)
@@ -109,6 +110,20 @@ make run
 Then open **http://localhost:8080** in your browser.
 
 No login required — the app opens directly to the parse page.
+
+### Frontend Build
+
+The browser loads [`web/app.js`](web/app.js), which is compiled from [`web/app.ts`](web/app.ts).
+
+If you change the TypeScript, rebuild it with:
+
+```bash
+cd web
+npm install
+npm run build
+```
+
+`npm install` is only needed the first time or after dependency changes.
 
 ### Dictionary import
 

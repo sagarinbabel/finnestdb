@@ -33,3 +33,12 @@ Thumbs.db
 # Logs
 *.log
 
+# Frontend
+web/node_modules/
+
+# Local test artifacts
+test-results/
+
+# Local E2E tests (kept out of repo — internal use only)
+web/tests/
+web/playwright.config.ts
