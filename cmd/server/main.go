@@ -25,9 +25,8 @@ func main() {
 	}
 	defer db.Close()
 
-	// Warn if either dictionary has not been imported yet.
-	// Without the dictionary, lemmatization and definitions will be stubs.
-	// Run: make import-dict-fi   (or make import-dict-et)
+	// Check dictionary status for each language and report clearly.
+	missingDicts := []string{}
 	for _, lang := range []string{"FI", "ET"} {
 		n, err := db.FormsCount(lang)
 		if err != nil {
@@ -35,11 +34,15 @@ func main() {
 			continue
 		}
 		if n == 0 {
-			log.Printf("warn: %s dictionary not imported — lemmatization will use stubs. Run: make import-dict-%s",
-				lang, strings.ToLower(lang))
+			missingDicts = append(missingDicts, strings.ToLower(lang))
 		} else {
-			log.Printf("%s dictionary: %d forms loaded", lang, n)
+			log.Printf("%s dictionary loaded: %d forms", lang, n)
 		}
+	}
+	if len(missingDicts) > 0 {
+		log.Printf("WARNING: no dictionary data for [%s]. Definitions will be blank and lemmatization will be approximate.",
+			strings.Join(missingDicts, ", "))
+		log.Printf("  To fix, run:  make import-dict")
 	}
 
 	// Initialize API

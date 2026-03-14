@@ -5,15 +5,28 @@ import (
 	"strings"
 )
 
+// FormResolution holds the result of resolving a surface form to its canonical
+// lemma and POS, along with metadata about how it was resolved.
+//
+//	Source values: "dict", "possessive", "compound", "case_suffix"
+//	GrammarLabel: e.g. "inessive" from case suffix stripping; empty for direct dict hits
+type FormResolution struct {
+	Lemma        string
+	POS          string
+	GrammarLabel string // e.g. "inessive", empty for direct dict hits
+	Source       string // how this resolution was found
+}
+
 // finnishPossessiveSuffixes lists Finnish possessive suffixes to try when a
 // surface form is not found directly in the forms table. Ordered longest-first
 // to avoid partial matches (e.g. try -nsa before -sa).
 //
 // Stripping logic:
-//   form → strip suffix → re-lookup stripped form in forms table
-//   Accept only if the stripped form IS in the table (dictionary-validated).
-//   E.g. "kirjassani" - strip "-ni" → "kirjassa" → found → lemma: kirja ✓
-//        "talo" - try strip "-si" → "tal" → not found → reject ✗
+//
+//	form → strip suffix → re-lookup stripped form in forms table
+//	Accept only if the stripped form IS in the table (dictionary-validated).
+//	E.g. "kirjassani" - strip "-ni" → "kirjassa" → found → lemma: kirja ✓
+//	     "talo" - try strip "-si" → "tal" → not found → reject ✗
 var finnishPossessiveSuffixes = []string{
 	"nsa", "nsä", // 3rd person (any number): "kirjansa"
 	"mme",        // 1st person plural: "kirjamme"
@@ -25,38 +38,75 @@ var finnishPossessiveSuffixes = []string{
 // BatchLookupForms resolves a slice of surface forms to their canonical
 // (lemma, pos) pairs for the given language.
 //
-// For Finnish forms not found directly in the forms table, possessive suffixes
-// are stripped and the lookup is retried. Estonian does not use this fallback.
+// Fallback chain (each step only runs if previous steps missed):
 //
-// Returns a map from form → [2]string{lemma, pos}.
-// Forms that cannot be resolved are absent from the map (caller falls back to stub).
-func (d *DB) BatchLookupForms(forms []string, lang string) map[string][2]string {
-	result := make(map[string][2]string, len(forms))
+//	Step 1: Direct dictionary lookup (lowercase form in forms table)
+//	Step 2: [FI only] Possessive suffix strip → re-lookup in forms table
+//	Step 3: [FI + ET] Compound split → both halves in forms table
+//	Step 4: [FI + ET] Case suffix strip → stem lookup in lemmas table
+//	Step 5: Not resolved → absent from map → caller falls back to stub
+//
+// Returns a map from form → FormResolution.
+// Forms that cannot be resolved are absent from the map.
+func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) map[string]FormResolution {
+	result := make(map[string]FormResolution, len(forms))
 	if len(forms) == 0 {
 		return result
 	}
 
-	stmt, err := d.db.Prepare(`SELECT lemma, pos FROM forms WHERE form = ? AND lang = ?`)
+	// Pre-prepare both statements once — passed to all callees.
+	stmtForms, err := d.db.Prepare(`SELECT lemma, pos FROM forms WHERE form = ? AND lang = ?`)
 	if err != nil {
 		return result
 	}
-	defer stmt.Close()
+	defer stmtForms.Close()
+
+	stmtLemmas, err := d.db.Prepare(`SELECT lemma, pos FROM lemmas WHERE lemma = ? AND lang = ?`)
+	if err != nil {
+		return result
+	}
+	defer stmtLemmas.Close()
 
 	for _, form := range forms {
 		// Dictionary rows are stored in lowercase (kaikki.org normalization).
 		// Normalize the lookup key so sentence-initial capitals ("Kirjassa")
 		// and proper nouns resolve correctly.
 		lower := strings.ToLower(form)
+
+		// Step 1: Direct dictionary lookup.
 		var lemma, pos string
-		if err := stmt.QueryRow(lower, lang).Scan(&lemma, &pos); err == nil {
-			result[form] = [2]string{lemma, pos} // keyed by original form
+		if err := stmtForms.QueryRow(lower, lang).Scan(&lemma, &pos); err == nil {
+			result[form] = FormResolution{Lemma: lemma, POS: pos, Source: "dict"}
 			continue
 		}
-		// Finnish possessive suffix fallback (operates on already-lowercased form).
+
+		// Steps 2-4 only run in "custom" parser mode.
+		if parserMode != "custom" {
+			continue
+		}
+
+		// Step 2: Finnish possessive suffix fallback.
 		if lang == "FI" {
-			if resolved, ok := tryStripPossessive(stmt, lower, lang); ok {
+			if resolved, ok := tryStripPossessive(stmtForms, lower, lang); ok {
 				result[form] = resolved
+				continue
 			}
+		}
+
+		// Step 3: Compound word splitting (FI + ET).
+		if resolved, ok := tryCompoundSplit(stmtForms, lower, lang); ok {
+			result[form] = resolved
+			continue
+		}
+
+		// Step 4: Case suffix stripping (FI + ET).
+		suffixes := finnishCaseSuffixes
+		if lang == "ET" {
+			suffixes = estonianCaseSuffixes
+		}
+		if resolved, ok := tryCaseSuffixStrip(stmtLemmas, lower, lang, suffixes); ok {
+			result[form] = resolved
+			continue
 		}
 	}
 	return result
@@ -64,10 +114,10 @@ func (d *DB) BatchLookupForms(forms []string, lang string) map[string][2]string 
 
 // tryStripPossessive attempts to resolve a Finnish surface form by stripping
 // possessive suffixes and re-looking up the stripped form. Returns the resolved
-// (lemma, pos) and true if a dictionary match is found after stripping.
+// FormResolution and true if a dictionary match is found after stripping.
 //
 // form must already be lowercased — BatchLookupForms normalises before calling.
-func tryStripPossessive(stmt *sql.Stmt, form, lang string) ([2]string, bool) {
+func tryStripPossessive(stmt *sql.Stmt, form, lang string) (FormResolution, bool) {
 	for _, suffix := range finnishPossessiveSuffixes {
 		if !strings.HasSuffix(form, suffix) {
 			continue
@@ -78,10 +128,116 @@ func tryStripPossessive(stmt *sql.Stmt, form, lang string) ([2]string, bool) {
 		}
 		var lemma, pos string
 		if err := stmt.QueryRow(stripped, lang).Scan(&lemma, &pos); err == nil {
-			return [2]string{lemma, pos}, true
+			return FormResolution{Lemma: lemma, POS: pos, Source: "possessive"}, true
 		}
 	}
-	return [2]string{}, false
+	return FormResolution{}, false
+}
+
+// ─── Compound word splitting ────────────────────────────────────────────────
+
+// tryCompoundSplit attempts a longest-left-first binary split of a form.
+// Both halves must exist in the forms table. The right component determines POS
+// (Finnish/Estonian compounds have their head on the right).
+//
+// Guards:
+//   - Form length: 6–30 runes (too short = false positives, too long = unlikely)
+//   - Min part length: 3 runes (avoids false matches on short words like "ei", "on")
+//   - Rune-based iteration: safe for multi-byte Finnish chars (ä, ö, ü)
+func tryCompoundSplit(stmtForms *sql.Stmt, form, lang string) (FormResolution, bool) {
+	runes := []rune(form)
+	n := len(runes)
+	if n < 6 || n > 30 {
+		return FormResolution{}, false
+	}
+
+	// Try split points from longest-left to shortest-left.
+	for i := n - 3; i >= 3; i-- {
+		left := string(runes[:i])
+		right := string(runes[i:])
+
+		var leftLemma string
+		var leftPOS string
+		if err := stmtForms.QueryRow(left, lang).Scan(&leftLemma, &leftPOS); err != nil {
+			continue
+		}
+		var rightLemma, rightPOS string
+		if err := stmtForms.QueryRow(right, lang).Scan(&rightLemma, &rightPOS); err != nil {
+			continue
+		}
+		return FormResolution{
+			Lemma:  leftLemma + rightLemma,
+			POS:    rightPOS, // head component determines POS
+			Source: "compound",
+		}, true
+	}
+	return FormResolution{}, false
+}
+
+// ─── Case suffix stripping ──────────────────────────────────────────────────
+
+type caseSuffix struct {
+	suffix string
+	label  string
+}
+
+// Finnish case suffixes (15 cases). Ordered longest-first to avoid partial
+// matches (e.g. "ssaan" before "ssa", "aan" before "n").
+var finnishCaseSuffixes = []caseSuffix{
+	{"ssaan", "inessive (3rd poss)"},
+	{"staan", "elative (3rd poss)"},
+	{"ssa", "inessive"}, {"ssä", "inessive"},
+	{"sta", "elative"}, {"stä", "elative"},
+	{"lla", "adessive"}, {"llä", "adessive"},
+	{"lta", "ablative"}, {"ltä", "ablative"},
+	{"lle", "allative"},
+	{"ksi", "translative"},
+	{"tta", "abessive"}, {"ttä", "abessive"},
+	{"ine", "comitative"},
+	{"aan", "illative"}, {"ään", "illative"}, {"iin", "illative"},
+	{"on", "illative"}, {"un", "illative"}, {"yn", "illative"},
+	{"na", "essive"}, {"nä", "essive"},
+	{"n", "genitive"},
+	{"a", "partitive"}, {"ä", "partitive"},
+	{"t", "nominative plural"},
+}
+
+// Estonian case suffixes (14 cases). Ordered longest-first.
+var estonianCaseSuffixes = []caseSuffix{
+	{"sse", "illative"},
+	{"st", "elative"},
+	{"le", "allative"},
+	{"lt", "ablative"},
+	{"ks", "translative"},
+	{"ta", "abessive"},
+	{"ga", "comitative"},
+	{"ni", "terminative"},
+	{"na", "essive"},
+	{"s", "inessive"},
+	{"l", "adessive"},
+	{"d", "nominative plural"},
+	{"t", "partitive"},
+}
+
+// tryCaseSuffixStrip strips case suffixes and validates the stem against the
+// lemmas table (stricter than forms — reduces false positives from short suffixes).
+//
+// form must already be lowercased.
+func tryCaseSuffixStrip(stmtLemmas *sql.Stmt, form, lang string, suffixes []caseSuffix) (FormResolution, bool) {
+	for _, cs := range suffixes {
+		if !strings.HasSuffix(form, cs.suffix) {
+			continue
+		}
+		stem := form[:len(form)-len(cs.suffix)]
+		if len(stem) < 3 { // min stem length to avoid false positives
+			continue
+		}
+		var lemma, pos string
+		if err := stmtLemmas.QueryRow(stem, lang).Scan(&lemma, &pos); err == nil {
+			return FormResolution{Lemma: lemma, POS: pos, GrammarLabel: cs.label, Source: "case_suffix"}, true
+		}
+	}
+	return FormResolution{}, false
 }
 
 // LemmaKey identifies a unique (lemma, pos) pair for use as a map key.
