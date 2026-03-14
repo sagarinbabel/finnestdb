@@ -94,24 +94,35 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
    - [ ] Add validation via re-parsing
    - [ ] Test with various feature changes
 
+6. **Custom dictionary knowledge graph spike**
+   - [ ] Spike a separate custom lexicon for Finnish and Estonian that can accumulate data from multiple upstream dictionaries plus manual edits
+   - [ ] Design provenance tables so accepted fields (definition, examples, morphology, register) retain source attribution and fetch/import metadata
+   - [ ] Design a compiled read model so hot-path lookups remain indexed and near direct-lookup cost, with no live provenance merge in request handling
+   - [ ] Define a slower live-merge/admin view for curation, debugging, and experimenting with merge rules outside the request path
+   - [ ] Define how fallback lookups append new source facts and trigger per-entry recompilation rather than full-database rebuilds
+   - [ ] Define manual injection flows for curated edits, CSV/JSONL imports, and precedence rules between manual facts and auto-imported facts
+
 ### Low Priority
 
-6. **Observability**
+7. **Observability**
    - [ ] Add timing instrumentation to parser steps
    - [ ] Track analyzer cache hit rates
    - [ ] Monitor unknown lemma frequency
    - [ ] Create dashboards/alerts for parser health
 
+8. **Three-part compound splitting**
 7. **Three-part compound splitting**
    - [ ] Extend `tryCompoundSplit()` to handle recursive/ternary compounds (e.g. "lentokenttäbussi" = lento+kenttä+bussi)
    - Currently only binary splits are supported, which covers ~90% of Finnish/Estonian compounds
    - Profile real-world miss rates before implementing — may not be worth the false-positive risk
 
+9. **Consonant gradation rules**
 8. **Consonant gradation rules**
    - [ ] Add Finnish consonant gradation tables (kk→k, pp→p, tt→t, etc.) to case suffix stripping
    - Case suffix stripping currently requires an exact stem match in the lemmas table; gradation would allow "kaupassa" → "kauppa" (pp→p at morpheme boundary)
    - Requires a rule table mapping strong↔weak grade pairs; start with the 15 most common patterns
 
+10. **Bloom filter for compound pre-filtering**
 9. **Bloom filter for compound pre-filtering**
    - [ ] Profile compound splitting performance on large texts (10k+ tokens) before implementing
    - Currently each unresolved form triggers up to N×2 SQLite queries for split-point attempts
@@ -124,4 +135,3 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
 - Items are organized by severity and implementation priority
 - Check off items as they are completed
 - Update this document as new findings emerge or priorities change
-
