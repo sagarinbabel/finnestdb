@@ -33,14 +33,14 @@ fn normalize_text(text: &str) -> String {
 /// Covers sentence-ending marks, paired brackets/quotes, and common typographic
 /// punctuation used in Finnish and Estonian text.
 fn is_punct(c: char) -> bool {
-    matches!(c, '.' | ',' | ';' | ':' | '!' | '?' | '(' | ')' | '[' | ']'
+    matches!(c, '„' | '.' | ',' | ';' | ':' | '!' | '?' | '(' | ')' | '[' | ']'
               | '{' | '}' | '"' | '\'' | '«' | '»' | '—' | '–' | '…'
               | '\u{201C}' | '\u{201D}' | '\u{2018}' | '\u{2019}')
 }
 
 /// Check if a character is opening punctuation (space suppressed after it).
 fn is_opening_punct(c: char) -> bool {
-    matches!(c, '(' | '[' | '{' | '«' | '\u{201C}' | '\u{2018}')
+    matches!(c, '(' | '[' | '{' | '«' | '„' | '\u{201C}' | '\u{2018}')
 }
 
 /// Split text into sentences using improved heuristics.
