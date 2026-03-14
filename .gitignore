@@ -33,3 +33,8 @@ Thumbs.db
 # Logs
 *.log
 
+# Frontend
+web/node_modules/
+
+# Local test artifacts
+test-results/
