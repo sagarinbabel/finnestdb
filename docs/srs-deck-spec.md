@@ -40,6 +40,10 @@ Practical decision:
   - Can be a studyable leaf deck or a parent deck that aggregates descendant leaf decks.
   - Determines which new lemmas are eligible to be introduced.
 
+- `study list`
+  - The set of decks a user has explicitly added for ongoing study.
+  - Drives the user's study page and quick access to active decks.
+
 ### Important distinction
 
 Keep `content selection` separate from `card identity`.
@@ -114,12 +118,80 @@ Optional later deck metadata:
   - `first_sentence_id`
   - Unique on `(deck_id, lemma, pos)`
 
-- `user_deck_status`
+- `user_study_decks`
   - `user_id`
   - `deck_id`
-  - `last_studied_at`
-  - `is_pinned`
-  - Optional per-user metadata for dashboards
+  - `added_at`
+  - `sort_order`
+  - Unique on `(user_id, deck_id)`
+
+- `user_language_settings`
+  - `user_id`
+  - `lang`
+  - `review_order_mode`
+  - Unique on `(user_id, lang)`
+
+Recommended semantics:
+
+- A deck appears on the user's study page only after it is added to `user_study_decks`.
+- Adding a parent deck adds that parent deck only, not all descendants as separate study-list rows.
+- A user can later add a child deck separately if they want a more specific new-card source.
+- `sort_order` stores the user's manual study-list order. The deck with sort_order == 0 is the one that will be used for new words.
+- `review_order_mode` a user setting unique to each language telling when new words are introduced: `new_first`, `mixed`, or `new_last`.
+
+Recommended dashboard behavior:
+
+- decks should be shown in the user's manual `sort_order`
+- show root deck title, content type, and coverage summary
+- for parent decks, show child counts and aggregate coverage
+
+### Deck acquisition
+
+Users should be able to get a deck into their study list in two ways:
+
+1. select an existing deck from the media catalog
+2. import their own text and create a new deck
+
+These are different intake paths, but they should converge on the same `decks` and `user_study_decks` model.
+
+#### Path 1: Select existing media
+
+Flow:
+
+1. search top-level decks
+2. open a deck detail page
+3. choose `Add to study`
+4. the selected deck is inserted into `user_study_decks`
+
+Behavior:
+
+- If the selected deck is a parent deck, it can still be added directly and used as an aggregate new-card source.
+- If the selected deck is a studyable leaf deck, it is added directly and studied as-is.
+
+#### Path 2: Import text
+
+Flow:
+
+1. user pastes or uploads text
+2. system parses the text into sentences, occurrences, and lemma stats
+3. user provides minimum metadata before save
+4. system creates a new studyable deck
+5. user can immediately add it to study
+
+Required metadata for imported decks:
+
+- `title`
+- `lang`
+- `content_type`
+
+Recommended imported-deck behavior:
+
+- imported decks should be root decks by default
+- imported decks should be directly studyable
+- imported decks should be private to the creating user
+- imported decks should appear on that user's study surfaces
+- imported decks should not appear in public or shared catalog search results
+- imported decks should carry an ownership/visibility flag so catalog search can exclude them by default
 
 ### Possibly add later
 
@@ -330,8 +402,46 @@ Recommendation:
 ### Content and stats
 
 - `GET /api/decks`
+  - top-level search and filter endpoint
 - `GET /api/decks/:id/stats`
 - `GET /api/decks/:id/children`
+
+### Study list
+
+- `GET /api/study/decks`
+  - returns the user's study list
+
+- `POST /api/study/decks`
+  - input: `{deck_id}`
+  - adds a deck to the user's study list
+
+- `DELETE /api/study/decks/:deck_id`
+  - removes a deck from the user's study list
+
+- `PATCH /api/study/decks/reorder`
+  - input: `[{deck_id, sort_order}]`
+  - rewrites the user's full manual study-list order in one transaction
+
+### Language settings
+
+- `GET /api/settings/languages/:lang`
+  - returns user language-level study settings
+
+- `PATCH /api/settings/languages/:lang`
+  - updates language-level settings such as `review_order_mode`
+
+### Import
+
+- `POST /api/import/parse`
+  - input: `{title, lang, content_type, text}`
+  - parses raw text and returns a preview before save
+
+- `POST /api/import/decks`
+  - input: `{title, lang, content_type, text}`
+  - creates a new studyable deck from imported text
+
+- `POST /api/import/decks/:deck_id/add-to-study`
+  - convenience endpoint to add a newly created imported deck to the user's study list
 
 ### Study
 
