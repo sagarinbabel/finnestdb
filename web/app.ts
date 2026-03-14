@@ -89,19 +89,46 @@ function detectLang(text: string): 'FI' | 'ET' | 'unknown' {
     return 'unknown';
 }
 
-function getLangWarning(text: string, selectedLang: string): string | null {
+interface LangWarningState {
+    detected: 'FI' | 'ET' | 'unknown';
+    message: string | null;
+    canSwitch: boolean;
+    blocksParse: boolean;
+}
+
+function getLangWarningState(text: string, selectedLang: string): LangWarningState {
     const detected = detectLang(text.trim());
     if (detected === 'unknown') {
         const langName = selectedLang === 'FI' ? 'Finnish' : 'Estonian';
-        return `Warning: this text doesn't contain Finnish or Estonian characters (ä, ö, õ). Is it really ${langName}?`;
+        return {
+            detected,
+            message: `Warning: this text doesn't contain Finnish or Estonian characters (ä, ö, õ). Is it really ${langName}?`,
+            canSwitch: false,
+            blocksParse: false,
+        };
     }
     if (detected === 'FI' && selectedLang === 'ET') {
-        return 'Warning: this text looks like Finnish (has ä/ö, no õ), but Estonian is selected.';
+        return {
+            detected,
+            message: 'Warning: you selected Estonian, but this text looks like Finnish. Would you like to switch to Finnish instead?',
+            canSwitch: true,
+            blocksParse: true,
+        };
     }
     if (detected === 'ET' && selectedLang === 'FI') {
-        return 'Warning: this text looks like Estonian (contains õ), but Finnish is selected.';
+        return {
+            detected,
+            message: 'Warning: you selected Finnish, but this text looks like Estonian. Would you like to switch to Estonian instead?',
+            canSwitch: true,
+            blocksParse: true,
+        };
     }
-    return null;
+    return {
+        detected,
+        message: null,
+        canSwitch: false,
+        blocksParse: false,
+    };
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -114,6 +141,12 @@ function escapeHtml(str: string): string {
 
 function posLabel(pos: string): string {
     return POS_LABELS[pos] || pos;
+}
+
+function setParseButtonsDisabled(disabled: boolean): void {
+    document.querySelectorAll<HTMLButtonElement>('.btn-parse').forEach(btn => {
+        btn.disabled = disabled;
+    });
 }
 
 // ── Parse form ─────────────────────────────────────────────────────────────
@@ -131,42 +164,60 @@ function updateLangWarning(): void {
     const text      = (document.getElementById('parse-text') as HTMLTextAreaElement).value;
     const lang      = (document.getElementById('parse-lang') as HTMLSelectElement).value;
     const warningEl = document.getElementById('lang-warning')!;
+    const switchBtn = document.getElementById('lang-switch-btn') as HTMLButtonElement;
 
     if (text.trim().length < 20) {
         warningEl.classList.add('hidden');
+        switchBtn.classList.add('hidden');
+        setParseButtonsDisabled(false);
         return;
     }
 
-    const warning = getLangWarning(text, lang);
-    if (warning) {
-        warningEl.textContent = warning;
+    const warningState = getLangWarningState(text, lang);
+    if (warningState.message) {
+        warningEl.textContent = warningState.message;
         warningEl.classList.remove('hidden');
+        if (warningState.canSwitch) {
+            switchBtn.textContent = `Switch to ${warningState.detected === 'FI' ? 'Finnish' : 'Estonian'}`;
+            switchBtn.classList.remove('hidden');
+        } else {
+            switchBtn.classList.add('hidden');
+        }
     } else {
         warningEl.classList.add('hidden');
+        switchBtn.classList.add('hidden');
     }
+
+    setParseButtonsDisabled(warningState.blocksParse);
 }
 
-async function handleParseSubmit(e: Event): Promise<void> {
+async function handleParseSubmit(e: Event, parserMode: 'basic' | 'custom'): Promise<void> {
     e.preventDefault();
 
     const text = (document.getElementById('parse-text') as HTMLTextAreaElement).value.trim();
     const lang = (document.getElementById('parse-lang') as HTMLSelectElement).value;
-    const btn  = document.getElementById('parse-btn') as HTMLButtonElement;
+    const warningState = getLangWarningState(text, lang);
+    const btnBasic = document.getElementById('parse-btn-basic') as HTMLButtonElement;
+    const btnCustom = document.getElementById('parse-btn-custom') as HTMLButtonElement;
 
     if (!text) return;
     if (text.length > MAX_CHARS) {
         alert(`Text must be ${MAX_CHARS.toLocaleString()} characters or fewer.`);
         return;
     }
+    if (warningState.blocksParse) return;
 
-    btn.disabled    = true;
-    btn.textContent = 'Parsing…';
+    btnBasic.disabled = true;
+    btnCustom.disabled = true;
+    const activeBtn = parserMode === 'custom' ? btnCustom : btnBasic;
+    const origLabel = activeBtn.textContent || '';
+    activeBtn.textContent = 'Parsing…';
 
     try {
         const resp = await fetch('/api/parse', {
-            method:  'POST',
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ lang, text }),
+            body: JSON.stringify({ lang, text, parser: parserMode }),
         });
 
         if (!resp.ok) {
@@ -179,8 +230,8 @@ async function handleParseSubmit(e: Event): Promise<void> {
     } catch (err: any) {
         alert(`Parse failed: ${err.message}`);
     } finally {
-        btn.disabled    = false;
-        btn.textContent = 'Parse Text';
+        updateLangWarning();
+        activeBtn.textContent = origLabel;
     }
 }
 
@@ -250,6 +301,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('parse-lang')
         ?.addEventListener('change', updateLangWarning);
 
+    document.getElementById('lang-switch-btn')
+        ?.addEventListener('click', () => {
+            const text = (document.getElementById('parse-text') as HTMLTextAreaElement).value;
+            const langSelect = document.getElementById('parse-lang') as HTMLSelectElement;
+            const warningState = getLangWarningState(text, langSelect.value);
+            if (warningState.canSwitch) {
+                langSelect.value = warningState.detected;
+                updateLangWarning();
+            }
+        });
+
     // Load file into textarea
     document.getElementById('parse-file')
         ?.addEventListener('change', async (e) => {
@@ -263,6 +325,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
     // Parse form submit
+    document.getElementById('parse-btn-basic')
+        ?.addEventListener('click', (e) => handleParseSubmit(e, 'basic'));
+    document.getElementById('parse-btn-custom')
+        ?.addEventListener('click', (e) => handleParseSubmit(e, 'custom'));
+
     document.getElementById('parse-form')
-        ?.addEventListener('submit', handleParseSubmit);
+        ?.addEventListener('submit', (e) => handleParseSubmit(e, 'basic'));
 });
