@@ -1,6 +1,6 @@
 // FinEstDB — parse word list view
 
-const MAX_CHARS = 10_000;
+const MAX_CHARS = 300_000;
 
 const POS_LABELS: Record<string, string> = {
     NOUN:  'Noun',
@@ -34,6 +34,7 @@ interface WordEntry {
 interface ParseResponse {
     lang:         string;
     total_tokens: number;
+    parse_duration_ms: number;
     words:        WordEntry[];
 }
 
@@ -149,6 +150,14 @@ function setParseButtonsDisabled(disabled: boolean): void {
     });
 }
 
+function formatParseDuration(parseDurationMs: number): string {
+    if (parseDurationMs < 1000) {
+        return `${parseDurationMs} ms`;
+    }
+
+    return `${(parseDurationMs / 1000).toFixed(parseDurationMs >= 10_000 ? 1 : 2)} s`;
+}
+
 // ── Parse form ─────────────────────────────────────────────────────────────
 
 function updateCharCount(): void {
@@ -246,7 +255,7 @@ function showResults(data: ParseResponse, textPreview: string): void {
         `"${preview}${ellipsis}" (${langName})`;
 
     document.getElementById('results-stats')!.textContent =
-        `${data.words.length} unique lemmas · ${data.total_tokens} tokens`;
+        `${data.words.length} unique lemmas · ${data.total_tokens} tokens · ${formatParseDuration(data.parse_duration_ms)} parse time`;
 
     const tbody = document.getElementById('word-table-body')!;
     tbody.innerHTML = data.words.map(w => {

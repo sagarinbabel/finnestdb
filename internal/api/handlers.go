@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"finnestdb/internal/parserffi"
 	"finnestdb/internal/store"
@@ -31,10 +33,10 @@ type LoginResponse struct {
 }
 
 type DashboardResponse struct {
-	KnownCount        int              `json:"known_count"`
-	DueCount          int              `json:"due_count"`
-	NewCapacityToday  int              `json:"new_capacity_today"`
-	Decks             []DeckSummary    `json:"decks"`
+	KnownCount       int           `json:"known_count"`
+	DueCount         int           `json:"due_count"`
+	NewCapacityToday int           `json:"new_capacity_today"`
+	Decks            []DeckSummary `json:"decks"`
 }
 
 type DeckSummary struct {
@@ -57,11 +59,11 @@ type CreateDeckResponse struct {
 }
 
 type CardResponse struct {
-	CardID     string   `json:"card_id"`
-	Mode       string   `json:"mode"`
+	CardID     string     `json:"card_id"`
+	Mode       string     `json:"mode"`
 	DeckCounts [][]string `json:"deck_counts"`
-	Front      CardFront `json:"front"`
-	Back       CardBack  `json:"back"`
+	Front      CardFront  `json:"front"`
+	Back       CardBack   `json:"back"`
 }
 
 type CardFront struct {
@@ -71,9 +73,9 @@ type CardFront struct {
 }
 
 type CardBack struct {
-	Lemma    string       `json:"lemma"`
-	Meaning  string       `json:"meaning"`
-	Grammar  string       `json:"grammar"`
+	Lemma    string        `json:"lemma"`
+	Meaning  string        `json:"meaning"`
+	Grammar  string        `json:"grammar"`
 	Examples []CardExample `json:"examples"`
 }
 
@@ -307,7 +309,7 @@ func (a *API) HandleCardKnown(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
-const maxTextBytes = 10_000
+const maxTextChars = 300_000
 
 type ParseRequest struct {
 	Lang   string `json:"lang"`
@@ -326,9 +328,10 @@ type WordEntry struct {
 }
 
 type ParseResponse struct {
-	Lang        string      `json:"lang"`
-	TotalTokens int         `json:"total_tokens"`
-	Words       []WordEntry `json:"words"`
+	Lang            string      `json:"lang"`
+	TotalTokens     int         `json:"total_tokens"`
+	ParseDurationMs int64       `json:"parse_duration_ms"`
+	Words           []WordEntry `json:"words"`
 }
 
 func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
@@ -353,12 +356,14 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(req.Text) > maxTextBytes {
-		http.Error(w, fmt.Sprintf("Text exceeds %d character limit", maxTextBytes), http.StatusBadRequest)
+	if utf8.RuneCountInString(req.Text) > maxTextChars {
+		http.Error(w, fmt.Sprintf("Text exceeds %d character limit", maxTextChars), http.StatusBadRequest)
 		return
 	}
 
+	parseStartedAt := time.Now()
 	result, err := parserffi.AnalyzeText(req.Lang, req.Text)
+	parseDurationMs := time.Since(parseStartedAt).Milliseconds()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Parse error: %v", err), http.StatusInternalServerError)
 		return
@@ -395,9 +400,10 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(ParseResponse{
-		Lang:        req.Lang,
-		TotalTokens: totalTokens,
-		Words:       words,
+		Lang:            req.Lang,
+		TotalTokens:     totalTokens,
+		ParseDurationMs: parseDurationMs,
+		Words:           words,
 	})
 }
 
@@ -497,4 +503,3 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/card/ignore", a.HandleCardIgnore)
 	mux.HandleFunc("/api/card/known", a.HandleCardKnown)
 }
-
