@@ -198,8 +198,8 @@ Behavior:
 Flow:
 
 1. user pastes or uploads text
-2. system parses the text into sentences, occurrences, and lemma stats
-3. user provides minimum metadata before save
+2. user provides minimum metadata
+3. system parses the text into sentences, occurrences, and lemma stats
 4. system creates a new, private deck
 5. the deck is immediately added to study
 
@@ -458,13 +458,9 @@ Recommendation:
 
 ### Import
 
-- `POST /api/import/parse`
-  - input: `{title, lang, content_type, text}`
-  - parses raw text and returns a preview before save
-
 - `POST /api/import/decks`
   - input: `{title, lang, content_type, text}`
-  - convenience endpoint to add a newly created imported deck to the user's study list
+  - parses imported text, creates a new private deck, and adds it to the user's study list
 
 ### Study
 
