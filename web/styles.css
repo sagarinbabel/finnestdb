@@ -599,6 +599,28 @@ body {
     color: #856404;
 }
 
+.lang-switch-btn {
+    margin: -0.5rem 0 1rem;
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.lang-switch-btn:hover {
+    color: var(--accent-hover);
+}
+
+.lang-switch-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
 [data-theme="dark"] .lang-warning {
     background: #3a2e00;
     border-color: #ffc107;
