@@ -170,6 +170,7 @@ Recommended semantics:
 - `sort_order` stores the user's manual study-list order. The deck with sort_order == 0 is the one that will be used for new words.
 - `review_order_mode` a user setting unique to each language telling when new words are introduced: `new_first`, `mixed`, or `new_last`.
 - Deleting a study-list entry should delete the associated deck if it's a private deck, but not if it's a public deck.
+- The UI should show a deletion confirmation dialog before deleting a study-list entry.
 
 Recommended dashboard behavior:
 
@@ -452,6 +453,7 @@ Recommendation:
 - `DELETE /api/study/decks/:deck_id`
   - removes the study-list entry for a deck
   - if the deck was created by the user, the deck is also deleted
+  - the client should require explicit user confirmation before calling this endpoint
 
 - `PATCH /api/study/decks/reorder`
   - input: `[{deck_id, sort_order}]`
