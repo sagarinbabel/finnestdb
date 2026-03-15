@@ -559,6 +559,16 @@ body {
         flex-direction: column;
         align-items: flex-start;
     }
+
+    .auth-card-header,
+    .auth-form-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .auth-form-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 
@@ -568,6 +578,63 @@ body {
     max-width: 700px;
     margin: 2rem auto;
     padding: 0 1rem;
+}
+
+.auth-panel {
+    margin-bottom: 1.5rem;
+}
+
+.auth-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px var(--shadow);
+    padding: 1.25rem;
+}
+
+.auth-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.auth-card-header h2 {
+    margin-bottom: 0.2rem;
+}
+
+.auth-card-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.auth-status-text {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.auth-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.auth-form-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.auth-feedback {
+    margin-top: 0.9rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    font-size: 0.95rem;
 }
 
 .parse-form-section h2 {

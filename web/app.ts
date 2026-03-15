@@ -39,6 +39,17 @@ interface ParseResponse {
     words:        WordEntry[];
 }
 
+interface AuthUser {
+    user_id: number;
+    email: string;
+    plan: string;
+    is_admin: boolean;
+}
+
+interface MeResponse {
+    user: AuthUser;
+}
+
 type SortKey = 'row' | 'lemma' | 'pos' | 'forms' | 'definition' | 'grammar' | 'tokens';
 
 interface SortState {
@@ -52,6 +63,7 @@ interface DisplayWordEntry extends WordEntry {
 
 let currentResults: ParseResponse | null = null;
 let currentSort: SortState = { key: 'row', dir: 'asc' };
+let currentAuthUser: AuthUser | null = null;
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 
@@ -167,6 +179,113 @@ function setParseButtonsDisabled(disabled: boolean): void {
 
 function compareStrings(a: string, b: string): number {
     return a.localeCompare(b, undefined, { sensitivity: 'base' });
+}
+
+function setAuthFeedback(message: string | null): void {
+    const el = document.getElementById('auth-feedback')!;
+    if (!message) {
+        el.textContent = '';
+        el.classList.add('hidden');
+        return;
+    }
+
+    el.textContent = message;
+    el.classList.remove('hidden');
+}
+
+function renderAuthState(user: AuthUser | null): void {
+    currentAuthUser = user;
+
+    const statusText = document.getElementById('auth-status-text')!;
+    const logoutBtn = document.getElementById('auth-logout') as HTMLButtonElement;
+    const authForm = document.getElementById('auth-form')!;
+
+    if (user) {
+        const adminLabel = user.is_admin ? ' · admin' : '';
+        statusText.textContent = `Signed in as ${user.email} · ${user.plan}${adminLabel}`;
+        logoutBtn.classList.remove('hidden');
+        authForm.classList.add('hidden');
+        return;
+    }
+
+    statusText.textContent = 'Not signed in. Create an account or log in here.';
+    logoutBtn.classList.add('hidden');
+    authForm.classList.remove('hidden');
+}
+
+async function refreshAuthState(): Promise<void> {
+    try {
+        const resp = await fetch('/api/me', { credentials: 'same-origin' });
+        if (resp.status === 401) {
+            renderAuthState(null);
+            return;
+        }
+        if (!resp.ok) {
+            throw new Error(await resp.text() || resp.statusText);
+        }
+
+        const data: MeResponse = await resp.json();
+        renderAuthState(data.user);
+    } catch (err: any) {
+        renderAuthState(null);
+        setAuthFeedback(`Unable to refresh session: ${err.message}`);
+    }
+}
+
+async function submitAuth(mode: 'register' | 'login'): Promise<void> {
+    const emailInput = document.getElementById('auth-email') as HTMLInputElement;
+    const passwordInput = document.getElementById('auth-password') as HTMLInputElement;
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+
+    if (!email || !password) {
+        setAuthFeedback('Email and password are required.');
+        return;
+    }
+
+    setAuthFeedback(mode === 'register' ? 'Creating account…' : 'Signing in…');
+
+    try {
+        const resp = await fetch(`/api/auth/${mode}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ email, password }),
+        });
+
+        if (!resp.ok) {
+            throw new Error(await resp.text() || resp.statusText);
+        }
+
+        const user: AuthUser = await resp.json();
+        passwordInput.value = '';
+        renderAuthState(user);
+        setAuthFeedback(mode === 'register'
+            ? 'Account created and signed in.'
+            : 'Signed in successfully.');
+    } catch (err: any) {
+        setAuthFeedback(err.message);
+    }
+}
+
+async function handleLogout(): Promise<void> {
+    setAuthFeedback('Signing out…');
+
+    try {
+        const resp = await fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'same-origin',
+        });
+
+        if (!resp.ok && resp.status !== 204) {
+            throw new Error(await resp.text() || resp.statusText);
+        }
+
+        renderAuthState(null);
+        setAuthFeedback('Signed out.');
+    } catch (err: any) {
+        setAuthFeedback(err.message);
+    }
 }
 
 function formatParserMode(parserMode: 'basic' | 'custom'): string {
@@ -439,6 +558,7 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: 'basi
 
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
+    renderAuthState(null);
 
     // Theme toggles
     document.getElementById('theme-toggle')
@@ -493,6 +613,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('parse-form')
         ?.addEventListener('submit', (e) => handleParseSubmit(e, 'basic'));
 
+    document.getElementById('auth-register')
+        ?.addEventListener('click', () => void submitAuth('register'));
+    document.getElementById('auth-login')
+        ?.addEventListener('click', () => void submitAuth('login'));
+    document.getElementById('auth-logout')
+        ?.addEventListener('click', () => void handleLogout());
+    document.getElementById('auth-refresh')
+        ?.addEventListener('click', () => void refreshAuthState());
+
     document.querySelectorAll<HTMLButtonElement>('.sort-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             if (!currentResults) return;
@@ -509,4 +638,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     updateSortButtons();
+    updateCharCount();
+    void refreshAuthState();
 });

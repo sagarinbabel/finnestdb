@@ -22,6 +22,7 @@ const POS_LABELS = {
 };
 let currentResults = null;
 let currentSort = { key: 'row', dir: 'asc' };
+let currentAuthUser = null;
 // ── Theme ──────────────────────────────────────────────────────────────────
 function initTheme() {
     const saved = localStorage.getItem('theme') || 'light';
@@ -116,6 +117,98 @@ function setParseButtonsDisabled(disabled) {
 }
 function compareStrings(a, b) {
     return a.localeCompare(b, undefined, { sensitivity: 'base' });
+}
+function setAuthFeedback(message) {
+    const el = document.getElementById('auth-feedback');
+    if (!message) {
+        el.textContent = '';
+        el.classList.add('hidden');
+        return;
+    }
+    el.textContent = message;
+    el.classList.remove('hidden');
+}
+function renderAuthState(user) {
+    currentAuthUser = user;
+    const statusText = document.getElementById('auth-status-text');
+    const logoutBtn = document.getElementById('auth-logout');
+    const authForm = document.getElementById('auth-form');
+    if (user) {
+        const adminLabel = user.is_admin ? ' · admin' : '';
+        statusText.textContent = `Signed in as ${user.email} · ${user.plan}${adminLabel}`;
+        logoutBtn.classList.remove('hidden');
+        authForm.classList.add('hidden');
+        return;
+    }
+    statusText.textContent = 'Not signed in. Create an account or log in here.';
+    logoutBtn.classList.add('hidden');
+    authForm.classList.remove('hidden');
+}
+async function refreshAuthState() {
+    try {
+        const resp = await fetch('/api/me', { credentials: 'same-origin' });
+        if (resp.status === 401) {
+            renderAuthState(null);
+            return;
+        }
+        if (!resp.ok) {
+            throw new Error(await resp.text() || resp.statusText);
+        }
+        const data = await resp.json();
+        renderAuthState(data.user);
+    }
+    catch (err) {
+        renderAuthState(null);
+        setAuthFeedback(`Unable to refresh session: ${err.message}`);
+    }
+}
+async function submitAuth(mode) {
+    const emailInput = document.getElementById('auth-email');
+    const passwordInput = document.getElementById('auth-password');
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    if (!email || !password) {
+        setAuthFeedback('Email and password are required.');
+        return;
+    }
+    setAuthFeedback(mode === 'register' ? 'Creating account…' : 'Signing in…');
+    try {
+        const resp = await fetch(`/api/auth/${mode}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ email, password }),
+        });
+        if (!resp.ok) {
+            throw new Error(await resp.text() || resp.statusText);
+        }
+        const user = await resp.json();
+        passwordInput.value = '';
+        renderAuthState(user);
+        setAuthFeedback(mode === 'register'
+            ? 'Account created and signed in.'
+            : 'Signed in successfully.');
+    }
+    catch (err) {
+        setAuthFeedback(err.message);
+    }
+}
+async function handleLogout() {
+    setAuthFeedback('Signing out…');
+    try {
+        const resp = await fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'same-origin',
+        });
+        if (!resp.ok && resp.status !== 204) {
+            throw new Error(await resp.text() || resp.statusText);
+        }
+        renderAuthState(null);
+        setAuthFeedback('Signed out.');
+    }
+    catch (err) {
+        setAuthFeedback(err.message);
+    }
 }
 function formatParserMode(parserMode) {
     return parserMode === 'custom' ? 'Custom parser' : 'Basic parser';
@@ -347,6 +440,7 @@ function showResults(data, textPreview, parserMode) {
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
+    renderAuthState(null);
     // Theme toggles
     document.getElementById('theme-toggle')
         ?.addEventListener('click', toggleTheme);
@@ -393,6 +487,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ?.addEventListener('click', (e) => handleParseSubmit(e, 'custom'));
     document.getElementById('parse-form')
         ?.addEventListener('submit', (e) => handleParseSubmit(e, 'basic'));
+    document.getElementById('auth-register')
+        ?.addEventListener('click', () => void submitAuth('register'));
+    document.getElementById('auth-login')
+        ?.addEventListener('click', () => void submitAuth('login'));
+    document.getElementById('auth-logout')
+        ?.addEventListener('click', () => void handleLogout());
+    document.getElementById('auth-refresh')
+        ?.addEventListener('click', () => void refreshAuthState());
     document.querySelectorAll('.sort-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             if (!currentResults)
@@ -407,4 +509,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     updateSortButtons();
+    updateCharCount();
+    void refreshAuthState();
 });

@@ -22,6 +22,42 @@
         </header>
 
         <main class="parse-main">
+            <section class="auth-panel">
+                <div class="auth-card">
+                    <div class="auth-card-header">
+                        <div>
+                            <h2>Account</h2>
+                            <p id="auth-status-text" class="auth-status-text">Checking session…</p>
+                        </div>
+                        <div class="auth-card-actions">
+                            <button type="button" id="auth-refresh" class="btn btn-secondary">Refresh</button>
+                            <button type="button" id="auth-logout" class="btn btn-secondary hidden">Log Out</button>
+                        </div>
+                    </div>
+
+                    <form id="auth-form" class="auth-form">
+                        <div class="auth-form-grid">
+                            <div class="form-group">
+                                <label for="auth-email">Email</label>
+                                <input type="email" id="auth-email" name="email" autocomplete="email" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="auth-password">Password</label>
+                                <input type="password" id="auth-password" name="password" autocomplete="current-password" required>
+                            </div>
+                        </div>
+
+                        <div class="auth-form-actions">
+                            <button type="button" id="auth-register" class="btn btn-primary">Sign Up</button>
+                            <button type="button" id="auth-login" class="btn btn-secondary">Log In</button>
+                        </div>
+                    </form>
+
+                    <p id="auth-feedback" class="auth-feedback hidden" role="status" aria-live="polite"></p>
+                </div>
+            </section>
+
             <section class="parse-form-section">
                 <h2>Parse Text</h2>
                 <p class="parse-description">Paste Finnish or Estonian text to extract a word list.</p>

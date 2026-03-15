@@ -2,14 +2,15 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"finnestdb/internal/auth"
 	"finnestdb/internal/parserffi"
 	"finnestdb/internal/store"
 )
@@ -27,9 +28,16 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type RegisterRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 type LoginResponse struct {
-	UserID int64  `json:"user_id"`
-	Email  string `json:"email"`
+	UserID  int64  `json:"user_id"`
+	Email   string `json:"email"`
+	Plan    string `json:"plan"`
+	IsAdmin bool   `json:"is_admin"`
 }
 
 type DashboardResponse struct {
@@ -37,6 +45,7 @@ type DashboardResponse struct {
 	DueCount         int           `json:"due_count"`
 	NewCapacityToday int           `json:"new_capacity_today"`
 	Decks            []DeckSummary `json:"decks"`
+	User             LoginResponse `json:"user"`
 }
 
 type DeckSummary struct {
@@ -84,17 +93,123 @@ type CardExample struct {
 	SourceDeck string `json:"source_deck"`
 }
 
-func (a *API) getCurrentUser(r *http.Request) (int64, error) {
-	// Mock auth: get user ID from cookie or default to 1
-	cookie, err := r.Cookie("user_id")
+const sessionLifetime = 7 * 24 * time.Hour
+
+func (a *API) getCurrentUser(r *http.Request) (*store.User, error) {
+	cookie, err := r.Cookie(auth.SessionCookieName)
+	if err != nil || strings.TrimSpace(cookie.Value) == "" {
+		return nil, store.ErrNotFound
+	}
+
+	user, err := a.store.GetUserBySessionTokenHash(auth.HashToken(cookie.Value))
 	if err != nil {
-		return 1, nil // Default user for stub
+		return nil, err
 	}
-	userID, _ := strconv.ParseInt(cookie.Value, 10, 64)
-	if userID == 0 {
-		return 1, nil
+	return user, nil
+}
+
+func normalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
+}
+
+func (a *API) setSessionCookie(w http.ResponseWriter, userID int64, r *http.Request) error {
+	token, err := auth.NewSessionToken()
+	if err != nil {
+		return err
 	}
-	return userID, nil
+
+	if err := a.store.CreateSession(
+		userID,
+		auth.HashToken(token),
+		time.Now().Add(sessionLifetime),
+		r.RemoteAddr,
+		r.UserAgent(),
+	); err != nil {
+		return err
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     auth.SessionCookieName,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(sessionLifetime.Seconds()),
+	})
+
+	return nil
+}
+
+func clearSessionCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     auth.SessionCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+}
+
+func writeAuthResponse(w http.ResponseWriter, user *store.User) {
+	json.NewEncoder(w).Encode(LoginResponse{
+		UserID:  user.ID,
+		Email:   user.Email,
+		Plan:    user.Plan,
+		IsAdmin: user.IsAdmin,
+	})
+}
+
+func validateCredentials(email, password string) error {
+	if email == "" || !strings.Contains(email, "@") {
+		return errors.New("valid email is required")
+	}
+	if len(password) < 8 {
+		return errors.New("password must be at least 8 characters")
+	}
+	return nil
+}
+
+func (a *API) HandleRegister(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req RegisterRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	req.Email = normalizeEmail(req.Email)
+	if err := validateCredentials(req.Email, req.Password); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	passwordHash, err := auth.HashPassword(req.Password)
+	if err != nil {
+		http.Error(w, "Unable to secure password", http.StatusInternalServerError)
+		return
+	}
+
+	user, err := a.store.CreateUser(req.Email, passwordHash)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE constraint failed: users.email") {
+			http.Error(w, "Email already exists", http.StatusConflict)
+			return
+		}
+		http.Error(w, "Unable to create user", http.StatusBadRequest)
+		return
+	}
+
+	if err := a.setSessionCookie(w, user.ID, r); err != nil {
+		http.Error(w, "Unable to create session", http.StatusInternalServerError)
+		return
+	}
+
+	writeAuthResponse(w, user)
 }
 
 func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
@@ -109,34 +224,64 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Mock auth: accept any credentials
-	user, err := a.store.GetOrCreateUser(req.Email)
+	req.Email = normalizeEmail(req.Email)
+	if err := validateCredentials(req.Email, req.Password); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	user, err := a.store.GetUserByEmail(req.Email)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+			return
+		}
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
 
-	// Set session cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "user_id",
-		Value:    fmt.Sprintf("%d", user.ID),
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-		MaxAge:   86400 * 7, // 7 days
-	})
+	ok, err := auth.VerifyPassword(req.Password, user.PasswordHash)
+	if err != nil {
+		http.Error(w, "Unable to verify password", http.StatusInternalServerError)
+		return
+	}
+	if !ok {
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
 
-	json.NewEncoder(w).Encode(LoginResponse{
-		UserID: user.ID,
-		Email:  user.Email,
-	})
+	if err := a.setSessionCookie(w, user.ID, r); err != nil {
+		http.Error(w, "Unable to create session", http.StatusInternalServerError)
+		return
+	}
+
+	writeAuthResponse(w, user)
+}
+
+func (a *API) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	cookie, err := r.Cookie(auth.SessionCookieName)
+	if err == nil && strings.TrimSpace(cookie.Value) != "" {
+		_ = a.store.RevokeSessionByTokenHash(auth.HashToken(cookie.Value))
+	}
+
+	clearSessionCookie(w)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
-	userID, _ := a.getCurrentUser(r)
+	user, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	// Get decks
-	decks, err := a.store.GetUserDecks(userID)
+	decks, err := a.store.GetUserDecks(user.ID)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -159,6 +304,12 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 		DueCount:         87,   // Mock data
 		NewCapacityToday: 12,   // Mock data
 		Decks:            deckSummaries,
+		User: LoginResponse{
+			UserID:  user.ID,
+			Email:   user.Email,
+			Plan:    user.Plan,
+			IsAdmin: user.IsAdmin,
+		},
 	})
 }
 
@@ -168,7 +319,11 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID, _ := a.getCurrentUser(r)
+	user, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var req CreateDeckRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -204,7 +359,7 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create deck
-	deckID, err := a.store.CreateDeck(userID, req.Title, req.Lang)
+	deckID, err := a.store.CreateDeck(user.ID, req.Title, req.Lang)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -496,7 +651,9 @@ func resolvedLemmaKeys(formResolutions map[string]store.FormResolution) []store.
 
 func (a *API) SetupRoutes(mux *http.ServeMux) {
 	// Auth routes
+	mux.HandleFunc("/api/auth/register", a.HandleRegister)
 	mux.HandleFunc("/api/auth/login", a.HandleLogin)
+	mux.HandleFunc("/api/auth/logout", a.HandleLogout)
 
 	// Dashboard
 	mux.HandleFunc("/api/me", a.HandleMe)
