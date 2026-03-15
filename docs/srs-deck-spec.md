@@ -63,6 +63,13 @@ Ownership rule:
 - Selecting media from the catalog creates a private study deck for that user.
 - Deleting a study-list entry deletes its linked private study deck.
 
+Access-control rule:
+
+- The authenticated user ID should come from server-side session or auth context, never from client input.
+- Shared catalog decks (`owner_user_id IS NULL`) can be returned through catalog deck endpoints.
+- Private decks (`owner_user_id IS NOT NULL`) must only be returned when `owner_user_id == authenticated_user_id`.
+- This ownership check applies anywhere a deck is fetched by ID, including stats and child-navigation endpoints.
+
 ### Important distinction
 
 Keep `content selection` separate from `card identity`.
@@ -429,7 +436,9 @@ Recommendation:
 - `GET /api/decks`
   - top-level search and filter endpoint
 - `GET /api/decks/:id/stats`
+  - must enforce private-deck ownership before returning data
 - `GET /api/decks/:id/children`
+  - must enforce private-deck ownership before returning data
 
 ### Study list
 
