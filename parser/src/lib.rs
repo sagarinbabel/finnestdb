@@ -33,14 +33,14 @@ fn normalize_text(text: &str) -> String {
 /// Covers sentence-ending marks, paired brackets/quotes, and common typographic
 /// punctuation used in Finnish and Estonian text.
 fn is_punct(c: char) -> bool {
-    matches!(c, '.' | ',' | ';' | ':' | '!' | '?' | '(' | ')' | '[' | ']'
+    matches!(c, '„' | '.' | ',' | ';' | ':' | '!' | '?' | '(' | ')' | '[' | ']'
               | '{' | '}' | '"' | '\'' | '«' | '»' | '—' | '–' | '…'
               | '\u{201C}' | '\u{201D}' | '\u{2018}' | '\u{2019}')
 }
 
 /// Check if a character is opening punctuation (space suppressed after it).
 fn is_opening_punct(c: char) -> bool {
-    matches!(c, '(' | '[' | '{' | '«' | '\u{201C}' | '\u{2018}')
+    matches!(c, '(' | '[' | '{' | '«' | '„' | '\u{201C}' | '\u{2018}')
 }
 
 /// Split text into sentences using improved heuristics.
@@ -418,6 +418,12 @@ mod tests {
     }
 
     #[test]
+    fn test_tokenize_low_double_quote() {
+        let tokens = forms("„tervetuloa”");
+        assert_eq!(tokens, vec!["„", "tervetuloa", "”"]);
+    }
+
+    #[test]
     fn test_tokenize_all_punct() {
         // A chunk that is entirely punctuation: each char becomes a token.
         let tokens = forms("...");
@@ -460,4 +466,3 @@ mod tests {
         assert!(!token_forms.contains(&"kauppaan)."), "should not contain 'kauppaan).': {:?}", token_forms);
     }
 }
-
