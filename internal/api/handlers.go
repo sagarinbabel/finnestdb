@@ -7,10 +7,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"time"
-	"unicode/utf8"
 
-	"finnestdb/internal/parserffi"
+	"finnestdb/internal/parsecore"
 	"finnestdb/internal/store"
 )
 
@@ -191,15 +189,9 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if utf8.RuneCountInString(req.Text) > maxTextChars {
-		http.Error(w, fmt.Sprintf("Text exceeds %d character limit", maxTextChars), http.StatusBadRequest)
-		return
-	}
-
-	// Parse text using Rust parser
-	result, err := parserffi.AnalyzeText(req.Lang, req.Text)
+	parsed, err := parsecore.Analyze(a.store, req.Lang, req.Text, "custom")
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Parse error: %v", err), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -210,15 +202,8 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert to CGO-free type; reuse the shared helper.
-	sentences := toParsedSentences(result)
-
-	// Batch-resolve forms to (lemma, pos) for occurrence tracking.
-	uniqueForms := collectUniqueForms(sentences)
-	formResolutions := a.store.BatchLookupForms(uniqueForms, req.Lang, "custom")
-
 	// Store sentences and occurrence records.
-	for _, sent := range sentences {
+	for _, sent := range parsed.Sentences {
 		if sent.Text == "" {
 			continue
 		}
@@ -229,19 +214,14 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		}
 		for tokenIx, token := range sent.Tokens {
 			// Skip punctuation — no occurrence records for ".", ")", etc.
-			if token.StubPOS == "PUNCT" {
+			if token.POS == "PUNCT" {
 				continue
 			}
-			var lemma, pos string
-			if resolved, ok := formResolutions[token.Form]; ok {
-				lemma, pos = resolved.Lemma, resolved.POS
-			} else {
-				lemma = strings.ToLower(token.StubLemma)
-				if lemma == "" {
-					lemma = strings.ToLower(token.Form)
-				}
-				pos = token.StubPOS
+			lemma := token.Lemma
+			if lemma == "" {
+				lemma = strings.ToLower(token.Form)
 			}
+			pos := token.POS
 			if lemma == "" {
 				continue
 			}
@@ -319,23 +299,13 @@ func (a *API) HandleCardKnown(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
-const maxTextChars = 300_000
-
 type ParseRequest struct {
 	Lang   string `json:"lang"`
 	Text   string `json:"text"`
-	Parser string `json:"parser"` // "basic" or "custom"; defaults to "basic"
+	Parser string `json:"parser"` // parser name; defaults to "basic"
 }
 
-type WordEntry struct {
-	Lemma           string   `json:"lemma"`
-	POS             string   `json:"pos"`
-	Forms           []string `json:"forms"`
-	Count           int      `json:"count"`
-	Gloss           string   `json:"gloss,omitempty"`
-	GrammarLabel    string   `json:"grammar_label,omitempty"`
-	ExampleSentence string   `json:"example_sentence,omitempty"`
-}
+type WordEntry = parsecore.WordEntry
 
 type ParseResponse struct {
 	Lang            string      `json:"lang"`
@@ -365,133 +335,30 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Text is required", http.StatusBadRequest)
 		return
 	}
-
-	if utf8.RuneCountInString(req.Text) > maxTextChars {
-		http.Error(w, fmt.Sprintf("Text exceeds %d character limit", maxTextChars), http.StatusBadRequest)
-		return
-	}
-
-	parseStartedAt := time.Now()
-	result, err := parserffi.AnalyzeText(req.Lang, req.Text)
-	parseDurationMs := time.Since(parseStartedAt).Milliseconds()
+	parsed, err := parsecore.Analyze(a.store, req.Lang, req.Text, req.Parser)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Parse error: %v", err), http.StatusInternalServerError)
+		status := http.StatusInternalServerError
+		switch err.Error() {
+		case "language must be FI or ET", "text is required":
+			status = http.StatusBadRequest
+		default:
+			if len(err.Error()) >= 13 && err.Error()[:13] == "text exceeds " {
+				status = http.StatusBadRequest
+			}
+			if len(err.Error()) >= 19 && err.Error()[:19] == "unsupported parser " {
+				status = http.StatusBadRequest
+			}
+		}
+		http.Error(w, err.Error(), status)
 		return
-	}
-	if result == nil {
-		http.Error(w, "Parser returned no result", http.StatusInternalServerError)
-		return
-	}
-
-	// Step 1: reconstruct sentence texts and convert to CGO-free type.
-	sentences := toParsedSentences(result)
-
-	// Step 2: collect unique surface forms for batch DB lookup.
-	uniqueForms := collectUniqueForms(sentences)
-
-	// Step 3: batch-resolve forms → (lemma, pos) via dictionary.
-	parserMode := req.Parser
-	if parserMode == "" {
-		parserMode = "basic"
-	}
-	formResolutions := a.store.BatchLookupForms(uniqueForms, req.Lang, parserMode)
-
-	// Step 4: batch-fetch glosses for resolved lemmas.
-	lemmaKeys := resolvedLemmaKeys(formResolutions)
-	glosses := a.store.BatchLookupGlosses(lemmaKeys, req.Lang)
-
-	// Step 5: enrich — aggregate counts, forms, glosses, example sentences.
-	words := enrichWords(sentences, formResolutions, glosses)
-
-	// Total token count (sum over all words).
-	totalTokens := 0
-	for _, w := range words {
-		totalTokens += w.Count
 	}
 
 	json.NewEncoder(w).Encode(ParseResponse{
-		Lang:            req.Lang,
-		TotalTokens:     totalTokens,
-		ParseDurationMs: parseDurationMs,
-		Words:           words,
+		Lang:            parsed.Lang,
+		TotalTokens:     parsed.TotalTokens,
+		ParseDurationMs: parsed.ParseDurationMs,
+		Words:           parsed.Words,
 	})
-}
-
-// toParsedSentences converts parserffi output to the CGO-free ParsedSentence
-// type used by enrichWords.
-//
-// Sentence text is reconstructed with smart punctuation joining:
-//   - No space before closing punctuation: . , ; : ! ? ) ] }
-//   - No space after opening punctuation: ( [ {
-//
-// This produces "kauppaan)." instead of "kauppaan ) ."
-func toParsedSentences(result *parserffi.AnalysisResult) []ParsedSentence {
-	sentences := make([]ParsedSentence, 0, len(result.Sentences))
-	for _, s := range result.Sentences {
-		tokens := make([]ParsedToken, 0, len(s.Tokens))
-		var textBuilder strings.Builder
-		prevWasOpen := false // true if previous token was opening punctuation
-
-		for i, t := range s.Tokens {
-			if t.Form == "" {
-				continue
-			}
-			tokens = append(tokens, ParsedToken{
-				Form:      t.Form,
-				StubLemma: t.Lemma,
-				StubPOS:   t.POS,
-			})
-
-			// Smart spacing: suppress space around punctuation.
-			isPunct := t.POS == "PUNCT"
-			isClose := isPunct && t.GrammarLabel == "PUNCT_CLOSE"
-			isOpen := isPunct && t.GrammarLabel == "PUNCT_OPEN"
-
-			if i > 0 && !isClose && !prevWasOpen {
-				textBuilder.WriteByte(' ')
-			}
-			textBuilder.WriteString(t.Form)
-			prevWasOpen = isOpen
-		}
-
-		text := textBuilder.String()
-		if text != "" {
-			sentences = append(sentences, ParsedSentence{Tokens: tokens, Text: text})
-		}
-	}
-	return sentences
-}
-
-// collectUniqueForms returns the deduplicated set of surface forms across all
-// sentences, excluding PUNCT tokens (no point looking up "." in the dictionary).
-func collectUniqueForms(sentences []ParsedSentence) []string {
-	seen := make(map[string]struct{})
-	for _, s := range sentences {
-		for _, t := range s.Tokens {
-			if t.StubPOS == "PUNCT" {
-				continue
-			}
-			seen[t.Form] = struct{}{}
-		}
-	}
-	forms := make([]string, 0, len(seen))
-	for f := range seen {
-		forms = append(forms, f)
-	}
-	return forms
-}
-
-// resolvedLemmaKeys extracts unique LemmaKey values from a form resolution map.
-func resolvedLemmaKeys(formResolutions map[string]store.FormResolution) []store.LemmaKey {
-	seen := make(map[store.LemmaKey]struct{}, len(formResolutions))
-	for _, v := range formResolutions {
-		seen[store.LemmaKey{Lemma: v.Lemma, POS: v.POS}] = struct{}{}
-	}
-	keys := make([]store.LemmaKey, 0, len(seen))
-	for k := range seen {
-		keys = append(keys, k)
-	}
-	return keys
 }
 
 func (a *API) SetupRoutes(mux *http.ServeMux) {

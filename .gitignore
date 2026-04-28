@@ -38,6 +38,9 @@ web/node_modules/
 
 # Local test artifacts
 test-results/
+reports/
+.cache/
+.venv-omorfi/
 
 # Local E2E tests (kept out of repo — internal use only)
 web/tests/
