@@ -1,7 +1,11 @@
 package parsecore
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
 	"sort"
 	"strings"
 	"time"
@@ -12,6 +16,8 @@ import (
 )
 
 const MaxTextChars = 300_000
+
+const omorfiCommandEnv = "FINNESTDB_OMORFI_CMD"
 
 type TokenResult struct {
 	Form         string   `json:"form"`
@@ -109,6 +115,7 @@ func ParserDefinitions() []ParserDefinition {
 	return []ParserDefinition{
 		{Name: "basic", Description: "Rust tokenizer plus direct dictionary lookup", Languages: []string{"FI", "ET"}},
 		{Name: "custom", Description: "Rust tokenizer plus possessive, compound, and case-suffix fallbacks", Languages: []string{"FI", "ET"}},
+		{Name: "omorfi", Description: "External Finnish baseline adapter with inspectable override rules", Languages: []string{"FI"}},
 	}
 }
 
@@ -116,6 +123,7 @@ func registry() map[string]parser {
 	return map[string]parser{
 		"basic":  dictionaryParser{name: "basic", lookupMode: "basic", analyzer: parserffi.AnalyzeText},
 		"custom": dictionaryParser{name: "custom", lookupMode: "custom", analyzer: parserffi.AnalyzeText},
+		"omorfi": omorfiParser{analyzer: runExternalOmorfi},
 	}
 }
 
@@ -155,6 +163,193 @@ func (p dictionaryParser) Parse(db *store.DB, lang, text string) (*ParseResult, 
 		Sentences:       detailedSentences,
 	}, nil
 }
+
+type omorfiParser struct {
+	analyzer baseAnalyzer
+}
+
+func (p omorfiParser) Name() string { return "omorfi" }
+
+func (p omorfiParser) Parse(db *store.DB, lang, text string) (*ParseResult, error) {
+	if lang != "FI" {
+		return nil, fmt.Errorf("omorfi parser only supports FI")
+	}
+	parseStartedAt := time.Now()
+	result, err := p.analyzer(lang, text)
+	parseDurationMs := time.Since(parseStartedAt).Milliseconds()
+	if err != nil {
+		return nil, err
+	}
+	if result == nil {
+		return nil, fmt.Errorf("omorfi parser returned no result")
+	}
+
+	sentences := toParsedSentences(result)
+	uniqueForms := collectUniqueForms(sentences)
+	directResolutions := db.BatchLookupForms(uniqueForms, lang, "basic")
+	customResolutions := db.BatchLookupForms(uniqueForms, lang, "custom")
+	rules := defaultOmorfiRules()
+
+	detailedSentences := make([]SentenceResult, 0, len(sentences))
+	lemmaSet := make(map[store.LemmaKey]struct{})
+	for _, sent := range sentences {
+		outSent := SentenceResult{Text: sent.Text, Tokens: make([]TokenResult, 0, len(sent.Tokens))}
+		for _, token := range sent.Tokens {
+			resolved := TokenResult{
+				Form:         token.Form,
+				StubLemma:    token.StubLemma,
+				StubPOS:      token.StubPOS,
+				Lemma:        strings.ToLower(token.StubLemma),
+				POS:          token.StubPOS,
+				GrammarLabel: token.GrammarLabel,
+				Source:       "analyzer:omorfi",
+				Resolved:     token.StubLemma != "" && token.StubPOS != "" && token.StubPOS != "X",
+				Trace:        []string{fmt.Sprintf("analyzer:omorfi lemma=%s pos=%s", token.StubLemma, token.StubPOS)},
+			}
+			if token.StubPOS == "PUNCT" {
+				resolved.Lemma = token.Form
+				resolved.POS = token.StubPOS
+				resolved.Source = "punct"
+				outSent.Tokens = append(outSent.Tokens, resolved)
+				continue
+			}
+			if resolved.Lemma == "" {
+				resolved.Lemma = strings.ToLower(token.Form)
+			}
+
+			for _, rule := range rules {
+				if applied := rule.Apply(lang, &resolved, directResolutions[token.Form], customResolutions[token.Form]); applied {
+					resolved.RuleTrace = append(resolved.RuleTrace, rule.Name())
+				}
+			}
+
+			if resolved.Lemma != "" && resolved.POS != "" && resolved.POS != "PUNCT" {
+				lemmaSet[store.LemmaKey{Lemma: resolved.Lemma, POS: resolved.POS}] = struct{}{}
+			}
+			outSent.Tokens = append(outSent.Tokens, resolved)
+		}
+		detailedSentences = append(detailedSentences, outSent)
+	}
+
+	lemmaKeys := make([]store.LemmaKey, 0, len(lemmaSet))
+	for key := range lemmaSet {
+		lemmaKeys = append(lemmaKeys, key)
+	}
+	glosses := db.BatchLookupGlosses(lemmaKeys, lang)
+	words := enrichWords(detailedSentences, glosses)
+
+	return &ParseResult{
+		Lang:            lang,
+		Parser:          "omorfi",
+		TotalTokens:     countTokens(words),
+		ParseDurationMs: parseDurationMs,
+		Words:           words,
+		Sentences:       detailedSentences,
+	}, nil
+}
+
+type omorfiRule interface {
+	Name() string
+	Apply(lang string, token *TokenResult, direct, custom store.FormResolution) bool
+}
+
+type omorfiPreferDirectDictRule struct{}
+
+func (omorfiPreferDirectDictRule) Name() string { return "prefer_direct_dict_when_unknown" }
+
+func (omorfiPreferDirectDictRule) Apply(_ string, token *TokenResult, direct, _ store.FormResolution) bool {
+	if direct.Lemma == "" {
+		return false
+	}
+	if token.Resolved && token.POS != "X" {
+		return false
+	}
+	token.Trace = append(token.Trace, fmt.Sprintf("rule:direct_dict lemma=%s pos=%s", direct.Lemma, direct.POS))
+	token.Lemma = direct.Lemma
+	token.POS = direct.POS
+	token.Source = "override:direct_dict"
+	token.Resolved = true
+	return true
+}
+
+type omorfiPreferCustomFallbackRule struct{}
+
+func (omorfiPreferCustomFallbackRule) Name() string { return "prefer_custom_fallback_when_unknown" }
+
+func (omorfiPreferCustomFallbackRule) Apply(_ string, token *TokenResult, _, custom store.FormResolution) bool {
+	if custom.Lemma == "" {
+		return false
+	}
+	if token.Resolved && token.POS != "X" {
+		return false
+	}
+	token.Trace = append(token.Trace, fmt.Sprintf("rule:custom_fallback lemma=%s pos=%s source=%s", custom.Lemma, custom.POS, custom.Source))
+	token.Lemma = custom.Lemma
+	token.POS = custom.POS
+	token.GrammarLabel = custom.GrammarLabel
+	token.Source = "override:" + custom.Source
+	token.Resolved = true
+	return true
+}
+
+type omorfiAttachGrammarRule struct{}
+
+func (omorfiAttachGrammarRule) Name() string { return "attach_custom_grammar_label" }
+
+func (omorfiAttachGrammarRule) Apply(_ string, token *TokenResult, _, custom store.FormResolution) bool {
+	if token.GrammarLabel != "" || custom.GrammarLabel == "" {
+		return false
+	}
+	if custom.Lemma != "" && token.Lemma != custom.Lemma {
+		return false
+	}
+	if custom.POS != "" && token.POS != custom.POS {
+		return false
+	}
+	token.GrammarLabel = custom.GrammarLabel
+	token.Trace = append(token.Trace, fmt.Sprintf("rule:attach_grammar label=%s", custom.GrammarLabel))
+	return true
+}
+
+func defaultOmorfiRules() []omorfiRule {
+	return []omorfiRule{
+		omorfiPreferDirectDictRule{},
+		omorfiPreferCustomFallbackRule{},
+		omorfiAttachGrammarRule{},
+	}
+}
+
+func runExternalOmorfi(lang, text string) (*parserffi.AnalysisResult, error) {
+	cmdSpec := strings.TrimSpace(os.Getenv(omorfiCommandEnv))
+	if cmdSpec == "" {
+		return nil, fmt.Errorf("omorfi parser is not configured; set %s to an analyzer command", omorfiCommandEnv)
+	}
+	fields := strings.Fields(cmdSpec)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("omorfi parser command is empty")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	args := append(fields[1:], "--lang", lang)
+	cmd := exec.CommandContext(ctx, fields[0], args...)
+	cmd.Stdin = strings.NewReader(text)
+	out, err := cmd.Output()
+	if ctx.Err() == context.DeadlineExceeded {
+		return nil, fmt.Errorf("omorfi parser timed out")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("omorfi parser failed: %w", err)
+	}
+
+	var result parserffi.AnalysisResult
+	if err := json.Unmarshal(out, &result); err != nil {
+		return nil, fmt.Errorf("omorfi parser returned invalid JSON: %w", err)
+	}
+	return &result, nil
+}
+
 func toParsedSentences(result *parserffi.AnalysisResult) []parsedSentence {
 	sentences := make([]parsedSentence, 0, len(result.Sentences))
 	for _, s := range result.Sentences {
