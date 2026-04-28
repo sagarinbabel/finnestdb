@@ -44,12 +44,25 @@ fi
 
 PARSERS="basic,custom"
 
-# Auto-detect omorfi: if the model file is present in either the repo-local
-# cache or the user-level cache (populated by `make setup-omorfi`), include
-# omorfi in the comparison without requiring any env var setup.
-if [[ -f .cache/omorfi/omorfi.analyse.hfst ]] \
-   || [[ -f "$HOME/.cache/omorfi/omorfi.analyse.hfst" ]] \
-   || [[ -n "${FINNESTDB_OMORFI_CMD:-}" ]]; then
+# Auto-detect omorfi. Run modes the user might have configured:
+#   - $FINNESTDB_OMORFI_CMD set (explicit adapter override)
+#   - $OMORFI_ANALYSE_HFST set and pointing at a real file (custom model
+#     location — the adapter itself looks here first)
+#   - Repo-local cache:   ./.cache/omorfi/omorfi.analyse.hfst
+#   - User-level cache:   ~/.cache/omorfi/omorfi.analyse.hfst (populated
+#     by `make setup-omorfi`)
+omorfi_available=false
+if [[ -n "${FINNESTDB_OMORFI_CMD:-}" ]]; then
+    omorfi_available=true
+elif [[ -n "${OMORFI_ANALYSE_HFST:-}" && -f "${OMORFI_ANALYSE_HFST}" ]]; then
+    omorfi_available=true
+elif [[ -f .cache/omorfi/omorfi.analyse.hfst ]]; then
+    omorfi_available=true
+elif [[ -f "$HOME/.cache/omorfi/omorfi.analyse.hfst" ]]; then
+    omorfi_available=true
+fi
+
+if $omorfi_available; then
     PARSERS="basic,custom,omorfi"
     echo ">> Including omorfi (model auto-detected)" >&2
 else
@@ -67,7 +80,15 @@ THIS_RUN_REPORTS=()
 RUN_TS="$(date -u +%Y%m%dT%H%M%SZ)"
 
 for ds in "${DATASETS[@]}"; do
-    name="$(python3 -c "import json,sys; print(json.load(open('$ds'))['name'])")"
+    # Read name and slugify it: only [A-Za-z0-9._-] allowed in the report
+    # filename, so a maliciously-crafted dataset name (e.g. with path
+    # separators or shell metacharacters) can't escape REPORTS_DIR.
+    name="$(python3 -c "
+import json, re, sys
+raw = json.load(open(sys.argv[1])).get('name', 'unnamed')
+slug = re.sub(r'[^A-Za-z0-9._-]+', '-', str(raw)).strip('-') or 'unnamed'
+print(slug[:80])
+" "$ds")"
     out="$REPORTS_DIR/${RUN_TS}-${name}.json"
     echo ">> $ds → $name" >&2
     go run ./cmd/parsertest -dataset "$ds" -parsers "$PARSERS" -warmup 2 -repeat 5 -out "$out" >&2
