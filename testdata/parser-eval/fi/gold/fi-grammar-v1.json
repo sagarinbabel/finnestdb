@@ -1,0 +1,484 @@
+{
+  "name": "fi-grammar",
+  "version": "v1",
+  "language": "FI",
+  "cases": [
+
+    { "id": "fi-2001", "text": "Koira on kotona.",
+      "tokens": [
+        { "surface": "Koira", "lemma": "koira", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2002", "text": "Naapurin koira haukkuu kovaa.",
+      "tokens": [
+        { "surface": "Naapurin", "lemma": "naapuri", "pos": "NOUN", "grammar_label": "genitive" },
+        { "surface": "koira", "lemma": "koira", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2003", "text": "Juon kahvia aamulla.",
+      "tokens": [
+        { "surface": "kahvia", "lemma": "kahvi", "pos": "NOUN", "grammar_label": "partitive" },
+        { "surface": "aamulla", "lemma": "aamu", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "fi-2004", "text": "Asun kaupungissa.",
+      "tokens": [
+        { "surface": "kaupungissa", "lemma": "kaupunki", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2005", "text": "Tulen kotoa metsästä.",
+      "tokens": [
+        { "surface": "metsästä", "lemma": "metsä", "pos": "NOUN", "grammar_label": "elative" }
+      ] },
+
+    { "id": "fi-2006", "text": "Menen taloon.",
+      "tokens": [
+        { "surface": "taloon", "lemma": "talo", "pos": "NOUN", "grammar_label": "illative" }
+      ] },
+
+    { "id": "fi-2007", "text": "Kissa makaa pöydällä.",
+      "tokens": [
+        { "surface": "pöydällä", "lemma": "pöytä", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "fi-2008", "text": "Otin kirjan hyllyltä.",
+      "tokens": [
+        { "surface": "kirjan", "lemma": "kirja", "pos": "NOUN", "grammar_label": "genitive" },
+        { "surface": "hyllyltä", "lemma": "hylly", "pos": "NOUN", "grammar_label": "ablative" }
+      ] },
+
+    { "id": "fi-2009", "text": "Annoin lahjan ystävälle.",
+      "tokens": [
+        { "surface": "ystävälle", "lemma": "ystävä", "pos": "NOUN", "grammar_label": "allative" }
+      ] },
+
+    { "id": "fi-2010", "text": "Hän työskentelee opettajana.",
+      "tokens": [
+        { "surface": "opettajana", "lemma": "opettaja", "pos": "NOUN", "grammar_label": "essive" }
+      ] },
+
+    { "id": "fi-2011", "text": "Hän opiskelee lääkäriksi.",
+      "tokens": [
+        { "surface": "lääkäriksi", "lemma": "lääkäri", "pos": "NOUN", "grammar_label": "translative" }
+      ] },
+
+    { "id": "fi-2012", "text": "Lapsi istuu sohvalla.",
+      "tokens": [
+        { "surface": "Lapsi", "lemma": "lapsi", "pos": "NOUN" },
+        { "surface": "sohvalla", "lemma": "sohva", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "fi-2013", "text": "Auton ikkuna meni rikki.",
+      "tokens": [
+        { "surface": "Auton", "lemma": "auto", "pos": "NOUN", "grammar_label": "genitive" },
+        { "surface": "ikkuna", "lemma": "ikkuna", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2014", "text": "Söin omenaa puutarhassa.",
+      "tokens": [
+        { "surface": "omenaa", "lemma": "omena", "pos": "NOUN", "grammar_label": "partitive" },
+        { "surface": "puutarhassa", "lemma": "puutarha", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2015", "text": "Vesi virtaa joessa.",
+      "tokens": [
+        { "surface": "Vesi", "lemma": "vesi", "pos": "NOUN" },
+        { "surface": "joessa", "lemma": "joki", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2016", "text": "Kirjani on pöydällä.",
+      "tokens": [
+        { "surface": "Kirjani", "lemma": "kirja", "pos": "NOUN" },
+        { "surface": "pöydällä", "lemma": "pöytä", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "fi-2017", "text": "Onko kissasi kotona?",
+      "tokens": [
+        { "surface": "kissasi", "lemma": "kissa", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2018", "text": "Hän rakastaa lastaan.",
+      "tokens": [
+        { "surface": "lastaan", "lemma": "lapsi", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2019", "text": "Talomme on iso.",
+      "tokens": [
+        { "surface": "Talomme", "lemma": "talo", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2020", "text": "Asun kaupungissani.",
+      "tokens": [
+        { "surface": "kaupungissani", "lemma": "kaupunki", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2021", "text": "Hän pitää kirjastaan.",
+      "tokens": [
+        { "surface": "kirjastaan", "lemma": "kirja", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2022", "text": "Lapsesi nukkuu sängyssään.",
+      "tokens": [
+        { "surface": "Lapsesi", "lemma": "lapsi", "pos": "NOUN" },
+        { "surface": "sängyssään", "lemma": "sänky", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2023", "text": "Soitan ystävälleni.",
+      "tokens": [
+        { "surface": "ystävälleni", "lemma": "ystävä", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2024", "text": "Hän puhuu äidilleen.",
+      "tokens": [
+        { "surface": "äidilleen", "lemma": "äiti", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2025", "text": "Tytär lähetti viestin isälleen.",
+      "tokens": [
+        { "surface": "Tytär", "lemma": "tytär", "pos": "NOUN" },
+        { "surface": "viestin", "lemma": "viesti", "pos": "NOUN", "grammar_label": "genitive" },
+        { "surface": "isälleen", "lemma": "isä", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2026", "text": "Minä juon teetä.",
+      "tokens": [
+        { "surface": "juon", "lemma": "juoda", "pos": "VERB" },
+        { "surface": "teetä", "lemma": "tee", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "fi-2027", "text": "Hän puhuu suomea sujuvasti.",
+      "tokens": [
+        { "surface": "puhuu", "lemma": "puhua", "pos": "VERB" },
+        { "surface": "suomea", "lemma": "suomi", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "fi-2028", "text": "He menevät kouluun yhdessä.",
+      "tokens": [
+        { "surface": "menevät", "lemma": "mennä", "pos": "VERB" },
+        { "surface": "kouluun", "lemma": "koulu", "pos": "NOUN", "grammar_label": "illative" }
+      ] },
+
+    { "id": "fi-2029", "text": "Lapsi nauroi äänekkäästi.",
+      "tokens": [
+        { "surface": "nauroi", "lemma": "nauraa", "pos": "VERB" }
+      ] },
+
+    { "id": "fi-2030", "text": "He lukivat kirjaa illalla.",
+      "tokens": [
+        { "surface": "lukivat", "lemma": "lukea", "pos": "VERB" },
+        { "surface": "kirjaa", "lemma": "kirja", "pos": "NOUN", "grammar_label": "partitive" },
+        { "surface": "illalla", "lemma": "ilta", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "fi-2031", "text": "Söisin omenan, jos minulla olisi yksi.",
+      "tokens": [
+        { "surface": "Söisin", "lemma": "syödä", "pos": "VERB" },
+        { "surface": "omenan", "lemma": "omena", "pos": "NOUN", "grammar_label": "genitive" }
+      ] },
+
+    { "id": "fi-2032", "text": "Suomessa puhutaan suomea ja ruotsia.",
+      "tokens": [
+        { "surface": "Suomessa", "lemma": "Suomi", "pos": "PROPN", "grammar_label": "inessive" },
+        { "surface": "puhutaan", "lemma": "puhua", "pos": "VERB" },
+        { "surface": "ruotsia", "lemma": "ruotsi", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "fi-2033", "text": "Tule tänne nopeasti!",
+      "tokens": [
+        { "surface": "Tule", "lemma": "tulla", "pos": "VERB" }
+      ] },
+
+    { "id": "fi-2034", "text": "En tiedä vastausta.",
+      "tokens": [
+        { "surface": "tiedä", "lemma": "tietää", "pos": "VERB" },
+        { "surface": "vastausta", "lemma": "vastaus", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "fi-2035", "text": "Olen lukenut tämän kirjan.",
+      "tokens": [
+        { "surface": "Olen", "lemma": "olla", "pos": "VERB" },
+        { "surface": "lukenut", "lemma": "lukea", "pos": "VERB" },
+        { "surface": "kirjan", "lemma": "kirja", "pos": "NOUN", "grammar_label": "genitive" }
+      ] },
+
+    { "id": "fi-2036", "text": "Haluan oppia ranskaa.",
+      "tokens": [
+        { "surface": "Haluan", "lemma": "haluta", "pos": "VERB" },
+        { "surface": "oppia", "lemma": "oppia", "pos": "VERB" },
+        { "surface": "ranskaa", "lemma": "ranska", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "fi-2037", "text": "Lapset leikkivät pihalla.",
+      "tokens": [
+        { "surface": "Lapset", "lemma": "lapsi", "pos": "NOUN" },
+        { "surface": "leikkivät", "lemma": "leikkiä", "pos": "VERB" },
+        { "surface": "pihalla", "lemma": "piha", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "fi-2038", "text": "Olin nukkumassa kun puhelin soi.",
+      "tokens": [
+        { "surface": "Olin", "lemma": "olla", "pos": "VERB" },
+        { "surface": "puhelin", "lemma": "puhelin", "pos": "NOUN" },
+        { "surface": "soi", "lemma": "soida", "pos": "VERB" }
+      ] },
+
+    { "id": "fi-2039", "text": "Kirjoitan kirjettä siskolleni.",
+      "tokens": [
+        { "surface": "Kirjoitan", "lemma": "kirjoittaa", "pos": "VERB" },
+        { "surface": "kirjettä", "lemma": "kirje", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "fi-2040", "text": "Hän kävelee puiston läpi.",
+      "tokens": [
+        { "surface": "kävelee", "lemma": "kävellä", "pos": "VERB" },
+        { "surface": "puiston", "lemma": "puisto", "pos": "NOUN", "grammar_label": "genitive" }
+      ] },
+
+    { "id": "fi-2041", "text": "Kahvikuppi on pöydällä.",
+      "tokens": [
+        { "surface": "Kahvikuppi", "lemma": "kahvikuppi", "pos": "NOUN" },
+        { "surface": "pöydällä", "lemma": "pöytä", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "fi-2042", "text": "Junamatka oli pitkä ja väsyttävä.",
+      "tokens": [
+        { "surface": "Junamatka", "lemma": "junamatka", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2043", "text": "Sähköposti saapui myöhään illalla.",
+      "tokens": [
+        { "surface": "Sähköposti", "lemma": "sähköposti", "pos": "NOUN" },
+        { "surface": "illalla", "lemma": "ilta", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "fi-2044", "text": "Kirjastoauto pysähtyi pihalle.",
+      "tokens": [
+        { "surface": "Kirjastoauto", "lemma": "kirjastoauto", "pos": "NOUN" },
+        { "surface": "pihalle", "lemma": "piha", "pos": "NOUN", "grammar_label": "allative" }
+      ] },
+
+    { "id": "fi-2045", "text": "Tietokoneeni on uusi ja nopea.",
+      "tokens": [
+        { "surface": "Tietokoneeni", "lemma": "tietokone", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2046", "text": "Kahvinkeitin meni rikki aamulla.",
+      "tokens": [
+        { "surface": "Kahvinkeitin", "lemma": "kahvinkeitin", "pos": "NOUN" },
+        { "surface": "aamulla", "lemma": "aamu", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "fi-2047", "text": "Lentokenttä on kaupungin lähellä.",
+      "tokens": [
+        { "surface": "Lentokenttä", "lemma": "lentokenttä", "pos": "NOUN" },
+        { "surface": "kaupungin", "lemma": "kaupunki", "pos": "NOUN", "grammar_label": "genitive" }
+      ] },
+
+    { "id": "fi-2048", "text": "Rautatieasemalla oli paljon ihmisiä.",
+      "tokens": [
+        { "surface": "Rautatieasemalla", "lemma": "rautatieasema", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "fi-2049", "text": "Ravintolapöydässä istui perhe.",
+      "tokens": [
+        { "surface": "Ravintolapöydässä", "lemma": "ravintolapöytä", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2050", "text": "Yliopisto-opiskelija luki kirjastossa.",
+      "tokens": [
+        { "surface": "Yliopisto-opiskelija", "lemma": "yliopisto-opiskelija", "pos": "NOUN" },
+        { "surface": "kirjastossa", "lemma": "kirjasto", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2051", "text": "Vanha mies kävelee hitaasti.",
+      "tokens": [
+        { "surface": "Vanha", "lemma": "vanha", "pos": "ADJ" },
+        { "surface": "mies", "lemma": "mies", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2052", "text": "Pieni lapsi nukkuu sängyssä.",
+      "tokens": [
+        { "surface": "Pieni", "lemma": "pieni", "pos": "ADJ" },
+        { "surface": "lapsi", "lemma": "lapsi", "pos": "NOUN" },
+        { "surface": "sängyssä", "lemma": "sänky", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2053", "text": "Kaunis kukka kasvaa puutarhassa.",
+      "tokens": [
+        { "surface": "Kaunis", "lemma": "kaunis", "pos": "ADJ" },
+        { "surface": "kukka", "lemma": "kukka", "pos": "NOUN" },
+        { "surface": "puutarhassa", "lemma": "puutarha", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2054", "text": "Vanhassa talossa asuu kissa.",
+      "tokens": [
+        { "surface": "Vanhassa", "lemma": "vanha", "pos": "ADJ", "grammar_label": "inessive" },
+        { "surface": "talossa", "lemma": "talo", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2055", "text": "Pieneen huoneeseen mahtuu pöytä.",
+      "tokens": [
+        { "surface": "Pieneen", "lemma": "pieni", "pos": "ADJ", "grammar_label": "illative" },
+        { "surface": "huoneeseen", "lemma": "huone", "pos": "NOUN", "grammar_label": "illative" }
+      ] },
+
+    { "id": "fi-2056", "text": "Kalliilla autolla ajetaan harvoin.",
+      "tokens": [
+        { "surface": "Kalliilla", "lemma": "kallis", "pos": "ADJ", "grammar_label": "adessive" },
+        { "surface": "autolla", "lemma": "auto", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "fi-2057", "text": "Suuressa kaupungissa on monta katua.",
+      "tokens": [
+        { "surface": "Suuressa", "lemma": "suuri", "pos": "ADJ", "grammar_label": "inessive" },
+        { "surface": "kaupungissa", "lemma": "kaupunki", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2058", "text": "Tämä kahvi on parempaa kuin tuo.",
+      "tokens": [
+        { "surface": "kahvi", "lemma": "kahvi", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2059", "text": "Hän on suomalainen opiskelija.",
+      "tokens": [
+        { "surface": "suomalainen", "lemma": "suomalainen", "pos": "ADJ" },
+        { "surface": "opiskelija", "lemma": "opiskelija", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2060", "text": "Mukava ilta vietettiin ystävien kanssa.",
+      "tokens": [
+        { "surface": "Mukava", "lemma": "mukava", "pos": "ADJ" },
+        { "surface": "ilta", "lemma": "ilta", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2061", "text": "Koirat juoksevat puistossa.",
+      "tokens": [
+        { "surface": "Koirat", "lemma": "koira", "pos": "NOUN" },
+        { "surface": "juoksevat", "lemma": "juosta", "pos": "VERB" },
+        { "surface": "puistossa", "lemma": "puisto", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2062", "text": "Ostan omenoita kaupasta.",
+      "tokens": [
+        { "surface": "Ostan", "lemma": "ostaa", "pos": "VERB" },
+        { "surface": "omenoita", "lemma": "omena", "pos": "NOUN" },
+        { "surface": "kaupasta", "lemma": "kauppa", "pos": "NOUN", "grammar_label": "elative" }
+      ] },
+
+    { "id": "fi-2063", "text": "Lapset menivät kouluun aamulla.",
+      "tokens": [
+        { "surface": "Lapset", "lemma": "lapsi", "pos": "NOUN" },
+        { "surface": "menivät", "lemma": "mennä", "pos": "VERB" },
+        { "surface": "kouluun", "lemma": "koulu", "pos": "NOUN", "grammar_label": "illative" }
+      ] },
+
+    { "id": "fi-2064", "text": "Kirjat ovat hyllyssä.",
+      "tokens": [
+        { "surface": "Kirjat", "lemma": "kirja", "pos": "NOUN" },
+        { "surface": "hyllyssä", "lemma": "hylly", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2065", "text": "Autot pysähtyivät risteykseen.",
+      "tokens": [
+        { "surface": "Autot", "lemma": "auto", "pos": "NOUN" },
+        { "surface": "risteykseen", "lemma": "risteys", "pos": "NOUN", "grammar_label": "illative" }
+      ] },
+
+    { "id": "fi-2066", "text": "Opiskelijat lukevat kirjastossa.",
+      "tokens": [
+        { "surface": "Opiskelijat", "lemma": "opiskelija", "pos": "NOUN" },
+        { "surface": "kirjastossa", "lemma": "kirjasto", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2067", "text": "Linnut lentävät etelään syksyllä.",
+      "tokens": [
+        { "surface": "Linnut", "lemma": "lintu", "pos": "NOUN" },
+        { "surface": "lentävät", "lemma": "lentää", "pos": "VERB" },
+        { "surface": "syksyllä", "lemma": "syksy", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "fi-2068", "text": "Talot rakennettiin nopeasti.",
+      "tokens": [
+        { "surface": "Talot", "lemma": "talo", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2069", "text": "Naapurit puhuvat keskenään suomea.",
+      "tokens": [
+        { "surface": "Naapurit", "lemma": "naapuri", "pos": "NOUN" },
+        { "surface": "suomea", "lemma": "suomi", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "fi-2070", "text": "Nuoret tytöt nauroivat puistossa.",
+      "tokens": [
+        { "surface": "Nuoret", "lemma": "nuori", "pos": "ADJ" },
+        { "surface": "tytöt", "lemma": "tyttö", "pos": "NOUN" },
+        { "surface": "puistossa", "lemma": "puisto", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2071", "text": "Maanantaina menen töihin junalla.",
+      "tokens": [
+        { "surface": "Maanantaina", "lemma": "maanantai", "pos": "NOUN", "grammar_label": "essive" },
+        { "surface": "junalla", "lemma": "juna", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "fi-2072", "text": "Kotini on lähellä asemaa.",
+      "tokens": [
+        { "surface": "Kotini", "lemma": "koti", "pos": "NOUN" },
+        { "surface": "asemaa", "lemma": "asema", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "fi-2073", "text": "Helsingin kaduilla on paljon turisteja.",
+      "tokens": [
+        { "surface": "Helsingin", "lemma": "Helsinki", "pos": "PROPN", "grammar_label": "genitive" },
+        { "surface": "turisteja", "lemma": "turisti", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2074", "text": "Kesällä lapset uivat järvessä.",
+      "tokens": [
+        { "surface": "Kesällä", "lemma": "kesä", "pos": "NOUN", "grammar_label": "adessive" },
+        { "surface": "lapset", "lemma": "lapsi", "pos": "NOUN" },
+        { "surface": "järvessä", "lemma": "järvi", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "fi-2075", "text": "Hän kirjoitti kirjeen ystävälleen.",
+      "tokens": [
+        { "surface": "kirjoitti", "lemma": "kirjoittaa", "pos": "VERB" },
+        { "surface": "kirjeen", "lemma": "kirje", "pos": "NOUN", "grammar_label": "genitive" },
+        { "surface": "ystävälleen", "lemma": "ystävä", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2076", "text": "Kahvilassa istuu nuori nainen.",
+      "tokens": [
+        { "surface": "Kahvilassa", "lemma": "kahvila", "pos": "NOUN", "grammar_label": "inessive" },
+        { "surface": "nuori", "lemma": "nuori", "pos": "ADJ" },
+        { "surface": "nainen", "lemma": "nainen", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2077", "text": "Talvella kadut ovat liukkaita.",
+      "tokens": [
+        { "surface": "Talvella", "lemma": "talvi", "pos": "NOUN", "grammar_label": "adessive" },
+        { "surface": "kadut", "lemma": "katu", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2078", "text": "Pankissa odottaa pitkä jono.",
+      "tokens": [
+        { "surface": "Pankissa", "lemma": "pankki", "pos": "NOUN", "grammar_label": "inessive" },
+        { "surface": "jono", "lemma": "jono", "pos": "NOUN" }
+      ] },
+
+    { "id": "fi-2079", "text": "Opettaja antoi tehtävän oppilaille.",
+      "tokens": [
+        { "surface": "Opettaja", "lemma": "opettaja", "pos": "NOUN" },
+        { "surface": "antoi", "lemma": "antaa", "pos": "VERB" },
+        { "surface": "tehtävän", "lemma": "tehtävä", "pos": "NOUN", "grammar_label": "genitive" },
+        { "surface": "oppilaille", "lemma": "oppilas", "pos": "NOUN", "grammar_label": "allative" }
+      ] },
+
+    { "id": "fi-2080", "text": "Kotimatkalla satoi vettä koko ajan.",
+      "tokens": [
+        { "surface": "Kotimatkalla", "lemma": "kotimatka", "pos": "NOUN", "grammar_label": "adessive" },
+        { "surface": "vettä", "lemma": "vesi", "pos": "NOUN", "grammar_label": "partitive" }
+      ] }
+
+  ]
+}
