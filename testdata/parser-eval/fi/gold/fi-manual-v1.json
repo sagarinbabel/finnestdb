@@ -1,6 +1,6 @@
 {
-  "name": "fi-manual-seed",
-  "version": "v0",
+  "name": "fi-manual",
+  "version": "v1",
   "language": "FI",
   "cases": [
     {
@@ -149,27 +149,6 @@
         {
           "surface": "puhaltamisen",
           "lemma": "puhaltaminen",
-          "pos": "NOUN"
-        }
-      ]
-    },
-    {
-      "id": "fi-0007",
-      "text": "Ilmastofontti on muunneltava OpenType-fontti.",
-      "tokens": [
-        {
-          "surface": "Ilmastofontti",
-          "lemma": "ilmastofontti",
-          "pos": "NOUN"
-        },
-        {
-          "surface": "muunneltava",
-          "lemma": "muunneltava",
-          "pos": "ADJ"
-        },
-        {
-          "surface": "OpenType-fontti",
-          "lemma": "OpenType-fontti",
           "pos": "NOUN"
         }
       ]
