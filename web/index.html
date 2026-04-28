@@ -56,8 +56,14 @@
                     </div>
 
                     <div class="parse-buttons">
-                        <button type="submit" class="btn btn-primary btn-parse" id="parse-btn-basic" data-parser="basic">Basic Parser</button>
-                        <button type="submit" class="btn btn-secondary btn-parse" id="parse-btn-custom" data-parser="custom">Custom Parser</button>
+                        <button type="submit" class="btn btn-primary btn-parse" id="parse-btn-custom" data-parser="custom">
+                            Custom Parser
+                            <span class="parser-hint">Recommended — includes compound + case analysis</span>
+                        </button>
+                        <button type="submit" class="btn btn-outline btn-parse" id="parse-btn-basic" data-parser="basic">
+                            Basic Parser
+                            <span class="parser-hint">Dictionary lookup only</span>
+                        </button>
                     </div>
                 </form>
             </section>
@@ -83,7 +89,13 @@
                 <h2 id="results-title">Results</h2>
                 <div id="results-meta" class="results-meta">
                     <span id="results-parser" class="results-pill"></span>
-                    <span id="results-score" class="results-pill"></span>
+                    <div id="results-coverage" class="coverage-gauge">
+                        <span class="coverage-gauge-label">Coverage</span>
+                        <div class="coverage-gauge-bar">
+                            <div id="coverage-fill" class="coverage-gauge-fill high" style="width: 0%"></div>
+                        </div>
+                        <span id="coverage-value" class="coverage-gauge-value">0%</span>
+                    </div>
                     <span id="results-duration" class="results-pill"></span>
                 </div>
                 <p id="results-stats" class="results-stats"></p>
@@ -91,15 +103,22 @@
             </section>
 
             <section class="results-table-section">
+                <div id="pos-filter-bar" class="pos-filter-bar">
+                    <button type="button" class="pos-filter-chip active" data-filter="all">All</button>
+                    <button type="button" class="pos-filter-chip" data-filter="NOUN">Nouns</button>
+                    <button type="button" class="pos-filter-chip" data-filter="VERB">Verbs</button>
+                    <button type="button" class="pos-filter-chip" data-filter="ADJ">Adjectives</button>
+                    <button type="button" class="pos-filter-chip" data-filter="ADV">Adverbs</button>
+                    <button type="button" class="pos-filter-chip" data-filter="other">Other</button>
+                </div>
                 <table class="word-table" id="word-table">
                     <thead>
                         <tr>
                             <th class="col-row"><button type="button" class="sort-btn" data-sort="row">#<span class="sort-arrow" aria-hidden="true"></span></button></th>
                             <th><button type="button" class="sort-btn" data-sort="lemma">Lemma<span class="sort-arrow" aria-hidden="true"></span></button></th>
-                            <th><button type="button" class="sort-btn" data-sort="pos">Part of Speech<span class="sort-arrow" aria-hidden="true"></span></button></th>
-                            <th><button type="button" class="sort-btn" data-sort="forms">Forms in Text<span class="sort-arrow" aria-hidden="true"></span></button></th>
+                            <th><button type="button" class="sort-btn" data-sort="pos">POS<span class="sort-arrow" aria-hidden="true"></span></button></th>
+                            <th><button type="button" class="sort-btn" data-sort="forms">Forms<span class="sort-arrow" aria-hidden="true"></span></button></th>
                             <th class="col-def"><button type="button" class="sort-btn" data-sort="definition">Definition<span class="sort-arrow" aria-hidden="true"></span></button></th>
-                            <th class="col-grammar"><button type="button" class="sort-btn" data-sort="grammar">Grammar<span class="sort-arrow" aria-hidden="true"></span></button></th>
                             <th class="col-count"><button type="button" class="sort-btn" data-sort="tokens">Tokens<span class="sort-arrow" aria-hidden="true"></span></button></th>
                         </tr>
                     </thead>
@@ -110,6 +129,7 @@
         </main>
     </div>
 
+    <div id="toast-container" class="toast-container"></div>
     <script type="module" src="app.js"></script>
 </body>
 </html>
