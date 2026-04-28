@@ -201,6 +201,47 @@ sorted from the UI.
 - Any Estonian news article from err.ee or postimees.ee
 - The sample sentences in `docs/GETTING_STARTED.md`
 
+### Parser Evaluation CLI
+
+The parser evaluation MVP is currently a terminal tool, not a browser UI.
+
+Run the sample dataset:
+
+```bash
+go run ./cmd/parsertest -dataset ./testdata/parser-eval/fi-gold-small.json
+```
+
+This will:
+- run the selected dataset against `basic` and `custom`
+- print a short metrics summary to the terminal
+- write a structured JSON report under `reports/parser-eval/`
+
+Useful flags:
+
+```bash
+go run ./cmd/parsertest \
+  -dataset ./testdata/parser-eval/fi-gold-small.json \
+  -db ./finnestdb.db \
+  -parsers basic,custom \
+  -warmup 1 \
+  -repeat 5 \
+  -out ./reports/parser-eval/my-run.json
+```
+
+Available parser names:
+- `basic`
+- `custom`
+
+Dataset format:
+- `name`, `version`, `language`
+- `cases[]` with `id`, `text`, and expected `tokens[]`
+- each expected token includes `surface`, `lemma`, `pos`, and optional `grammar_label` / `occurrence`
+
+The JSON report is designed to be reusable by a future eval UI.
+
+Golden dataset guidance:
+- see [docs/PARSER_EVAL_DATASETS.md](docs/PARSER_EVAL_DATASETS.md)
+
 ### Language Validation
 
 The app checks whether your pasted text matches the selected language:

@@ -1,0 +1,28 @@
+{
+  "name": "fi-manual-seed",
+  "version": "v0",
+  "language": "FI",
+  "cases": [
+    {
+      "id": "fi-0001",
+      "text": "Minä luin kirjassani uudesta pankkiautomaatista.",
+      "tokens": [
+        {
+          "surface": "kirjassani",
+          "lemma": "kirja",
+          "pos": "NOUN"
+        },
+        {
+          "surface": "uudesta",
+          "lemma": "uusi",
+          "pos": "ADJ"
+        },
+        {
+          "surface": "pankkiautomaatista",
+          "lemma": "pankkiautomaatti",
+          "pos": "NOUN"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "et-manual-seed",
+  "version": "v0",
+  "language": "ET",
+  "cases": [
+    {
+      "id": "et-0001",
+      "text": "Ta luges oma raamatus uut pangakaarti.",
+      "tokens": [
+        {
+          "surface": "raamatus",
+          "lemma": "raamat",
+          "pos": "NOUN",
+          "grammar_label": "inessive"
+        },
+        {
+          "surface": "pangakaarti",
+          "lemma": "pangakaart",
+          "pos": "NOUN"
+        }
+      ]
+    }
+  ]
+}
