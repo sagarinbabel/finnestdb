@@ -45,3 +45,6 @@ reports/
 # Local E2E tests (kept out of repo — internal use only)
 web/tests/
 web/playwright.config.ts
+
+# Local corpora and manual text imports
+localdata/
