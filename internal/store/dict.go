@@ -125,8 +125,23 @@ func tryStripPossessive(stmt *sql.Stmt, form, lang string) (FormResolution, bool
 // ─── Compound word splitting ────────────────────────────────────────────────
 
 // tryCompoundSplit attempts a longest-left-first binary split of a form.
-// Both halves must exist in the forms table. The right component determines POS
-// (Finnish/Estonian compounds have their head on the right).
+// Both halves must exist in the forms table. The right component's POS
+// determines the compound's POS (Finnish/Estonian compounds have their
+// head on the right).
+//
+// Two-pass strategy:
+//
+//	Pass 1: prefer splits where the left side is itself a lemma (a clean
+//	        nominative compound boundary, e.g. "pankki|automaatista"). The
+//	        right half can be inflected; the resulting compound lemma is
+//	        leftLemma + rightLemma.
+//	Pass 2: fall back to splits where the right side is itself a lemma
+//	        (i.e. the right is the bare head). This handles cases like
+//	        ET "rongi|sõit" where the left is a genitive-marked stem and
+//	        the right is the head lemma. The compound lemma is the
+//	        surface left + rightLemma — gluing on the left's bare lemma
+//	        would lose the genitive marker (the et-0032 "Rongisõit" →
+//	        "rongõis" bug surfaced this).
 //
 // Guards:
 //   - Form length: 6–30 runes (too short = false positives, too long = unlikely)
@@ -139,14 +154,16 @@ func tryCompoundSplit(stmtForms *sql.Stmt, form, lang string) (FormResolution, b
 		return FormResolution{}, false
 	}
 
-	// Try split points from longest-left to shortest-left.
+	// Pass 1: left == leftLemma (clean nominative-boundary compound).
 	for i := n - 3; i >= 3; i-- {
 		left := string(runes[:i])
 		right := string(runes[i:])
 
-		var leftLemma string
-		var leftPOS string
+		var leftLemma, leftPOS string
 		if err := stmtForms.QueryRow(left, lang).Scan(&leftLemma, &leftPOS); err != nil {
+			continue
+		}
+		if left != leftLemma {
 			continue
 		}
 		var rightLemma, rightPOS string
@@ -155,7 +172,34 @@ func tryCompoundSplit(stmtForms *sql.Stmt, form, lang string) (FormResolution, b
 		}
 		return FormResolution{
 			Lemma:  leftLemma + rightLemma,
-			POS:    rightPOS, // head component determines POS
+			POS:    rightPOS,
+			Source: "compound",
+		}, true
+	}
+
+	// Pass 2: right == rightLemma (genitive-boundary compound).
+	for i := n - 3; i >= 3; i-- {
+		left := string(runes[:i])
+		right := string(runes[i:])
+
+		var leftLemma, leftPOS string
+		if err := stmtForms.QueryRow(left, lang).Scan(&leftLemma, &leftPOS); err != nil {
+			continue
+		}
+		var rightLemma, rightPOS string
+		if err := stmtForms.QueryRow(right, lang).Scan(&rightLemma, &rightPOS); err != nil {
+			continue
+		}
+		if right != rightLemma {
+			continue
+		}
+		// Use the surface left (which carries the genitive marker), not
+		// leftLemma — otherwise the genitive linker is dropped.
+		_ = leftLemma
+		_ = leftPOS
+		return FormResolution{
+			Lemma:  left + rightLemma,
+			POS:    rightPOS,
 			Source: "compound",
 		}, true
 	}
