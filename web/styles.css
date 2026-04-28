@@ -20,6 +20,9 @@
     --pos-adv: #14b8a6;
     --pos-pron: #f59e0b;
     --pos-other: #6b7280;
+
+    /* Nav height for page offset */
+    --nav-height: 56px;
 }
 
 [data-theme="dark"] {
@@ -51,7 +54,8 @@ body {
 
 .page {
     display: none;
-    min-height: 100vh;
+    min-height: calc(100vh - var(--nav-height));
+    padding-top: var(--nav-height);
 }
 
 .page.active {
@@ -802,6 +806,195 @@ body {
     .col-grammar { display: none; }
 }
 
+/* ── Global Navigation (#24) ────────────────────────────────────────────── */
+
+.global-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--nav-height);
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+}
+
+.nav-content {
+    max-width: 1200px;
+    height: 100%;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.nav-logo {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.nav-logo:hover {
+    color: var(--accent-hover);
+}
+
+.nav-links {
+    display: flex;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.nav-link {
+    padding: 0.5rem 0.75rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.nav-link:hover:not(.disabled) {
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+}
+
+.nav-link.active {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.nav-link.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-icon-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.nav-icon-btn:hover:not(.disabled) {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.nav-icon-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.nav-hamburger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.nav-hamburger span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: var(--text-primary);
+    border-radius: 1px;
+    transition: all 0.2s;
+}
+
+/* Mobile nav */
+.nav-mobile-overlay {
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+}
+
+.nav-mobile-menu {
+    background: var(--card-bg);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.nav-mobile-link {
+    padding: 0.75rem 1rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: 8px;
+}
+
+.nav-mobile-link:hover:not(.disabled) {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.nav-mobile-link.active {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.nav-mobile-link.disabled {
+    opacity: 0.4;
+}
+
+@media (max-width: 640px) {
+    .nav-links,
+    .nav-actions {
+        display: none;
+    }
+
+    .nav-hamburger {
+        display: flex;
+    }
+
+    .nav-content {
+        justify-content: space-between;
+    }
+}
+
+/* ── Results header with back button ────────────────────────────────────── */
+
+.results-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.results-header h2 {
+    flex: 1;
+}
+
 /* ── Issue #20: Results table polish ────────────────────────────────────── */
 
 /* Sticky header */
@@ -1027,7 +1220,7 @@ body {
 /* Toast notifications */
 .toast-container {
     position: fixed;
-    top: 1rem;
+    top: calc(var(--nav-height) + 1rem);
     right: 1rem;
     z-index: 1000;
     display: flex;
