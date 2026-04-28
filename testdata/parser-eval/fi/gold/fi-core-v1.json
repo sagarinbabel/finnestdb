@@ -1,0 +1,153 @@
+{
+  "name": "fi-core",
+  "version": "v1",
+  "language": "FI",
+  "cases": [
+    {
+      "id": "fi-1001",
+      "text": "Pankkiin menin aamulla.",
+      "tokens": [
+        {
+          "surface": "Pankkiin",
+          "lemma": "pankki",
+          "pos": "NOUN"
+        },
+        {
+          "surface": "menin",
+          "lemma": "mennä",
+          "pos": "VERB"
+        },
+        {
+          "surface": "aamulla",
+          "lemma": "aamu",
+          "pos": "NOUN",
+          "grammar_label": "adessive"
+        }
+      ]
+    },
+    {
+      "id": "fi-1002",
+      "text": "Minä luin kirjassani uudesta pankkiautomaatista.",
+      "tokens": [
+        {
+          "surface": "Minä",
+          "lemma": "minä",
+          "pos": "PRON"
+        },
+        {
+          "surface": "luin",
+          "lemma": "lukea",
+          "pos": "VERB"
+        },
+        {
+          "surface": "kirjassani",
+          "lemma": "kirja",
+          "pos": "NOUN",
+          "grammar_label": "inessive"
+        },
+        {
+          "surface": "uudesta",
+          "lemma": "uusi",
+          "pos": "ADJ",
+          "grammar_label": "elative"
+        },
+        {
+          "surface": "pankkiautomaatista",
+          "lemma": "pankkiautomaatti",
+          "pos": "NOUN",
+          "grammar_label": "elative"
+        }
+      ]
+    },
+    {
+      "id": "fi-1003",
+      "text": "Kuopion kaupunkiin vuoden 2017 alussa.",
+      "tokens": [
+        {
+          "surface": "Kuopion",
+          "lemma": "Kuopio",
+          "pos": "PROPN"
+        },
+        {
+          "surface": "kaupunkiin",
+          "lemma": "kaupunki",
+          "pos": "NOUN",
+          "grammar_label": "illative"
+        },
+        {
+          "surface": "vuoden",
+          "lemma": "vuosi",
+          "pos": "NOUN",
+          "grammar_label": "genitive"
+        },
+        {
+          "surface": "alussa",
+          "lemma": "alku",
+          "pos": "NOUN",
+          "grammar_label": "inessive"
+        }
+      ]
+    },
+    {
+      "id": "fi-1004",
+      "text": "Kirjassa oli uusi sana.",
+      "tokens": [
+        {
+          "surface": "Kirjassa",
+          "lemma": "kirja",
+          "pos": "NOUN",
+          "grammar_label": "inessive"
+        },
+        {
+          "surface": "uusi",
+          "lemma": "uusi",
+          "pos": "ADJ"
+        },
+        {
+          "surface": "sana",
+          "lemma": "sana",
+          "pos": "NOUN"
+        }
+      ]
+    },
+    {
+      "id": "fi-1005",
+      "text": "Talossa oli valo.",
+      "tokens": [
+        {
+          "surface": "Talossa",
+          "lemma": "talo",
+          "pos": "NOUN",
+          "grammar_label": "inessive"
+        },
+        {
+          "surface": "valo",
+          "lemma": "valo",
+          "pos": "NOUN"
+        }
+      ]
+    },
+    {
+      "id": "fi-1006",
+      "text": "Pankkiautomaatista löytyi kuitti.",
+      "tokens": [
+        {
+          "surface": "Pankkiautomaatista",
+          "lemma": "pankkiautomaatti",
+          "pos": "NOUN",
+          "grammar_label": "elative"
+        },
+        {
+          "surface": "löytyi",
+          "lemma": "löytyä",
+          "pos": "VERB"
+        },
+        {
+          "surface": "kuitti",
+          "lemma": "kuitti",
+          "pos": "NOUN"
+        }
+      ]
+    }
+  ]
+}

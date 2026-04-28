@@ -211,6 +211,12 @@ Run the sample dataset:
 go run ./cmd/parsertest -dataset ./testdata/parser-eval/fi-gold-small.json
 ```
 
+Run the expanded Finnish comparison set:
+
+```bash
+go run ./cmd/parsertest -dataset ./testdata/parser-eval/fi/gold/fi-core-v1.json -parsers basic,custom,omorfi
+```
+
 This will:
 - run the selected dataset against `basic` and `custom`
 - print a short metrics summary to the terminal
