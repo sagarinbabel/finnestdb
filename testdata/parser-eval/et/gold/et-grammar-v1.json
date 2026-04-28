@@ -1,0 +1,313 @@
+{
+  "name": "et-grammar",
+  "version": "v1",
+  "language": "ET",
+  "cases": [
+
+    { "id": "et-0001", "text": "Koer on toas.",
+      "tokens": [
+        { "surface": "Koer", "lemma": "koer", "pos": "NOUN" },
+        { "surface": "toas", "lemma": "tuba", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "et-0002", "text": "Naabri koer haukus valjult.",
+      "tokens": [
+        { "surface": "Naabri", "lemma": "naaber", "pos": "NOUN", "grammar_label": "genitive" },
+        { "surface": "koer", "lemma": "koer", "pos": "NOUN" }
+      ] },
+
+    { "id": "et-0003", "text": "Joon hommikul kohvi.",
+      "tokens": [
+        { "surface": "kohvi", "lemma": "kohv", "pos": "NOUN", "grammar_label": "partitive" },
+        { "surface": "hommikul", "lemma": "hommik", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "et-0004", "text": "Elan suures linnas.",
+      "tokens": [
+        { "surface": "Elan", "lemma": "elama", "pos": "VERB" },
+        { "surface": "linnas", "lemma": "linn", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "et-0005", "text": "Tulen kodust välja.",
+      "tokens": [
+        { "surface": "kodust", "lemma": "kodu", "pos": "NOUN", "grammar_label": "elative" }
+      ] },
+
+    { "id": "et-0006", "text": "Lähen majja sisse.",
+      "tokens": [
+        { "surface": "Lähen", "lemma": "minema", "pos": "VERB" },
+        { "surface": "majja", "lemma": "maja", "pos": "NOUN", "grammar_label": "illative" }
+      ] },
+
+    { "id": "et-0007", "text": "Kass magab toolil.",
+      "tokens": [
+        { "surface": "Kass", "lemma": "kass", "pos": "NOUN" },
+        { "surface": "magab", "lemma": "magama", "pos": "VERB" },
+        { "surface": "toolil", "lemma": "tool", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "et-0008", "text": "Võtsin raamatu riiulilt.",
+      "tokens": [
+        { "surface": "raamatu", "lemma": "raamat", "pos": "NOUN", "grammar_label": "genitive" },
+        { "surface": "riiulilt", "lemma": "riiul", "pos": "NOUN", "grammar_label": "ablative" }
+      ] },
+
+    { "id": "et-0009", "text": "Andsin kingituse sõbrale.",
+      "tokens": [
+        { "surface": "kingituse", "lemma": "kingitus", "pos": "NOUN", "grammar_label": "genitive" },
+        { "surface": "sõbrale", "lemma": "sõber", "pos": "NOUN", "grammar_label": "allative" }
+      ] },
+
+    { "id": "et-0010", "text": "Ta töötab õpetajana.",
+      "tokens": [
+        { "surface": "õpetajana", "lemma": "õpetaja", "pos": "NOUN", "grammar_label": "essive" }
+      ] },
+
+    { "id": "et-0011", "text": "Tahan saada arstiks.",
+      "tokens": [
+        { "surface": "arstiks", "lemma": "arst", "pos": "NOUN", "grammar_label": "translative" }
+      ] },
+
+    { "id": "et-0012", "text": "Laps istub diivanil.",
+      "tokens": [
+        { "surface": "Laps", "lemma": "laps", "pos": "NOUN" },
+        { "surface": "diivanil", "lemma": "diivan", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "et-0013", "text": "Auto aken läks katki.",
+      "tokens": [
+        { "surface": "Auto", "lemma": "auto", "pos": "NOUN", "grammar_label": "genitive" },
+        { "surface": "aken", "lemma": "aken", "pos": "NOUN" }
+      ] },
+
+    { "id": "et-0014", "text": "Sõin õuna aias.",
+      "tokens": [
+        { "surface": "Sõin", "lemma": "sööma", "pos": "VERB" },
+        { "surface": "õuna", "lemma": "õun", "pos": "NOUN", "grammar_label": "partitive" },
+        { "surface": "aias", "lemma": "aed", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "et-0015", "text": "Vesi voolab jões.",
+      "tokens": [
+        { "surface": "Vesi", "lemma": "vesi", "pos": "NOUN" },
+        { "surface": "jões", "lemma": "jõgi", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "et-0016", "text": "Mina joon teed.",
+      "tokens": [
+        { "surface": "joon", "lemma": "jooma", "pos": "VERB" },
+        { "surface": "teed", "lemma": "tee", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "et-0017", "text": "Ta räägib eesti keelt sujuvalt.",
+      "tokens": [
+        { "surface": "räägib", "lemma": "rääkima", "pos": "VERB" },
+        { "surface": "keelt", "lemma": "keel", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "et-0018", "text": "Nad lähevad koolis koos.",
+      "tokens": [
+        { "surface": "lähevad", "lemma": "minema", "pos": "VERB" },
+        { "surface": "koolis", "lemma": "kool", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "et-0019", "text": "Laps naeris valjusti.",
+      "tokens": [
+        { "surface": "naeris", "lemma": "naerma", "pos": "VERB" }
+      ] },
+
+    { "id": "et-0020", "text": "Nad lugesid raamatut õhtul.",
+      "tokens": [
+        { "surface": "lugesid", "lemma": "lugema", "pos": "VERB" },
+        { "surface": "raamatut", "lemma": "raamat", "pos": "NOUN", "grammar_label": "partitive" },
+        { "surface": "õhtul", "lemma": "õhtu", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "et-0021", "text": "Sööksin õuna, kui mul see oleks.",
+      "tokens": [
+        { "surface": "Sööksin", "lemma": "sööma", "pos": "VERB" },
+        { "surface": "õuna", "lemma": "õun", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "et-0022", "text": "Eestis räägitakse eesti keelt.",
+      "tokens": [
+        { "surface": "Eestis", "lemma": "Eesti", "pos": "PROPN", "grammar_label": "inessive" },
+        { "surface": "räägitakse", "lemma": "rääkima", "pos": "VERB" },
+        { "surface": "keelt", "lemma": "keel", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "et-0023", "text": "Tule siia kohe!",
+      "tokens": [
+        { "surface": "Tule", "lemma": "tulema", "pos": "VERB" }
+      ] },
+
+    { "id": "et-0024", "text": "Ma ei tea vastust.",
+      "tokens": [
+        { "surface": "tea", "lemma": "teadma", "pos": "VERB" },
+        { "surface": "vastust", "lemma": "vastus", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "et-0025", "text": "Olen seda raamatut lugenud.",
+      "tokens": [
+        { "surface": "Olen", "lemma": "olema", "pos": "VERB" },
+        { "surface": "raamatut", "lemma": "raamat", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "et-0026", "text": "Tahan õppida prantsuse keelt.",
+      "tokens": [
+        { "surface": "Tahan", "lemma": "tahtma", "pos": "VERB" },
+        { "surface": "õppida", "lemma": "õppima", "pos": "VERB" },
+        { "surface": "keelt", "lemma": "keel", "pos": "NOUN", "grammar_label": "partitive" }
+      ] },
+
+    { "id": "et-0027", "text": "Lapsed mängivad õues.",
+      "tokens": [
+        { "surface": "Lapsed", "lemma": "laps", "pos": "NOUN" },
+        { "surface": "mängivad", "lemma": "mängima", "pos": "VERB" },
+        { "surface": "õues", "lemma": "õu", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "et-0028", "text": "Olin magamas, kui telefon helises.",
+      "tokens": [
+        { "surface": "Olin", "lemma": "olema", "pos": "VERB" },
+        { "surface": "telefon", "lemma": "telefon", "pos": "NOUN" },
+        { "surface": "helises", "lemma": "helisema", "pos": "VERB" }
+      ] },
+
+    { "id": "et-0029", "text": "Kirjutan kirja õele.",
+      "tokens": [
+        { "surface": "Kirjutan", "lemma": "kirjutama", "pos": "VERB" },
+        { "surface": "kirja", "lemma": "kiri", "pos": "NOUN", "grammar_label": "partitive" },
+        { "surface": "õele", "lemma": "õde", "pos": "NOUN", "grammar_label": "allative" }
+      ] },
+
+    { "id": "et-0030", "text": "Ta käib pargis igal päeval.",
+      "tokens": [
+        { "surface": "käib", "lemma": "käima", "pos": "VERB" },
+        { "surface": "pargis", "lemma": "park", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "et-0031", "text": "Kohvitass on laual.",
+      "tokens": [
+        { "surface": "Kohvitass", "lemma": "kohvitass", "pos": "NOUN" },
+        { "surface": "laual", "lemma": "laud", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "et-0032", "text": "Rongisõit oli pikk ja väsitav.",
+      "tokens": [
+        { "surface": "Rongisõit", "lemma": "rongisõit", "pos": "NOUN" }
+      ] },
+
+    { "id": "et-0033", "text": "E-post saabus hiljem õhtul.",
+      "tokens": [
+        { "surface": "õhtul", "lemma": "õhtu", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "et-0034", "text": "Raamatukogu on suletud pühapäeviti.",
+      "tokens": [
+        { "surface": "Raamatukogu", "lemma": "raamatukogu", "pos": "NOUN" }
+      ] },
+
+    { "id": "et-0035", "text": "Arvuti on uus ja kiire.",
+      "tokens": [
+        { "surface": "Arvuti", "lemma": "arvuti", "pos": "NOUN" }
+      ] },
+
+    { "id": "et-0036", "text": "Kohvimasin läks hommikul katki.",
+      "tokens": [
+        { "surface": "Kohvimasin", "lemma": "kohvimasin", "pos": "NOUN" },
+        { "surface": "hommikul", "lemma": "hommik", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "et-0037", "text": "Lennujaam on linna lähedal.",
+      "tokens": [
+        { "surface": "Lennujaam", "lemma": "lennujaam", "pos": "NOUN" },
+        { "surface": "linna", "lemma": "linn", "pos": "NOUN", "grammar_label": "genitive" }
+      ] },
+
+    { "id": "et-0038", "text": "Vana mees kõnnib aeglaselt.",
+      "tokens": [
+        { "surface": "Vana", "lemma": "vana", "pos": "ADJ" },
+        { "surface": "mees", "lemma": "mees", "pos": "NOUN" }
+      ] },
+
+    { "id": "et-0039", "text": "Väike laps magab voodis.",
+      "tokens": [
+        { "surface": "Väike", "lemma": "väike", "pos": "ADJ" },
+        { "surface": "laps", "lemma": "laps", "pos": "NOUN" },
+        { "surface": "voodis", "lemma": "voodi", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "et-0040", "text": "Ilus lill kasvab aias.",
+      "tokens": [
+        { "surface": "Ilus", "lemma": "ilus", "pos": "ADJ" },
+        { "surface": "lill", "lemma": "lill", "pos": "NOUN" },
+        { "surface": "aias", "lemma": "aed", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "et-0041", "text": "Ta on eesti üliõpilane.",
+      "tokens": [
+        { "surface": "üliõpilane", "lemma": "üliõpilane", "pos": "NOUN" }
+      ] },
+
+    { "id": "et-0042", "text": "Koerad jooksevad pargis.",
+      "tokens": [
+        { "surface": "Koerad", "lemma": "koer", "pos": "NOUN" },
+        { "surface": "jooksevad", "lemma": "jooksma", "pos": "VERB" },
+        { "surface": "pargis", "lemma": "park", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "et-0043", "text": "Ostan õunu turult.",
+      "tokens": [
+        { "surface": "Ostan", "lemma": "ostma", "pos": "VERB" },
+        { "surface": "turult", "lemma": "turg", "pos": "NOUN", "grammar_label": "ablative" }
+      ] },
+
+    { "id": "et-0044", "text": "Lapsed läksid hommikul kooli.",
+      "tokens": [
+        { "surface": "Lapsed", "lemma": "laps", "pos": "NOUN" },
+        { "surface": "läksid", "lemma": "minema", "pos": "VERB" },
+        { "surface": "hommikul", "lemma": "hommik", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "et-0045", "text": "Raamatud on riiulis.",
+      "tokens": [
+        { "surface": "Raamatud", "lemma": "raamat", "pos": "NOUN" },
+        { "surface": "riiulis", "lemma": "riiul", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "et-0046", "text": "Õpilased loevad raamatukogus.",
+      "tokens": [
+        { "surface": "Õpilased", "lemma": "õpilane", "pos": "NOUN" },
+        { "surface": "loevad", "lemma": "lugema", "pos": "VERB" },
+        { "surface": "raamatukogus", "lemma": "raamatukogu", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "et-0047", "text": "Linnud lendavad lõunasse sügisel.",
+      "tokens": [
+        { "surface": "Linnud", "lemma": "lind", "pos": "NOUN" },
+        { "surface": "lendavad", "lemma": "lendama", "pos": "VERB" },
+        { "surface": "sügisel", "lemma": "sügis", "pos": "NOUN", "grammar_label": "adessive" }
+      ] },
+
+    { "id": "et-0048", "text": "Suvel ujuvad lapsed järves.",
+      "tokens": [
+        { "surface": "Suvel", "lemma": "suvi", "pos": "NOUN", "grammar_label": "adessive" },
+        { "surface": "lapsed", "lemma": "laps", "pos": "NOUN" },
+        { "surface": "järves", "lemma": "järv", "pos": "NOUN", "grammar_label": "inessive" }
+      ] },
+
+    { "id": "et-0049", "text": "Õpetaja andis ülesande õpilastele.",
+      "tokens": [
+        { "surface": "Õpetaja", "lemma": "õpetaja", "pos": "NOUN" },
+        { "surface": "ülesande", "lemma": "ülesanne", "pos": "NOUN", "grammar_label": "genitive" },
+        { "surface": "õpilastele", "lemma": "õpilane", "pos": "NOUN", "grammar_label": "allative" }
+      ] },
+
+    { "id": "et-0050", "text": "Talvel on tänavad libedad.",
+      "tokens": [
+        { "surface": "Talvel", "lemma": "talv", "pos": "NOUN", "grammar_label": "adessive" }
+      ] }
+
+  ]
+}
