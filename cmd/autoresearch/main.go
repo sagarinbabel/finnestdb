@@ -84,7 +84,22 @@ func main() {
 	}
 }
 
+// supportedMetrics lists the keys that evaluate() emits. Validation is done
+// against this set so a typo (e.g. -metric "lemmaa") fails fast rather than
+// silently producing 0/0/0 deltas.
+var supportedMetrics = map[string]struct{}{
+	"lemma":    {},
+	"pos":      {},
+	"grammar":  {},
+	"full":     {},
+	"coverage": {},
+}
+
 func run(datasetPath, rulesPath, parserMode, dbPath, metricName string, minDelta float64, maxIters int, logPath string, dryRun bool) error {
+	if _, ok := supportedMetrics[metricName]; !ok {
+		return fmt.Errorf("unsupported metric %q (supported: lemma, pos, grammar, full, coverage)", metricName)
+	}
+
 	originalBytes, err := os.ReadFile(rulesPath)
 	if err != nil {
 		return fmt.Errorf("read rules: %w", err)
@@ -100,18 +115,18 @@ func run(datasetPath, rulesPath, parserMode, dbPath, metricName string, minDelta
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	candidates, err := findCandidateLines(originalBytes)
+	candidates, err := findCandidates(originalBytes)
 	if err != nil {
 		return err
 	}
 	if len(candidates) == 0 {
-		return errors.New("no candidate lines found in rule file")
+		return errors.New("no candidate mutations found in rule file")
 	}
 
 	if dryRun {
 		fmt.Printf("Would try %d candidate mutations:\n", len(candidates))
 		for i, c := range candidates {
-			fmt.Printf("  %2d. line %d: %s\n", i+1, c.LineNumber, strings.TrimSpace(c.Original))
+			fmt.Printf("  %2d. line %d: %s\n", i+1, c.LineNumber, c.Original)
 		}
 		return nil
 	}
@@ -144,10 +159,10 @@ func run(datasetPath, rulesPath, parserMode, dbPath, metricName string, minDelta
 			fmt.Println("interrupted")
 			break
 		}
-		fmt.Printf("\n== iter %d/%d : line %d : %s ==\n", i+1, len(candidates), cand.LineNumber, strings.TrimSpace(cand.Original))
+		fmt.Printf("\n== iter %d/%d : line %d : %s ==\n", i+1, len(candidates), cand.LineNumber, cand.Original)
 
-		// Apply mutation: comment out the line.
-		mutated := commentOutLine(originalBytes, cand)
+		// Apply mutation: comment out only this candidate's byte range.
+		mutated := commentOutCandidate(originalBytes, cand)
 		if err := os.WriteFile(rulesPath, mutated, 0o644); err != nil {
 			return fmt.Errorf("write mutation: %w", err)
 		}
@@ -159,8 +174,8 @@ func run(datasetPath, rulesPath, parserMode, dbPath, metricName string, minDelta
 				Strategy: "comment-out-suffix",
 				File:     rulesPath,
 				Line:     cand.LineNumber,
-				Before:   strings.TrimSpace(cand.Original),
-				After:    "// " + strings.TrimSpace(cand.Original),
+				Before:   cand.Original,
+				After:    "/* " + cand.Original + " */",
 			},
 			Baseline: baselineMetrics,
 			Metric:   metricName,
@@ -203,47 +218,125 @@ func run(datasetPath, rulesPath, parserMode, dbPath, metricName string, minDelta
 	return nil
 }
 
-type lineCandidate struct {
+// candidate identifies a single suffix entry (one possessive string literal,
+// or one CaseSuffix struct literal) at a precise byte range in the rule file.
+// Mutating just that range — instead of the whole line — keeps each
+// experiment attributable to exactly one rule, even when the source line
+// packs multiple entries together (e.g. `{"ssa", "inessive"}, {"ssä", "inessive"},`).
+type candidate struct {
 	LineNumber int
-	Original   string
+	StartByte  int
+	EndByte    int
+	Original   string // the exact text being mutated
 }
 
-// suffixEntryRE matches lines like: `\t{"ssa", "inessive"}, {"ssä", "inessive"},`
-// or:                                `\t"nsa", "nsä", // 3rd person…`
-// We're conservative — only lines whose first non-comment, non-whitespace token
-// is a `"…"` string literal are considered candidate suffix entries.
-var suffixEntryRE = regexp.MustCompile(`^(\s*)(?:\{?"|")[^"]+"`)
+// caseSuffixRE matches a single `{"<suffix>", "<label>"}` struct literal and
+// captures its start/end. This is the form used by FinnishCaseSuffixes and
+// EstonianCaseSuffixes in internal/parserules/.
+var caseSuffixRE = regexp.MustCompile(`\{\s*"[^"]+"\s*,\s*"[^"]+"\s*\}`)
 
-func findCandidateLines(src []byte) ([]lineCandidate, error) {
-	var out []lineCandidate
-	lines := strings.Split(string(src), "\n")
-	for i, raw := range lines {
-		trimmed := strings.TrimLeft(raw, " \t")
-		// Only consider entries that look like suffix-table rows.
-		if !suffixEntryRE.MatchString(raw) {
-			continue
+// possessiveSuffixRE matches a single bare string literal in the
+// FinnishPossessiveSuffixes slice. The literal must follow the slice
+// opening `{`, a comma, or the start of the line — this prevents matching
+// strings inside doc comments. The trailing comma is intentionally NOT
+// consumed so the next iteration can re-anchor on it.
+var possessiveSuffixRE = regexp.MustCompile(`(?m)(?:^|,|\{)\s*("[^"]+")`)
+
+func findCandidates(src []byte) ([]candidate, error) {
+	var out []candidate
+	text := string(src)
+
+	// Walk source line by line; produce candidates only inside slice
+	// literals, not inside comments.
+	lineStart := 0
+	lineNum := 1
+	for lineStart < len(text) {
+		nl := strings.Index(text[lineStart:], "\n")
+		end := lineStart + nl
+		if nl < 0 {
+			end = len(text)
 		}
-		// Skip lines inside doc comments (they often contain quoted text).
+		line := text[lineStart:end]
+		trimmed := strings.TrimLeft(line, " \t")
+
+		// Skip whole-line comments (rule docs contain example "..." literals).
 		if strings.HasPrefix(trimmed, "//") {
+			lineStart = end + 1
+			lineNum++
 			continue
 		}
-		out = append(out, lineCandidate{
-			LineNumber: i + 1,
-			Original:   raw,
-		})
+
+		// Strip any trailing line comment so its quoted strings don't match.
+		codeOnly := line
+		if c := strings.Index(line, "//"); c >= 0 {
+			codeOnly = line[:c]
+		}
+
+		// Pass 1: case-suffix struct literals on this line.
+		for _, m := range caseSuffixRE.FindAllStringIndex(codeOnly, -1) {
+			out = append(out, candidate{
+				LineNumber: lineNum,
+				StartByte:  lineStart + m[0],
+				EndByte:    lineStart + m[1],
+				Original:   line[m[0]:m[1]],
+			})
+		}
+
+		// Pass 2: bare possessive-suffix string literals on this line, but
+		// only if the line had no case-suffix matches (the two formats don't
+		// mix in the same slice).
+		if len(caseSuffixRE.FindAllStringIndex(codeOnly, -1)) == 0 {
+			for _, m := range possessiveSuffixRE.FindAllStringSubmatchIndex(codeOnly, -1) {
+				// m[2:4] is the captured literal range
+				out = append(out, candidate{
+					LineNumber: lineNum,
+					StartByte:  lineStart + m[2],
+					EndByte:    lineStart + m[3],
+					Original:   line[m[2]:m[3]],
+				})
+			}
+		}
+
+		lineStart = end + 1
+		lineNum++
 	}
 	return out, nil
 }
 
-func commentOutLine(src []byte, c lineCandidate) []byte {
-	lines := strings.Split(string(src), "\n")
-	if c.LineNumber < 1 || c.LineNumber > len(lines) {
+// commentOutCandidate removes the candidate's entry from the slice literal
+// while keeping the source syntactically valid. The entry text itself is
+// preserved inside an adjacent block comment so the experiment log can show
+// exactly what was removed; the surrounding comma is also consumed so the
+// slice doesn't end up with a stray `,` (which would be a parse error).
+func commentOutCandidate(src []byte, c candidate) []byte {
+	if c.StartByte < 0 || c.EndByte > len(src) || c.StartByte >= c.EndByte {
 		return src
 	}
-	idx := c.LineNumber - 1
-	indent := lines[idx][:len(lines[idx])-len(strings.TrimLeft(lines[idx], " \t"))]
-	lines[idx] = indent + "// " + strings.TrimLeft(lines[idx], " \t")
-	return []byte(strings.Join(lines, "\n"))
+
+	// Expand the range to swallow whichever side has a comma so the
+	// slice literal remains valid. Prefer trailing comma (the normal case).
+	start, end := c.StartByte, c.EndByte
+	for end < len(src) && (src[end] == ' ' || src[end] == '\t') {
+		end++
+	}
+	if end < len(src) && src[end] == ',' {
+		end++ // consume trailing comma
+	} else {
+		// No trailing comma; try to consume a leading one.
+		for start > 0 && (src[start-1] == ' ' || src[start-1] == '\t') {
+			start--
+		}
+		if start > 0 && src[start-1] == ',' {
+			start--
+		}
+	}
+
+	commented := []byte("/* removed: " + string(src[c.StartByte:c.EndByte]) + " */")
+	out := make([]byte, 0, len(src))
+	out = append(out, src[:start]...)
+	out = append(out, commented...)
+	out = append(out, src[end:]...)
+	return out
 }
 
 // evaluate runs the parsertest CLI as a subprocess and returns the headline
