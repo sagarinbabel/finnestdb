@@ -99,11 +99,16 @@ This compiles `app.ts` to `app.js` using the local TypeScript dependency.
 
 ## Current Limitations
 
-- no real Omorfi/Vabamorf integration yet
-- no statistical parser evaluation yet
-- no gold-set benchmark yet
+- no bundled Omorfi/Vabamorf runtime in the browser-facing parse flow
+- no statistical disambiguation yet
 - no current user-facing dashboard/review/account flow
 - deck/review backend work remains partial and mostly stubbed
+
+What does exist now:
+
+- dataset-based parser evaluation
+- parser comparison CLI
+- external Omorfi adapter slot for Finnish baseline testing
 
 ## Near-Term Direction
 
