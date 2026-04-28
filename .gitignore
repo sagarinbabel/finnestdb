@@ -48,3 +48,4 @@ web/playwright.config.ts
 
 # Local corpora and manual text imports
 localdata/
+.claude/
