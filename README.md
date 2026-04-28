@@ -237,6 +237,20 @@ go run ./cmd/parsertest \
 Available parser names:
 - `basic`
 - `custom`
+- `omorfi`
+
+`omorfi` is an external-adapter slot for a third Finnish baseline. To enable it,
+set `FINNESTDB_OMORFI_CMD` to a command that reads source text from stdin and
+returns JSON in the same token/sentence shape as the Rust FFI parser.
+
+Example:
+
+```bash
+export FINNESTDB_OMORFI_CMD="/path/to/omorfi-adapter"
+go run ./cmd/parsertest \
+  -dataset ./testdata/parser-eval/fi-gold-small.json \
+  -parsers basic,custom,omorfi
+```
 
 Dataset format:
 - `name`, `version`, `language`
