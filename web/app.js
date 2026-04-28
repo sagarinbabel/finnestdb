@@ -223,12 +223,17 @@ function sortWords(words, sort) {
     });
     return sorted;
 }
+function escapeRegex(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 function highlightFormsInSentence(sentence, forms) {
     let result = escapeHtml(sentence);
     for (const form of forms) {
-        const escaped = escapeHtml(form);
+        const pattern = escapeRegex(escapeHtml(form));
+        if (!pattern)
+            continue;
         // Case-insensitive replacement, preserving original case
-        const regex = new RegExp(`\\b(${escaped})\\b`, 'gi');
+        const regex = new RegExp(`\\b(${pattern})\\b`, 'gi');
         result = result.replace(regex, '<span class="highlight-form">$1</span>');
     }
     return result;
