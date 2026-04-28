@@ -284,11 +284,15 @@ The two parser modes differ only in how much enrichment happens after that:
 - **Basic parser** stops after direct dictionary lookup
 - **Custom parser** adds possessive, compound, and case-suffix fallback rules
 
-What still does **not** exist yet:
-- real morphological analysis from Omorfi/Vabamorf
+What still does **not** exist yet in the browser-facing parser flow:
+- bundled full morphological analysis from Omorfi/Vabamorf
 - statistical disambiguation
 - MWE detection
-- gold-set evaluation of parser quality
+
+What **does** exist now for parser research:
+- gold-set evaluation datasets
+- a parser evaluation CLI
+- an external Omorfi adapter slot for Finnish baseline comparisons
 
 So the custom mode is stronger than the basic mode for many dictionary-backed
 cases, but it is still not a full morphology parser.
@@ -297,10 +301,12 @@ cases, but it is still not a full morphology parser.
 
 ```
 /cmd/importdict      One-time dictionary import CLI (kaikki.org JSONL → SQLite)
+/cmd/parsertest      Parser evaluation CLI
 /cmd/server          Go HTTP server entry point
 /internal/api        API handlers (POST /api/parse, etc.)
-  handlers.go        Route handlers; HandleParse runs 5-step enrichment pipeline
-  enrichment.go      Pure enrichWords() function (dict-backed, testable without CGO)
+  handlers.go        Route handlers; parse requests delegate into parsecore
+/internal/eval       Dataset-based parser evaluation
+/internal/parsecore  Shared parser orchestration and parser registry
 /internal/parserffi  CGO bindings to the Rust parser library
 /internal/store      SQLite database layer
   db.go              Schema + CRUD (users, decks, sentences, occurrences)
@@ -317,7 +323,10 @@ finnestdb-prd-alpha.md  Full product requirements document
 
 ## Documentation
 
+- [Architecture](ARCHITECTURE.md)
 - [Getting Started Guide](docs/GETTING_STARTED.md)
+- [Omorfi Adapter Notes](docs/OMORFI_ADAPTER.md)
+- [Parser Eval Datasets](docs/PARSER_EVAL_DATASETS.md)
 - [Implementation Analysis](IMPLEMENTATION_ANALYSIS.md)
 - [PRD (Alpha)](finnestdb-prd-alpha.md)
 - [TODO / Findings](TODO.md)
