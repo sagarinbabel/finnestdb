@@ -51,3 +51,7 @@ localdata/
 
 # Claude Code
 .claude/
+
+# Autoresearch transient experiment logs (commit specific runs explicitly)
+experiments/test*.jsonl
+experiments/autoresearch.jsonl
