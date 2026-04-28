@@ -12,18 +12,29 @@
     --success: #10b981;
     --warning: #f59e0b;
     --danger: #ef4444;
+
+    /* POS colors */
+    --pos-noun: #3b82f6;
+    --pos-verb: #10b981;
+    --pos-adj: #8b5cf6;
+    --pos-adv: #14b8a6;
+    --pos-pron: #f59e0b;
+    --pos-other: #6b7280;
+
+    /* Nav height for page offset */
+    --nav-height: 56px;
 }
 
 [data-theme="dark"] {
-    --bg-primary: #1a1a1a;
-    --bg-secondary: #2d2d2d;
-    --bg-tertiary: #3a3a3a;
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
     --text-primary: #f5f5f5;
-    --text-secondary: #b0b0b0;
+    --text-secondary: #94a3b8;
     --accent: #3b82f6;
     --accent-hover: #60a5fa;
-    --border: #404040;
-    --card-bg: #2d2d2d;
+    --border: #334155;
+    --card-bg: #1e293b;
     --shadow: rgba(0, 0, 0, 0.3);
 }
 
@@ -43,7 +54,8 @@ body {
 
 .page {
     display: none;
-    min-height: 100vh;
+    min-height: calc(100vh - var(--nav-height));
+    padding-top: var(--nav-height);
 }
 
 .page.active {
@@ -792,4 +804,466 @@ body {
     .col-forms   { display: none; }
     .col-def     { display: none; }
     .col-grammar { display: none; }
+}
+
+/* ── Global Navigation (#24) ────────────────────────────────────────────── */
+
+.global-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--nav-height);
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+}
+
+.nav-content {
+    max-width: 1200px;
+    height: 100%;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.nav-logo {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--accent);
+    text-decoration: none;
+    flex-shrink: 0;
+}
+
+.nav-logo:hover {
+    color: var(--accent-hover);
+}
+
+.nav-links {
+    display: flex;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.nav-link {
+    padding: 0.5rem 0.75rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.nav-link:hover:not(.disabled) {
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+}
+
+.nav-link.active {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.nav-link.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-icon-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+}
+
+.nav-icon-btn:hover:not(.disabled) {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.nav-icon-btn.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.nav-hamburger {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.nav-hamburger span {
+    display: block;
+    width: 100%;
+    height: 2px;
+    background: var(--text-primary);
+    border-radius: 1px;
+    transition: all 0.2s;
+}
+
+/* Mobile nav */
+.nav-mobile-overlay {
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+}
+
+.nav-mobile-menu {
+    background: var(--card-bg);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.nav-mobile-link {
+    padding: 0.75rem 1rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 500;
+    border-radius: 8px;
+}
+
+.nav-mobile-link:hover:not(.disabled) {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.nav-mobile-link.active {
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.nav-mobile-link.disabled {
+    opacity: 0.4;
+}
+
+@media (max-width: 640px) {
+    .nav-links,
+    .nav-actions {
+        display: none;
+    }
+
+    .nav-hamburger {
+        display: flex;
+    }
+
+    .nav-content {
+        justify-content: space-between;
+    }
+}
+
+/* ── Results header with back button ────────────────────────────────────── */
+
+.results-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.results-header h2 {
+    flex: 1;
+}
+
+/* ── UI Polish (combined from #20, #21) ─────────────────────────────────── */
+
+/* Sticky header */
+.word-table thead {
+    position: sticky;
+    top: 0;
+    background: var(--bg-primary);
+    z-index: 10;
+}
+
+.word-table thead th {
+    background: var(--bg-primary);
+    box-shadow: 0 1px 0 var(--border);
+}
+
+/* Zebra striping */
+.word-table tbody tr:nth-child(even) {
+    background: var(--bg-secondary);
+}
+
+.word-table tbody tr:nth-child(even):hover {
+    background: var(--bg-tertiary);
+}
+
+/* POS filter chips */
+.pos-filter-bar {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.pos-filter-chip {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.pos-filter-chip:hover {
+    background: var(--bg-tertiary);
+}
+
+.pos-filter-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+}
+
+/* POS pill colors */
+.pos-pill {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.pos-pill[data-pos="NOUN"],
+.pos-pill[data-pos="PROPN"] {
+    background: color-mix(in srgb, var(--pos-noun) 15%, transparent);
+    color: var(--pos-noun);
+}
+
+.pos-pill[data-pos="VERB"],
+.pos-pill[data-pos="AUX"] {
+    background: color-mix(in srgb, var(--pos-verb) 15%, transparent);
+    color: var(--pos-verb);
+}
+
+.pos-pill[data-pos="ADJ"] {
+    background: color-mix(in srgb, var(--pos-adj) 15%, transparent);
+    color: var(--pos-adj);
+}
+
+.pos-pill[data-pos="ADV"] {
+    background: color-mix(in srgb, var(--pos-adv) 15%, transparent);
+    color: var(--pos-adv);
+}
+
+.pos-pill[data-pos="PRON"],
+.pos-pill[data-pos="DET"] {
+    background: color-mix(in srgb, var(--pos-pron) 15%, transparent);
+    color: var(--pos-pron);
+}
+
+.pos-pill[data-pos="NUM"],
+.pos-pill[data-pos="ADP"],
+.pos-pill[data-pos="CCONJ"],
+.pos-pill[data-pos="SCONJ"],
+.pos-pill[data-pos="PART"],
+.pos-pill[data-pos="INTJ"],
+.pos-pill[data-pos="X"] {
+    background: color-mix(in srgb, var(--pos-other) 15%, transparent);
+    color: var(--pos-other);
+}
+
+/* Grammar badge (inline on lemma cell) */
+.grammar-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.4rem;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    font-weight: normal;
+    vertical-align: middle;
+}
+
+/* Example sentence polish */
+.example-details {
+    margin-top: 0.35rem;
+}
+
+.example-details[open] {
+    margin-bottom: 0.25rem;
+}
+
+.example-text {
+    display: block;
+    margin-top: 0.35rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-secondary);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    line-height: 1.6;
+}
+
+.example-text .highlight-form {
+    background: color-mix(in srgb, var(--accent) 25%, transparent);
+    padding: 0.1rem 0.2rem;
+    border-radius: 2px;
+    font-weight: 600;
+    font-style: normal;
+}
+
+/* Button variants */
+.btn-outline {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+.btn-outline:hover {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.parse-buttons .btn-parse[data-parser="custom"] {
+    order: -1;
+}
+
+.parser-hint {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: normal;
+    opacity: 0.8;
+    margin-top: 0.15rem;
+}
+
+/* Coverage gauge */
+.coverage-gauge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+}
+
+.coverage-gauge-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.coverage-gauge-bar {
+    width: 80px;
+    height: 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.coverage-gauge-fill {
+    height: 100%;
+    background: var(--success);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.coverage-gauge-fill.low { background: var(--danger); }
+.coverage-gauge-fill.medium { background: var(--warning); }
+.coverage-gauge-fill.high { background: var(--success); }
+
+.coverage-gauge-value {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 2.5rem;
+}
+
+/* Toast notifications */
+.toast-container {
+    position: fixed;
+    top: calc(var(--nav-height) + 1rem);
+    right: 1rem;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.toast {
+    padding: 0.75rem 1rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px var(--shadow);
+    font-size: 0.875rem;
+    animation: toast-in 0.3s ease;
+    max-width: 300px;
+}
+
+.toast.info {
+    border-left: 4px solid var(--accent);
+}
+
+.toast.success {
+    border-left: 4px solid var(--success);
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes toast-out {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+.toast.hiding {
+    animation: toast-out 0.3s ease forwards;
 }

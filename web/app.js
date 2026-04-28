@@ -344,14 +344,60 @@ function showResults(data, textPreview, parserMode) {
     renderResultsTable(data);
     showPage('results-page');
 }
+// ── Mobile nav ──────────────────────────────────────────────────────────────
+function initMobileNav() {
+    const hamburger = document.getElementById('nav-hamburger');
+    const overlay = document.getElementById('nav-mobile-overlay');
+    if (!hamburger || !overlay)
+        return;
+    hamburger.addEventListener('click', () => {
+        const isOpen = !overlay.classList.contains('hidden');
+        overlay.classList.toggle('hidden', isOpen);
+        hamburger.classList.toggle('open', !isOpen);
+        document.body.classList.toggle('nav-open', !isOpen);
+    });
+    // Close on overlay background click
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            overlay.classList.add('hidden');
+            hamburger.classList.remove('open');
+            document.body.classList.remove('nav-open');
+        }
+    });
+    // Close on mobile link click
+    overlay.querySelectorAll('.nav-mobile-link').forEach(link => {
+        link.addEventListener('click', () => {
+            overlay.classList.add('hidden');
+            hamburger.classList.remove('open');
+            document.body.classList.remove('nav-open');
+        });
+    });
+}
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     initTheme();
+    initMobileNav();
     // Theme toggles
     document.getElementById('theme-toggle')
         ?.addEventListener('click', toggleTheme);
     document.getElementById('results-theme-toggle')
         ?.addEventListener('click', toggleTheme);
+    // Nav links (logo + Import both go to parse page)
+    document.getElementById('nav-logo')
+        ?.addEventListener('click', (e) => {
+        e.preventDefault();
+        showPage('parse-page');
+    });
+    document.getElementById('nav-import')
+        ?.addEventListener('click', (e) => {
+        e.preventDefault();
+        showPage('parse-page');
+    });
+    document.getElementById('nav-mobile-import')
+        ?.addEventListener('click', (e) => {
+        e.preventDefault();
+        showPage('parse-page');
+    });
     // Back button
     document.getElementById('results-back')
         ?.addEventListener('click', () => showPage('parse-page'));
