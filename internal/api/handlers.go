@@ -337,19 +337,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	}
 	parsed, err := parsecore.Analyze(a.store, req.Lang, req.Text, req.Parser)
 	if err != nil {
-		status := http.StatusInternalServerError
-		switch err.Error() {
-		case "language must be FI or ET", "text is required":
-			status = http.StatusBadRequest
-		default:
-			if len(err.Error()) >= 13 && err.Error()[:13] == "text exceeds " {
-				status = http.StatusBadRequest
-			}
-			if len(err.Error()) >= 19 && err.Error()[:19] == "unsupported parser " {
-				status = http.StatusBadRequest
-			}
-		}
-		http.Error(w, err.Error(), status)
+		http.Error(w, err.Error(), parseErrorStatus(err.Error()))
 		return
 	}
 
@@ -359,6 +347,28 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		ParseDurationMs: parsed.ParseDurationMs,
 		Words:           parsed.Words,
 	})
+}
+
+// parseErrorStatus maps a parsecore.Analyze error message to an HTTP status.
+// Caller-fixable cases (bad language, oversize text, unsupported/misconfigured
+// parser) become 400; unexpected failures stay 500.
+func parseErrorStatus(msg string) int {
+	switch msg {
+	case "language must be FI or ET", "text is required":
+		return http.StatusBadRequest
+	}
+	prefixes := []string{
+		"text exceeds ",
+		"unsupported parser ",
+		"omorfi parser only supports ",
+		"omorfi parser is not configured",
+	}
+	for _, p := range prefixes {
+		if strings.HasPrefix(msg, p) {
+			return http.StatusBadRequest
+		}
+	}
+	return http.StatusInternalServerError
 }
 
 func (a *API) SetupRoutes(mux *http.ServeMux) {

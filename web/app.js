@@ -113,12 +113,34 @@ function setParseButtonsDisabled(disabled) {
     document.querySelectorAll('.btn-parse').forEach(btn => {
         btn.disabled = disabled;
     });
+    if (!disabled) {
+        refreshParserAvailability();
+    }
+}
+// Some parsers only support a subset of languages (e.g. omorfi is FI-only).
+// Disable those buttons when the selected language doesn't match data-lang-only.
+function refreshParserAvailability() {
+    const lang = document.getElementById('parse-lang').value;
+    document.querySelectorAll('.btn-parse[data-lang-only]').forEach(btn => {
+        const required = btn.dataset.langOnly;
+        if (required && required !== lang) {
+            btn.disabled = true;
+            btn.title = `This parser only supports ${required}.`;
+        }
+        else {
+            btn.title = '';
+        }
+    });
 }
 function compareStrings(a, b) {
     return a.localeCompare(b, undefined, { sensitivity: 'base' });
 }
 function formatParserMode(parserMode) {
-    return parserMode === 'custom' ? 'Custom parser' : 'Basic parser';
+    switch (parserMode) {
+        case 'omorfi': return 'Omorfi parser';
+        case 'custom': return 'Custom parser';
+        default: return 'Basic parser';
+    }
 }
 function formatParseDuration(parseDurationMs) {
     if (parseDurationMs < 1000) {
@@ -285,8 +307,7 @@ async function handleParseSubmit(e, parserMode) {
     const text = document.getElementById('parse-text').value.trim();
     const lang = document.getElementById('parse-lang').value;
     const warningState = getLangWarningState(text, lang);
-    const btnBasic = document.getElementById('parse-btn-basic');
-    const btnCustom = document.getElementById('parse-btn-custom');
+    const activeBtn = document.getElementById(`parse-btn-${parserMode}`);
     if (!text)
         return;
     if (text.length > MAX_CHARS) {
@@ -295,10 +316,12 @@ async function handleParseSubmit(e, parserMode) {
     }
     if (warningState.blocksParse)
         return;
-    btnBasic.disabled = true;
-    btnCustom.disabled = true;
-    const activeBtn = parserMode === 'custom' ? btnCustom : btnBasic;
-    const origLabel = activeBtn.textContent || '';
+    if (parserMode === 'omorfi' && lang !== 'FI') {
+        alert('Omorfi only supports Finnish (FI).');
+        return;
+    }
+    setParseButtonsDisabled(true);
+    const origLabel = activeBtn.innerHTML;
     activeBtn.textContent = 'Parsing…';
     try {
         const resp = await fetch('/api/parse', {
@@ -317,8 +340,8 @@ async function handleParseSubmit(e, parserMode) {
         alert(`Parse failed: ${err.message}`);
     }
     finally {
+        activeBtn.innerHTML = origLabel;
         updateLangWarning();
-        activeBtn.textContent = origLabel;
     }
 }
 // ── Results rendering ──────────────────────────────────────────────────────
@@ -363,7 +386,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     // Also re-check warning when language selector changes
     document.getElementById('parse-lang')
-        ?.addEventListener('change', updateLangWarning);
+        ?.addEventListener('change', () => {
+        updateLangWarning();
+        refreshParserAvailability();
+    });
     document.getElementById('lang-switch-btn')
         ?.addEventListener('click', () => {
         const text = document.getElementById('parse-text').value;
@@ -391,8 +417,11 @@ document.addEventListener('DOMContentLoaded', () => {
         ?.addEventListener('click', (e) => handleParseSubmit(e, 'basic'));
     document.getElementById('parse-btn-custom')
         ?.addEventListener('click', (e) => handleParseSubmit(e, 'custom'));
+    document.getElementById('parse-btn-omorfi')
+        ?.addEventListener('click', (e) => handleParseSubmit(e, 'omorfi'));
     document.getElementById('parse-form')
         ?.addEventListener('submit', (e) => handleParseSubmit(e, 'basic'));
+    refreshParserAvailability();
     document.querySelectorAll('.sort-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             if (!currentResults)
