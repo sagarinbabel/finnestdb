@@ -328,6 +328,36 @@ Formula:
 
 This is the better proxy for "how much of this content can I understand?"
 
+### 3. Comprehension prediction (before/after)
+
+Beyond showing current coverage, the UI should project how coverage changes
+as the user learns more words. For a given deck:
+
+- "You currently understand ~72% of this content"
+- "Learning the top 20 new words brings you to ~85%"
+- "Learning the top 50 brings you to ~91%"
+
+This is computed by iterating through the ranked new-card list and
+cumulatively adding each word's token_count to the known total.
+
+This before/after framing is a strong motivator for learners (see Surasura's
+comprehension prediction UX for prior art).
+
+### 4. Cross-deck comprehension gain
+
+When a user has multiple decks in their study list, a word may appear in
+several of them. The marginal comprehension gain of learning a word is the
+sum of token_counts it unlocks across all active decks, not just the
+currently selected source.
+
+Formula for cross-deck gain of a candidate lemma:
+
+`sum(token_count for lemma across all study-list decks where lemma is unknown)`
+
+This can serve as an alternative ranking mode for new-card selection (see
+§New card selection). It answers: "which single word would unlock the most
+text across everything I'm studying?"
+
 ## What counts as "known" for coverage
 
 This needs a rule. Recommended MVP rule:
@@ -429,6 +459,37 @@ Recommendation:
 - Do not design the system around reusing sentences from uploaded books, subtitles, or TV transcripts as a shared corpus unless rights are cleared first.
 - Keep user-deck sentence context separate from the reusable example-sentence corpus.
 - For now, treat `example_sentences` as a corpus-owned dataset only, not a user-contributed table.
+
+## Known-word bootstrap via external import
+
+Coverage metrics and study sequencing are only useful if the user's known-word
+state reflects reality. A returning learner who already knows 2,000 Finnish
+words will see 0% comprehension until those words are marked known.
+
+### Recommended import sources
+
+- **Anki export**: extract front-field text from an exported deck, run each
+  entry through `BatchLookupForms` to resolve to (lemma, pos), insert matches
+  into `user_known_lemmas`
+- **CSV/TSV**: accept a simple `lemma,pos,lang` format for users with custom
+  word lists
+- **Bulk mark from parse results**: let the user select words from a parse
+  result and mark them as known in bulk (this is already somewhat possible
+  via the UI but should be a first-class flow)
+
+### Import endpoint
+
+`POST /api/import/known-words`
+
+Input: `{lang, source_type, data}` where `data` is either a file upload or
+a JSON array of `{form}` entries.
+
+Behavior:
+
+- Resolve each form against the dictionary using the existing fallback chain
+- Insert resolved (lemma, pos) pairs into `user_known_lemmas`
+- Return a summary: `{imported, skipped_unknown, skipped_duplicate}`
+- Do not create cards for imported known words (they are already known)
 
 ## Suggested API shape
 

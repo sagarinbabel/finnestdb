@@ -177,6 +177,19 @@ return to broader product features such as:
 Those features still matter, but they are intentionally downstream of parser
 quality.
 
+Additional product features identified from prior-art analysis (Surasura):
+
+- comprehension prediction: show before/after comprehension % per deck
+- cross-deck study optimization: rank new words by total unlock value across
+  all active decks, not just the current source
+- EPUB and file upload: accept .epub and .txt files alongside pasted text
+- known-word import: bootstrap user_known_lemmas from Anki exports or CSV so
+  coverage metrics work from day one
+- progress dashboard: cumulative known-word chart, comprehension trend per
+  deck, daily review stats
+
+These are recorded in detail in `docs/ideas.md` and `docs/srs-deck-spec.md`.
+
 ## Timeline Intent
 
 This document is meant to be a useful record of intended sequence:
