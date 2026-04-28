@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -322,7 +323,24 @@ func defaultOmorfiRules() []omorfiRule {
 func runExternalOmorfi(lang, text string) (*parserffi.AnalysisResult, error) {
 	cmdSpec := strings.TrimSpace(os.Getenv(omorfiCommandEnv))
 	if cmdSpec == "" {
-		return nil, fmt.Errorf("omorfi parser is not configured; set %s to an analyzer command", omorfiCommandEnv)
+		// Auto-default: when the bundled adapter script and python3 are
+		// available, run them directly. Avoids requiring a per-shell env var
+		// for the common dev-environment case after `make setup-omorfi`.
+		//
+		// Search order for the adapter script (cwd-independent — covers
+		// `go run` from the repo root, installed binaries, and systemd):
+		//   1. ./scripts/omorfi_adapter_example.py (cwd is the repo root)
+		//   2. <repo>/scripts/omorfi_adapter_example.py where <repo> is
+		//      walked up from the test executable / cwd looking for go.mod
+		//   3. <executable-dir>/scripts/omorfi_adapter_example.py
+		if py, err := exec.LookPath("python3"); err == nil {
+			if path, ok := findOmorfiAdapter(); ok {
+				cmdSpec = py + " " + path
+			}
+		}
+	}
+	if cmdSpec == "" {
+		return nil, fmt.Errorf("omorfi parser is not configured; set %s or run `make setup-omorfi`", omorfiCommandEnv)
 	}
 	fields := strings.Fields(cmdSpec)
 	if len(fields) == 0 {
@@ -348,6 +366,51 @@ func runExternalOmorfi(lang, text string) (*parserffi.AnalysisResult, error) {
 		return nil, fmt.Errorf("omorfi parser returned invalid JSON: %w", err)
 	}
 	return &result, nil
+}
+
+// findOmorfiAdapter locates the bundled python adapter script in a way that
+// works whether the caller's cwd is the repo root, a sub-package directory
+// (`go test ./internal/parsecore`), or an installed-binary deployment.
+//
+// Returns the absolute path to the script and true on success.
+func findOmorfiAdapter() (string, bool) {
+	const scriptRel = "scripts/omorfi_adapter_example.py"
+
+	// 1. cwd-relative.
+	if abs, err := filepath.Abs(scriptRel); err == nil {
+		if _, err := os.Stat(abs); err == nil {
+			return abs, true
+		}
+	}
+
+	// 2. Walk up from cwd looking for go.mod (repo root).
+	if cwd, err := os.Getwd(); err == nil {
+		dir := cwd
+		for i := 0; i < 8; i++ {
+			if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+				candidate := filepath.Join(dir, scriptRel)
+				if _, err := os.Stat(candidate); err == nil {
+					return candidate, true
+				}
+				break
+			}
+			parent := filepath.Dir(dir)
+			if parent == dir {
+				break
+			}
+			dir = parent
+		}
+	}
+
+	// 3. Same directory as the running executable.
+	if exe, err := os.Executable(); err == nil {
+		candidate := filepath.Join(filepath.Dir(exe), scriptRel)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, true
+		}
+	}
+
+	return "", false
 }
 
 func toParsedSentences(result *parserffi.AnalysisResult) []parsedSentence {
