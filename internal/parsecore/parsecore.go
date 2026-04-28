@@ -322,7 +322,17 @@ func defaultOmorfiRules() []omorfiRule {
 func runExternalOmorfi(lang, text string) (*parserffi.AnalysisResult, error) {
 	cmdSpec := strings.TrimSpace(os.Getenv(omorfiCommandEnv))
 	if cmdSpec == "" {
-		return nil, fmt.Errorf("omorfi parser is not configured; set %s to an analyzer command", omorfiCommandEnv)
+		// Auto-default: when the bundled adapter script and python3 are
+		// available, run them directly. Avoids requiring a per-shell env var
+		// for the common dev-environment case after `make setup-omorfi`.
+		if py, err := exec.LookPath("python3"); err == nil {
+			if _, err := os.Stat("scripts/omorfi_adapter_example.py"); err == nil {
+				cmdSpec = py + " scripts/omorfi_adapter_example.py"
+			}
+		}
+	}
+	if cmdSpec == "" {
+		return nil, fmt.Errorf("omorfi parser is not configured; set %s or run `make setup-omorfi`", omorfiCommandEnv)
 	}
 	fields := strings.Fields(cmdSpec)
 	if len(fields) == 0 {

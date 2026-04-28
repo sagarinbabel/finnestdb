@@ -53,17 +53,33 @@ def grammar_label_from_ufeats(ufeats: dict) -> str:
     return CASE_LABELS.get(case, case)
 
 
+def find_model() -> Path:
+    """Locate omorfi.analyse.hfst by searching, in order:
+
+    1. $OMORFI_ANALYSE_HFST (explicit override)
+    2. ./.cache/omorfi/omorfi.analyse.hfst (repo-local cache, gitignored)
+    3. ~/.cache/omorfi/omorfi.analyse.hfst (user-level cache, populated by `make setup-omorfi`)
+    """
+    candidates = []
+    env = os.environ.get("OMORFI_ANALYSE_HFST", "").strip()
+    if env:
+        candidates.append(Path(env))
+    candidates.append(Path(".cache/omorfi/omorfi.analyse.hfst").resolve())
+    candidates.append(Path.home() / ".cache" / "omorfi" / "omorfi.analyse.hfst")
+    for path in candidates:
+        if path.is_file():
+            return path
+    raise FileNotFoundError(
+        "Omorfi analyser model not found. Looked in: "
+        + ", ".join(str(c) for c in candidates)
+        + ". Run `make setup-omorfi` to download it."
+    )
+
+
 def load_model() -> Omorfi:
-    model_path = os.environ.get("OMORFI_ANALYSE_HFST", "").strip()
-    if not model_path:
-        model_path = str(Path(".cache/omorfi/omorfi.analyse.hfst").resolve())
-    if not Path(model_path).is_file():
-        raise FileNotFoundError(
-            f"Omorfi analyser model not found at {model_path}. "
-            "Set OMORFI_ANALYSE_HFST to a valid omorfi.analyse.hfst path."
-        )
+    model_path = find_model()
     omorfi = Omorfi()
-    omorfi.load_analyser(model_path)
+    omorfi.load_analyser(str(model_path))
     return omorfi
 
 
