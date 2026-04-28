@@ -3,6 +3,8 @@ package store
 import (
 	"database/sql"
 	"strings"
+
+	"finnestdb/internal/parserules"
 )
 
 // FormResolution holds the result of resolving a surface form to its canonical
@@ -17,23 +19,9 @@ type FormResolution struct {
 	Source       string // how this resolution was found
 }
 
-// finnishPossessiveSuffixes lists Finnish possessive suffixes to try when a
-// surface form is not found directly in the forms table. Ordered longest-first
-// to avoid partial matches (e.g. try -nsa before -sa).
-//
-// Stripping logic:
-//
-//	form → strip suffix → re-lookup stripped form in forms table
-//	Accept only if the stripped form IS in the table (dictionary-validated).
-//	E.g. "kirjassani" - strip "-ni" → "kirjassa" → found → lemma: kirja ✓
-//	     "talo" - try strip "-si" → "tal" → not found → reject ✗
-var finnishPossessiveSuffixes = []string{
-	"nsa", "nsä", // 3rd person (any number): "kirjansa"
-	"mme",        // 1st person plural: "kirjamme"
-	"nne",        // 2nd person plural: "kirjanne"
-	"ni",         // 1st person singular: "kirjani"
-	"si",         // 2nd person singular: "kirjasi"
-}
+// Suffix tables (FinnishPossessiveSuffixes, FinnishCaseSuffixes,
+// EstonianCaseSuffixes) live in the parserules package — see
+// internal/parserules/ for the data and how to extend it.
 
 // BatchLookupForms resolves a slice of surface forms to their canonical
 // (lemma, pos) pairs for the given language.
@@ -100,9 +88,9 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		}
 
 		// Step 4: Case suffix stripping (FI + ET).
-		suffixes := finnishCaseSuffixes
+		suffixes := parserules.FinnishCaseSuffixes
 		if lang == "ET" {
-			suffixes = estonianCaseSuffixes
+			suffixes = parserules.EstonianCaseSuffixes
 		}
 		if resolved, ok := tryCaseSuffixStrip(stmtLemmas, lower, lang, suffixes); ok {
 			result[form] = resolved
@@ -118,7 +106,7 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 //
 // form must already be lowercased — BatchLookupForms normalises before calling.
 func tryStripPossessive(stmt *sql.Stmt, form, lang string) (FormResolution, bool) {
-	for _, suffix := range finnishPossessiveSuffixes {
+	for _, suffix := range parserules.FinnishPossessiveSuffixes {
 		if !strings.HasSuffix(form, suffix) {
 			continue
 		}
@@ -176,65 +164,23 @@ func tryCompoundSplit(stmtForms *sql.Stmt, form, lang string) (FormResolution, b
 
 // ─── Case suffix stripping ──────────────────────────────────────────────────
 
-type caseSuffix struct {
-	suffix string
-	label  string
-}
-
-// Finnish case suffixes (15 cases). Ordered longest-first to avoid partial
-// matches (e.g. "ssaan" before "ssa", "aan" before "n").
-var finnishCaseSuffixes = []caseSuffix{
-	{"ssaan", "inessive (3rd poss)"},
-	{"staan", "elative (3rd poss)"},
-	{"ssa", "inessive"}, {"ssä", "inessive"},
-	{"sta", "elative"}, {"stä", "elative"},
-	{"lla", "adessive"}, {"llä", "adessive"},
-	{"lta", "ablative"}, {"ltä", "ablative"},
-	{"lle", "allative"},
-	{"ksi", "translative"},
-	{"tta", "abessive"}, {"ttä", "abessive"},
-	{"ine", "comitative"},
-	{"aan", "illative"}, {"ään", "illative"}, {"iin", "illative"},
-	{"on", "illative"}, {"un", "illative"}, {"yn", "illative"},
-	{"na", "essive"}, {"nä", "essive"},
-	{"n", "genitive"},
-	{"a", "partitive"}, {"ä", "partitive"},
-	{"t", "nominative plural"},
-}
-
-// Estonian case suffixes (14 cases). Ordered longest-first.
-var estonianCaseSuffixes = []caseSuffix{
-	{"sse", "illative"},
-	{"st", "elative"},
-	{"le", "allative"},
-	{"lt", "ablative"},
-	{"ks", "translative"},
-	{"ta", "abessive"},
-	{"ga", "comitative"},
-	{"ni", "terminative"},
-	{"na", "essive"},
-	{"s", "inessive"},
-	{"l", "adessive"},
-	{"d", "nominative plural"},
-	{"t", "partitive"},
-}
-
 // tryCaseSuffixStrip strips case suffixes and validates the stem against the
 // lemmas table (stricter than forms — reduces false positives from short suffixes).
 //
-// form must already be lowercased.
-func tryCaseSuffixStrip(stmtLemmas *sql.Stmt, form, lang string, suffixes []caseSuffix) (FormResolution, bool) {
+// form must already be lowercased. The suffixes table is provided by the
+// caller from the parserules package.
+func tryCaseSuffixStrip(stmtLemmas *sql.Stmt, form, lang string, suffixes []parserules.CaseSuffix) (FormResolution, bool) {
 	for _, cs := range suffixes {
-		if !strings.HasSuffix(form, cs.suffix) {
+		if !strings.HasSuffix(form, cs.Suffix) {
 			continue
 		}
-		stem := form[:len(form)-len(cs.suffix)]
+		stem := form[:len(form)-len(cs.Suffix)]
 		if len(stem) < 3 { // min stem length to avoid false positives
 			continue
 		}
 		var lemma, pos string
 		if err := stmtLemmas.QueryRow(stem, lang).Scan(&lemma, &pos); err == nil {
-			return FormResolution{Lemma: lemma, POS: pos, GrammarLabel: cs.label, Source: "case_suffix"}, true
+			return FormResolution{Lemma: lemma, POS: pos, GrammarLabel: cs.Label, Source: "case_suffix"}, true
 		}
 	}
 	return FormResolution{}, false
