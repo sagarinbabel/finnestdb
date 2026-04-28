@@ -1135,6 +1135,9 @@ body {
     color: var(--text-secondary);
     font-style: italic;
     line-height: 1.6;
+    max-height: 200px;
+    overflow: hidden;
+    transition: max-height 0.2s ease-out;
 }
 
 .example-text .highlight-form {

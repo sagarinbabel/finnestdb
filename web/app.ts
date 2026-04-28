@@ -39,7 +39,8 @@ interface ParseResponse {
     words:        WordEntry[];
 }
 
-type SortKey = 'row' | 'lemma' | 'pos' | 'forms' | 'definition' | 'grammar' | 'tokens';
+type SortKey = 'row' | 'lemma' | 'pos' | 'forms' | 'definition' | 'tokens';
+type POSFilter = 'all' | 'NOUN' | 'VERB' | 'ADJ' | 'ADV' | 'other';
 
 interface SortState {
     key: SortKey;
@@ -52,6 +53,14 @@ interface DisplayWordEntry extends WordEntry {
 
 let currentResults: ParseResponse | null = null;
 let currentSort: SortState = { key: 'row', dir: 'asc' };
+let currentPOSFilter: POSFilter = 'all';
+
+// POS categories for filtering
+const NOUN_POS = ['NOUN', 'PROPN'];
+const VERB_POS = ['VERB', 'AUX'];
+const ADJ_POS = ['ADJ'];
+const ADV_POS = ['ADV'];
+const OTHER_POS = ['PRON', 'DET', 'ADP', 'NUM', 'CCONJ', 'SCONJ', 'PART', 'INTJ', 'X', 'SYM', 'PUNCT'];
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 
@@ -79,6 +88,23 @@ function toggleTheme(): void {
 function showPage(id: string): void {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById(id)!.classList.add('active');
+}
+
+// ── Toast notifications ────────────────────────────────────────────────────
+
+function showToast(message: string, type: 'info' | 'success' = 'info', duration = 3000): void {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('hiding');
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
 }
 
 // ── Language detection ─────────────────────────────────────────────────────
@@ -207,6 +233,21 @@ function computeCoverageScore(data: ParseResponse): {
     };
 }
 
+function matchesPOSFilter(pos: string, filter: POSFilter): boolean {
+    if (filter === 'all') return true;
+    if (filter === 'NOUN') return NOUN_POS.includes(pos);
+    if (filter === 'VERB') return VERB_POS.includes(pos);
+    if (filter === 'ADJ') return ADJ_POS.includes(pos);
+    if (filter === 'ADV') return ADV_POS.includes(pos);
+    if (filter === 'other') return OTHER_POS.includes(pos);
+    return true;
+}
+
+function filterWords(words: DisplayWordEntry[], filter: POSFilter): DisplayWordEntry[] {
+    if (filter === 'all') return words;
+    return words.filter(w => matchesPOSFilter(w.pos, filter));
+}
+
 function sortWords(words: DisplayWordEntry[], sort: SortState): DisplayWordEntry[] {
     const sorted = [...words];
     const direction = sort.dir === 'asc' ? 1 : -1;
@@ -236,15 +277,6 @@ function sortWords(words: DisplayWordEntry[], sort: SortState): DisplayWordEntry
                 }
                 break;
             }
-            case 'grammar': {
-                const aMissing = a.grammar_label ? 0 : 1;
-                const bMissing = b.grammar_label ? 0 : 1;
-                cmp = aMissing - bMissing;
-                if (cmp === 0) {
-                    cmp = compareStrings(a.grammar_label || '', b.grammar_label || '');
-                }
-                break;
-            }
             case 'tokens':
                 cmp = a.count - b.count;
                 break;
@@ -258,6 +290,17 @@ function sortWords(words: DisplayWordEntry[], sort: SortState): DisplayWordEntry
     });
 
     return sorted;
+}
+
+function highlightFormsInSentence(sentence: string, forms: string[]): string {
+    let result = escapeHtml(sentence);
+    for (const form of forms) {
+        const escaped = escapeHtml(form);
+        // Case-insensitive replacement, preserving original case
+        const regex = new RegExp(`\\b(${escaped})\\b`, 'gi');
+        result = result.replace(regex, '<span class="highlight-form">$1</span>');
+    }
+    return result;
 }
 
 function updateSortButtons(): void {
@@ -277,47 +320,59 @@ function updateSortButtons(): void {
     });
 }
 
+function updatePOSFilterButtons(): void {
+    document.querySelectorAll<HTMLButtonElement>('.pos-filter-chip').forEach(btn => {
+        const filter = btn.dataset.filter as POSFilter | undefined;
+        btn.classList.toggle('active', filter === currentPOSFilter);
+    });
+}
+
 function renderResultsTable(data: ParseResponse): void {
     const tbody = document.getElementById('word-table-body')!;
     const help = document.getElementById('results-help')!;
-    const grammarCells = document.querySelectorAll<HTMLElement>('.col-grammar');
     const baseWords = data.words.map((word, index) => ({ ...word, originalIndex: index }));
-    const sortedWords = sortWords(baseWords, currentSort);
+    const filteredWords = filterWords(baseWords, currentPOSFilter);
+    const sortedWords = sortWords(filteredWords, currentSort);
     const hasGrammar = data.words.some(word => Boolean(word.grammar_label));
 
-    grammarCells.forEach(cell => cell.classList.toggle('is-hidden', !hasGrammar));
     help.textContent = hasGrammar
-        ? `Coverage score = how much of this text produced usable dictionary-backed output. Rows are unique lemma entries. Tokens are per-row occurrences in the parsed text. Grammar appears only when the custom enrichment inferred a case or related label.`
-        : `Coverage score = how much of this text produced usable dictionary-backed output. Rows are unique lemma entries. Tokens are per-row occurrences in the parsed text. Grammar is hidden because this parse did not produce any grammar labels.`;
+        ? `Coverage = dictionary-backed tokens. Grammar labels shown as badges when case/morphology was inferred.`
+        : `Coverage = dictionary-backed tokens. Grammar labels appear when case/morphology inference is available.`;
 
     tbody.innerHTML = sortedWords.map((w, index) => {
         const forms = w.forms.slice(0, 3).map(escapeHtml).join(', ')
             + (w.forms.length > 3 ? ` +${w.forms.length - 3}` : '');
 
+        // Grammar badge (inline with lemma)
+        const grammarBadge = w.grammar_label
+            ? `<span class="grammar-badge">${escapeHtml(w.grammar_label)}</span>`
+            : '';
+
+        // Example sentence with highlighted forms
         const exampleHtml = w.example_sentence
             ? `<details class="example-details">
                 <summary class="example-toggle">▸ example</summary>
-                <span class="example-text">${escapeHtml(w.example_sentence)}</span>
+                <span class="example-text">${highlightFormsInSentence(w.example_sentence, w.forms)}</span>
                </details>`
             : '';
 
         const glossHtml = w.gloss ? escapeHtml(w.gloss) : '<span class="no-gloss">Missing</span>';
-        const grammarHtml = w.grammar_label
-            ? `<span class="grammar-label">${escapeHtml(w.grammar_label)}</span>`
-            : '<span class="no-grammar">—</span>';
+
+        // POS pill with data attribute for styling
+        const posPill = `<span class="pos-pill" data-pos="${escapeHtml(w.pos)}">${escapeHtml(posLabel(w.pos))}</span>`;
 
         return `<tr>
             <td class="col-row">${index + 1}</td>
-            <td class="col-lemma">${escapeHtml(w.lemma)}${exampleHtml}</td>
-            <td class="col-pos">${escapeHtml(posLabel(w.pos))}</td>
+            <td class="col-lemma">${escapeHtml(w.lemma)}${grammarBadge}${exampleHtml}</td>
+            <td class="col-pos">${posPill}</td>
             <td class="col-forms">${forms}</td>
             <td class="col-def">${glossHtml}</td>
-            <td class="col-grammar">${grammarHtml}</td>
             <td class="col-count">${w.count}</td>
         </tr>`;
     }).join('');
 
     updateSortButtons();
+    updatePOSFilterButtons();
 }
 
 // ── Parse form ─────────────────────────────────────────────────────────────
@@ -418,18 +473,24 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: 'basi
     document.getElementById('results-title')!.textContent =
         `"${preview}${ellipsis}" (${langName})`;
     document.getElementById('results-parser')!.textContent = formatParserMode(parserMode);
-    document.getElementById('results-score')!.textContent =
-        `Coverage score ${coverage.score}%`;
     document.getElementById('results-duration')!.textContent =
-        `Parse time ${formatParseDuration(data.parse_duration_ms)}`;
+        `${formatParseDuration(data.parse_duration_ms)}`;
+
+    // Update coverage gauge
+    const coverageFill = document.getElementById('coverage-fill')!;
+    const coverageValue = document.getElementById('coverage-value')!;
+    coverageFill.style.width = `${coverage.score}%`;
+    coverageFill.className = 'coverage-gauge-fill ' +
+        (coverage.score < 50 ? 'low' : coverage.score < 75 ? 'medium' : 'high');
+    coverageValue.textContent = `${coverage.score}%`;
 
     document.getElementById('results-stats')!.textContent =
-        `${uniqueLemmas} unique lemmas (rows) · ${data.total_tokens} total tokens · `
-        + `${coverage.definedRows}/${uniqueLemmas} rows with definitions · `
-        + `${coverage.definedTokens}/${data.total_tokens} tokens covered by definitions`;
+        `${uniqueLemmas} unique lemmas · ${data.total_tokens} tokens · `
+        + `${coverage.definedRows}/${uniqueLemmas} with definitions`;
 
     currentResults = data;
     currentSort = { key: 'row', dir: 'asc' };
+    currentPOSFilter = 'all';
     renderResultsTable(data);
 
     showPage('results-page');
@@ -509,6 +570,26 @@ document.addEventListener('DOMContentLoaded', () => {
         updateLangWarning();
     });
 
+    // Auto-detect language on paste with high confidence
+    textarea?.addEventListener('paste', () => {
+        // Use setTimeout to get the pasted content after it's inserted
+        setTimeout(() => {
+            const text = textarea.value;
+            if (text.trim().length < 20) return;
+
+            const langSelect = document.getElementById('parse-lang') as HTMLSelectElement;
+            const detected = detectLang(text);
+
+            if (detected !== 'unknown' && detected !== langSelect.value) {
+                // High confidence detection — auto-switch
+                langSelect.value = detected;
+                const langName = detected === 'FI' ? 'Finnish' : 'Estonian';
+                showToast(`Switched to ${langName} — detected from text`, 'info');
+                updateLangWarning();
+            }
+        }, 0);
+    });
+
     // Also re-check warning when language selector changes
     document.getElementById('parse-lang')
         ?.addEventListener('change', updateLangWarning);
@@ -556,6 +637,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? { key, dir: currentSort.dir === 'asc' ? 'desc' : 'asc' }
                 : { key, dir: key === 'tokens' ? 'desc' : 'asc' };
 
+            renderResultsTable(currentResults);
+        });
+    });
+
+    // POS filter chips
+    document.querySelectorAll<HTMLButtonElement>('.pos-filter-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!currentResults) return;
+
+            const filter = btn.dataset.filter as POSFilter | undefined;
+            if (!filter) return;
+
+            currentPOSFilter = filter;
             renderResultsTable(currentResults);
         });
     });

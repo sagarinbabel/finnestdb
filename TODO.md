@@ -104,30 +104,62 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
 
 ### Low Priority
 
-7. **Observability**
-   - [ ] Add timing instrumentation to parser steps
-   - [ ] Track analyzer cache hit rates
-   - [ ] Monitor unknown lemma frequency
-   - [ ] Create dashboards/alerts for parser health
+7. **EPUB and file upload support**
+   - [ ] Add EPUB text extraction to the import pipeline (parse XHTML content documents, strip markup, concatenate chapter text)
+   - [ ] Accept file upload in `/api/import/decks` alongside raw text paste
+   - [ ] Support plain-text (.txt) and EPUB (.epub) as initial formats
+   - Surasura already does EPUB extraction for Japanese/Chinese; same approach applies to Finnish/Estonian content
+   - Lowers friction for book-based learners who currently have to paste text manually
 
-8. **Three-part compound splitting**
-7. **Three-part compound splitting**
-   - [ ] Extend `tryCompoundSplit()` to handle recursive/ternary compounds (e.g. "lentokenttäbussi" = lento+kenttä+bussi)
-   - Currently only binary splits are supported, which covers ~90% of Finnish/Estonian compounds
-   - Profile real-world miss rates before implementing — may not be worth the false-positive risk
+8. **External vocabulary import (Anki, CSV)**
+   - [ ] Design an import endpoint (`POST /api/import/known-words`) that accepts a list of known lemmas+POS pairs
+   - [ ] Support Anki deck export (.apkg or exported .txt) as an import source for bootstrapping `user_known_lemmas`
+   - [ ] Support plain CSV/TSV import for users with custom vocabulary lists
+   - [ ] Map imported surface forms to known lemmas using the existing dictionary lookup + fallback chain
+   - Surasura imports known vocabulary from Anki, Migaku, and Jiten.moe to bootstrap the user's known-word state; same idea applies here so coverage metrics and new-card selection are useful from day one
 
-9. **Consonant gradation rules**
-8. **Consonant gradation rules**
-   - [ ] Add Finnish consonant gradation tables (kk→k, pp→p, tt→t, etc.) to case suffix stripping
-   - Case suffix stripping currently requires an exact stem match in the lemmas table; gradation would allow "kaupassa" → "kauppa" (pp→p at morpheme boundary)
-   - Requires a rule table mapping strong↔weak grade pairs; start with the 15 most common patterns
+9. **Comprehension prediction per deck**
+   - [ ] Add a "predicted comprehension %" display to deck detail views using token-weighted coverage
+   - [ ] Show before/after projection: "if you learn the top N words from this deck, your comprehension goes from X% to Y%"
+   - [ ] Compute marginal comprehension gain per word to drive study ordering
+   - Token-weighted coverage (`srs-deck-spec.md §Coverage metrics`) already defines the formula; this item is about surfacing it as a prominent UI feature
+   - Surasura's core UX centers on showing comprehension percentages before and after consuming media
 
-10. **Bloom filter for compound pre-filtering**
-9. **Bloom filter for compound pre-filtering**
-   - [ ] Profile compound splitting performance on large texts (10k+ tokens) before implementing
-   - Currently each unresolved form triggers up to N×2 SQLite queries for split-point attempts
-   - A Bloom filter over the forms table could eliminate most impossible splits without DB queries
-   - Only implement if profiling shows compound splitting as a bottleneck (>10% of parse time)
+10. **Highest-leverage study ordering across decks**
+    - [ ] Extend new-card ranking to consider comprehension gain across all study-list decks, not just token_count within a single source
+    - [ ] Rank candidate words by: "how many tokens across all active decks does learning this lemma unlock?"
+    - [ ] Allow the user to weight decks by priority (high/medium/low) so words in high-priority content are preferred
+    - Current ranking (`srs-deck-spec.md §New card selection`) sorts by token_count within the selected source; cross-deck optimization would be a meaningful upgrade
+    - Surasura generates "highest-leverage order" study sequences by analyzing frequency across a user's entire content library
+
+11. **Progress dashboard**
+    - [ ] Implement the dashboard tab with learning progress visualization over time
+    - [ ] Show: total known lemmas, cards in review, comprehension trend per deck, daily review count
+    - [ ] Add a cumulative comprehension chart: how does total coverage change as the user learns more words?
+    - The frontend already has a dashboard tab placeholder; this is about filling it with meaningful data
+    - Surasura has an interactive HTML dashboard with progress tracking that users find motivating
+
+12. **Observability**
+    - [ ] Add timing instrumentation to parser steps
+    - [ ] Track analyzer cache hit rates
+    - [ ] Monitor unknown lemma frequency
+    - [ ] Create dashboards/alerts for parser health
+
+13. **Three-part compound splitting**
+    - [ ] Extend `tryCompoundSplit()` to handle recursive/ternary compounds (e.g. "lentokenttäbussi" = lento+kenttä+bussi)
+    - Currently only binary splits are supported, which covers ~90% of Finnish/Estonian compounds
+    - Profile real-world miss rates before implementing — may not be worth the false-positive risk
+
+14. **Consonant gradation rules**
+    - [ ] Add Finnish consonant gradation tables (kk→k, pp→p, tt→t, etc.) to case suffix stripping
+    - Case suffix stripping currently requires an exact stem match in the lemmas table; gradation would allow "kaupassa" → "kauppa" (pp→p at morpheme boundary)
+    - Requires a rule table mapping strong↔weak grade pairs; start with the 15 most common patterns
+
+15. **Bloom filter for compound pre-filtering**
+    - [ ] Profile compound splitting performance on large texts (10k+ tokens) before implementing
+    - Currently each unresolved form triggers up to N×2 SQLite queries for split-point attempts
+    - A Bloom filter over the forms table could eliminate most impossible splits without DB queries
+    - Only implement if profiling shows compound splitting as a bottleneck (>10% of parse time)
 
 ## Notes
 
