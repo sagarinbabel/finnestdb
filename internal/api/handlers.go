@@ -309,10 +309,11 @@ type ParseRequest struct {
 type WordEntry = parsecore.WordEntry
 
 type ParseResponse struct {
-	Lang            string      `json:"lang"`
-	TotalTokens     int         `json:"total_tokens"`
-	ParseDurationMs int64       `json:"parse_duration_ms"`
-	Words           []WordEntry `json:"words"`
+	Lang            string               `json:"lang"`
+	TotalTokens     int                  `json:"total_tokens"`
+	ParseDurationMs int64                `json:"parse_duration_ms"`
+	Stats           parsecore.ParseStats `json:"stats"`
+	Words           []WordEntry          `json:"words"`
 }
 
 func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
@@ -358,6 +359,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		Lang:            parsed.Lang,
 		TotalTokens:     parsed.TotalTokens,
 		ParseDurationMs: parsed.ParseDurationMs,
+		Stats:           parsed.Stats,
 		Words:           parsed.Words,
 	})
 }
