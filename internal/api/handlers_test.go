@@ -487,6 +487,112 @@ func TestKnownWordsImportListAndDelete(t *testing.T) {
 	}
 }
 
+func TestKnownWordsImportReturnsUnresolvedWithoutCreatingRows(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "unknown@example.com")
+
+	importReq := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["tuntematon","mysteeri"]}`))
+	for _, cookie := range cookies {
+		importReq.AddCookie(cookie)
+	}
+	importRec := httptest.NewRecorder()
+	mux.ServeHTTP(importRec, importReq)
+
+	if importRec.Code != http.StatusOK {
+		t.Fatalf("import status=%d want %d body=%q", importRec.Code, http.StatusOK, importRec.Body.String())
+	}
+
+	var importResp KnownWordsResponse
+	if err := json.NewDecoder(bytes.NewReader(importRec.Body.Bytes())).Decode(&importResp); err != nil {
+		t.Fatalf("decode import response: %v", err)
+	}
+	if len(importResp.Imported) != 0 {
+		t.Fatalf("imported=%d want 0 (%+v)", len(importResp.Imported), importResp.Imported)
+	}
+	if len(importResp.Unresolved) != 2 {
+		t.Fatalf("unresolved=%d want 2 (%+v)", len(importResp.Unresolved), importResp.Unresolved)
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=FI", nil)
+	for _, cookie := range cookies {
+		listReq.AddCookie(cookie)
+	}
+	listRec := httptest.NewRecorder()
+	mux.ServeHTTP(listRec, listReq)
+
+	var listResp KnownWordsListResponse
+	if err := json.NewDecoder(bytes.NewReader(listRec.Body.Bytes())).Decode(&listResp); err != nil {
+		t.Fatalf("decode list response: %v", err)
+	}
+	if len(listResp.KnownWords) != 0 {
+		t.Fatalf("known_words=%d want 0 (%+v)", len(listResp.KnownWords), listResp.KnownWords)
+	}
+}
+
+func TestKnownWordsAreIsolatedByLanguage(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+		t.Fatalf("UpsertLemma FI: %v", err)
+	}
+	if err := api.store.UpsertForm("kissoja", "kissa", "NOUN", "FI"); err != nil {
+		t.Fatalf("UpsertForm FI: %v", err)
+	}
+	if err := api.store.UpsertLemma("kass", "NOUN", "cat", "ET"); err != nil {
+		t.Fatalf("UpsertLemma ET: %v", err)
+	}
+	if err := api.store.UpsertForm("kasse", "kass", "NOUN", "ET"); err != nil {
+		t.Fatalf("UpsertForm ET: %v", err)
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "bilingual@example.com")
+
+	for _, body := range []string{
+		`{"lang":"FI","words":["kissoja"]}`,
+		`{"lang":"ET","words":["kasse"]}`,
+	} {
+		req := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(body))
+		for _, cookie := range cookies {
+			req.AddCookie(cookie)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("import status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+		}
+	}
+
+	fiReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=FI", nil)
+	etReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=ET", nil)
+	for _, req := range []*http.Request{fiReq, etReq} {
+		for _, cookie := range cookies {
+			req.AddCookie(cookie)
+		}
+	}
+
+	fiRec := httptest.NewRecorder()
+	mux.ServeHTTP(fiRec, fiReq)
+	etRec := httptest.NewRecorder()
+	mux.ServeHTTP(etRec, etReq)
+
+	var fiResp KnownWordsListResponse
+	if err := json.NewDecoder(bytes.NewReader(fiRec.Body.Bytes())).Decode(&fiResp); err != nil {
+		t.Fatalf("decode FI list response: %v", err)
+	}
+	if len(fiResp.KnownWords) != 1 || fiResp.KnownWords[0].Lang != "FI" || fiResp.KnownWords[0].Lemma != "kissa" {
+		t.Fatalf("unexpected FI known words: %+v", fiResp.KnownWords)
+	}
+
+	var etResp KnownWordsListResponse
+	if err := json.NewDecoder(bytes.NewReader(etRec.Body.Bytes())).Decode(&etResp); err != nil {
+		t.Fatalf("decode ET list response: %v", err)
+	}
+	if len(etResp.KnownWords) != 1 || etResp.KnownWords[0].Lang != "ET" || etResp.KnownWords[0].Lemma != "kass" {
+		t.Fatalf("unexpected ET known words: %+v", etResp.KnownWords)
+	}
+}
+
 func TestCreateDeckSkipsKnownWordsWhenSeedingCards(t *testing.T) {
 	api := newTestAPI(t)
 	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {

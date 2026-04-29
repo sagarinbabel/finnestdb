@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -249,13 +250,14 @@ func (d *DB) initSchema() error {
 	if _, err := d.db.Exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 		return err
 	}
-	if _, err := d.db.Exec(`ALTER TABLE cards ADD COLUMN lang TEXT NOT NULL DEFAULT ''`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+
+	if err := d.ensureLangScopedKnownTable("user_known_lemmas"); err != nil {
 		return err
 	}
-	if _, err := d.db.Exec(`ALTER TABLE user_known_lemmas ADD COLUMN lang TEXT NOT NULL DEFAULT ''`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+	if err := d.ensureLangScopedKnownTable("user_ignored_lemmas"); err != nil {
 		return err
 	}
-	if _, err := d.db.Exec(`ALTER TABLE user_ignored_lemmas ADD COLUMN lang TEXT NOT NULL DEFAULT ''`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+	if err := d.ensureLangScopedCardsTable(); err != nil {
 		return err
 	}
 
@@ -494,19 +496,32 @@ func (d *DB) IsKnownOrIgnored(userID int64, lang, lemma, pos string) (bool, erro
 }
 
 func (d *DB) EnsureCard(userID int64, lang, lemma, pos string) (int64, error) {
-	_, err := d.db.Exec(
-		`INSERT OR IGNORE INTO cards (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
+	var cardID int64
+	err := d.db.QueryRow(
+		`SELECT id FROM cards WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ? AND mwe_id IS NULL`,
+		userID, lang, lemma, pos,
+	).Scan(&cardID)
+	if err == nil {
+		if _, err := d.db.Exec(
+			`INSERT OR IGNORE INTO card_state (card_id, fsrs_json, next_due, last_answer_at) VALUES (?, NULL, NULL, NULL)`,
+			cardID,
+		); err != nil {
+			return 0, err
+		}
+		return cardID, nil
+	}
+	if err != sql.ErrNoRows {
+		return 0, err
+	}
+
+	result, err := d.db.Exec(
+		`INSERT INTO cards (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
 		userID, lang, lemma, pos,
 	)
 	if err != nil {
 		return 0, err
 	}
-
-	var cardID int64
-	err = d.db.QueryRow(
-		`SELECT id FROM cards WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ? AND mwe_id IS NULL`,
-		userID, lang, lemma, pos,
-	).Scan(&cardID)
+	cardID, err = result.LastInsertId()
 	if err != nil {
 		return 0, err
 	}
@@ -670,4 +685,209 @@ func boolToInt(v bool) int {
 		return 1
 	}
 	return 0
+}
+
+func (d *DB) ensureLangScopedKnownTable(table string) error {
+	hasLang, err := d.tableHasColumn(table, "lang")
+	if err != nil {
+		return err
+	}
+	inPrimaryKey, err := d.columnInPrimaryKey(table, "lang")
+	if err != nil {
+		return err
+	}
+	if hasLang && inPrimaryKey {
+		return nil
+	}
+
+	tmpTable := table + "_new"
+	createStmt := fmt.Sprintf(`
+		CREATE TABLE %s (
+			user_id INTEGER NOT NULL,
+			lang TEXT NOT NULL DEFAULT 'FI',
+			lemma TEXT NOT NULL,
+			pos TEXT NOT NULL,
+			PRIMARY KEY(user_id, lang, lemma, pos),
+			FOREIGN KEY(user_id) REFERENCES users(id)
+		)`, tmpTable)
+	if _, err := d.db.Exec(createStmt); err != nil {
+		return err
+	}
+
+	insertStmt := fmt.Sprintf(
+		`INSERT OR IGNORE INTO %s (user_id, lang, lemma, pos)
+		 SELECT user_id, 'FI', lemma, pos FROM %s`,
+		tmpTable, table,
+	)
+	if _, err := d.db.Exec(insertStmt); err != nil {
+		return err
+	}
+	if _, err := d.db.Exec(`DROP TABLE ` + table); err != nil {
+		return err
+	}
+	if _, err := d.db.Exec(`ALTER TABLE ` + tmpTable + ` RENAME TO ` + table); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *DB) ensureLangScopedCardsTable() error {
+	hasLang, err := d.tableHasColumn("cards", "lang")
+	if err != nil {
+		return err
+	}
+	hasUnique, err := d.tableHasUniqueIndex("cards", []string{"user_id", "lang", "lemma", "pos", "mwe_id"})
+	if err != nil {
+		return err
+	}
+	if hasLang && hasUnique {
+		return nil
+	}
+
+	if _, err := d.db.Exec(`
+		CREATE TABLE cards_new (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			lang TEXT NOT NULL DEFAULT '',
+			lemma TEXT NOT NULL,
+			pos TEXT NOT NULL,
+			mwe_id INTEGER,
+			FOREIGN KEY(user_id) REFERENCES users(id),
+			UNIQUE(user_id, lang, lemma, pos, mwe_id)
+		)`); err != nil {
+		return err
+	}
+
+	if _, err := d.db.Exec(`
+		INSERT OR IGNORE INTO cards_new (user_id, lang, lemma, pos)
+		SELECT DISTINCT d.user_id, d.lang, o.lemma, o.pos
+		FROM occurrence o
+		JOIN decks d ON d.id = o.deck_id
+		WHERE o.lemma != '' AND o.pos != ''`); err != nil {
+		return err
+	}
+
+	if _, err := d.db.Exec(`DROP TABLE card_state`); err != nil {
+		return err
+	}
+	if _, err := d.db.Exec(`DROP TABLE cards`); err != nil {
+		return err
+	}
+	if _, err := d.db.Exec(`ALTER TABLE cards_new RENAME TO cards`); err != nil {
+		return err
+	}
+	if _, err := d.db.Exec(`
+		CREATE TABLE card_state (
+			card_id INTEGER PRIMARY KEY,
+			fsrs_json TEXT,
+			next_due DATETIME,
+			last_answer_at DATETIME,
+			FOREIGN KEY(card_id) REFERENCES cards(id)
+		)`); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *DB) tableHasColumn(table, column string) (bool, error) {
+	rows, err := d.db.Query(`PRAGMA table_info(` + table + `)`)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name, columnType string
+		var notNull, primaryKey int
+		var defaultValue any
+		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &primaryKey); err != nil {
+			return false, err
+		}
+		if name == column {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
+}
+
+func (d *DB) columnInPrimaryKey(table, column string) (bool, error) {
+	rows, err := d.db.Query(`PRAGMA table_info(` + table + `)`)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name, columnType string
+		var notNull, primaryKey int
+		var defaultValue any
+		if err := rows.Scan(&cid, &name, &columnType, &notNull, &defaultValue, &primaryKey); err != nil {
+			return false, err
+		}
+		if name == column && primaryKey > 0 {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
+}
+
+func (d *DB) tableHasUniqueIndex(table string, columns []string) (bool, error) {
+	rows, err := d.db.Query(`PRAGMA index_list(` + table + `)`)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var seq int
+		var name string
+		var unique int
+		var origin, partial string
+		if err := rows.Scan(&seq, &name, &unique, &origin, &partial); err != nil {
+			return false, err
+		}
+		if unique == 0 {
+			continue
+		}
+		matches, err := d.indexMatchesColumns(name, columns)
+		if err != nil {
+			return false, err
+		}
+		if matches {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
+}
+
+func (d *DB) indexMatchesColumns(indexName string, columns []string) (bool, error) {
+	rows, err := d.db.Query(`PRAGMA index_info(` + indexName + `)`)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	found := []string{}
+	for rows.Next() {
+		var seqno, cid int
+		var name string
+		if err := rows.Scan(&seqno, &cid, &name); err != nil {
+			return false, err
+		}
+		found = append(found, name)
+	}
+	if err := rows.Err(); err != nil {
+		return false, err
+	}
+	if len(found) != len(columns) {
+		return false, nil
+	}
+	for i := range found {
+		if found[i] != columns[i] {
+			return false, nil
+		}
+	}
+	return true, nil
 }

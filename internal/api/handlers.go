@@ -115,6 +115,12 @@ type ParseFeedbackListResponse struct {
 	Feedback []store.ParseFeedback `json:"feedback"`
 }
 
+type cardKey struct {
+	Lang  string
+	Lemma string
+	POS   string
+}
+
 type CardResponse struct {
 	CardID     string     `json:"card_id"`
 	Mode       string     `json:"mode"`
@@ -295,6 +301,16 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
 	var req CreateDeckRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
@@ -316,23 +332,50 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth, err := a.getCurrentUser(r)
-	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		return
-	}
-	if auth == nil {
-		http.Error(w, "Authentication required", http.StatusUnauthorized)
-		return
-	}
-
 	parsed, err := a.analyze(a.store, req.Lang, req.Text, "custom")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Create deck
+	cardKeys := make(map[cardKey]struct{})
+	for _, sent := range parsed.Sentences {
+		for _, token := range sent.Tokens {
+			if token.POS == "PUNCT" {
+				continue
+			}
+			lemma := token.Lemma
+			if lemma == "" {
+				lemma = strings.ToLower(token.Form)
+			}
+			pos := token.POS
+			if lemma == "" {
+				continue
+			}
+			if pos == "" {
+				continue
+			}
+			cardKeys[cardKey{Lang: req.Lang, Lemma: lemma, POS: pos}] = struct{}{}
+		}
+	}
+
+	for key := range cardKeys {
+		isKnown, err := a.store.IsKnownOrIgnored(auth.UserID, key.Lang, key.Lemma, key.POS)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		if isKnown {
+			continue
+		}
+		if _, err := a.store.EnsureCard(auth.UserID, key.Lang, key.Lemma, key.POS); err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Create deck only after global card seeding succeeds so failed seeding
+	// cannot leave behind a half-populated deck.
 	deckID, err := a.store.CreateDeck(auth.UserID, req.Title, req.Lang)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -340,7 +383,6 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Store sentences and occurrence records.
-	cardKeys := make(map[string]struct{})
 	for _, sent := range parsed.Sentences {
 		if sent.Text == "" {
 			continue
@@ -366,30 +408,6 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 			if err := a.store.CreateOccurrence(deckID, sentenceID, tokenIx, lemma, pos); err != nil {
 				fmt.Fprintf(os.Stderr, "Error creating occurrence: %v\n", err)
 			}
-			if pos == "" {
-				continue
-			}
-			key := req.Lang + "\x00" + lemma + "\x00" + pos
-			cardKeys[key] = struct{}{}
-		}
-	}
-
-	for key := range cardKeys {
-		parts := strings.Split(key, "\x00")
-		if len(parts) != 3 {
-			continue
-		}
-		isKnown, err := a.store.IsKnownOrIgnored(auth.UserID, parts[0], parts[1], parts[2])
-		if err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
-		}
-		if isKnown {
-			continue
-		}
-		if _, err := a.store.EnsureCard(auth.UserID, parts[0], parts[1], parts[2]); err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
 		}
 	}
 
