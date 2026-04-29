@@ -312,6 +312,32 @@ func TestHandleMeReturnsAnonymousStateWithoutCookie(t *testing.T) {
 	}
 }
 
+func TestHandleMeTreatsUnknownCookieUserAsAnonymous(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	req.AddCookie(&http.Cookie{Name: "user_id", Value: "999999"})
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var resp MeResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode /api/me response: %v", err)
+	}
+	if resp.Authenticated {
+		t.Fatal("expected unknown-cookie user to be treated as anonymous")
+	}
+	if resp.User != nil {
+		t.Fatalf("expected nil user for unknown-cookie response, got %+v", resp.User)
+	}
+}
+
 func TestHandleMeReturnsAdminState(t *testing.T) {
 	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
 

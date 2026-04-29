@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -165,6 +166,9 @@ func (a *API) getCurrentUser(r *http.Request) (*AuthContext, error) {
 
 	user, err := a.store.GetUserByID(userID)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
