@@ -3,6 +3,8 @@ package store
 import (
 	"database/sql"
 	"encoding/json"
+	"os"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -16,6 +18,7 @@ type User struct {
 	ID            int64
 	Email         string
 	EmailVerified bool
+	IsAdmin       bool
 	Settings      map[string]interface{}
 }
 
@@ -62,6 +65,7 @@ func (d *DB) initSchema() error {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT UNIQUE,
 		email_verified INTEGER DEFAULT 0,
+		is_admin INTEGER DEFAULT 0,
 		settings_json TEXT DEFAULT '{"new_per_day":20,"retention":0.9,"theme":"system"}'
 	);
 
@@ -158,24 +162,36 @@ func (d *DB) initSchema() error {
 	`
 
 	_, err := d.db.Exec(schema)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if _, err := d.db.Exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
+
+	return nil
 }
 
 func (d *DB) GetOrCreateUser(email string) (*User, error) {
 	var user User
 	var settingsJSON string
+	email = normalizeEmail(email)
+	isAdmin := isAdminEmail(email)
 
 	err := d.db.QueryRow(
-		"SELECT id, email, email_verified, settings_json FROM users WHERE email = ?",
+		`SELECT id, email, email_verified, is_admin, settings_json
+		 FROM users
+		 WHERE lower(email) = ?`,
 		email,
-	).Scan(&user.ID, &user.Email, &user.EmailVerified, &settingsJSON)
+	).Scan(&user.ID, &user.Email, &user.EmailVerified, &user.IsAdmin, &settingsJSON)
 
 	if err == sql.ErrNoRows {
 		// Create new user
 		settingsJSON = `{"new_per_day":20,"retention":0.9,"theme":"system"}`
 		result, err := d.db.Exec(
-			"INSERT INTO users (email, email_verified, settings_json) VALUES (?, 1, ?)",
-			email, settingsJSON,
+			"INSERT INTO users (email, email_verified, is_admin, settings_json) VALUES (?, 1, ?, ?)",
+			email, boolToInt(isAdmin), settingsJSON,
 		)
 		if err != nil {
 			return nil, err
@@ -183,9 +199,33 @@ func (d *DB) GetOrCreateUser(email string) (*User, error) {
 		user.ID, _ = result.LastInsertId()
 		user.Email = email
 		user.EmailVerified = true
+		user.IsAdmin = isAdmin
 		json.Unmarshal([]byte(settingsJSON), &user.Settings)
 		return &user, nil
 	}
+	if err != nil {
+		return nil, err
+	}
+
+	if user.IsAdmin != isAdmin {
+		if _, err := d.db.Exec(`UPDATE users SET is_admin = ? WHERE id = ?`, boolToInt(isAdmin), user.ID); err != nil {
+			return nil, err
+		}
+		user.IsAdmin = isAdmin
+	}
+
+	json.Unmarshal([]byte(settingsJSON), &user.Settings)
+	return &user, nil
+}
+
+func (d *DB) GetUserByID(userID int64) (*User, error) {
+	var user User
+	var settingsJSON string
+
+	err := d.db.QueryRow(
+		`SELECT id, email, email_verified, is_admin, settings_json FROM users WHERE id = ?`,
+		userID,
+	).Scan(&user.ID, &user.Email, &user.EmailVerified, &user.IsAdmin, &settingsJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -262,3 +302,26 @@ func (d *DB) Close() error {
 	return d.db.Close()
 }
 
+func normalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
+}
+
+func isAdminEmail(email string) bool {
+	email = normalizeEmail(email)
+	if email == "" {
+		return false
+	}
+	for _, candidate := range strings.Split(os.Getenv("FINNESTDB_ADMIN_EMAILS"), ",") {
+		if normalizeEmail(candidate) == email {
+			return true
+		}
+	}
+	return false
+}
+
+func boolToInt(v bool) int {
+	if v {
+		return 1
+	}
+	return 0
+}

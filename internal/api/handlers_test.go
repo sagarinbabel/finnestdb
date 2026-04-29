@@ -219,6 +219,22 @@ func TestStubRoutesRemainReachable(t *testing.T) {
 	if meRec.Code != http.StatusOK {
 		t.Fatalf("me status=%d want %d", meRec.Code, http.StatusOK)
 	}
+	var meResp MeResponse
+	if err := json.NewDecoder(bytes.NewReader(meRec.Body.Bytes())).Decode(&meResp); err != nil {
+		t.Fatalf("decode /api/me response: %v", err)
+	}
+	if !meResp.Authenticated {
+		t.Fatal("expected authenticated /api/me response")
+	}
+	if meResp.User == nil || meResp.User.Email != "test@example.com" {
+		t.Fatalf("unexpected user payload: %+v", meResp.User)
+	}
+	if meResp.User.IsAdmin {
+		t.Fatal("expected default test user to be non-admin")
+	}
+	if meResp.Dashboard == nil {
+		t.Fatal("expected dashboard payload for authenticated user")
+	}
 
 	reviewReq := httptest.NewRequest(http.MethodGet, "/api/review/next", nil)
 	reviewRec := httptest.NewRecorder()
@@ -229,4 +245,183 @@ func TestStubRoutesRemainReachable(t *testing.T) {
 	if got := reviewRec.Header().Get("Content-Type"); !strings.Contains(got, "application/json") {
 		t.Fatalf("review next content-type=%q want application/json", got)
 	}
+}
+
+func TestHandleLoginReturnsAuthIdentity(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"email":"alice@example.com","password":"secret"}`))
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if len(rec.Result().Cookies()) == 0 {
+		t.Fatal("expected login to set a session cookie")
+	}
+
+	var resp LoginResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode login response: %v", err)
+	}
+	if !resp.Authenticated {
+		t.Fatal("expected authenticated login response")
+	}
+	if resp.User == nil {
+		t.Fatal("expected user payload in login response")
+	}
+	if resp.User.Email != "alice@example.com" {
+		t.Fatalf("email=%q want alice@example.com", resp.User.Email)
+	}
+	if resp.User.IsAdmin {
+		t.Fatal("expected regular login to be non-admin")
+	}
+}
+
+func TestHandleMeReturnsAnonymousStateWithoutCookie(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var resp MeResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode /api/me response: %v", err)
+	}
+	if resp.Authenticated {
+		t.Fatal("expected anonymous response")
+	}
+	if resp.User != nil {
+		t.Fatalf("expected nil user for anonymous response, got %+v", resp.User)
+	}
+	if resp.Dashboard != nil {
+		t.Fatal("expected no dashboard payload for anonymous response")
+	}
+}
+
+func TestHandleMeTreatsUnknownCookieUserAsAnonymous(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	req.AddCookie(&http.Cookie{Name: "user_id", Value: "999999"})
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var resp MeResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode /api/me response: %v", err)
+	}
+	if resp.Authenticated {
+		t.Fatal("expected unknown-cookie user to be treated as anonymous")
+	}
+	if resp.User != nil {
+		t.Fatalf("expected nil user for unknown-cookie response, got %+v", resp.User)
+	}
+}
+
+func TestHandleMeReturnsAdminState(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "admin@example.com")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var resp MeResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode /api/me response: %v", err)
+	}
+	if !resp.Authenticated || resp.User == nil {
+		t.Fatalf("expected authenticated admin response, got %+v", resp)
+	}
+	if !resp.User.IsAdmin {
+		t.Fatal("expected admin user")
+	}
+}
+
+func TestRequireAuthRejectsAnonymousUser(t *testing.T) {
+	api := newTestAPI(t)
+	handler := api.requireAuth(func(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/protected", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusUnauthorized, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Authentication required") {
+		t.Fatalf("body=%q missing auth error", rec.Body.String())
+	}
+}
+
+func TestRequireAdminRejectsNonAdminUser(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "user@example.com")
+
+	handler := api.requireAdmin(func(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/admin", nil)
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusForbidden, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "Admin access required") {
+		t.Fatalf("body=%q missing admin error", rec.Body.String())
+	}
+}
+
+func loginAndReturnCookies(t *testing.T, mux *http.ServeMux, email string) []*http.Cookie {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(fmt.Sprintf(`{"email":"%s","password":"secret"}`, email)))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("login status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	cookies := rec.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatal("expected login to set cookies")
+	}
+	return cookies
 }
