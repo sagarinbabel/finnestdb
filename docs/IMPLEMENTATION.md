@@ -1,5 +1,13 @@
 # FinEstDB Implementation Notes
 
+_Current as of 2026-04-29 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
+
+> **Note (2026-04-29):** This doc describes the current implementation on
+> `main`, which is still parser-workbench shaped. The consumer-alpha
+> execution plan in [`../TODO.md`](../TODO.md) and the product framing in
+> [`FEATURES.md`](FEATURES.md) describe the product direction for the
+> alpha. Where they conflict with this file, the alpha plan wins.
+
 This document describes the current implementation on `main`.
 
 ## Current Product Surface
