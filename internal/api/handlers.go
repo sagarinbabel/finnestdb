@@ -115,7 +115,6 @@ type ParseFeedbackResponse struct {
 type ParseFeedbackListResponse struct {
 	Feedback []store.ParseFeedback `json:"feedback"`
 }
-
 type cardKey struct {
 	Lang  string
 	Lemma string
