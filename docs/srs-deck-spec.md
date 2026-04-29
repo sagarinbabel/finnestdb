@@ -1,5 +1,13 @@
 # SRS and Deck System Draft
 
+_Current as of 2026-04-29 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
+
+> **Note (2026-04-29):** The consumer-alpha plan in
+> [`../TODO.md`](../TODO.md) ships a thinner alpha scheduler than the full
+> FSRS design described here, with global cards and intentionally minimal
+> backside content. Treat this document as the target spec; the alpha
+> implementation will deviate where called out in PR 6.
+
 ## Recommendation
 
 Use FSRS for scheduling.
