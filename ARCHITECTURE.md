@@ -12,10 +12,12 @@ Current product surface on `main`:
 - parser selection in the browser: `basic` and `custom`
 - file load support for `.txt` / `.md`
 - results page with sortable output, POS filter chips, coverage gauge, and parse duration
+- structured parse-stage stats returned from `parsecore` and `/api/parse`
 - parser evaluation CLI for `basic`, `custom`, and `omorfi`
 - dataset-driven evaluation workflow in `internal/eval`
+- expanded Finnish and Estonian gold datasets under `testdata/parser-eval/*/gold`
 - external-adapter slot for an Omorfi baseline in `internal/parsecore`
-- Playwright smoke test for the parse/results flow
+- Playwright coverage for parse/results, POS filtering, language switching, file upload, and mobile nav
 
 Important distinction:
 
@@ -49,7 +51,7 @@ CURRENT
 | - serve static frontend                                                        |
 | - validate parse request                                                       |
 | - call parsecore.Analyze(...)                                                  |
-| - return JSON parse result                                                     |
+| - return JSON parse result plus parse stats                                    |
 |                                                                                |
 | Partial / not current UI focus:                                                |
 | - /api/decks                                                                   |
@@ -71,6 +73,7 @@ CURRENT
 | - dictionary resolution                                                        |
 | - gloss lookup                                                                 |
 | - word aggregation                                                             |
+| - parse-stage observability metrics                                            |
 |                                                                                |
 | Parsers currently wired in:                                                    |
 | - basic   -> Rust analyzer + direct dictionary lookup                          |
@@ -114,6 +117,7 @@ CURRENT EVALUATION PATH
 | - lemma/POS/grammar/full accuracy                                              |
 | - resolved coverage                                                            |
 | - timing summaries                                                             |
+| - parse-stage stats in case reports and summaries                              |
 | - priority regression detection                                                |
 +-----------------------------------+--------------------------------------------+
                                     |
@@ -123,7 +127,7 @@ CURRENT EVALUATION PATH
 | testdata/parser-eval                                                           |
 |                                                                                |
 | - Finnish gold sets                                                            |
-| - Estonian seed data                                                           |
+| - Estonian gold sets                                                           |
 | - annotation notes                                                             |
 +--------------------------------------------------------------------------------+
 
@@ -242,7 +246,7 @@ Responsibilities:
 
 - compare parser outputs on labeled datasets
 - mine cleaned corpus text for disagreement-heavy candidate sentences
-- record quality and performance metrics
+- record quality, observability, and performance metrics
 - detect regressions and priority failures
 - provide the workflow for judging parser improvements
 
@@ -281,7 +285,7 @@ Responsibilities:
 5. Rust or external analyzer returns token-level analysis.
 6. `parsecore` resolves forms via dictionary/enrichment logic.
 7. `parsecore` aggregates words, glosses, grammar labels, and examples.
-8. API returns parse JSON to the browser.
+8. API returns parse JSON and parse-stage stats to the browser.
 9. Frontend renders summary stats, coverage gauge, POS-filtered rows, and sortable output.
 
 ### Evaluation flow
@@ -290,7 +294,7 @@ Responsibilities:
 2. Dataset JSON is loaded and validated.
 3. Each parser is run across each case with warmup and timed repeats.
 4. Output is compared against expected token annotations.
-5. Accuracy, coverage, and timing metrics are written to a report JSON file.
+5. Accuracy, coverage, and parse-stage observability metrics are written to a report JSON file.
 
 ## Current Boundaries and Caveats
 
@@ -304,8 +308,9 @@ Responsibilities:
 
 The intended sequence from the current codebase is:
 
-1. strengthen parser evaluation
-2. improve parser quality on labeled data
-3. compare custom rules against Omorfi baseline behavior
-4. build a richer lexical knowledge layer
-5. return later to accounts, known-word tracking, and review flows
+1. narrow or remove non-parser backend stubs that do not match the workbench product focus
+2. strengthen parser evaluation with more reviewed Finnish and Estonian gold data
+3. use eval regressions and observability metrics to drive targeted parser fixes
+4. compare custom rules against Omorfi baseline behavior
+5. build a richer lexical knowledge layer
+6. return later to accounts, known-word tracking, and review flows

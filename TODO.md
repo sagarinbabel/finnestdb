@@ -6,6 +6,7 @@ engineering backlog, and longer-term findings from the PRD review.
 ## Table of Contents
 
 - [Current Audit Status](#current-audit-status)
+- [Roadmap Status](#roadmap-status)
 - [Active Engineering Backlog](#active-engineering-backlog)
 - [Critical Findings](#critical-findings)
   - [1. Synchronous Deck Creation Blocking Issue](#1-synchronous-deck-creation-blocking-issue)
@@ -30,14 +31,29 @@ Checklist from the 2026-04-29 repo-wide audit:
 - [x] Compare implementation against `ARCHITECTURE.md` and `docs/IMPLEMENTATION.md`
 - [x] Consolidate current work into this single repo-level TODO file
 
+## Roadmap Status
+
+Current roadmap state:
+
+- [x] Phase 1: workbench hardening and test coverage
+- [x] Phase 2: evaluation data expansion and parser observability
+- [ ] Phase 3: targeted parser improvements driven by eval regressions
+- [ ] Phase 4: design the richer lexical knowledge layer
+- [ ] Phase 5: reintroduce study-product features only after parser quality is strong enough
+
 ## Active Engineering Backlog
 
-Near-term items that remain open after the audit:
+Near-term items that remain open after Phase 1 and Phase 2:
 
 - [x] Add backend/API tests for `POST /api/parse` and the partial deck/review/auth handlers in `internal/api`
 - [x] Expand browser coverage beyond one parse/results smoke flow: nav shell behavior, POS filter chips, language-switch warning, and file-upload flow
+- [x] Add structured parse observability to parser output and evaluation reporting
+- [x] Promote additional Finnish and Estonian gold datasets for parser evaluation
 - [ ] Either implement real auth/deck/review behavior or narrow the exposed stub endpoints so the server surface matches the current product focus
-- [ ] Review the new Finnish draft/gold parser-eval cases for additional promotion or correction after more corpus mining
+- [ ] Freeze refreshed baseline reports that include the new observability fields and latest Finnish/Estonian gold sets
+- [ ] Review additional Finnish and Estonian draft cases for promotion after more corpus mining
+- [ ] Use the new eval regressions to prioritize parser fixes, starting with recursive compounds and consonant gradation
+- [ ] Add analyzer cache-hit and unknown-lemma counters to complement the existing stage-timing stats
 - [ ] Document the expected browser-QA setup more clearly in the repo so Playwright use is obvious on a fresh checkout
 
 ## Critical Findings
@@ -51,7 +67,7 @@ Synchronous deck creation currently assumes the entire 2 MB upload is parsed in-
 
 **Action Items:**
 - [ ] Define operational constraints for parsing: expected latency per 10k tokens, max retries, and when to push work to a background job/queue so `/api/decks` can return quickly with a "processing" state rather than blocking
-- [ ] Plan parser observability: per-step timings, analyzer cache hits, and counters for "unknown lemma / guesser used" so you can see when the pipeline drifts or when corpora/lexicons need updates
+- [ ] Extend parser observability beyond current stage timings with analyzer cache hits and counters for "unknown lemma / guesser used" so you can see when the pipeline drifts or when corpora/lexicons need updates
 
 ### 2. Disambiguation Model Specification Missing
 
@@ -91,7 +107,7 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
 
 1. **Prototype parser with Omorfi integration**
    - [x] Prototype `analyze_text` + Omorfi wiring with a small corpus to validate throughput
-   - [ ] Measure baseline performance (tokens/second, memory usage)
+   - [x] Measure baseline performance via parser-eval timing output and parse-stage observability
    - [ ] Establish timeout and retry policies
 
 2. **MWE lexicon schema**
@@ -99,11 +115,10 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
    - [ ] Create seed lexicon with example entries
    - [ ] Define pattern matching rules
 
-3. **Background job system**
-   - [ ] Design async processing architecture for deck creation
-   - [ ] Implement job queue (in-memory or external)
-   - [ ] Add "processing" state to deck model
-   - [ ] Create webhook/polling mechanism for status updates
+3. **Parser quality fixes from eval regressions**
+   - [ ] Extend `tryCompoundSplit()` to handle recursive/ternary compounds (e.g. "lentokenttäbussi" = lento+kenttä+bussi)
+   - [ ] Add Finnish consonant gradation tables for common stem alternations
+   - [ ] Re-run Finnish and Estonian gold baselines after each fix and keep only justified gains
 
 ### Medium Priority
 
@@ -113,11 +128,9 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
    - [ ] Establish evaluation metrics and baseline
    - [ ] Version model artifacts
 
-5. **Sentence generation**
-   - [ ] Design sentence-level synthesis API
-   - [ ] Implement agreement rules
-   - [ ] Add validation via re-parsing
-   - [ ] Test with various feature changes
+5. **Server surface cleanup**
+   - [ ] Either implement real auth/deck/review behavior or narrow the exposed stub endpoints so the server surface matches the parser-workbench product focus
+   - [ ] Remove or isolate non-parser product scaffolding that no longer reflects the active roadmap
 
 6. **Custom dictionary knowledge graph spike**
    - [ ] Spike a separate custom lexicon for Finnish and Estonian that can accumulate data from multiple upstream dictionaries plus manual edits
@@ -129,58 +142,70 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
 
 ### Low Priority
 
-7. **EPUB and file upload support**
+7. **Background job system**
+   - [ ] Design async processing architecture for deck creation
+   - [ ] Implement job queue (in-memory or external)
+   - [ ] Add "processing" state to deck model
+   - [ ] Create webhook/polling mechanism for status updates
+
+8. **Sentence generation**
+   - [ ] Design sentence-level synthesis API
+   - [ ] Implement agreement rules
+   - [ ] Add validation via re-parsing
+   - [ ] Test with various feature changes
+
+9. **EPUB and file upload support**
    - [ ] Add EPUB text extraction to the import pipeline (parse XHTML content documents, strip markup, concatenate chapter text)
    - [ ] Accept file upload in `/api/import/decks` alongside raw text paste
    - [ ] Support plain-text (.txt) and EPUB (.epub) as initial formats
    - Surasura already does EPUB extraction for Japanese/Chinese; same approach applies to Finnish/Estonian content
    - Lowers friction for book-based learners who currently have to paste text manually
 
-8. **External vocabulary import (Anki, CSV)**
+10. **External vocabulary import (Anki, CSV)**
    - [ ] Design an import endpoint (`POST /api/import/known-words`) that accepts a list of known lemmas+POS pairs
    - [ ] Support Anki deck export (.apkg or exported .txt) as an import source for bootstrapping `user_known_lemmas`
    - [ ] Support plain CSV/TSV import for users with custom vocabulary lists
    - [ ] Map imported surface forms to known lemmas using the existing dictionary lookup + fallback chain
    - Surasura imports known vocabulary from Anki, Migaku, and Jiten.moe to bootstrap the user's known-word state; same idea applies here so coverage metrics and new-card selection are useful from day one
 
-9. **Comprehension prediction per deck**
+11. **Comprehension prediction per deck**
    - [ ] Add a "predicted comprehension %" display to deck detail views using token-weighted coverage
    - [ ] Show before/after projection: "if you learn the top N words from this deck, your comprehension goes from X% to Y%"
    - [ ] Compute marginal comprehension gain per word to drive study ordering
    - Token-weighted coverage (`srs-deck-spec.md §Coverage metrics`) already defines the formula; this item is about surfacing it as a prominent UI feature
    - Surasura's core UX centers on showing comprehension percentages before and after consuming media
 
-10. **Highest-leverage study ordering across decks**
+12. **Highest-leverage study ordering across decks**
     - [ ] Extend new-card ranking to consider comprehension gain across all study-list decks, not just token_count within a single source
     - [ ] Rank candidate words by: "how many tokens across all active decks does learning this lemma unlock?"
     - [ ] Allow the user to weight decks by priority (high/medium/low) so words in high-priority content are preferred
     - Current ranking (`srs-deck-spec.md §New card selection`) sorts by token_count within the selected source; cross-deck optimization would be a meaningful upgrade
     - Surasura generates "highest-leverage order" study sequences by analyzing frequency across a user's entire content library
 
-11. **Progress dashboard**
+13. **Progress dashboard**
     - [ ] Implement the dashboard tab with learning progress visualization over time
     - [ ] Show: total known lemmas, cards in review, comprehension trend per deck, daily review count
     - [ ] Add a cumulative comprehension chart: how does total coverage change as the user learns more words?
     - The frontend already has a dashboard tab placeholder; this is about filling it with meaningful data
     - Surasura has an interactive HTML dashboard with progress tracking that users find motivating
 
-12. **Observability**
-    - [ ] Add timing instrumentation to parser steps
+14. **Observability**
+    - [x] Add timing instrumentation to parser steps
     - [ ] Track analyzer cache hit rates
     - [ ] Monitor unknown lemma frequency
     - [ ] Create dashboards/alerts for parser health
 
-13. **Three-part compound splitting**
+15. **Three-part compound splitting**
     - [ ] Extend `tryCompoundSplit()` to handle recursive/ternary compounds (e.g. "lentokenttäbussi" = lento+kenttä+bussi)
     - Currently only binary splits are supported, which covers ~90% of Finnish/Estonian compounds
     - Profile real-world miss rates before implementing — may not be worth the false-positive risk
 
-14. **Consonant gradation rules**
+16. **Consonant gradation rules**
     - [ ] Add Finnish consonant gradation tables (kk→k, pp→p, tt→t, etc.) to case suffix stripping
     - Case suffix stripping currently requires an exact stem match in the lemmas table; gradation would allow "kaupassa" → "kauppa" (pp→p at morpheme boundary)
     - Requires a rule table mapping strong↔weak grade pairs; start with the 15 most common patterns
 
-15. **Bloom filter for compound pre-filtering**
+17. **Bloom filter for compound pre-filtering**
     - [ ] Profile compound splitting performance on large texts (10k+ tokens) before implementing
     - Currently each unresolved form triggers up to N×2 SQLite queries for split-point attempts
     - A Bloom filter over the forms table could eliminate most impossible splits without DB queries

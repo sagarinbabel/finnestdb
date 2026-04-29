@@ -11,6 +11,7 @@ The shipped frontend is a parser workbench:
 - two parser modes: `basic` and `custom`
 - file load support for `.txt` and `.md`
 - results page with parser metadata, coverage gauge, parse duration, POS filter chips, and sortable output
+- browser-tested parse flows for POS filtering, language switching, file upload, and mobile nav
 
 The dashboard, review, and account systems described in older planning docs are
 not part of the current user-facing flow on `main`.
@@ -43,6 +44,13 @@ Current parse flow:
 4. resolve forms against the dictionary
 5. enrich output with glosses, example sentence, and grammar labels
 6. return parser results plus parse duration and parse-stage stats
+
+Current parse stats returned by `parsecore` and `/api/parse` include:
+
+- unique-form and sentence counts
+- resolved vs unresolved token counts
+- per-source token counts (`dict`, `stub`, fallback sources, `punct`)
+- timing breakdowns for analyzer, form lookup, gloss lookup, sentence resolution, and word enrichment
 
 There is also partial backend support for deck creation and review-related
 tables/endpoints, but those are not the current focus and are not represented
@@ -101,9 +109,9 @@ npm run build
 
 This compiles `app.ts` to `app.js` using the local TypeScript dependency.
 
-### Browser smoke test
+### Browser regression coverage
 
-There is a Playwright smoke test for the parse/results flow:
+There is a Playwright browser suite for the parser workbench:
 
 ```bash
 cd web
@@ -111,7 +119,13 @@ npx playwright test
 ```
 
 The test boots the Go server on `:8081` via `web/playwright.config.ts` and
-checks that parsing reaches the results page successfully.
+checks:
+
+- parse/results rendering
+- POS filter behavior
+- language mismatch blocking and switching
+- file upload flow
+- mobile nav behavior
 
 ## Current Limitations
 
@@ -125,6 +139,7 @@ What does exist now:
 - dataset-based parser evaluation
 - parser comparison CLI
 - parse-stage observability metrics for analyzer, lookups, resolution, and enrichment
+- expanded Finnish and Estonian gold datasets for manual regression checks
 - external Omorfi adapter slot for Finnish baseline testing
 
 ## Near-Term Direction
@@ -133,11 +148,11 @@ The immediate focus is parser quality, not user-account features.
 
 Near-term work:
 
-1. define parser evaluation metrics
-2. create annotated test data
-3. build repeatable parser comparison tooling
-4. improve the custom parser against that benchmark
-5. add Omorfi as a comparison baseline for Finnish
+1. narrow or remove auth/deck/review stubs that do not match the parser-workbench product surface
+2. continue reviewing and promoting Finnish/Estonian gold cases
+3. freeze refreshed baselines with the new observability fields
+4. improve the custom parser against the new eval regressions
+5. keep Omorfi as a comparison baseline for Finnish
 6. design a richer lexical knowledge layer after parser quality improves
 
 Only after that parser layer is strong enough should user accounts, known-word
