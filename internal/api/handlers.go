@@ -30,15 +30,27 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	UserID int64  `json:"user_id"`
-	Email  string `json:"email"`
+	Authenticated bool         `json:"authenticated"`
+	User          *SessionUser `json:"user"`
 }
 
-type DashboardResponse struct {
+type DashboardData struct {
 	KnownCount       int           `json:"known_count"`
 	DueCount         int           `json:"due_count"`
 	NewCapacityToday int           `json:"new_capacity_today"`
 	Decks            []DeckSummary `json:"decks"`
+}
+
+type SessionUser struct {
+	ID      int64  `json:"id"`
+	Email   string `json:"email"`
+	IsAdmin bool   `json:"is_admin"`
+}
+
+type MeResponse struct {
+	Authenticated bool           `json:"authenticated"`
+	User          *SessionUser   `json:"user"`
+	Dashboard     *DashboardData `json:"dashboard,omitempty"`
 }
 
 type DeckSummary struct {
@@ -86,17 +98,68 @@ type CardExample struct {
 	SourceDeck string `json:"source_deck"`
 }
 
-func (a *API) getCurrentUser(r *http.Request) (int64, error) {
-	// Mock auth: get user ID from cookie or default to 1
+type AuthContext struct {
+	UserID  int64
+	Email   string
+	IsAdmin bool
+}
+
+func (a *API) getCurrentUser(r *http.Request) (*AuthContext, error) {
 	cookie, err := r.Cookie("user_id")
 	if err != nil {
-		return 1, nil // Default user for stub
+		return nil, nil
 	}
 	userID, _ := strconv.ParseInt(cookie.Value, 10, 64)
 	if userID == 0 {
-		return 1, nil
+		return nil, nil
 	}
-	return userID, nil
+
+	user, err := a.store.GetUserByID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &AuthContext{
+		UserID:  user.ID,
+		Email:   user.Email,
+		IsAdmin: user.IsAdmin,
+	}, nil
+}
+
+func (a *API) requireAuth(next func(http.ResponseWriter, *http.Request, *AuthContext)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		auth, err := a.getCurrentUser(r)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		if auth == nil {
+			http.Error(w, "Authentication required", http.StatusUnauthorized)
+			return
+		}
+		next(w, r, auth)
+	}
+}
+
+func (a *API) requireAdmin(next func(http.ResponseWriter, *http.Request, *AuthContext)) http.HandlerFunc {
+	return a.requireAuth(func(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+		if !auth.IsAdmin {
+			http.Error(w, "Admin access required", http.StatusForbidden)
+			return
+		}
+		next(w, r, auth)
+	})
+}
+
+func sessionUserFromAuth(auth *AuthContext) *SessionUser {
+	if auth == nil {
+		return nil
+	}
+	return &SessionUser{
+		ID:      auth.UserID,
+		Email:   auth.Email,
+		IsAdmin: auth.IsAdmin,
+	}
 }
 
 func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
@@ -129,16 +192,31 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	})
 
 	writeJSON(w, http.StatusOK, LoginResponse{
-		UserID: user.ID,
-		Email:  user.Email,
+		Authenticated: true,
+		User: &SessionUser{
+			ID:      user.ID,
+			Email:   user.Email,
+			IsAdmin: user.IsAdmin,
+		},
 	})
 }
 
 func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
-	userID, _ := a.getCurrentUser(r)
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		writeJSON(w, http.StatusOK, MeResponse{
+			Authenticated: false,
+			User:          nil,
+		})
+		return
+	}
 
 	// Get decks
-	decks, err := a.store.GetUserDecks(userID)
+	decks, err := a.store.GetUserDecks(auth.UserID)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -156,11 +234,15 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, DashboardResponse{
-		KnownCount:       1234, // Mock data
-		DueCount:         87,   // Mock data
-		NewCapacityToday: 12,   // Mock data
-		Decks:            deckSummaries,
+	writeJSON(w, http.StatusOK, MeResponse{
+		Authenticated: true,
+		User:          sessionUserFromAuth(auth),
+		Dashboard: &DashboardData{
+			KnownCount:       1234, // Mock data
+			DueCount:         87,   // Mock data
+			NewCapacityToday: 12,   // Mock data
+			Decks:            deckSummaries,
+		},
 	})
 }
 
@@ -169,8 +251,6 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
-	userID, _ := a.getCurrentUser(r)
 
 	var req CreateDeckRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -193,6 +273,16 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
 	parsed, err := a.analyze(a.store, req.Lang, req.Text, "custom")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -200,7 +290,7 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create deck
-	deckID, err := a.store.CreateDeck(userID, req.Title, req.Lang)
+	deckID, err := a.store.CreateDeck(auth.UserID, req.Title, req.Lang)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
