@@ -546,10 +546,30 @@ func (d *DB) CreateParseSession(userID *int64, lang, parser, sourceText string, 
 	return result.LastInsertId()
 }
 
-func (d *DB) ParseSessionExists(parseSessionID int64) (bool, error) {
-	var count int
-	err := d.db.QueryRow(`SELECT COUNT(*) FROM parse_sessions WHERE id = ?`, parseSessionID).Scan(&count)
-	return count > 0, err
+func (d *DB) GetParseSession(parseSessionID int64) (*ParseSession, error) {
+	var session ParseSession
+	var userID sql.NullInt64
+	err := d.db.QueryRow(
+		`SELECT id, user_id, lang, parser, source_text, total_tokens, unique_words, created_at
+		 FROM parse_sessions WHERE id = ?`,
+		parseSessionID,
+	).Scan(
+		&session.ID,
+		&userID,
+		&session.Lang,
+		&session.Parser,
+		&session.SourceText,
+		&session.TotalTokens,
+		&session.UniqueWords,
+		&session.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if userID.Valid {
+		session.UserID = &userID.Int64
+	}
+	return &session, nil
 }
 
 func (d *DB) CreateParseFeedback(feedback ParseFeedback) (int64, error) {
@@ -639,13 +659,23 @@ func (d *DB) ListParseFeedback(status string) ([]ParseFeedback, error) {
 }
 
 func (d *DB) ReviewParseFeedback(feedbackID, reviewerUserID int64, status, reviewNote string) error {
-	_, err := d.db.Exec(
+	result, err := d.db.Exec(
 		`UPDATE parse_feedback
 		 SET status = ?, review_note = ?, reviewed_by_user_id = ?, reviewed_at = CURRENT_TIMESTAMP
 		 WHERE id = ?`,
 		status, reviewNote, reviewerUserID, feedbackID,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func (d *DB) Close() error {

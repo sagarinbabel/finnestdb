@@ -698,6 +698,76 @@ func TestParseFeedbackRequiresAuthentication(t *testing.T) {
 	}
 }
 
+func TestParseFeedbackRejectsUnknownParseSession(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "user@example.com")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(`{"parse_id":9999,"lang":"FI","parser":"custom","surface":"kissa","proposed_lemma":"kissa","proposed_pos":"NOUN"}`))
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestParseFeedbackRejectsParseSessionOwnedByAnotherUser(t *testing.T) {
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		if parser == "" {
+			parser = "custom"
+		}
+		return &parsecore.ParseResult{
+			Lang:        lang,
+			Parser:      parser,
+			TotalTokens: 1,
+			Words: []parsecore.WordEntry{
+				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 1},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+	ownerCookies := loginAndReturnCookies(t, mux, "owner@example.com")
+	otherCookies := loginAndReturnCookies(t, mux, "other@example.com")
+
+	parseReq := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"FI","text":"kissa","parser":"custom"}`))
+	for _, cookie := range ownerCookies {
+		parseReq.AddCookie(cookie)
+	}
+	parseRec := httptest.NewRecorder()
+	mux.ServeHTTP(parseRec, parseReq)
+	if parseRec.Code != http.StatusOK {
+		t.Fatalf("parse status=%d want %d body=%q", parseRec.Code, http.StatusOK, parseRec.Body.String())
+	}
+
+	var parseResp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(parseRec.Body.Bytes())).Decode(&parseResp); err != nil {
+		t.Fatalf("decode parse response: %v", err)
+	}
+
+	feedbackReq := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(fmt.Sprintf(`{
+		"parse_id": %d,
+		"lang": "FI",
+		"parser": "custom",
+		"surface": "kissa",
+		"proposed_lemma": "kissa",
+		"proposed_pos": "NOUN"
+	}`, parseResp.ParseID)))
+	for _, cookie := range otherCookies {
+		feedbackReq.AddCookie(cookie)
+	}
+	feedbackRec := httptest.NewRecorder()
+	mux.ServeHTTP(feedbackRec, feedbackReq)
+
+	if feedbackRec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want %d body=%q", feedbackRec.Code, http.StatusForbidden, feedbackRec.Body.String())
+	}
+}
+
 func TestParseFeedbackSubmissionAndAdminReview(t *testing.T) {
 	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
 
@@ -822,6 +892,44 @@ func TestParseFeedbackSubmissionAndAdminReview(t *testing.T) {
 	}
 	if acceptedResp.Feedback[0].ReviewedByUserID == nil {
 		t.Fatal("expected reviewer to be recorded")
+	}
+}
+
+func TestAdminParseFeedbackRejectsUnknownFeedbackReviewTarget(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/admin/parse-feedback?id=9999", strings.NewReader(`{"status":"accepted"}`))
+	for _, cookie := range adminCookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusNotFound, rec.Body.String())
+	}
+}
+
+func TestAdminParseFeedbackRejectsInvalidStatus(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/admin/parse-feedback?id=1", strings.NewReader(`{"status":"approved"}`))
+	for _, cookie := range adminCookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 }
 
