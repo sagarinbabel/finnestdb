@@ -1,7 +1,14 @@
 # FinEstDB TODO - Findings & Action Items
 
+_Current as of 2026-04-29 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
+
 This is the single repo-level task list. It tracks current audit work, active
 engineering backlog, and longer-term findings from the PRD review.
+
+The dated execution plan for the consumer alpha lives at the bottom of this
+file under [2026-04-29 — Consumer alpha execution plan](#2026-04-29--consumer-alpha-execution-plan).
+That plan supersedes the older PRD/parser-workbench framing where they
+conflict.
 
 ## Table of Contents
 
@@ -225,3 +232,273 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
 - Items are organized by severity and implementation priority
 - Check off items as they are completed
 - Update this document as new findings emerge or priorities change
+
+---
+
+## 2026-04-29 — Consumer alpha execution plan
+
+This is the locked execution plan for the FinEstDB consumer alpha. Where
+this plan disagrees with older sections of `TODO.md`,
+`finnestdb-prd-alpha.md`, `ARCHITECTURE.md`, or `docs/IMPLEMENTATION.md`,
+this plan wins. Older sections remain for historical context but are not
+re-litigated here.
+
+Companion docs introduced alongside this plan:
+
+- [docs/FEATURES.md](docs/FEATURES.md)
+- [docs/CROSS_LANGUAGE_STRATEGY.md](docs/CROSS_LANGUAGE_STRATEGY.md)
+- [docs/CHANGELOG.md](docs/CHANGELOG.md)
+
+### Summary
+
+- Build the alpha as a consumer language-learning product with a clear split
+  between:
+  - public/anonymous product surfaces
+  - authenticated user study surfaces
+  - admin-only parser and feedback operations
+- Ship only when Finnish and Estonian are both first-class across the same
+  core user flow: `paste -> inspect -> correct -> deck -> review`.
+- Use global cards so vocabulary knowledge belongs to the user, not to decks.
+- Keep the full parser workbench admin-only.
+- Allow logged-in users to access a lightweight parse-inspection view and
+  submit parser corrections.
+- Use two evaluation tracks:
+  - Track A: offline gold + external benchmark
+  - Track B: live accepted-correction metrics from real usage
+- External benchmark parity:
+  - Finnish: Omorfi
+  - Estonian: EstNLTK / Vabamorf
+- Reuse [`docs/baselines/`](docs/baselines/) as the canonical baseline store.
+- Implement in reviewable slices and open PRs per slice; resolve conflicts
+  as they arise, then stop for review before merge.
+
+### Product model
+
+- **Anonymous visitor**
+  - can see landing and product explanation surfaces
+  - can sign in
+  - cannot create decks
+  - cannot review
+  - cannot submit full parser corrections in alpha
+- **User**
+  - can sign in
+  - can paste/import text
+  - can view lightweight parse inspection
+  - can import known words
+  - can create decks
+  - can review cards
+  - can submit parser corrections
+  - cannot access workbench internals, admin queue, or benchmark/eval tools
+- **Admin**
+  - everything a user can do
+  - full parser workbench access
+  - feedback triage queue
+  - parser comparison/eval surfaces if exposed
+  - weekly parser quality reporting
+  - annotation/testing surfaces
+- **Michael's scope**
+  - production auth and session model
+  - user/admin role separation
+  - payment/paywall/free-tier limits
+  - deployment and live hardening
+  - testing and ET annotation support
+  - not parser-quality strategy owner
+
+### Implementation sequence
+
+#### PR 1 — Planning and product docs
+
+- Append this plan to `TODO.md` under a dated execution-plan section.
+- Create `docs/FEATURES.md`, `docs/CHANGELOG.md`, and
+  `docs/CROSS_LANGUAGE_STRATEGY.md`.
+- Update live planning/architecture docs with dated headers and changelog
+  references.
+- `docs/FEATURES.md` is user-perspective and decision-complete about: what
+  the product is, how users learn before reading, leverage and comprehension
+  concepts, progress tracking concept, mobile web direction, and technology
+  differentiators (fast parser, benchmarked quality, user-correction loop,
+  future autoresearch).
+
+#### PR 2 — Auth roles and surface separation
+
+- Extend the current mock-cookie auth into a role-aware alpha auth model.
+- Add an admin flag to the user model and role-aware response behavior in
+  `GET /api/me`.
+- Split surfaces into anonymous, authenticated user, and admin-only.
+- Restrict the current workbench in `web/index.html` and `web/app.ts` to
+  admin access.
+- Add a lightweight parse-inspection surface for logged-in users.
+- Correction submission requires login. No anonymous full correction flow.
+
+#### PR 3 — Frontend surface split
+
+- Separate anonymous, user, and admin surfaces in the UI.
+- Keep the existing frontend architecture in `web/app.ts`.
+- Add: landing/product explanation, sign-in, deck list, rename/delete,
+  review, known-word import/manage, lightweight parse inspection,
+  admin-only workbench gating, admin feedback queue surface.
+- Preserve one responsive app and existing breakpoints in `web/styles.css`.
+- Validate mobile usability at 375 px.
+
+#### PR 4 — Known words and global cards
+
+- Keep global cards as the alpha model.
+- Implement known-word import with canonical resolution at import time using
+  the existing resolver chain in `internal/store/dict.go`.
+- `POST /api/known-words` returns resolved imports and unresolved inputs.
+- `GET /api/known-words?lang=`
+- delete-one support for known words
+- Deck creation:
+  - persists `sentences` and `occurrence`
+  - derives unique `(lemma, pos)` pairs
+  - skips `user_known_lemmas` and `user_ignored_lemmas`
+  - ensures one global `cards` row and one `card_state` row per remaining pair
+
+#### PR 5 — Parse feedback subsystem
+
+- Add or verify `parse_feedback` schema in `internal/store/db.go`.
+- Add parse/session identifiers to parse results so feedback ties to a
+  specific run.
+- Implement `POST /api/parse/feedback`.
+- Logged-in users can submit corrections from the lightweight
+  parse-inspection view.
+- Add admin queue surface (`/admin/feedback.html` or equivalent) with
+  accept / reject / needs follow-up actions.
+- Accepted corrections become the official signal for live error metrics.
+- Document the full flow in `docs/PARSER_FEEDBACK_LOOP.md`.
+
+#### PR 6 — Deck CRUD and review flow
+
+- Implement: `GET /api/decks`, `PATCH /api/decks/{id}`, `DELETE /api/decks/{id}`.
+- Replace mocked dashboard counts in `GET /api/me`.
+- `DELETE /api/decks/{id}` deletes only the deck content graph
+  (`occurrence`, `sentences`, `decks`). Do not delete `cards` or
+  `card_state`.
+- Add alpha scheduler module and document the deviation from full FSRS in
+  `docs/srs-deck-spec.md`.
+- `GET /api/review/next?deck_id=` means due global cards, optionally
+  filtered to cards appearing in the selected deck's occurrences.
+- `POST /api/review/answer`, `POST /api/card/known`, `POST /api/card/ignore`.
+- Alpha backside content is intentionally thin: lemma, gloss, one example
+  sentence, optional grammar label.
+
+#### PR 7 — Track A evaluation parity (Estonian)
+
+- Use two offline subtracks for each language: gold dataset evaluation and
+  external benchmark comparison.
+- Finnish: compare `basic`, `custom`, `omorfi`.
+- Estonian: compare `basic`, `custom`, external EstNLTK/Vabamorf adapter mode.
+- Expand ET manual gold to at least Finnish manual scale and comparable
+  annotation density.
+- Audit `internal/parserules/estonian.go` against
+  `internal/parserules/finnish.go`: implement ET equivalents where
+  appropriate; document N/A where not applicable; add ET-specific handling
+  for already-identified morphology categories.
+- Add `make eval`, `make compare-parsers`, `make eval-check`.
+- Freeze FI and ET reports under `docs/baselines/`.
+- `docs/EVAL_AND_CI.md` describes gold evaluation, external benchmark
+  evaluation, and baseline regression policy.
+
+#### PR 8 — Track B live quality metrics
+
+- Define production metrics sourced from parse usage plus accepted
+  corrections.
+- Minimum capture: parse id, user id, language, parser mode, token count,
+  unique lemma count, correction submissions, accepted corrections.
+- Minimum derived metrics: accepted correction rate per 1,000 tokens and
+  per 1,000 unique lemmas, by language and by parser mode.
+- Deliver first as a weekly admin report, not a polished analytics dashboard.
+- Document Track B in `docs/EVAL_AND_CI.md` and
+  `docs/PARSER_FEEDBACK_LOOP.md`.
+
+#### PR 9 — Security review and hardening pass
+
+- Scope: auth/session behavior, role enforcement on admin-only routes, CSRF
+  posture for cookie-based auth, XSS exposure in feedback and parse views,
+  rate limiting on login and feedback endpoints, data isolation between
+  users, admin-route leakage to non-admins, correction submission abuse
+  surface.
+- Record findings and dispositions in `docs/SECURITY_REVIEW_ALPHA.md`.
+- Fix any high-severity issues before stopping for merge review.
+
+### Parallel ownership split
+
+- **Main backend owner**: PR-2 (Auth/Roles), PR-4 (Known Words + Global
+  Cards), PR-5 (Parse Feedback), PR-6 (Deck CRUD + Review), PR-8 (Track B
+  Reporting), PR-9 (Security Review).
+- **Second model (parallel safe)**: PR-1 (Planning + Product Docs), PR-3
+  (Frontend Surface Split, after PR-2 contract is fixed), PR-7 (ET
+  Evaluation + Benchmark + Baselines).
+
+High-conflict files where parallel edits must be avoided:
+
+- `internal/api/handlers.go`
+- `internal/store/db.go`
+
+### Public APIs
+
+- `GET /api/me` — role-aware, real dashboard counts
+- `POST /api/auth/login` — role-aware session behavior (alpha entry)
+- `GET /api/decks`
+- `PATCH /api/decks/{id}`
+- `DELETE /api/decks/{id}`
+- `POST /api/known-words`
+- `GET /api/known-words?lang=`
+- `GET /api/review/next?deck_id=`
+- `POST /api/review/answer`
+- `POST /api/card/known`
+- `POST /api/card/ignore`
+- `POST /api/parse/feedback`
+- Admin-only feedback review interface
+
+### Documentation deliverables
+
+- `docs/FEATURES.md` (this PR)
+- `docs/CHANGELOG.md` (this PR)
+- `docs/CROSS_LANGUAGE_STRATEGY.md` (this PR)
+- `docs/SYSTEM_OVERVIEW.md` (later PR)
+- `docs/PARSER.md` (later PR)
+- `docs/PARSER_FEEDBACK_LOOP.md` (PR 5)
+- `docs/EVAL_AND_CI.md` (PR 7 / PR 8)
+- `docs/KNOWN_WORDS.md` (PR 4)
+- `docs/MICHAEL_TODO.md` (later PR)
+- `docs/SECURITY_REVIEW_ALPHA.md` (PR 9)
+
+### Acceptance criteria
+
+1. This plan is appended to the repo's live planning doc and linked from
+   `docs/CHANGELOG.md`.
+2. Anonymous users can access only marketing/product explanation and sign-in.
+3. Logged-in users can complete `paste -> inspect -> correct -> deck -> review`
+   in both FI and ET.
+4. Admins can access workbench and feedback queue; normal users cannot.
+5. Full correction submission requires login.
+6. Known-word import resolves to canonical `(lemma, pos)` and reports
+   unresolved inputs.
+7. Deck deletion removes deck content but not global learning state.
+8. Finnish has gold evaluation plus Omorfi comparison.
+9. Estonian has gold evaluation plus EstNLTK/Vabamorf comparison.
+10. ET manual gold reaches at least FI manual scale and comparable density.
+11. `make eval`, `make compare-parsers`, and `make eval-check` cover both FI
+    and ET.
+12. Frozen FI and ET baseline reports live under `docs/baselines/`.
+13. Weekly admin reporting shows accepted correction rates by language and
+    parser mode.
+14. `docs/CROSS_LANGUAGE_STRATEGY.md` explicitly captures how the parsers
+    improve together at the strategy level.
+15. A lightweight security review is completed and documented before signoff.
+16. PRs are opened in reviewable slices and work stops for review before
+    merge.
+
+### Assumptions
+
+- Global cards are the alpha learning model.
+- Parser workbench is admin-only.
+- Lightweight parse inspection is user-visible only after login.
+- Anonymous full correction submission is out of scope for alpha.
+- Omorfi remains the Finnish external benchmark.
+- EstNLTK / Vabamorf is the Estonian external benchmark.
+- `docs/baselines/` is the single canonical baseline store.
+- Cross-language improvement is shared at the
+  infrastructure/evaluation/error-taxonomy layer, not by copying morphology
+  blindly between languages.

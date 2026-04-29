@@ -1,5 +1,14 @@
 # FinEstDB Architecture
 
+_Current as of 2026-04-29 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
+
+> **Note (2026-04-29):** As of the consumer-alpha execution plan, the parser
+> workbench described here is being scoped to admin users only. The
+> consumer product surface is described in [docs/FEATURES.md](docs/FEATURES.md),
+> and the migration is tracked in [TODO.md](TODO.md). This document still
+> describes the underlying architecture accurately; the user-facing role
+> split lives in those newer docs.
+
 Parser workbench for Finnish and Estonian text, focused on dictionary-backed
 lemmatization, parser evaluation, and future lexical knowledge work.
 

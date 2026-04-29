@@ -1,5 +1,13 @@
 # Project Decisions and Roadmap
 
+_Current as of 2026-04-29 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
+
+> **Note (2026-04-29):** The consumer-alpha execution plan in
+> [`../TODO.md`](../TODO.md) and the product framing in
+> [`FEATURES.md`](FEATURES.md) take precedence over older decisions
+> recorded here where they conflict. Older entries remain for historical
+> context.
+
 This document tracks key architectural decisions, the reasoning behind them, and the
 project roadmap. It serves as a journal of how the project evolves and why we made
 the choices we did.

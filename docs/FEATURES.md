@@ -1,0 +1,131 @@
+_Current as of 2026-04-29 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
+
+# FinEstDB Features
+
+FinEstDB is a consumer language-learning product for Finnish and Estonian
+readers. It is not a parser workbench. The workbench still exists, but it
+is an internal admin surface, not the product users see.
+
+This document describes the alpha product from a user perspective.
+
+## What FinEstDB Is
+
+FinEstDB helps you read real Finnish and Estonian text by letting you
+pre-learn the vocabulary that actually appears in what you want to read.
+
+Instead of grinding generic frequency lists, you paste the text you want
+to read — an article, a chapter, a song — and FinEstDB:
+
+- breaks it into the unique words it contains
+- skips words you already know
+- builds a small study deck from the rest
+- gives you spaced-repetition review for those words
+- tracks your progress so the next thing you read has fewer unknowns
+
+The pitch: pre-mine vocabulary before reading, so the reading itself is
+enjoyable instead of a dictionary lookup grind.
+
+## How You Learn With FinEstDB
+
+The core loop is `paste -> inspect -> correct -> deck -> review`.
+
+1. Paste or upload text in Finnish or Estonian.
+2. Inspect the parsed result: every unique word, its lemma, its meaning.
+3. Correct the parser if it gets a word wrong (logged-in users only).
+4. Save the unknown words as a deck.
+5. Review the deck with spaced repetition.
+6. Read the source text afterwards with much higher comprehension.
+
+Cards are global. A word you have learned in one deck stays learned in
+every other deck that contains the same lemma. Deleting a deck does not
+erase what you have learned — it only removes that particular source
+material.
+
+## Leverage and Comprehension
+
+FinEstDB ranks vocabulary by leverage: how much of the text a single word
+unlocks. Learning ten high-leverage words in a chapter is worth far more
+than learning thirty rare ones.
+
+Each deck shows you:
+
+- approximate comprehension if you study it
+- which words give the biggest jump in understanding per unit of effort
+- how the text overlaps with what you already know
+
+The goal is to make the smallest study investment that lets you read the
+real source comfortably.
+
+## Progress Tracking
+
+You can see, across the whole app:
+
+- known lemmas in each language
+- cards in active learning
+- comprehension trend per deck
+- how new decks overlap with your existing knowledge
+
+Progress is tracked at the lemma level, not at the deck level, because
+your knowledge of a word is a property of you, not of any single text.
+
+## Mobile Direction
+
+FinEstDB is a single responsive web app. Reviews and reading happen on
+phones often, so the UI is designed to be usable at 375 px wide. The
+alpha targets web first; native packaging is out of scope.
+
+## Roles in the Product
+
+- **Anonymous visitor**: can see the landing/product explanation and
+  sign in. Cannot create decks, review, or submit corrections.
+- **User**: can paste text, see a lightweight parse-inspection view,
+  import known words, create and review decks, and submit parser
+  corrections.
+- **Admin**: everything a user can do, plus the parser workbench, the
+  feedback triage queue, and weekly parser-quality reporting.
+
+The full parser workbench is intentionally admin-only in alpha. End
+users get a lightweight inspection view that is enough to read parse
+output and submit corrections, without exposing internal parser knobs.
+
+Anonymous correction submission is out of scope for alpha.
+
+## Technology Differentiators
+
+FinEstDB is positioned around four technical bets:
+
+- **Fast parser**: a custom Rust analyzer optimized for the
+  paste-to-deck flow, not for academic completeness.
+- **Benchmarked quality**: every release is measured against an
+  external reference — Omorfi for Finnish, EstNLTK / Vabamorf for
+  Estonian — and against frozen gold datasets in `docs/baselines/`.
+- **User correction loop**: real users submit parser corrections from
+  the inspection view; admins triage them; accepted corrections feed
+  live quality metrics and future parser improvements.
+- **Future autoresearch**: the dictionary/lemma layer is designed so
+  that new sources of evidence can be merged into a single canonical
+  lexical knowledge graph over time. See `AUTORESEARCH.md`.
+
+## Two Evaluation Tracks
+
+Parser quality is measured on two tracks, and both must look healthy
+before a release goes out.
+
+- **Track A (offline)**: gold datasets plus the external benchmark for
+  each language. Frozen reports live under `docs/baselines/`.
+- **Track B (live)**: accepted-correction rates from real usage,
+  segmented by language and parser mode, surfaced in a weekly admin
+  report.
+
+Track A tells us whether we regressed against fixed reference data.
+Track B tells us whether real users are actually being helped.
+
+## Out of Scope for Alpha
+
+- Anonymous full parser-correction submission.
+- Native mobile apps.
+- A user-facing parser workbench.
+- A polished analytics dashboard for Track B (alpha ships a weekly
+  admin report instead).
+- Background/async deck creation (alpha parses synchronously; see
+  `TODO.md` for the deferred work).
