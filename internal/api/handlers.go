@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -116,6 +117,9 @@ func (a *API) getCurrentUser(r *http.Request) (*AuthContext, error) {
 
 	user, err := a.store.GetUserByID(userID)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
 
@@ -252,6 +256,16 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
 	var req CreateDeckRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
@@ -270,16 +284,6 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 
 	if len(req.Text) == 0 {
 		http.Error(w, "Text is required", http.StatusBadRequest)
-		return
-	}
-
-	auth, err := a.getCurrentUser(r)
-	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		return
-	}
-	if auth == nil {
-		http.Error(w, "Authentication required", http.StatusUnauthorized)
 		return
 	}
 

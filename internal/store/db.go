@@ -180,7 +180,9 @@ func (d *DB) GetOrCreateUser(email string) (*User, error) {
 	isAdmin := isAdminEmail(email)
 
 	err := d.db.QueryRow(
-		"SELECT id, email, email_verified, is_admin, settings_json FROM users WHERE email = ?",
+		`SELECT id, email, email_verified, is_admin, settings_json
+		 FROM users
+		 WHERE lower(email) = ?`,
 		email,
 	).Scan(&user.ID, &user.Email, &user.EmailVerified, &user.IsAdmin, &settingsJSON)
 
