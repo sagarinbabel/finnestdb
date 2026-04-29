@@ -224,6 +224,61 @@ Priority 5: A5-A7       (Full SRS loop)
 
 ---
 
+## Decision 4: Parse Feedback Requires Login (v1)
+
+**Date:** 2026-04-29
+
+### Context
+
+PR #53 introduces a parse-feedback flow: a user reviewing a parse result can flag
+that the parser tagged a token incorrectly (wrong lemma/POS/grammar label) and
+propose a correction. The endpoint that accepts this feedback (`POST
+/api/parse/feedback`) needed an auth model.
+
+### Decision
+
+**Require login to submit parse feedback in v1.** No anonymous feedback path.
+
+### Reasoning
+
+- **Spam control.** Without an authenticated identity, the feedback queue is open
+  to drive-by submissions with no rate-limit anchor and no way to hold a reporter
+  accountable.
+- **Admin signal-to-noise.** Admins reviewing the queue need to be able to
+  weight reporters (returning user vs. one-time submitter). Anonymous breaks that.
+- **Follow-up.** If a correction is ambiguous, admins need a way to ask the
+  reporter for context. Anonymous feedback can't be followed up on.
+- **Scope.** A "light anonymous feedback" path requires its own design (one-shot
+  feedback tokens scoped to a parse session, separate rate limiting, separate
+  admin UI). Out of scope for alpha.
+
+### Trade-off Accepted
+
+Some users will hit a parser bug, want to flag it, and won't bother creating an
+account to do so — that signal is lost. We accept this for v1 in exchange for a
+clean, low-noise feedback queue.
+
+### Related Source-Text Retention Decision
+
+Tied to this decision: **`parse_sessions.source_text` is persisted only when a
+user submits feedback against that parse session**, not on every `/api/parse`
+call (option B from PR #53 review). Rationale from a user perspective:
+
+- The parse UI feels ephemeral; users will paste personal/sensitive content
+  (private messages, work documents, copyrighted material) without expecting it
+  to be stored.
+- Storing only on feedback-submit aligns persistence with consent: the user has
+  actively asked us to look at this parse, so retaining the context is
+  justified.
+- Eliminates unbounded growth from anonymous parse traffic.
+
+### Post-v1 Reconsideration
+
+If parser-quality work outgrows the volunteer feedback signal, revisit anonymous
+"light feedback" as a separate, rate-limited path with its own queue.
+
+---
+
 ## Open Questions
 
 1. **FST for novel words:** At what accuracy level do we need FST-like morphological
@@ -242,3 +297,4 @@ Priority 5: A5-A7       (Full SRS loop)
 | Date | Change |
 |------|--------|
 | 2026-04-28 | Initial decisions documented: custom parser rationale, architecture, evaluation approach, roadmap |
+| 2026-04-29 | Decision 4 added: parse feedback requires login in v1; source_text persisted only on feedback submit |
