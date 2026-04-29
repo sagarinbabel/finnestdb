@@ -51,3 +51,8 @@ localdata/
 # Autoresearch transient experiment logs (commit specific runs explicitly)
 experiments/test*.jsonl
 experiments/autoresearch.jsonl
+
+# Local notes and design scratch
+.obsidian/
+design/
+How the Finnish & Estonian Parsers can learn from each other.md
