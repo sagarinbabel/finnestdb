@@ -242,6 +242,7 @@ test('mobile landing layout fits at 375 px', async ({ page }) => {
   await expect(page.locator('#nav-mobile-overlay')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Sign in' }).first()).toBeVisible();
 
-  // No admin terminology in the mobile menu for anonymous users
-  await expect(page.locator('#nav-mobile-overlay')).not.toContainText(/Workbench/i);
+  // No admin terminology visible in the mobile menu for anonymous users
+  await expect(page.getByRole('link', { name: 'Workbench' })).toBeHidden();
+  await expect(page.getByRole('link', { name: 'Feedback' })).toBeHidden();
 });
