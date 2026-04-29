@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinEstDB - Learn Finnish & Estonian</title>
+    <title>FinEstDB - Parser Workbench</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,18 +12,9 @@
         <div class="nav-content">
             <a href="#" class="nav-logo" id="nav-logo">FinEstDB</a>
             <div class="nav-links">
-                <a href="#" class="nav-link disabled" title="Coming soon">Dashboard</a>
-                <a href="#" class="nav-link active" id="nav-import">Import</a>
-                <a href="#" class="nav-link disabled" title="Coming soon">Catalog</a>
-                <a href="#" class="nav-link disabled" title="Coming soon">Review</a>
+                <a href="#" class="nav-link active" id="nav-import">Workbench</a>
             </div>
             <div class="nav-actions">
-                <button class="nav-icon-btn disabled" title="Settings (coming soon)" aria-label="Settings">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
-                    </svg>
-                </button>
                 <button id="theme-toggle" class="nav-icon-btn" aria-label="Toggle theme">
                     <span class="theme-icon">🌙</span>
                 </button>
@@ -39,11 +30,7 @@
     <!-- Mobile nav overlay -->
     <div class="nav-mobile-overlay hidden" id="nav-mobile-overlay">
         <div class="nav-mobile-menu">
-            <a href="#" class="nav-mobile-link disabled">Dashboard</a>
-            <a href="#" class="nav-mobile-link active" id="nav-mobile-import">Import</a>
-            <a href="#" class="nav-mobile-link disabled">Catalog</a>
-            <a href="#" class="nav-mobile-link disabled">Review</a>
-            <a href="#" class="nav-mobile-link disabled">Settings</a>
+            <a href="#" class="nav-mobile-link active" id="nav-mobile-import">Workbench</a>
         </div>
     </div>
 
@@ -52,7 +39,7 @@
         <main class="parse-main">
             <section class="parse-form-section">
                 <h2>Parse Text</h2>
-                <p class="parse-description">Paste Finnish or Estonian text to extract a word list.</p>
+                <p class="parse-description">Use the parser workbench to analyze Finnish or Estonian text and inspect the resulting word list.</p>
 
                 <form id="parse-form">
                     <div class="form-group">
