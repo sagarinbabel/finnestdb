@@ -650,20 +650,14 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) HandleParseFeedback(w http.ResponseWriter, r *http.Request) {
-	auth, err := a.getCurrentUser(r)
-	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		return
-	}
-	if auth == nil {
-		http.Error(w, "Authentication required", http.StatusUnauthorized)
-		return
-	}
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	a.requireAuth(a.handleParseFeedback).ServeHTTP(w, r)
+}
 
+func (a *API) handleParseFeedback(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
 	var req ParseFeedbackRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
@@ -681,14 +675,22 @@ func (a *API) HandleParseFeedback(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Parser, surface, proposed lemma, and proposed POS are required", http.StatusBadRequest)
 		return
 	}
+	if req.Occurrence < 0 {
+		http.Error(w, "Occurrence must be non-negative", http.StatusBadRequest)
+		return
+	}
 
-	exists, err := a.store.ParseSessionExists(req.ParseID)
+	session, err := a.store.GetParseSession(req.ParseID)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Parse session not found", http.StatusBadRequest)
+			return
+		}
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
-	if !exists {
-		http.Error(w, "Parse session not found", http.StatusBadRequest)
+	if session.UserID == nil || *session.UserID != auth.UserID {
+		http.Error(w, "Parse session does not belong to the current user", http.StatusForbidden)
 		return
 	}
 
@@ -719,20 +721,17 @@ func (a *API) HandleParseFeedback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) HandleAdminParseFeedback(w http.ResponseWriter, r *http.Request) {
-	auth, err := a.getCurrentUser(r)
-	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+	switch r.Method {
+	case http.MethodGet, http.MethodPatch:
+		a.requireAdmin(a.handleAdminParseFeedback).ServeHTTP(w, r)
+		return
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if auth == nil {
-		http.Error(w, "Authentication required", http.StatusUnauthorized)
-		return
-	}
-	if !auth.IsAdmin {
-		http.Error(w, "Admin access required", http.StatusForbidden)
-		return
-	}
+}
 
+func (a *API) handleAdminParseFeedback(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
 	switch r.Method {
 	case http.MethodGet:
 		status := strings.TrimSpace(r.URL.Query().Get("status"))
@@ -759,12 +758,14 @@ func (a *API) HandleAdminParseFeedback(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if err := a.store.ReviewParseFeedback(feedbackID, auth.UserID, req.Status, strings.TrimSpace(req.ReviewNote)); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "Parse feedback not found", http.StatusNotFound)
+				return
+			}
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": req.Status})
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
