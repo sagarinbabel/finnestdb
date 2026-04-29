@@ -153,6 +153,9 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 	if resp.Lang != "FI" {
 		t.Fatalf("lang=%q want FI", resp.Lang)
 	}
+	if resp.ParseID == 0 {
+		t.Fatal("expected parse_id in parse response")
+	}
 	if resp.TotalTokens != 3 {
 		t.Fatalf("total_tokens=%d want 3", resp.TotalTokens)
 	}
@@ -679,6 +682,271 @@ func TestCreateDeckSkipsKnownWordsWhenSeedingCards(t *testing.T) {
 	}
 	if cardCount != 1 {
 		t.Fatalf("card_count=%d want 1", cardCount)
+	}
+}
+
+func TestParseFeedbackRequiresAuthentication(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(`{"parse_id":1,"lang":"FI","parser":"custom","surface":"kissa","proposed_lemma":"kissa","proposed_pos":"NOUN"}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusUnauthorized, rec.Body.String())
+	}
+}
+
+func TestParseFeedbackRejectsUnknownParseSession(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "user@example.com")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(`{"parse_id":9999,"lang":"FI","parser":"custom","surface":"kissa","proposed_lemma":"kissa","proposed_pos":"NOUN"}`))
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestParseFeedbackRejectsParseSessionOwnedByAnotherUser(t *testing.T) {
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		if parser == "" {
+			parser = "custom"
+		}
+		return &parsecore.ParseResult{
+			Lang:        lang,
+			Parser:      parser,
+			TotalTokens: 1,
+			Words: []parsecore.WordEntry{
+				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 1},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+	ownerCookies := loginAndReturnCookies(t, mux, "owner@example.com")
+	otherCookies := loginAndReturnCookies(t, mux, "other@example.com")
+
+	parseReq := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"FI","text":"kissa","parser":"custom"}`))
+	for _, cookie := range ownerCookies {
+		parseReq.AddCookie(cookie)
+	}
+	parseRec := httptest.NewRecorder()
+	mux.ServeHTTP(parseRec, parseReq)
+	if parseRec.Code != http.StatusOK {
+		t.Fatalf("parse status=%d want %d body=%q", parseRec.Code, http.StatusOK, parseRec.Body.String())
+	}
+
+	var parseResp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(parseRec.Body.Bytes())).Decode(&parseResp); err != nil {
+		t.Fatalf("decode parse response: %v", err)
+	}
+
+	feedbackReq := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(fmt.Sprintf(`{
+		"parse_id": %d,
+		"lang": "FI",
+		"parser": "custom",
+		"surface": "kissa",
+		"proposed_lemma": "kissa",
+		"proposed_pos": "NOUN"
+	}`, parseResp.ParseID)))
+	for _, cookie := range otherCookies {
+		feedbackReq.AddCookie(cookie)
+	}
+	feedbackRec := httptest.NewRecorder()
+	mux.ServeHTTP(feedbackRec, feedbackReq)
+
+	if feedbackRec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want %d body=%q", feedbackRec.Code, http.StatusForbidden, feedbackRec.Body.String())
+	}
+}
+
+func TestParseFeedbackSubmissionAndAdminReview(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		if parser == "" {
+			parser = "custom"
+		}
+		return &parsecore.ParseResult{
+			Lang:            lang,
+			Parser:          parser,
+			TotalTokens:     2,
+			ParseDurationMs: 11,
+			Stats:           parsecore.ParseStats{},
+			Words: []parsecore.WordEntry{
+				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 1},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	userCookies := loginAndReturnCookies(t, mux, "user@example.com")
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+
+	parseReq := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"FI","text":"kissa","parser":"custom"}`))
+	for _, cookie := range userCookies {
+		parseReq.AddCookie(cookie)
+	}
+	parseRec := httptest.NewRecorder()
+	mux.ServeHTTP(parseRec, parseReq)
+	if parseRec.Code != http.StatusOK {
+		t.Fatalf("parse status=%d want %d body=%q", parseRec.Code, http.StatusOK, parseRec.Body.String())
+	}
+
+	var parseResp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(parseRec.Body.Bytes())).Decode(&parseResp); err != nil {
+		t.Fatalf("decode parse response: %v", err)
+	}
+	if parseResp.ParseID == 0 {
+		t.Fatal("expected parse_id from parse response")
+	}
+
+	feedbackReq := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(fmt.Sprintf(`{
+		"parse_id": %d,
+		"lang": "FI",
+		"parser": "custom",
+		"surface": "kissa",
+		"occurrence": 1,
+		"original_lemma": "kissa",
+		"original_pos": "NOUN",
+		"proposed_lemma": "kissa",
+		"proposed_pos": "PROPN",
+		"note": "should be proper noun in this context"
+	}`, parseResp.ParseID)))
+	for _, cookie := range userCookies {
+		feedbackReq.AddCookie(cookie)
+	}
+	feedbackRec := httptest.NewRecorder()
+	mux.ServeHTTP(feedbackRec, feedbackReq)
+	if feedbackRec.Code != http.StatusOK {
+		t.Fatalf("feedback status=%d want %d body=%q", feedbackRec.Code, http.StatusOK, feedbackRec.Body.String())
+	}
+
+	var feedbackResp ParseFeedbackResponse
+	if err := json.NewDecoder(bytes.NewReader(feedbackRec.Body.Bytes())).Decode(&feedbackResp); err != nil {
+		t.Fatalf("decode feedback response: %v", err)
+	}
+	if feedbackResp.FeedbackID == 0 {
+		t.Fatal("expected feedback_id from feedback response")
+	}
+	if feedbackResp.Status != "submitted" {
+		t.Fatalf("status=%q want submitted", feedbackResp.Status)
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/admin/parse-feedback?status=submitted", nil)
+	for _, cookie := range adminCookies {
+		listReq.AddCookie(cookie)
+	}
+	listRec := httptest.NewRecorder()
+	mux.ServeHTTP(listRec, listReq)
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("admin list status=%d want %d body=%q", listRec.Code, http.StatusOK, listRec.Body.String())
+	}
+
+	var listResp ParseFeedbackListResponse
+	if err := json.NewDecoder(bytes.NewReader(listRec.Body.Bytes())).Decode(&listResp); err != nil {
+		t.Fatalf("decode feedback list response: %v", err)
+	}
+	if len(listResp.Feedback) != 1 {
+		t.Fatalf("feedback=%d want 1 (%+v)", len(listResp.Feedback), listResp.Feedback)
+	}
+	if listResp.Feedback[0].Status != "submitted" {
+		t.Fatalf("queued feedback status=%q want submitted", listResp.Feedback[0].Status)
+	}
+
+	reviewReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/admin/parse-feedback?id=%d", feedbackResp.FeedbackID), strings.NewReader(`{"status":"accepted","review_note":"looks correct"}`))
+	for _, cookie := range adminCookies {
+		reviewReq.AddCookie(cookie)
+	}
+	reviewRec := httptest.NewRecorder()
+	mux.ServeHTTP(reviewRec, reviewReq)
+	if reviewRec.Code != http.StatusOK {
+		t.Fatalf("admin review status=%d want %d body=%q", reviewRec.Code, http.StatusOK, reviewRec.Body.String())
+	}
+
+	listAcceptedReq := httptest.NewRequest(http.MethodGet, "/api/admin/parse-feedback?status=accepted", nil)
+	for _, cookie := range adminCookies {
+		listAcceptedReq.AddCookie(cookie)
+	}
+	listAcceptedRec := httptest.NewRecorder()
+	mux.ServeHTTP(listAcceptedRec, listAcceptedReq)
+
+	var acceptedResp ParseFeedbackListResponse
+	if err := json.NewDecoder(bytes.NewReader(listAcceptedRec.Body.Bytes())).Decode(&acceptedResp); err != nil {
+		t.Fatalf("decode accepted feedback response: %v", err)
+	}
+	if len(acceptedResp.Feedback) != 1 {
+		t.Fatalf("accepted feedback=%d want 1 (%+v)", len(acceptedResp.Feedback), acceptedResp.Feedback)
+	}
+	if acceptedResp.Feedback[0].Status != "accepted" {
+		t.Fatalf("accepted status=%q want accepted", acceptedResp.Feedback[0].Status)
+	}
+	if acceptedResp.Feedback[0].ReviewedByUserID == nil {
+		t.Fatal("expected reviewer to be recorded")
+	}
+}
+
+func TestAdminParseFeedbackRejectsUnknownFeedbackReviewTarget(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/admin/parse-feedback?id=9999", strings.NewReader(`{"status":"accepted"}`))
+	for _, cookie := range adminCookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusNotFound, rec.Body.String())
+	}
+}
+
+func TestAdminParseFeedbackRejectsInvalidStatus(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+
+	req := httptest.NewRequest(http.MethodPatch, "/api/admin/parse-feedback?id=1", strings.NewReader(`{"status":"approved"}`))
+	for _, cookie := range adminCookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+func TestAdminParseFeedbackRejectsNonAdminUser(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	userCookies := loginAndReturnCookies(t, mux, "user@example.com")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/parse-feedback", nil)
+	for _, cookie := range userCookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusForbidden, rec.Body.String())
 	}
 }
 
