@@ -251,7 +251,9 @@ function updateSortButtons() {
 function updatePOSFilterButtons() {
     document.querySelectorAll('.pos-filter-chip').forEach(btn => {
         const filter = btn.dataset.filter;
-        btn.classList.toggle('active', filter === currentPOSFilter);
+        const active = filter === currentPOSFilter;
+        btn.classList.toggle('active', active);
+        btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
 }
 function renderResultsTable(data) {
@@ -383,13 +385,13 @@ function showResults(data, textPreview, parserMode) {
         `"${preview}${ellipsis}" (${langName})`;
     document.getElementById('results-parser').textContent = formatParserMode(parserMode);
     document.getElementById('results-duration').textContent =
-        `${formatParseDuration(data.parse_duration_ms)}`;
+        `Parse time ${formatParseDuration(data.parse_duration_ms)}`;
     // Update coverage gauge
     const coverageFill = document.getElementById('coverage-fill');
     const coverageValue = document.getElementById('coverage-value');
     coverageFill.style.width = `${coverage.score}%`;
-    coverageFill.className = 'coverage-gauge-fill ' +
-        (coverage.score < 50 ? 'low' : coverage.score < 75 ? 'medium' : 'high');
+    coverageFill.classList.remove('low', 'medium', 'high');
+    coverageFill.classList.add(coverage.score >= 80 ? 'high' : coverage.score >= 50 ? 'medium' : 'low');
     coverageValue.textContent = `${coverage.score}%`;
     document.getElementById('results-stats').textContent =
         `${uniqueLemmas} unique lemmas · ${data.total_tokens} tokens · `
@@ -539,4 +541,5 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
     updateSortButtons();
+    updatePOSFilterButtons();
 });

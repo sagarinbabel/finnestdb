@@ -1,9 +1,12 @@
 # FinEstDB TODO - Findings & Action Items
 
-This document tracks findings from the PRD review and action items for future implementation.
+This is the single repo-level task list. It tracks current audit work, active
+engineering backlog, and longer-term findings from the PRD review.
 
 ## Table of Contents
 
+- [Current Audit Status](#current-audit-status)
+- [Active Engineering Backlog](#active-engineering-backlog)
 - [Critical Findings](#critical-findings)
   - [1. Synchronous Deck Creation Blocking Issue](#1-synchronous-deck-creation-blocking-issue)
   - [2. Disambiguation Model Specification Missing](#2-disambiguation-model-specification-missing)
@@ -14,6 +17,29 @@ This document tracks findings from the PRD review and action items for future im
   - [Medium Priority](#medium-priority)
   - [Low Priority](#low-priority)
 - [Notes](#notes)
+
+## Current Audit Status
+
+Checklist from the 2026-04-29 repo-wide audit:
+
+- [x] Run Go test suite (`go test ./...`)
+- [x] Run Rust parser tests (`cargo test`)
+- [x] Build frontend TypeScript (`npm run build`)
+- [x] Run browser smoke test (`npx playwright test`)
+- [x] Fix results-page regression from the nav/results redesign
+- [x] Compare implementation against `ARCHITECTURE.md` and `docs/IMPLEMENTATION.md`
+- [x] Consolidate current work into this single repo-level TODO file
+
+## Active Engineering Backlog
+
+Near-term items that remain open after the audit:
+
+- [ ] Add backend/API tests for `POST /api/parse` and the partial deck/review/auth handlers in `internal/api`
+- [ ] Expand browser coverage beyond one parse/results smoke flow: nav shell behavior, POS filter chips, language-switch warning, and file-upload flow
+- [ ] Decide whether Dashboard/Catalog/Review stay as disabled placeholders in the nav shell or get hidden until routes exist
+- [ ] Either implement real auth/deck/review behavior or narrow the exposed stub endpoints so the server surface matches the current product focus
+- [ ] Review the new Finnish draft/gold parser-eval cases for additional promotion or correction after more corpus mining
+- [ ] Document the expected browser-QA setup more clearly in the repo so Playwright use is obvious on a fresh checkout
 
 ## Critical Findings
 
@@ -65,7 +91,7 @@ Example generation relies on "FST synthesizer + reparse to validate features" (Â
 ### High Priority
 
 1. **Prototype parser with Omorfi integration**
-   - [ ] Prototype `analyze_text` + Omorfi wiring with a small corpus to validate throughput
+   - [x] Prototype `analyze_text` + Omorfi wiring with a small corpus to validate throughput
    - [ ] Measure baseline performance (tokens/second, memory usage)
    - [ ] Establish timeout and retry policies
 

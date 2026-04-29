@@ -7,12 +7,15 @@ lemmatization, parser evaluation, and future lexical knowledge work.
 
 Current product surface on `main`:
 
+- global nav shell with desktop links and mobile menu
 - parse page for Finnish or Estonian text
 - parser selection in the browser: `basic` and `custom`
-- results page with sortable output, coverage proxy score, and parse duration
+- file load support for `.txt` / `.md`
+- results page with sortable output, POS filter chips, coverage gauge, and parse duration
 - parser evaluation CLI for `basic`, `custom`, and `omorfi`
 - dataset-driven evaluation workflow in `internal/eval`
 - external-adapter slot for an Omorfi baseline in `internal/parsecore`
+- Playwright smoke test for the parse/results flow
 
 Important distinction:
 
@@ -28,10 +31,12 @@ CURRENT
 | Browser UI                                                                     |
 | web/index.html + web/app.ts                                                    |
 |                                                                                |
+| - Global nav shell                                                             |
 | - Parse Text page                                                              |
 | - Parser buttons: basic, custom                                                |
 | - Language warning and file load                                               |
-| - Results table, coverage score, parse duration                                |
+| - Results table, POS filter chips                                              |
+| - Coverage gauge and parse duration                                            |
 +-----------------------------------+--------------------------------------------+
                                     |
                                     | POST /api/parse
@@ -157,10 +162,11 @@ Files:
 
 Responsibilities:
 
+- render the global nav shell and mobile menu
 - collect text and selected language
 - choose between `basic` and `custom`
 - submit parse requests to `/api/parse`
-- render parser metadata and sortable results
+- render parser metadata, coverage gauge, POS filters, and sortable results
 - explain coverage score and timing
 
 ### 2. API Layer
@@ -174,7 +180,7 @@ Responsibilities:
 
 - start the HTTP server
 - initialize SQLite-backed store
-- expose parse and partial deck/review endpoints
+- expose parse plus partial auth/deck/review stub endpoints
 - pass parse work into `internal/parsecore`
 
 ### 3. Parse Core
@@ -226,6 +232,7 @@ Responsibilities:
 Files:
 
 - `cmd/parsertest/main.go`
+- `cmd/corpusmine/main.go`
 - `internal/eval/eval.go`
 - `testdata/parser-eval/...`
 - `docs/PARSER_EVAL_DATASETS.md`
@@ -234,6 +241,7 @@ Files:
 Responsibilities:
 
 - compare parser outputs on labeled datasets
+- mine cleaned corpus text for disagreement-heavy candidate sentences
 - record quality and performance metrics
 - detect regressions and priority failures
 - provide the workflow for judging parser improvements
@@ -274,7 +282,7 @@ Responsibilities:
 6. `parsecore` resolves forms via dictionary/enrichment logic.
 7. `parsecore` aggregates words, glosses, grammar labels, and examples.
 8. API returns parse JSON to the browser.
-9. Frontend renders summary stats and sortable rows.
+9. Frontend renders summary stats, coverage gauge, POS-filtered rows, and sortable output.
 
 ### Evaluation flow
 
@@ -287,6 +295,7 @@ Responsibilities:
 ## Current Boundaries and Caveats
 
 - The browser UI is still centered on `basic` and `custom`.
+- The nav shell exists, but only the `Import` route is wired; Dashboard/Catalog/Review remain placeholders.
 - The review/account system still exists mostly as partial backend scaffolding or stubs.
 - Omorfi is not bundled into normal app startup; it is an external adapter path.
 - The evaluation pipeline is now a first-class architectural component.

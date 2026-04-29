@@ -6,9 +6,11 @@ This document describes the current implementation on `main`.
 
 The shipped frontend is a parser workbench:
 
+- global nav shell with mobile menu
 - parse page for Finnish or Estonian text
 - two parser modes: `basic` and `custom`
-- results page with parser metadata, coverage proxy score, parse duration, and sortable output
+- file load support for `.txt` and `.md`
+- results page with parser metadata, coverage gauge, parse duration, POS filter chips, and sortable output
 
 The dashboard, review, and account systems described in older planning docs are
 not part of the current user-facing flow on `main`.
@@ -67,12 +69,14 @@ The frontend is a small vanilla TypeScript app compiled to `app.js`.
 
 Current UI features:
 
+- desktop/mobile navigation shell with `Import` active and placeholder future sections
 - parse form with language selector
 - language mismatch warning
 - file load support for `.txt` / `.md`
+- coverage gauge with token/row-weighted proxy score
+- POS filter chips above the results table
 - results table with row numbering and sorting
 - parser mode badge
-- coverage score badge
 - parse duration badge
 - inline example sentence expansion
 - theme toggle
@@ -97,11 +101,23 @@ npm run build
 
 This compiles `app.ts` to `app.js` using the local TypeScript dependency.
 
+### Browser smoke test
+
+There is a Playwright smoke test for the parse/results flow:
+
+```bash
+cd web
+npx playwright test
+```
+
+The test boots the Go server on `:8081` via `web/playwright.config.ts` and
+checks that parsing reaches the results page successfully.
+
 ## Current Limitations
 
 - no bundled Omorfi/Vabamorf runtime in the browser-facing parse flow
 - no statistical disambiguation yet
-- no current user-facing dashboard/review/account flow
+- no current user-facing dashboard/review/account flow beyond placeholder nav
 - deck/review backend work remains partial and mostly stubbed
 
 What does exist now:
