@@ -87,6 +87,35 @@ type KnownWordsListResponse struct {
 	KnownWords []store.KnownLemma `json:"known_words"`
 }
 
+type ParseFeedbackRequest struct {
+	ParseID              int64  `json:"parse_id"`
+	Lang                 string `json:"lang"`
+	Parser               string `json:"parser"`
+	Surface              string `json:"surface"`
+	Occurrence           int    `json:"occurrence"`
+	OriginalLemma        string `json:"original_lemma"`
+	OriginalPOS          string `json:"original_pos"`
+	OriginalGrammarLabel string `json:"original_grammar_label"`
+	ProposedLemma        string `json:"proposed_lemma"`
+	ProposedPOS          string `json:"proposed_pos"`
+	ProposedGrammarLabel string `json:"proposed_grammar_label"`
+	Note                 string `json:"note"`
+}
+
+type ParseFeedbackReviewRequest struct {
+	Status     string `json:"status"`
+	ReviewNote string `json:"review_note"`
+}
+
+type ParseFeedbackResponse struct {
+	FeedbackID int64  `json:"feedback_id"`
+	Status     string `json:"status"`
+}
+
+type ParseFeedbackListResponse struct {
+	Feedback []store.ParseFeedback `json:"feedback"`
+}
+
 type cardKey struct {
 	Lang  string
 	Lemma string
@@ -547,6 +576,7 @@ type ParseRequest struct {
 type WordEntry = parsecore.WordEntry
 
 type ParseResponse struct {
+	ParseID         int64                `json:"parse_id"`
 	Lang            string               `json:"lang"`
 	TotalTokens     int                  `json:"total_tokens"`
 	ParseDurationMs int64                `json:"parse_duration_ms"`
@@ -593,13 +623,149 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	var userID *int64
+	if auth != nil {
+		userID = &auth.UserID
+	}
+	parseID, err := a.store.CreateParseSession(userID, parsed.Lang, parsed.Parser, req.Text, parsed.TotalTokens, len(parsed.Words))
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
 	writeJSON(w, http.StatusOK, ParseResponse{
+		ParseID:         parseID,
 		Lang:            parsed.Lang,
 		TotalTokens:     parsed.TotalTokens,
 		ParseDurationMs: parsed.ParseDurationMs,
 		Stats:           parsed.Stats,
 		Words:           parsed.Words,
 	})
+}
+
+func (a *API) HandleParseFeedback(w http.ResponseWriter, r *http.Request) {
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req ParseFeedbackRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	if req.ParseID == 0 {
+		http.Error(w, "Parse ID is required", http.StatusBadRequest)
+		return
+	}
+	if req.Lang != "FI" && req.Lang != "ET" {
+		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
+		return
+	}
+	if req.Parser == "" || req.Surface == "" || req.ProposedLemma == "" || req.ProposedPOS == "" {
+		http.Error(w, "Parser, surface, proposed lemma, and proposed POS are required", http.StatusBadRequest)
+		return
+	}
+
+	exists, err := a.store.ParseSessionExists(req.ParseID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if !exists {
+		http.Error(w, "Parse session not found", http.StatusBadRequest)
+		return
+	}
+
+	feedbackID, err := a.store.CreateParseFeedback(store.ParseFeedback{
+		ParseSessionID:       req.ParseID,
+		UserID:               auth.UserID,
+		Lang:                 req.Lang,
+		Parser:               req.Parser,
+		Surface:              strings.TrimSpace(req.Surface),
+		Occurrence:           req.Occurrence,
+		OriginalLemma:        strings.TrimSpace(req.OriginalLemma),
+		OriginalPOS:          strings.TrimSpace(req.OriginalPOS),
+		OriginalGrammarLabel: strings.TrimSpace(req.OriginalGrammarLabel),
+		ProposedLemma:        strings.TrimSpace(req.ProposedLemma),
+		ProposedPOS:          strings.TrimSpace(req.ProposedPOS),
+		ProposedGrammarLabel: strings.TrimSpace(req.ProposedGrammarLabel),
+		Note:                 strings.TrimSpace(req.Note),
+	})
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, ParseFeedbackResponse{
+		FeedbackID: feedbackID,
+		Status:     "submitted",
+	})
+}
+
+func (a *API) HandleAdminParseFeedback(w http.ResponseWriter, r *http.Request) {
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+	if !auth.IsAdmin {
+		http.Error(w, "Admin access required", http.StatusForbidden)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		status := strings.TrimSpace(r.URL.Query().Get("status"))
+		feedback, err := a.store.ListParseFeedback(status)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, ParseFeedbackListResponse{Feedback: feedback})
+	case http.MethodPatch:
+		feedbackIDStr := strings.TrimSpace(r.URL.Query().Get("id"))
+		feedbackID, _ := strconv.ParseInt(feedbackIDStr, 10, 64)
+		if feedbackID == 0 {
+			http.Error(w, "Feedback ID is required", http.StatusBadRequest)
+			return
+		}
+		var req ParseFeedbackReviewRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+		if req.Status != "accepted" && req.Status != "rejected" && req.Status != "needs_follow_up" {
+			http.Error(w, "Status must be accepted, rejected, or needs_follow_up", http.StatusBadRequest)
+			return
+		}
+		if err := a.store.ReviewParseFeedback(feedbackID, auth.UserID, req.Status, strings.TrimSpace(req.ReviewNote)); err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": req.Status})
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
@@ -617,6 +783,8 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 
 	// Parse (word list view)
 	mux.HandleFunc("/api/parse", a.HandleParse)
+	mux.HandleFunc("/api/parse/feedback", a.HandleParseFeedback)
+	mux.HandleFunc("/api/admin/parse-feedback", a.HandleAdminParseFeedback)
 
 	// Decks
 	mux.HandleFunc("/api/decks", a.HandleCreateDeck)

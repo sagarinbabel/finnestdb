@@ -53,6 +53,39 @@ type KnownLemma struct {
 	Lang  string `json:"lang"`
 }
 
+type ParseSession struct {
+	ID          int64     `json:"id"`
+	UserID      *int64    `json:"user_id,omitempty"`
+	Lang        string    `json:"lang"`
+	Parser      string    `json:"parser"`
+	SourceText  string    `json:"source_text"`
+	TotalTokens int       `json:"total_tokens"`
+	UniqueWords int       `json:"unique_words"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type ParseFeedback struct {
+	ID                   int64      `json:"id"`
+	ParseSessionID       int64      `json:"parse_session_id"`
+	UserID               int64      `json:"user_id"`
+	Lang                 string     `json:"lang"`
+	Parser               string     `json:"parser"`
+	Surface              string     `json:"surface"`
+	Occurrence           int        `json:"occurrence"`
+	OriginalLemma        string     `json:"original_lemma"`
+	OriginalPOS          string     `json:"original_pos"`
+	OriginalGrammarLabel string     `json:"original_grammar_label,omitempty"`
+	ProposedLemma        string     `json:"proposed_lemma"`
+	ProposedPOS          string     `json:"proposed_pos"`
+	ProposedGrammarLabel string     `json:"proposed_grammar_label,omitempty"`
+	Note                 string     `json:"note,omitempty"`
+	Status               string     `json:"status"`
+	ReviewNote           string     `json:"review_note,omitempty"`
+	ReviewedByUserID     *int64     `json:"reviewed_by_user_id,omitempty"`
+	ReviewedAt           *time.Time `json:"reviewed_at,omitempty"`
+	CreatedAt            time.Time  `json:"created_at"`
+}
+
 func NewDB(dbPath string) (*DB, error) {
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
@@ -169,6 +202,43 @@ func (d *DB) initSchema() error {
 		imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		row_count   INTEGER,
 		PRIMARY KEY (lang, source)
+	);
+
+	CREATE TABLE IF NOT EXISTS parse_sessions (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER,
+		lang TEXT NOT NULL,
+		parser TEXT NOT NULL,
+		source_text TEXT NOT NULL,
+		total_tokens INTEGER NOT NULL DEFAULT 0,
+		unique_words INTEGER NOT NULL DEFAULT 0,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY(user_id) REFERENCES users(id)
+	);
+
+	CREATE TABLE IF NOT EXISTS parse_feedback (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		parse_session_id INTEGER NOT NULL,
+		user_id INTEGER NOT NULL,
+		lang TEXT NOT NULL,
+		parser TEXT NOT NULL,
+		surface TEXT NOT NULL,
+		occurrence INTEGER NOT NULL DEFAULT 0,
+		original_lemma TEXT,
+		original_pos TEXT,
+		original_grammar_label TEXT,
+		proposed_lemma TEXT NOT NULL,
+		proposed_pos TEXT NOT NULL,
+		proposed_grammar_label TEXT,
+		note TEXT,
+		status TEXT NOT NULL DEFAULT 'submitted',
+		review_note TEXT,
+		reviewed_by_user_id INTEGER,
+		reviewed_at DATETIME,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY(parse_session_id) REFERENCES parse_sessions(id),
+		FOREIGN KEY(user_id) REFERENCES users(id),
+		FOREIGN KEY(reviewed_by_user_id) REFERENCES users(id)
 	);
 	`
 
@@ -462,6 +532,120 @@ func (d *DB) CountCards(userID int64, lang string) (int, error) {
 		userID, lang,
 	).Scan(&count)
 	return count, err
+}
+
+func (d *DB) CreateParseSession(userID *int64, lang, parser, sourceText string, totalTokens, uniqueWords int) (int64, error) {
+	result, err := d.db.Exec(
+		`INSERT INTO parse_sessions (user_id, lang, parser, source_text, total_tokens, unique_words)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		userID, lang, parser, sourceText, totalTokens, uniqueWords,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
+func (d *DB) ParseSessionExists(parseSessionID int64) (bool, error) {
+	var count int
+	err := d.db.QueryRow(`SELECT COUNT(*) FROM parse_sessions WHERE id = ?`, parseSessionID).Scan(&count)
+	return count > 0, err
+}
+
+func (d *DB) CreateParseFeedback(feedback ParseFeedback) (int64, error) {
+	result, err := d.db.Exec(
+		`INSERT INTO parse_feedback (
+			parse_session_id, user_id, lang, parser, surface, occurrence,
+			original_lemma, original_pos, original_grammar_label,
+			proposed_lemma, proposed_pos, proposed_grammar_label, note, status
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted')`,
+		feedback.ParseSessionID,
+		feedback.UserID,
+		feedback.Lang,
+		feedback.Parser,
+		feedback.Surface,
+		feedback.Occurrence,
+		feedback.OriginalLemma,
+		feedback.OriginalPOS,
+		feedback.OriginalGrammarLabel,
+		feedback.ProposedLemma,
+		feedback.ProposedPOS,
+		feedback.ProposedGrammarLabel,
+		feedback.Note,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
+func (d *DB) ListParseFeedback(status string) ([]ParseFeedback, error) {
+	query := `SELECT id, parse_session_id, user_id, lang, parser, surface, occurrence,
+		COALESCE(original_lemma, ''), COALESCE(original_pos, ''), COALESCE(original_grammar_label, ''),
+		proposed_lemma, proposed_pos, COALESCE(proposed_grammar_label, ''), COALESCE(note, ''),
+		status, COALESCE(review_note, ''), reviewed_by_user_id, reviewed_at, created_at
+		FROM parse_feedback`
+	args := []any{}
+	if status != "" {
+		query += ` WHERE status = ?`
+		args = append(args, status)
+	}
+	query += ` ORDER BY created_at DESC, id DESC`
+
+	rows, err := d.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	feedback := []ParseFeedback{}
+	for rows.Next() {
+		var item ParseFeedback
+		var reviewedBy sql.NullInt64
+		var reviewedAt sql.NullTime
+		if err := rows.Scan(
+			&item.ID,
+			&item.ParseSessionID,
+			&item.UserID,
+			&item.Lang,
+			&item.Parser,
+			&item.Surface,
+			&item.Occurrence,
+			&item.OriginalLemma,
+			&item.OriginalPOS,
+			&item.OriginalGrammarLabel,
+			&item.ProposedLemma,
+			&item.ProposedPOS,
+			&item.ProposedGrammarLabel,
+			&item.Note,
+			&item.Status,
+			&item.ReviewNote,
+			&reviewedBy,
+			&reviewedAt,
+			&item.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		if reviewedBy.Valid {
+			item.ReviewedByUserID = &reviewedBy.Int64
+		}
+		if reviewedAt.Valid {
+			item.ReviewedAt = &reviewedAt.Time
+		}
+		feedback = append(feedback, item)
+	}
+
+	return feedback, rows.Err()
+}
+
+func (d *DB) ReviewParseFeedback(feedbackID, reviewerUserID int64, status, reviewNote string) error {
+	_, err := d.db.Exec(
+		`UPDATE parse_feedback
+		 SET status = ?, review_note = ?, reviewed_by_user_id = ?, reviewed_at = CURRENT_TIMESTAMP
+		 WHERE id = ?`,
+		status, reviewNote, reviewerUserID, feedbackID,
+	)
+	return err
 }
 
 func (d *DB) Close() error {
