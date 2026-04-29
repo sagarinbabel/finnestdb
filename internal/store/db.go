@@ -40,9 +40,16 @@ type Sentence struct {
 type Card struct {
 	ID     int64
 	UserID int64
+	Lang   string
 	Lemma  string
 	POS    string
 	MWEID  *int64
+}
+
+type KnownLemma struct {
+	Lemma string `json:"lemma"`
+	POS   string `json:"pos"`
+	Lang  string `json:"lang"`
 }
 
 func NewDB(dbPath string) (*DB, error) {
@@ -108,11 +115,12 @@ func (d *DB) initSchema() error {
 	CREATE TABLE IF NOT EXISTS cards (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		user_id INTEGER NOT NULL,
+		lang TEXT NOT NULL DEFAULT '',
 		lemma TEXT NOT NULL,
 		pos TEXT NOT NULL,
 		mwe_id INTEGER,
 		FOREIGN KEY(user_id) REFERENCES users(id),
-		UNIQUE(user_id, lemma, pos, mwe_id)
+		UNIQUE(user_id, lang, lemma, pos, mwe_id)
 	);
 
 	CREATE TABLE IF NOT EXISTS card_state (
@@ -125,17 +133,19 @@ func (d *DB) initSchema() error {
 
 	CREATE TABLE IF NOT EXISTS user_known_lemmas (
 		user_id INTEGER NOT NULL,
+		lang TEXT NOT NULL DEFAULT '',
 		lemma TEXT NOT NULL,
 		pos TEXT NOT NULL,
-		PRIMARY KEY(user_id, lemma, pos),
+		PRIMARY KEY(user_id, lang, lemma, pos),
 		FOREIGN KEY(user_id) REFERENCES users(id)
 	);
 
 	CREATE TABLE IF NOT EXISTS user_ignored_lemmas (
 		user_id INTEGER NOT NULL,
+		lang TEXT NOT NULL DEFAULT '',
 		lemma TEXT NOT NULL,
 		pos TEXT NOT NULL,
-		PRIMARY KEY(user_id, lemma, pos),
+		PRIMARY KEY(user_id, lang, lemma, pos),
 		FOREIGN KEY(user_id) REFERENCES users(id)
 	);
 
@@ -167,6 +177,15 @@ func (d *DB) initSchema() error {
 	}
 
 	if _, err := d.db.Exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
+	if _, err := d.db.Exec(`ALTER TABLE cards ADD COLUMN lang TEXT NOT NULL DEFAULT ''`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
+	if _, err := d.db.Exec(`ALTER TABLE user_known_lemmas ADD COLUMN lang TEXT NOT NULL DEFAULT ''`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
+	if _, err := d.db.Exec(`ALTER TABLE user_ignored_lemmas ADD COLUMN lang TEXT NOT NULL DEFAULT ''`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 		return err
 	}
 
@@ -294,6 +313,151 @@ func (d *DB) FormsCount(lang string) (int, error) {
 	var count int
 	err := d.db.QueryRow(
 		`SELECT COUNT(*) FROM forms WHERE lang = ?`, lang,
+	).Scan(&count)
+	return count, err
+}
+
+func (d *DB) UpsertLemma(lemma, pos, gloss, lang string) error {
+	_, err := d.db.Exec(
+		`INSERT OR REPLACE INTO lemmas (lemma, pos, gloss, lang) VALUES (?, ?, ?, ?)`,
+		lemma, pos, gloss, lang,
+	)
+	return err
+}
+
+func (d *DB) UpsertForm(form, lemma, pos, lang string) error {
+	_, err := d.db.Exec(
+		`INSERT OR REPLACE INTO forms (form, lemma, pos, lang) VALUES (?, ?, ?, ?)`,
+		strings.ToLower(strings.TrimSpace(form)), lemma, pos, lang,
+	)
+	return err
+}
+
+func (d *DB) ImportKnownWords(userID int64, lang string, words []string) ([]KnownLemma, []string, error) {
+	normalized := make([]string, 0, len(words))
+	seen := make(map[string]struct{}, len(words))
+	for _, word := range words {
+		trimmed := strings.TrimSpace(strings.ToLower(word))
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		normalized = append(normalized, trimmed)
+	}
+
+	resolutions := d.BatchLookupForms(normalized, lang, "custom")
+	imported := make([]KnownLemma, 0, len(resolutions))
+	unresolved := make([]string, 0)
+	importedSeen := make(map[string]struct{}, len(resolutions))
+	for _, word := range normalized {
+		resolution, ok := resolutions[word]
+		if !ok || resolution.Lemma == "" || resolution.POS == "" {
+			unresolved = append(unresolved, word)
+			continue
+		}
+		if _, err := d.db.Exec(
+			`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
+			userID, lang, resolution.Lemma, resolution.POS,
+		); err != nil {
+			return nil, nil, err
+		}
+		key := resolution.Lemma + "\x00" + resolution.POS
+		if _, ok := importedSeen[key]; ok {
+			continue
+		}
+		importedSeen[key] = struct{}{}
+		imported = append(imported, KnownLemma{
+			Lemma: resolution.Lemma,
+			POS:   resolution.POS,
+			Lang:  lang,
+		})
+	}
+
+	return imported, unresolved, nil
+}
+
+func (d *DB) ListKnownWords(userID int64, lang string) ([]KnownLemma, error) {
+	rows, err := d.db.Query(
+		`SELECT lemma, pos, lang
+		 FROM user_known_lemmas
+		 WHERE user_id = ? AND lang = ?
+		 ORDER BY lemma ASC, pos ASC`,
+		userID, lang,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var lemmas []KnownLemma
+	for rows.Next() {
+		var lemma KnownLemma
+		if err := rows.Scan(&lemma.Lemma, &lemma.POS, &lemma.Lang); err != nil {
+			return nil, err
+		}
+		lemmas = append(lemmas, lemma)
+	}
+	return lemmas, rows.Err()
+}
+
+func (d *DB) DeleteKnownWord(userID int64, lang, lemma, pos string) error {
+	_, err := d.db.Exec(
+		`DELETE FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
+		userID, lang, lemma, pos,
+	)
+	return err
+}
+
+func (d *DB) IsKnownOrIgnored(userID int64, lang, lemma, pos string) (bool, error) {
+	var count int
+	err := d.db.QueryRow(
+		`SELECT COUNT(*) FROM (
+			SELECT 1 FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?
+			UNION ALL
+			SELECT 1 FROM user_ignored_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?
+		)`,
+		userID, lang, lemma, pos,
+		userID, lang, lemma, pos,
+	).Scan(&count)
+	return count > 0, err
+}
+
+func (d *DB) EnsureCard(userID int64, lang, lemma, pos string) (int64, error) {
+	_, err := d.db.Exec(
+		`INSERT OR IGNORE INTO cards (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
+		userID, lang, lemma, pos,
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	var cardID int64
+	err = d.db.QueryRow(
+		`SELECT id FROM cards WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ? AND mwe_id IS NULL`,
+		userID, lang, lemma, pos,
+	).Scan(&cardID)
+	if err != nil {
+		return 0, err
+	}
+
+	if _, err := d.db.Exec(
+		`INSERT OR IGNORE INTO card_state (card_id, fsrs_json, next_due, last_answer_at) VALUES (?, NULL, NULL, NULL)`,
+		cardID,
+	); err != nil {
+		return 0, err
+	}
+
+	return cardID, nil
+}
+
+func (d *DB) CountCards(userID int64, lang string) (int, error) {
+	var count int
+	err := d.db.QueryRow(
+		`SELECT COUNT(*) FROM cards WHERE user_id = ? AND lang = ?`,
+		userID, lang,
 	).Scan(&count)
 	return count, err
 }
