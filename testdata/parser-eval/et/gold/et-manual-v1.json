@@ -1,0 +1,82 @@
+{
+  "name": "et-manual",
+  "version": "v1",
+  "language": "ET",
+  "cases": [
+    {
+      "id": "et-1001",
+      "text": "Poes ootasin sõpra.",
+      "tokens": [
+        {
+          "surface": "Poes",
+          "lemma": "pood",
+          "pos": "NOUN",
+          "grammar_label": "inessive"
+        },
+        {
+          "surface": "sõpra",
+          "lemma": "sõber",
+          "pos": "NOUN",
+          "grammar_label": "partitive"
+        }
+      ]
+    },
+    {
+      "id": "et-1002",
+      "text": "Raamatupoes müüdi sõnastikke.",
+      "tokens": [
+        {
+          "surface": "Raamatupoes",
+          "lemma": "raamatupood",
+          "pos": "NOUN",
+          "grammar_label": "inessive"
+        },
+        {
+          "surface": "sõnastikke",
+          "lemma": "sõnastik",
+          "pos": "NOUN",
+          "grammar_label": "partitive"
+        }
+      ]
+    },
+    {
+      "id": "et-1003",
+      "text": "Lennujaamabuss peatus raudteejaamas.",
+      "tokens": [
+        {
+          "surface": "Lennujaamabuss",
+          "lemma": "lennujaamabuss",
+          "pos": "NOUN"
+        },
+        {
+          "surface": "peatus",
+          "lemma": "peatuma",
+          "pos": "VERB"
+        },
+        {
+          "surface": "raudteejaamas",
+          "lemma": "raudteejaam",
+          "pos": "NOUN",
+          "grammar_label": "inessive"
+        }
+      ]
+    },
+    {
+      "id": "et-1004",
+      "text": "Käekotis oli märkmik.",
+      "tokens": [
+        {
+          "surface": "Käekotis",
+          "lemma": "käekott",
+          "pos": "NOUN",
+          "grammar_label": "inessive"
+        },
+        {
+          "surface": "märkmik",
+          "lemma": "märkmik",
+          "pos": "NOUN"
+        }
+      ]
+    }
+  ]
+}

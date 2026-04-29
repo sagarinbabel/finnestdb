@@ -19,6 +19,9 @@ Each `YYYY-MM-DD-<dataset>.json` is the raw report emitted by
 | `full_accuracy`   | Fraction with all of lemma + POS + grammar correct |
 | `resolved_coverage` | Fraction of input tokens the parser resolved to a dictionary entry |
 | `avg/p50/p95_case_duration_ms` | Per-case latency in milliseconds |
+| `avg_unique_forms` | Average distinct non-punctuation surface forms per case |
+| `avg_resolved_tokens` / `avg_unresolved_tokens` | Average resolved vs unresolved non-punctuation tokens per case |
+| `avg_*_ms` timing fields | Average analyzer, form lookup, gloss lookup, sentence resolution, and word enrichment time per case |
 
 ## How to reproduce
 

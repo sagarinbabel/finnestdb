@@ -48,6 +48,18 @@ func TestCompareCase_MatchesOccurrenceAndGrammar(t *testing.T) {
 func TestSummaryAccumulator_FullAndCoverage(t *testing.T) {
 	acc := &summaryAccumulator{}
 	parsed := &parsecore.ParseResult{
+		Stats: parsecore.ParseStats{
+			UniqueForms:      2,
+			ResolvedTokens:   1,
+			UnresolvedTokens: 1,
+			Timings: parsecore.ParseTimings{
+				AnalyzeMs:          4,
+				LookupFormsMs:      3,
+				LookupGlossesMs:    2,
+				ResolveSentencesMs: 1,
+				EnrichWordsMs:      1,
+			},
+		},
 		Sentences: []parsecore.SentenceResult{
 			{
 				Text: "Kirjassani on.",
@@ -98,6 +110,30 @@ func TestSummaryAccumulator_FullAndCoverage(t *testing.T) {
 	}
 	if got.P95CaseDurationMs != 8 {
 		t.Fatalf("p95_case_duration_ms=%v want 8", got.P95CaseDurationMs)
+	}
+	if got.AvgUniqueForms != 2 {
+		t.Fatalf("avg_unique_forms=%v want 2", got.AvgUniqueForms)
+	}
+	if got.AvgResolvedTokens != 1 {
+		t.Fatalf("avg_resolved_tokens=%v want 1", got.AvgResolvedTokens)
+	}
+	if got.AvgUnresolvedTokens != 1 {
+		t.Fatalf("avg_unresolved_tokens=%v want 1", got.AvgUnresolvedTokens)
+	}
+	if got.AvgAnalyzeMs != 4 {
+		t.Fatalf("avg_analyze_ms=%v want 4", got.AvgAnalyzeMs)
+	}
+	if got.AvgLookupFormsMs != 3 {
+		t.Fatalf("avg_lookup_forms_ms=%v want 3", got.AvgLookupFormsMs)
+	}
+	if got.AvgLookupGlossesMs != 2 {
+		t.Fatalf("avg_lookup_glosses_ms=%v want 2", got.AvgLookupGlossesMs)
+	}
+	if got.AvgResolveSentencesMs != 1 {
+		t.Fatalf("avg_resolve_sentences_ms=%v want 1", got.AvgResolveSentencesMs)
+	}
+	if got.AvgEnrichWordsMs != 1 {
+		t.Fatalf("avg_enrich_words_ms=%v want 1", got.AvgEnrichWordsMs)
 	}
 }
 

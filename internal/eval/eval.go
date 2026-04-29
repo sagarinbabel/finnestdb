@@ -67,23 +67,32 @@ type BenchmarkConfig struct {
 }
 
 type ParserSummary struct {
-	ExpectedTokens    int     `json:"expected_tokens"`
-	LemmaAccuracy     float64 `json:"lemma_accuracy"`
-	POSAccuracy       float64 `json:"pos_accuracy"`
-	GrammarAccuracy   float64 `json:"grammar_accuracy"`
-	FullAccuracy      float64 `json:"full_accuracy"`
-	ResolvedCoverage  float64 `json:"resolved_coverage"`
-	AvgCaseDurationMs float64 `json:"avg_case_duration_ms"`
-	P50CaseDurationMs float64 `json:"p50_case_duration_ms"`
-	P95CaseDurationMs float64 `json:"p95_case_duration_ms"`
+	ExpectedTokens        int     `json:"expected_tokens"`
+	LemmaAccuracy         float64 `json:"lemma_accuracy"`
+	POSAccuracy           float64 `json:"pos_accuracy"`
+	GrammarAccuracy       float64 `json:"grammar_accuracy"`
+	FullAccuracy          float64 `json:"full_accuracy"`
+	ResolvedCoverage      float64 `json:"resolved_coverage"`
+	AvgCaseDurationMs     float64 `json:"avg_case_duration_ms"`
+	P50CaseDurationMs     float64 `json:"p50_case_duration_ms"`
+	P95CaseDurationMs     float64 `json:"p95_case_duration_ms"`
+	AvgUniqueForms        float64 `json:"avg_unique_forms"`
+	AvgResolvedTokens     float64 `json:"avg_resolved_tokens"`
+	AvgUnresolvedTokens   float64 `json:"avg_unresolved_tokens"`
+	AvgAnalyzeMs          float64 `json:"avg_analyze_ms"`
+	AvgLookupFormsMs      float64 `json:"avg_lookup_forms_ms"`
+	AvgLookupGlossesMs    float64 `json:"avg_lookup_glosses_ms"`
+	AvgResolveSentencesMs float64 `json:"avg_resolve_sentences_ms"`
+	AvgEnrichWordsMs      float64 `json:"avg_enrich_words_ms"`
 }
 
 type CaseReport struct {
-	CaseID      string                    `json:"case_id"`
-	Text        string                    `json:"text"`
-	TokenCount  int                       `json:"token_count"`
-	DurationMs  map[string]DurationStats  `json:"duration_ms"`
-	Comparisons map[string][]TokenCompare `json:"comparisons"`
+	CaseID      string                          `json:"case_id"`
+	Text        string                          `json:"text"`
+	TokenCount  int                             `json:"token_count"`
+	DurationMs  map[string]DurationStats        `json:"duration_ms"`
+	Stats       map[string]parsecore.ParseStats `json:"stats,omitempty"`
+	Comparisons map[string][]TokenCompare       `json:"comparisons"`
 }
 
 type DurationStats struct {
@@ -218,6 +227,7 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 			CaseID:      c.ID,
 			Text:        c.Text,
 			DurationMs:  make(map[string]DurationStats, len(parsers)),
+			Stats:       make(map[string]parsecore.ParseStats, len(parsers)),
 			Comparisons: make(map[string][]TokenCompare, len(parsers)),
 		}
 		for _, parser := range parsers {
@@ -242,6 +252,7 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 			}
 			caseReport.TokenCount = last.TotalTokens
 			caseReport.DurationMs[parser] = summarizeDurations(samples)
+			caseReport.Stats[parser] = last.Stats
 			comparisons := compareCase(c, last)
 			caseReport.Comparisons[parser] = comparisons
 			summaries[parser].consume(last, comparisons, samples)
@@ -274,19 +285,37 @@ func WriteReport(path string, report *Report) error {
 }
 
 type summaryAccumulator struct {
-	expectedTokens  int
-	lemmaCorrect    int
-	posCorrect      int
-	grammarEligible int
-	grammarCorrect  int
-	fullCorrect     int
-	totalTokens     int
-	resolvedTokens  int
-	allDurations    []int64
+	expectedTokens          int
+	lemmaCorrect            int
+	posCorrect              int
+	grammarEligible         int
+	grammarCorrect          int
+	fullCorrect             int
+	totalTokens             int
+	resolvedTokens          int
+	allDurations            []int64
+	caseCount               int
+	uniqueFormsTotal        int
+	resolvedTokensTotal     int
+	unresolvedTokensTotal   int
+	analyzeMsTotal          int64
+	lookupFormsMsTotal      int64
+	lookupGlossesMsTotal    int64
+	resolveSentencesMsTotal int64
+	enrichWordsMsTotal      int64
 }
 
 func (s *summaryAccumulator) consume(parsed *parsecore.ParseResult, comparisons []TokenCompare, durations []int64) {
 	s.allDurations = append(s.allDurations, durations...)
+	s.caseCount++
+	s.uniqueFormsTotal += parsed.Stats.UniqueForms
+	s.resolvedTokensTotal += parsed.Stats.ResolvedTokens
+	s.unresolvedTokensTotal += parsed.Stats.UnresolvedTokens
+	s.analyzeMsTotal += parsed.Stats.Timings.AnalyzeMs
+	s.lookupFormsMsTotal += parsed.Stats.Timings.LookupFormsMs
+	s.lookupGlossesMsTotal += parsed.Stats.Timings.LookupGlossesMs
+	s.resolveSentencesMsTotal += parsed.Stats.Timings.ResolveSentencesMs
+	s.enrichWordsMsTotal += parsed.Stats.Timings.EnrichWordsMs
 	for _, sentence := range parsed.Sentences {
 		for _, token := range sentence.Tokens {
 			if token.POS == "PUNCT" {
@@ -321,15 +350,23 @@ func (s *summaryAccumulator) consume(parsed *parsecore.ParseResult, comparisons 
 func (s *summaryAccumulator) finish() ParserSummary {
 	stats := summarizeDurations(s.allDurations)
 	return ParserSummary{
-		ExpectedTokens:    s.expectedTokens,
-		LemmaAccuracy:     ratio(s.lemmaCorrect, s.expectedTokens),
-		POSAccuracy:       ratio(s.posCorrect, s.expectedTokens),
-		GrammarAccuracy:   ratio(s.grammarCorrect, s.grammarEligible),
-		FullAccuracy:      ratio(s.fullCorrect, s.expectedTokens),
-		ResolvedCoverage:  ratio(s.resolvedTokens, s.totalTokens),
-		AvgCaseDurationMs: stats.AvgMs,
-		P50CaseDurationMs: stats.P50Ms,
-		P95CaseDurationMs: stats.P95Ms,
+		ExpectedTokens:        s.expectedTokens,
+		LemmaAccuracy:         ratio(s.lemmaCorrect, s.expectedTokens),
+		POSAccuracy:           ratio(s.posCorrect, s.expectedTokens),
+		GrammarAccuracy:       ratio(s.grammarCorrect, s.grammarEligible),
+		FullAccuracy:          ratio(s.fullCorrect, s.expectedTokens),
+		ResolvedCoverage:      ratio(s.resolvedTokens, s.totalTokens),
+		AvgCaseDurationMs:     stats.AvgMs,
+		P50CaseDurationMs:     stats.P50Ms,
+		P95CaseDurationMs:     stats.P95Ms,
+		AvgUniqueForms:        averageInt(s.uniqueFormsTotal, s.caseCount),
+		AvgResolvedTokens:     averageInt(s.resolvedTokensTotal, s.caseCount),
+		AvgUnresolvedTokens:   averageInt(s.unresolvedTokensTotal, s.caseCount),
+		AvgAnalyzeMs:          averageInt64(s.analyzeMsTotal, s.caseCount),
+		AvgLookupFormsMs:      averageInt64(s.lookupFormsMsTotal, s.caseCount),
+		AvgLookupGlossesMs:    averageInt64(s.lookupGlossesMsTotal, s.caseCount),
+		AvgResolveSentencesMs: averageInt64(s.resolveSentencesMsTotal, s.caseCount),
+		AvgEnrichWordsMs:      averageInt64(s.enrichWordsMsTotal, s.caseCount),
 	}
 }
 
@@ -472,6 +509,20 @@ func ratio(numerator, denominator int) float64 {
 		return 0
 	}
 	return float64(numerator) / float64(denominator)
+}
+
+func averageInt(total, count int) float64 {
+	if count == 0 {
+		return 0
+	}
+	return float64(total) / float64(count)
+}
+
+func averageInt64(total int64, count int) float64 {
+	if count == 0 {
+		return 0
+	}
+	return float64(total) / float64(count)
 }
 
 func slugify(s string) string {

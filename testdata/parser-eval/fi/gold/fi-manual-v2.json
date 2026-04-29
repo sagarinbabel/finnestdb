@@ -1,0 +1,79 @@
+{
+  "name": "fi-manual",
+  "version": "v2",
+  "language": "FI",
+  "cases": [
+    {
+      "id": "fi-3001",
+      "text": "Matkalaukussani oli passi.",
+      "tokens": [
+        {
+          "surface": "Matkalaukussani",
+          "lemma": "matkalaukku",
+          "pos": "NOUN"
+        },
+        {
+          "surface": "passi",
+          "lemma": "passi",
+          "pos": "NOUN"
+        }
+      ]
+    },
+    {
+      "id": "fi-3002",
+      "text": "Kaupassa odotin ystävääni.",
+      "tokens": [
+        {
+          "surface": "Kaupassa",
+          "lemma": "kauppa",
+          "pos": "NOUN",
+          "grammar_label": "inessive"
+        },
+        {
+          "surface": "ystävääni",
+          "lemma": "ystävä",
+          "pos": "NOUN"
+        }
+      ]
+    },
+    {
+      "id": "fi-3003",
+      "text": "Lentokenttäbussi pysähtyi rautatieasemalla.",
+      "tokens": [
+        {
+          "surface": "Lentokenttäbussi",
+          "lemma": "lentokenttäbussi",
+          "pos": "NOUN"
+        },
+        {
+          "surface": "pysähtyi",
+          "lemma": "pysähtyä",
+          "pos": "VERB"
+        },
+        {
+          "surface": "rautatieasemalla",
+          "lemma": "rautatieasema",
+          "pos": "NOUN",
+          "grammar_label": "adessive"
+        }
+      ]
+    },
+    {
+      "id": "fi-3004",
+      "text": "Kirjahyllyssäni on valokuvia.",
+      "tokens": [
+        {
+          "surface": "Kirjahyllyssäni",
+          "lemma": "kirjahylly",
+          "pos": "NOUN"
+        },
+        {
+          "surface": "valokuvia",
+          "lemma": "valokuva",
+          "pos": "NOUN",
+          "grammar_label": "partitive"
+        }
+      ]
+    }
+  ]
+}

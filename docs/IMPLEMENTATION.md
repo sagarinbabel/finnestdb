@@ -42,7 +42,7 @@ Current parse flow:
 3. collect unique surface forms
 4. resolve forms against the dictionary
 5. enrich output with glosses, example sentence, and grammar labels
-6. return parser results plus parse duration
+6. return parser results plus parse duration and parse-stage stats
 
 There is also partial backend support for deck creation and review-related
 tables/endpoints, but those are not the current focus and are not represented
@@ -124,6 +124,7 @@ What does exist now:
 
 - dataset-based parser evaluation
 - parser comparison CLI
+- parse-stage observability metrics for analyzer, lookups, resolution, and enrichment
 - external Omorfi adapter slot for Finnish baseline testing
 
 ## Near-Term Direction

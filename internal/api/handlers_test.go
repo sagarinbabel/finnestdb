@@ -108,6 +108,24 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 			Parser:          parser,
 			TotalTokens:     3,
 			ParseDurationMs: 17,
+			Stats: parsecore.ParseStats{
+				UniqueForms:      2,
+				TotalSentences:   1,
+				ResolvedTokens:   2,
+				UnresolvedTokens: 1,
+				SourceCounts: map[string]int{
+					"dict": 2,
+					"stub": 1,
+				},
+				Timings: parsecore.ParseTimings{
+					AnalyzeMs:          5,
+					LookupFormsMs:      4,
+					LookupGlossesMs:    3,
+					ResolveSentencesMs: 2,
+					EnrichWordsMs:      1,
+					TotalMs:            17,
+				},
+			},
 			Words: []parsecore.WordEntry{
 				{Lemma: "kissa", POS: "NOUN", Forms: []string{"Kissa"}, Count: 1, Gloss: "cat"},
 				{Lemma: "juosta", POS: "VERB", Forms: []string{"juoksee"}, Count: 1, Gloss: "run"},
@@ -140,6 +158,15 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 	}
 	if resp.ParseDurationMs != 17 {
 		t.Fatalf("parse_duration_ms=%d want 17", resp.ParseDurationMs)
+	}
+	if resp.Stats.UniqueForms != 2 {
+		t.Fatalf("stats.unique_forms=%d want 2", resp.Stats.UniqueForms)
+	}
+	if resp.Stats.ResolvedTokens != 2 {
+		t.Fatalf("stats.resolved_tokens=%d want 2", resp.Stats.ResolvedTokens)
+	}
+	if resp.Stats.Timings.TotalMs != 17 {
+		t.Fatalf("stats.timings.total_ms=%d want 17", resp.Stats.Timings.TotalMs)
 	}
 	if len(resp.Words) != 2 {
 		t.Fatalf("words=%d want 2", len(resp.Words))

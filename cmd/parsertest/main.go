@@ -76,6 +76,17 @@ func main() {
 			summary.P50CaseDurationMs,
 			summary.P95CaseDurationMs,
 		)
+		fmt.Printf(
+			"       obs unique=%4.1f resolved=%4.1f unresolved=%4.1f analyze=%4.1fms lookup=%4.1fms gloss=%4.1fms resolve=%4.1fms enrich=%4.1fms\n",
+			summary.AvgUniqueForms,
+			summary.AvgResolvedTokens,
+			summary.AvgUnresolvedTokens,
+			summary.AvgAnalyzeMs,
+			summary.AvgLookupFormsMs,
+			summary.AvgLookupGlossesMs,
+			summary.AvgResolveSentencesMs,
+			summary.AvgEnrichWordsMs,
+		)
 	}
 
 	if len(report.PriorityRegressions) > 0 {

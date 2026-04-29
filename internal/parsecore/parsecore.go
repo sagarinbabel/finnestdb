@@ -48,11 +48,31 @@ type WordEntry struct {
 	ExampleSentence string   `json:"example_sentence,omitempty"`
 }
 
+type ParseTimings struct {
+	AnalyzeMs          int64 `json:"analyze_ms"`
+	LookupFormsMs      int64 `json:"lookup_forms_ms"`
+	LookupGlossesMs    int64 `json:"lookup_glosses_ms"`
+	ResolveSentencesMs int64 `json:"resolve_sentences_ms"`
+	EnrichWordsMs      int64 `json:"enrich_words_ms"`
+	TotalMs            int64 `json:"total_ms"`
+}
+
+type ParseStats struct {
+	UniqueForms      int            `json:"unique_forms"`
+	TotalSentences   int            `json:"total_sentences"`
+	ResolvedTokens   int            `json:"resolved_tokens"`
+	UnresolvedTokens int            `json:"unresolved_tokens"`
+	PunctTokens      int            `json:"punct_tokens"`
+	SourceCounts     map[string]int `json:"source_counts,omitempty"`
+	Timings          ParseTimings   `json:"timings"`
+}
+
 type ParseResult struct {
 	Lang            string           `json:"lang"`
 	Parser          string           `json:"parser"`
 	TotalTokens     int              `json:"total_tokens"`
 	ParseDurationMs int64            `json:"parse_duration_ms"`
+	Stats           ParseStats       `json:"stats"`
 	Words           []WordEntry      `json:"words"`
 	Sentences       []SentenceResult `json:"sentences"`
 }
@@ -139,7 +159,7 @@ func (p dictionaryParser) Name() string { return p.name }
 func (p dictionaryParser) Parse(db *store.DB, lang, text string) (*ParseResult, error) {
 	parseStartedAt := time.Now()
 	result, err := p.analyzer(lang, text)
-	parseDurationMs := time.Since(parseStartedAt).Milliseconds()
+	analyzeMs := time.Since(parseStartedAt).Milliseconds()
 	if err != nil {
 		return nil, fmt.Errorf("parse error: %w", err)
 	}
@@ -148,18 +168,40 @@ func (p dictionaryParser) Parse(db *store.DB, lang, text string) (*ParseResult, 
 	}
 
 	sentences := toParsedSentences(result)
+
+	lookupStartedAt := time.Now()
 	uniqueForms := collectUniqueForms(sentences)
 	formResolutions := db.BatchLookupForms(uniqueForms, lang, p.lookupMode)
+	lookupFormsMs := time.Since(lookupStartedAt).Milliseconds()
+
+	glossLookupStartedAt := time.Now()
 	lemmaKeys := resolvedLemmaKeys(formResolutions)
 	glosses := db.BatchLookupGlosses(lemmaKeys, lang)
+	lookupGlossesMs := time.Since(glossLookupStartedAt).Milliseconds()
+
+	resolveStartedAt := time.Now()
 	detailedSentences := resolveDictionarySentences(sentences, formResolutions)
+	resolveSentencesMs := time.Since(resolveStartedAt).Milliseconds()
+
+	enrichStartedAt := time.Now()
 	words := enrichWords(detailedSentences, glosses)
+	enrichWordsMs := time.Since(enrichStartedAt).Milliseconds()
+	parseDurationMs := time.Since(parseStartedAt).Milliseconds()
+	stats := computeParseStats(detailedSentences, len(uniqueForms), ParseTimings{
+		AnalyzeMs:          analyzeMs,
+		LookupFormsMs:      lookupFormsMs,
+		LookupGlossesMs:    lookupGlossesMs,
+		ResolveSentencesMs: resolveSentencesMs,
+		EnrichWordsMs:      enrichWordsMs,
+		TotalMs:            parseDurationMs,
+	})
 
 	return &ParseResult{
 		Lang:            lang,
 		Parser:          p.name,
 		TotalTokens:     countTokens(words),
 		ParseDurationMs: parseDurationMs,
+		Stats:           stats,
 		Words:           words,
 		Sentences:       detailedSentences,
 	}, nil
@@ -177,7 +219,7 @@ func (p omorfiParser) Parse(db *store.DB, lang, text string) (*ParseResult, erro
 	}
 	parseStartedAt := time.Now()
 	result, err := p.analyzer(lang, text)
-	parseDurationMs := time.Since(parseStartedAt).Milliseconds()
+	analyzeMs := time.Since(parseStartedAt).Milliseconds()
 	if err != nil {
 		return nil, err
 	}
@@ -186,11 +228,15 @@ func (p omorfiParser) Parse(db *store.DB, lang, text string) (*ParseResult, erro
 	}
 
 	sentences := toParsedSentences(result)
+
+	lookupStartedAt := time.Now()
 	uniqueForms := collectUniqueForms(sentences)
 	directResolutions := db.BatchLookupForms(uniqueForms, lang, "basic")
 	customResolutions := db.BatchLookupForms(uniqueForms, lang, "custom")
+	lookupFormsMs := time.Since(lookupStartedAt).Milliseconds()
 	rules := defaultOmorfiRules()
 
+	resolveStartedAt := time.Now()
 	detailedSentences := make([]SentenceResult, 0, len(sentences))
 	lemmaSet := make(map[store.LemmaKey]struct{})
 	for _, sent := range sentences {
@@ -231,19 +277,35 @@ func (p omorfiParser) Parse(db *store.DB, lang, text string) (*ParseResult, erro
 		}
 		detailedSentences = append(detailedSentences, outSent)
 	}
+	resolveSentencesMs := time.Since(resolveStartedAt).Milliseconds()
 
+	glossLookupStartedAt := time.Now()
 	lemmaKeys := make([]store.LemmaKey, 0, len(lemmaSet))
 	for key := range lemmaSet {
 		lemmaKeys = append(lemmaKeys, key)
 	}
 	glosses := db.BatchLookupGlosses(lemmaKeys, lang)
+	lookupGlossesMs := time.Since(glossLookupStartedAt).Milliseconds()
+
+	enrichStartedAt := time.Now()
 	words := enrichWords(detailedSentences, glosses)
+	enrichWordsMs := time.Since(enrichStartedAt).Milliseconds()
+	parseDurationMs := time.Since(parseStartedAt).Milliseconds()
+	stats := computeParseStats(detailedSentences, len(uniqueForms), ParseTimings{
+		AnalyzeMs:          analyzeMs,
+		LookupFormsMs:      lookupFormsMs,
+		LookupGlossesMs:    lookupGlossesMs,
+		ResolveSentencesMs: resolveSentencesMs,
+		EnrichWordsMs:      enrichWordsMs,
+		TotalMs:            parseDurationMs,
+	})
 
 	return &ParseResult{
 		Lang:            lang,
 		Parser:          "omorfi",
 		TotalTokens:     countTokens(words),
 		ParseDurationMs: parseDurationMs,
+		Stats:           stats,
 		Words:           words,
 		Sentences:       detailedSentences,
 	}, nil
@@ -583,4 +645,28 @@ func countTokens(words []WordEntry) int {
 		total += w.Count
 	}
 	return total
+}
+
+func computeParseStats(sentences []SentenceResult, uniqueForms int, timings ParseTimings) ParseStats {
+	stats := ParseStats{
+		UniqueForms:    uniqueForms,
+		TotalSentences: len(sentences),
+		SourceCounts:   make(map[string]int),
+		Timings:        timings,
+	}
+	for _, sentence := range sentences {
+		for _, token := range sentence.Tokens {
+			stats.SourceCounts[token.Source]++
+			if token.POS == "PUNCT" {
+				stats.PunctTokens++
+				continue
+			}
+			if token.Resolved {
+				stats.ResolvedTokens++
+			} else {
+				stats.UnresolvedTokens++
+			}
+		}
+	}
+	return stats
 }
