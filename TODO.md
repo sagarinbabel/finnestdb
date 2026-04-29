@@ -34,9 +34,8 @@ Checklist from the 2026-04-29 repo-wide audit:
 
 Near-term items that remain open after the audit:
 
-- [ ] Add backend/API tests for `POST /api/parse` and the partial deck/review/auth handlers in `internal/api`
-- [ ] Expand browser coverage beyond one parse/results smoke flow: nav shell behavior, POS filter chips, language-switch warning, and file-upload flow
-- [ ] Decide whether Dashboard/Catalog/Review stay as disabled placeholders in the nav shell or get hidden until routes exist
+- [x] Add backend/API tests for `POST /api/parse` and the partial deck/review/auth handlers in `internal/api`
+- [x] Expand browser coverage beyond one parse/results smoke flow: nav shell behavior, POS filter chips, language-switch warning, and file-upload flow
 - [ ] Either implement real auth/deck/review behavior or narrow the exposed stub endpoints so the server surface matches the current product focus
 - [ ] Review the new Finnish draft/gold parser-eval cases for additional promotion or correction after more corpus mining
 - [ ] Document the expected browser-QA setup more clearly in the repo so Playwright use is obvious on a fresh checkout

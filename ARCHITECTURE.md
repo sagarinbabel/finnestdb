@@ -7,7 +7,7 @@ lemmatization, parser evaluation, and future lexical knowledge work.
 
 Current product surface on `main`:
 
-- global nav shell with desktop links and mobile menu
+- workbench nav shell with desktop/mobile navigation
 - parse page for Finnish or Estonian text
 - parser selection in the browser: `basic` and `custom`
 - file load support for `.txt` / `.md`
@@ -31,7 +31,7 @@ CURRENT
 | Browser UI                                                                     |
 | web/index.html + web/app.ts                                                    |
 |                                                                                |
-| - Global nav shell                                                             |
+| - Workbench nav shell                                                          |
 | - Parse Text page                                                              |
 | - Parser buttons: basic, custom                                                |
 | - Language warning and file load                                               |
@@ -162,7 +162,7 @@ Files:
 
 Responsibilities:
 
-- render the global nav shell and mobile menu
+- render the workbench nav shell and mobile menu
 - collect text and selected language
 - choose between `basic` and `custom`
 - submit parse requests to `/api/parse`
@@ -295,7 +295,7 @@ Responsibilities:
 ## Current Boundaries and Caveats
 
 - The browser UI is still centered on `basic` and `custom`.
-- The nav shell exists, but only the `Import` route is wired; Dashboard/Catalog/Review remain placeholders.
+- The nav shell is intentionally limited to the parser workbench surface.
 - The review/account system still exists mostly as partial backend scaffolding or stubs.
 - Omorfi is not bundled into normal app startup; it is an external adapter path.
 - The evaluation pipeline is now a first-class architectural component.

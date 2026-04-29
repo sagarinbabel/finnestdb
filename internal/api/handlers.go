@@ -13,11 +13,15 @@ import (
 )
 
 type API struct {
-	store *store.DB
+	store   *store.DB
+	analyze func(*store.DB, string, string, string) (*parsecore.ParseResult, error)
 }
 
 func NewAPI(store *store.DB) *API {
-	return &API{store: store}
+	return &API{
+		store:   store,
+		analyze: parsecore.Analyze,
+	}
 }
 
 type LoginRequest struct {
@@ -124,7 +128,7 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   86400 * 7, // 7 days
 	})
 
-	json.NewEncoder(w).Encode(LoginResponse{
+	writeJSON(w, http.StatusOK, LoginResponse{
 		UserID: user.ID,
 		Email:  user.Email,
 	})
@@ -152,7 +156,7 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	json.NewEncoder(w).Encode(DashboardResponse{
+	writeJSON(w, http.StatusOK, DashboardResponse{
 		KnownCount:       1234, // Mock data
 		DueCount:         87,   // Mock data
 		NewCapacityToday: 12,   // Mock data
@@ -189,7 +193,7 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	parsed, err := parsecore.Analyze(a.store, req.Lang, req.Text, "custom")
+	parsed, err := a.analyze(a.store, req.Lang, req.Text, "custom")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -231,7 +235,7 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	json.NewEncoder(w).Encode(CreateDeckResponse{DeckID: deckID})
+	writeJSON(w, http.StatusOK, CreateDeckResponse{DeckID: deckID})
 }
 
 func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
@@ -263,7 +267,7 @@ func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	json.NewEncoder(w).Encode(card)
+	writeJSON(w, http.StatusOK, card)
 }
 
 func (a *API) HandleReviewAnswer(w http.ResponseWriter, r *http.Request) {
@@ -273,8 +277,7 @@ func (a *API) HandleReviewAnswer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Stub: just return success
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (a *API) HandleCardIgnore(w http.ResponseWriter, r *http.Request) {
@@ -284,8 +287,7 @@ func (a *API) HandleCardIgnore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Stub: just return success
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (a *API) HandleCardKnown(w http.ResponseWriter, r *http.Request) {
@@ -295,8 +297,7 @@ func (a *API) HandleCardKnown(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Stub: just return success
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 type ParseRequest struct {
@@ -335,7 +336,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Text is required", http.StatusBadRequest)
 		return
 	}
-	parsed, err := parsecore.Analyze(a.store, req.Lang, req.Text, req.Parser)
+	parsed, err := a.analyze(a.store, req.Lang, req.Text, req.Parser)
 	if err != nil {
 		status := http.StatusInternalServerError
 		switch err.Error() {
@@ -353,12 +354,18 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	json.NewEncoder(w).Encode(ParseResponse{
+	writeJSON(w, http.StatusOK, ParseResponse{
 		Lang:            parsed.Lang,
 		TotalTokens:     parsed.TotalTokens,
 		ParseDurationMs: parsed.ParseDurationMs,
 		Words:           parsed.Words,
 	})
+}
+
+func writeJSON(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(payload)
 }
 
 func (a *API) SetupRoutes(mux *http.ServeMux) {
