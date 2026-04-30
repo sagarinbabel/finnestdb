@@ -196,6 +196,7 @@ func (d *DB) initSchema() error {
 		fsrs_json TEXT,
 		next_due DATETIME,
 		last_answer_at DATETIME,
+		introduced_at DATETIME,
 		FOREIGN KEY(card_id) REFERENCES cards(id)
 	);
 
@@ -284,6 +285,9 @@ func (d *DB) initSchema() error {
 	if _, err := d.db.Exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 		return err
 	}
+	if _, err := d.db.Exec(`ALTER TABLE card_state ADD COLUMN introduced_at DATETIME`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
 
 	if err := d.ensureLangScopedKnownTable("user_known_lemmas"); err != nil {
 		return err
@@ -295,6 +299,12 @@ func (d *DB) initSchema() error {
 		return err
 	}
 	if _, err := d.db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_user_lang_lemma_pos_null_mwe ON cards(user_id, lang, lemma, pos) WHERE mwe_id IS NULL`); err != nil {
+		return err
+	}
+	if _, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_users_lower_email ON users(lower(email))`); err != nil {
+		return err
+	}
+	if _, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_card_state_introduced_at ON card_state(introduced_at) WHERE introduced_at IS NOT NULL`); err != nil {
 		return err
 	}
 
@@ -363,7 +373,11 @@ func (d *DB) GetUserByID(userID int64) (*User, error) {
 }
 
 type sqlReadWriter interface {
+	sqlQueryRower
 	Exec(query string, args ...any) (sql.Result, error)
+}
+
+type sqlQueryRower interface {
 	QueryRow(query string, args ...any) *sql.Row
 }
 
@@ -651,8 +665,7 @@ func (d *DB) DeleteDeck(userID, deckID int64) error {
 	}
 	defer tx.Rollback()
 
-	result, err := tx.Exec(`DELETE FROM occurrence WHERE deck_id = ? AND deck_id IN (SELECT id FROM decks WHERE id = ? AND user_id = ?)`, deckID, deckID, userID)
-	if err != nil {
+	if _, err := tx.Exec(`DELETE FROM occurrence WHERE deck_id = ? AND deck_id IN (SELECT id FROM decks WHERE id = ? AND user_id = ?)`, deckID, deckID, userID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`DELETE FROM sentences WHERE deck_id = ? AND deck_id IN (SELECT id FROM decks WHERE id = ? AND user_id = ?)`, deckID, deckID, userID); err != nil {
@@ -668,9 +681,6 @@ func (d *DB) DeleteDeck(userID, deckID int64) error {
 	}
 	if rowsAffected == 0 {
 		return sql.ErrNoRows
-	}
-	if _, err := result.RowsAffected(); err != nil {
-		return err
 	}
 	return tx.Commit()
 }
@@ -852,18 +862,36 @@ func (d *DB) CountNewCards(userID int64) (int, error) {
 		    )`,
 		userID,
 	).Scan(&count)
-	return count, err
+	if err != nil {
+		return 0, err
+	}
+	remaining, err := d.remainingNewCardsToday(userID)
+	if err != nil {
+		return 0, err
+	}
+	if count > remaining {
+		count = remaining
+	}
+	return count, nil
 }
 
 func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error) {
 	deckFilter := ""
 	deckOccurrenceFilter := ""
+	newCardFilter := ""
 	if deckID != nil {
 		deckFilter = ` AND EXISTS (
 			SELECT 1 FROM occurrence o
 			WHERE o.deck_id = ? AND o.lemma = c.lemma AND o.pos = c.pos
 		)`
 		deckOccurrenceFilter = ` AND o.deck_id = ?`
+	}
+	remainingNewCards, err := d.remainingNewCardsToday(userID)
+	if err != nil {
+		return nil, err
+	}
+	if remainingNewCards == 0 {
+		newCardFilter = ` AND cs.last_answer_at IS NOT NULL`
 	}
 
 	query := `SELECT c.id, c.lang, c.lemma, c.pos, COALESCE(l.gloss, ''),
@@ -903,7 +931,7 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error)
 	                 SELECT 1 FROM user_ignored_lemmas ui
 	                  WHERE ui.user_id = c.user_id AND ui.lang = c.lang AND ui.lemma = c.lemma AND ui.pos = c.pos
 	             )
-	             AND (cs.next_due IS NULL OR cs.next_due <= CURRENT_TIMESTAMP)` + deckFilter + `
+	             AND (cs.next_due IS NULL OR cs.next_due <= CURRENT_TIMESTAMP)` + newCardFilter + deckFilter + `
 	        ORDER BY CASE WHEN cs.last_answer_at IS NULL THEN 0 ELSE 1 END,
 	                 COALESCE(cs.next_due, '1970-01-01 00:00:00') ASC,
 	                 c.id ASC
@@ -915,7 +943,7 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error)
 	}
 
 	var card ReviewCard
-	err := d.db.QueryRow(query, queryArgs...).Scan(
+	err = d.db.QueryRow(query, queryArgs...).Scan(
 		&card.CardID,
 		&card.Lang,
 		&card.Lemma,
@@ -964,7 +992,13 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error)
 }
 
 func (d *DB) RecordReviewAnswer(userID, cardID int64, rating string) error {
-	card, schedule, err := d.getOwnedCardSchedule(userID, cardID)
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	card, schedule, err := getOwnedCardSchedule(tx, userID, cardID)
 	if err != nil {
 		return err
 	}
@@ -978,31 +1012,39 @@ func (d *DB) RecordReviewAnswer(userID, cardID int64, rating string) error {
 		return err
 	}
 
-	_, err = d.db.Exec(
+	if _, err := tx.Exec(
 		`UPDATE card_state
-		    SET fsrs_json = ?, next_due = ?, last_answer_at = CURRENT_TIMESTAMP
+		    SET fsrs_json = ?,
+		        next_due = ?,
+		        introduced_at = CASE
+		            WHEN introduced_at IS NULL AND last_answer_at IS NULL THEN CURRENT_TIMESTAMP
+		            ELSE introduced_at
+		        END,
+		        last_answer_at = CURRENT_TIMESTAMP
 		  WHERE card_id = ?`,
 		string(payload),
 		sqliteTime(nextDue),
 		cardID,
-	)
-	return err
+	); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (d *DB) MarkCardKnown(userID, cardID int64) error {
-	card, _, err := d.getOwnedCardSchedule(userID, cardID)
-	if err != nil {
-		return err
-	}
-	if card == nil {
-		return sql.ErrNoRows
-	}
 	tx, err := d.db.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
+	card, _, err := getOwnedCardSchedule(tx, userID, cardID)
+	if err != nil {
+		return err
+	}
+	if card == nil {
+		return sql.ErrNoRows
+	}
 	if _, err := tx.Exec(
 		`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
 		userID, card.Lang, card.Lemma, card.POS,
@@ -1019,19 +1061,19 @@ func (d *DB) MarkCardKnown(userID, cardID int64) error {
 }
 
 func (d *DB) MarkCardIgnored(userID, cardID int64) error {
-	card, _, err := d.getOwnedCardSchedule(userID, cardID)
-	if err != nil {
-		return err
-	}
-	if card == nil {
-		return sql.ErrNoRows
-	}
 	tx, err := d.db.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
+	card, _, err := getOwnedCardSchedule(tx, userID, cardID)
+	if err != nil {
+		return err
+	}
+	if card == nil {
+		return sql.ErrNoRows
+	}
 	if _, err := tx.Exec(
 		`INSERT OR IGNORE INTO user_ignored_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
 		userID, card.Lang, card.Lemma, card.POS,
@@ -1219,10 +1261,10 @@ func boolToInt(v bool) int {
 	return 0
 }
 
-func (d *DB) getOwnedCardSchedule(userID, cardID int64) (*Card, ReviewSchedule, error) {
+func getOwnedCardSchedule(q sqlQueryRower, userID, cardID int64) (*Card, ReviewSchedule, error) {
 	var card Card
 	var fsrsJSON sql.NullString
-	err := d.db.QueryRow(
+	err := q.QueryRow(
 		`SELECT c.id, c.user_id, c.lang, c.lemma, c.pos, c.mwe_id, cs.fsrs_json
 		   FROM cards c
 		   JOIN card_state cs ON cs.card_id = c.id
@@ -1241,6 +1283,65 @@ func (d *DB) getOwnedCardSchedule(userID, cardID int64) (*Card, ReviewSchedule, 
 		_ = json.Unmarshal([]byte(fsrsJSON.String), &schedule)
 	}
 	return &card, schedule, nil
+}
+
+func (d *DB) getOwnedCardSchedule(userID, cardID int64) (*Card, ReviewSchedule, error) {
+	return getOwnedCardSchedule(d.db, userID, cardID)
+}
+
+func (d *DB) remainingNewCardsToday(userID int64) (int, error) {
+	newPerDay, err := d.userNewCardsPerDay(userID)
+	if err != nil {
+		return 0, err
+	}
+
+	var introducedToday int
+	err = d.db.QueryRow(
+		`SELECT COUNT(*)
+		   FROM cards c
+		   JOIN card_state cs ON cs.card_id = c.id
+		  WHERE c.user_id = ?
+		    AND c.mwe_id IS NULL
+		    AND cs.introduced_at IS NOT NULL
+		    AND date(cs.introduced_at) = date(CURRENT_TIMESTAMP)`,
+		userID,
+	).Scan(&introducedToday)
+	if err != nil {
+		return 0, err
+	}
+
+	remaining := newPerDay - introducedToday
+	if remaining < 0 {
+		return 0, nil
+	}
+	return remaining, nil
+}
+
+func (d *DB) userNewCardsPerDay(userID int64) (int, error) {
+	var settingsJSON string
+	if err := d.db.QueryRow(`SELECT settings_json FROM users WHERE id = ?`, userID).Scan(&settingsJSON); err != nil {
+		return 0, err
+	}
+
+	settings := map[string]any{}
+	if strings.TrimSpace(settingsJSON) != "" {
+		_ = json.Unmarshal([]byte(settingsJSON), &settings)
+	}
+
+	newPerDay := 20
+	if raw, ok := settings["new_per_day"]; ok {
+		switch v := raw.(type) {
+		case float64:
+			if int(v) > 0 {
+				newPerDay = int(v)
+			}
+		case int:
+			if v > 0 {
+				newPerDay = v
+			}
+		}
+	}
+	return newPerDay, nil
 }
 
 func nextScheduleForRating(schedule ReviewSchedule, rating string) (time.Time, ReviewSchedule) {
@@ -1397,14 +1498,15 @@ func (d *DB) ensureLangScopedCardsTable() error {
 			fsrs_json TEXT,
 			next_due DATETIME,
 			last_answer_at DATETIME,
+			introduced_at DATETIME,
 			FOREIGN KEY(card_id) REFERENCES cards_new(id)
 		)`); err != nil {
 		return err
 	}
 
 	copyCardState := fmt.Sprintf(
-		`INSERT OR IGNORE INTO card_state_new (card_id, fsrs_json, next_due, last_answer_at)
-		 SELECT cnew.id, cs.fsrs_json, cs.next_due, cs.last_answer_at
+		`INSERT OR IGNORE INTO card_state_new (card_id, fsrs_json, next_due, last_answer_at, introduced_at)
+		 SELECT cnew.id, cs.fsrs_json, cs.next_due, cs.last_answer_at, NULL
 		 FROM card_state cs
 		 JOIN cards cold ON cold.id = cs.card_id
 		 JOIN cards_new cnew
