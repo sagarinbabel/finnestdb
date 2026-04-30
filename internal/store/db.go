@@ -190,6 +190,9 @@ func (d *DB) initSchema() error {
 	if err := d.ensureLangScopedCardsTable(); err != nil {
 		return err
 	}
+	if _, err := d.db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_user_lang_lemma_pos_null_mwe ON cards(user_id, lang, lemma, pos) WHERE mwe_id IS NULL`); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -428,36 +431,20 @@ func (d *DB) IsKnownOrIgnored(userID int64, lang, lemma, pos string) (bool, erro
 }
 
 func (d *DB) EnsureCard(userID int64, lang, lemma, pos string) (int64, error) {
+	if _, err := d.db.Exec(
+		`INSERT OR IGNORE INTO cards (user_id, lang, lemma, pos, mwe_id) VALUES (?, ?, ?, ?, NULL)`,
+		userID, lang, lemma, pos,
+	); err != nil {
+		return 0, err
+	}
+
 	var cardID int64
-	err := d.db.QueryRow(
-		`SELECT id FROM cards WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ? AND mwe_id IS NULL`,
+	if err := d.db.QueryRow(
+		`SELECT id FROM cards WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ? AND mwe_id IS NULL ORDER BY id LIMIT 1`,
 		userID, lang, lemma, pos,
-	).Scan(&cardID)
-	if err == nil {
-		if _, err := d.db.Exec(
-			`INSERT OR IGNORE INTO card_state (card_id, fsrs_json, next_due, last_answer_at) VALUES (?, NULL, NULL, NULL)`,
-			cardID,
-		); err != nil {
-			return 0, err
-		}
-		return cardID, nil
-	}
-	if err != sql.ErrNoRows {
+	).Scan(&cardID); err != nil {
 		return 0, err
 	}
-
-	result, err := d.db.Exec(
-		`INSERT INTO cards (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
-		userID, lang, lemma, pos,
-	)
-	if err != nil {
-		return 0, err
-	}
-	cardID, err = result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-
 	if _, err := d.db.Exec(
 		`INSERT OR IGNORE INTO card_state (card_id, fsrs_json, next_due, last_answer_at) VALUES (?, NULL, NULL, NULL)`,
 		cardID,
@@ -562,7 +549,13 @@ func (d *DB) ensureLangScopedCardsTable() error {
 		return nil
 	}
 
-	if _, err := d.db.Exec(`
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`
 		CREATE TABLE cards_new (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id INTEGER NOT NULL,
@@ -576,35 +569,65 @@ func (d *DB) ensureLangScopedCardsTable() error {
 		return err
 	}
 
-	if _, err := d.db.Exec(`
-		INSERT OR IGNORE INTO cards_new (user_id, lang, lemma, pos)
-		SELECT DISTINCT d.user_id, d.lang, o.lemma, o.pos
-		FROM occurrence o
-		JOIN decks d ON d.id = o.deck_id
-		WHERE o.lemma != '' AND o.pos != ''`); err != nil {
+	insertLangExpr := `'FI'`
+	copyLangExpr := `'FI'`
+	if hasLang {
+		insertLangExpr = `COALESCE(NULLIF(lang, ''), 'FI')`
+		copyLangExpr = `COALESCE(NULLIF(cold.lang, ''), 'FI')`
+	}
+	insertCards := fmt.Sprintf(
+		`INSERT OR IGNORE INTO cards_new (id, user_id, lang, lemma, pos, mwe_id)
+		 SELECT id, user_id, %s, lemma, pos, mwe_id FROM cards`,
+		insertLangExpr,
+	)
+	if _, err := tx.Exec(insertCards); err != nil {
 		return err
 	}
 
-	if _, err := d.db.Exec(`DROP TABLE card_state`); err != nil {
-		return err
-	}
-	if _, err := d.db.Exec(`DROP TABLE cards`); err != nil {
-		return err
-	}
-	if _, err := d.db.Exec(`ALTER TABLE cards_new RENAME TO cards`); err != nil {
-		return err
-	}
-	if _, err := d.db.Exec(`
-		CREATE TABLE card_state (
+	// Preserve existing scheduling state while backfilling FI onto legacy
+	// pre-language cards. Finnestdb was Finnish-only before this migration.
+	if _, err := tx.Exec(`
+		CREATE TABLE card_state_new (
 			card_id INTEGER PRIMARY KEY,
 			fsrs_json TEXT,
 			next_due DATETIME,
 			last_answer_at DATETIME,
-			FOREIGN KEY(card_id) REFERENCES cards(id)
+			FOREIGN KEY(card_id) REFERENCES cards_new(id)
 		)`); err != nil {
 		return err
 	}
-	return nil
+
+	copyCardState := fmt.Sprintf(
+		`INSERT OR IGNORE INTO card_state_new (card_id, fsrs_json, next_due, last_answer_at)
+		 SELECT cnew.id, cs.fsrs_json, cs.next_due, cs.last_answer_at
+		 FROM card_state cs
+		 JOIN cards cold ON cold.id = cs.card_id
+		 JOIN cards_new cnew
+		   ON cnew.user_id = cold.user_id
+		  AND cnew.lang = %s
+		  AND cnew.lemma = cold.lemma
+		  AND cnew.pos = cold.pos
+		  AND ((cnew.mwe_id IS NULL AND cold.mwe_id IS NULL) OR cnew.mwe_id = cold.mwe_id)`,
+		copyLangExpr,
+	)
+	if _, err := tx.Exec(copyCardState); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`DROP TABLE card_state`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DROP TABLE cards`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`ALTER TABLE cards_new RENAME TO cards`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`ALTER TABLE card_state_new RENAME TO card_state`); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (d *DB) tableHasColumn(table, column string) (bool, error) {
