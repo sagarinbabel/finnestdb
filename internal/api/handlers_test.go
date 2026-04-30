@@ -970,6 +970,109 @@ func TestReviewFlowAnswerAndMarkKnown(t *testing.T) {
 	}
 }
 
+func TestReviewNextDeckFilterUsesOwnedDeckData(t *testing.T) {
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		lemma := "kissa"
+		form := "Kissa"
+		if strings.HasPrefix(strings.ToLower(text), "koira") {
+			lemma = "koira"
+			form = "Koira"
+		}
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: text,
+					Tokens: []parsecore.TokenResult{
+						{Form: form, Lemma: lemma, POS: "NOUN"},
+					},
+				},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	ownerEmail := "owner@example.com"
+	otherEmail := "other@example.com"
+	ownerCookies := loginAndReturnCookies(t, mux, ownerEmail)
+	otherCookies := loginAndReturnCookies(t, mux, otherEmail)
+
+	createDeckAndReturnID(t, mux, ownerCookies, "Owner seed deck", "Koira bumps the deck id.")
+	createDeckAndReturnID(t, mux, otherCookies, "Other deck", "Kissa from the other deck.")
+	ownerDeckID := createDeckAndReturnID(t, mux, ownerCookies, "Owner deck", "Kissa from the owner deck.")
+
+	ownerUser, err := api.store.GetOrCreateUser(ownerEmail)
+	if err != nil {
+		t.Fatalf("GetOrCreateUser(owner): %v", err)
+	}
+	if ownerDeckID == ownerUser.ID {
+		t.Fatalf("test setup invalid: owner deck id %d matches owner user id %d", ownerDeckID, ownerUser.ID)
+	}
+
+	reviewReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/review/next?deck_id=%d", ownerDeckID), nil)
+	for _, cookie := range ownerCookies {
+		reviewReq.AddCookie(cookie)
+	}
+	reviewRec := httptest.NewRecorder()
+	mux.ServeHTTP(reviewRec, reviewReq)
+	if reviewRec.Code != http.StatusOK {
+		t.Fatalf("review status=%d want %d body=%q", reviewRec.Code, http.StatusOK, reviewRec.Body.String())
+	}
+
+	var card CardResponse
+	if err := json.NewDecoder(bytes.NewReader(reviewRec.Body.Bytes())).Decode(&card); err != nil {
+		t.Fatalf("decode review card: %v", err)
+	}
+	if card.Front.Text != "Kissa from the owner deck." {
+		t.Fatalf("front text=%q want owner sentence", card.Front.Text)
+	}
+	if len(card.Back.Examples) != 1 {
+		t.Fatalf("examples=%d want 1 (%+v)", len(card.Back.Examples), card.Back.Examples)
+	}
+	if card.Back.Examples[0].Text != "Kissa from the owner deck." {
+		t.Fatalf("example text=%q want owner sentence", card.Back.Examples[0].Text)
+	}
+	if card.Back.Examples[0].SourceDeck != "Owner deck" {
+		t.Fatalf("source deck=%q want Owner deck", card.Back.Examples[0].SourceDeck)
+	}
+}
+
+func TestReviewNextDeckFilterRejectsForeignDeck(t *testing.T) {
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: text,
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+					},
+				},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	ownerCookies := loginAndReturnCookies(t, mux, "owner@example.com")
+	otherCookies := loginAndReturnCookies(t, mux, "other@example.com")
+	otherDeckID := createDeckAndReturnID(t, mux, otherCookies, "Other deck", "Kissa from the other deck.")
+
+	reviewReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/review/next?deck_id=%d", otherDeckID), nil)
+	for _, cookie := range ownerCookies {
+		reviewReq.AddCookie(cookie)
+	}
+	reviewRec := httptest.NewRecorder()
+	mux.ServeHTTP(reviewRec, reviewReq)
+	if reviewRec.Code != http.StatusNotFound {
+		t.Fatalf("review status=%d want %d body=%q", reviewRec.Code, http.StatusNotFound, reviewRec.Body.String())
+	}
+	if !strings.Contains(reviewRec.Body.String(), "Deck not found") {
+		t.Fatalf("body=%q missing deck-not-found error", reviewRec.Body.String())
+	}
+}
+
 func TestParseFeedbackRequiresAuthentication(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)
@@ -1259,6 +1362,31 @@ func loginAndReturnCookies(t *testing.T, mux *http.ServeMux, email string) []*ht
 		t.Fatal("expected login to set cookies")
 	}
 	return cookies
+}
+
+func createDeckAndReturnID(t *testing.T, mux *http.ServeMux, cookies []*http.Cookie, title, text string) int64 {
+	t.Helper()
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/api/decks",
+		strings.NewReader(fmt.Sprintf(`{"title":%q,"lang":"FI","text":%q}`, title, text)),
+	)
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("create deck status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var created CreateDeckResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&created); err != nil {
+		t.Fatalf("decode create deck response: %v", err)
+	}
+	return created.DeckID
 }
 
 func requestWithCookies(req *http.Request, cookies []*http.Cookie) *http.Request {

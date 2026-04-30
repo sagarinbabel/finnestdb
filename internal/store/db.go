@@ -70,6 +70,17 @@ type ReviewSchedule struct {
 	Step   int `json:"step"`
 }
 
+type DeckSentenceInput struct {
+	Text   string
+	Tokens []DeckTokenInput
+}
+
+type DeckTokenInput struct {
+	TokenIx int
+	Lemma   string
+	POS     string
+}
+
 type KnownLemma struct {
 	Lemma string `json:"lemma"`
 	POS   string `json:"pos"`
@@ -351,6 +362,11 @@ func (d *DB) GetUserByID(userID int64) (*User, error) {
 	return &user, nil
 }
 
+type sqlReadWriter interface {
+	Exec(query string, args ...any) (sql.Result, error)
+	QueryRow(query string, args ...any) *sql.Row
+}
+
 func (d *DB) CreateDeck(userID int64, title, lang string) (int64, error) {
 	result, err := d.db.Exec(
 		"INSERT INTO decks (user_id, title, lang) VALUES (?, ?, ?)",
@@ -461,6 +477,155 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 	return stats, rows.Err()
 }
 
+func createDeck(q sqlReadWriter, userID int64, title, lang string) (int64, error) {
+	result, err := q.Exec(
+		"INSERT INTO decks (user_id, title, lang) VALUES (?, ?, ?)",
+		userID, title, lang,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
+func createSentence(q sqlReadWriter, deckID int64, text, lang string) (int64, error) {
+	result, err := q.Exec(
+		"INSERT INTO sentences (deck_id, text, lang) VALUES (?, ?, ?)",
+		deckID, text, lang,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
+func createOccurrence(q sqlReadWriter, deckID, sentenceID int64, tokenIx int, lemma, pos string) error {
+	_, err := q.Exec(
+		`INSERT OR IGNORE INTO occurrence (deck_id, sentence_id, token_ix, lemma, pos)
+		 VALUES (?, ?, ?, ?, ?)`,
+		deckID, sentenceID, tokenIx, lemma, pos,
+	)
+	return err
+}
+
+func ensureCard(q sqlReadWriter, userID int64, lang, lemma, pos string) (int64, error) {
+	if _, err := q.Exec(
+		`INSERT OR IGNORE INTO cards (user_id, lang, lemma, pos, mwe_id) VALUES (?, ?, ?, ?, NULL)`,
+		userID, lang, lemma, pos,
+	); err != nil {
+		return 0, err
+	}
+
+	var cardID int64
+	if err := q.QueryRow(
+		`SELECT id FROM cards WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ? AND mwe_id IS NULL ORDER BY id LIMIT 1`,
+		userID, lang, lemma, pos,
+	).Scan(&cardID); err != nil {
+		return 0, err
+	}
+	if _, err := q.Exec(
+		`INSERT OR IGNORE INTO card_state (card_id, fsrs_json, next_due, last_answer_at) VALUES (?, NULL, NULL, NULL)`,
+		cardID,
+	); err != nil {
+		return 0, err
+	}
+
+	return cardID, nil
+}
+
+func isKnownOrIgnored(q sqlReadWriter, userID int64, lang, lemma, pos string) (bool, error) {
+	var count int
+	err := q.QueryRow(
+		`SELECT COUNT(*) FROM (
+			SELECT 1 FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?
+			UNION ALL
+			SELECT 1 FROM user_ignored_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?
+		)`,
+		userID, lang, lemma, pos,
+		userID, lang, lemma, pos,
+	).Scan(&count)
+	return count > 0, err
+}
+
+func (d *DB) CreateDeckWithSentences(userID int64, title, lang string, sentences []DeckSentenceInput) (int64, error) {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	type cardKey struct {
+		lemma string
+		pos   string
+	}
+
+	cardKeys := make(map[cardKey]struct{})
+	for _, sentence := range sentences {
+		for _, token := range sentence.Tokens {
+			if token.Lemma == "" || token.POS == "" {
+				continue
+			}
+			cardKeys[cardKey{lemma: token.Lemma, pos: token.POS}] = struct{}{}
+		}
+	}
+
+	for key := range cardKeys {
+		knownOrIgnored, err := isKnownOrIgnored(tx, userID, lang, key.lemma, key.pos)
+		if err != nil {
+			return 0, err
+		}
+		if knownOrIgnored {
+			continue
+		}
+		if _, err := ensureCard(tx, userID, lang, key.lemma, key.pos); err != nil {
+			return 0, err
+		}
+	}
+
+	deckID, err := createDeck(tx, userID, title, lang)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, sentence := range sentences {
+		if sentence.Text == "" {
+			continue
+		}
+		sentenceID, err := createSentence(tx, deckID, sentence.Text, lang)
+		if err != nil {
+			return 0, err
+		}
+		for _, token := range sentence.Tokens {
+			if token.Lemma == "" || token.POS == "" {
+				continue
+			}
+			if err := createOccurrence(tx, deckID, sentenceID, token.TokenIx, token.Lemma, token.POS); err != nil {
+				return 0, err
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return deckID, nil
+}
+
+func (d *DB) UserOwnsDeck(userID, deckID int64) (bool, error) {
+	var exists int
+	err := d.db.QueryRow(
+		`SELECT 1 FROM decks WHERE id = ? AND user_id = ?`,
+		deckID, userID,
+	).Scan(&exists)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (d *DB) UpdateDeckTitle(userID, deckID int64, title string) error {
 	result, err := d.db.Exec(
 		`UPDATE decks SET title = ? WHERE id = ? AND user_id = ?`,
@@ -513,12 +678,7 @@ func (d *DB) DeleteDeck(userID, deckID int64) error {
 // CreateOccurrence records that a lemma+pos token appeared at position tokenIx
 // within the given sentence (which belongs to the given deck).
 func (d *DB) CreateOccurrence(deckID, sentenceID int64, tokenIx int, lemma, pos string) error {
-	_, err := d.db.Exec(
-		`INSERT OR IGNORE INTO occurrence (deck_id, sentence_id, token_ix, lemma, pos)
-		 VALUES (?, ?, ?, ?, ?)`,
-		deckID, sentenceID, tokenIx, lemma, pos,
-	)
-	return err
+	return createOccurrence(d.db, deckID, sentenceID, tokenIx, lemma, pos)
 }
 
 // FormsCount returns the number of rows in the forms table for the given lang.
@@ -626,42 +786,11 @@ func (d *DB) DeleteKnownWord(userID int64, lang, lemma, pos string) error {
 }
 
 func (d *DB) IsKnownOrIgnored(userID int64, lang, lemma, pos string) (bool, error) {
-	var count int
-	err := d.db.QueryRow(
-		`SELECT COUNT(*) FROM (
-			SELECT 1 FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?
-			UNION ALL
-			SELECT 1 FROM user_ignored_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?
-		)`,
-		userID, lang, lemma, pos,
-		userID, lang, lemma, pos,
-	).Scan(&count)
-	return count > 0, err
+	return isKnownOrIgnored(d.db, userID, lang, lemma, pos)
 }
 
 func (d *DB) EnsureCard(userID int64, lang, lemma, pos string) (int64, error) {
-	if _, err := d.db.Exec(
-		`INSERT OR IGNORE INTO cards (user_id, lang, lemma, pos, mwe_id) VALUES (?, ?, ?, ?, NULL)`,
-		userID, lang, lemma, pos,
-	); err != nil {
-		return 0, err
-	}
-
-	var cardID int64
-	if err := d.db.QueryRow(
-		`SELECT id FROM cards WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ? AND mwe_id IS NULL ORDER BY id LIMIT 1`,
-		userID, lang, lemma, pos,
-	).Scan(&cardID); err != nil {
-		return 0, err
-	}
-	if _, err := d.db.Exec(
-		`INSERT OR IGNORE INTO card_state (card_id, fsrs_json, next_due, last_answer_at) VALUES (?, NULL, NULL, NULL)`,
-		cardID,
-	); err != nil {
-		return 0, err
-	}
-
-	return cardID, nil
+	return ensureCard(d.db, userID, lang, lemma, pos)
 }
 
 func (d *DB) CountCards(userID int64, lang string) (int, error) {
@@ -727,7 +856,6 @@ func (d *DB) CountNewCards(userID int64) (int, error) {
 }
 
 func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error) {
-	args := []any{userID}
 	deckFilter := ""
 	deckOccurrenceFilter := ""
 	if deckID != nil {
@@ -736,7 +864,6 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error)
 			WHERE o.deck_id = ? AND o.lemma = c.lemma AND o.pos = c.pos
 		)`
 		deckOccurrenceFilter = ` AND o.deck_id = ?`
-		args = append(args, *deckID)
 	}
 
 	query := `SELECT c.id, c.lang, c.lemma, c.pos, COALESCE(l.gloss, ''),
@@ -744,7 +871,10 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error)
 	                     SELECT s.text
 	                       FROM occurrence o
 	                       JOIN sentences s ON s.id = o.sentence_id
-	                      WHERE o.lemma = c.lemma AND o.pos = c.pos` + deckOccurrenceFilter + `
+	                       JOIN decks d ON d.id = o.deck_id
+	                      WHERE d.user_id = c.user_id
+	                        AND d.lang = c.lang
+	                        AND o.lemma = c.lemma AND o.pos = c.pos` + deckOccurrenceFilter + `
 	                      ORDER BY s.id ASC
 	                      LIMIT 1
 	                 ), ''),
@@ -779,9 +909,9 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error)
 	                 c.id ASC
 	           LIMIT 1`
 
-	queryArgs := append([]any{}, args...)
+	queryArgs := []any{userID}
 	if deckID != nil {
-		queryArgs = []any{userID, *deckID, *deckID, *deckID}
+		queryArgs = []any{*deckID, *deckID, userID, *deckID}
 	}
 
 	var card ReviewCard

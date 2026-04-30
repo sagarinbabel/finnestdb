@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
@@ -131,12 +130,6 @@ type ParseFeedbackResponse struct {
 
 type ParseFeedbackListResponse struct {
 	Feedback []store.ParseFeedback `json:"feedback"`
-}
-
-type cardKey struct {
-	Lang  string
-	Lemma string
-	POS   string
 }
 
 type CardResponse struct {
@@ -443,9 +436,10 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 		return
 	}
 
-	cardKeys := make(map[cardKey]struct{})
+	sentences := make([]store.DeckSentenceInput, 0, len(parsed.Sentences))
 	for _, sent := range parsed.Sentences {
-		for _, token := range sent.Tokens {
+		sentence := store.DeckSentenceInput{Text: sent.Text}
+		for tokenIx, token := range sent.Tokens {
 			if token.POS == "PUNCT" {
 				continue
 			}
@@ -457,55 +451,22 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 			if lemma == "" || pos == "" {
 				continue
 			}
-			cardKeys[cardKey{Lang: req.Lang, Lemma: lemma, POS: pos}] = struct{}{}
+			sentence.Tokens = append(sentence.Tokens, store.DeckTokenInput{
+				TokenIx: tokenIx,
+				Lemma:   lemma,
+				POS:     pos,
+			})
 		}
-	}
-
-	for key := range cardKeys {
-		isKnown, err := a.store.IsKnownOrIgnored(auth.UserID, key.Lang, key.Lemma, key.POS)
-		if err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
-		}
-		if isKnown {
+		if len(sentence.Tokens) == 0 && sentence.Text == "" {
 			continue
 		}
-		if _, err := a.store.EnsureCard(auth.UserID, key.Lang, key.Lemma, key.POS); err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
-		}
+		sentences = append(sentences, sentence)
 	}
 
-	deckID, err := a.store.CreateDeck(auth.UserID, strings.TrimSpace(req.Title), req.Lang)
+	deckID, err := a.store.CreateDeckWithSentences(auth.UserID, strings.TrimSpace(req.Title), req.Lang, sentences)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
-	}
-
-	for _, sent := range parsed.Sentences {
-		if sent.Text == "" {
-			continue
-		}
-		sentenceID, err := a.store.CreateSentence(deckID, sent.Text, req.Lang)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating sentence: %v\n", err)
-			continue
-		}
-		for tokenIx, token := range sent.Tokens {
-			if token.POS == "PUNCT" {
-				continue
-			}
-			lemma := token.Lemma
-			if lemma == "" {
-				lemma = strings.ToLower(token.Form)
-			}
-			if lemma == "" {
-				continue
-			}
-			if err := a.store.CreateOccurrence(deckID, sentenceID, tokenIx, lemma, token.POS); err != nil {
-				fmt.Fprintf(os.Stderr, "Error creating occurrence: %v\n", err)
-			}
-		}
 	}
 
 	writeJSON(w, http.StatusOK, CreateDeckResponse{DeckID: deckID})
@@ -674,6 +635,15 @@ func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
 		parsed, err := strconv.ParseInt(deckIDStr, 10, 64)
 		if err != nil || parsed <= 0 {
 			http.Error(w, "Deck ID must be a positive integer", http.StatusBadRequest)
+			return
+		}
+		ownsDeck, err := a.store.UserOwnsDeck(auth.UserID, parsed)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		if !ownsDeck {
+			http.Error(w, "Deck not found", http.StatusNotFound)
 			return
 		}
 		deckID = &parsed
