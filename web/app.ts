@@ -34,10 +34,19 @@ interface WordEntry {
 }
 
 interface ParseResponse {
-    lang:         string;
-    total_tokens: number;
+    lang:              string;
+    parse_id?:         number;
+    total_tokens:      number;
     parse_duration_ms: number;
-    words:        WordEntry[];
+    words:             WordEntry[];
+}
+
+interface CorrectionRowContext {
+    lemma:                  string;
+    pos:                    string;
+    surface:                string;
+    occurrence:             number;
+    original_grammar_label: string;
 }
 
 interface SessionUser {
@@ -88,12 +97,13 @@ const state = {
     user:        null as SessionUser | null,
     dashboard:   null as DashboardData | null,
     role:        'anon' as Role,
-    currentResults:    null as ParseResponse | null,
-    currentContext:    'inspect' as ResultsContext,
-    currentParserMode: 'basic' as ParserMode,
+    currentResults:     null as ParseResponse | null,
+    currentContext:     'inspect' as ResultsContext,
+    currentParserMode:  'basic' as ParserMode,
     currentTextPreview: '',
-    currentSort:       { key: 'row', dir: 'asc' } as SortState,
-    currentPOSFilter:  'all' as POSFilter,
+    currentRow:         null as CorrectionRowContext | null,
+    currentSort:        { key: 'row', dir: 'asc' } as SortState,
+    currentPOSFilter:   'all' as POSFilter,
 };
 
 const NOUN_POS = ['NOUN', 'PROPN'];
@@ -227,6 +237,7 @@ async function handleSignout(): Promise<void> {
     state.currentTextPreview = '';
     state.currentParserMode = 'basic';
     state.currentContext = 'inspect';
+    state.currentRow = null;
     clearResultsDom();
     applyRoleVisibility();
     showToast('Signed out', 'info');
@@ -870,8 +881,13 @@ function renderResultsTable(data: ParseResponse): void {
 
         const posPill = `<span class="pos-pill" data-pos="${escapeHtml(w.pos)}">${escapeHtml(posLabel(w.pos))}</span>`;
 
+        const surfaceForm = w.forms[0] || w.lemma;
         const actionCell = showActions
-            ? `<td class="col-actions"><button type="button" class="btn btn-link btn-sm correction-btn" data-lemma="${escapeHtml(w.lemma)}" data-pos="${escapeHtml(w.pos)}">Suggest fix</button></td>`
+            ? `<td class="col-actions"><button type="button" class="btn btn-link btn-sm correction-btn"
+                data-lemma="${escapeHtml(w.lemma)}"
+                data-pos="${escapeHtml(w.pos)}"
+                data-surface="${escapeHtml(surfaceForm)}"
+                data-grammar="${escapeHtml(w.grammar_label || '')}">Suggest fix</button></td>`
             : '';
 
         return `<tr>
@@ -890,7 +906,13 @@ function renderResultsTable(data: ParseResponse): void {
 
     // Wire up newly-rendered correction buttons
     tbody.querySelectorAll<HTMLButtonElement>('.correction-btn').forEach(btn => {
-        btn.addEventListener('click', () => openCorrectionModal(btn.dataset.lemma || '', btn.dataset.pos || ''));
+        btn.addEventListener('click', () => openCorrectionModal({
+            lemma:                  btn.dataset.lemma   || '',
+            pos:                    btn.dataset.pos     || '',
+            surface:                btn.dataset.surface || btn.dataset.lemma || '',
+            occurrence:             0,
+            original_grammar_label: btn.dataset.grammar || '',
+        }));
     });
 }
 
@@ -942,17 +964,34 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
 
 // ── Correction modal ───────────────────────────────────────────────────────
 
-function openCorrectionModal(lemma: string, pos: string): void {
-    const modal     = document.getElementById('correction-modal');
-    const lemmaEl   = document.getElementById('correction-lemma');
-    const issueSel  = document.getElementById('correction-issue') as HTMLSelectElement | null;
-    const noteEl    = document.getElementById('correction-note')  as HTMLTextAreaElement | null;
-    if (!modal || !lemmaEl || !issueSel || !noteEl) return;
+function openCorrectionModal(row: CorrectionRowContext): void {
+    const modal           = document.getElementById('correction-modal');
+    const lemmaEl         = document.getElementById('correction-lemma');
+    const proposedLemmaEl = document.getElementById('correction-proposed-lemma')   as HTMLInputElement    | null;
+    const proposedPosEl   = document.getElementById('correction-proposed-pos')     as HTMLSelectElement   | null;
+    const proposedGramEl  = document.getElementById('correction-proposed-grammar') as HTMLInputElement    | null;
+    const noteEl          = document.getElementById('correction-note')             as HTMLTextAreaElement | null;
+    const submitBtn       = document.getElementById('correction-submit')           as HTMLButtonElement   | null;
+    const authHint        = document.getElementById('correction-auth-hint');
+    if (!modal || !lemmaEl || !proposedLemmaEl || !proposedPosEl || !proposedGramEl || !noteEl || !submitBtn) return;
 
-    lemmaEl.textContent = pos ? `${lemma} (${posLabel(pos)})` : lemma;
-    issueSel.value = 'wrong_lemma';
+    state.currentRow = row;
+
+    const grammarSuffix = row.original_grammar_label ? ` · ${row.original_grammar_label}` : '';
+    lemmaEl.textContent = `${row.lemma} (${posLabel(row.pos)})${grammarSuffix}`;
+    proposedLemmaEl.value = row.lemma;
+    proposedPosEl.value   = row.pos in POS_LABELS ? row.pos : 'X';
+    proposedGramEl.value  = row.original_grammar_label;
     noteEl.value = '';
+
+    // Backend requires a parse_id — only present for authenticated parses. If it's
+    // missing, disable submit and surface why.
+    const canSubmit = typeof state.currentResults?.parse_id === 'number';
+    submitBtn.disabled = !canSubmit;
+    if (authHint) authHint.classList.toggle('hidden', canSubmit);
+
     modal.classList.remove('hidden');
+    proposedLemmaEl.focus();
 }
 
 function closeCorrectionModal(): void {
@@ -972,21 +1011,39 @@ function initCorrectionModal(): void {
         const orig = submitBtn.textContent || '';
         submitBtn.textContent = 'Sending…';
         try {
-            const lemma = document.getElementById('correction-lemma')?.textContent || '';
-            const issue = (document.getElementById('correction-issue') as HTMLSelectElement).value;
-            const note  = (document.getElementById('correction-note')  as HTMLTextAreaElement).value;
-            const resp = await fetch('/api/corrections', {
+            const row     = state.currentRow;
+            const results = state.currentResults;
+            if (!row || !results || typeof results.parse_id !== 'number') {
+                showToast("Can't send correction — no parse session attached.", 'error');
+                return;
+            }
+
+            const proposedLemma = (document.getElementById('correction-proposed-lemma')   as HTMLInputElement).value.trim();
+            const proposedPos   = (document.getElementById('correction-proposed-pos')     as HTMLSelectElement).value;
+            const proposedGram  = (document.getElementById('correction-proposed-grammar') as HTMLInputElement).value.trim();
+            const note          = (document.getElementById('correction-note')             as HTMLTextAreaElement).value.trim();
+            if (!proposedLemma || !proposedPos) {
+                showToast('Please fill in both base form and part of speech.', 'error');
+                return;
+            }
+
+            const resp = await fetch('/api/parse/feedback', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
                 body: JSON.stringify({
-                    lemma,
-                    issue,
+                    parse_id:               results.parse_id,
+                    lang:                   results.lang,
+                    parser:                 state.currentParserMode,
+                    surface:                row.surface,
+                    occurrence:             row.occurrence,
+                    original_lemma:         row.lemma,
+                    original_pos:           row.pos,
+                    original_grammar_label: row.original_grammar_label,
+                    proposed_lemma:         proposedLemma,
+                    proposed_pos:           proposedPos,
+                    proposed_grammar_label: proposedGram,
                     note,
-                    lang:              state.currentResults?.lang ?? null,
-                    parser_mode:       state.currentParserMode,
-                    text_preview:      state.currentTextPreview,
-                    parse_duration_ms: state.currentResults?.parse_duration_ms ?? null,
                 }),
             });
             if (resp.ok) {

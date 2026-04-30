@@ -30,6 +30,7 @@ const state = {
     currentContext: 'inspect',
     currentParserMode: 'basic',
     currentTextPreview: '',
+    currentRow: null,
     currentSort: { key: 'row', dir: 'asc' },
     currentPOSFilter: 'all',
 };
@@ -147,6 +148,7 @@ async function handleSignout() {
     state.currentTextPreview = '';
     state.currentParserMode = 'basic';
     state.currentContext = 'inspect';
+    state.currentRow = null;
     clearResultsDom();
     applyRoleVisibility();
     showToast('Signed out', 'info');
@@ -735,8 +737,13 @@ function renderResultsTable(data) {
             ? escapeHtml(w.gloss)
             : '<span class="no-gloss">Missing</span>';
         const posPill = `<span class="pos-pill" data-pos="${escapeHtml(w.pos)}">${escapeHtml(posLabel(w.pos))}</span>`;
+        const surfaceForm = w.forms[0] || w.lemma;
         const actionCell = showActions
-            ? `<td class="col-actions"><button type="button" class="btn btn-link btn-sm correction-btn" data-lemma="${escapeHtml(w.lemma)}" data-pos="${escapeHtml(w.pos)}">Suggest fix</button></td>`
+            ? `<td class="col-actions"><button type="button" class="btn btn-link btn-sm correction-btn"
+                data-lemma="${escapeHtml(w.lemma)}"
+                data-pos="${escapeHtml(w.pos)}"
+                data-surface="${escapeHtml(surfaceForm)}"
+                data-grammar="${escapeHtml(w.grammar_label || '')}">Suggest fix</button></td>`
             : '';
         return `<tr>
             <td class="col-row">${index + 1}</td>
@@ -752,7 +759,13 @@ function renderResultsTable(data) {
     updatePOSFilterButtons();
     // Wire up newly-rendered correction buttons
     tbody.querySelectorAll('.correction-btn').forEach(btn => {
-        btn.addEventListener('click', () => openCorrectionModal(btn.dataset.lemma || '', btn.dataset.pos || ''));
+        btn.addEventListener('click', () => openCorrectionModal({
+            lemma: btn.dataset.lemma || '',
+            pos: btn.dataset.pos || '',
+            surface: btn.dataset.surface || btn.dataset.lemma || '',
+            occurrence: 0,
+            original_grammar_label: btn.dataset.grammar || '',
+        }));
     });
 }
 function showResults(data, textPreview, parserMode, context) {
@@ -794,17 +807,32 @@ function showResults(data, textPreview, parserMode, context) {
     navigate('/results');
 }
 // ── Correction modal ───────────────────────────────────────────────────────
-function openCorrectionModal(lemma, pos) {
+function openCorrectionModal(row) {
     const modal = document.getElementById('correction-modal');
     const lemmaEl = document.getElementById('correction-lemma');
-    const issueSel = document.getElementById('correction-issue');
+    const proposedLemmaEl = document.getElementById('correction-proposed-lemma');
+    const proposedPosEl = document.getElementById('correction-proposed-pos');
+    const proposedGramEl = document.getElementById('correction-proposed-grammar');
     const noteEl = document.getElementById('correction-note');
-    if (!modal || !lemmaEl || !issueSel || !noteEl)
+    const submitBtn = document.getElementById('correction-submit');
+    const authHint = document.getElementById('correction-auth-hint');
+    if (!modal || !lemmaEl || !proposedLemmaEl || !proposedPosEl || !proposedGramEl || !noteEl || !submitBtn)
         return;
-    lemmaEl.textContent = pos ? `${lemma} (${posLabel(pos)})` : lemma;
-    issueSel.value = 'wrong_lemma';
+    state.currentRow = row;
+    const grammarSuffix = row.original_grammar_label ? ` · ${row.original_grammar_label}` : '';
+    lemmaEl.textContent = `${row.lemma} (${posLabel(row.pos)})${grammarSuffix}`;
+    proposedLemmaEl.value = row.lemma;
+    proposedPosEl.value = row.pos in POS_LABELS ? row.pos : 'X';
+    proposedGramEl.value = row.original_grammar_label;
     noteEl.value = '';
+    // Backend requires a parse_id — only present for authenticated parses. If it's
+    // missing, disable submit and surface why.
+    const canSubmit = typeof state.currentResults?.parse_id === 'number';
+    submitBtn.disabled = !canSubmit;
+    if (authHint)
+        authHint.classList.toggle('hidden', canSubmit);
     modal.classList.remove('hidden');
+    proposedLemmaEl.focus();
 }
 function closeCorrectionModal() {
     document.getElementById('correction-modal')?.classList.add('hidden');
@@ -821,21 +849,37 @@ function initCorrectionModal() {
         const orig = submitBtn.textContent || '';
         submitBtn.textContent = 'Sending…';
         try {
-            const lemma = document.getElementById('correction-lemma')?.textContent || '';
-            const issue = document.getElementById('correction-issue').value;
-            const note = document.getElementById('correction-note').value;
-            const resp = await fetch('/api/corrections', {
+            const row = state.currentRow;
+            const results = state.currentResults;
+            if (!row || !results || typeof results.parse_id !== 'number') {
+                showToast("Can't send correction — no parse session attached.", 'error');
+                return;
+            }
+            const proposedLemma = document.getElementById('correction-proposed-lemma').value.trim();
+            const proposedPos = document.getElementById('correction-proposed-pos').value;
+            const proposedGram = document.getElementById('correction-proposed-grammar').value.trim();
+            const note = document.getElementById('correction-note').value.trim();
+            if (!proposedLemma || !proposedPos) {
+                showToast('Please fill in both base form and part of speech.', 'error');
+                return;
+            }
+            const resp = await fetch('/api/parse/feedback', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
                 body: JSON.stringify({
-                    lemma,
-                    issue,
+                    parse_id: results.parse_id,
+                    lang: results.lang,
+                    parser: state.currentParserMode,
+                    surface: row.surface,
+                    occurrence: row.occurrence,
+                    original_lemma: row.lemma,
+                    original_pos: row.pos,
+                    original_grammar_label: row.original_grammar_label,
+                    proposed_lemma: proposedLemma,
+                    proposed_pos: proposedPos,
+                    proposed_grammar_label: proposedGram,
                     note,
-                    lang: state.currentResults?.lang ?? null,
-                    parser_mode: state.currentParserMode,
-                    text_preview: state.currentTextPreview,
-                    parse_duration_ms: state.currentResults?.parse_duration_ms ?? null,
                 }),
             });
             if (resp.ok) {

@@ -283,11 +283,43 @@ test('signing out clears prior parse results from memory and route', async ({ pa
   await expect(page.locator('.correction-btn')).toHaveCount(0);
 });
 
-// ── Correction submit: honest UX + parse-context identifiers ───────────────
+// ── Correction submit: honest UX + PR-53 /api/parse/feedback contract ──────
+
+async function mockParseWithId(page: Page, parseId: number): Promise<void> {
+  await page.route('**/api/parse', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        lang: 'FI',
+        parse_id: parseId,
+        total_tokens: 6,
+        parse_duration_ms: 12,
+        words: [
+          {
+            lemma: 'laulaa',
+            pos: 'VERB',
+            forms: ['lauloi'],
+            count: 1,
+            grammar_label: 'past 3sg',
+          },
+          {
+            lemma: 'pankki',
+            pos: 'NOUN',
+            forms: ['pankkiin'],
+            count: 1,
+            grammar_label: 'illative sg',
+          },
+        ],
+      }),
+    });
+  });
+}
 
 test('correction submit shows error toast on backend failure', async ({ page }) => {
   await mockMe(page, 'user');
-  await page.route('**/api/corrections', async (route) => {
+  await mockParseWithId(page, 4242);
+  await page.route('**/api/parse/feedback', async (route) => {
     await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
   });
 
@@ -305,12 +337,17 @@ test('correction submit shows error toast on backend failure', async ({ page }) 
   await expect(page.locator('#correction-modal')).not.toHaveClass(/hidden/);
 });
 
-test('correction submit body carries parse identifiers for future backend tie-back', async ({ page }) => {
+test('correction submit posts the PR-53 /api/parse/feedback contract', async ({ page }) => {
   await mockMe(page, 'user');
+  await mockParseWithId(page, 4242);
   let captured: any = null;
-  await page.route('**/api/corrections', async (route) => {
+  await page.route('**/api/parse/feedback', async (route) => {
     captured = route.request().postDataJSON();
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ feedback_id: 7, status: 'submitted' }),
+    });
   });
 
   await page.goto('/#/inspect');
@@ -319,19 +356,60 @@ test('correction submit body carries parse identifiers for future backend tie-ba
   await expect(page.locator('#results-page')).toHaveClass(/active/);
 
   await page.locator('.correction-btn').first().click();
+  // Modal pre-fills the proposed_lemma to the original lemma; user can adjust.
+  await page.locator('#correction-proposed-lemma').fill('laulaa');
+  await page.locator('#correction-proposed-pos').selectOption('VERB');
+  await page.locator('#correction-proposed-grammar').fill('past 3sg');
+  await page.locator('#correction-note').fill('looks right');
   await page.locator('#correction-submit').click();
 
   await expect.poll(() => captured).not.toBeNull();
   expect(captured).toMatchObject({
-    issue: expect.any(String),
-    lang: 'FI',
-    parser_mode: 'custom',
+    parse_id:               4242,
+    lang:                   'FI',
+    parser:                 'custom',
+    surface:                'lauloi',
+    occurrence:             0,
+    original_lemma:         'laulaa',
+    original_pos:           'VERB',
+    original_grammar_label: 'past 3sg',
+    proposed_lemma:         'laulaa',
+    proposed_pos:           'VERB',
+    proposed_grammar_label: 'past 3sg',
+    note:                   'looks right',
   });
-  expect(typeof captured.lemma).toBe('string');
-  expect(captured.lemma.length).toBeGreaterThan(0);
-  expect(typeof captured.text_preview).toBe('string');
-  expect(captured.text_preview.length).toBeGreaterThan(0);
-  expect(typeof captured.parse_duration_ms).toBe('number');
+
+  // On success the modal closes and a success toast surfaces.
+  await expect(page.locator('.toast.success')).toContainText(/sent/i);
+  await expect(page.locator('#correction-modal')).toHaveClass(/hidden/);
+});
+
+test('correction modal disables submit when no parse_id is attached', async ({ page }) => {
+  await mockMe(page, 'user');
+  // No parse_id (simulates anonymous-style parses or pre-PR-53 backend).
+  await page.route('**/api/parse', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        lang: 'FI',
+        total_tokens: 2,
+        parse_duration_ms: 5,
+        words: [
+          { lemma: 'laulaa', pos: 'VERB', forms: ['lauloi'], count: 1 },
+        ],
+      }),
+    });
+  });
+
+  await page.goto('/#/inspect');
+  await page.locator('#inspect-text').fill(mixedFinnishText);
+  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await expect(page.locator('#results-page')).toHaveClass(/active/);
+
+  await page.locator('.correction-btn').first().click();
+  await expect(page.locator('#correction-auth-hint')).toBeVisible();
+  await expect(page.locator('#correction-submit')).toBeDisabled();
 });
 
 // ── Mobile (375 px) ────────────────────────────────────────────────────────

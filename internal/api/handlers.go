@@ -254,6 +254,26 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (a *API) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Expire the session cookie regardless of whether one is present, so that
+	// after this call the next /api/me will see an unauthenticated session.
+	http.SetCookie(w, &http.Cookie{
+		Name:     "user_id",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+	})
+
+	writeJSON(w, http.StatusOK, map[string]bool{"authenticated": false})
+}
+
 func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 	auth, err := a.getCurrentUser(r)
 	if err != nil {
@@ -804,6 +824,7 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 func (a *API) SetupRoutes(mux *http.ServeMux) {
 	// Auth routes
 	mux.HandleFunc("/api/auth/login", a.HandleLogin)
+	mux.HandleFunc("/api/auth/logout", a.HandleLogout)
 
 	// Dashboard
 	mux.HandleFunc("/api/me", a.HandleMe)
