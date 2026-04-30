@@ -797,7 +797,6 @@ func (d *DB) ensureLangScopedCardsTable() error {
 	if _, err := tx.Exec(insertCards); err != nil {
 		return err
 	}
-
 	// Preserve existing scheduling state while backfilling FI onto legacy
 	// pre-language cards. Finnestdb was Finnish-only before this migration.
 	if _, err := tx.Exec(`
