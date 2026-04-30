@@ -87,6 +87,35 @@ type KnownWordsListResponse struct {
 	KnownWords []store.KnownLemma `json:"known_words"`
 }
 
+type ParseFeedbackRequest struct {
+	ParseID              int64  `json:"parse_id"`
+	Lang                 string `json:"lang"`
+	Parser               string `json:"parser"`
+	Surface              string `json:"surface"`
+	Occurrence           int    `json:"occurrence"`
+	OriginalLemma        string `json:"original_lemma"`
+	OriginalPOS          string `json:"original_pos"`
+	OriginalGrammarLabel string `json:"original_grammar_label"`
+	ProposedLemma        string `json:"proposed_lemma"`
+	ProposedPOS          string `json:"proposed_pos"`
+	ProposedGrammarLabel string `json:"proposed_grammar_label"`
+	Note                 string `json:"note"`
+}
+
+type ParseFeedbackReviewRequest struct {
+	Status     string `json:"status"`
+	ReviewNote string `json:"review_note"`
+}
+
+type ParseFeedbackResponse struct {
+	FeedbackID int64  `json:"feedback_id"`
+	Status     string `json:"status"`
+}
+
+type ParseFeedbackListResponse struct {
+	Feedback []store.ParseFeedback `json:"feedback"`
+}
+
 type cardKey struct {
 	Lang  string
 	Lemma string
@@ -548,6 +577,7 @@ type WordEntry = parsecore.WordEntry
 
 type ParseResponse struct {
 	Lang            string               `json:"lang"`
+	ParseID         *int64               `json:"parse_id,omitempty"`
 	TotalTokens     int                  `json:"total_tokens"`
 	ParseDurationMs int64                `json:"parse_duration_ms"`
 	Stats           parsecore.ParseStats `json:"stats"`
@@ -593,13 +623,176 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	var parseID *int64
+	if auth != nil {
+		id, err := a.store.CreateParseSession(&auth.UserID, parsed.Lang, parsed.Parser, req.Text, parsed.TotalTokens, len(parsed.Words))
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		parseID = &id
+	}
+
 	writeJSON(w, http.StatusOK, ParseResponse{
 		Lang:            parsed.Lang,
+		ParseID:         parseID,
 		TotalTokens:     parsed.TotalTokens,
 		ParseDurationMs: parsed.ParseDurationMs,
 		Stats:           parsed.Stats,
 		Words:           parsed.Words,
 	})
+}
+
+func (a *API) HandleParseFeedback(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	a.requireAuth(a.handleParseFeedback).ServeHTTP(w, r)
+}
+
+func (a *API) handleParseFeedback(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	var req ParseFeedbackRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	lang := strings.TrimSpace(req.Lang)
+	parser := strings.TrimSpace(req.Parser)
+	surface := strings.TrimSpace(req.Surface)
+	originalLemma := strings.TrimSpace(req.OriginalLemma)
+	originalPOS := strings.TrimSpace(req.OriginalPOS)
+	originalGrammarLabel := strings.TrimSpace(req.OriginalGrammarLabel)
+	proposedLemma := strings.TrimSpace(req.ProposedLemma)
+	proposedPOS := strings.TrimSpace(req.ProposedPOS)
+	proposedGrammarLabel := strings.TrimSpace(req.ProposedGrammarLabel)
+	note := strings.TrimSpace(req.Note)
+
+	if lang != "FI" && lang != "ET" {
+		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
+		return
+	}
+	if req.ParseID <= 0 || parser == "" || surface == "" || proposedLemma == "" || proposedPOS == "" {
+		http.Error(w, "Parse ID, parser, surface, proposed lemma, and proposed POS are required", http.StatusBadRequest)
+		return
+	}
+	if req.Occurrence < 0 {
+		http.Error(w, "Occurrence must be non-negative", http.StatusBadRequest)
+		return
+	}
+
+	session, err := a.store.GetParseSession(req.ParseID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Parse session not found", http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if session.UserID == nil || *session.UserID != auth.UserID {
+		http.Error(w, "Parse session does not belong to the current user", http.StatusForbidden)
+		return
+	}
+	if session.Lang != lang || session.Parser != parser {
+		http.Error(w, "Parse feedback language/parser do not match the parse session", http.StatusBadRequest)
+		return
+	}
+
+	feedbackID, err := a.store.CreateParseFeedback(store.ParseFeedback{
+		ParseSessionID:       session.ID,
+		UserID:               auth.UserID,
+		Lang:                 lang,
+		Parser:               parser,
+		Surface:              surface,
+		Occurrence:           req.Occurrence,
+		OriginalLemma:        originalLemma,
+		OriginalPOS:          originalPOS,
+		OriginalGrammarLabel: originalGrammarLabel,
+		ProposedLemma:        proposedLemma,
+		ProposedPOS:          proposedPOS,
+		ProposedGrammarLabel: proposedGrammarLabel,
+		Note:                 note,
+	})
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, ParseFeedbackResponse{
+		FeedbackID: feedbackID,
+		Status:     "submitted",
+	})
+}
+
+func (a *API) HandleAdminParseFeedback(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet, http.MethodPatch:
+		a.requireAdmin(a.handleAdminParseFeedback).ServeHTTP(w, r)
+		return
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+}
+
+func (a *API) handleAdminParseFeedback(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	switch r.Method {
+	case http.MethodGet:
+		status := strings.TrimSpace(r.URL.Query().Get("status"))
+		if !isValidParseFeedbackStatus(status, true) {
+			http.Error(w, "Status must be submitted, accepted, rejected, or needs_follow_up", http.StatusBadRequest)
+			return
+		}
+		feedback, err := a.store.ListParseFeedback(status)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, ParseFeedbackListResponse{Feedback: feedback})
+	case http.MethodPatch:
+		feedbackIDStr := strings.TrimSpace(r.URL.Query().Get("id"))
+		feedbackID, err := strconv.ParseInt(feedbackIDStr, 10, 64)
+		if err != nil || feedbackID <= 0 {
+			http.Error(w, "Feedback ID must be a positive integer", http.StatusBadRequest)
+			return
+		}
+		var req ParseFeedbackReviewRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+		if !isValidParseFeedbackStatus(req.Status, false) {
+			http.Error(w, "Status must be accepted, rejected, or needs_follow_up", http.StatusBadRequest)
+			return
+		}
+		if err := a.store.ReviewParseFeedback(feedbackID, auth.UserID, req.Status, strings.TrimSpace(req.ReviewNote)); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "Parse feedback not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": req.Status})
+	}
+}
+
+func isValidParseFeedbackStatus(status string, allowEmpty bool) bool {
+	switch status {
+	case "":
+		return allowEmpty
+	case "submitted", "accepted", "rejected", "needs_follow_up":
+		return true
+	default:
+		return false
+	}
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
@@ -617,6 +810,8 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 
 	// Parse (word list view)
 	mux.HandleFunc("/api/parse", a.HandleParse)
+	mux.HandleFunc("/api/parse/feedback", a.HandleParseFeedback)
+	mux.HandleFunc("/api/admin/parse-feedback", a.HandleAdminParseFeedback)
 
 	// Decks
 	mux.HandleFunc("/api/decks", a.HandleCreateDeck)

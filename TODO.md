@@ -220,6 +220,17 @@ Example generation relies on "FST synthesizer + reparse to validate features" (Â
 
 ## Notes
 
+### Post-Alpha Follow-Ups from Alpha PR Review
+
+- [ ] Define and implement a retention policy for `parse_sessions.source_text`, including whether full source text should be stored eagerly on every parse or only once a user submits feedback against that session
+- [ ] Add rate limiting and abuse controls to `POST /api/parse`, `POST /api/parse/feedback`, and login routes before broad public rollout
+- [ ] Preserve existing `card_state` scheduling data when rebuilding `cards` during schema migrations instead of dropping and recreating the table
+- [ ] Batch known/ignored checks during deck creation so card seeding does not do one lookup per unique `(lang, lemma, pos)` pair
+- [ ] Replace `COUNT(*)` existence checks in known-word and parse-feedback paths with `EXISTS`/short-circuit queries once alpha correctness work is merged
+- [ ] Parse history UI so logged-in users can review and delete their stored parse sessions
+- [ ] Add an opt-in ephemeral parse flag on `/api/parse` so logged-in users can request a non-persisted parse
+- [ ] Document parse-session storage behavior directly in the parse UI, not only in docs
+
 - These findings were identified during PRD review and stub implementation
 - Items are organized by severity and implementation priority
 - Check off items as they are completed
