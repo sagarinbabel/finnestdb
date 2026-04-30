@@ -3,22 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinEstDB - Parser Workbench</title>
+    <title>FinEstDB — learn Finnish & Estonian by reading</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-auth-state="loading">
     <!-- Global Navigation -->
     <nav class="global-nav">
         <div class="nav-content">
-            <a href="#" class="nav-logo" id="nav-logo">FinEstDB</a>
-            <div class="nav-links">
-                <a href="#" class="nav-link active" id="nav-import">Workbench</a>
+            <a href="#/" class="nav-logo" id="nav-logo">FinEstDB</a>
+
+            <!-- Anonymous nav -->
+            <div class="nav-links nav-anon" data-role-show="anon">
+                <a href="#/" class="nav-link" data-route="/">Home</a>
+                <a href="#/about" class="nav-link" data-route="/about">About</a>
             </div>
+
+            <!-- Logged-in user nav -->
+            <div class="nav-links nav-user" data-role-show="user admin">
+                <a href="#/dashboard" class="nav-link" data-route="/dashboard">Dashboard</a>
+                <a href="#/inspect" class="nav-link" data-route="/inspect">Inspect</a>
+                <a href="#/decks" class="nav-link" data-route="/decks">Decks</a>
+                <a href="#/review" class="nav-link" data-route="/review">Review</a>
+            </div>
+
+            <!-- Admin-only nav (separate cluster, visually distinct) -->
+            <div class="nav-links nav-admin" data-role-show="admin">
+                <span class="nav-admin-label" aria-hidden="true">Admin</span>
+                <a href="#/admin/workbench" class="nav-link nav-link-admin" data-route="/admin/workbench">Workbench</a>
+                <a href="#/admin/feedback" class="nav-link nav-link-admin" data-route="/admin/feedback">Feedback</a>
+            </div>
+
             <div class="nav-actions">
                 <button id="theme-toggle" class="nav-icon-btn" aria-label="Toggle theme">
                     <span class="theme-icon">🌙</span>
                 </button>
+                <a href="#/signin" class="btn btn-primary btn-sm nav-signin" data-role-show="anon">Sign in</a>
+                <div class="nav-user-menu" data-role-show="user admin">
+                    <span class="nav-user-email" id="nav-user-email"></span>
+                    <button type="button" id="nav-signout" class="btn btn-link btn-sm">Sign out</button>
+                </div>
             </div>
+
             <button class="nav-hamburger" id="nav-hamburger" aria-label="Menu">
                 <span></span>
                 <span></span>
@@ -30,16 +55,261 @@
     <!-- Mobile nav overlay -->
     <div class="nav-mobile-overlay hidden" id="nav-mobile-overlay">
         <div class="nav-mobile-menu">
-            <a href="#" class="nav-mobile-link active" id="nav-mobile-import">Workbench</a>
+            <div data-role-show="anon">
+                <a href="#/" class="nav-mobile-link" data-route="/">Home</a>
+                <a href="#/about" class="nav-mobile-link" data-route="/about">About</a>
+                <a href="#/signin" class="nav-mobile-link nav-mobile-cta" data-route="/signin">Sign in</a>
+            </div>
+            <div data-role-show="user admin">
+                <a href="#/dashboard" class="nav-mobile-link" data-route="/dashboard">Dashboard</a>
+                <a href="#/inspect" class="nav-mobile-link" data-route="/inspect">Inspect</a>
+                <a href="#/decks" class="nav-mobile-link" data-route="/decks">Decks</a>
+                <a href="#/review" class="nav-mobile-link" data-route="/review">Review</a>
+            </div>
+            <div data-role-show="admin">
+                <div class="nav-mobile-divider">Admin</div>
+                <a href="#/admin/workbench" class="nav-mobile-link nav-mobile-link-admin" data-route="/admin/workbench">Workbench</a>
+                <a href="#/admin/feedback" class="nav-mobile-link nav-mobile-link-admin" data-route="/admin/feedback">Feedback</a>
+            </div>
+            <div data-role-show="user admin">
+                <button type="button" id="nav-mobile-signout" class="nav-mobile-link nav-mobile-signout">Sign out</button>
+            </div>
         </div>
     </div>
 
-    <!-- Parse Input Page -->
-    <div id="parse-page" class="page active">
+    <!-- ==================== ANONYMOUS LANDING ==================== -->
+    <div id="landing-page" class="page" data-role-show="anon loading">
+        <main class="landing-main">
+            <section class="hero-section">
+                <h1 class="hero-title">Learn Finnish &amp; Estonian by reading what you love.</h1>
+                <p class="hero-subtitle">
+                    Paste any text. We tell you which words you already know,
+                    which ones are blocking your comprehension, and how to learn them next.
+                </p>
+                <div class="hero-cta">
+                    <a href="#/signin" class="btn btn-primary btn-lg">Get started</a>
+                    <a href="#/about" class="btn btn-outline btn-lg">How it works</a>
+                </div>
+            </section>
+
+            <section class="value-grid">
+                <div class="value-card">
+                    <div class="value-icon" aria-hidden="true">📖</div>
+                    <h3>Read real text</h3>
+                    <p>Books, news, lyrics — anything in Finnish or Estonian. We meet you where you already read.</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon" aria-hidden="true">🔎</div>
+                    <h3>See what you know</h3>
+                    <p>Every word is labelled known, learning, or new — so the gap between you and fluency is visible.</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon" aria-hidden="true">🎯</div>
+                    <h3>Unlock the next words</h3>
+                    <p>Focus on the high-impact vocabulary that actually unlocks comprehension, not random word lists.</p>
+                </div>
+                <div class="value-card">
+                    <div class="value-icon" aria-hidden="true">📈</div>
+                    <h3>Track real progress</h3>
+                    <p>Watch your known-word count grow with every session. No streaks, no gimmicks — just the texts you can read.</p>
+                </div>
+            </section>
+
+            <section class="landing-cta-section">
+                <h2>Ready to read in Finnish or Estonian?</h2>
+                <a href="#/signin" class="btn btn-primary btn-lg">Sign in to start</a>
+            </section>
+        </main>
+    </div>
+
+    <!-- ==================== ABOUT / HOW IT WORKS ==================== -->
+    <div id="about-page" class="page">
+        <main class="about-main">
+            <section class="about-hero">
+                <h1>How FinEstDB works</h1>
+                <p class="about-lede">
+                    Most language apps make you study vocabulary in isolation. FinEstDB starts from the
+                    text you actually want to read, and builds your vocabulary outward from there.
+                </p>
+            </section>
+
+            <section class="about-steps">
+                <div class="about-step">
+                    <span class="about-step-num">1</span>
+                    <h3>Paste a text</h3>
+                    <p>Drop in a paragraph, an article, or a chapter in Finnish or Estonian.</p>
+                </div>
+                <div class="about-step">
+                    <span class="about-step-num">2</span>
+                    <h3>See your gap</h3>
+                    <p>We split the text into words and show which ones you already know, which are new, and which carry the meaning.</p>
+                </div>
+                <div class="about-step">
+                    <span class="about-step-num">3</span>
+                    <h3>Unlock the right words</h3>
+                    <p>Learn the small set of words that turns a confusing text into one you can read, and watch your comprehension climb.</p>
+                </div>
+                <div class="about-step">
+                    <span class="about-step-num">4</span>
+                    <h3>Track progress over time</h3>
+                    <p>Your known-word count grows as you learn. Come back to a text you couldn't read last month and see what changed.</p>
+                </div>
+            </section>
+
+            <section class="landing-cta-section">
+                <a href="#/signin" class="btn btn-primary btn-lg">Sign in to try it</a>
+            </section>
+        </main>
+    </div>
+
+    <!-- ==================== SIGN-IN ==================== -->
+    <div id="signin-page" class="page">
+        <main class="signin-main">
+            <section class="signin-card">
+                <h1>Sign in</h1>
+                <p class="signin-lede">Enter your email to start. (Alpha: any email works — no password needed yet.)</p>
+                <form id="signin-form" novalidate>
+                    <div class="form-group">
+                        <label for="signin-email">Email</label>
+                        <input type="email" id="signin-email" name="email" autocomplete="email" required placeholder="you@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="signin-password">Password <span class="form-hint">(optional in alpha)</span></label>
+                        <input type="password" id="signin-password" name="password" autocomplete="current-password">
+                    </div>
+                    <div id="signin-error" class="signin-error hidden" role="alert"></div>
+                    <button type="submit" class="btn btn-primary btn-lg btn-block" id="signin-submit">Sign in</button>
+                </form>
+                <p class="signin-switch">
+                    New here? Just enter your email — we'll create your account.
+                </p>
+            </section>
+        </main>
+    </div>
+
+    <!-- ==================== DASHBOARD ==================== -->
+    <div id="dashboard-page" class="page" data-role-required="user admin">
+        <main class="dashboard-main">
+            <section class="dashboard-header">
+                <h1>Welcome back<span id="dashboard-greeting-suffix"></span></h1>
+                <p class="dashboard-lede">Pick up where you left off, or read something new.</p>
+            </section>
+
+            <section class="dashboard-stats">
+                <div class="stat-card">
+                    <span class="stat-label">Words known</span>
+                    <span class="stat-value" id="stat-known">—</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Due to review</span>
+                    <span class="stat-value" id="stat-due">—</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">New words today</span>
+                    <span class="stat-value" id="stat-new-capacity">—</span>
+                </div>
+            </section>
+
+            <section class="dashboard-actions">
+                <a href="#/inspect" class="action-card">
+                    <h3>Read a new text</h3>
+                    <p>Paste any Finnish or Estonian text and see what's known and what's new.</p>
+                </a>
+                <a href="#/review" class="action-card">
+                    <h3>Review due words</h3>
+                    <p>Spend a few minutes on the words you're learning right now.</p>
+                </a>
+                <a href="#/decks" class="action-card">
+                    <h3>Your decks</h3>
+                    <p>Texts you've imported and the vocabulary you're building from them.</p>
+                </a>
+            </section>
+
+            <section class="dashboard-decks">
+                <h2>Recent decks</h2>
+                <div id="dashboard-decks-list" class="dashboard-decks-list">
+                    <p class="empty-state">No decks yet — paste some text under <a href="#/inspect">Inspect</a> to get started.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ==================== INSPECT (lightweight user parse) ==================== -->
+    <div id="inspect-page" class="page" data-role-required="user admin">
+        <main class="inspect-main">
+            <section class="inspect-header">
+                <h1>Inspect a text</h1>
+                <p class="inspect-lede">Paste Finnish or Estonian text. We'll show you which words you know, which are new, and the words behind the meaning.</p>
+            </section>
+
+            <form id="inspect-form" class="inspect-form">
+                <div class="form-group">
+                    <label for="inspect-lang">Language</label>
+                    <select id="inspect-lang" name="lang" required>
+                        <option value="FI">Finnish</option>
+                        <option value="ET">Estonian</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="inspect-text">Your text <span id="inspect-char-count" class="char-count">0 / 300,000</span></label>
+                    <textarea
+                        id="inspect-text"
+                        name="text"
+                        rows="10"
+                        maxlength="300000"
+                        placeholder="Paste a paragraph, an article, lyrics — anything you'd like to read."
+                        required
+                    ></textarea>
+                </div>
+
+                <div id="inspect-lang-warning" class="lang-warning hidden" role="status" aria-live="polite"></div>
+                <button type="button" id="inspect-lang-switch" class="lang-switch-btn hidden"></button>
+
+                <div class="form-group">
+                    <label for="inspect-file">Or load from a file (.txt, .md)</label>
+                    <input type="file" id="inspect-file" accept=".txt,.md">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg" id="inspect-submit">Inspect text</button>
+            </form>
+        </main>
+    </div>
+
+    <!-- ==================== DECKS (placeholder) ==================== -->
+    <div id="decks-page" class="page" data-role-required="user admin">
+        <main class="placeholder-main">
+            <h1>Your decks</h1>
+            <p class="placeholder-lede">The texts you've imported and the vocabulary you're learning from them.</p>
+            <div class="placeholder-card">
+                <p>You don't have any decks yet.</p>
+                <a href="#/inspect" class="btn btn-primary">Read a text</a>
+            </div>
+        </main>
+    </div>
+
+    <!-- ==================== REVIEW (placeholder) ==================== -->
+    <div id="review-page" class="page" data-role-required="user admin">
+        <main class="placeholder-main">
+            <h1>Review</h1>
+            <p class="placeholder-lede">Words due for review will show up here once you've started learning some.</p>
+            <div class="placeholder-card">
+                <p>Nothing to review right now.</p>
+                <a href="#/inspect" class="btn btn-primary">Read a text</a>
+            </div>
+        </main>
+    </div>
+
+    <!-- ==================== ADMIN WORKBENCH ==================== -->
+    <div id="admin-workbench-page" class="page" data-role-required="admin">
+        <div class="admin-banner" data-role-show="admin">
+            <span class="admin-banner-label">Admin</span>
+            <span>Internal parser workbench. Not visible to users.</span>
+        </div>
         <main class="parse-main">
             <section class="parse-form-section">
                 <h2>Parse Text</h2>
-                <p class="parse-description">Use the parser workbench to analyze Finnish or Estonian text and inspect the resulting word list.</p>
+                <p class="parse-description">Internal parser tooling — compare basic vs. custom parser, inspect compound and case analysis.</p>
 
                 <form id="parse-form">
                     <div class="form-group">
@@ -85,7 +355,22 @@
         </main>
     </div>
 
-    <!-- Results Page -->
+    <!-- ==================== ADMIN FEEDBACK (placeholder) ==================== -->
+    <div id="admin-feedback-page" class="page" data-role-required="admin">
+        <div class="admin-banner" data-role-show="admin">
+            <span class="admin-banner-label">Admin</span>
+            <span>User-submitted parser corrections.</span>
+        </div>
+        <main class="placeholder-main">
+            <h1>Parser feedback</h1>
+            <p class="placeholder-lede">Corrections submitted by users will be reviewed here.</p>
+            <div class="placeholder-card">
+                <p>No corrections to review yet.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- ==================== SHARED RESULTS ==================== -->
     <div id="results-page" class="page">
         <main class="results-main">
             <section class="results-summary">
@@ -102,7 +387,7 @@
                         </div>
                         <span id="coverage-value" class="coverage-gauge-value">0%</span>
                     </div>
-                    <span id="results-duration" class="results-pill"></span>
+                    <span id="results-duration" class="results-pill" data-role-show="admin"></span>
                 </div>
                 <p id="results-stats" class="results-stats"></p>
                 <p id="results-help" class="results-help"></p>
@@ -126,6 +411,7 @@
                             <th><button type="button" class="sort-btn" data-sort="forms">Forms<span class="sort-arrow" aria-hidden="true"></span></button></th>
                             <th class="col-def"><button type="button" class="sort-btn" data-sort="definition">Definition<span class="sort-arrow" aria-hidden="true"></span></button></th>
                             <th class="col-count"><button type="button" class="sort-btn" data-sort="tokens">Tokens<span class="sort-arrow" aria-hidden="true"></span></button></th>
+                            <th class="col-actions" data-role-show="user admin">Action</th>
                         </tr>
                     </thead>
                     <tbody id="word-table-body">
@@ -133,6 +419,59 @@
                 </table>
             </section>
         </main>
+    </div>
+
+    <!-- ==================== CORRECTION MODAL ==================== -->
+    <div id="correction-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="correction-modal-title">
+        <div class="modal-backdrop" id="correction-modal-backdrop"></div>
+        <div class="modal-card" role="document">
+            <button type="button" class="modal-close" id="correction-modal-close" aria-label="Close">×</button>
+            <h3 id="correction-modal-title">Suggest a correction</h3>
+            <p class="modal-lede">Tell us the right base form and part of speech for this word — we'll use it to improve the parser.</p>
+            <p class="modal-hint hidden" id="correction-auth-hint">Sign in to send corrections — anonymous parses can't be tied back to a parse run.</p>
+            <form id="correction-form">
+                <div class="form-group">
+                    <label>Current analysis</label>
+                    <p class="modal-readonly" id="correction-lemma">—</p>
+                </div>
+                <div class="form-group">
+                    <label for="correction-proposed-lemma">Correct base form</label>
+                    <input type="text" id="correction-proposed-lemma" name="proposed_lemma" required autocomplete="off" />
+                </div>
+                <div class="form-group">
+                    <label for="correction-proposed-pos">Correct part of speech</label>
+                    <select id="correction-proposed-pos" name="proposed_pos" required>
+                        <option value="NOUN">Noun</option>
+                        <option value="VERB">Verb</option>
+                        <option value="ADJ">Adjective</option>
+                        <option value="ADV">Adverb</option>
+                        <option value="PROPN">Proper noun</option>
+                        <option value="PRON">Pronoun</option>
+                        <option value="DET">Determiner</option>
+                        <option value="ADP">Adposition</option>
+                        <option value="NUM">Number</option>
+                        <option value="CCONJ">Conjunction (coordinating)</option>
+                        <option value="SCONJ">Conjunction (subordinating)</option>
+                        <option value="PART">Particle</option>
+                        <option value="INTJ">Interjection</option>
+                        <option value="AUX">Auxiliary</option>
+                        <option value="X">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="correction-proposed-grammar">Grammar label (optional)</label>
+                    <input type="text" id="correction-proposed-grammar" name="proposed_grammar_label" autocomplete="off" placeholder="e.g. partitive sg, past 3sg" />
+                </div>
+                <div class="form-group">
+                    <label for="correction-note">Notes (optional)</label>
+                    <textarea id="correction-note" name="note" rows="3" placeholder="Anything else we should know?"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-link" id="correction-cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="correction-submit">Send</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <div id="toast-container" class="toast-container"></div>

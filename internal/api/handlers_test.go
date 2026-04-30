@@ -335,6 +335,77 @@ func TestHandleLoginReturnsAuthIdentity(t *testing.T) {
 	}
 }
 
+func TestHandleLogoutClearsSessionCookieAndDropsAuth(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	loginReq := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"email":"alice@example.com","password":"secret"}`))
+	loginRec := httptest.NewRecorder()
+	mux.ServeHTTP(loginRec, loginReq)
+	if loginRec.Code != http.StatusOK {
+		t.Fatalf("login status=%d want %d", loginRec.Code, http.StatusOK)
+	}
+	cookies := loginRec.Result().Cookies()
+	if len(cookies) == 0 {
+		t.Fatal("expected login to set a session cookie")
+	}
+
+	logoutReq := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
+	for _, c := range cookies {
+		logoutReq.AddCookie(c)
+	}
+	logoutRec := httptest.NewRecorder()
+	mux.ServeHTTP(logoutRec, logoutReq)
+	if logoutRec.Code != http.StatusOK {
+		t.Fatalf("logout status=%d want %d body=%q", logoutRec.Code, http.StatusOK, logoutRec.Body.String())
+	}
+
+	var clearing *http.Cookie
+	for _, c := range logoutRec.Result().Cookies() {
+		if c.Name == "user_id" {
+			clearing = c
+		}
+	}
+	if clearing == nil {
+		t.Fatal("expected logout response to set the user_id cookie")
+	}
+	if clearing.MaxAge >= 0 {
+		t.Fatalf("expected user_id cookie to be expired (MaxAge<0), got MaxAge=%d", clearing.MaxAge)
+	}
+	if clearing.Value != "" {
+		t.Fatalf("expected cleared cookie value, got %q", clearing.Value)
+	}
+
+	// Hitting /api/me with the now-expired cookie applied (browser would not send it)
+	// must report unauthenticated. Simulate by replaying only the clearing cookie.
+	meReq := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	meReq.AddCookie(clearing)
+	meRec := httptest.NewRecorder()
+	mux.ServeHTTP(meRec, meReq)
+	if meRec.Code != http.StatusOK {
+		t.Fatalf("me status=%d want %d", meRec.Code, http.StatusOK)
+	}
+	var meResp MeResponse
+	if err := json.NewDecoder(bytes.NewReader(meRec.Body.Bytes())).Decode(&meResp); err != nil {
+		t.Fatalf("decode /api/me response: %v", err)
+	}
+	if meResp.Authenticated {
+		t.Fatal("expected /api/me to be unauthenticated after logout")
+	}
+}
+
+func TestHandleLogoutRejectsGet(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/logout", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+}
+
 func TestHandleMeReturnsAnonymousStateWithoutCookie(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)
