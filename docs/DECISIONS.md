@@ -260,9 +260,14 @@ clean, low-noise feedback queue.
 
 ### Related Source-Text Retention Decision
 
-Tied to this decision: **`parse_sessions.source_text` is persisted only when a
-user submits feedback against that parse session**, not on every `/api/parse`
-call (option B from PR #53 review). Rationale from a user perspective:
+The original product call here was **Option B**:
+
+- do not persist parse sessions during `/api/parse`
+- persist parse-session context only when a logged-in user explicitly submits
+  feedback
+- treat feedback submission as the consent boundary for storing source text
+
+Rationale from a user perspective:
 
 - The parse UI feels ephemeral; users will paste personal/sensitive content
   (private messages, work documents, copyrighted material) without expecting it
@@ -271,6 +276,36 @@ call (option B from PR #53 review). Rationale from a user perspective:
   actively asked us to look at this parse, so retaining the context is
   justified.
 - Eliminates unbounded growth from anonymous parse traffic.
+
+### Amendment (2026-04-30): alpha shipped as Option A
+
+Alpha shipped as **Option A** instead:
+
+- authenticated `/api/parse` calls create `parse_sessions` rows
+- anonymous `/api/parse` calls do **not** create `parse_sessions` rows
+- anonymous parses do **not** persist source text
+- parse feedback still requires login and still references a server-issued
+  `parse_id`
+
+We accepted the deviation from the original Option B decision for alpha because
+it:
+
+- solves the immediate unbounded-growth concern from anonymous parse traffic
+- keeps the frontend and backend contract simpler
+- preserves a clean path to a future parse-history UI for logged-in users
+
+### Trade-off Accepted
+
+This leaves a real privacy gap for alpha:
+
+> Logged-in users have their pasted text stored automatically during Inspect,
+> without a separate per-paste consent moment.
+
+That gap is accepted for alpha only. It will be closed with:
+
+- a parse-history UI
+- per-user delete controls for stored parse sessions
+- an opt-in ephemeral parse mode for logged-in users
 
 ### Post-v1 Reconsideration
 
@@ -290,11 +325,10 @@ If parser-quality work outgrows the volunteer feedback signal, revisit anonymous
 3. **Auto-improvement scope:** Which files should the agent be allowed to modify?
    Just rules? Or also the Rust tokenizer?
 
----
-
 ## Changelog
 
 | Date | Change |
 |------|--------|
 | 2026-04-28 | Initial decisions documented: custom parser rationale, architecture, evaluation approach, roadmap |
 | 2026-04-29 | Decision 4 added: parse feedback requires login in v1; source_text persisted only on feedback submit |
+| 2026-04-30 | Recorded parse-feedback persistence amendment: alpha ships authenticated parse-session storage as Option A |

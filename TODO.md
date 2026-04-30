@@ -227,6 +227,9 @@ Example generation relies on "FST synthesizer + reparse to validate features" (Â
 - [ ] Preserve existing `card_state` scheduling data when rebuilding `cards` during schema migrations instead of dropping and recreating the table
 - [ ] Batch known/ignored checks during deck creation so card seeding does not do one lookup per unique `(lang, lemma, pos)` pair
 - [ ] Replace `COUNT(*)` existence checks in known-word and parse-feedback paths with `EXISTS`/short-circuit queries once alpha correctness work is merged
+- [ ] Parse history UI so logged-in users can review and delete their stored parse sessions
+- [ ] Add an opt-in ephemeral parse flag on `/api/parse` so logged-in users can request a non-persisted parse
+- [ ] Document parse-session storage behavior directly in the parse UI, not only in docs
 
 - These findings were identified during PRD review and stub implementation
 - Items are organized by severity and implementation priority

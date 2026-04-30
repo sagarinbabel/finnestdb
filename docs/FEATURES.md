@@ -29,7 +29,9 @@ enjoyable instead of a dictionary lookup grind.
 
 The core loop is `paste -> inspect -> correct -> deck -> review`.
 
-1. Paste or upload text in Finnish or Estonian.
+1. Paste or upload text in Finnish or Estonian (stored on your account when
+   signed in; ephemeral when not — see
+   [What We Store During Alpha](#what-we-store-during-alpha)).
 2. Inspect the parsed result: every unique word, its lemma, its meaning.
 3. Correct the parser if it gets a word wrong (logged-in users only).
 4. Save the unknown words as a deck.
@@ -89,6 +91,20 @@ users get a lightweight inspection view that is enough to read parse
 output and submit corrections, without exposing internal parser knobs.
 
 Anonymous correction submission is out of scope for alpha.
+
+## What We Store During Alpha
+
+- When you are **not signed in**, parses are ephemeral. We do not store your
+  pasted text on our servers.
+- When you are **signed in**, the text you paste into Inspect is stored with
+  your account. We do this so parser corrections can keep their original
+  context and so a parse-history UI can exist later.
+- Submitting a correction is the only way today to surface a parse to admins.
+  Accepted corrections are used to improve parser quality.
+- We do **not** yet have a delete-my-parse-history button. That is a planned
+  follow-up. Until it exists, do not paste anything while signed in that you
+  would not want stored.
+- We do not sell, share, or use your pasted text to train external models.
 
 ## Technology Differentiators
 
