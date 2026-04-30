@@ -43,7 +43,8 @@ deps:
 # Use reimport-dict-* to force a full refresh (drops existing rows first).
 
 import-dict-fi:
-	@if [ "$$(sqlite3 finnestdb.db 'SELECT COUNT(*) FROM forms WHERE lang="FI" LIMIT 1' 2>/dev/null)" = "0" ]; then \
+	@if [ "$$(sqlite3 finnestdb.db "SELECT 1 FROM sqlite_master WHERE type='table' AND name='forms'" 2>/dev/null)" != "1" ] || \
+	    [ "$$(sqlite3 finnestdb.db "SELECT COUNT(*) FROM forms WHERE lang='FI'" 2>/dev/null)" = "0" ]; then \
 		echo "Importing Finnish dictionary from kaikki.org..."; \
 		go run ./cmd/importdict -lang fi -db finnestdb.db; \
 	else \
@@ -51,7 +52,8 @@ import-dict-fi:
 	fi
 
 import-dict-et:
-	@if [ "$$(sqlite3 finnestdb.db 'SELECT COUNT(*) FROM forms WHERE lang="ET" LIMIT 1' 2>/dev/null)" = "0" ]; then \
+	@if [ "$$(sqlite3 finnestdb.db "SELECT 1 FROM sqlite_master WHERE type='table' AND name='forms'" 2>/dev/null)" != "1" ] || \
+	    [ "$$(sqlite3 finnestdb.db "SELECT COUNT(*) FROM forms WHERE lang='ET'" 2>/dev/null)" = "0" ]; then \
 		echo "Importing Estonian dictionary from kaikki.org..."; \
 		go run ./cmd/importdict -lang et -db finnestdb.db; \
 	else \
