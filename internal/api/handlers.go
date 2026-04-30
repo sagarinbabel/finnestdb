@@ -73,6 +73,26 @@ type CreateDeckResponse struct {
 	DeckID int64 `json:"deck_id"`
 }
 
+type KnownWordsRequest struct {
+	Lang  string   `json:"lang"`
+	Words []string `json:"words"`
+}
+
+type KnownWordsResponse struct {
+	Imported   []store.KnownLemma `json:"imported"`
+	Unresolved []string           `json:"unresolved"`
+}
+
+type KnownWordsListResponse struct {
+	KnownWords []store.KnownLemma `json:"known_words"`
+}
+
+type cardKey struct {
+	Lang  string
+	Lemma string
+	POS   string
+}
+
 type CardResponse struct {
 	CardID     string     `json:"card_id"`
 	Mode       string     `json:"mode"`
@@ -293,7 +313,44 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create deck
+	cardKeys := make(map[cardKey]struct{})
+	for _, sent := range parsed.Sentences {
+		for _, token := range sent.Tokens {
+			if token.POS == "PUNCT" {
+				continue
+			}
+			lemma := token.Lemma
+			if lemma == "" {
+				lemma = strings.ToLower(token.Form)
+			}
+			pos := token.POS
+			if lemma == "" {
+				continue
+			}
+			if pos == "" {
+				continue
+			}
+			cardKeys[cardKey{Lang: req.Lang, Lemma: lemma, POS: pos}] = struct{}{}
+		}
+	}
+
+	for key := range cardKeys {
+		isKnown, err := a.store.IsKnownOrIgnored(auth.UserID, key.Lang, key.Lemma, key.POS)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		if isKnown {
+			continue
+		}
+		if _, err := a.store.EnsureCard(auth.UserID, key.Lang, key.Lemma, key.POS); err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Create deck only after global card seeding succeeds so failed seeding
+	// cannot leave behind a half-populated deck.
 	deckID, err := a.store.CreateDeck(auth.UserID, req.Title, req.Lang)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -330,6 +387,93 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, CreateDeckResponse{DeckID: deckID})
+}
+
+func (a *API) HandleKnownWords(w http.ResponseWriter, r *http.Request) {
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		a.handleKnownWordsList(w, r, auth)
+	case http.MethodPost:
+		a.handleKnownWordsImport(w, r, auth)
+	case http.MethodDelete:
+		a.handleKnownWordsDelete(w, r, auth)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (a *API) handleKnownWordsImport(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	var req KnownWordsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	if req.Lang != "FI" && req.Lang != "ET" {
+		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
+		return
+	}
+	if len(req.Words) == 0 {
+		http.Error(w, "Words are required", http.StatusBadRequest)
+		return
+	}
+
+	imported, unresolved, err := a.store.ImportKnownWords(auth.UserID, req.Lang, req.Words)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, KnownWordsResponse{
+		Imported:   imported,
+		Unresolved: unresolved,
+	})
+}
+
+func (a *API) handleKnownWordsList(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	lang := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("lang")))
+	if lang != "FI" && lang != "ET" {
+		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
+		return
+	}
+
+	knownWords, err := a.store.ListKnownWords(auth.UserID, lang)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, KnownWordsListResponse{KnownWords: knownWords})
+}
+
+func (a *API) handleKnownWordsDelete(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	lang := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("lang")))
+	lemma := strings.TrimSpace(r.URL.Query().Get("lemma"))
+	pos := strings.TrimSpace(r.URL.Query().Get("pos"))
+	if lang != "FI" && lang != "ET" {
+		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
+		return
+	}
+	if lemma == "" || pos == "" {
+		http.Error(w, "Lemma and POS are required", http.StatusBadRequest)
+		return
+	}
+
+	if err := a.store.DeleteKnownWord(auth.UserID, lang, lemma, pos); err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
@@ -476,6 +620,7 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 
 	// Decks
 	mux.HandleFunc("/api/decks", a.HandleCreateDeck)
+	mux.HandleFunc("/api/known-words", a.HandleKnownWords)
 
 	// Review
 	mux.HandleFunc("/api/review/next", a.HandleReviewNext)

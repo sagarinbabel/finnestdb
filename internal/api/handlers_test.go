@@ -408,6 +408,280 @@ func TestRequireAdminRejectsNonAdminUser(t *testing.T) {
 	}
 }
 
+func TestKnownWordsRequiresAuthentication(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=FI", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusUnauthorized, rec.Body.String())
+	}
+}
+
+func TestKnownWordsImportListAndDelete(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+		t.Fatalf("UpsertLemma: %v", err)
+	}
+	if err := api.store.UpsertForm("kissoja", "kissa", "NOUN", "FI"); err != nil {
+		t.Fatalf("UpsertForm: %v", err)
+	}
+	if err := api.store.UpsertLemma("juosta", "VERB", "run", "FI"); err != nil {
+		t.Fatalf("UpsertLemma: %v", err)
+	}
+	if err := api.store.UpsertForm("juoksen", "juosta", "VERB", "FI"); err != nil {
+		t.Fatalf("UpsertForm: %v", err)
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "known@example.com")
+
+	importReq := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissoja","juoksen","tuntematon","juoksen"]}`))
+	for _, cookie := range cookies {
+		importReq.AddCookie(cookie)
+	}
+	importRec := httptest.NewRecorder()
+	mux.ServeHTTP(importRec, importReq)
+
+	if importRec.Code != http.StatusOK {
+		t.Fatalf("import status=%d want %d body=%q", importRec.Code, http.StatusOK, importRec.Body.String())
+	}
+
+	var importResp KnownWordsResponse
+	if err := json.NewDecoder(bytes.NewReader(importRec.Body.Bytes())).Decode(&importResp); err != nil {
+		t.Fatalf("decode import response: %v", err)
+	}
+	if len(importResp.Imported) != 2 {
+		t.Fatalf("imported=%d want 2 (%+v)", len(importResp.Imported), importResp.Imported)
+	}
+	if len(importResp.Unresolved) != 1 || importResp.Unresolved[0] != "tuntematon" {
+		t.Fatalf("unexpected unresolved payload: %+v", importResp.Unresolved)
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=FI", nil)
+	for _, cookie := range cookies {
+		listReq.AddCookie(cookie)
+	}
+	listRec := httptest.NewRecorder()
+	mux.ServeHTTP(listRec, listReq)
+
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("list status=%d want %d body=%q", listRec.Code, http.StatusOK, listRec.Body.String())
+	}
+
+	var listResp KnownWordsListResponse
+	if err := json.NewDecoder(bytes.NewReader(listRec.Body.Bytes())).Decode(&listResp); err != nil {
+		t.Fatalf("decode list response: %v", err)
+	}
+	if len(listResp.KnownWords) != 2 {
+		t.Fatalf("known_words=%d want 2 (%+v)", len(listResp.KnownWords), listResp.KnownWords)
+	}
+
+	deleteReq := httptest.NewRequest(http.MethodDelete, "/api/known-words?lang=FI&lemma=kissa&pos=NOUN", nil)
+	for _, cookie := range cookies {
+		deleteReq.AddCookie(cookie)
+	}
+	deleteRec := httptest.NewRecorder()
+	mux.ServeHTTP(deleteRec, deleteReq)
+
+	if deleteRec.Code != http.StatusOK {
+		t.Fatalf("delete status=%d want %d body=%q", deleteRec.Code, http.StatusOK, deleteRec.Body.String())
+	}
+
+	listAgainReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=FI", nil)
+	for _, cookie := range cookies {
+		listAgainReq.AddCookie(cookie)
+	}
+	listAgainRec := httptest.NewRecorder()
+	mux.ServeHTTP(listAgainRec, listAgainReq)
+
+	var listAgainResp KnownWordsListResponse
+	if err := json.NewDecoder(bytes.NewReader(listAgainRec.Body.Bytes())).Decode(&listAgainResp); err != nil {
+		t.Fatalf("decode second list response: %v", err)
+	}
+	if len(listAgainResp.KnownWords) != 1 {
+		t.Fatalf("known_words=%d want 1 (%+v)", len(listAgainResp.KnownWords), listAgainResp.KnownWords)
+	}
+	if listAgainResp.KnownWords[0].Lemma != "juosta" {
+		t.Fatalf("remaining lemma=%q want juosta", listAgainResp.KnownWords[0].Lemma)
+	}
+}
+
+func TestKnownWordsImportReturnsUnresolvedWithoutCreatingRows(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "unknown@example.com")
+
+	importReq := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["tuntematon","mysteeri"]}`))
+	for _, cookie := range cookies {
+		importReq.AddCookie(cookie)
+	}
+	importRec := httptest.NewRecorder()
+	mux.ServeHTTP(importRec, importReq)
+
+	if importRec.Code != http.StatusOK {
+		t.Fatalf("import status=%d want %d body=%q", importRec.Code, http.StatusOK, importRec.Body.String())
+	}
+
+	var importResp KnownWordsResponse
+	if err := json.NewDecoder(bytes.NewReader(importRec.Body.Bytes())).Decode(&importResp); err != nil {
+		t.Fatalf("decode import response: %v", err)
+	}
+	if len(importResp.Imported) != 0 {
+		t.Fatalf("imported=%d want 0 (%+v)", len(importResp.Imported), importResp.Imported)
+	}
+	if len(importResp.Unresolved) != 2 {
+		t.Fatalf("unresolved=%d want 2 (%+v)", len(importResp.Unresolved), importResp.Unresolved)
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=FI", nil)
+	for _, cookie := range cookies {
+		listReq.AddCookie(cookie)
+	}
+	listRec := httptest.NewRecorder()
+	mux.ServeHTTP(listRec, listReq)
+
+	var listResp KnownWordsListResponse
+	if err := json.NewDecoder(bytes.NewReader(listRec.Body.Bytes())).Decode(&listResp); err != nil {
+		t.Fatalf("decode list response: %v", err)
+	}
+	if len(listResp.KnownWords) != 0 {
+		t.Fatalf("known_words=%d want 0 (%+v)", len(listResp.KnownWords), listResp.KnownWords)
+	}
+}
+
+func TestKnownWordsAreIsolatedByLanguage(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+		t.Fatalf("UpsertLemma FI: %v", err)
+	}
+	if err := api.store.UpsertForm("kissoja", "kissa", "NOUN", "FI"); err != nil {
+		t.Fatalf("UpsertForm FI: %v", err)
+	}
+	if err := api.store.UpsertLemma("kass", "NOUN", "cat", "ET"); err != nil {
+		t.Fatalf("UpsertLemma ET: %v", err)
+	}
+	if err := api.store.UpsertForm("kasse", "kass", "NOUN", "ET"); err != nil {
+		t.Fatalf("UpsertForm ET: %v", err)
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "bilingual@example.com")
+
+	for _, body := range []string{
+		`{"lang":"FI","words":["kissoja"]}`,
+		`{"lang":"ET","words":["kasse"]}`,
+	} {
+		req := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(body))
+		for _, cookie := range cookies {
+			req.AddCookie(cookie)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("import status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+		}
+	}
+
+	fiReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=FI", nil)
+	etReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=ET", nil)
+	for _, req := range []*http.Request{fiReq, etReq} {
+		for _, cookie := range cookies {
+			req.AddCookie(cookie)
+		}
+	}
+
+	fiRec := httptest.NewRecorder()
+	mux.ServeHTTP(fiRec, fiReq)
+	etRec := httptest.NewRecorder()
+	mux.ServeHTTP(etRec, etReq)
+
+	var fiResp KnownWordsListResponse
+	if err := json.NewDecoder(bytes.NewReader(fiRec.Body.Bytes())).Decode(&fiResp); err != nil {
+		t.Fatalf("decode FI list response: %v", err)
+	}
+	if len(fiResp.KnownWords) != 1 || fiResp.KnownWords[0].Lang != "FI" || fiResp.KnownWords[0].Lemma != "kissa" {
+		t.Fatalf("unexpected FI known words: %+v", fiResp.KnownWords)
+	}
+
+	var etResp KnownWordsListResponse
+	if err := json.NewDecoder(bytes.NewReader(etRec.Body.Bytes())).Decode(&etResp); err != nil {
+		t.Fatalf("decode ET list response: %v", err)
+	}
+	if len(etResp.KnownWords) != 1 || etResp.KnownWords[0].Lang != "ET" || etResp.KnownWords[0].Lemma != "kass" {
+		t.Fatalf("unexpected ET known words: %+v", etResp.KnownWords)
+	}
+}
+
+func TestCreateDeckSkipsKnownWordsWhenSeedingCards(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+		t.Fatalf("UpsertLemma: %v", err)
+	}
+	if err := api.store.UpsertForm("kissa", "kissa", "NOUN", "FI"); err != nil {
+		t.Fatalf("UpsertForm: %v", err)
+	}
+
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "Kissa juoksee.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+						{Form: "juoksee", Lemma: "juosta", POS: "VERB"},
+						{Form: ".", POS: "PUNCT"},
+					},
+				},
+			},
+		}, nil
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "deck@example.com")
+
+	importReq := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa"]}`))
+	for _, cookie := range cookies {
+		importReq.AddCookie(cookie)
+	}
+	importRec := httptest.NewRecorder()
+	mux.ServeHTTP(importRec, importReq)
+	if importRec.Code != http.StatusOK {
+		t.Fatalf("known-word import status=%d want %d body=%q", importRec.Code, http.StatusOK, importRec.Body.String())
+	}
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Test deck","lang":"FI","text":"Kissa juoksee."}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create deck status=%d want %d body=%q", createRec.Code, http.StatusOK, createRec.Body.String())
+	}
+
+	auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
+	if err != nil {
+		t.Fatalf("getCurrentUser: %v", err)
+	}
+	if auth == nil {
+		t.Fatal("expected authenticated user")
+	}
+
+	cardCount, err := api.store.CountCards(auth.UserID, "FI")
+	if err != nil {
+		t.Fatalf("CountCards: %v", err)
+	}
+	if cardCount != 1 {
+		t.Fatalf("card_count=%d want 1", cardCount)
+	}
+}
+
 func loginAndReturnCookies(t *testing.T, mux *http.ServeMux, email string) []*http.Cookie {
 	t.Helper()
 
@@ -424,4 +698,11 @@ func loginAndReturnCookies(t *testing.T, mux *http.ServeMux, email string) []*ht
 		t.Fatal("expected login to set cookies")
 	}
 	return cookies
+}
+
+func requestWithCookies(req *http.Request, cookies []*http.Cookie) *http.Request {
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	return req
 }

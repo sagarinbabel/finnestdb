@@ -1,7 +1,12 @@
 package store
 
 import (
+	"database/sql"
+	"path/filepath"
+	"sync"
 	"testing"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // newTestDB creates an in-memory SQLite database with the full schema applied.
@@ -314,6 +319,185 @@ func TestFallbackChainOrdering(t *testing.T) {
 	// Should resolve via direct dict lookup (step 1), not case suffix stripping (step 4).
 	if r.Source != "dict" {
 		t.Errorf("kirjassa: should resolve via 'dict' (priority), got source %q", r.Source)
+	}
+}
+
+func TestEnsureCardReturnsExistingCardID(t *testing.T) {
+	db := newTestDB(t)
+	user, err := db.GetOrCreateUser("cards@example.com")
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+
+	firstID, err := db.EnsureCard(user.ID, "FI", "kissa", "NOUN")
+	if err != nil {
+		t.Fatalf("EnsureCard first: %v", err)
+	}
+	secondID, err := db.EnsureCard(user.ID, "FI", "kissa", "NOUN")
+	if err != nil {
+		t.Fatalf("EnsureCard second: %v", err)
+	}
+	if firstID != secondID {
+		t.Fatalf("card IDs differ: first=%d second=%d", firstID, secondID)
+	}
+
+	var cardCount int
+	if err := db.db.QueryRow(`SELECT COUNT(*) FROM cards WHERE user_id = ? AND lang = 'FI' AND lemma = 'kissa' AND pos = 'NOUN' AND mwe_id IS NULL`, user.ID).Scan(&cardCount); err != nil {
+		t.Fatalf("count cards: %v", err)
+	}
+	if cardCount != 1 {
+		t.Fatalf("card_count=%d want 1", cardCount)
+	}
+
+	var stateCount int
+	if err := db.db.QueryRow(`SELECT COUNT(*) FROM card_state WHERE card_id = ?`, firstID).Scan(&stateCount); err != nil {
+		t.Fatalf("count card_state: %v", err)
+	}
+	if stateCount != 1 {
+		t.Fatalf("card_state_count=%d want 1", stateCount)
+	}
+}
+
+func TestEnsureCardConcurrentUpsertsReturnSingleCard(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "cards-concurrent.db")
+	db, err := NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB: %v", err)
+	}
+	t.Cleanup(func() { db.Close() })
+
+	user, err := db.GetOrCreateUser("cards-concurrent@example.com")
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+
+	const goroutines = 8
+	var wg sync.WaitGroup
+	errCh := make(chan error, goroutines)
+	idCh := make(chan int64, goroutines)
+
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cardID, err := db.EnsureCard(user.ID, "FI", "kissa", "NOUN")
+			if err != nil {
+				errCh <- err
+				return
+			}
+			idCh <- cardID
+		}()
+	}
+
+	wg.Wait()
+	close(errCh)
+	close(idCh)
+
+	for err := range errCh {
+		t.Fatalf("EnsureCard concurrent: %v", err)
+	}
+
+	var firstID int64
+	for cardID := range idCh {
+		if firstID == 0 {
+			firstID = cardID
+			continue
+		}
+		if cardID != firstID {
+			t.Fatalf("concurrent card IDs differ: first=%d got=%d", firstID, cardID)
+		}
+	}
+
+	var cardCount int
+	if err := db.db.QueryRow(`SELECT COUNT(*) FROM cards WHERE user_id = ? AND lang = 'FI' AND lemma = 'kissa' AND pos = 'NOUN' AND mwe_id IS NULL`, user.ID).Scan(&cardCount); err != nil {
+		t.Fatalf("count cards: %v", err)
+	}
+	if cardCount != 1 {
+		t.Fatalf("card_count=%d want 1", cardCount)
+	}
+
+	var stateCount int
+	if err := db.db.QueryRow(`SELECT COUNT(*) FROM card_state`).Scan(&stateCount); err != nil {
+		t.Fatalf("count card_state: %v", err)
+	}
+	if stateCount != 1 {
+		t.Fatalf("card_state_count=%d want 1", stateCount)
+	}
+}
+
+func TestLegacyCardMigrationPreservesStateAndBackfillsFILang(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "legacy.db")
+	legacy, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open legacy db: %v", err)
+	}
+
+	legacySchema := `
+	CREATE TABLE users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		email TEXT UNIQUE,
+		email_verified INTEGER DEFAULT 0,
+		is_admin INTEGER DEFAULT 0,
+		settings_json TEXT DEFAULT '{"new_per_day":20,"retention":0.9,"theme":"system"}'
+	);
+	CREATE TABLE cards (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		lemma TEXT NOT NULL,
+		pos TEXT NOT NULL,
+		mwe_id INTEGER,
+		FOREIGN KEY(user_id) REFERENCES users(id),
+		UNIQUE(user_id, lemma, pos, mwe_id)
+	);
+	CREATE TABLE card_state (
+		card_id INTEGER PRIMARY KEY,
+		fsrs_json TEXT,
+		next_due DATETIME,
+		last_answer_at DATETIME,
+		FOREIGN KEY(card_id) REFERENCES cards(id)
+	);`
+	if _, err := legacy.Exec(legacySchema); err != nil {
+		t.Fatalf("create legacy schema: %v", err)
+	}
+	if _, err := legacy.Exec(`INSERT INTO users (id, email) VALUES (1, 'legacy@example.com')`); err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+	if _, err := legacy.Exec(`INSERT INTO cards (id, user_id, lemma, pos, mwe_id) VALUES (7, 1, 'kissa', 'NOUN', NULL)`); err != nil {
+		t.Fatalf("insert legacy card: %v", err)
+	}
+	if _, err := legacy.Exec(`INSERT INTO card_state (card_id, fsrs_json, next_due, last_answer_at) VALUES (7, '{"due":3}', '2026-05-01 10:00:00', '2026-04-29 09:00:00')`); err != nil {
+		t.Fatalf("insert legacy card_state: %v", err)
+	}
+	if err := legacy.Close(); err != nil {
+		t.Fatalf("close legacy db: %v", err)
+	}
+
+	migrated, err := NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB migration: %v", err)
+	}
+	t.Cleanup(func() { migrated.Close() })
+
+	var lang, fsrsJSON, nextDue, lastAnswerAt string
+	if err := migrated.db.QueryRow(`
+		SELECT c.lang, cs.fsrs_json, cs.next_due, cs.last_answer_at
+		FROM cards c
+		JOIN card_state cs ON cs.card_id = c.id
+		WHERE c.user_id = 1 AND c.lemma = 'kissa' AND c.pos = 'NOUN'`,
+	).Scan(&lang, &fsrsJSON, &nextDue, &lastAnswerAt); err != nil {
+		t.Fatalf("query migrated card state: %v", err)
+	}
+	if lang != "FI" {
+		t.Fatalf("lang=%q want FI", lang)
+	}
+	if fsrsJSON != `{"due":3}` {
+		t.Fatalf("fsrs_json=%q want %q", fsrsJSON, `{"due":3}`)
+	}
+	if nextDue != "2026-05-01T10:00:00Z" {
+		t.Fatalf("next_due=%q want 2026-05-01T10:00:00Z", nextDue)
+	}
+	if lastAnswerAt != "2026-04-29T09:00:00Z" {
+		t.Fatalf("last_answer_at=%q want 2026-04-29T09:00:00Z", lastAnswerAt)
 	}
 }
 
