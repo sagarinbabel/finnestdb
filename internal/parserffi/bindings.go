@@ -1,7 +1,7 @@
 package parserffi
 
 /*
-#cgo LDFLAGS: -L${SRCDIR}/../../parser/target/release -lparser -ldl -lm
+#cgo LDFLAGS: ${SRCDIR}/../../parser/target/release/libparser.a -ldl -lm -lpthread
 #include <stdlib.h>
 #include <string.h>
 
