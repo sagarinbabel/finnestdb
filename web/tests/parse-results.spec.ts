@@ -170,6 +170,93 @@ test('user inspect flow parses text and shows results with correction entry poin
   await expect(page.locator('#correction-modal')).toHaveClass(/hidden/);
 });
 
+test('user can save inspected results as a deck and review the first due card', async ({ page }) => {
+  let meDecks: Array<{ id: number; title: string; lang: string; known: number; unique: number; due: number }> = [];
+  let nextReviewCard: null | Record<string, unknown> = {
+    card_id: '42',
+    mode: 'sentence',
+    deck_counts: [['My test deck', '1']],
+    front: { type: 'sentence', text: 'Kissa juoksee.' },
+    back: {
+      lemma: 'kissa',
+      meaning: 'cat',
+      grammar: '',
+      examples: [{ text: 'Kissa juoksee.', source_deck: 'My test deck' }],
+    },
+  };
+
+  await page.route('**/api/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        authenticated: true,
+        user: { id: 1, email: 'alice@example.com', is_admin: false },
+        dashboard: {
+          known_count: 0,
+          due_count: nextReviewCard ? 1 : 0,
+          new_capacity_today: nextReviewCard ? 1 : 0,
+          decks: meDecks,
+        },
+      }),
+    });
+  });
+
+  await page.route('**/api/decks', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue();
+      return;
+    }
+    meDecks = [{ id: 7, title: 'My test deck', lang: 'FI', known: 0, unique: 1, due: 1 }];
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ deck_id: 7 }),
+    });
+  });
+
+  await page.route('**/api/review/next**', async (route) => {
+    if (!nextReviewCard) {
+      await route.fulfill({ status: 204, body: '' });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(nextReviewCard),
+    });
+  });
+
+  await page.route('**/api/review/answer', async (route) => {
+    nextReviewCard = null;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'ok' }),
+    });
+  });
+
+  await page.goto('/#/inspect');
+  await page.locator('#inspect-text').fill('Kissa juoksee.');
+  await page.getByRole('button', { name: 'Inspect text' }).click();
+
+  await expect(page.locator('#results-page')).toHaveClass(/active/);
+  await page.getByRole('button', { name: 'Save as deck' }).click();
+  await page.locator('#results-deck-title').fill('My test deck');
+  await page.locator('#results-save-submit').click();
+
+  await expect(page.locator('#decks-page')).toHaveClass(/active/);
+  await expect(page.locator('#decks-list')).toContainText('My test deck');
+
+  await page.getByRole('button', { name: 'Review' }).click();
+  await expect(page.locator('#review-page')).toHaveClass(/active/);
+  await expect(page.locator('#review-card')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#review-card-lemma')).toContainText('kissa');
+
+  await page.getByRole('button', { name: 'Good' }).click();
+  await expect(page.locator('#review-empty')).not.toHaveClass(/hidden/);
+});
+
 test('user trying admin workbench is sent to dashboard', async ({ page }) => {
   await mockMe(page, 'user');
   await page.goto('/#/admin/workbench');

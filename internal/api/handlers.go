@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 
@@ -73,6 +72,23 @@ type CreateDeckResponse struct {
 	DeckID int64 `json:"deck_id"`
 }
 
+type DeckListResponse struct {
+	Decks []DeckSummary `json:"decks"`
+}
+
+type UpdateDeckRequest struct {
+	Title string `json:"title"`
+}
+
+type ReviewAnswerRequest struct {
+	CardID int64  `json:"card_id"`
+	Rating string `json:"rating"`
+}
+
+type ReviewCardMutationRequest struct {
+	CardID int64 `json:"card_id"`
+}
+
 type KnownWordsRequest struct {
 	Lang  string   `json:"lang"`
 	Words []string `json:"words"`
@@ -114,12 +130,6 @@ type ParseFeedbackResponse struct {
 
 type ParseFeedbackListResponse struct {
 	Feedback []store.ParseFeedback `json:"feedback"`
-}
-
-type cardKey struct {
-	Lang  string
-	Lemma string
-	POS   string
 }
 
 type CardResponse struct {
@@ -288,8 +298,13 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get decks
-	decks, err := a.store.GetUserDecks(auth.UserID)
+	user, err := a.store.GetUserByID(auth.UserID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	decks, err := a.store.GetUserDeckStats(auth.UserID)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -301,30 +316,58 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 			ID:     deck.ID,
 			Title:  deck.Title,
 			Lang:   deck.Lang,
-			Known:  0, // Stub: always 0
-			Unique: 0, // Stub: always 0
-			Due:    0, // Stub: always 0
+			Known:  deck.Known,
+			Unique: deck.Unique,
+			Due:    deck.Due,
 		}
+	}
+
+	knownCount, err := a.store.CountKnownLemmas(auth.UserID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	dueCount, err := a.store.CountDueCards(auth.UserID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	newCount, err := a.store.CountNewCards(auth.UserID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	newPerDay := 20
+	if raw, ok := user.Settings["new_per_day"]; ok {
+		switch v := raw.(type) {
+		case float64:
+			if int(v) > 0 {
+				newPerDay = int(v)
+			}
+		case int:
+			if v > 0 {
+				newPerDay = v
+			}
+		}
+	}
+	if newCount > newPerDay {
+		newCount = newPerDay
 	}
 
 	writeJSON(w, http.StatusOK, MeResponse{
 		Authenticated: true,
 		User:          sessionUserFromAuth(auth),
 		Dashboard: &DashboardData{
-			KnownCount:       1234, // Mock data
-			DueCount:         87,   // Mock data
-			NewCapacityToday: 12,   // Mock data
+			KnownCount:       knownCount,
+			DueCount:         dueCount,
+			NewCapacityToday: newCount,
 			Decks:            deckSummaries,
 		},
 	})
 }
 
-func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
+func (a *API) HandleDecks(w http.ResponseWriter, r *http.Request) {
 	auth, err := a.getCurrentUser(r)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -335,13 +378,44 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	switch r.Method {
+	case http.MethodGet:
+		a.handleDecksList(w, auth)
+	case http.MethodPost:
+		a.handleCreateDeck(w, r, auth)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (a *API) handleDecksList(w http.ResponseWriter, auth *AuthContext) {
+	decks, err := a.store.GetUserDeckStats(auth.UserID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	resp := DeckListResponse{Decks: make([]DeckSummary, 0, len(decks))}
+	for _, deck := range decks {
+		resp.Decks = append(resp.Decks, DeckSummary{
+			ID:     deck.ID,
+			Title:  deck.Title,
+			Lang:   deck.Lang,
+			Known:  deck.Known,
+			Unique: deck.Unique,
+			Due:    deck.Due,
+		})
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
 	var req CreateDeckRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	if req.Title == "" {
+	if strings.TrimSpace(req.Title) == "" {
 		http.Error(w, "Title is required", http.StatusBadRequest)
 		return
 	}
@@ -362,9 +436,10 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cardKeys := make(map[cardKey]struct{})
+	sentences := make([]store.DeckSentenceInput, 0, len(parsed.Sentences))
 	for _, sent := range parsed.Sentences {
-		for _, token := range sent.Tokens {
+		sentence := store.DeckSentenceInput{Text: sent.Text}
+		for tokenIx, token := range sent.Tokens {
 			if token.POS == "PUNCT" {
 				continue
 			}
@@ -373,69 +448,82 @@ func (a *API) HandleCreateDeck(w http.ResponseWriter, r *http.Request) {
 				lemma = strings.ToLower(token.Form)
 			}
 			pos := token.POS
-			if lemma == "" {
+			if lemma == "" || pos == "" {
 				continue
 			}
-			if pos == "" {
-				continue
-			}
-			cardKeys[cardKey{Lang: req.Lang, Lemma: lemma, POS: pos}] = struct{}{}
+			sentence.Tokens = append(sentence.Tokens, store.DeckTokenInput{
+				TokenIx: tokenIx,
+				Lemma:   lemma,
+				POS:     pos,
+			})
 		}
-	}
-
-	for key := range cardKeys {
-		isKnown, err := a.store.IsKnownOrIgnored(auth.UserID, key.Lang, key.Lemma, key.POS)
-		if err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
-		}
-		if isKnown {
+		if len(sentence.Tokens) == 0 && sentence.Text == "" {
 			continue
 		}
-		if _, err := a.store.EnsureCard(auth.UserID, key.Lang, key.Lemma, key.POS); err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
-		}
+		sentences = append(sentences, sentence)
 	}
 
-	// Create deck only after global card seeding succeeds so failed seeding
-	// cannot leave behind a half-populated deck.
-	deckID, err := a.store.CreateDeck(auth.UserID, req.Title, req.Lang)
+	deckID, err := a.store.CreateDeckWithSentences(auth.UserID, strings.TrimSpace(req.Title), req.Lang, sentences)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
 
-	// Store sentences and occurrence records.
-	for _, sent := range parsed.Sentences {
-		if sent.Text == "" {
-			continue
-		}
-		sentenceID, err := a.store.CreateSentence(deckID, sent.Text, req.Lang)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error creating sentence: %v\n", err)
-			continue
-		}
-		for tokenIx, token := range sent.Tokens {
-			// Skip punctuation — no occurrence records for ".", ")", etc.
-			if token.POS == "PUNCT" {
-				continue
-			}
-			lemma := token.Lemma
-			if lemma == "" {
-				lemma = strings.ToLower(token.Form)
-			}
-			pos := token.POS
-			if lemma == "" {
-				continue
-			}
-			if err := a.store.CreateOccurrence(deckID, sentenceID, tokenIx, lemma, pos); err != nil {
-				fmt.Fprintf(os.Stderr, "Error creating occurrence: %v\n", err)
-			}
-		}
+	writeJSON(w, http.StatusOK, CreateDeckResponse{DeckID: deckID})
+}
+
+func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
 	}
 
-	writeJSON(w, http.StatusOK, CreateDeckResponse{DeckID: deckID})
+	idStr := strings.TrimPrefix(r.URL.Path, "/api/decks/")
+	deckID, err := strconv.ParseInt(strings.TrimSpace(idStr), 10, 64)
+	if err != nil || deckID <= 0 {
+		http.Error(w, "Deck ID must be a positive integer", http.StatusBadRequest)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodPatch:
+		var req UpdateDeckRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+		title := strings.TrimSpace(req.Title)
+		if title == "" {
+			http.Error(w, "Title is required", http.StatusBadRequest)
+			return
+		}
+		if err := a.store.UpdateDeckTitle(auth.UserID, deckID, title); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "Deck not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	case http.MethodDelete:
+		if err := a.store.DeleteDeck(auth.UserID, deckID); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "Deck not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func (a *API) HandleKnownWords(w http.ResponseWriter, r *http.Request) {
@@ -531,30 +619,79 @@ func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return mock card data
-	card := CardResponse{
-		CardID:     "c_123",
-		Mode:       "sentence",
-		DeckCounts: [][]string{{"Deck A", "1"}, {"Deck B", "2"}},
-		Front: CardFront{
-			Type:      "sentence",
-			Text:      "Toissapäivänä menin pankkiin.",
-			Highlight: "Toissapäivänä",
-		},
-		Back: CardBack{
-			Lemma:   "toissapäivä",
-			Meaning: "the day before yesterday",
-			Grammar: "Essive singular (-nä)",
-			Examples: []CardExample{
-				{
-					Text:       "Toissapäivänä menin pankkiin.",
-					SourceDeck: "Everyday FI",
-				},
-			},
-		},
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
 	}
 
-	writeJSON(w, http.StatusOK, card)
+	var deckID *int64
+	deckIDStr := strings.TrimSpace(r.URL.Query().Get("deck_id"))
+	if deckIDStr != "" {
+		parsed, err := strconv.ParseInt(deckIDStr, 10, 64)
+		if err != nil || parsed <= 0 {
+			http.Error(w, "Deck ID must be a positive integer", http.StatusBadRequest)
+			return
+		}
+		ownsDeck, err := a.store.UserOwnsDeck(auth.UserID, parsed)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		if !ownsDeck {
+			http.Error(w, "Deck not found", http.StatusNotFound)
+			return
+		}
+		deckID = &parsed
+	}
+
+	card, err := a.store.GetNextReviewCard(auth.UserID, deckID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if card == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	deckCounts := make([][]string, 0, len(card.DeckCounts))
+	for _, pair := range card.DeckCounts {
+		deckCounts = append(deckCounts, []string{pair[0], pair[1]})
+	}
+
+	examples := []CardExample{}
+	if card.SentenceText != "" {
+		examples = append(examples, CardExample{
+			Text:       card.SentenceText,
+			SourceDeck: card.SourceDeck,
+		})
+	}
+
+	frontText := card.Lemma
+	if card.SentenceText != "" {
+		frontText = card.SentenceText
+	}
+
+	writeJSON(w, http.StatusOK, CardResponse{
+		CardID:     strconv.FormatInt(card.CardID, 10),
+		Mode:       "sentence",
+		DeckCounts: deckCounts,
+		Front: CardFront{
+			Type: "sentence",
+			Text: frontText,
+		},
+		Back: CardBack{
+			Lemma:    card.Lemma,
+			Meaning:  card.Gloss,
+			Grammar:  "",
+			Examples: examples,
+		},
+	})
 }
 
 func (a *API) HandleReviewAnswer(w http.ResponseWriter, r *http.Request) {
@@ -562,8 +699,39 @@ func (a *API) HandleReviewAnswer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
 
-	// Stub: just return success
+	var req ReviewAnswerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	if req.CardID <= 0 {
+		http.Error(w, "Card ID must be a positive integer", http.StatusBadRequest)
+		return
+	}
+	switch req.Rating {
+	case "again", "hard", "good", "easy":
+	default:
+		http.Error(w, "Rating must be again, hard, good, or easy", http.StatusBadRequest)
+		return
+	}
+	if err := a.store.RecordReviewAnswer(auth.UserID, req.CardID, req.Rating); err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Card not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -572,8 +740,33 @@ func (a *API) HandleCardIgnore(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
 
-	// Stub: just return success
+	var req ReviewCardMutationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	if req.CardID <= 0 {
+		http.Error(w, "Card ID must be a positive integer", http.StatusBadRequest)
+		return
+	}
+	if err := a.store.MarkCardIgnored(auth.UserID, req.CardID); err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Card not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -582,8 +775,33 @@ func (a *API) HandleCardKnown(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
 
-	// Stub: just return success
+	var req ReviewCardMutationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+	if req.CardID <= 0 {
+		http.Error(w, "Card ID must be a positive integer", http.StatusBadRequest)
+		return
+	}
+	if err := a.store.MarkCardKnown(auth.UserID, req.CardID); err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Card not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -835,7 +1053,8 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/admin/parse-feedback", a.HandleAdminParseFeedback)
 
 	// Decks
-	mux.HandleFunc("/api/decks", a.HandleCreateDeck)
+	mux.HandleFunc("/api/decks", a.HandleDecks)
+	mux.HandleFunc("/api/decks/", a.HandleDeckByID)
 	mux.HandleFunc("/api/known-words", a.HandleKnownWords)
 
 	// Review

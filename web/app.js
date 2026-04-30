@@ -25,14 +25,18 @@ const POS_LABELS = {
 const state = {
     user: null,
     dashboard: null,
+    decks: [],
     role: 'anon',
     currentResults: null,
     currentContext: 'inspect',
     currentParserMode: 'basic',
     currentTextPreview: '',
+    currentSourceText: '',
     currentRow: null,
     currentSort: { key: 'row', dir: 'asc' },
     currentPOSFilter: 'all',
+    currentReviewCard: null,
+    reviewDeckFilter: '',
 };
 const NOUN_POS = ['NOUN', 'PROPN'];
 const VERB_POS = ['VERB', 'AUX'];
@@ -127,6 +131,7 @@ async function fetchMe() {
 function applyMeResponse(data) {
     state.user = data.authenticated ? (data.user || null) : null;
     state.dashboard = data.dashboard || null;
+    state.decks = data.dashboard?.decks || [];
     state.role = computeRole(state.user);
     const emailEl = document.getElementById('nav-user-email');
     if (emailEl)
@@ -143,12 +148,16 @@ async function handleSignout() {
     }
     state.user = null;
     state.dashboard = null;
+    state.decks = [];
     state.role = 'anon';
     state.currentResults = null;
     state.currentTextPreview = '';
+    state.currentSourceText = '';
     state.currentParserMode = 'basic';
     state.currentContext = 'inspect';
     state.currentRow = null;
+    state.currentReviewCard = null;
+    state.reviewDeckFilter = '';
     clearResultsDom();
     applyRoleVisibility();
     showToast('Signed out', 'info');
@@ -249,6 +258,12 @@ function renderRoute() {
     // Per-page hooks
     if (route === '/dashboard')
         renderDashboard();
+    if (route === '/decks')
+        renderDecksPage();
+    if (route === '/review') {
+        renderReviewPage();
+        void loadNextReviewCard(false);
+    }
 }
 // ── Mobile nav ─────────────────────────────────────────────────────────────
 function initMobileNav() {
@@ -359,6 +374,41 @@ function renderDashboard() {
             <p class="deck-meta">${langName} · ${d.known}/${d.unique} known (${knownPct}%) · ${d.due} due</p>
         </a>`;
     }).join('');
+}
+async function refreshDashboardData() {
+    await fetchMe();
+    renderRoute();
+}
+function renderDecksPage() {
+    const empty = document.getElementById('decks-empty');
+    const list = document.getElementById('decks-list');
+    if (!empty || !list)
+        return;
+    const decks = state.decks || [];
+    empty.classList.toggle('hidden', decks.length > 0);
+    list.classList.toggle('hidden', decks.length === 0);
+    if (decks.length === 0) {
+        list.innerHTML = '';
+        return;
+    }
+    list.innerHTML = decks.map(deck => {
+        const langName = deck.lang === 'FI' ? 'Finnish' : 'Estonian';
+        const knownPct = deck.unique > 0 ? Math.round((deck.known / deck.unique) * 100) : 0;
+        return `<article class="deck-list-item">
+            <div>
+                <h2>${escapeHtml(deck.title)}</h2>
+                <p class="deck-list-meta">${langName} · ${deck.known}/${deck.unique} known (${knownPct}%) · ${deck.due} due</p>
+            </div>
+            <div class="deck-list-actions">
+                <button type="button" class="btn btn-link btn-sm" data-open-review="${deck.id}">Review</button>
+                <button type="button" class="btn btn-link btn-sm" data-rename-deck="${deck.id}">Rename</button>
+                <button type="button" class="btn btn-link btn-sm" data-delete-deck="${deck.id}">Delete</button>
+            </div>
+        </article>`;
+    }).join('');
+}
+function getDeckByID(deckID) {
+    return state.decks.find(deck => deck.id === deckID);
 }
 // ── Language detection (shared between inspect + workbench) ────────────────
 function detectLang(text) {
@@ -597,6 +647,7 @@ async function runParse(els, parserMode, context, activeBtnId) {
             throw new Error(msg || resp.statusText);
         }
         const data = await resp.json();
+        state.currentSourceText = text;
         showResults(data, text.slice(0, 60), parserMode, context);
     }
     catch (err) {
@@ -802,9 +853,170 @@ function showResults(data, textPreview, parserMode, context) {
     state.currentSort = { key: 'row', dir: 'asc' };
     state.currentPOSFilter = 'all';
     renderResultsTable(data);
+    renderResultsSaveState();
     // Re-apply role visibility so admin-only pills/cells show correctly.
     applyRoleVisibility();
     navigate('/results');
+}
+function renderResultsSaveState() {
+    const form = document.getElementById('results-save-form');
+    const input = document.getElementById('results-deck-title');
+    if (!form || !input)
+        return;
+    form.classList.add('hidden');
+    const langName = state.currentResults?.lang === 'ET' ? 'Estonian' : 'Finnish';
+    input.value = state.currentTextPreview
+        ? `${langName}: ${state.currentTextPreview.slice(0, 48)}`
+        : '';
+}
+async function saveCurrentResultsAsDeck() {
+    const titleInput = document.getElementById('results-deck-title');
+    const submitBtn = document.getElementById('results-save-submit');
+    if (!titleInput || !submitBtn || !state.currentResults || !state.currentSourceText.trim())
+        return;
+    const title = titleInput.value.trim();
+    if (!title) {
+        showToast('Please enter a deck title.', 'error');
+        return;
+    }
+    submitBtn.disabled = true;
+    const originalLabel = submitBtn.textContent || '';
+    submitBtn.textContent = 'Saving…';
+    try {
+        const resp = await fetch('/api/decks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                title,
+                lang: state.currentResults.lang,
+                text: state.currentSourceText,
+            }),
+        });
+        if (!resp.ok) {
+            throw new Error(await resp.text() || 'Failed to create deck');
+        }
+        const created = await resp.json();
+        await refreshDashboardData();
+        showToast(`Deck saved (#${created.deck_id}).`, 'success');
+        navigate('/decks');
+    }
+    catch (err) {
+        showToast(err.message || 'Failed to save deck.', 'error');
+    }
+    finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalLabel;
+    }
+}
+function renderReviewPage() {
+    const filter = document.getElementById('review-deck-filter');
+    if (filter) {
+        const current = state.reviewDeckFilter;
+        filter.innerHTML = `<option value="">All decks</option>` + state.decks.map(deck => `<option value="${deck.id}">${escapeHtml(deck.title)}</option>`).join('');
+        filter.value = current;
+    }
+    renderCurrentReviewCard();
+}
+function renderCurrentReviewCard() {
+    const cardEl = document.getElementById('review-card');
+    const emptyEl = document.getElementById('review-empty');
+    const deckCountsEl = document.getElementById('review-card-decks');
+    const exampleEl = document.getElementById('review-card-example');
+    const frontTextEl = document.getElementById('review-card-front-text');
+    const lemmaEl = document.getElementById('review-card-lemma');
+    const meaningEl = document.getElementById('review-card-meaning');
+    const modeEl = document.getElementById('review-card-mode');
+    if (!cardEl || !emptyEl || !deckCountsEl || !exampleEl || !frontTextEl || !lemmaEl || !meaningEl || !modeEl)
+        return;
+    const card = state.currentReviewCard;
+    const hasCard = Boolean(card);
+    cardEl.classList.toggle('hidden', !hasCard);
+    emptyEl.classList.toggle('hidden', hasCard);
+    if (!card)
+        return;
+    modeEl.textContent = card.mode === 'sentence' ? 'Sentence card' : 'Word card';
+    frontTextEl.textContent = card.front.text || card.back.lemma;
+    lemmaEl.textContent = card.back.lemma;
+    meaningEl.textContent = card.back.meaning || 'No gloss yet';
+    deckCountsEl.innerHTML = card.deck_counts.map(pair => `<span class="review-deck-pill">${escapeHtml(pair[0])} · ${escapeHtml(pair[1])}</span>`).join('');
+    const example = card.back.examples?.[0];
+    if (example) {
+        exampleEl.classList.remove('hidden');
+        exampleEl.innerHTML = `<strong>${escapeHtml(example.source_deck || 'Example')}</strong><br>${escapeHtml(example.text)}`;
+    }
+    else {
+        exampleEl.classList.add('hidden');
+        exampleEl.innerHTML = '';
+    }
+}
+async function loadNextReviewCard(showEmptyToast) {
+    if (state.role === 'anon')
+        return;
+    const deckParam = state.reviewDeckFilter ? `?deck_id=${encodeURIComponent(state.reviewDeckFilter)}` : '';
+    try {
+        const resp = await fetch(`/api/review/next${deckParam}`, { credentials: 'same-origin' });
+        if (resp.status === 204) {
+            state.currentReviewCard = null;
+            renderCurrentReviewCard();
+            if (showEmptyToast)
+                showToast('Nothing due right now.', 'info');
+            return;
+        }
+        if (!resp.ok) {
+            throw new Error(await resp.text() || 'Failed to load review card');
+        }
+        state.currentReviewCard = await resp.json();
+        renderCurrentReviewCard();
+    }
+    catch (err) {
+        state.currentReviewCard = null;
+        renderCurrentReviewCard();
+        showToast(err.message || 'Failed to load review card.', 'error');
+    }
+}
+async function submitReviewAnswer(rating) {
+    const cardID = Number(state.currentReviewCard?.card_id || 0);
+    if (!cardID)
+        return;
+    try {
+        const resp = await fetch('/api/review/answer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ card_id: cardID, rating }),
+        });
+        if (!resp.ok) {
+            throw new Error(await resp.text() || 'Failed to record review answer');
+        }
+        await refreshDashboardData();
+        await loadNextReviewCard(false);
+    }
+    catch (err) {
+        showToast(err.message || 'Failed to record review answer.', 'error');
+    }
+}
+async function mutateReviewCard(endpoint, successMessage) {
+    const cardID = Number(state.currentReviewCard?.card_id || 0);
+    if (!cardID)
+        return;
+    try {
+        const resp = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ card_id: cardID }),
+        });
+        if (!resp.ok) {
+            throw new Error(await resp.text() || 'Failed to update card');
+        }
+        await refreshDashboardData();
+        showToast(successMessage, 'success');
+        await loadNextReviewCard(false);
+    }
+    catch (err) {
+        showToast(err.message || 'Failed to update card.', 'error');
+    }
 }
 // ── Correction modal ───────────────────────────────────────────────────────
 function openCorrectionModal(row) {
@@ -899,6 +1111,109 @@ function initCorrectionModal() {
         }
     });
 }
+function initDecksPage() {
+    document.getElementById('decks-list')?.addEventListener('click', async (e) => {
+        const target = e.target;
+        if (!target)
+            return;
+        const reviewDeckID = target.getAttribute('data-open-review');
+        if (reviewDeckID) {
+            state.reviewDeckFilter = reviewDeckID;
+            navigate('/review');
+            return;
+        }
+        const renameDeckID = target.getAttribute('data-rename-deck');
+        if (renameDeckID) {
+            const deckID = Number(renameDeckID);
+            const deck = getDeckByID(deckID);
+            if (!deck)
+                return;
+            const title = window.prompt('Rename deck', deck.title)?.trim();
+            if (!title || title === deck.title)
+                return;
+            try {
+                const resp = await fetch(`/api/decks/${deckID}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ title }),
+                });
+                if (!resp.ok)
+                    throw new Error(await resp.text() || 'Rename failed');
+                await refreshDashboardData();
+                showToast('Deck renamed.', 'success');
+            }
+            catch (err) {
+                showToast(err.message || 'Rename failed.', 'error');
+            }
+            return;
+        }
+        const deleteDeckID = target.getAttribute('data-delete-deck');
+        if (deleteDeckID) {
+            const deckID = Number(deleteDeckID);
+            const deck = getDeckByID(deckID);
+            if (!deck)
+                return;
+            if (!window.confirm(`Delete "${deck.title}"? This removes the deck text but keeps global learning state.`))
+                return;
+            try {
+                const resp = await fetch(`/api/decks/${deckID}`, {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                });
+                if (!resp.ok)
+                    throw new Error(await resp.text() || 'Delete failed');
+                await refreshDashboardData();
+                showToast('Deck deleted.', 'success');
+            }
+            catch (err) {
+                showToast(err.message || 'Delete failed.', 'error');
+            }
+        }
+    });
+}
+function initReviewPage() {
+    const filter = document.getElementById('review-deck-filter');
+    filter?.addEventListener('change', async () => {
+        state.reviewDeckFilter = filter.value;
+        await loadNextReviewCard(false);
+    });
+    document.querySelectorAll('[data-review-answer]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const rating = btn.getAttribute('data-review-answer');
+            if (rating)
+                void submitReviewAnswer(rating);
+        });
+    });
+    document.getElementById('review-mark-known')?.addEventListener('click', () => {
+        void mutateReviewCard('/api/card/known', 'Word marked known.');
+    });
+    document.getElementById('review-mark-ignored')?.addEventListener('click', () => {
+        void mutateReviewCard('/api/card/ignore', 'Word ignored.');
+    });
+    document.getElementById('review-skip')?.addEventListener('click', () => {
+        void loadNextReviewCard(true);
+    });
+}
+function initResultsSaveForm() {
+    const toggleBtn = document.getElementById('results-save-toggle');
+    const form = document.getElementById('results-save-form');
+    const cancelBtn = document.getElementById('results-save-cancel');
+    const htmlForm = form;
+    toggleBtn?.addEventListener('click', () => {
+        form?.classList.toggle('hidden');
+        const input = document.getElementById('results-deck-title');
+        if (form && !form.classList.contains('hidden'))
+            input?.focus();
+    });
+    cancelBtn?.addEventListener('click', () => {
+        form?.classList.add('hidden');
+    });
+    htmlForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await saveCurrentResultsAsDeck();
+    });
+}
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
@@ -907,6 +1222,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     initInspectForm();
     initWorkbenchForm();
     initCorrectionModal();
+    initDecksPage();
+    initReviewPage();
+    initResultsSaveForm();
     document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
     document.getElementById('nav-signout')?.addEventListener('click', handleSignout);
     document.getElementById('nav-mobile-signout')?.addEventListener('click', handleSignout);

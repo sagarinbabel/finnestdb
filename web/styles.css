@@ -1652,19 +1652,130 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     gap: 1.25rem;
 }
 
-/* ── Placeholders (decks/review/admin-feedback) ─────────────── */
-.placeholder-main {
-    max-width: 720px;
+/* ── Decks ───────────────────────────────────────────────────── */
+.decks-main,
+.review-main {
+    max-width: 980px;
     margin: 0 auto;
     padding: 2.5rem 1.5rem 4rem;
 }
+.decks-header h1,
+.review-header h1,
 .placeholder-main h1 {
     font-size: 1.75rem;
     margin-bottom: 0.5rem;
 }
+.decks-lede,
+.review-lede,
 .placeholder-lede {
     color: var(--text-secondary);
     margin-bottom: 1.5rem;
+}
+.decks-list {
+    display: grid;
+    gap: 1rem;
+}
+.deck-list-item {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+}
+.deck-list-item h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.1rem;
+}
+.deck-list-meta {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+.deck-list-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+/* ── Review ─────────────────────────────────────────────────── */
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: end;
+    margin-bottom: 1.5rem;
+}
+.review-filter {
+    min-width: 220px;
+}
+.review-filter label {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+}
+.review-filter select {
+    width: 100%;
+}
+.review-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    display: grid;
+    gap: 1.25rem;
+}
+.review-card-front,
+.review-card-back {
+    display: grid;
+    gap: 0.75rem;
+}
+.review-front-text {
+    margin: 0;
+    font-size: 1.3rem;
+    line-height: 1.5;
+}
+.review-card-back h2 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+.review-meaning {
+    margin: 0;
+    color: var(--text-secondary);
+}
+.review-decks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.review-deck-pill {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+.review-example {
+    border-left: 3px solid var(--accent);
+    padding-left: 0.85rem;
+    color: var(--text-secondary);
+}
+.review-actions,
+.review-secondary-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+/* ── Placeholders (admin-feedback + empty states) ───────────── */
+.placeholder-main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
 }
 .placeholder-card {
     background: var(--card-bg);
@@ -1677,6 +1788,37 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     align-items: center;
     gap: 1rem;
     color: var(--text-secondary);
+}
+
+/* ── Results deck CTA ───────────────────────────────────────── */
+.results-deck-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+.results-save-form {
+    width: 100%;
+    max-width: 420px;
+    display: grid;
+    gap: 0.6rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-elevated);
+}
+.results-save-form.hidden {
+    display: none;
+}
+.results-save-form label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+.results-save-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
 }
 
 /* ── Admin banner ───────────────────────────────────────────── */
@@ -1796,4 +1938,3 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     .results-meta { flex-wrap: wrap; gap: 0.5rem; }
     .modal-card { padding: 1.25rem; }
 }
-
