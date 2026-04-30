@@ -228,7 +228,123 @@ test('inspect lang mismatch warning blocks parse until switching languages', asy
   await expect(page.locator('#inspect-submit')).toBeEnabled();
 });
 
+// ── Results route is auth-only and signout clears prior parse state ────────
+
+test('anonymous user trying /#/results is redirected to sign-in', async ({ page }) => {
+  await mockMe(page, 'anon');
+  await page.goto('/#/results');
+
+  await expect(page.locator('#signin-page')).toHaveClass(/active/);
+  await expect(page.locator('#results-page')).not.toHaveClass(/active/);
+});
+
+test('signing out clears prior parse results from memory and route', async ({ page }) => {
+  // Start signed in, parse, then flip /api/me to anon and sign out.
+  let authed = true;
+  await page.route('**/api/me', async (route) => {
+    if (authed) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          authenticated: true,
+          user: { id: 1, email: 'alice@example.com', is_admin: false },
+          dashboard: { known_count: 1, due_count: 0, new_capacity_today: 0, decks: [] },
+        }),
+      });
+    } else {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ authenticated: false, user: null }),
+      });
+    }
+  });
+  await page.route('**/api/auth/logout', async (route) => {
+    authed = false;
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
+
+  await page.goto('/#/inspect');
+  await page.locator('#inspect-text').fill(mixedFinnishText);
+  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await expect(page.locator('#results-page')).toHaveClass(/active/);
+  await expect(page.locator('.correction-btn').first()).toBeVisible();
+
+  // Sign out via the desktop nav (anonymous user must not be able to reach #/results).
+  await page.locator('#nav-signout').click();
+  await expect(page.locator('#landing-page')).toHaveClass(/active/);
+
+  // Try to navigate back to the cached results route — guard must redirect to sign-in
+  // and the prior table must not be on screen.
+  await page.goto('/#/results');
+  await expect(page.locator('#signin-page')).toHaveClass(/active/);
+  await expect(page.locator('#results-page')).not.toHaveClass(/active/);
+  await expect(page.locator('.correction-btn')).toHaveCount(0);
+});
+
+// ── Correction submit: honest UX + parse-context identifiers ───────────────
+
+test('correction submit shows error toast on backend failure', async ({ page }) => {
+  await mockMe(page, 'user');
+  await page.route('**/api/corrections', async (route) => {
+    await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+  });
+
+  await page.goto('/#/inspect');
+  await page.locator('#inspect-text').fill(mixedFinnishText);
+  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await expect(page.locator('#results-page')).toHaveClass(/active/);
+
+  await page.locator('.correction-btn').first().click();
+  await expect(page.locator('#correction-modal')).not.toHaveClass(/hidden/);
+  await page.locator('#correction-submit').click();
+
+  // Modal stays open and an error toast surfaces — no fake success.
+  await expect(page.locator('.toast.error')).toContainText(/try again/i);
+  await expect(page.locator('#correction-modal')).not.toHaveClass(/hidden/);
+});
+
+test('correction submit body carries parse identifiers for future backend tie-back', async ({ page }) => {
+  await mockMe(page, 'user');
+  let captured: any = null;
+  await page.route('**/api/corrections', async (route) => {
+    captured = route.request().postDataJSON();
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
+
+  await page.goto('/#/inspect');
+  await page.locator('#inspect-text').fill(mixedFinnishText);
+  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await expect(page.locator('#results-page')).toHaveClass(/active/);
+
+  await page.locator('.correction-btn').first().click();
+  await page.locator('#correction-submit').click();
+
+  await expect.poll(() => captured).not.toBeNull();
+  expect(captured).toMatchObject({
+    issue: expect.any(String),
+    lang: 'FI',
+    parser_mode: 'custom',
+  });
+  expect(typeof captured.lemma).toBe('string');
+  expect(captured.lemma.length).toBeGreaterThan(0);
+  expect(typeof captured.text_preview).toBe('string');
+  expect(captured.text_preview.length).toBeGreaterThan(0);
+  expect(typeof captured.parse_duration_ms).toBe('number');
+});
+
 // ── Mobile (375 px) ────────────────────────────────────────────────────────
+
+test('mobile keeps the correction entry point visible at 375 px', async ({ page }) => {
+  await mockMe(page, 'user');
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto('/#/inspect');
+  await page.locator('#inspect-text').fill(mixedFinnishText);
+  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await expect(page.locator('#results-page')).toHaveClass(/active/);
+  await expect(page.locator('.correction-btn').first()).toBeVisible();
+});
 
 test('mobile landing layout fits at 375 px', async ({ page }) => {
   await mockMe(page, 'anon');

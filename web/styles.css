@@ -1782,7 +1782,8 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     .value-grid { grid-template-columns: 1fr; }
     .dashboard-stats { grid-template-columns: repeat(2, 1fr); }
     .dashboard-actions { grid-template-columns: 1fr; }
-    .col-actions { display: none; }   /* keep mobile results table tight */
+    .col-actions { padding-left: 0.25rem; padding-right: 0.25rem; }
+    .col-actions .correction-btn { padding: 0.25rem 0.25rem; font-size: 0.85rem; }
     .results-meta { flex-wrap: wrap; gap: 0.5rem; }
     .modal-card { padding: 1.25rem; }
 }

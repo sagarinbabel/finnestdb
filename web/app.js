@@ -28,6 +28,8 @@ const state = {
     role: 'anon',
     currentResults: null,
     currentContext: 'inspect',
+    currentParserMode: 'basic',
+    currentTextPreview: '',
     currentSort: { key: 'row', dir: 'asc' },
     currentPOSFilter: 'all',
 };
@@ -141,9 +143,34 @@ async function handleSignout() {
     state.user = null;
     state.dashboard = null;
     state.role = 'anon';
+    state.currentResults = null;
+    state.currentTextPreview = '';
+    state.currentParserMode = 'basic';
+    state.currentContext = 'inspect';
+    clearResultsDom();
     applyRoleVisibility();
     showToast('Signed out', 'info');
     navigate('/');
+}
+function clearResultsDom() {
+    const tbody = document.getElementById('word-table-body');
+    if (tbody)
+        tbody.innerHTML = '';
+    const setText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el)
+            el.textContent = text;
+    };
+    setText('results-title', '');
+    setText('results-duration', '');
+    setText('results-stats', '');
+    setText('results-parser', '');
+    const inspectInput = document.getElementById('inspect-text');
+    const workbenchText = document.getElementById('parse-text');
+    if (inspectInput)
+        inspectInput.value = '';
+    if (workbenchText)
+        workbenchText.value = '';
 }
 // ── Hash router ────────────────────────────────────────────────────────────
 const ROUTE_TO_PAGE = {
@@ -193,7 +220,7 @@ function isRouteAllowed(route) {
         return { allowed: false, redirect: '/dashboard' };
     }
     // Authenticated-only routes
-    const userOnly = ['/dashboard', '/inspect', '/decks', '/review'];
+    const userOnly = ['/dashboard', '/inspect', '/decks', '/review', '/results'];
     if (userOnly.includes(route)) {
         if (role === 'anon')
             return { allowed: false, redirect: '/signin' };
@@ -757,6 +784,8 @@ function showResults(data, textPreview, parserMode, context) {
             + `${coverage.definedRows}/${uniqueLemmas} with definitions`;
     state.currentResults = data;
     state.currentContext = context;
+    state.currentParserMode = parserMode;
+    state.currentTextPreview = preview;
     state.currentSort = { key: 'row', dir: 'asc' };
     state.currentPOSFilter = 'all';
     renderResultsTable(data);
@@ -795,25 +824,30 @@ function initCorrectionModal() {
             const lemma = document.getElementById('correction-lemma')?.textContent || '';
             const issue = document.getElementById('correction-issue').value;
             const note = document.getElementById('correction-note').value;
-            // Best-effort: backend endpoint may not exist yet in alpha; treat any 2xx as success.
             const resp = await fetch('/api/corrections', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
-                body: JSON.stringify({ lemma, issue, note }),
+                body: JSON.stringify({
+                    lemma,
+                    issue,
+                    note,
+                    lang: state.currentResults?.lang ?? null,
+                    parser_mode: state.currentParserMode,
+                    text_preview: state.currentTextPreview,
+                    parse_duration_ms: state.currentResults?.parse_duration_ms ?? null,
+                }),
             });
             if (resp.ok) {
                 showToast('Thanks — correction sent.', 'success');
+                closeCorrectionModal();
             }
             else {
-                // Even if the endpoint is missing in alpha, give positive feedback so users keep submitting.
-                showToast('Thanks — correction recorded.', 'success');
+                showToast("Couldn't send correction — please try again later.", 'error');
             }
-            closeCorrectionModal();
         }
         catch {
-            showToast('Thanks — correction recorded.', 'success');
-            closeCorrectionModal();
+            showToast("Couldn't send correction — check your connection and try again.", 'error');
         }
         finally {
             submitBtn.disabled = false;

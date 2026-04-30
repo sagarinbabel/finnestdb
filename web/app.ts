@@ -88,10 +88,12 @@ const state = {
     user:        null as SessionUser | null,
     dashboard:   null as DashboardData | null,
     role:        'anon' as Role,
-    currentResults:   null as ParseResponse | null,
-    currentContext:   'inspect' as ResultsContext,
-    currentSort:      { key: 'row', dir: 'asc' } as SortState,
-    currentPOSFilter: 'all' as POSFilter,
+    currentResults:    null as ParseResponse | null,
+    currentContext:    'inspect' as ResultsContext,
+    currentParserMode: 'basic' as ParserMode,
+    currentTextPreview: '',
+    currentSort:       { key: 'row', dir: 'asc' } as SortState,
+    currentPOSFilter:  'all' as POSFilter,
 };
 
 const NOUN_POS = ['NOUN', 'PROPN'];
@@ -221,9 +223,31 @@ async function handleSignout(): Promise<void> {
     state.user = null;
     state.dashboard = null;
     state.role = 'anon';
+    state.currentResults = null;
+    state.currentTextPreview = '';
+    state.currentParserMode = 'basic';
+    state.currentContext = 'inspect';
+    clearResultsDom();
     applyRoleVisibility();
     showToast('Signed out', 'info');
     navigate('/');
+}
+
+function clearResultsDom(): void {
+    const tbody = document.getElementById('word-table-body');
+    if (tbody) tbody.innerHTML = '';
+    const setText = (id: string, text: string) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    };
+    setText('results-title', '');
+    setText('results-duration', '');
+    setText('results-stats', '');
+    setText('results-parser', '');
+    const inspectInput  = document.getElementById('inspect-text') as HTMLTextAreaElement | null;
+    const workbenchText = document.getElementById('parse-text')   as HTMLTextAreaElement | null;
+    if (inspectInput)  inspectInput.value = '';
+    if (workbenchText) workbenchText.value = '';
 }
 
 // ── Hash router ────────────────────────────────────────────────────────────
@@ -279,7 +303,7 @@ function isRouteAllowed(route: string): { allowed: boolean; redirect?: string } 
     }
 
     // Authenticated-only routes
-    const userOnly = ['/dashboard', '/inspect', '/decks', '/review'];
+    const userOnly = ['/dashboard', '/inspect', '/decks', '/review', '/results'];
     if (userOnly.includes(route)) {
         if (role === 'anon') return { allowed: false, redirect: '/signin' };
         return { allowed: true };
@@ -904,6 +928,8 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
 
     state.currentResults = data;
     state.currentContext = context;
+    state.currentParserMode = parserMode;
+    state.currentTextPreview = preview;
     state.currentSort = { key: 'row', dir: 'asc' };
     state.currentPOSFilter = 'all';
     renderResultsTable(data);
@@ -949,23 +975,28 @@ function initCorrectionModal(): void {
             const lemma = document.getElementById('correction-lemma')?.textContent || '';
             const issue = (document.getElementById('correction-issue') as HTMLSelectElement).value;
             const note  = (document.getElementById('correction-note')  as HTMLTextAreaElement).value;
-            // Best-effort: backend endpoint may not exist yet in alpha; treat any 2xx as success.
             const resp = await fetch('/api/corrections', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
-                body: JSON.stringify({ lemma, issue, note }),
+                body: JSON.stringify({
+                    lemma,
+                    issue,
+                    note,
+                    lang:              state.currentResults?.lang ?? null,
+                    parser_mode:       state.currentParserMode,
+                    text_preview:      state.currentTextPreview,
+                    parse_duration_ms: state.currentResults?.parse_duration_ms ?? null,
+                }),
             });
             if (resp.ok) {
                 showToast('Thanks — correction sent.', 'success');
+                closeCorrectionModal();
             } else {
-                // Even if the endpoint is missing in alpha, give positive feedback so users keep submitting.
-                showToast('Thanks — correction recorded.', 'success');
+                showToast("Couldn't send correction — please try again later.", 'error');
             }
-            closeCorrectionModal();
         } catch {
-            showToast('Thanks — correction recorded.', 'success');
-            closeCorrectionModal();
+            showToast("Couldn't send correction — check your connection and try again.", 'error');
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = orig;
