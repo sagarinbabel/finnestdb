@@ -276,27 +276,67 @@
         </main>
     </div>
 
-    <!-- ==================== DECKS (placeholder) ==================== -->
+    <!-- ==================== DECKS ==================== -->
     <div id="decks-page" class="page" data-role-required="user admin">
-        <main class="placeholder-main">
-            <h1>Your decks</h1>
-            <p class="placeholder-lede">The texts you've imported and the vocabulary you're learning from them.</p>
-            <div class="placeholder-card">
+        <main class="decks-main">
+            <section class="decks-header">
+                <h1>Your decks</h1>
+                <p class="decks-lede">The texts you've imported and the vocabulary you're learning from them.</p>
+            </section>
+
+            <section id="decks-empty" class="placeholder-card hidden">
                 <p>You don't have any decks yet.</p>
                 <a href="#/inspect" class="btn btn-primary">Read a text</a>
-            </div>
+            </section>
+
+            <section id="decks-list" class="decks-list" aria-live="polite"></section>
         </main>
     </div>
 
-    <!-- ==================== REVIEW (placeholder) ==================== -->
+    <!-- ==================== REVIEW ==================== -->
     <div id="review-page" class="page" data-role-required="user admin">
-        <main class="placeholder-main">
-            <h1>Review</h1>
-            <p class="placeholder-lede">Words due for review will show up here once you've started learning some.</p>
-            <div class="placeholder-card">
+        <main class="review-main">
+            <section class="review-header">
+                <div>
+                    <h1>Review</h1>
+                    <p class="review-lede">Review due words across all decks, or focus on a single text.</p>
+                </div>
+                <div class="review-filter">
+                    <label for="review-deck-filter">Deck filter</label>
+                    <select id="review-deck-filter">
+                        <option value="">All decks</option>
+                    </select>
+                </div>
+            </section>
+
+            <section id="review-empty" class="placeholder-card hidden">
                 <p>Nothing to review right now.</p>
                 <a href="#/inspect" class="btn btn-primary">Read a text</a>
-            </div>
+            </section>
+
+            <section id="review-card" class="review-card hidden" aria-live="polite">
+                <div class="review-card-front">
+                    <span id="review-card-mode" class="results-pill">Sentence card</span>
+                    <p id="review-card-front-text" class="review-front-text">—</p>
+                </div>
+                <div class="review-card-back">
+                    <h2 id="review-card-lemma">—</h2>
+                    <p id="review-card-meaning" class="review-meaning">—</p>
+                    <div id="review-card-decks" class="review-decks"></div>
+                    <div id="review-card-example" class="review-example hidden"></div>
+                </div>
+                <div class="review-actions">
+                    <button type="button" class="btn btn-outline" data-review-answer="again">Again</button>
+                    <button type="button" class="btn btn-outline" data-review-answer="hard">Hard</button>
+                    <button type="button" class="btn btn-primary" data-review-answer="good">Good</button>
+                    <button type="button" class="btn btn-outline" data-review-answer="easy">Easy</button>
+                </div>
+                <div class="review-secondary-actions">
+                    <button type="button" id="review-mark-known" class="btn btn-link">Mark known</button>
+                    <button type="button" id="review-mark-ignored" class="btn btn-link">Ignore word</button>
+                    <button type="button" id="review-skip" class="btn btn-link">Load another</button>
+                </div>
+            </section>
         </main>
     </div>
 
@@ -391,6 +431,17 @@
                 </div>
                 <p id="results-stats" class="results-stats"></p>
                 <p id="results-help" class="results-help"></p>
+                <div class="results-deck-cta" data-role-show="user admin">
+                    <button type="button" id="results-save-toggle" class="btn btn-primary btn-sm">Save as deck</button>
+                    <form id="results-save-form" class="results-save-form hidden">
+                        <label for="results-deck-title">Deck title</label>
+                        <input type="text" id="results-deck-title" maxlength="120" placeholder="Give this text a short title" />
+                        <div class="results-save-actions">
+                            <button type="submit" id="results-save-submit" class="btn btn-primary btn-sm">Save</button>
+                            <button type="button" id="results-save-cancel" class="btn btn-link btn-sm">Cancel</button>
+                        </div>
+                    </form>
+                </div>
             </section>
 
             <section class="results-table-section">

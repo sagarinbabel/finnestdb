@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -250,54 +251,20 @@ func TestHandleParseMapsAnalyzerValidationErrorsToBadRequest(t *testing.T) {
 	}
 }
 
-func TestStubRoutesRemainReachable(t *testing.T) {
+func TestAuthenticatedReviewNextReturnsNoContentWithoutDueCards(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)
 
-	loginReq := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"email":"test@example.com","password":"secret"}`))
-	loginRec := httptest.NewRecorder()
-	mux.ServeHTTP(loginRec, loginReq)
-	if loginRec.Code != http.StatusOK {
-		t.Fatalf("login status=%d want %d", loginRec.Code, http.StatusOK)
-	}
-	if len(loginRec.Result().Cookies()) == 0 {
-		t.Fatal("expected login to set a session cookie")
-	}
-
-	meReq := httptest.NewRequest(http.MethodGet, "/api/me", nil)
-	for _, cookie := range loginRec.Result().Cookies() {
-		meReq.AddCookie(cookie)
-	}
-	meRec := httptest.NewRecorder()
-	mux.ServeHTTP(meRec, meReq)
-	if meRec.Code != http.StatusOK {
-		t.Fatalf("me status=%d want %d", meRec.Code, http.StatusOK)
-	}
-	var meResp MeResponse
-	if err := json.NewDecoder(bytes.NewReader(meRec.Body.Bytes())).Decode(&meResp); err != nil {
-		t.Fatalf("decode /api/me response: %v", err)
-	}
-	if !meResp.Authenticated {
-		t.Fatal("expected authenticated /api/me response")
-	}
-	if meResp.User == nil || meResp.User.Email != "test@example.com" {
-		t.Fatalf("unexpected user payload: %+v", meResp.User)
-	}
-	if meResp.User.IsAdmin {
-		t.Fatal("expected default test user to be non-admin")
-	}
-	if meResp.Dashboard == nil {
-		t.Fatal("expected dashboard payload for authenticated user")
-	}
+	cookies := loginAndReturnCookies(t, mux, "test@example.com")
 
 	reviewReq := httptest.NewRequest(http.MethodGet, "/api/review/next", nil)
+	for _, cookie := range cookies {
+		reviewReq.AddCookie(cookie)
+	}
 	reviewRec := httptest.NewRecorder()
 	mux.ServeHTTP(reviewRec, reviewReq)
-	if reviewRec.Code != http.StatusOK {
-		t.Fatalf("review next status=%d want %d", reviewRec.Code, http.StatusOK)
-	}
-	if got := reviewRec.Header().Get("Content-Type"); !strings.Contains(got, "application/json") {
-		t.Fatalf("review next content-type=%q want application/json", got)
+	if reviewRec.Code != http.StatusNoContent {
+		t.Fatalf("review next status=%d want %d body=%q", reviewRec.Code, http.StatusNoContent, reviewRec.Body.String())
 	}
 }
 
@@ -807,6 +774,202 @@ func TestCreateDeckSkipsKnownWordsWhenSeedingCards(t *testing.T) {
 	}
 }
 
+func TestDeckListRenameAndDeleteFlow(t *testing.T) {
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "Kissa juoksee.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+						{Form: "juoksee", Lemma: "juosta", POS: "VERB"},
+					},
+				},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "deck-flow@example.com")
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Original","lang":"FI","text":"Kissa juoksee."}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create status=%d want %d body=%q", createRec.Code, http.StatusOK, createRec.Body.String())
+	}
+
+	var created CreateDeckResponse
+	if err := json.NewDecoder(bytes.NewReader(createRec.Body.Bytes())).Decode(&created); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/decks", nil)
+	for _, cookie := range cookies {
+		listReq.AddCookie(cookie)
+	}
+	listRec := httptest.NewRecorder()
+	mux.ServeHTTP(listRec, listReq)
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("list status=%d want %d body=%q", listRec.Code, http.StatusOK, listRec.Body.String())
+	}
+
+	var listResp DeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(listRec.Body.Bytes())).Decode(&listResp); err != nil {
+		t.Fatalf("decode list response: %v", err)
+	}
+	if len(listResp.Decks) != 1 || listResp.Decks[0].Title != "Original" {
+		t.Fatalf("unexpected decks payload: %+v", listResp.Decks)
+	}
+
+	renameReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/decks/%d", created.DeckID), strings.NewReader(`{"title":"Renamed"}`))
+	for _, cookie := range cookies {
+		renameReq.AddCookie(cookie)
+	}
+	renameRec := httptest.NewRecorder()
+	mux.ServeHTTP(renameRec, renameReq)
+	if renameRec.Code != http.StatusOK {
+		t.Fatalf("rename status=%d want %d body=%q", renameRec.Code, http.StatusOK, renameRec.Body.String())
+	}
+
+	listAgainReq := httptest.NewRequest(http.MethodGet, "/api/decks", nil)
+	for _, cookie := range cookies {
+		listAgainReq.AddCookie(cookie)
+	}
+	listAgainRec := httptest.NewRecorder()
+	mux.ServeHTTP(listAgainRec, listAgainReq)
+	var listAgainResp DeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(listAgainRec.Body.Bytes())).Decode(&listAgainResp); err != nil {
+		t.Fatalf("decode second list response: %v", err)
+	}
+	if len(listAgainResp.Decks) != 1 || listAgainResp.Decks[0].Title != "Renamed" {
+		t.Fatalf("unexpected second decks payload: %+v", listAgainResp.Decks)
+	}
+
+	deleteReq := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/decks/%d", created.DeckID), nil)
+	for _, cookie := range cookies {
+		deleteReq.AddCookie(cookie)
+	}
+	deleteRec := httptest.NewRecorder()
+	mux.ServeHTTP(deleteRec, deleteReq)
+	if deleteRec.Code != http.StatusOK {
+		t.Fatalf("delete status=%d want %d body=%q", deleteRec.Code, http.StatusOK, deleteRec.Body.String())
+	}
+
+	finalListReq := httptest.NewRequest(http.MethodGet, "/api/decks", nil)
+	for _, cookie := range cookies {
+		finalListReq.AddCookie(cookie)
+	}
+	finalListRec := httptest.NewRecorder()
+	mux.ServeHTTP(finalListRec, finalListReq)
+	var finalListResp DeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(finalListRec.Body.Bytes())).Decode(&finalListResp); err != nil {
+		t.Fatalf("decode final list response: %v", err)
+	}
+	if len(finalListResp.Decks) != 0 {
+		t.Fatalf("decks=%d want 0 (%+v)", len(finalListResp.Decks), finalListResp.Decks)
+	}
+}
+
+func TestReviewFlowAnswerAndMarkKnown(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+		t.Fatalf("UpsertLemma: %v", err)
+	}
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "Kissa juoksee.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+					},
+				},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "review@example.com")
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Review deck","lang":"FI","text":"Kissa juoksee."}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create status=%d want %d body=%q", createRec.Code, http.StatusOK, createRec.Body.String())
+	}
+
+	reviewReq := httptest.NewRequest(http.MethodGet, "/api/review/next", nil)
+	for _, cookie := range cookies {
+		reviewReq.AddCookie(cookie)
+	}
+	reviewRec := httptest.NewRecorder()
+	mux.ServeHTTP(reviewRec, reviewReq)
+	if reviewRec.Code != http.StatusOK {
+		t.Fatalf("review status=%d want %d body=%q", reviewRec.Code, http.StatusOK, reviewRec.Body.String())
+	}
+
+	var card CardResponse
+	if err := json.NewDecoder(bytes.NewReader(reviewRec.Body.Bytes())).Decode(&card); err != nil {
+		t.Fatalf("decode review card: %v", err)
+	}
+	cardID, err := strconv.ParseInt(card.CardID, 10, 64)
+	if err != nil || cardID <= 0 {
+		t.Fatalf("card_id=%q want positive integer", card.CardID)
+	}
+
+	answerReq := httptest.NewRequest(http.MethodPost, "/api/review/answer", strings.NewReader(fmt.Sprintf(`{"card_id":%d,"rating":"good"}`, cardID)))
+	for _, cookie := range cookies {
+		answerReq.AddCookie(cookie)
+	}
+	answerRec := httptest.NewRecorder()
+	mux.ServeHTTP(answerRec, answerReq)
+	if answerRec.Code != http.StatusOK {
+		t.Fatalf("answer status=%d want %d body=%q", answerRec.Code, http.StatusOK, answerRec.Body.String())
+	}
+
+	nextReq := httptest.NewRequest(http.MethodGet, "/api/review/next", nil)
+	for _, cookie := range cookies {
+		nextReq.AddCookie(cookie)
+	}
+	nextRec := httptest.NewRecorder()
+	mux.ServeHTTP(nextRec, nextReq)
+	if nextRec.Code != http.StatusNoContent {
+		t.Fatalf("next review status=%d want %d body=%q", nextRec.Code, http.StatusNoContent, nextRec.Body.String())
+	}
+
+	knownReq := httptest.NewRequest(http.MethodPost, "/api/card/known", strings.NewReader(fmt.Sprintf(`{"card_id":%d}`, cardID)))
+	for _, cookie := range cookies {
+		knownReq.AddCookie(cookie)
+	}
+	knownRec := httptest.NewRecorder()
+	mux.ServeHTTP(knownRec, knownReq)
+	if knownRec.Code != http.StatusOK {
+		t.Fatalf("mark known status=%d want %d body=%q", knownRec.Code, http.StatusOK, knownRec.Body.String())
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=FI", nil)
+	for _, cookie := range cookies {
+		listReq.AddCookie(cookie)
+	}
+	listRec := httptest.NewRecorder()
+	mux.ServeHTTP(listRec, listReq)
+	var listResp KnownWordsListResponse
+	if err := json.NewDecoder(bytes.NewReader(listRec.Body.Bytes())).Decode(&listResp); err != nil {
+		t.Fatalf("decode known words response: %v", err)
+	}
+	if len(listResp.KnownWords) != 1 || listResp.KnownWords[0].Lemma != "kissa" {
+		t.Fatalf("unexpected known words payload: %+v", listResp.KnownWords)
+	}
+}
+
 func TestParseFeedbackRequiresAuthentication(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)
@@ -904,7 +1067,7 @@ func TestParseFeedbackSubmissionAndAdminReview(t *testing.T) {
 	}
 
 	feedbackReq := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(`{
-		"parse_id": ` + fmt.Sprintf("%d", *parseResp.ParseID) + `,
+		"parse_id": `+fmt.Sprintf("%d", *parseResp.ParseID)+`,
 		"lang": "FI",
 		"parser": "custom",
 		"surface": "kissa",
@@ -937,7 +1100,7 @@ func TestParseFeedbackSubmissionAndAdminReview(t *testing.T) {
 
 	otherUserCookies := loginAndReturnCookies(t, mux, "other@example.com")
 	forbiddenReq := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(`{
-		"parse_id": ` + fmt.Sprintf("%d", *parseResp.ParseID) + `,
+		"parse_id": `+fmt.Sprintf("%d", *parseResp.ParseID)+`,
 		"lang": "FI",
 		"parser": "custom",
 		"surface": "kissa",

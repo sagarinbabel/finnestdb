@@ -31,6 +31,13 @@ type Deck struct {
 	CreatedAt time.Time
 }
 
+type DeckStats struct {
+	Deck
+	Known  int
+	Unique int
+	Due    int
+}
+
 type Sentence struct {
 	ID     int64
 	DeckID int64
@@ -45,6 +52,22 @@ type Card struct {
 	Lemma  string
 	POS    string
 	MWEID  *int64
+}
+
+type ReviewCard struct {
+	CardID       int64
+	Lang         string
+	Lemma        string
+	POS          string
+	Gloss        string
+	SentenceText string
+	SourceDeck   string
+	DeckCounts   [][2]string
+}
+
+type ReviewSchedule struct {
+	Streak int `json:"streak"`
+	Step   int `json:"step"`
 }
 
 type KnownLemma struct {
@@ -371,6 +394,122 @@ func (d *DB) GetUserDecks(userID int64) ([]Deck, error) {
 	return decks, rows.Err()
 }
 
+func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
+	rows, err := d.db.Query(
+		`SELECT d.id, d.user_id, d.title, d.lang, d.created_at,
+		        COUNT(DISTINCT o.lemma || char(31) || o.pos) AS unique_count,
+		        COUNT(DISTINCT CASE
+		            WHEN uk.lemma IS NOT NULL THEN o.lemma || char(31) || o.pos
+		            ELSE NULL
+		        END) AS known_count,
+		        COUNT(DISTINCT CASE
+		            WHEN uk.lemma IS NULL
+		             AND ui.lemma IS NULL
+		             AND c.id IS NOT NULL
+		             AND (cs.next_due IS NULL OR cs.next_due <= CURRENT_TIMESTAMP)
+		            THEN o.lemma || char(31) || o.pos
+		            ELSE NULL
+		        END) AS due_count
+		   FROM decks d
+		   LEFT JOIN occurrence o
+		          ON o.deck_id = d.id
+		   LEFT JOIN user_known_lemmas uk
+		          ON uk.user_id = d.user_id
+		         AND uk.lang = d.lang
+		         AND uk.lemma = o.lemma
+		         AND uk.pos = o.pos
+		   LEFT JOIN user_ignored_lemmas ui
+		          ON ui.user_id = d.user_id
+		         AND ui.lang = d.lang
+		         AND ui.lemma = o.lemma
+		         AND ui.pos = o.pos
+		   LEFT JOIN cards c
+		          ON c.user_id = d.user_id
+		         AND c.lang = d.lang
+		         AND c.lemma = o.lemma
+		         AND c.pos = o.pos
+		         AND c.mwe_id IS NULL
+		   LEFT JOIN card_state cs
+		          ON cs.card_id = c.id
+		  WHERE d.user_id = ?
+		  GROUP BY d.id, d.user_id, d.title, d.lang, d.created_at
+		  ORDER BY d.created_at DESC, d.id DESC`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	stats := []DeckStats{}
+	for rows.Next() {
+		var item DeckStats
+		if err := rows.Scan(
+			&item.ID,
+			&item.UserID,
+			&item.Title,
+			&item.Lang,
+			&item.CreatedAt,
+			&item.Unique,
+			&item.Known,
+			&item.Due,
+		); err != nil {
+			return nil, err
+		}
+		stats = append(stats, item)
+	}
+	return stats, rows.Err()
+}
+
+func (d *DB) UpdateDeckTitle(userID, deckID int64, title string) error {
+	result, err := d.db.Exec(
+		`UPDATE decks SET title = ? WHERE id = ? AND user_id = ?`,
+		title, deckID, userID,
+	)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (d *DB) DeleteDeck(userID, deckID int64) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	result, err := tx.Exec(`DELETE FROM occurrence WHERE deck_id = ? AND deck_id IN (SELECT id FROM decks WHERE id = ? AND user_id = ?)`, deckID, deckID, userID)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM sentences WHERE deck_id = ? AND deck_id IN (SELECT id FROM decks WHERE id = ? AND user_id = ?)`, deckID, deckID, userID); err != nil {
+		return err
+	}
+	deckResult, err := tx.Exec(`DELETE FROM decks WHERE id = ? AND user_id = ?`, deckID, userID)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := deckResult.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	if _, err := result.RowsAffected(); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // CreateOccurrence records that a lemma+pos token appeared at position tokenIx
 // within the given sentence (which belongs to the given deck).
 func (d *DB) CreateOccurrence(deckID, sentenceID int64, tokenIx int, lemma, pos string) error {
@@ -532,6 +671,250 @@ func (d *DB) CountCards(userID int64, lang string) (int, error) {
 		userID, lang,
 	).Scan(&count)
 	return count, err
+}
+
+func (d *DB) CountKnownLemmas(userID int64) (int, error) {
+	var count int
+	err := d.db.QueryRow(
+		`SELECT COUNT(*) FROM user_known_lemmas WHERE user_id = ?`,
+		userID,
+	).Scan(&count)
+	return count, err
+}
+
+func (d *DB) CountDueCards(userID int64) (int, error) {
+	var count int
+	err := d.db.QueryRow(
+		`SELECT COUNT(*)
+		   FROM cards c
+		   JOIN card_state cs ON cs.card_id = c.id
+		  WHERE c.user_id = ?
+		    AND c.mwe_id IS NULL
+		    AND NOT EXISTS (
+		        SELECT 1 FROM user_known_lemmas uk
+		         WHERE uk.user_id = c.user_id AND uk.lang = c.lang AND uk.lemma = c.lemma AND uk.pos = c.pos
+		    )
+		    AND NOT EXISTS (
+		        SELECT 1 FROM user_ignored_lemmas ui
+		         WHERE ui.user_id = c.user_id AND ui.lang = c.lang AND ui.lemma = c.lemma AND ui.pos = c.pos
+		    )
+		    AND (cs.next_due IS NULL OR cs.next_due <= CURRENT_TIMESTAMP)`,
+		userID,
+	).Scan(&count)
+	return count, err
+}
+
+func (d *DB) CountNewCards(userID int64) (int, error) {
+	var count int
+	err := d.db.QueryRow(
+		`SELECT COUNT(*)
+		   FROM cards c
+		   JOIN card_state cs ON cs.card_id = c.id
+		  WHERE c.user_id = ?
+		    AND c.mwe_id IS NULL
+		    AND cs.last_answer_at IS NULL
+		    AND NOT EXISTS (
+		        SELECT 1 FROM user_known_lemmas uk
+		         WHERE uk.user_id = c.user_id AND uk.lang = c.lang AND uk.lemma = c.lemma AND uk.pos = c.pos
+		    )
+		    AND NOT EXISTS (
+		        SELECT 1 FROM user_ignored_lemmas ui
+		         WHERE ui.user_id = c.user_id AND ui.lang = c.lang AND ui.lemma = c.lemma AND ui.pos = c.pos
+		    )`,
+		userID,
+	).Scan(&count)
+	return count, err
+}
+
+func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error) {
+	args := []any{userID}
+	deckFilter := ""
+	deckOccurrenceFilter := ""
+	if deckID != nil {
+		deckFilter = ` AND EXISTS (
+			SELECT 1 FROM occurrence o
+			WHERE o.deck_id = ? AND o.lemma = c.lemma AND o.pos = c.pos
+		)`
+		deckOccurrenceFilter = ` AND o.deck_id = ?`
+		args = append(args, *deckID)
+	}
+
+	query := `SELECT c.id, c.lang, c.lemma, c.pos, COALESCE(l.gloss, ''),
+	                 COALESCE((
+	                     SELECT s.text
+	                       FROM occurrence o
+	                       JOIN sentences s ON s.id = o.sentence_id
+	                      WHERE o.lemma = c.lemma AND o.pos = c.pos` + deckOccurrenceFilter + `
+	                      ORDER BY s.id ASC
+	                      LIMIT 1
+	                 ), ''),
+	                 COALESCE((
+	                     SELECT d.title
+	                       FROM occurrence o
+	                       JOIN decks d ON d.id = o.deck_id
+	                      WHERE d.user_id = c.user_id
+	                        AND d.lang = c.lang
+	                        AND o.lemma = c.lemma
+	                        AND o.pos = c.pos` + deckOccurrenceFilter + `
+	                      ORDER BY d.created_at DESC, d.id DESC
+	                      LIMIT 1
+	                 ), '')
+	            FROM cards c
+	            JOIN card_state cs ON cs.card_id = c.id
+	       LEFT JOIN lemmas l
+	              ON l.lang = c.lang AND l.lemma = c.lemma AND l.pos = c.pos
+	           WHERE c.user_id = ?
+	             AND c.mwe_id IS NULL
+	             AND NOT EXISTS (
+	                 SELECT 1 FROM user_known_lemmas uk
+	                  WHERE uk.user_id = c.user_id AND uk.lang = c.lang AND uk.lemma = c.lemma AND uk.pos = c.pos
+	             )
+	             AND NOT EXISTS (
+	                 SELECT 1 FROM user_ignored_lemmas ui
+	                  WHERE ui.user_id = c.user_id AND ui.lang = c.lang AND ui.lemma = c.lemma AND ui.pos = c.pos
+	             )
+	             AND (cs.next_due IS NULL OR cs.next_due <= CURRENT_TIMESTAMP)` + deckFilter + `
+	        ORDER BY CASE WHEN cs.last_answer_at IS NULL THEN 0 ELSE 1 END,
+	                 COALESCE(cs.next_due, '1970-01-01 00:00:00') ASC,
+	                 c.id ASC
+	           LIMIT 1`
+
+	queryArgs := append([]any{}, args...)
+	if deckID != nil {
+		queryArgs = []any{userID, *deckID, *deckID, *deckID}
+	}
+
+	var card ReviewCard
+	err := d.db.QueryRow(query, queryArgs...).Scan(
+		&card.CardID,
+		&card.Lang,
+		&card.Lemma,
+		&card.POS,
+		&card.Gloss,
+		&card.SentenceText,
+		&card.SourceDeck,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	countRows, err := d.db.Query(
+		`SELECT d.title, COUNT(*)
+		   FROM occurrence o
+		   JOIN decks d ON d.id = o.deck_id
+		  WHERE d.user_id = ?
+		    AND d.lang = ?
+		    AND o.lemma = ?
+		    AND o.pos = ?
+		  GROUP BY d.id, d.title
+		  ORDER BY d.created_at DESC, d.id DESC`,
+		userID, card.Lang, card.Lemma, card.POS,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer countRows.Close()
+
+	for countRows.Next() {
+		var title string
+		var count int
+		if err := countRows.Scan(&title, &count); err != nil {
+			return nil, err
+		}
+		card.DeckCounts = append(card.DeckCounts, [2]string{title, fmt.Sprintf("%d", count)})
+	}
+	if err := countRows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &card, nil
+}
+
+func (d *DB) RecordReviewAnswer(userID, cardID int64, rating string) error {
+	card, schedule, err := d.getOwnedCardSchedule(userID, cardID)
+	if err != nil {
+		return err
+	}
+	if card == nil {
+		return sql.ErrNoRows
+	}
+
+	nextDue, updated := nextScheduleForRating(schedule, rating)
+	payload, err := json.Marshal(updated)
+	if err != nil {
+		return err
+	}
+
+	_, err = d.db.Exec(
+		`UPDATE card_state
+		    SET fsrs_json = ?, next_due = ?, last_answer_at = CURRENT_TIMESTAMP
+		  WHERE card_id = ?`,
+		string(payload),
+		sqliteTime(nextDue),
+		cardID,
+	)
+	return err
+}
+
+func (d *DB) MarkCardKnown(userID, cardID int64) error {
+	card, _, err := d.getOwnedCardSchedule(userID, cardID)
+	if err != nil {
+		return err
+	}
+	if card == nil {
+		return sql.ErrNoRows
+	}
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(
+		`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
+		userID, card.Lang, card.Lemma, card.POS,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(
+		`DELETE FROM user_ignored_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
+		userID, card.Lang, card.Lemma, card.POS,
+	); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (d *DB) MarkCardIgnored(userID, cardID int64) error {
+	card, _, err := d.getOwnedCardSchedule(userID, cardID)
+	if err != nil {
+		return err
+	}
+	if card == nil {
+		return sql.ErrNoRows
+	}
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(
+		`INSERT OR IGNORE INTO user_ignored_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
+		userID, card.Lang, card.Lemma, card.POS,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(
+		`DELETE FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
+		userID, card.Lang, card.Lemma, card.POS,
+	); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (d *DB) CreateParseSession(userID *int64, lang, parser, sourceText string, totalTokens, uniqueWords int) (int64, error) {
@@ -704,6 +1087,85 @@ func boolToInt(v bool) int {
 		return 1
 	}
 	return 0
+}
+
+func (d *DB) getOwnedCardSchedule(userID, cardID int64) (*Card, ReviewSchedule, error) {
+	var card Card
+	var fsrsJSON sql.NullString
+	err := d.db.QueryRow(
+		`SELECT c.id, c.user_id, c.lang, c.lemma, c.pos, c.mwe_id, cs.fsrs_json
+		   FROM cards c
+		   JOIN card_state cs ON cs.card_id = c.id
+		  WHERE c.id = ? AND c.user_id = ?`,
+		cardID, userID,
+	).Scan(&card.ID, &card.UserID, &card.Lang, &card.Lemma, &card.POS, &card.MWEID, &fsrsJSON)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ReviewSchedule{}, nil
+		}
+		return nil, ReviewSchedule{}, err
+	}
+
+	schedule := ReviewSchedule{}
+	if fsrsJSON.Valid && strings.TrimSpace(fsrsJSON.String) != "" {
+		_ = json.Unmarshal([]byte(fsrsJSON.String), &schedule)
+	}
+	return &card, schedule, nil
+}
+
+func nextScheduleForRating(schedule ReviewSchedule, rating string) (time.Time, ReviewSchedule) {
+	now := time.Now().UTC()
+	if schedule.Step < 0 {
+		schedule.Step = 0
+	}
+	if schedule.Streak < 0 {
+		schedule.Streak = 0
+	}
+
+	switch rating {
+	case "again":
+		schedule.Step = 0
+		schedule.Streak = 0
+		return now.Add(10 * time.Minute), schedule
+	case "hard":
+		if schedule.Step < 1 {
+			schedule.Step = 1
+		}
+		schedule.Streak++
+		return now.Add(8 * time.Hour), schedule
+	case "easy":
+		schedule.Step += 2
+		if schedule.Step > 5 {
+			schedule.Step = 5
+		}
+		schedule.Streak++
+		return now.Add(reviewIntervalForStep(schedule.Step, true)), schedule
+	default: // good
+		schedule.Step++
+		if schedule.Step > 5 {
+			schedule.Step = 5
+		}
+		schedule.Streak++
+		return now.Add(reviewIntervalForStep(schedule.Step, false)), schedule
+	}
+}
+
+func reviewIntervalForStep(step int, easy bool) time.Duration {
+	days := []int{1, 3, 7, 14, 30, 60}
+	if easy {
+		days = []int{3, 7, 14, 30, 60, 90}
+	}
+	if step < 0 {
+		step = 0
+	}
+	if step >= len(days) {
+		step = len(days) - 1
+	}
+	return time.Duration(days[step]) * 24 * time.Hour
+}
+
+func sqliteTime(t time.Time) string {
+	return t.UTC().Format("2006-01-02 15:04:05")
 }
 
 func (d *DB) ensureLangScopedKnownTable(table string) error {
