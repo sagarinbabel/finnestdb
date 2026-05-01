@@ -395,18 +395,33 @@
         </main>
     </div>
 
-    <!-- ==================== ADMIN FEEDBACK (placeholder) ==================== -->
+    <!-- ==================== ADMIN FEEDBACK ==================== -->
     <div id="admin-feedback-page" class="page" data-role-required="admin">
         <div class="admin-banner" data-role-show="admin">
             <span class="admin-banner-label">Admin</span>
             <span>User-submitted parser corrections.</span>
         </div>
-        <main class="placeholder-main">
-            <h1>Parser feedback</h1>
-            <p class="placeholder-lede">Corrections submitted by users will be reviewed here.</p>
-            <div class="placeholder-card">
-                <p>No corrections to review yet.</p>
-            </div>
+        <main class="admin-feedback-main">
+            <section class="admin-feedback-header">
+                <div>
+                    <h1>Parser feedback</h1>
+                    <p class="placeholder-lede">Review submitted corrections and mark each item accepted, rejected, or needing follow-up.</p>
+                </div>
+                <div class="admin-feedback-filter">
+                    <label for="admin-feedback-status">Status</label>
+                    <select id="admin-feedback-status">
+                        <option value="submitted">Submitted</option>
+                        <option value="needs_follow_up">Needs follow-up</option>
+                        <option value="accepted">Accepted</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="">All</option>
+                    </select>
+                </div>
+            </section>
+            <section id="admin-feedback-empty" class="placeholder-card hidden">
+                <p>No parser feedback matches this filter.</p>
+            </section>
+            <section id="admin-feedback-list" class="admin-feedback-list" aria-live="polite"></section>
         </main>
     </div>
 

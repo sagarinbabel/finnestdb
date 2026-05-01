@@ -37,6 +37,8 @@ const state = {
     currentPOSFilter: 'all',
     currentReviewCard: null,
     reviewDeckFilter: '',
+    adminFeedback: [],
+    adminFeedbackStatus: 'submitted',
 };
 const NOUN_POS = ['NOUN', 'PROPN'];
 const VERB_POS = ['VERB', 'AUX'];
@@ -263,6 +265,10 @@ function renderRoute() {
     if (route === '/review') {
         renderReviewPage();
         void loadNextReviewCard(false);
+    }
+    if (route === '/admin/feedback') {
+        renderAdminFeedbackPage();
+        void loadAdminFeedback();
     }
 }
 // ── Mobile nav ─────────────────────────────────────────────────────────────
@@ -1018,6 +1024,121 @@ async function mutateReviewCard(endpoint, successMessage) {
         showToast(err.message || 'Failed to update card.', 'error');
     }
 }
+// ── Admin feedback queue ───────────────────────────────────────────────────
+function feedbackStatusLabel(status) {
+    switch (status) {
+        case 'submitted': return 'Submitted';
+        case 'accepted': return 'Accepted';
+        case 'rejected': return 'Rejected';
+        case 'needs_follow_up': return 'Needs follow-up';
+        default: return status || 'All';
+    }
+}
+function formatFeedbackDate(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime()))
+        return value;
+    return date.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+function renderAdminFeedbackPage() {
+    const filter = document.getElementById('admin-feedback-status');
+    if (filter)
+        filter.value = state.adminFeedbackStatus;
+    renderAdminFeedbackList();
+}
+function renderAdminFeedbackList() {
+    const list = document.getElementById('admin-feedback-list');
+    const empty = document.getElementById('admin-feedback-empty');
+    if (!list || !empty)
+        return;
+    const feedback = state.adminFeedback;
+    empty.classList.toggle('hidden', feedback.length > 0);
+    list.classList.toggle('hidden', feedback.length === 0);
+    if (feedback.length === 0) {
+        list.innerHTML = '';
+        return;
+    }
+    list.innerHTML = feedback.map(item => {
+        const original = [item.original_lemma, item.original_pos].filter(Boolean).join(' / ') || 'Not captured';
+        const proposed = [item.proposed_lemma, item.proposed_pos].filter(Boolean).join(' / ');
+        const originalGrammar = item.original_grammar_label ? ` · ${escapeHtml(item.original_grammar_label)}` : '';
+        const proposedGrammar = item.proposed_grammar_label ? ` · ${escapeHtml(item.proposed_grammar_label)}` : '';
+        const note = item.note ? `<p class="admin-feedback-note">${escapeHtml(item.note)}</p>` : '';
+        const reviewNote = item.review_note ? `<p class="admin-feedback-review-note">${escapeHtml(item.review_note)}</p>` : '';
+        return `<article class="admin-feedback-item" data-feedback-id="${item.id}">
+            <header class="admin-feedback-item-header">
+                <div>
+                    <h2>${escapeHtml(item.surface)}</h2>
+                    <p class="admin-feedback-meta">${escapeHtml(item.lang)} · ${escapeHtml(item.parser)} · session #${item.parse_session_id} · user #${item.user_id} · ${formatFeedbackDate(item.created_at)}</p>
+                </div>
+                <span class="admin-feedback-status">${feedbackStatusLabel(item.status)}</span>
+            </header>
+            <div class="admin-feedback-comparison">
+                <div>
+                    <span class="admin-feedback-label">Original</span>
+                    <p>${escapeHtml(original)}${originalGrammar}</p>
+                </div>
+                <div>
+                    <span class="admin-feedback-label">Proposed</span>
+                    <p>${escapeHtml(proposed)}${proposedGrammar}</p>
+                </div>
+            </div>
+            ${note}
+            ${reviewNote}
+            <div class="admin-feedback-actions">
+                <input type="text" class="admin-feedback-review-input" data-review-note="${item.id}" placeholder="Review note (optional)" value="${escapeHtml(item.review_note || '')}">
+                <button type="button" class="btn btn-primary btn-sm" data-feedback-action="accepted" data-feedback-id="${item.id}">Accept</button>
+                <button type="button" class="btn btn-outline btn-sm" data-feedback-action="rejected" data-feedback-id="${item.id}">Reject</button>
+                <button type="button" class="btn btn-outline btn-sm" data-feedback-action="needs_follow_up" data-feedback-id="${item.id}">Follow up</button>
+            </div>
+        </article>`;
+    }).join('');
+}
+async function loadAdminFeedback() {
+    if (state.role !== 'admin')
+        return;
+    const statusParam = state.adminFeedbackStatus ? `?status=${encodeURIComponent(state.adminFeedbackStatus)}` : '';
+    try {
+        const resp = await fetch(`/api/admin/parse-feedback${statusParam}`, { credentials: 'same-origin' });
+        if (!resp.ok) {
+            throw new Error(await resp.text() || 'Failed to load parser feedback');
+        }
+        const data = await resp.json();
+        state.adminFeedback = data.feedback || [];
+        renderAdminFeedbackList();
+    }
+    catch (err) {
+        state.adminFeedback = [];
+        renderAdminFeedbackList();
+        showToast(err.message || 'Failed to load parser feedback.', 'error');
+    }
+}
+async function reviewAdminFeedback(feedbackID, status) {
+    const noteInput = document.querySelector(`[data-review-note="${feedbackID}"]`);
+    const reviewNote = noteInput?.value.trim() || '';
+    try {
+        const resp = await fetch(`/api/admin/parse-feedback?id=${encodeURIComponent(String(feedbackID))}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ status, review_note: reviewNote }),
+        });
+        if (!resp.ok) {
+            throw new Error(await resp.text() || 'Failed to review parser feedback');
+        }
+        showToast(`Feedback marked ${feedbackStatusLabel(status).toLowerCase()}.`, 'success');
+        await loadAdminFeedback();
+    }
+    catch (err) {
+        showToast(err.message || 'Failed to review parser feedback.', 'error');
+    }
+}
 // ── Correction modal ───────────────────────────────────────────────────────
 function openCorrectionModal(row) {
     const modal = document.getElementById('correction-modal');
@@ -1214,6 +1335,22 @@ function initResultsSaveForm() {
         await saveCurrentResultsAsDeck();
     });
 }
+function initAdminFeedbackPage() {
+    const filter = document.getElementById('admin-feedback-status');
+    filter?.addEventListener('change', async () => {
+        state.adminFeedbackStatus = filter.value;
+        await loadAdminFeedback();
+    });
+    document.getElementById('admin-feedback-list')?.addEventListener('click', (e) => {
+        const target = e.target;
+        if (!target)
+            return;
+        const action = target.getAttribute('data-feedback-action');
+        const id = Number(target.getAttribute('data-feedback-id') || 0);
+        if (action && id > 0)
+            void reviewAdminFeedback(id, action);
+    });
+}
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
@@ -1225,6 +1362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initDecksPage();
     initReviewPage();
     initResultsSaveForm();
+    initAdminFeedbackPage();
     document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
     document.getElementById('nav-signout')?.addEventListener('click', handleSignout);
     document.getElementById('nav-mobile-signout')?.addEventListener('click', handleSignout);

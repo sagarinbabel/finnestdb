@@ -1771,7 +1771,7 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     gap: 0.75rem;
 }
 
-/* ── Placeholders (admin-feedback + empty states) ───────────── */
+/* ── Placeholders (empty states) ────────────────────────────── */
 .placeholder-main {
     max-width: 720px;
     margin: 0 auto;
@@ -1788,6 +1788,115 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     align-items: center;
     gap: 1rem;
     color: var(--text-secondary);
+}
+
+/* ── Admin feedback ─────────────────────────────────────────── */
+.admin-feedback-main {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+}
+.admin-feedback-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: end;
+    margin-bottom: 1.5rem;
+}
+.admin-feedback-filter {
+    min-width: 220px;
+}
+.admin-feedback-filter label {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+}
+.admin-feedback-filter select {
+    width: 100%;
+}
+.admin-feedback-list {
+    display: grid;
+    gap: 1rem;
+}
+.admin-feedback-item {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    display: grid;
+    gap: 1rem;
+}
+.admin-feedback-item-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.admin-feedback-item h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.2rem;
+}
+.admin-feedback-meta,
+.admin-feedback-note,
+.admin-feedback-review-note {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+.admin-feedback-status {
+    align-self: flex-start;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+.admin-feedback-comparison {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+.admin-feedback-comparison > div {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.85rem;
+}
+.admin-feedback-comparison p {
+    margin: 0.25rem 0 0;
+}
+.admin-feedback-label {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.admin-feedback-actions {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) auto auto auto;
+    gap: 0.75rem;
+    align-items: center;
+}
+.admin-feedback-review-input {
+    width: 100%;
+    padding: 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+@media (max-width: 760px) {
+    .admin-feedback-header,
+    .admin-feedback-item-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .admin-feedback-comparison,
+    .admin-feedback-actions {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* ── Results deck CTA ───────────────────────────────────────── */
