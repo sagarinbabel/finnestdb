@@ -1,6 +1,7 @@
 # Getting Started with FinEstDB
 
-This guide will help you set up and run the current parser-focused FinEstDB app locally.
+This guide will help you set up and run the current role-aware FinEstDB alpha
+app locally.
 
 ## Table of Contents
 
@@ -123,26 +124,27 @@ The server will start on `http://localhost:8080` by default.
 
 1. Open your browser and navigate to: `http://localhost:8080`
 
-2. The app opens directly to the **Parse Text** page.
-   - No login is required on the current `main` branch.
-   - Choose **Finnish (FI)** or **Estonian (ET)**.
-   - Paste text or load a `.txt` / `.md` file.
+2. The app opens to the public landing page.
+   - Sign in with an email address to use Dashboard, Inspect, Decks, and Review.
+   - The alpha sign-in flow is a stub and is not go-live safe.
+   - Admin users can open the internal parser workbench.
 
 ## Using the Application
 
-### Parsing Text
+### Inspecting Text
 
-1. Paste text into the textarea or load a `.txt` / `.md` file.
-2. Keep the input under **300,000 Unicode characters**.
-3. Choose one parser mode:
-   - **Basic Parser**: direct dictionary lookup only after stub parsing
-   - **Custom Parser**: adds possessive, compound, and case-suffix enrichment rules
-4. Click the parser button you want to run.
+1. Sign in and open **Inspect**.
+2. Paste text into the textarea or load a `.txt` / `.md` file.
+3. Keep the input under **300,000 Unicode characters**.
+4. Click **Inspect text**.
 5. Review the results page:
-   - parser mode used
-   - coverage score
-   - parse duration
+   - dictionary coverage
    - sortable word list with lemmas, forms, definitions, grammar labels, and token counts
+   - correction buttons for logged-in users
+   - save-as-deck flow
+
+Admins can use **Admin → Workbench** to compare the Basic and Custom parser
+modes and inspect parser timing details.
 
 ### Theme Toggle
 
@@ -217,24 +219,25 @@ finnestdb/
 
 ### Stub Limitations
 
-This is a parser-focused implementation with the following limitations:
+This is an alpha implementation with the following limitations:
 
-- **Current UI**: parse page and results page only
+- **Auth**: sign-in is a development stub; do not expose it publicly before
+  completing `docs/GO_LIVE_CHECKLIST.md`
 - **Parser core**: Rust tokenization and heuristic POS guessing, not real morphology
-- **Basic parser mode**: direct dictionary lookup only
-- **Custom parser mode**: rule-based enrichment, still not Omorfi/Vabamorf
-- **Review system**: backend stubs exist, but the current frontend does not expose dashboard/review flows
-- **Accounts**: not part of the current main flow
+- **Admin parser modes**: Basic is direct dictionary lookup; Custom adds
+  rule-based enrichment, still not Omorfi/Vabamorf
+- **Retention controls**: signed-in Inspect parses are stored, but parse history
+  deletion is not yet exposed
 
 ### Next Steps
 
 Current direction:
 
-1. Improve parser quality and observability
-2. Define parser evaluation metrics and annotation workflow
-3. Build a repeatable parser test harness
-4. Design a richer lexical knowledge layer on top of dictionary data
-5. Return to accounts, known-word tracking, and review once parser quality is strong enough
+1. Complete go-live auth/session hardening and abuse controls
+2. Improve parser quality and observability
+3. Keep parser evaluation repeatable through `make eval`, `make compare-parsers`,
+   and `make eval-check`
+4. Finish known-word management and admin feedback triage UX
 
 ## Support
 

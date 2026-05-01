@@ -1,7 +1,7 @@
 .PHONY: all build clean parser server frontend run \
         import-dict-fi import-dict-et import-dict \
         reimport-dict-fi reimport-dict-et reimport-dict \
-        setup-omorfi compare-parsers
+        setup-omorfi eval eval-check compare-parsers
 
 # Default target
 all: build
@@ -111,3 +111,15 @@ $(OMORFI_MODEL):
 
 compare-parsers: parser
 	@bash scripts/parser-comparison.sh
+
+# Run the standard local parser eval sweep without requiring external baselines.
+eval: parser
+	@export LD_LIBRARY_PATH="$$(pwd)/parser/target/release:$${LD_LIBRARY_PATH:-}"; \
+	for ds in testdata/parser-eval/*/gold/*.json; do \
+		[ -f "$$ds" ] || continue; \
+		echo "== $$ds =="; \
+		go run ./cmd/parsertest -dataset "$$ds" -parsers basic,custom -warmup 1 -repeat 3; \
+	done
+
+# CI-friendly alias for the same eval sweep documented in the alpha checklist.
+eval-check: eval
