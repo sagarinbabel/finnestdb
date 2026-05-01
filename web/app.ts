@@ -218,6 +218,15 @@ function escapeHtml(str: string): string {
     return d.innerHTML;
 }
 
+function escapeAttr(str: string): string {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 function posLabel(pos: string): string {
     return POS_LABELS[pos] || pos;
 }
@@ -1313,7 +1322,7 @@ function renderAdminFeedbackList(): void {
             ${note}
             ${reviewNote}
             <div class="admin-feedback-actions">
-                <input type="text" class="admin-feedback-review-input" data-review-note="${item.id}" placeholder="Review note (optional)" value="${escapeHtml(item.review_note || '')}">
+                <input type="text" class="admin-feedback-review-input" data-review-note="${item.id}" placeholder="Review note (optional)" value="${escapeAttr(item.review_note || '')}">
                 <button type="button" class="btn btn-primary btn-sm" data-feedback-action="accepted" data-feedback-id="${item.id}">Accept</button>
                 <button type="button" class="btn btn-outline btn-sm" data-feedback-action="rejected" data-feedback-id="${item.id}">Reject</button>
                 <button type="button" class="btn btn-outline btn-sm" data-feedback-action="needs_follow_up" data-feedback-id="${item.id}">Follow up</button>

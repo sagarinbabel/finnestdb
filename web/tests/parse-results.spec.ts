@@ -327,6 +327,7 @@ test('admin can review parser feedback queue', async ({ page }) => {
               proposed_grammar_label: 'past 3sg',
               note: 'Looks right',
               status: statusFilter || 'submitted',
+              review_note: `needs "quote" check`,
               created_at: '2026-05-01T12:00:00Z',
             },
           ],
@@ -351,6 +352,7 @@ test('admin can review parser feedback queue', async ({ page }) => {
   await expect(page.locator('#admin-feedback-page')).toHaveClass(/active/);
   await expect(page.locator('#admin-feedback-list')).toContainText('lauloi');
   await expect(page.locator('#admin-feedback-list')).toContainText('laulaa / VERB');
+  await expect(page.locator('[data-review-note="7"]')).toHaveValue('needs "quote" check');
   expect(statusFilter).toBe('submitted');
 
   await page.locator('[data-review-note="7"]').fill('accepted into gold queue');
