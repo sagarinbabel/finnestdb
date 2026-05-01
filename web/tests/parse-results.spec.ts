@@ -373,6 +373,75 @@ test('admin parse keeps internal parser-mode label', async ({ page }) => {
   await expect(page.locator('#results-parser')).toHaveText('Custom parser');
 });
 
+test('admin can review parser feedback queue', async ({ page }) => {
+  await mockMe(page, 'admin');
+  let statusFilter = '';
+  let reviewed: any = null;
+
+  await page.route('**/api/admin/parse-feedback**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() === 'GET') {
+      statusFilter = url.searchParams.get('status') || '';
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          feedback: [
+            {
+              id: 7,
+              parse_session_id: 42,
+              user_id: 3,
+              lang: 'FI',
+              parser: 'custom',
+              surface: 'lauloi',
+              occurrence: 0,
+              original_lemma: 'laulaa',
+              original_pos: 'VERB',
+              original_grammar_label: 'past 3sg',
+              proposed_lemma: 'laulaa',
+              proposed_pos: 'VERB',
+              proposed_grammar_label: 'past 3sg',
+              note: 'Looks right',
+              status: statusFilter || 'submitted',
+              review_note: `needs "quote" check`,
+              created_at: '2026-05-01T12:00:00Z',
+            },
+          ],
+        }),
+      });
+      return;
+    }
+
+    reviewed = {
+      id: url.searchParams.get('id'),
+      body: request.postDataJSON(),
+    };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: reviewed.body.status }),
+    });
+  });
+
+  await page.goto('/#/admin/feedback');
+
+  await expect(page.locator('#admin-feedback-page')).toHaveClass(/active/);
+  await expect(page.locator('#admin-feedback-list')).toContainText('lauloi');
+  await expect(page.locator('#admin-feedback-list')).toContainText('laulaa / VERB');
+  await expect(page.locator('[data-review-note="7"]')).toHaveValue('needs "quote" check');
+  expect(statusFilter).toBe('submitted');
+
+  await page.locator('[data-review-note="7"]').fill('accepted into gold queue');
+  await page.getByRole('button', { name: 'Accept' }).click();
+
+  await expect.poll(() => reviewed).not.toBeNull();
+  expect(reviewed).toMatchObject({
+    id: '7',
+    body: { status: 'accepted', review_note: 'accepted into gold queue' },
+  });
+});
+
 // ── Language mismatch (still important regression coverage) ────────────────
 
 test('inspect lang mismatch warning blocks parse until switching languages', async ({ page }) => {
