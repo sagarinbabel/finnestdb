@@ -1660,12 +1660,14 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     padding: 2.5rem 1.5rem 4rem;
 }
 .decks-header h1,
+.known-words-header h2,
 .review-header h1,
 .placeholder-main h1 {
     font-size: 1.75rem;
     margin-bottom: 0.5rem;
 }
 .decks-lede,
+.known-words-lede,
 .review-lede,
 .placeholder-lede {
     color: var(--text-secondary);
@@ -1699,6 +1701,91 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     gap: 0.5rem;
     flex-wrap: wrap;
     justify-content: flex-end;
+}
+.known-words-panel {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 1rem;
+}
+.known-words-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: end;
+}
+.known-words-lang {
+    min-width: 180px;
+}
+.known-words-lang label,
+.known-words-form label {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.35rem;
+}
+.known-words-lang select,
+.known-words-form textarea {
+    width: 100%;
+}
+.known-words-form {
+    display: grid;
+    gap: 0.6rem;
+}
+.known-words-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+.known-words-summary,
+.known-words-unresolved {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+.known-words-unresolved {
+    border-left: 3px solid var(--warning);
+    padding-left: 0.85rem;
+}
+.known-words-list {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.known-word-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.3rem 0.45rem 0.3rem 0.7rem;
+    background: var(--card-bg);
+}
+.known-word-pos {
+    color: var(--text-secondary);
+    font-size: 0.78rem;
+}
+.known-word-delete {
+    width: 1.35rem;
+    height: 1.35rem;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    line-height: 1;
+}
+.known-word-delete:hover {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+@media (max-width: 760px) {
+    .known-words-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
 }
 
 /* ── Review ─────────────────────────────────────────────────── */

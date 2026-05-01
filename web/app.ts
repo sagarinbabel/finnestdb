@@ -91,6 +91,21 @@ interface DeckListResponse {
     decks: DeckSummary[];
 }
 
+interface KnownLemma {
+    lemma: string;
+    pos:   string;
+    lang:  string;
+}
+
+interface KnownWordsImportResponse {
+    imported:   KnownLemma[];
+    unresolved: string[];
+}
+
+interface KnownWordsListResponse {
+    known_words: KnownLemma[];
+}
+
 interface ReviewCardResponse {
     card_id:     string;
     mode:        string;
@@ -168,6 +183,8 @@ const state = {
     reviewDeckFilter:   '',
     adminFeedback:      [] as ParseFeedbackItem[],
     adminFeedbackStatus: 'submitted',
+    knownWordsLang:     'FI',
+    knownWords:         [] as KnownLemma[],
 };
 
 const NOUN_POS = ['NOUN', 'PROPN'];
@@ -433,7 +450,10 @@ function renderRoute(): void {
 
     // Per-page hooks
     if (route === '/dashboard') renderDashboard();
-    if (route === '/decks') renderDecksPage();
+    if (route === '/decks') {
+        renderDecksPage();
+        void loadKnownWords();
+    }
     if (route === '/review') {
         renderReviewPage();
         void loadNextReviewCard(false);
@@ -626,6 +646,7 @@ function renderDecksPage(): void {
 
     if (decks.length === 0) {
         list.innerHTML = '';
+        renderKnownWordsPanel();
         return;
     }
 
@@ -644,10 +665,138 @@ function renderDecksPage(): void {
             </div>
         </article>`;
     }).join('');
+
+    renderKnownWordsPanel();
 }
 
 function getDeckByID(deckID: number): DeckSummary | undefined {
     return state.decks.find(deck => deck.id === deckID);
+}
+
+function renderKnownWordsPanel(): void {
+    const langSelect = document.getElementById('known-words-lang') as HTMLSelectElement | null;
+    const list = document.getElementById('known-words-list');
+    const empty = document.getElementById('known-words-empty');
+    const summary = document.getElementById('known-words-summary');
+    if (langSelect) langSelect.value = state.knownWordsLang;
+    if (!list || !empty) return;
+
+    const words = state.knownWords;
+    empty.classList.toggle('hidden', words.length > 0);
+    list.classList.toggle('hidden', words.length === 0);
+    if (summary && !summary.textContent) {
+        summary.textContent = words.length === 0 ? '' : `${words.length.toLocaleString()} known`;
+    }
+
+    if (words.length === 0) {
+        list.innerHTML = '';
+        return;
+    }
+
+    list.innerHTML = words.map(word => `<div class="known-word-chip">
+        <span>${escapeHtml(word.lemma)}</span>
+        <span class="known-word-pos">${escapeHtml(posLabel(word.pos))}</span>
+        <button type="button" class="known-word-delete" aria-label="Remove ${escapeHtml(word.lemma)}" data-known-lemma="${escapeHtml(word.lemma)}" data-known-pos="${escapeHtml(word.pos)}">×</button>
+    </div>`).join('');
+}
+
+function parseKnownWordsInput(raw: string): string[] {
+    const seen = new Set<string>();
+    const words: string[] = [];
+    for (const part of raw.split(/[\n,;]+/)) {
+        const word = part.trim();
+        if (!word) continue;
+        const key = word.toLocaleLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        words.push(word);
+    }
+    return words;
+}
+
+function renderKnownWordsUnresolved(unresolved: string[]): void {
+    const el = document.getElementById('known-words-unresolved');
+    if (!el) return;
+    el.classList.toggle('hidden', unresolved.length === 0);
+    el.textContent = unresolved.length === 0
+        ? ''
+        : `Could not resolve: ${unresolved.join(', ')}`;
+}
+
+async function loadKnownWords(): Promise<void> {
+    if (state.role === 'anon') return;
+    try {
+        const resp = await fetch(`/api/known-words?lang=${encodeURIComponent(state.knownWordsLang)}`, { credentials: 'same-origin' });
+        if (!resp.ok) throw new Error(await resp.text() || 'Failed to load known words');
+        const data = await resp.json() as KnownWordsListResponse;
+        state.knownWords = data.known_words || [];
+        const summary = document.getElementById('known-words-summary');
+        if (summary) summary.textContent = state.knownWords.length === 0 ? '' : `${state.knownWords.length.toLocaleString()} known`;
+        renderKnownWordsPanel();
+    } catch (err: any) {
+        state.knownWords = [];
+        renderKnownWordsPanel();
+        showToast(err.message || 'Failed to load known words.', 'error');
+    }
+}
+
+async function importKnownWords(): Promise<void> {
+    const input = document.getElementById('known-words-input') as HTMLTextAreaElement | null;
+    const submitBtn = document.getElementById('known-words-submit') as HTMLButtonElement | null;
+    const summary = document.getElementById('known-words-summary');
+    if (!input || !submitBtn) return;
+
+    const words = parseKnownWordsInput(input.value);
+    if (words.length === 0) {
+        showToast('Paste at least one word to import.', 'error');
+        return;
+    }
+
+    submitBtn.disabled = true;
+    const label = submitBtn.textContent || '';
+    submitBtn.textContent = 'Importing...';
+    try {
+        const resp = await fetch('/api/known-words', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ lang: state.knownWordsLang, words }),
+        });
+        if (!resp.ok) throw new Error(await resp.text() || 'Failed to import known words');
+        const data = await resp.json() as KnownWordsImportResponse;
+        input.value = '';
+        renderKnownWordsUnresolved(data.unresolved || []);
+        if (summary) {
+            const importedCount = data.imported?.length || 0;
+            const unresolvedCount = data.unresolved?.length || 0;
+            summary.textContent = `${importedCount} imported${unresolvedCount ? `, ${unresolvedCount} unresolved` : ''}`;
+        }
+        await refreshDashboardData();
+        await loadKnownWords();
+        showToast('Known words imported.', 'success');
+    } catch (err: any) {
+        showToast(err.message || 'Failed to import known words.', 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = label;
+    }
+}
+
+async function deleteKnownWord(lemma: string, pos: string): Promise<void> {
+    try {
+        const params = new URLSearchParams({ lang: state.knownWordsLang, lemma, pos });
+        const resp = await fetch(`/api/known-words?${params.toString()}`, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+        });
+        if (!resp.ok) throw new Error(await resp.text() || 'Failed to remove known word');
+        state.knownWords = state.knownWords.filter(word => !(word.lemma === lemma && word.pos === pos && word.lang === state.knownWordsLang));
+        renderKnownWordsPanel();
+        await refreshDashboardData();
+        showToast('Known word removed.', 'success');
+    } catch (err: any) {
+        showToast(err.message || 'Failed to remove known word.', 'error');
+    }
 }
 
 // ── Language detection (shared between inspect + workbench) ────────────────
@@ -1616,6 +1765,31 @@ function initDecksPage(): void {
     });
 }
 
+function initKnownWordsPanel(): void {
+    const langSelect = document.getElementById('known-words-lang') as HTMLSelectElement | null;
+    langSelect?.addEventListener('change', async () => {
+        state.knownWordsLang = langSelect.value;
+        const summary = document.getElementById('known-words-summary');
+        if (summary) summary.textContent = '';
+        renderKnownWordsUnresolved([]);
+        await loadKnownWords();
+    });
+
+    const form = document.getElementById('known-words-form') as HTMLFormElement | null;
+    form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await importKnownWords();
+    });
+
+    document.getElementById('known-words-list')?.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement | null;
+        if (!target) return;
+        const lemma = target.getAttribute('data-known-lemma');
+        const pos = target.getAttribute('data-known-pos');
+        if (lemma && pos) void deleteKnownWord(lemma, pos);
+    });
+}
+
 function initReviewPage(): void {
     const filter = document.getElementById('review-deck-filter') as HTMLSelectElement | null;
     filter?.addEventListener('change', async () => {
@@ -1686,6 +1860,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initWorkbenchForm();
     initCorrectionModal();
     initDecksPage();
+    initKnownWordsPanel();
     initReviewPage();
     initResultsSaveForm();
     initAdminFeedbackPage();

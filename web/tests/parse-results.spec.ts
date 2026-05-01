@@ -334,6 +334,63 @@ test('user can save inspected results as a deck and review the first due card', 
   await expect(page.locator('#review-empty')).not.toHaveClass(/hidden/);
 });
 
+test('user can import and remove known words', async ({ page }) => {
+  let knownWords = [{ lemma: 'kissa', pos: 'NOUN', lang: 'FI' }];
+  let importPayload: any = null;
+  let deletedUrl = '';
+
+  await mockMe(page, 'user');
+  await page.route('**/api/known-words**', async (route) => {
+    const request = route.request();
+    if (request.method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ known_words: knownWords }),
+      });
+      return;
+    }
+    if (request.method() === 'POST') {
+      importPayload = request.postDataJSON();
+      knownWords = [
+        { lemma: 'kissa', pos: 'NOUN', lang: 'FI' },
+        { lemma: 'juosta', pos: 'VERB', lang: 'FI' },
+      ];
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          imported: [{ lemma: 'juosta', pos: 'VERB', lang: 'FI' }],
+          unresolved: ['mysteeri'],
+        }),
+      });
+      return;
+    }
+    deletedUrl = request.url();
+    knownWords = knownWords.filter(word => word.lemma !== 'juosta');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'ok' }),
+    });
+  });
+
+  await page.goto('/#/decks');
+
+  await expect(page.locator('#known-words-list')).toContainText('kissa');
+  await page.locator('#known-words-input').fill('juoksen, mysteeri');
+  await page.getByRole('button', { name: 'Import words' }).click();
+
+  await expect.poll(() => importPayload).not.toBeNull();
+  expect(importPayload).toMatchObject({ lang: 'FI', words: ['juoksen', 'mysteeri'] });
+  await expect(page.locator('#known-words-list')).toContainText('juosta');
+  await expect(page.locator('#known-words-unresolved')).toContainText('mysteeri');
+
+  await page.getByRole('button', { name: 'Remove juosta' }).click();
+  await expect.poll(() => deletedUrl).toContain('lemma=juosta');
+  await expect(page.locator('#known-words-list')).not.toContainText('juosta');
+});
+
 test('user trying admin workbench is sent to dashboard', async ({ page }) => {
   await mockMe(page, 'user');
   await page.goto('/#/admin/workbench');
