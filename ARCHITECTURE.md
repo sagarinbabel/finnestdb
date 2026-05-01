@@ -5,6 +5,11 @@ _Current as of 2026-05-01 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for rev
 Role-aware Finnish and Estonian reading app focused on dictionary-backed
 lemmatization, deck creation, review, parser feedback, and parser evaluation.
 
+Subsystem behavior versions are tracked separately in
+[`docs/SYSTEM_VERSIONING.md`](docs/SYSTEM_VERSIONING.md). Parser behavior,
+parser baselines, and deck review scheduling should not share a single version
+number because they change independently.
+
 ## What Exists Today
 
 Current product surface on `main`:
@@ -30,6 +35,72 @@ Important distinction:
 - `omorfi` exists today as an evaluation/parser-core integration point, but not as a browser button
 
 ## High-Level Architecture
+
+```mermaid
+flowchart TB
+  subgraph Client["Browser UI"]
+    Inspect["Inspect / parser workbench"]
+    Decks["Decks"]
+    Review["Review session"]
+    Results["Results and parser feedback"]
+  end
+
+  subgraph API["Go HTTP API"]
+    Handlers["internal/api handlers"]
+    Auth["alpha auth / user context"]
+  end
+
+  subgraph ParserSystem["Parser system versioned independently"]
+    ParseCore["parsecore analyzer registry"]
+    ParserModes["parser modes: basic, custom, omorfi"]
+    RustParser["Rust tokenizer / sentence splitter"]
+    Enrichment["dictionary and morphology enrichment"]
+    ParserEval["parser evaluation CLI"]
+    GoldData["gold datasets and frozen baselines"]
+  end
+
+  subgraph DeckReviewSystem["Deck and review system versioned independently"]
+    DeckService["deck APIs"]
+    Occurrences["sentence and token occurrences"]
+    Cards["cards and card state"]
+    Scheduler["review queue / scheduling policy"]
+  end
+
+  subgraph Data["Persistence and source data"]
+    Store["SQLite store"]
+    Dict["kaikki dictionary import"]
+    Feedback["parse feedback"]
+  end
+
+  Inspect -->|"POST /api/parse"| Handlers
+  Results -->|"corrections"| Handlers
+  Decks -->|"deck CRUD"| Handlers
+  Review -->|"review answers"| Handlers
+  Auth --> Handlers
+
+  Handlers --> ParseCore
+  ParseCore --> ParserModes
+  ParserModes --> RustParser
+  ParserModes --> Enrichment
+  Enrichment --> Store
+  Dict --> Store
+  ParserEval --> ParseCore
+  ParserEval --> GoldData
+
+  Handlers --> DeckService
+  DeckService --> Occurrences
+  DeckService --> Cards
+  Cards --> Scheduler
+  DeckService --> Store
+  Scheduler --> Store
+  Handlers --> Feedback
+  Feedback --> Store
+
+  classDef versioned fill:#eef6ff,stroke:#2b6cb0,color:#102a43
+  classDef data fill:#f7f7f7,stroke:#666,color:#222
+  class ParserSystem,DeckReviewSystem versioned
+  class Data data
+```
 
 ```text
 CURRENT

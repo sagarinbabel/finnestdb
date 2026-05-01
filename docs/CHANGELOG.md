@@ -6,6 +6,18 @@ product documentation. Code changes belong in git history, not here.
 Entries are reverse-chronological. Each entry links to the docs it
 introduced or modified so the docs index stays navigable.
 
+## 2026-05-01 — Architecture diagram and subsystem versioning
+
+Separates architecture visibility from subsystem behavior tracking.
+
+- Added a Mermaid architecture diagram to [`ARCHITECTURE.md`](../ARCHITECTURE.md)
+  with explicit parser and deck/review system boundaries.
+- Added [`docs/SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) to track parser
+  behavior, parser baselines, deck review behavior, API contracts, and data
+  schema versions independently.
+- Updated [`docs/architecture.md`](architecture.md) to point to the canonical
+  architecture and subsystem-versioning docs.
+
 ## 2026-04-29 — Consumer alpha execution plan
 
 Locks the alpha as a consumer language-learning product with
