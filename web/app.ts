@@ -31,6 +31,7 @@ interface WordEntry {
     gloss?:            string;
     grammar_label?:    string;
     example_sentence?: string;
+    learning_state?:   LemmaStateStatus;
 }
 
 interface ParseResponse {
@@ -115,6 +116,7 @@ type SortKey = 'row' | 'lemma' | 'pos' | 'forms' | 'definition' | 'tokens';
 type POSFilter = 'all' | 'NOUN' | 'VERB' | 'ADJ' | 'ADV' | 'other';
 type ParserMode = 'basic' | 'custom';
 type ResultsContext = 'inspect' | 'workbench';
+type LemmaStateStatus = 'known' | 'ignored';
 
 interface SortState { key: SortKey; dir: 'asc' | 'desc'; }
 interface DisplayWordEntry extends WordEntry { originalIndex: number; }
@@ -134,6 +136,8 @@ const state = {
     currentRow:         null as CorrectionRowContext | null,
     currentSort:        { key: 'row', dir: 'asc' } as SortState,
     currentPOSFilter:   'all' as POSFilter,
+    currentLemmaStates: new Map<string, LemmaStateStatus>(),
+    pendingLemmaStates: new Set<string>(),
     currentReviewCard:  null as ReviewCardResponse | null,
     reviewDeckFilter:   '',
 };
@@ -192,6 +196,16 @@ function escapeHtml(str: string): string {
 
 function posLabel(pos: string): string {
     return POS_LABELS[pos] || pos;
+}
+
+function lemmaStateKey(lang: string, lemma: string, pos: string): string {
+    return `${lang}\u0000${lemma}\u0000${pos}`;
+}
+
+function currentLemmaState(lemma: string, pos: string): LemmaStateStatus | undefined {
+    const lang = state.currentResults?.lang || '';
+    if (!lang) return undefined;
+    return state.currentLemmaStates.get(lemmaStateKey(lang, lemma, pos));
 }
 
 function compareStrings(a: string, b: string): number {
@@ -273,6 +287,7 @@ async function handleSignout(): Promise<void> {
     state.currentParserMode = 'basic';
     state.currentContext = 'inspect';
     state.currentRow = null;
+    state.currentLemmaStates.clear();
     state.currentReviewCard = null;
     state.reviewDeckFilter = '';
     clearResultsDom();
@@ -513,9 +528,50 @@ function renderDashboard(): void {
     }).join('');
 }
 
-async function refreshDashboardData(): Promise<void> {
+async function refreshDashboardData(options: { rerenderRoute?: boolean } = {}): Promise<void> {
     await fetchMe();
-    renderRoute();
+    if (options.rerenderRoute !== false) {
+        renderRoute();
+    }
+}
+
+async function markResultLemma(status: LemmaStateStatus, lemma: string, pos: string, trigger: HTMLButtonElement): Promise<void> {
+    const lang = state.currentResults?.lang;
+    if (!lang) return;
+
+    const stateKey = lemmaStateKey(lang, lemma, pos);
+    if (state.pendingLemmaStates.has(stateKey)) return;
+    state.pendingLemmaStates.add(stateKey);
+    const originalLabel = trigger.textContent || '';
+    trigger.disabled = true;
+    trigger.textContent = status === 'known' ? 'Marking...' : 'Ignoring...';
+    if (state.currentResults) {
+        renderResultsTable(state.currentResults);
+    }
+    try {
+        const resp = await fetch('/api/lemma-state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ lang, lemma, pos, status }),
+        });
+        if (!resp.ok) {
+            throw new Error(await resp.text() || 'Failed to update word');
+        }
+
+        state.currentLemmaStates.set(stateKey, status);
+        await refreshDashboardData({ rerenderRoute: false });
+        showToast(status === 'known' ? 'Word marked known.' : 'Word ignored.', 'success');
+    } catch (err: any) {
+        showToast(err.message || 'Failed to update word.', 'error');
+        trigger.disabled = false;
+        trigger.textContent = originalLabel;
+    } finally {
+        state.pendingLemmaStates.delete(stateKey);
+        if (state.currentResults) {
+            renderResultsTable(state.currentResults);
+        }
+    }
 }
 
 function renderDecksPage(): void {
@@ -965,12 +1021,30 @@ function renderResultsTable(data: ParseResponse): void {
         const posPill = `<span class="pos-pill" data-pos="${escapeHtml(w.pos)}">${escapeHtml(posLabel(w.pos))}</span>`;
 
         const surfaceForm = w.forms[0] || w.lemma;
+        const rowStatus = currentLemmaState(w.lemma, w.pos);
+        const rowPending = state.pendingLemmaStates.has(lemmaStateKey(data.lang, w.lemma, w.pos));
+        const rowStatusHtml = rowStatus
+            ? `<span class="word-state-badge ${rowStatus}">${rowStatus === 'known' ? 'Known' : 'Ignored'}</span>`
+            : '';
         const actionCell = showActions
-            ? `<td class="col-actions"><button type="button" class="btn btn-link btn-sm correction-btn"
-                data-lemma="${escapeHtml(w.lemma)}"
-                data-pos="${escapeHtml(w.pos)}"
-                data-surface="${escapeHtml(surfaceForm)}"
-                data-grammar="${escapeHtml(w.grammar_label || '')}">Suggest fix</button></td>`
+            ? `<td class="col-actions"><div class="word-actions">
+                ${rowStatusHtml}
+                <button type="button" class="btn btn-link btn-sm word-state-btn"
+                    data-lemma-status="known"
+                    data-lemma="${escapeHtml(w.lemma)}"
+                    data-pos="${escapeHtml(w.pos)}"
+                    ${rowPending || rowStatus === 'known' ? 'disabled' : ''}>Known</button>
+                <button type="button" class="btn btn-link btn-sm word-state-btn"
+                    data-lemma-status="ignored"
+                    data-lemma="${escapeHtml(w.lemma)}"
+                    data-pos="${escapeHtml(w.pos)}"
+                    ${rowPending || rowStatus === 'ignored' ? 'disabled' : ''}>Ignore</button>
+                <button type="button" class="btn btn-link btn-sm correction-btn"
+                    data-lemma="${escapeHtml(w.lemma)}"
+                    data-pos="${escapeHtml(w.pos)}"
+                    data-surface="${escapeHtml(surfaceForm)}"
+                    data-grammar="${escapeHtml(w.grammar_label || '')}">Suggest fix</button>
+               </div></td>`
             : '';
 
         return `<tr>
@@ -986,6 +1060,17 @@ function renderResultsTable(data: ParseResponse): void {
 
     updateSortButtons();
     updatePOSFilterButtons();
+
+    tbody.querySelectorAll<HTMLButtonElement>('.word-state-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const status = btn.dataset.lemmaStatus as LemmaStateStatus | undefined;
+            const lemma = btn.dataset.lemma || '';
+            const pos = btn.dataset.pos || '';
+            if (status && lemma && pos) {
+                void markResultLemma(status, lemma, pos, btn);
+            }
+        });
+    });
 
     // Wire up newly-rendered correction buttons
     tbody.querySelectorAll<HTMLButtonElement>('.correction-btn').forEach(btn => {
@@ -1037,6 +1122,13 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
     state.currentTextPreview = preview;
     state.currentSort = { key: 'row', dir: 'asc' };
     state.currentPOSFilter = 'all';
+    state.currentLemmaStates.clear();
+    state.pendingLemmaStates.clear();
+    for (const word of data.words) {
+        if (word.learning_state) {
+            state.currentLemmaStates.set(lemmaStateKey(data.lang, word.lemma, word.pos), word.learning_state);
+        }
+    }
     renderResultsTable(data);
     renderResultsSaveState();
 
