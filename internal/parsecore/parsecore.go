@@ -46,6 +46,7 @@ type WordEntry struct {
 	Gloss           string   `json:"gloss,omitempty"`
 	GrammarLabel    string   `json:"grammar_label,omitempty"`
 	ExampleSentence string   `json:"example_sentence,omitempty"`
+	LearningState   string   `json:"learning_state,omitempty"`
 }
 
 type ParseTimings struct {

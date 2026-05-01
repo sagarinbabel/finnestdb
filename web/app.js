@@ -36,6 +36,7 @@ const state = {
     currentSort: { key: 'row', dir: 'asc' },
     currentPOSFilter: 'all',
     currentLemmaStates: new Map(),
+    pendingLemmaStates: new Set(),
     currentReviewCard: null,
     reviewDeckFilter: '',
 };
@@ -396,9 +397,16 @@ async function markResultLemma(status, lemma, pos, trigger) {
     const lang = state.currentResults?.lang;
     if (!lang)
         return;
+    const stateKey = lemmaStateKey(lang, lemma, pos);
+    if (state.pendingLemmaStates.has(stateKey))
+        return;
+    state.pendingLemmaStates.add(stateKey);
     const originalLabel = trigger.textContent || '';
     trigger.disabled = true;
     trigger.textContent = status === 'known' ? 'Marking...' : 'Ignoring...';
+    if (state.currentResults) {
+        renderResultsTable(state.currentResults);
+    }
     try {
         const resp = await fetch('/api/lemma-state', {
             method: 'POST',
@@ -409,17 +417,20 @@ async function markResultLemma(status, lemma, pos, trigger) {
         if (!resp.ok) {
             throw new Error(await resp.text() || 'Failed to update word');
         }
-        state.currentLemmaStates.set(lemmaStateKey(lang, lemma, pos), status);
+        state.currentLemmaStates.set(stateKey, status);
         await refreshDashboardData({ rerenderRoute: false });
-        if (state.currentResults) {
-            renderResultsTable(state.currentResults);
-        }
         showToast(status === 'known' ? 'Word marked known.' : 'Word ignored.', 'success');
     }
     catch (err) {
         showToast(err.message || 'Failed to update word.', 'error');
         trigger.disabled = false;
         trigger.textContent = originalLabel;
+    }
+    finally {
+        state.pendingLemmaStates.delete(stateKey);
+        if (state.currentResults) {
+            renderResultsTable(state.currentResults);
+        }
     }
 }
 function renderDecksPage() {
@@ -833,6 +844,7 @@ function renderResultsTable(data) {
         const posPill = `<span class="pos-pill" data-pos="${escapeHtml(w.pos)}">${escapeHtml(posLabel(w.pos))}</span>`;
         const surfaceForm = w.forms[0] || w.lemma;
         const rowStatus = currentLemmaState(w.lemma, w.pos);
+        const rowPending = state.pendingLemmaStates.has(lemmaStateKey(data.lang, w.lemma, w.pos));
         const rowStatusHtml = rowStatus
             ? `<span class="word-state-badge ${rowStatus}">${rowStatus === 'known' ? 'Known' : 'Ignored'}</span>`
             : '';
@@ -843,12 +855,12 @@ function renderResultsTable(data) {
                     data-lemma-status="known"
                     data-lemma="${escapeHtml(w.lemma)}"
                     data-pos="${escapeHtml(w.pos)}"
-                    ${rowStatus === 'known' ? 'disabled' : ''}>Known</button>
+                    ${rowPending || rowStatus === 'known' ? 'disabled' : ''}>Known</button>
                 <button type="button" class="btn btn-link btn-sm word-state-btn"
                     data-lemma-status="ignored"
                     data-lemma="${escapeHtml(w.lemma)}"
                     data-pos="${escapeHtml(w.pos)}"
-                    ${rowStatus === 'ignored' ? 'disabled' : ''}>Ignore</button>
+                    ${rowPending || rowStatus === 'ignored' ? 'disabled' : ''}>Ignore</button>
                 <button type="button" class="btn btn-link btn-sm correction-btn"
                     data-lemma="${escapeHtml(w.lemma)}"
                     data-pos="${escapeHtml(w.pos)}"
@@ -923,6 +935,12 @@ function showResults(data, textPreview, parserMode, context) {
     state.currentSort = { key: 'row', dir: 'asc' };
     state.currentPOSFilter = 'all';
     state.currentLemmaStates.clear();
+    state.pendingLemmaStates.clear();
+    for (const word of data.words) {
+        if (word.learning_state) {
+            state.currentLemmaStates.set(lemmaStateKey(data.lang, word.lemma, word.pos), word.learning_state);
+        }
+    }
     renderResultsTable(data);
     renderResultsSaveState();
     // Re-apply role visibility so admin-only pills/cells show correctly.

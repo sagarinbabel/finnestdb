@@ -941,6 +941,25 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		parseID = &id
+
+		keys := make([]store.LemmaKey, 0, len(parsed.Words))
+		for _, word := range parsed.Words {
+			if strings.TrimSpace(word.Lemma) == "" || strings.TrimSpace(word.POS) == "" {
+				continue
+			}
+			keys = append(keys, store.LemmaKey{Lemma: word.Lemma, POS: word.POS})
+		}
+		states, err := a.store.BatchLemmaStates(auth.UserID, parsed.Lang, keys)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		for i := range parsed.Words {
+			key := store.LemmaKey{Lemma: parsed.Words[i].Lemma, POS: parsed.Words[i].POS}
+			if status := states[key]; status != "" {
+				parsed.Words[i].LearningState = status
+			}
+		}
 	}
 
 	writeJSON(w, http.StatusOK, ParseResponse{

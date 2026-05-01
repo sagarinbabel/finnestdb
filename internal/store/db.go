@@ -87,6 +87,12 @@ type KnownLemma struct {
 	Lang  string `json:"lang"`
 }
 
+type LemmaState struct {
+	Lemma  string
+	POS    string
+	Status string
+}
+
 type ParseSession struct {
 	ID          int64     `json:"id"`
 	UserID      *int64    `json:"user_id,omitempty"`
@@ -793,6 +799,57 @@ func (d *DB) DeleteKnownWord(userID int64, lang, lemma, pos string) error {
 		userID, lang, lemma, pos,
 	)
 	return err
+}
+
+func (d *DB) BatchLemmaStates(userID int64, lang string, lemmas []LemmaKey) (map[LemmaKey]string, error) {
+	result := make(map[LemmaKey]string, len(lemmas))
+	if len(lemmas) == 0 {
+		return result, nil
+	}
+
+	seen := make(map[LemmaKey]struct{}, len(lemmas))
+	unique := make([]LemmaKey, 0, len(lemmas))
+	for _, lemma := range lemmas {
+		if lemma.Lemma == "" || lemma.POS == "" {
+			continue
+		}
+		if _, ok := seen[lemma]; ok {
+			continue
+		}
+		seen[lemma] = struct{}{}
+		unique = append(unique, lemma)
+	}
+	if len(unique) == 0 {
+		return result, nil
+	}
+
+	stmt, err := d.db.Prepare(`
+		SELECT
+			EXISTS(SELECT 1 FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?),
+			EXISTS(SELECT 1 FROM user_ignored_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?)
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	for _, lemma := range unique {
+		var known, ignored bool
+		if err := stmt.QueryRow(
+			userID, lang, lemma.Lemma, lemma.POS,
+			userID, lang, lemma.Lemma, lemma.POS,
+		).Scan(&known, &ignored); err != nil {
+			return nil, err
+		}
+		switch {
+		case known:
+			result[lemma] = "known"
+		case ignored:
+			result[lemma] = "ignored"
+		}
+	}
+
+	return result, nil
 }
 
 func (d *DB) MarkLemmaKnown(userID int64, lang, lemma, pos string) error {

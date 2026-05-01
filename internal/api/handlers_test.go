@@ -231,6 +231,73 @@ func TestHandleParseCreatesParseSessionForAuthenticatedUser(t *testing.T) {
 	}
 }
 
+func TestHandleParseHydratesLemmaStateForAuthenticatedUser(t *testing.T) {
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, _, parser string) (*parsecore.ParseResult, error) {
+		if parser == "" {
+			parser = "custom"
+		}
+		return &parsecore.ParseResult{
+			Lang:            lang,
+			Parser:          parser,
+			TotalTokens:     2,
+			ParseDurationMs: 11,
+			Stats:           parsecore.ParseStats{},
+			Words: []parsecore.WordEntry{
+				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 1},
+				{Lemma: "juosta", POS: "VERB", Forms: []string{"juoksen"}, Count: 1},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "parse-state@example.com")
+
+	markKnownReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"known"}`))
+	for _, cookie := range cookies {
+		markKnownReq.AddCookie(cookie)
+	}
+	markKnownRec := httptest.NewRecorder()
+	mux.ServeHTTP(markKnownRec, markKnownReq)
+	if markKnownRec.Code != http.StatusOK {
+		t.Fatalf("mark known status=%d want %d body=%q", markKnownRec.Code, http.StatusOK, markKnownRec.Body.String())
+	}
+
+	markIgnoredReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(`{"lang":"FI","lemma":"juosta","pos":"VERB","status":"ignored"}`))
+	for _, cookie := range cookies {
+		markIgnoredReq.AddCookie(cookie)
+	}
+	markIgnoredRec := httptest.NewRecorder()
+	mux.ServeHTTP(markIgnoredRec, markIgnoredReq)
+	if markIgnoredRec.Code != http.StatusOK {
+		t.Fatalf("mark ignored status=%d want %d body=%q", markIgnoredRec.Code, http.StatusOK, markIgnoredRec.Body.String())
+	}
+
+	parseReq := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"FI","text":"kissa juoksen","parser":"custom"}`))
+	for _, cookie := range cookies {
+		parseReq.AddCookie(cookie)
+	}
+	parseRec := httptest.NewRecorder()
+	mux.ServeHTTP(parseRec, parseReq)
+	if parseRec.Code != http.StatusOK {
+		t.Fatalf("parse status=%d want %d body=%q", parseRec.Code, http.StatusOK, parseRec.Body.String())
+	}
+
+	var resp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(parseRec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode parse response: %v", err)
+	}
+	byLemma := map[string]WordEntry{}
+	for _, word := range resp.Words {
+		byLemma[word.Lemma] = word
+	}
+	if byLemma["kissa"].LearningState != "known" {
+		t.Fatalf("kissa learning_state=%q want known", byLemma["kissa"].LearningState)
+	}
+	if byLemma["juosta"].LearningState != "ignored" {
+		t.Fatalf("juosta learning_state=%q want ignored", byLemma["juosta"].LearningState)
+	}
+}
+
 func TestHandleParseMapsAnalyzerValidationErrorsToBadRequest(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, _, _, _ string) (*parsecore.ParseResult, error) {

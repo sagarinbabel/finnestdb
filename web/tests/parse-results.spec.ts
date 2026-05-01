@@ -147,6 +147,7 @@ async function mockParseWithId(page: Page, parseId: number): Promise<void> {
             forms: ['lauloi'],
             count: 1,
             grammar_label: 'past 3sg',
+            learning_state: 'known',
           },
           {
             lemma: 'pankki',
@@ -221,23 +222,28 @@ test('user can mark result rows known or ignored from inspect results', async ({
   await expect(page.locator('#results-page')).toHaveClass(/active/);
 
   const firstRow = page.locator('#word-table-body tr').first();
+  await expect(firstRow.locator('.word-state-badge')).toHaveText('Known');
+  await expect(firstRow.getByRole('button', { name: 'Known' })).toBeDisabled();
   await expect(firstRow.getByRole('button', { name: 'Known' })).toBeVisible();
   await expect(firstRow.getByRole('button', { name: 'Ignore' })).toBeVisible();
   await expect(firstRow.getByRole('button', { name: 'Suggest fix' })).toBeVisible();
 
-  await firstRow.getByRole('button', { name: 'Known' }).click();
-  await expect(firstRow.locator('.word-state-badge')).toHaveText('Known');
-  await expect(firstRow.getByRole('button', { name: 'Known' })).toBeDisabled();
-  await expect(page.locator('.toast.success')).toContainText(/marked known/i);
+  await Promise.all([
+    firstRow.getByRole('button', { name: 'Ignore' }).click(),
+    expect(firstRow.getByRole('button', { name: 'Ignore' })).toBeDisabled(),
+  ]);
+  await expect(firstRow.locator('.word-state-badge')).toHaveText('Ignored');
+  await expect(firstRow.getByRole('button', { name: 'Ignore' })).toBeDisabled();
+  await expect(page.locator('.toast.success')).toContainText(/ignored/i);
 
   const secondRow = page.locator('#word-table-body tr').nth(1);
-  await secondRow.getByRole('button', { name: 'Ignore' }).click();
-  await expect(secondRow.locator('.word-state-badge')).toHaveText('Ignored');
-  await expect(secondRow.getByRole('button', { name: 'Ignore' })).toBeDisabled();
+  await secondRow.getByRole('button', { name: 'Known' }).click();
+  await expect(secondRow.locator('.word-state-badge')).toHaveText('Known');
+  await expect(secondRow.getByRole('button', { name: 'Known' })).toBeDisabled();
 
   expect(captured).toEqual([
-    { lang: 'FI', lemma: 'laulaa', pos: 'VERB', status: 'known' },
-    { lang: 'FI', lemma: 'pankki', pos: 'NOUN', status: 'ignored' },
+    { lang: 'FI', lemma: 'laulaa', pos: 'VERB', status: 'ignored' },
+    { lang: 'FI', lemma: 'pankki', pos: 'NOUN', status: 'known' },
   ]);
 });
 
