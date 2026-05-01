@@ -602,6 +602,71 @@ func TestKnownWordsImportListAndDelete(t *testing.T) {
 	}
 }
 
+func TestLemmaStateMarksKnownAndIgnored(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "lemma-state@example.com")
+	user, err := api.store.GetOrCreateUser("lemma-state@example.com")
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+
+	markKnownReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"known"}`))
+	for _, cookie := range cookies {
+		markKnownReq.AddCookie(cookie)
+	}
+	markKnownRec := httptest.NewRecorder()
+	mux.ServeHTTP(markKnownRec, markKnownReq)
+	if markKnownRec.Code != http.StatusOK {
+		t.Fatalf("mark known status=%d want %d body=%q", markKnownRec.Code, http.StatusOK, markKnownRec.Body.String())
+	}
+
+	isKnownOrIgnored, err := api.store.IsKnownOrIgnored(user.ID, "FI", "kissa", "NOUN")
+	if err != nil {
+		t.Fatalf("IsKnownOrIgnored: %v", err)
+	}
+	if !isKnownOrIgnored {
+		t.Fatalf("expected kissa/NOUN to be known or ignored")
+	}
+
+	markIgnoredReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"ignored"}`))
+	for _, cookie := range cookies {
+		markIgnoredReq.AddCookie(cookie)
+	}
+	markIgnoredRec := httptest.NewRecorder()
+	mux.ServeHTTP(markIgnoredRec, markIgnoredReq)
+	if markIgnoredRec.Code != http.StatusOK {
+		t.Fatalf("mark ignored status=%d want %d body=%q", markIgnoredRec.Code, http.StatusOK, markIgnoredRec.Body.String())
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=FI", nil)
+	for _, cookie := range cookies {
+		listReq.AddCookie(cookie)
+	}
+	listRec := httptest.NewRecorder()
+	mux.ServeHTTP(listRec, listReq)
+	var listResp KnownWordsListResponse
+	if err := json.NewDecoder(bytes.NewReader(listRec.Body.Bytes())).Decode(&listResp); err != nil {
+		t.Fatalf("decode known words: %v", err)
+	}
+	if len(listResp.KnownWords) != 0 {
+		t.Fatalf("known_words=%d want 0 after ignore (%+v)", len(listResp.KnownWords), listResp.KnownWords)
+	}
+}
+
+func TestLemmaStateRequiresAuthentication(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"known"}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusUnauthorized, rec.Body.String())
+	}
+}
+
 func TestKnownWordsImportReturnsUnresolvedWithoutCreatingRows(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)

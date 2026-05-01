@@ -795,6 +795,50 @@ func (d *DB) DeleteKnownWord(userID int64, lang, lemma, pos string) error {
 	return err
 }
 
+func (d *DB) MarkLemmaKnown(userID int64, lang, lemma, pos string) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(
+		`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
+		userID, lang, lemma, pos,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(
+		`DELETE FROM user_ignored_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
+		userID, lang, lemma, pos,
+	); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (d *DB) MarkLemmaIgnored(userID int64, lang, lemma, pos string) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(
+		`INSERT OR IGNORE INTO user_ignored_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
+		userID, lang, lemma, pos,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(
+		`DELETE FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
+		userID, lang, lemma, pos,
+	); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 func (d *DB) IsKnownOrIgnored(userID int64, lang, lemma, pos string) (bool, error) {
 	return isKnownOrIgnored(d.db, userID, lang, lemma, pos)
 }

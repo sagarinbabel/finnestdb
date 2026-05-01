@@ -130,6 +130,37 @@ test('successful sign-in lands on dashboard', async ({ page }) => {
   await expect(page.locator('#stat-due')).toHaveText('87');
 });
 
+async function mockParseWithId(page: Page, parseId: number): Promise<void> {
+  await page.route('**/api/parse', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        lang: 'FI',
+        parse_id: parseId,
+        total_tokens: 6,
+        parse_duration_ms: 12,
+        words: [
+          {
+            lemma: 'laulaa',
+            pos: 'VERB',
+            forms: ['lauloi'],
+            count: 1,
+            grammar_label: 'past 3sg',
+          },
+          {
+            lemma: 'pankki',
+            pos: 'NOUN',
+            forms: ['pankkiin'],
+            count: 1,
+            grammar_label: 'illative sg',
+          },
+        ],
+      }),
+    });
+  });
+}
+
 // ── User (logged in, not admin) ────────────────────────────────────────────
 
 test('user dashboard shows stats and product nav, no admin links', async ({ page }) => {
@@ -168,6 +199,46 @@ test('user inspect flow parses text and shows results with correction entry poin
   await expect(page.locator('#correction-modal')).not.toHaveClass(/hidden/);
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.locator('#correction-modal')).toHaveClass(/hidden/);
+});
+
+test('user can mark result rows known or ignored from inspect results', async ({ page }) => {
+  await mockMe(page, 'user');
+  await mockParseWithId(page, 2323);
+
+  const captured: Array<Record<string, unknown>> = [];
+  await page.route('**/api/lemma-state', async (route) => {
+    captured.push(route.request().postDataJSON());
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: route.request().postDataJSON().status }),
+    });
+  });
+
+  await page.goto('/#/inspect');
+  await page.locator('#inspect-text').fill(mixedFinnishText);
+  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await expect(page.locator('#results-page')).toHaveClass(/active/);
+
+  const firstRow = page.locator('#word-table-body tr').first();
+  await expect(firstRow.getByRole('button', { name: 'Known' })).toBeVisible();
+  await expect(firstRow.getByRole('button', { name: 'Ignore' })).toBeVisible();
+  await expect(firstRow.getByRole('button', { name: 'Suggest fix' })).toBeVisible();
+
+  await firstRow.getByRole('button', { name: 'Known' }).click();
+  await expect(firstRow.locator('.word-state-badge')).toHaveText('Known');
+  await expect(firstRow.getByRole('button', { name: 'Known' })).toBeDisabled();
+  await expect(page.locator('.toast.success')).toContainText(/marked known/i);
+
+  const secondRow = page.locator('#word-table-body tr').nth(1);
+  await secondRow.getByRole('button', { name: 'Ignore' }).click();
+  await expect(secondRow.locator('.word-state-badge')).toHaveText('Ignored');
+  await expect(secondRow.getByRole('button', { name: 'Ignore' })).toBeDisabled();
+
+  expect(captured).toEqual([
+    { lang: 'FI', lemma: 'laulaa', pos: 'VERB', status: 'known' },
+    { lang: 'FI', lemma: 'pankki', pos: 'NOUN', status: 'ignored' },
+  ]);
 });
 
 test('user can save inspected results as a deck and review the first due card', async ({ page }) => {
@@ -371,37 +442,6 @@ test('signing out clears prior parse results from memory and route', async ({ pa
 });
 
 // ── Correction submit: honest UX + PR-53 /api/parse/feedback contract ──────
-
-async function mockParseWithId(page: Page, parseId: number): Promise<void> {
-  await page.route('**/api/parse', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        lang: 'FI',
-        parse_id: parseId,
-        total_tokens: 6,
-        parse_duration_ms: 12,
-        words: [
-          {
-            lemma: 'laulaa',
-            pos: 'VERB',
-            forms: ['lauloi'],
-            count: 1,
-            grammar_label: 'past 3sg',
-          },
-          {
-            lemma: 'pankki',
-            pos: 'NOUN',
-            forms: ['pankkiin'],
-            count: 1,
-            grammar_label: 'illative sg',
-          },
-        ],
-      }),
-    });
-  });
-}
 
 test('correction submit shows error toast on backend failure', async ({ page }) => {
   await mockMe(page, 'user');

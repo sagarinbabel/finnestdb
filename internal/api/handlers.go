@@ -103,6 +103,20 @@ type KnownWordsListResponse struct {
 	KnownWords []store.KnownLemma `json:"known_words"`
 }
 
+type LemmaStateRequest struct {
+	Lang   string `json:"lang"`
+	Lemma  string `json:"lemma"`
+	POS    string `json:"pos"`
+	Status string `json:"status"`
+}
+
+type LemmaStateResponse struct {
+	Lang   string `json:"lang"`
+	Lemma  string `json:"lemma"`
+	POS    string `json:"pos"`
+	Status string `json:"status"`
+}
+
 type ParseFeedbackRequest struct {
 	ParseID              int64  `json:"parse_id"`
 	Lang                 string `json:"lang"`
@@ -613,6 +627,58 @@ func (a *API) handleKnownWordsDelete(w http.ResponseWriter, r *http.Request, aut
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
+func (a *API) HandleLemmaState(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	a.requireAuth(a.handleLemmaState).ServeHTTP(w, r)
+}
+
+func (a *API) handleLemmaState(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	var req LemmaStateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	lang := strings.ToUpper(strings.TrimSpace(req.Lang))
+	lemma := strings.TrimSpace(req.Lemma)
+	pos := strings.ToUpper(strings.TrimSpace(req.POS))
+	status := strings.ToLower(strings.TrimSpace(req.Status))
+
+	if lang != "FI" && lang != "ET" {
+		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
+		return
+	}
+	if lemma == "" || pos == "" {
+		http.Error(w, "Lemma and POS are required", http.StatusBadRequest)
+		return
+	}
+
+	var err error
+	switch status {
+	case "known":
+		err = a.store.MarkLemmaKnown(auth.UserID, lang, lemma, pos)
+	case "ignored":
+		err = a.store.MarkLemmaIgnored(auth.UserID, lang, lemma, pos)
+	default:
+		http.Error(w, "Status must be known or ignored", http.StatusBadRequest)
+		return
+	}
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, LemmaStateResponse{
+		Lang:   lang,
+		Lemma:  lemma,
+		POS:    pos,
+		Status: status,
+	})
+}
+
 func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -1056,6 +1122,7 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/decks", a.HandleDecks)
 	mux.HandleFunc("/api/decks/", a.HandleDeckByID)
 	mux.HandleFunc("/api/known-words", a.HandleKnownWords)
+	mux.HandleFunc("/api/lemma-state", a.HandleLemmaState)
 
 	// Review
 	mux.HandleFunc("/api/review/next", a.HandleReviewNext)
