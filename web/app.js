@@ -506,7 +506,7 @@ function renderKnownWordsPanel() {
     list.innerHTML = words.map(word => `<div class="known-word-chip">
         <span>${escapeHtml(word.lemma)}</span>
         <span class="known-word-pos">${escapeHtml(posLabel(word.pos))}</span>
-        <button type="button" class="known-word-delete" aria-label="Remove ${escapeHtml(word.lemma)}" data-known-lemma="${escapeHtml(word.lemma)}" data-known-pos="${escapeHtml(word.pos)}">×</button>
+        <button type="button" class="known-word-delete" aria-label="Remove ${escapeAttr(word.lemma)}" data-known-lemma="${escapeAttr(word.lemma)}" data-known-pos="${escapeAttr(word.pos)}">×</button>
     </div>`).join('');
 }
 function parseKnownWordsInput(raw) {

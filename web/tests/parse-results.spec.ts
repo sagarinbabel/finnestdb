@@ -335,7 +335,7 @@ test('user can save inspected results as a deck and review the first due card', 
 });
 
 test('user can import and remove known words', async ({ page }) => {
-  let knownWords = [{ lemma: 'kissa', pos: 'NOUN', lang: 'FI' }];
+  let knownWords = [{ lemma: `kissa "oma"`, pos: 'NOUN', lang: 'FI' }];
   let importPayload: any = null;
   let deletedUrl = '';
 
@@ -353,7 +353,7 @@ test('user can import and remove known words', async ({ page }) => {
     if (request.method() === 'POST') {
       importPayload = request.postDataJSON();
       knownWords = [
-        { lemma: 'kissa', pos: 'NOUN', lang: 'FI' },
+        { lemma: `kissa "oma"`, pos: 'NOUN', lang: 'FI' },
         { lemma: 'juosta', pos: 'VERB', lang: 'FI' },
       ];
       await route.fulfill({
@@ -377,7 +377,8 @@ test('user can import and remove known words', async ({ page }) => {
 
   await page.goto('/#/decks');
 
-  await expect(page.locator('#known-words-list')).toContainText('kissa');
+  await expect(page.locator('#known-words-list')).toContainText('kissa "oma"');
+  await expect(page.getByRole('button', { name: 'Remove kissa "oma"' })).toBeVisible();
   await page.locator('#known-words-input').fill('juoksen, mysteeri');
   await page.getByRole('button', { name: 'Import words' }).click();
 
