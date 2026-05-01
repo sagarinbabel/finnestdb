@@ -14,13 +14,13 @@ FinEstDB helps you read real Finnish and Estonian text by letting you
 pre-learn the vocabulary that actually appears in what you want to read.
 
 Instead of grinding generic frequency lists, you paste the text you want
-to read — an article, a chapter, a song — and FinEstDB:
+to read — an article, a chapter, a song — and FinEstDB currently:
 
 - breaks it into the unique words it contains
-- skips words you already know
-- builds a small study deck from the rest
+- shows dictionary-backed lemmas, forms, definitions, examples, and token counts
+- lets you save the parsed vocabulary as a study deck
 - gives you spaced-repetition review for those words
-- tracks your progress so the next thing you read has fewer unknowns
+- tracks known-word and due-review counts
 
 The pitch: pre-mine vocabulary before reading, so the reading itself is
 enjoyable instead of a dictionary lookup grind.
@@ -34,29 +34,29 @@ The core loop is `paste -> inspect -> correct -> deck -> review`.
    [What We Store During Alpha](#what-we-store-during-alpha)).
 2. Inspect the parsed result: every unique word, its lemma, its meaning.
 3. Correct the parser if it gets a word wrong (logged-in users only).
-4. Save the unknown words as a deck.
+4. Save the parsed vocabulary as a deck.
 5. Review the deck with spaced repetition.
-6. Read the source text afterwards with much higher comprehension.
+6. Return to the source text with the reviewed vocabulary in context.
 
 Cards are global. A word you have learned in one deck stays learned in
 every other deck that contains the same lemma. Deleting a deck does not
 erase what you have learned — it only removes that particular source
 material.
 
-## Leverage and Comprehension
+## Current Inspect Results
 
-FinEstDB ranks vocabulary by leverage: how much of the text a single word
-unlocks. Learning ten high-leverage words in a chapter is worth far more
-than learning thirty rare ones.
+Inspect currently shows dictionary coverage, not personalized comprehension.
+For each parsed text, the app shows:
 
-Each deck shows you:
+- unique lemmas and parts of speech
+- forms found in the source text
+- English definitions when present in the dictionary
+- grammar labels when enrichment inferred them
+- example sentences and token counts
+- correction actions for logged-in users
 
-- approximate comprehension if you study it
-- which words give the biggest jump in understanding per unit of effort
-- how the text overlaps with what you already know
-
-The goal is to make the smallest study investment that lets you read the
-real source comfortably.
+Known/new labelling, comprehension estimates, and leverage-based ordering are
+planned product work, but are not part of the current Inspect result.
 
 ## Progress Tracking
 
@@ -64,8 +64,8 @@ You can see, across the whole app:
 
 - known lemmas in each language
 - cards in active learning
-- comprehension trend per deck
-- how new decks overlap with your existing knowledge
+- due review count
+- per-deck known/unique counts
 
 Progress is tracked at the lemma level, not at the deck level, because
 your knowledge of a word is a property of you, not of any single text.

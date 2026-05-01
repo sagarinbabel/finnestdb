@@ -67,7 +67,7 @@ test('about page explains the product', async ({ page }) => {
   await expect(page.locator('#about-page')).toHaveClass(/active/);
   await expect(page.locator('.about-hero h1')).toContainText('How FinEstDB works');
   await expect(page.locator('.about-steps')).toContainText('Paste a text');
-  await expect(page.locator('.about-steps')).toContainText('See your gap');
+  await expect(page.locator('.about-steps')).toContainText('Inspect the words');
 });
 
 test('anonymous user trying admin workbench is redirected', async ({ page }) => {
