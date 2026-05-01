@@ -222,8 +222,9 @@ Example generation relies on "FST synthesizer + reparse to validate features" (Â
 
 ### Post-Alpha Follow-Ups from Alpha PR Review
 
-- [ ] Define and implement a retention policy for `parse_sessions.source_text`, including whether full source text should be stored eagerly on every parse or only once a user submits feedback against that session
-- [ ] Add rate limiting and abuse controls to `POST /api/parse`, `POST /api/parse/feedback`, and login routes before broad public rollout
+- [ ] @chickendude go-live: replace mock auth and raw `user_id` cookie sessions before exposing the app to real users; see `docs/GO_LIVE_CHECKLIST.md`
+- [ ] @chickendude go-live: add rate limiting and abuse controls to `POST /api/parse`, `POST /api/parse/feedback`, and login routes before broad public rollout; see `docs/GO_LIVE_CHECKLIST.md`
+- [ ] Define and implement a retention policy for `parse_sessions.source_text`; current alpha behavior is documented in `docs/FEATURES.md`
 - [ ] Preserve existing `card_state` scheduling data when rebuilding `cards` during schema migrations instead of dropping and recreating the table
 - [ ] Batch known/ignored checks during deck creation so card seeding does not do one lookup per unique `(lang, lemma, pos)` pair
 - [ ] Replace `COUNT(*)` existence checks in known-word and parse-feedback paths with `EXISTS`/short-circuit queries once alpha correctness work is merged

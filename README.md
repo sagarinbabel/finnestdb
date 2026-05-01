@@ -1,7 +1,8 @@
 # FinEstDB
 
-A parser workbench for Finnish and Estonian text, focused on dictionary-backed
-lemmatization and parser evaluation.
+A role-aware Finnish and Estonian reading app backed by dictionary-based
+lemmatization, parser evaluation, spaced repetition, and an admin-only parser
+workbench.
 
 ## Table of Contents
 
@@ -125,7 +126,10 @@ make run
 
 Then open **http://localhost:8080** in your browser.
 
-No login required — the app opens directly to the parse page.
+The app opens to the public landing page. Sign in with an email address to use
+Inspect, Decks, and Review. The current auth flow is an alpha stub; see
+[`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md) before exposing the app
+to real users.
 
 ### Frontend Build
 
@@ -167,13 +171,15 @@ go run ./cmd/importdict -lang fi -db finnestdb.db -custom-glosses ./my-overrides
 # CSV format: word,pos,lang,gloss
 ```
 
-### Testing the Parse Feature
+### Testing the Inspect Feature
 
 1. Open **http://localhost:8080**
-2. Select a language: **Finnish (FI)** or **Estonian (ET)**
-3. Paste text into the textarea (up to 300,000 Unicode characters)
-4. Click **Basic Parser** or **Custom Parser**
-5. You'll see a word list table:
+2. Sign in with an email address.
+3. Open **Inspect**.
+4. Select a language: **Finnish (FI)** or **Estonian (ET)**.
+5. Paste text into the textarea (up to 300,000 Unicode characters).
+6. Click **Inspect text**.
+7. You'll see a word list table:
 
 | Column | What it shows |
 |--------|--------------|
@@ -185,10 +191,10 @@ go run ./cmd/importdict -lang fi -db finnestdb.db -custom-glosses ./my-overrides
 | Grammar | Case or grammar label inferred by enrichment when available |
 | Tokens | How many times the lemma appears in the parsed text |
 
-The results header also shows:
-- which parser mode was used
-- a coverage proxy score
-- parse duration
+The user-facing Inspect result shows dictionary coverage, unique lemmas, token
+count, definitions, grammar labels when available, and correction actions.
+Internal parser-mode and parse-duration details remain visible in the admin
+workbench.
 
 `Coverage score` means: **how much of this text produced usable
 dictionary-backed output**.
@@ -204,6 +210,14 @@ sorted from the UI.
 ### Parser Evaluation CLI
 
 The parser evaluation MVP is currently a terminal tool, not a browser UI.
+
+Standard make targets:
+
+```bash
+make eval
+make compare-parsers
+make eval-check
+```
 
 Run the sample dataset:
 
@@ -325,6 +339,7 @@ finnestdb-prd-alpha.md  Full product requirements document
 
 - [Architecture](ARCHITECTURE.md)
 - [Getting Started Guide](docs/GETTING_STARTED.md)
+- [Go-Live Checklist](docs/GO_LIVE_CHECKLIST.md)
 - [Omorfi Adapter Notes](docs/OMORFI_ADAPTER.md)
 - [Parser Eval Datasets](docs/PARSER_EVAL_DATASETS.md)
 - [Implementation Analysis](IMPLEMENTATION_ANALYSIS.md)

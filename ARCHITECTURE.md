@@ -1,27 +1,23 @@
 # FinEstDB Architecture
 
-_Current as of 2026-04-29 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
+_Current as of 2026-05-01 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
 
-> **Note (2026-04-29):** As of the consumer-alpha execution plan, the parser
-> workbench described here is being scoped to admin users only. The
-> consumer product surface is described in [docs/FEATURES.md](docs/FEATURES.md),
-> and the migration is tracked in [TODO.md](TODO.md). This document still
-> describes the underlying architecture accurately; the user-facing role
-> split lives in those newer docs.
-
-Parser workbench for Finnish and Estonian text, focused on dictionary-backed
-lemmatization, parser evaluation, and future lexical knowledge work.
+Role-aware Finnish and Estonian reading app focused on dictionary-backed
+lemmatization, deck creation, review, parser feedback, and parser evaluation.
 
 ## What Exists Today
 
 Current product surface on `main`:
 
-- workbench nav shell with desktop/mobile navigation
-- parse page for Finnish or Estonian text
-- parser selection in the browser: `basic` and `custom`
+- public landing/about/sign-in routes
+- authenticated dashboard, Inspect, Decks, Review, and Results routes
+- admin-only parser workbench and feedback routes
+- Inspect page for Finnish or Estonian text
+- parser selection in the admin workbench: `basic` and `custom`
 - file load support for `.txt` / `.md`
 - results page with sortable output, POS filter chips, coverage gauge, and parse duration
 - structured parse-stage stats returned from `parsecore` and `/api/parse`
+- deck, known-word, review, and parse-feedback APIs
 - parser evaluation CLI for `basic`, `custom`, and `omorfi`
 - dataset-driven evaluation workflow in `internal/eval`
 - expanded Finnish and Estonian gold datasets under `testdata/parser-eval/*/gold`
@@ -30,7 +26,7 @@ Current product surface on `main`:
 
 Important distinction:
 
-- `basic` and `custom` are user-facing parser modes in the browser UI
+- `basic` and `custom` are admin workbench parser modes in the browser UI
 - `omorfi` exists today as an evaluation/parser-core integration point, but not as a browser button
 
 ## High-Level Architecture

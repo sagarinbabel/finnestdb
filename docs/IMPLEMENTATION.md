@@ -1,28 +1,22 @@
 # FinEstDB Implementation Notes
 
-_Current as of 2026-04-29 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
-
-> **Note (2026-04-29):** This doc describes the current implementation on
-> `main`, which is still parser-workbench shaped. The consumer-alpha
-> execution plan in [`../TODO.md`](../TODO.md) and the product framing in
-> [`FEATURES.md`](FEATURES.md) describe the product direction for the
-> alpha. Where they conflict with this file, the alpha plan wins.
+_Current as of 2026-05-01 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
 This document describes the current implementation on `main`.
 
 ## Current Product Surface
 
-The shipped frontend is a parser workbench:
+The shipped frontend is a role-aware single-page app:
 
-- workbench nav shell with mobile menu
-- parse page for Finnish or Estonian text
-- two parser modes: `basic` and `custom`
+- public landing/about/sign-in routes
+- authenticated dashboard, Inspect, Decks, Review, and shared results routes
+- admin-only parser workbench and parser-feedback routes
+- Inspect page for Finnish or Estonian text
 - file load support for `.txt` and `.md`
-- results page with parser metadata, coverage gauge, parse duration, POS filter chips, and sortable output
-- browser-tested parse flows for POS filtering, language switching, file upload, and mobile nav
-
-The dashboard, review, and account systems described in older planning docs are
-not part of the current user-facing flow on `main`.
+- results page with dictionary coverage, POS filter chips, sortable output,
+  correction actions, and deck save flow
+- browser-tested auth routing, Inspect/results, deck/review, correction, and
+  admin workbench flows
 
 ## Current Architecture
 
@@ -60,9 +54,9 @@ Current parse stats returned by `parsecore` and `/api/parse` include:
 - per-source token counts (`dict`, `stub`, fallback sources, `punct`)
 - timing breakdowns for analyzer, form lookup, gloss lookup, sentence resolution, and word enrichment
 
-There is also partial backend support for deck creation and review-related
-tables/endpoints, but those are not the current focus and are not represented
-in the frontend flow on `main`.
+There is also backend support for deck creation, known words, review cards, and
+parser feedback. Some product surfaces are still intentionally lightweight and
+are tracked in `TODO.md`.
 
 ### Parser modes
 
@@ -85,16 +79,18 @@ The frontend is a small vanilla TypeScript app compiled to `app.js`.
 
 Current UI features:
 
-- desktop/mobile navigation shell focused on the parser workbench
-- parse form with language selector
+- desktop/mobile navigation with public, user, and admin route groups
+- Inspect form with language selector
 - language mismatch warning
 - file load support for `.txt` / `.md`
 - coverage gauge with token/row-weighted proxy score
 - POS filter chips above the results table
 - results table with row numbering and sorting
-- parser mode badge
-- parse duration badge
+- user-facing dictionary coverage copy
+- admin-only parser mode and parse duration details
 - inline example sentence expansion
+- correction submission modal
+- deck save, deck list, and review flow
 - theme toggle
 
 ## Build and Tooling
@@ -119,7 +115,7 @@ This compiles `app.ts` to `app.js` using the local TypeScript dependency.
 
 ### Browser regression coverage
 
-There is a Playwright browser suite for the parser workbench:
+There is a Playwright browser suite for the role-aware app:
 
 ```bash
 cd web
@@ -129,7 +125,10 @@ npx playwright test
 The test boots the Go server on `:8081` via `web/playwright.config.ts` and
 checks:
 
+- anonymous/user/admin route guards
 - parse/results rendering
+- deck creation and review flow
+- correction submission
 - POS filter behavior
 - language mismatch blocking and switching
 - file upload flow
@@ -139,8 +138,10 @@ checks:
 
 - no bundled Omorfi/Vabamorf runtime in the browser-facing parse flow
 - no statistical disambiguation yet
-- no current user-facing dashboard/review/account flow
-- deck/review backend work remains partial and mostly stubbed
+- alpha auth is a stub and not safe for go-live
+- no signed-in parse history/delete UI yet
+- known-word import/manage UI is still maturing
+- admin feedback triage UI is still maturing
 
 What does exist now:
 
@@ -152,16 +153,11 @@ What does exist now:
 
 ## Near-Term Direction
 
-The immediate focus is parser quality, not user-account features.
-
 Near-term work:
 
-1. narrow or remove auth/deck/review stubs that do not match the parser-workbench product surface
-2. continue reviewing and promoting Finnish/Estonian gold cases
-3. freeze refreshed baselines with the new observability fields
-4. improve the custom parser against the new eval regressions
-5. keep Omorfi as a comparison baseline for Finnish
-6. design a richer lexical knowledge layer after parser quality improves
-
-Only after that parser layer is strong enough should user accounts, known-word
-tracking, and review features return as active product work.
+1. complete go-live auth/session hardening before any public deployment
+2. finish known-word import/manage UX and admin feedback triage UX
+3. continue reviewing and promoting Finnish/Estonian gold cases
+4. freeze refreshed baselines with the new observability fields
+5. improve the custom parser against the eval regressions
+6. keep Omorfi as a comparison baseline for Finnish
