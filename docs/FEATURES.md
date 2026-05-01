@@ -18,6 +18,7 @@ to read — an article, a chapter, a song — and FinEstDB currently:
 
 - breaks it into the unique words it contains
 - shows dictionary-backed lemmas, forms, definitions, examples, and token counts
+- lets you manually mark parsed rows known or ignored
 - lets you save the parsed vocabulary as a study deck
 - gives you spaced-repetition review for those words
 - tracks known-word and due-review counts
@@ -53,10 +54,11 @@ For each parsed text, the app shows:
 - English definitions when present in the dictionary
 - grammar labels when enrichment inferred them
 - example sentences and token counts
-- correction actions for logged-in users
+- row-level Known / Ignore and correction actions for logged-in users
 
-Known/new labelling, comprehension estimates, and leverage-based ordering are
-planned product work, but are not part of the current Inspect result.
+Automatic known/new labelling, comprehension estimates, and leverage-based
+ordering are planned product work, but are not part of the current Inspect
+result.
 
 ## Progress Tracking
 
