@@ -290,6 +290,35 @@
             </section>
 
             <section id="decks-list" class="decks-list" aria-live="polite"></section>
+
+            <section class="known-words-panel">
+                <div class="known-words-header">
+                    <div>
+                        <h2>Known words</h2>
+                        <p class="known-words-lede">Import words you already know so deck coverage and review selection start from your real vocabulary.</p>
+                    </div>
+                    <div class="known-words-lang">
+                        <label for="known-words-lang">Language</label>
+                        <select id="known-words-lang">
+                            <option value="FI">Finnish</option>
+                            <option value="ET">Estonian</option>
+                        </select>
+                    </div>
+                </div>
+                <form id="known-words-form" class="known-words-form">
+                    <label for="known-words-input">Import known words</label>
+                    <textarea id="known-words-input" rows="4" placeholder="Paste one word per line, or separate words with commas."></textarea>
+                    <div class="known-words-actions">
+                        <button type="submit" id="known-words-submit" class="btn btn-primary btn-sm">Import words</button>
+                        <span id="known-words-summary" class="known-words-summary" role="status"></span>
+                    </div>
+                </form>
+                <div id="known-words-unresolved" class="known-words-unresolved hidden"></div>
+                <div id="known-words-empty" class="placeholder-card hidden">
+                    <p>No known words imported for this language yet.</p>
+                </div>
+                <div id="known-words-list" class="known-words-list" aria-live="polite"></div>
+            </section>
         </main>
     </div>
 
