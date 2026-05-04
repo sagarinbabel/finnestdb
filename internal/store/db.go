@@ -20,7 +20,17 @@ type User struct {
 	Email         string
 	EmailVerified bool
 	IsAdmin       bool
+	PasswordHash  string
 	Settings      map[string]interface{}
+}
+
+// Session represents a server-side session record. The cookie holds the raw
+// token; the database stores HashToken(token) only.
+type Session struct {
+	UserID    int64
+	TokenHash string
+	CreatedAt time.Time
+	ExpiresAt time.Time
 }
 
 type Deck struct {
@@ -291,7 +301,26 @@ func (d *DB) initSchema() error {
 	if _, err := d.db.Exec(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 		return err
 	}
+	if _, err := d.db.Exec(`ALTER TABLE users ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
 	if _, err := d.db.Exec(`ALTER TABLE card_state ADD COLUMN introduced_at DATETIME`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		return err
+	}
+
+	if _, err := d.db.Exec(`
+		CREATE TABLE IF NOT EXISTS user_sessions (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			token_hash TEXT NOT NULL UNIQUE,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			expires_at DATETIME NOT NULL,
+			revoked_at DATETIME,
+			FOREIGN KEY(user_id) REFERENCES users(id)
+		)`); err != nil {
+		return err
+	}
+	if _, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id)`); err != nil {
 		return err
 	}
 
@@ -317,49 +346,50 @@ func (d *DB) initSchema() error {
 	return nil
 }
 
+// GetOrCreateUser is the legacy seeding helper used by tests and store
+// internals when password-based auth is irrelevant. The HTTP auth path uses
+// CreateUser + GetUserByEmail instead. is_admin is bootstrapped from
+// FINNESTDB_ADMIN_EMAILS only on first creation; existing users are not
+// re-evaluated, so admin status set via the API is preserved.
 func (d *DB) GetOrCreateUser(email string) (*User, error) {
-	var user User
-	var settingsJSON string
 	email = normalizeEmail(email)
-	isAdmin := isAdminEmail(email)
-
-	err := d.db.QueryRow(
-		`SELECT id, email, email_verified, is_admin, settings_json
-		 FROM users
-		 WHERE lower(email) = ?`,
-		email,
-	).Scan(&user.ID, &user.Email, &user.EmailVerified, &user.IsAdmin, &settingsJSON)
-
-	if err == sql.ErrNoRows {
-		// Create new user
-		settingsJSON = `{"new_per_day":20,"retention":0.9,"theme":"system"}`
-		result, err := d.db.Exec(
-			"INSERT INTO users (email, email_verified, is_admin, settings_json) VALUES (?, 1, ?, ?)",
-			email, boolToInt(isAdmin), settingsJSON,
-		)
-		if err != nil {
-			return nil, err
-		}
-		user.ID, _ = result.LastInsertId()
-		user.Email = email
-		user.EmailVerified = true
-		user.IsAdmin = isAdmin
-		json.Unmarshal([]byte(settingsJSON), &user.Settings)
-		return &user, nil
+	user, err := d.GetUserByEmail(email)
+	if err == nil {
+		return user, nil
 	}
+	if err != sql.ErrNoRows {
+		return nil, err
+	}
+	return d.createUser(email, "", isAdminEmail(email))
+}
+
+// CreateUser inserts a new user with the given email and password hash.
+// Returns an error if the email is already taken. is_admin is bootstrapped
+// from FINNESTDB_ADMIN_EMAILS at creation time only.
+func (d *DB) CreateUser(email, passwordHash string) (*User, error) {
+	email = normalizeEmail(email)
+	return d.createUser(email, passwordHash, isAdminEmail(email))
+}
+
+func (d *DB) createUser(email, passwordHash string, isAdmin bool) (*User, error) {
+	settingsJSON := `{"new_per_day":20,"retention":0.9,"theme":"system"}`
+	result, err := d.db.Exec(
+		`INSERT INTO users (email, email_verified, is_admin, password_hash, settings_json)
+		 VALUES (?, 1, ?, ?, ?)`,
+		email, boolToInt(isAdmin), passwordHash, settingsJSON,
+	)
 	if err != nil {
 		return nil, err
 	}
-
-	if user.IsAdmin != isAdmin {
-		if _, err := d.db.Exec(`UPDATE users SET is_admin = ? WHERE id = ?`, boolToInt(isAdmin), user.ID); err != nil {
-			return nil, err
-		}
-		user.IsAdmin = isAdmin
+	user := &User{
+		Email:         email,
+		EmailVerified: true,
+		IsAdmin:       isAdmin,
+		PasswordHash:  passwordHash,
 	}
-
+	user.ID, _ = result.LastInsertId()
 	json.Unmarshal([]byte(settingsJSON), &user.Settings)
-	return &user, nil
+	return user, nil
 }
 
 func (d *DB) GetUserByID(userID int64) (*User, error) {
@@ -367,15 +397,125 @@ func (d *DB) GetUserByID(userID int64) (*User, error) {
 	var settingsJSON string
 
 	err := d.db.QueryRow(
-		`SELECT id, email, email_verified, is_admin, settings_json FROM users WHERE id = ?`,
+		`SELECT id, email, email_verified, is_admin, password_hash, settings_json
+		 FROM users WHERE id = ?`,
 		userID,
-	).Scan(&user.ID, &user.Email, &user.EmailVerified, &user.IsAdmin, &settingsJSON)
+	).Scan(&user.ID, &user.Email, &user.EmailVerified, &user.IsAdmin, &user.PasswordHash, &settingsJSON)
 	if err != nil {
 		return nil, err
 	}
 
 	json.Unmarshal([]byte(settingsJSON), &user.Settings)
 	return &user, nil
+}
+
+// GetUserByEmail returns the user with the given email (case-insensitive),
+// or sql.ErrNoRows if no such user exists.
+func (d *DB) GetUserByEmail(email string) (*User, error) {
+	email = normalizeEmail(email)
+	var user User
+	var settingsJSON string
+
+	err := d.db.QueryRow(
+		`SELECT id, email, email_verified, is_admin, password_hash, settings_json
+		 FROM users WHERE lower(email) = ?`,
+		email,
+	).Scan(&user.ID, &user.Email, &user.EmailVerified, &user.IsAdmin, &user.PasswordHash, &settingsJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	json.Unmarshal([]byte(settingsJSON), &user.Settings)
+	return &user, nil
+}
+
+// SetUserPassword writes a new password_hash for the given user.
+func (d *DB) SetUserPassword(userID int64, passwordHash string) error {
+	_, err := d.db.Exec(`UPDATE users SET password_hash = ? WHERE id = ?`, passwordHash, userID)
+	return err
+}
+
+// CreateSession persists a session row keyed on tokenHash with the given
+// expiry. The raw token must NOT be passed in.
+func (d *DB) CreateSession(userID int64, tokenHash string, expiresAt time.Time) error {
+	_, err := d.db.Exec(
+		`INSERT INTO user_sessions (user_id, token_hash, expires_at) VALUES (?, ?, ?)`,
+		userID, tokenHash, expiresAt.UTC(),
+	)
+	return err
+}
+
+// GetUserBySessionTokenHash looks up the active session by token hash and
+// returns the owning user. Returns (nil, nil) when no active session exists
+// (missing, expired, or revoked). When a session is matched, expires_at is
+// extended to (now + slidingWindow) before returning — this implements the
+// rolling-expiry behavior.
+func (d *DB) GetUserBySessionTokenHash(tokenHash string, slidingWindow time.Duration) (*User, error) {
+	var userID int64
+	now := time.Now().UTC()
+	err := d.db.QueryRow(
+		`SELECT user_id FROM user_sessions
+		 WHERE token_hash = ?
+		   AND revoked_at IS NULL
+		   AND expires_at > ?`,
+		tokenHash, now,
+	).Scan(&userID)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if slidingWindow > 0 {
+		newExpiry := now.Add(slidingWindow)
+		if _, err := d.db.Exec(
+			`UPDATE user_sessions SET expires_at = ? WHERE token_hash = ?`,
+			newExpiry, tokenHash,
+		); err != nil {
+			return nil, err
+		}
+	}
+	return d.GetUserByID(userID)
+}
+
+// RevokeSessionByTokenHash marks the matching session row as revoked. Idempotent.
+func (d *DB) RevokeSessionByTokenHash(tokenHash string) error {
+	_, err := d.db.Exec(
+		`UPDATE user_sessions SET revoked_at = CURRENT_TIMESTAMP
+		 WHERE token_hash = ? AND revoked_at IS NULL`,
+		tokenHash,
+	)
+	return err
+}
+
+// ListUsers returns every user, ordered by id. Used by the admin user
+// management page.
+func (d *DB) ListUsers() ([]User, error) {
+	rows, err := d.db.Query(
+		`SELECT id, email, email_verified, is_admin, password_hash, settings_json
+		 FROM users ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		var settingsJSON string
+		if err := rows.Scan(&u.ID, &u.Email, &u.EmailVerified, &u.IsAdmin, &u.PasswordHash, &settingsJSON); err != nil {
+			return nil, err
+		}
+		json.Unmarshal([]byte(settingsJSON), &u.Settings)
+		users = append(users, u)
+	}
+	return users, rows.Err()
+}
+
+// SetUserAdmin updates is_admin for the given user.
+func (d *DB) SetUserAdmin(userID int64, isAdmin bool) error {
+	_, err := d.db.Exec(`UPDATE users SET is_admin = ? WHERE id = ?`, boolToInt(isAdmin), userID)
+	return err
 }
 
 type sqlReadWriter interface {
