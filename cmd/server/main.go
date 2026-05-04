@@ -58,9 +58,13 @@ func main() {
 		log.Fatalf("Web directory not found: %s", webDir)
 	}
 
-	// Serve static files
+	// Serve static files. During local UI iteration, stale cached CSS/JS is more
+	// confusing than helpful, so make the shipped web assets revalidate on load.
 	fs := http.FileServer(http.Dir(webDir))
-	mux.Handle("/", fs)
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		fs.ServeHTTP(w, r)
+	}))
 
 	// Start server
 	addr := fmt.Sprintf(":%s", *port)
@@ -70,4 +74,3 @@ func main() {
 		log.Fatalf("Server failed: %v", err)
 	}
 }
-

@@ -51,7 +51,7 @@ const ADV_POS = ['ADV'];
 const OTHER_POS = ['PRON', 'DET', 'ADP', 'NUM', 'CCONJ', 'SCONJ', 'PART', 'INTJ', 'X', 'SYM', 'PUNCT'];
 // ── Theme ──────────────────────────────────────────────────────────────────
 function initTheme() {
-    const saved = localStorage.getItem('theme') || 'light';
+    const saved = localStorage.getItem('theme') || 'dark';
     applyTheme(saved);
 }
 function applyTheme(theme) {

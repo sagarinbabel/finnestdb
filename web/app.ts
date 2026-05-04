@@ -196,7 +196,7 @@ const OTHER_POS = ['PRON', 'DET', 'ADP', 'NUM', 'CCONJ', 'SCONJ', 'PART', 'INTJ'
 // ── Theme ──────────────────────────────────────────────────────────────────
 
 function initTheme(): void {
-    const saved = localStorage.getItem('theme') || 'light';
+    const saved = localStorage.getItem('theme') || 'dark';
     applyTheme(saved);
 }
 
