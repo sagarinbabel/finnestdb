@@ -33,9 +33,33 @@ fn normalize_text(text: &str) -> String {
 /// Covers sentence-ending marks, paired brackets/quotes, and common typographic
 /// punctuation used in Finnish and Estonian text.
 fn is_punct(c: char) -> bool {
-    matches!(c, '„' | '.' | ',' | ';' | ':' | '!' | '?' | '(' | ')' | '[' | ']'
-              | '{' | '}' | '"' | '\'' | '«' | '»' | '—' | '–' | '…'
-              | '\u{201C}' | '\u{201D}' | '\u{2018}' | '\u{2019}')
+    matches!(
+        c,
+        '„' | '.'
+            | ','
+            | ';'
+            | ':'
+            | '!'
+            | '?'
+            | '('
+            | ')'
+            | '['
+            | ']'
+            | '{'
+            | '}'
+            | '"'
+            | '\''
+            | '*'
+            | '«'
+            | '»'
+            | '—'
+            | '–'
+            | '…'
+            | '\u{201C}'
+            | '\u{201D}'
+            | '\u{2018}'
+            | '\u{2019}'
+    )
 }
 
 /// Check if a character is opening punctuation (space suppressed after it).
@@ -64,7 +88,10 @@ fn split_sentences(text: &str) -> Vec<String> {
             }
             // Also consume any closing punctuation after the sentence-ending marks
             // so that `"word)."` keeps the `)` and `.` together in the sentence.
-            while end_punct < len && is_punct(chars[end_punct]) && !matches!(chars[end_punct], '.' | '!' | '?') {
+            while end_punct < len
+                && is_punct(chars[end_punct])
+                && !matches!(chars[end_punct], '.' | '!' | '?')
+            {
                 // Only consume closing-style punct, not opening
                 if is_opening_punct(chars[end_punct]) {
                     break;
@@ -173,7 +200,10 @@ fn tokenize(sentence: &str) -> Vec<(String, bool)> {
             if right < len && chars[right] == '.' {
                 let has_digits_before_dot = word.chars().all(|c| c.is_ascii_digit());
                 let has_digits_after_dot = (right + 1 < len)
-                    && chars[right + 1..].iter().take_while(|c| !is_punct(**c) || **c == '.').all(|c| c.is_ascii_digit());
+                    && chars[right + 1..]
+                        .iter()
+                        .take_while(|c| !is_punct(**c) || **c == '.')
+                        .all(|c| c.is_ascii_digit());
                 if has_digits_before_dot && has_digits_after_dot {
                     // Re-collect the full decimal: word + "." + trailing digits
                     let decimal: String = chars[left..len].iter().collect();
@@ -244,17 +274,23 @@ fn guess_pos(form: &str) -> String {
     let lower = form.to_lowercase();
 
     // Check for common Finnish/Estonian verb endings
-    if lower.ends_with("aa") || lower.ends_with("ää")
-        || lower.ends_with("oi") || lower.ends_with("ui")
-        || lower.ends_with("in") || lower.ends_with("en")
+    if lower.ends_with("aa")
+        || lower.ends_with("ää")
+        || lower.ends_with("oi")
+        || lower.ends_with("ui")
+        || lower.ends_with("in")
+        || lower.ends_with("en")
     {
         return "VERB".to_string();
     }
 
     // Check for common noun endings
-    if lower.ends_with("nen") || lower.ends_with("ssa")
-        || lower.ends_with("ssä") || lower.ends_with("lla")
-        || lower.ends_with("llä") || lower.ends_with("iin")
+    if lower.ends_with("nen")
+        || lower.ends_with("ssa")
+        || lower.ends_with("ssä")
+        || lower.ends_with("lla")
+        || lower.ends_with("llä")
+        || lower.ends_with("iin")
     {
         return "NOUN".to_string();
     }
@@ -359,14 +395,24 @@ mod tests {
         // "esim." followed by lowercase should NOT split.
         let text = "Esim. tämä on lause.";
         let sentences = split_sentences(text);
-        assert_eq!(sentences.len(), 1, "abbreviation should not cause split: {:?}", sentences);
+        assert_eq!(
+            sentences.len(),
+            1,
+            "abbreviation should not cause split: {:?}",
+            sentences
+        );
     }
 
     #[test]
     fn test_sentence_split_decimal() {
         let text = "Hinta on 3.14 euroa.";
         let sentences = split_sentences(text);
-        assert_eq!(sentences.len(), 1, "decimal should not cause split: {:?}", sentences);
+        assert_eq!(
+            sentences.len(),
+            1,
+            "decimal should not cause split: {:?}",
+            sentences
+        );
     }
 
     // ─── Tokenization: punctuation separation ───────────────────────────────
@@ -409,6 +455,12 @@ mod tests {
         // Hyphens inside words are NOT punctuation to separate.
         let tokens = forms("well-known");
         assert_eq!(tokens, vec!["well-known"]);
+    }
+
+    #[test]
+    fn test_tokenize_trailing_asterisk() {
+        let tokens = forms("b1-tase*");
+        assert_eq!(tokens, vec!["b1-tase", "*"]);
     }
 
     #[test]
@@ -459,10 +511,18 @@ mod tests {
         let tokens = &result.sentences[0].tokens;
         let token_forms: Vec<&str> = tokens.iter().map(|t| t.form.as_str()).collect();
         // "kauppaan)." should become "kauppaan", ")", "."
-        assert!(token_forms.contains(&"kauppaan"), "missing 'kauppaan': {:?}", token_forms);
+        assert!(
+            token_forms.contains(&"kauppaan"),
+            "missing 'kauppaan': {:?}",
+            token_forms
+        );
         assert!(token_forms.contains(&")"), "missing ')': {:?}", token_forms);
         assert!(token_forms.contains(&"."), "missing '.': {:?}", token_forms);
         // "kauppaan)." should NOT be a single token
-        assert!(!token_forms.contains(&"kauppaan)."), "should not contain 'kauppaan).': {:?}", token_forms);
+        assert!(
+            !token_forms.contains(&"kauppaan)."),
+            "should not contain 'kauppaan).': {:?}",
+            token_forms
+        );
     }
 }
