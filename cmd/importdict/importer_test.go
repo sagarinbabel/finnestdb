@@ -39,7 +39,7 @@ func jsonlReader(s string) *strings.Reader {
 
 // importJSONLRaw is a test-only wrapper that skips the bzip2 layer.
 func importJSONLRaw(db *sql.DB, jsonl string, lang string) (int, int, error) {
-	return importJSONL(db, strings.NewReader(jsonl), lang)
+	return importJSONL(db, strings.NewReader(jsonl), lang, importSourceConfig{Name: "kaikki", Priority: 10})
 }
 
 // --- normalizePos tests ---
@@ -176,6 +176,31 @@ func TestImportJSONL_PosNormalization(t *testing.T) {
 	}
 	if pos != "VERB" {
 		t.Errorf("pos = %q, want VERB", pos)
+	}
+}
+
+func TestImportJSONL_SourcePriorityAllowsHigherPriorityToWin(t *testing.T) {
+	db := newTestDB(t)
+
+	lowPriority := `{"word":"suuline","pos":"noun","lang_code":"et","senses":[{"glosses":["low priority gloss"]}],"forms":[{"form":"suulise","tags":["genitive"]}]}`
+	if _, _, err := importJSONL(db, strings.NewReader(lowPriority), "ET", importSourceConfig{Name: "kaikki", Priority: 10}); err != nil {
+		t.Fatalf("low priority importJSONL: %v", err)
+	}
+
+	highPriority := `{"word":"suuline","pos":"adj","lang_code":"et","senses":[{"glosses":["high priority gloss"]}],"forms":[{"form":"suulise","tags":["genitive"]}]}`
+	if _, _, err := importJSONL(db, strings.NewReader(highPriority), "ET", importSourceConfig{Name: "official", Priority: 20}); err != nil {
+		t.Fatalf("high priority importJSONL: %v", err)
+	}
+
+	var lemma, pos, source string
+	var priority int
+	if err := db.QueryRow(
+		`SELECT lemma, pos, source, source_priority FROM forms WHERE form = 'suulise' AND lang = 'ET'`,
+	).Scan(&lemma, &pos, &source, &priority); err != nil {
+		t.Fatalf("form query: %v", err)
+	}
+	if lemma != "suuline" || pos != "ADJ" || source != "official" || priority != 20 {
+		t.Fatalf("form row = (%q,%q,%q,%d), want (suuline,ADJ,official,20)", lemma, pos, source, priority)
 	}
 }
 

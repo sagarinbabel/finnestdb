@@ -89,8 +89,9 @@ adapter. The shared external-analyzer path then:
 
 ## Lexical Import Plan
 
-1. Confirm the exact EKI/Ekilex export/API path for the selected dictionaries.
-   Do not scrape Sonaveeb pages as the primary data path.
+1. Use the EKI/Ekilex API path for the selected dictionaries. Do not scrape
+   Sonaveeb pages as the primary data path. Create an API key in the Ekilex
+   user profile and run imports with `EKILEX_API_KEY` in the environment.
 2. Use importer metadata fields before loading sanctioned EKI data:
    `source_name`, `source_url`, `source_version`, `license`, `attribution`,
    `imported_at`, and `changes_note`. These fields are available in
@@ -101,13 +102,15 @@ adapter. The shared external-analyzer path then:
    - POS must map to the app's UPOS-style labels
    - all forms must be lowercased NFC
    - gloss provenance must remain attributable
-4. Keep Kaikki imports as a separate source, not silently overwritten by EKI
-   imports. If both sources provide the same lemma/POS, prefer source-specific
-   rows or deterministic source priority with metadata.
+4. Keep Kaikki and EKI imports deterministic. The importer stores row-level
+   `source` and `source_priority`, so overlapping forms/lemmas can be replaced
+   intentionally by higher-priority sources rather than overwritten silently.
 5. Run Estonian eval before and after each import:
 
 ```bash
 make import-dict-et
+export EKILEX_API_KEY=...
+make import-dict-et-ekilex
 make compare-parsers-et
 ```
 
@@ -140,5 +143,18 @@ admins review them.
 - Expand ET gold datasets with cases where EstNLTK beats the custom parser.
 - Freeze a checked-in baseline report comparing `basic`, `custom`, and
   `estnltk`.
-- Add an importer spike once the exact EKI/Ekilex export/API access pattern is
-  confirmed.
+- Run an Ekilex smoke import after a user-owned API key is available:
+
+```bash
+EKILEX_API_KEY=... go run ./cmd/importdict \
+  -lang et \
+  -source-key ekilex \
+  -source-priority 20 \
+  -ekilex-words suuline,maja,minema \
+  -ekilex-datasets eki \
+  -ekilex-limit 3
+```
+
+- Confirm the preferred production dataset code after inspecting
+  `/api/datasets` with the same key. The default target is `eki` because the
+  Ekilex API docs use it for public Wordweb-visible words.

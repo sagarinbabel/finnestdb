@@ -84,6 +84,11 @@ type importMetadata struct {
 	ChangesNote   string
 }
 
+type importSourceConfig struct {
+	Name     string
+	Priority int
+}
+
 func normalizePos(raw string) string {
 	if mapped, ok := posMap[strings.ToLower(strings.TrimSpace(raw))]; ok {
 		return mapped
@@ -138,6 +143,8 @@ func hasPossessiveTag(tags []string) bool {
 func main() {
 	lang := flag.String("lang", "fi", "Language to import: fi or et")
 	dbPath := flag.String("db", "finnestdb.db", "Path to SQLite database")
+	sourceKey := flag.String("source-key", "kaikki", "Stable source key stored on imported lemma/form rows")
+	sourcePriority := flag.Int("source-priority", 10, "Source priority for conflict resolution; higher priority wins")
 	filePath := flag.String("file", "", "Path to local .jsonl, .jsonl.gz, or .jsonl.bz2 file (skips download)")
 	customGlosses := flag.String("custom-glosses", "", "Path to CSV file of custom gloss overrides (word,pos,lang,gloss)")
 	reimport := flag.Bool("reimport", false, "Drop existing entries for this lang before importing")
@@ -154,6 +161,13 @@ func main() {
 		log.Fatalf("Unsupported language %q. Supported: fi, et", *lang)
 	}
 	dbLang := strings.ToUpper(langCode) // "fi" → "FI", "et" → "ET"
+	sourceConfig := importSourceConfig{
+		Name:     strings.ToLower(strings.TrimSpace(*sourceKey)),
+		Priority: *sourcePriority,
+	}
+	if sourceConfig.Name == "" {
+		log.Fatal("source-key is required")
+	}
 
 	if err := resolveProvenance(*filePath, sourceName, sourceURL, sourceLicense, sourceAttribution); err != nil {
 		log.Fatalf("%v", err)
@@ -184,7 +198,6 @@ func main() {
 		}
 	}
 
-	// Open the JSONL source.
 	var reader io.Reader
 	if *filePath != "" {
 		f, err := os.Open(*filePath)
@@ -214,7 +227,7 @@ func main() {
 		}
 	}
 
-	count, skipped, err := importJSONL(db, reader, dbLang)
+	count, skipped, err := importJSONL(db, reader, dbLang, sourceConfig)
 	if err != nil {
 		log.Fatalf("import: %v", err)
 	}
@@ -251,7 +264,7 @@ func main() {
 		log.Printf("warn: could not update dict_metadata: %v", err)
 	}
 
-	fmt.Printf("\nDone. Imported %d entries for %s.\n", count, dbLang)
+	fmt.Printf("\nDone. Imported %d entries for %s from %s.\n", count, dbLang, sourceConfig.Name)
 	fmt.Printf("Run './finnestdb' to start the server.\n")
 }
 
@@ -309,7 +322,7 @@ func recordImportMetadata(db *sql.DB, dbLang string, metadata importMetadata, ro
 
 // importJSONL streams the JSONL reader and inserts lemmas + forms into the DB.
 // Returns (entriesProcessed, possessiveFormsSkipped, error).
-func importJSONL(db *sql.DB, r io.Reader, dbLang string) (int, int, error) {
+func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConfig) (int, int, error) {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 4*1024*1024), 4*1024*1024) // 4MB line buffer
 
@@ -320,14 +333,27 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string) (int, int, error) {
 	}
 
 	stmtLemma, err := tx.Prepare(
-		`INSERT OR REPLACE INTO lemmas (lemma, pos, gloss, lang) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+		 VALUES (?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(lemma, pos, lang) DO UPDATE SET
+		 gloss = excluded.gloss,
+		 source = excluded.source,
+		 source_priority = excluded.source_priority
+		 WHERE lemmas.source_priority <= excluded.source_priority`,
 	)
 	if err != nil {
 		tx.Rollback()
 		return 0, 0, err
 	}
 	stmtForm, err := tx.Prepare(
-		`INSERT OR IGNORE INTO forms (form, lemma, pos, lang) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority)
+		 VALUES (?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(form, lang) DO UPDATE SET
+		 lemma = excluded.lemma,
+		 pos = excluded.pos,
+		 source = excluded.source,
+		 source_priority = excluded.source_priority
+		 WHERE forms.source_priority <= excluded.source_priority`,
 	)
 	if err != nil {
 		tx.Rollback()
@@ -348,13 +374,26 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string) (int, int, error) {
 			return err
 		}
 		stmtLemma, err = tx.Prepare(
-			`INSERT OR REPLACE INTO lemmas (lemma, pos, gloss, lang) VALUES (?, ?, ?, ?)`,
+			`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+			 VALUES (?, ?, ?, ?, ?, ?)
+			 ON CONFLICT(lemma, pos, lang) DO UPDATE SET
+			 gloss = excluded.gloss,
+			 source = excluded.source,
+			 source_priority = excluded.source_priority
+			 WHERE lemmas.source_priority <= excluded.source_priority`,
 		)
 		if err != nil {
 			return err
 		}
 		stmtForm, err = tx.Prepare(
-			`INSERT OR IGNORE INTO forms (form, lemma, pos, lang) VALUES (?, ?, ?, ?)`,
+			`INSERT INTO forms (form, lemma, pos, lang, source, source_priority)
+			 VALUES (?, ?, ?, ?, ?, ?)
+			 ON CONFLICT(form, lang) DO UPDATE SET
+			 lemma = excluded.lemma,
+			 pos = excluded.pos,
+			 source = excluded.source,
+			 source_priority = excluded.source_priority
+			 WHERE forms.source_priority <= excluded.source_priority`,
 		)
 		return err
 	}
@@ -384,12 +423,12 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string) (int, int, error) {
 		}
 
 		// Insert lemma (the canonical headword form).
-		if _, err := stmtLemma.Exec(entry.Word, pos, gloss, dbLang); err != nil {
+		if _, err := stmtLemma.Exec(entry.Word, pos, gloss, dbLang, source.Name, source.Priority); err != nil {
 			log.Printf("warn: lemma insert %q: %v", entry.Word, err)
 		}
 
 		// Insert the canonical form → lemma mapping (lemma maps to itself).
-		stmtForm.Exec(entry.Word, entry.Word, pos, dbLang)
+		stmtForm.Exec(entry.Word, entry.Word, pos, dbLang, source.Name, source.Priority)
 
 		// Insert inflected forms, skipping possessive-tagged forms.
 		for _, f := range entry.Forms {
@@ -400,7 +439,7 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string) (int, int, error) {
 				skipped++
 				continue
 			}
-			stmtForm.Exec(f.Form, entry.Word, pos, dbLang)
+			stmtForm.Exec(f.Form, entry.Word, pos, dbLang, source.Name, source.Priority)
 		}
 
 		count++
@@ -461,7 +500,7 @@ func applyCustomGlosses(db *sql.DB, filePath, dbLang string) (int, error) {
 		// Not a header — process this row as data.
 		if len(header) >= 4 {
 			pos := normalizePos(header[1])
-			db.Exec(`INSERT OR REPLACE INTO lemmas (lemma, pos, gloss, lang) VALUES (?, ?, ?, ?)`,
+			db.Exec(`INSERT OR REPLACE INTO lemmas (lemma, pos, gloss, lang, source, source_priority) VALUES (?, ?, ?, ?, 'custom', 100)`,
 				header[0], pos, header[3], dbLang)
 		}
 	}
@@ -480,7 +519,7 @@ func applyCustomGlosses(db *sql.DB, filePath, dbLang string) (int, error) {
 		}
 		word, pos, gloss := row[0], normalizePos(row[1]), row[3]
 		if _, err := db.Exec(
-			`INSERT OR REPLACE INTO lemmas (lemma, pos, gloss, lang) VALUES (?, ?, ?, ?)`,
+			`INSERT OR REPLACE INTO lemmas (lemma, pos, gloss, lang, source, source_priority) VALUES (?, ?, ?, ?, 'custom', 100)`,
 			word, pos, gloss, dbLang,
 		); err != nil {
 			log.Printf("warn: custom gloss insert %q: %v", word, err)
@@ -502,6 +541,8 @@ func ensureSchema(db *sql.DB) error {
 			pos   TEXT NOT NULL,
 			gloss TEXT,
 			lang  TEXT NOT NULL,
+			source TEXT NOT NULL DEFAULT '',
+			source_priority INTEGER NOT NULL DEFAULT 0,
 			PRIMARY KEY(lemma, pos, lang)
 		);
 		CREATE TABLE IF NOT EXISTS forms (
@@ -509,10 +550,35 @@ func ensureSchema(db *sql.DB) error {
 			lemma TEXT NOT NULL,
 			pos   TEXT NOT NULL,
 			lang  TEXT NOT NULL,
+			source TEXT NOT NULL DEFAULT '',
+			source_priority INTEGER NOT NULL DEFAULT 0,
 			PRIMARY KEY (form, lang)
 		);
 	`); err != nil {
 		return err
 	}
-	return store.EnsureDictMetadataSchema(db)
+	if err := store.EnsureDictMetadataSchema(db); err != nil {
+		return err
+	}
+	return ensureDictionarySourceColumns(db)
+}
+
+func ensureDictionarySourceColumns(db *sql.DB) error {
+	for table, columns := range map[string][]string{
+		"lemmas": {
+			"source TEXT NOT NULL DEFAULT ''",
+			"source_priority INTEGER NOT NULL DEFAULT 0",
+		},
+		"forms": {
+			"source TEXT NOT NULL DEFAULT ''",
+			"source_priority INTEGER NOT NULL DEFAULT 0",
+		},
+	} {
+		for _, column := range columns {
+			if _, err := db.Exec(`ALTER TABLE ` + table + ` ADD COLUMN ` + column); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+				return err
+			}
+		}
+	}
+	return nil
 }
