@@ -1,5 +1,5 @@
 .PHONY: all build clean parser server frontend run \
-        import-dict-fi import-dict-et import-dict \
+        import-dict-fi import-dict-et import-dict import-ekilex-et \
         reimport-dict-fi reimport-dict-et reimport-dict \
         setup-omorfi eval eval-check compare-parsers
 
@@ -62,6 +62,11 @@ import-dict-et:
 
 # Import both languages (first-time only).
 import-dict: import-dict-fi import-dict-et
+
+# Adds missing Estonian EKI ühendsõnastik 2026 public headwords from the
+# tracked compact Ekilex snapshot. Existing Kaikki rows are preserved.
+import-ekilex-et:
+	go run ./cmd/importekilex -db finnestdb.db -file data/ekilex/eki-public-words-2026-et.jsonl
 
 # Full refresh: drops existing entries then re-imports.
 reimport-dict-fi:
