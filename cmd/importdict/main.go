@@ -188,6 +188,10 @@ func main() {
 	sourceLicense := flag.String("source-license", "", "License text or SPDX-like label for dict_metadata (required for non-kaikki sources)")
 	sourceAttribution := flag.String("source-attribution", "", "Attribution text to preserve with imported rows (required for non-kaikki sources)")
 	changesNote := flag.String("changes-note", "Normalized to FinEstDB lemma/form/POS schema", "Change notice for dict_metadata")
+	ekilexBaseURL := flag.String("ekilex-base-url", "https://ekilex.ee", "Ekilex API base URL")
+	ekilexDatasets := flag.String("ekilex-datasets", "eki", "Comma-delimited Ekilex dataset codes to import")
+	ekilexWords := flag.String("ekilex-words", "", "Comma-delimited word list for a small Ekilex smoke import")
+	ekilexLimit := flag.Int("ekilex-limit", 0, "Maximum number of Ekilex words to import; 0 means no limit")
 	flag.Parse()
 
 	langCode := strings.ToLower(*lang)
@@ -201,6 +205,9 @@ func main() {
 	}
 	if sourceConfig.Name == "" {
 		log.Fatal("source-key is required")
+	}
+	if sourceConfig.Name == "ekilex" && *sourcePriority == 10 {
+		sourceConfig.Priority = 20
 	}
 
 	if err := resolveProvenance(*filePath, sourceConfig.Name, sourceName, sourceURL, sourceLicense, sourceAttribution); err != nil {
@@ -232,40 +239,66 @@ func main() {
 		}
 	}
 
-	var reader io.Reader
-	if *filePath != "" {
-		f, err := os.Open(*filePath)
-		if err != nil {
-			log.Fatalf("open file: %v", err)
+	count := 0
+	if sourceConfig.Name == "ekilex" {
+		if dbLang != "ET" {
+			log.Fatalf("Ekilex import currently supports ET only, got %s", dbLang)
 		}
-		defer f.Close()
-		reader, err = openJSONLReader(f, *filePath)
-		if err != nil {
-			log.Fatalf("open reader: %v", err)
+		if *sourceName == "kaikki.org" {
+			*sourceName = "EKI/Ekilex/Sõnaveeb"
 		}
-		log.Printf("Importing %s dictionary from local file: %s", dbLang, *filePath)
+		if *sourceLicense == "Wiktionary-derived; verify per source terms" {
+			*sourceLicense = "CC BY 4.0"
+		}
+		if *sourceAttribution == "kaikki.org dictionary data derived from Wiktionary" {
+			*sourceAttribution = "Eesti Keele Instituut; EKI sõnastiku- ja terminibaasisüsteem Ekilex; Sõnaveeb"
+		}
+		client, err := newEkilexClient(*ekilexBaseURL, os.Getenv("EKILEX_API_KEY"))
+		if err != nil {
+			log.Fatalf("ekilex client: %v", err)
+		}
+		count, err = importEkilex(db, client, dbLang, splitCSV(*ekilexDatasets), splitCSV(*ekilexWords), *ekilexLimit, sourceConfig)
+		if err != nil {
+			log.Fatalf("ekilex import: %v", err)
+		}
+		log.Printf("Ekilex import complete: %d words processed for %s", count, dbLang)
 	} else {
-		url := kaikkiURL[langCode]
-		log.Printf("Downloading %s dictionary from %s ...", dbLang, url)
-		resp, err := http.Get(url)
-		if err != nil {
-			log.Fatalf("download: %v", err)
+		var reader io.Reader
+		if *filePath != "" {
+			f, err := os.Open(*filePath)
+			if err != nil {
+				log.Fatalf("open file: %v", err)
+			}
+			defer f.Close()
+			reader, err = openJSONLReader(f, *filePath)
+			if err != nil {
+				log.Fatalf("open reader: %v", err)
+			}
+			log.Printf("Importing %s dictionary from local file: %s", dbLang, *filePath)
+		} else {
+			url := kaikkiURL[langCode]
+			log.Printf("Downloading %s dictionary from %s ...", dbLang, url)
+			resp, err := http.Get(url)
+			if err != nil {
+				log.Fatalf("download: %v", err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				log.Fatalf("download HTTP %d from %s", resp.StatusCode, url)
+			}
+			reader, err = openJSONLReader(resp.Body, url)
+			if err != nil {
+				log.Fatalf("open reader: %v", err)
+			}
 		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			log.Fatalf("download HTTP %d from %s", resp.StatusCode, url)
-		}
-		reader, err = openJSONLReader(resp.Body, url)
-		if err != nil {
-			log.Fatalf("open reader: %v", err)
-		}
-	}
 
-	count, skipped, err := importJSONL(db, reader, dbLang, sourceConfig)
-	if err != nil {
-		log.Fatalf("import: %v", err)
+		skipped := 0
+		count, skipped, err = importJSONL(db, reader, dbLang, sourceConfig)
+		if err != nil {
+			log.Fatalf("import: %v", err)
+		}
+		log.Printf("Import complete: %d entries processed (%d possessive forms skipped) for %s", count, skipped, dbLang)
 	}
-	log.Printf("Import complete: %d entries processed (%d possessive forms skipped) for %s", count, skipped, dbLang)
 
 	// Apply custom gloss overrides if provided.
 	if *customGlosses != "" {
@@ -284,7 +317,9 @@ func main() {
 		Attribution:   strings.TrimSpace(*sourceAttribution),
 		ChangesNote:   strings.TrimSpace(*changesNote),
 	}
-	if metadata.SourceURL == "" {
+	if metadata.SourceURL == "" && sourceConfig.Name == "ekilex" {
+		metadata.SourceURL = *ekilexBaseURL
+	} else if metadata.SourceURL == "" {
 		metadata.SourceURL = kaikkiURL[langCode]
 	}
 	metadata.Source = metadata.SourceURL
