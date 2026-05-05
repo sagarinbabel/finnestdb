@@ -379,6 +379,7 @@ const ROUTE_TO_PAGE: Record<string, string> = {
     '/review':           'review-page',
     '/admin/workbench':  'admin-workbench-page',
     '/admin/feedback':   'admin-feedback-page',
+    '/admin/users':      'admin-users-page',
     '/results':          'results-page',
 };
 
@@ -462,6 +463,9 @@ function renderRoute(): void {
         renderAdminFeedbackPage();
         void loadAdminFeedback();
     }
+    if (route === '/admin/users') {
+        void loadAdminUsers();
+    }
 }
 
 // ── Mobile nav ─────────────────────────────────────────────────────────────
@@ -497,9 +501,46 @@ function closeMobileNav(): void {
 
 // ── Sign-in flow ───────────────────────────────────────────────────────────
 
+type SigninMode = 'login' | 'register';
+let signinMode: SigninMode = 'login';
+
+function setSigninMode(mode: SigninMode): void {
+    signinMode = mode;
+    const heading  = document.getElementById('signin-heading');
+    const lede     = document.getElementById('signin-lede');
+    const submit   = document.getElementById('signin-submit') as HTMLButtonElement | null;
+    const password = document.getElementById('signin-password') as HTMLInputElement | null;
+    const errorEl  = document.getElementById('signin-error');
+    document.querySelectorAll<HTMLElement>('.signin-tab').forEach(tab => {
+        const isActive = tab.dataset.mode === mode;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+    if (mode === 'register') {
+        if (heading)  heading.textContent  = 'Create account';
+        if (lede)     lede.textContent     = 'Pick an email and a password (8+ characters).';
+        if (submit)   submit.textContent   = 'Create account';
+        if (password) password.autocomplete = 'new-password';
+    } else {
+        if (heading)  heading.textContent  = 'Sign in';
+        if (lede)     lede.textContent     = 'Welcome back. Enter your email and password.';
+        if (submit)   submit.textContent   = 'Sign in';
+        if (password) password.autocomplete = 'current-password';
+    }
+    if (errorEl) errorEl.classList.add('hidden');
+}
+
 function initSigninForm(): void {
     const form = document.getElementById('signin-form') as HTMLFormElement | null;
     if (!form) return;
+
+    document.querySelectorAll<HTMLElement>('.signin-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            const mode = tab.dataset.mode as SigninMode | undefined;
+            if (mode) setSigninMode(mode);
+        });
+    });
+    setSigninMode('login');
 
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -509,8 +550,14 @@ function initSigninForm(): void {
         const submitBtn  = document.getElementById('signin-submit')   as HTMLButtonElement;
 
         const email = emailEl.value.trim();
+        const password = passwordEl.value;
         if (!email) {
             errorEl.textContent = 'Please enter your email.';
+            errorEl.classList.remove('hidden');
+            return;
+        }
+        if (password.length < 8) {
+            errorEl.textContent = 'Password must be at least 8 characters.';
             errorEl.classList.remove('hidden');
             return;
         }
@@ -518,19 +565,20 @@ function initSigninForm(): void {
         errorEl.classList.add('hidden');
         submitBtn.disabled = true;
         const origLabel = submitBtn.textContent || '';
-        submitBtn.textContent = 'Signing in…';
+        submitBtn.textContent = signinMode === 'register' ? 'Creating account…' : 'Signing in…';
 
         try {
-            const resp = await fetch('/api/auth/login', {
+            const endpoint = signinMode === 'register' ? '/api/auth/register' : '/api/auth/login';
+            const resp = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
-                body: JSON.stringify({ email, password: passwordEl.value }),
+                body: JSON.stringify({ email, password }),
             });
 
             if (!resp.ok) {
-                const msg = await resp.text();
-                throw new Error(msg || 'Sign-in failed');
+                const msg = (await resp.text()).trim();
+                throw new Error(msg || (signinMode === 'register' ? 'Sign-up failed' : 'Sign-in failed'));
             }
 
             const data: LoginResponse = await resp.json();
@@ -540,7 +588,7 @@ function initSigninForm(): void {
 
             // Refresh /api/me so we get the dashboard payload too.
             await fetchMe();
-            showToast(`Welcome, ${data.user.email}`, 'success');
+            showToast(signinMode === 'register' ? `Welcome, ${data.user.email}` : `Welcome back, ${data.user.email}`, 'success');
             navigate('/dashboard');
         } catch (err: any) {
             errorEl.textContent = err.message || 'Sign-in failed';
@@ -1489,6 +1537,96 @@ async function mutateReviewCard(endpoint: '/api/card/known' | '/api/card/ignore'
     } catch (err: any) {
         showToast(err.message || 'Failed to update card.', 'error');
     }
+}
+
+// ── Admin user management ──────────────────────────────────────────────────
+
+interface AdminUser {
+    id: number;
+    email: string;
+    is_admin: boolean;
+}
+
+async function loadAdminUsers(): Promise<void> {
+    const tbody = document.getElementById('admin-users-tbody');
+    const empty = document.getElementById('admin-users-empty');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="3">Loading users…</td></tr>';
+    if (empty) empty.classList.add('hidden');
+
+    try {
+        const resp = await fetch('/api/admin/users', { credentials: 'same-origin' });
+        if (!resp.ok) {
+            tbody.innerHTML = `<tr><td colspan="3">Failed to load users (${resp.status}).</td></tr>`;
+            return;
+        }
+        const data: { users: AdminUser[] } = await resp.json();
+        renderAdminUsers(data.users || []);
+    } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="3">Failed to load users.</td></tr>';
+    }
+}
+
+function renderAdminUsers(users: AdminUser[]): void {
+    const tbody = document.getElementById('admin-users-tbody');
+    const empty = document.getElementById('admin-users-empty');
+    if (!tbody) return;
+
+    if (users.length === 0) {
+        tbody.innerHTML = '';
+        if (empty) empty.classList.remove('hidden');
+        return;
+    }
+    if (empty) empty.classList.add('hidden');
+
+    const currentUserId = state.user?.id;
+    tbody.innerHTML = users.map(u => {
+        const isSelf = u.id === currentUserId;
+        const checked = u.is_admin ? 'checked' : '';
+        const disabled = isSelf && u.is_admin ? 'disabled' : '';
+        const title = isSelf && u.is_admin ? 'You cannot remove your own admin access' : '';
+        return `<tr data-user-id="${u.id}">
+            <td>${u.id}</td>
+            <td>${escapeHtml(u.email)}</td>
+            <td>
+                <label class="admin-users-toggle">
+                    <input type="checkbox" class="admin-user-admin-toggle" data-user-id="${u.id}" ${checked} ${disabled} ${title ? `title="${title}"` : ''}>
+                    <span>Admin</span>
+                </label>
+            </td>
+        </tr>`;
+    }).join('');
+
+    tbody.querySelectorAll<HTMLInputElement>('.admin-user-admin-toggle').forEach(input => {
+        input.addEventListener('change', async () => {
+            const userIdStr = input.dataset.userId;
+            if (!userIdStr) return;
+            const userId = parseInt(userIdStr, 10);
+            const want = input.checked;
+            input.disabled = true;
+            try {
+                const resp = await fetch(`/api/admin/users?id=${userId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ is_admin: want }),
+                });
+                if (!resp.ok) {
+                    const msg = (await resp.text()).trim() || 'Update failed';
+                    showToast(msg, 'error');
+                    input.checked = !want;
+                    return;
+                }
+                showToast(want ? 'Granted admin' : 'Removed admin', 'success');
+            } catch {
+                input.checked = !want;
+                showToast('Update failed', 'error');
+            } finally {
+                input.disabled = false;
+            }
+        });
+    });
 }
 
 // ── Admin feedback queue ───────────────────────────────────────────────────

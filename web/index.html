@@ -34,6 +34,7 @@
                 <span class="nav-admin-label" aria-hidden="true">Admin</span>
                 <a href="#/admin/workbench" class="nav-link nav-link-admin" data-route="/admin/workbench">Workbench</a>
                 <a href="#/admin/feedback" class="nav-link nav-link-admin" data-route="/admin/feedback">Feedback</a>
+                <a href="#/admin/users" class="nav-link nav-link-admin" data-route="/admin/users">Users</a>
             </div>
 
             <div class="nav-actions">
@@ -73,6 +74,7 @@
                 <div class="nav-mobile-divider">Admin</div>
                 <a href="#/admin/workbench" class="nav-mobile-link nav-mobile-link-admin" data-route="/admin/workbench">Workbench</a>
                 <a href="#/admin/feedback" class="nav-mobile-link nav-mobile-link-admin" data-route="/admin/feedback">Feedback</a>
+                <a href="#/admin/users" class="nav-mobile-link nav-mobile-link-admin" data-route="/admin/users">Users</a>
             </div>
             <div data-role-show="user admin">
                 <button type="button" id="nav-mobile-signout" class="nav-mobile-link nav-mobile-signout">Sign out</button>
@@ -169,23 +171,24 @@
     <div id="signin-page" class="page">
         <main class="signin-main">
             <section class="signin-card">
-                <h1>Sign in</h1>
-                <p class="signin-lede">Enter your email to start. (Alpha: any email works — no password needed yet.)</p>
+                <div class="signin-tabs" role="tablist" aria-label="Sign in mode">
+                    <button type="button" class="signin-tab" id="signin-tab-login" role="tab" aria-selected="true" data-mode="login">Sign in</button>
+                    <button type="button" class="signin-tab" id="signin-tab-register" role="tab" aria-selected="false" data-mode="register">Create account</button>
+                </div>
+                <h1 id="signin-heading">Sign in</h1>
+                <p class="signin-lede" id="signin-lede">Welcome back. Enter your email and password.</p>
                 <form id="signin-form" novalidate>
                     <div class="form-group">
                         <label for="signin-email">Email</label>
                         <input type="email" id="signin-email" name="email" autocomplete="email" required placeholder="you@example.com">
                     </div>
                     <div class="form-group">
-                        <label for="signin-password">Password <span class="form-hint">(optional in alpha)</span></label>
-                        <input type="password" id="signin-password" name="password" autocomplete="current-password">
+                        <label for="signin-password">Password</label>
+                        <input type="password" id="signin-password" name="password" autocomplete="current-password" required minlength="8" placeholder="At least 8 characters">
                     </div>
                     <div id="signin-error" class="signin-error hidden" role="alert"></div>
                     <button type="submit" class="btn btn-primary btn-lg btn-block" id="signin-submit">Sign in</button>
                 </form>
-                <p class="signin-switch">
-                    New here? Just enter your email — we'll create your account.
-                </p>
             </section>
         </main>
     </div>
@@ -454,6 +457,35 @@
                 <p>No parser feedback matches this filter.</p>
             </section>
             <section id="admin-feedback-list" class="admin-feedback-list" aria-live="polite"></section>
+        </main>
+    </div>
+
+    <!-- ==================== ADMIN USERS ==================== -->
+    <div id="admin-users-page" class="page" data-role-required="admin">
+        <div class="admin-banner" data-role-show="admin">
+            <span class="admin-banner-label">Admin</span>
+            <span>Promote or demote users.</span>
+        </div>
+        <main class="admin-users-main">
+            <section class="admin-users-header">
+                <h1>Users</h1>
+                <p class="placeholder-lede">Toggle the admin checkbox to grant or remove admin access. You cannot remove your own admin access.</p>
+            </section>
+            <section id="admin-users-empty" class="placeholder-card hidden">
+                <p>No users yet.</p>
+            </section>
+            <section class="admin-users-table-wrap">
+                <table class="admin-users-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Admin</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-users-tbody" aria-live="polite"></tbody>
+                </table>
+            </section>
         </main>
     </div>
 

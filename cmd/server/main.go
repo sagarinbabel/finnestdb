@@ -14,7 +14,11 @@ import (
 )
 
 func main() {
-	port := flag.String("port", "8080", "Port to listen on")
+	defaultPort := "8080"
+	if envPort := strings.TrimSpace(os.Getenv("PORT")); envPort != "" {
+		defaultPort = envPort
+	}
+	port := flag.String("port", defaultPort, "Port to listen on")
 	dbPath := flag.String("db", "finnestdb.db", "Path to SQLite database")
 	flag.Parse()
 

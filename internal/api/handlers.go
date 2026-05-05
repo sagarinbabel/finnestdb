@@ -3,13 +3,21 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
+	"finnestdb/internal/auth"
 	"finnestdb/internal/parsecore"
 	"finnestdb/internal/store"
+)
+
+const (
+	sessionCookieName = "session_token"
+	sessionLifetime   = 7 * 24 * time.Hour
+	minPasswordLength = 8
 )
 
 type API struct {
@@ -179,28 +187,88 @@ type AuthContext struct {
 }
 
 func (a *API) getCurrentUser(r *http.Request) (*AuthContext, error) {
-	cookie, err := r.Cookie("user_id")
-	if err != nil {
+	cookie, err := r.Cookie(sessionCookieName)
+	if err != nil || cookie.Value == "" {
 		return nil, nil
 	}
-	userID, _ := strconv.ParseInt(cookie.Value, 10, 64)
-	if userID == 0 {
-		return nil, nil
-	}
-
-	user, err := a.store.GetUserByID(userID)
+	user, err := a.store.GetUserBySessionTokenHash(auth.HashToken(cookie.Value), sessionLifetime)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
 		return nil, err
 	}
-
+	if user == nil {
+		return nil, nil
+	}
 	return &AuthContext{
 		UserID:  user.ID,
 		Email:   user.Email,
 		IsAdmin: user.IsAdmin,
 	}, nil
+}
+
+// issueSession creates a new server-side session for the user and writes the
+// session_token cookie on the response. The raw token is only ever in the
+// cookie; the database stores its SHA256 hash.
+func (a *API) issueSession(w http.ResponseWriter, userID int64) error {
+	token, err := auth.NewSessionToken()
+	if err != nil {
+		return err
+	}
+	expiresAt := time.Now().UTC().Add(sessionLifetime)
+	if err := a.store.CreateSession(userID, auth.HashToken(token), expiresAt); err != nil {
+		return err
+	}
+	http.SetCookie(w, sessionCookie(token, int(sessionLifetime.Seconds())))
+	return nil
+}
+
+func sessionCookie(value string, maxAge int) *http.Cookie {
+	return &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    value,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		Secure:   strings.EqualFold(os.Getenv("APP_ENV"), "production"),
+		MaxAge:   maxAge,
+	}
+}
+
+func normalizeAuthEmail(s string) string {
+	return strings.ToLower(strings.TrimSpace(s))
+}
+
+func validateEmail(email string) error {
+	if email == "" {
+		return errBadRequest("Email is required")
+	}
+	if !strings.Contains(email, "@") || strings.HasPrefix(email, "@") || strings.HasSuffix(email, "@") {
+		return errBadRequest("Email is invalid")
+	}
+	return nil
+}
+
+func validatePassword(pw string) error {
+	if len(pw) < minPasswordLength {
+		return errBadRequest("Password must be at least 8 characters")
+	}
+	return nil
+}
+
+type httpError struct {
+	status  int
+	message string
+}
+
+func (e *httpError) Error() string { return e.message }
+
+func errBadRequest(msg string) error { return &httpError{status: http.StatusBadRequest, message: msg} }
+
+func writeAuthError(w http.ResponseWriter, err error) {
+	if he, ok := err.(*httpError); ok {
+		http.Error(w, he.message, he.status)
+		return
+	}
+	http.Error(w, "Internal error", http.StatusInternalServerError)
 }
 
 func (a *API) requireAuth(next func(http.ResponseWriter, *http.Request, *AuthContext)) http.HandlerFunc {
@@ -239,6 +307,61 @@ func sessionUserFromAuth(auth *AuthContext) *SessionUser {
 	}
 }
 
+func (a *API) HandleRegister(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	email := normalizeAuthEmail(req.Email)
+	if err := validateEmail(email); err != nil {
+		writeAuthError(w, err)
+		return
+	}
+	if err := validatePassword(req.Password); err != nil {
+		writeAuthError(w, err)
+		return
+	}
+
+	if existing, err := a.store.GetUserByEmail(email); err == nil && existing != nil {
+		http.Error(w, "Email already registered", http.StatusConflict)
+		return
+	} else if err != nil && err != sql.ErrNoRows {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	hash, err := auth.HashPassword(req.Password)
+	if err != nil {
+		http.Error(w, "Unable to secure password", http.StatusInternalServerError)
+		return
+	}
+	user, err := a.store.CreateUser(email, hash)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if err := a.issueSession(w, user.ID); err != nil {
+		http.Error(w, "Unable to create session", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, LoginResponse{
+		Authenticated: true,
+		User: &SessionUser{
+			ID:      user.ID,
+			Email:   user.Email,
+			IsAdmin: user.IsAdmin,
+		},
+	})
+}
+
 func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -251,22 +374,48 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Mock auth: accept any credentials
-	user, err := a.store.GetOrCreateUser(req.Email)
+	email := normalizeAuthEmail(req.Email)
+	if err := validateEmail(email); err != nil {
+		writeAuthError(w, err)
+		return
+	}
+	if err := validatePassword(req.Password); err != nil {
+		writeAuthError(w, err)
+		return
+	}
+
+	user, err := a.store.GetUserByEmail(email)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+			return
+		}
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
 
-	// Set session cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:     "user_id",
-		Value:    fmt.Sprintf("%d", user.ID),
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-		MaxAge:   86400 * 7, // 7 days
-	})
+	// Bootstrap-on-first-login: existing alpha accounts have empty
+	// password_hash. The first password they submit becomes their permanent
+	// password. Subsequent logins verify normally.
+	if user.PasswordHash == "" {
+		hash, hashErr := auth.HashPassword(req.Password)
+		if hashErr != nil {
+			http.Error(w, "Unable to secure password", http.StatusInternalServerError)
+			return
+		}
+		if err := a.store.SetUserPassword(user.ID, hash); err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+	} else if !auth.VerifyPassword(req.Password, user.PasswordHash) {
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+
+	if err := a.issueSession(w, user.ID); err != nil {
+		http.Error(w, "Unable to create session", http.StatusInternalServerError)
+		return
+	}
 
 	writeJSON(w, http.StatusOK, LoginResponse{
 		Authenticated: true,
@@ -284,16 +433,12 @@ func (a *API) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Expire the session cookie regardless of whether one is present, so that
-	// after this call the next /api/me will see an unauthenticated session.
-	http.SetCookie(w, &http.Cookie{
-		Name:     "user_id",
-		Value:    "",
-		Path:     "/",
-		HttpOnly: true,
-		SameSite: http.SameSiteStrictMode,
-		MaxAge:   -1,
-	})
+	// Revoke server-side session if a token is presented; expire the cookie
+	// either way so the browser stops sending it.
+	if cookie, err := r.Cookie(sessionCookieName); err == nil && cookie.Value != "" {
+		_ = a.store.RevokeSessionByTokenHash(auth.HashToken(cookie.Value))
+	}
+	http.SetCookie(w, sessionCookie("", -1))
 
 	writeJSON(w, http.StatusOK, map[string]bool{"authenticated": false})
 }
@@ -1107,6 +1252,78 @@ func (a *API) handleAdminParseFeedback(w http.ResponseWriter, r *http.Request, a
 	}
 }
 
+type AdminUser struct {
+	ID      int64  `json:"id"`
+	Email   string `json:"email"`
+	IsAdmin bool   `json:"is_admin"`
+}
+
+type AdminUserListResponse struct {
+	Users []AdminUser `json:"users"`
+}
+
+type AdminUserUpdateRequest struct {
+	IsAdmin bool `json:"is_admin"`
+}
+
+func (a *API) HandleAdminUsers(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet, http.MethodPatch:
+		a.requireAdmin(a.handleAdminUsers).ServeHTTP(w, r)
+		return
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+}
+
+func (a *API) handleAdminUsers(w http.ResponseWriter, r *http.Request, authCtx *AuthContext) {
+	switch r.Method {
+	case http.MethodGet:
+		users, err := a.store.ListUsers()
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		out := make([]AdminUser, len(users))
+		for i, u := range users {
+			out[i] = AdminUser{ID: u.ID, Email: u.Email, IsAdmin: u.IsAdmin}
+		}
+		writeJSON(w, http.StatusOK, AdminUserListResponse{Users: out})
+	case http.MethodPatch:
+		idStr := strings.TrimSpace(r.URL.Query().Get("id"))
+		userID, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil || userID <= 0 {
+			http.Error(w, "User ID must be a positive integer", http.StatusBadRequest)
+			return
+		}
+		var req AdminUserUpdateRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+		// Self-demotion guard: an admin cannot remove their own is_admin flag,
+		// otherwise nothing prevents the last admin from locking everyone out.
+		if userID == authCtx.UserID && !req.IsAdmin {
+			http.Error(w, "You cannot remove your own admin access", http.StatusForbidden)
+			return
+		}
+		if _, err := a.store.GetUserByID(userID); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "User not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		if err := a.store.SetUserAdmin(userID, req.IsAdmin); err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"is_admin": req.IsAdmin})
+	}
+}
+
 func isValidParseFeedbackStatus(status string, allowEmpty bool) bool {
 	switch status {
 	case "":
@@ -1126,6 +1343,7 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 
 func (a *API) SetupRoutes(mux *http.ServeMux) {
 	// Auth routes
+	mux.HandleFunc("/api/auth/register", a.HandleRegister)
 	mux.HandleFunc("/api/auth/login", a.HandleLogin)
 	mux.HandleFunc("/api/auth/logout", a.HandleLogout)
 
@@ -1136,6 +1354,7 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/parse", a.HandleParse)
 	mux.HandleFunc("/api/parse/feedback", a.HandleParseFeedback)
 	mux.HandleFunc("/api/admin/parse-feedback", a.HandleAdminParseFeedback)
+	mux.HandleFunc("/api/admin/users", a.HandleAdminUsers)
 
 	// Decks
 	mux.HandleFunc("/api/decks", a.HandleDecks)

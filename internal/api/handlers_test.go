@@ -335,11 +335,12 @@ func TestAuthenticatedReviewNextReturnsNoContentWithoutDueCards(t *testing.T) {
 	}
 }
 
-func TestHandleLoginReturnsAuthIdentity(t *testing.T) {
+func TestHandleRegisterReturnsAuthIdentity(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"email":"alice@example.com","password":"secret"}`))
+	body := fmt.Sprintf(`{"email":"alice@example.com","password":%q}`, testPassword)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
@@ -347,42 +348,123 @@ func TestHandleLoginReturnsAuthIdentity(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
 	}
-	if len(rec.Result().Cookies()) == 0 {
-		t.Fatal("expected login to set a session cookie")
+	cookies := rec.Result().Cookies()
+	if len(cookies) == 0 || cookies[0].Name != "session_token" || cookies[0].Value == "" {
+		t.Fatalf("expected register to set a non-empty session_token cookie, got %+v", cookies)
 	}
 
 	var resp LoginResponse
 	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
-		t.Fatalf("decode login response: %v", err)
+		t.Fatalf("decode register response: %v", err)
 	}
 	if !resp.Authenticated {
-		t.Fatal("expected authenticated login response")
+		t.Fatal("expected authenticated register response")
 	}
-	if resp.User == nil {
-		t.Fatal("expected user payload in login response")
-	}
-	if resp.User.Email != "alice@example.com" {
-		t.Fatalf("email=%q want alice@example.com", resp.User.Email)
+	if resp.User == nil || resp.User.Email != "alice@example.com" {
+		t.Fatalf("expected alice@example.com user, got %+v", resp.User)
 	}
 	if resp.User.IsAdmin {
-		t.Fatal("expected regular login to be non-admin")
+		t.Fatal("expected fresh register to be non-admin")
+	}
+}
+
+func TestHandleLoginVerifiesPassword(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	loginAndReturnCookies(t, mux, "alice@example.com") // registers
+
+	// Wrong password is rejected.
+	wrongBody := `{"email":"alice@example.com","password":"wrong-password-123"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(wrongBody))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("wrong password status=%d want 401 body=%q", rec.Code, rec.Body.String())
+	}
+
+	// Correct password succeeds.
+	rightBody := fmt.Sprintf(`{"email":"alice@example.com","password":%q}`, testPassword)
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(rightBody))
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("correct password status=%d want 200 body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleLoginRejectsUnknownEmail(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	body := fmt.Sprintf(`{"email":"ghost@example.com","password":%q}`, testPassword)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d want 401 body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleRegisterRejectsDuplicateEmail(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	loginAndReturnCookies(t, mux, "alice@example.com") // first registration
+
+	body := fmt.Sprintf(`{"email":"alice@example.com","password":%q}`, testPassword)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status=%d want 409 body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleRegisterRejectsWeakPassword(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{"email":"weak@example.com","password":"short"}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want 400 body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleLoginBootstrapsExistingAccountWithoutPassword(t *testing.T) {
+	// Simulate a pre-migration alpha account: created via GetOrCreateUser
+	// with no password. The first /api/auth/login should accept any password
+	// and persist it as the user's permanent password.
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	if _, err := api.store.GetOrCreateUser("legacy@example.com"); err != nil {
+		t.Fatalf("seed legacy user: %v", err)
+	}
+
+	// First login with chosen password sets it.
+	body := fmt.Sprintf(`{"email":"legacy@example.com","password":%q}`, testPassword)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("first login status=%d want 200 body=%q", rec.Code, rec.Body.String())
+	}
+
+	// Subsequent login with a different password is rejected.
+	wrongBody := `{"email":"legacy@example.com","password":"different-passwordxx"}`
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(wrongBody))
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("second login (wrong pw) status=%d want 401 body=%q", rec.Code, rec.Body.String())
 	}
 }
 
 func TestHandleLogoutClearsSessionCookieAndDropsAuth(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)
-
-	loginReq := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(`{"email":"alice@example.com","password":"secret"}`))
-	loginRec := httptest.NewRecorder()
-	mux.ServeHTTP(loginRec, loginReq)
-	if loginRec.Code != http.StatusOK {
-		t.Fatalf("login status=%d want %d", loginRec.Code, http.StatusOK)
-	}
-	cookies := loginRec.Result().Cookies()
-	if len(cookies) == 0 {
-		t.Fatal("expected login to set a session cookie")
-	}
+	cookies := loginAndReturnCookies(t, mux, "alice@example.com")
 
 	logoutReq := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 	for _, c := range cookies {
@@ -396,24 +478,26 @@ func TestHandleLogoutClearsSessionCookieAndDropsAuth(t *testing.T) {
 
 	var clearing *http.Cookie
 	for _, c := range logoutRec.Result().Cookies() {
-		if c.Name == "user_id" {
+		if c.Name == "session_token" {
 			clearing = c
 		}
 	}
 	if clearing == nil {
-		t.Fatal("expected logout response to set the user_id cookie")
+		t.Fatal("expected logout response to set the session_token cookie")
 	}
 	if clearing.MaxAge >= 0 {
-		t.Fatalf("expected user_id cookie to be expired (MaxAge<0), got MaxAge=%d", clearing.MaxAge)
+		t.Fatalf("expected session_token cookie to be expired (MaxAge<0), got MaxAge=%d", clearing.MaxAge)
 	}
 	if clearing.Value != "" {
 		t.Fatalf("expected cleared cookie value, got %q", clearing.Value)
 	}
 
-	// Hitting /api/me with the now-expired cookie applied (browser would not send it)
-	// must report unauthenticated. Simulate by replaying only the clearing cookie.
+	// The original session token must also be revoked server-side, so replaying
+	// the original cookies on /api/me should report unauthenticated.
 	meReq := httptest.NewRequest(http.MethodGet, "/api/me", nil)
-	meReq.AddCookie(clearing)
+	for _, c := range cookies {
+		meReq.AddCookie(c)
+	}
 	meRec := httptest.NewRecorder()
 	mux.ServeHTTP(meRec, meReq)
 	if meRec.Code != http.StatusOK {
@@ -424,7 +508,7 @@ func TestHandleLogoutClearsSessionCookieAndDropsAuth(t *testing.T) {
 		t.Fatalf("decode /api/me response: %v", err)
 	}
 	if meResp.Authenticated {
-		t.Fatal("expected /api/me to be unauthenticated after logout")
+		t.Fatal("expected /api/me to be unauthenticated after logout (session must be revoked server-side)")
 	}
 }
 
@@ -473,7 +557,7 @@ func TestHandleMeTreatsUnknownCookieUserAsAnonymous(t *testing.T) {
 	mux := newTestMux(t, api)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
-	req.AddCookie(&http.Cookie{Name: "user_id", Value: "999999"})
+	req.AddCookie(&http.Cookie{Name: "session_token", Value: "not-a-real-token"})
 	rec := httptest.NewRecorder()
 
 	mux.ServeHTTP(rec, req)
@@ -1478,20 +1562,31 @@ func TestAdminParseFeedbackRejectsNonAdminUser(t *testing.T) {
 	}
 }
 
+// testPassword is the password every test user uses. Real auth requires a
+// password ≥ 8 chars; tests register-then-keep cookies from the response.
+const testPassword = "test-pass-123"
+
 func loginAndReturnCookies(t *testing.T, mux *http.ServeMux, email string) []*http.Cookie {
 	t.Helper()
 
-	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(fmt.Sprintf(`{"email":"%s","password":"secret"}`, email)))
+	body := fmt.Sprintf(`{"email":%q,"password":%q}`, email, testPassword)
+	// Try register first; if the email already exists, fall back to login.
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
+	if rec.Code == http.StatusConflict {
+		req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+		rec = httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+	}
 	if rec.Code != http.StatusOK {
-		t.Fatalf("login status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+		t.Fatalf("auth status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
 	}
 
 	cookies := rec.Result().Cookies()
 	if len(cookies) == 0 {
-		t.Fatal("expected login to set cookies")
+		t.Fatal("expected auth to set cookies")
 	}
 	return cookies
 }
