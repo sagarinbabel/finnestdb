@@ -73,6 +73,9 @@ The adapter command must:
 3. return JSON on stdout
 4. exit non-zero on failure
 
+The subprocess timeout defaults to `5s` and can be overridden with a Go
+duration string in `FINNESTDB_OMORFI_TIMEOUT` (e.g. `30s`, `1m`).
+
 Current local example:
 
 ```bash

@@ -21,6 +21,28 @@ const MaxTextChars = 300_000
 const omorfiCommandEnv = "FINNESTDB_OMORFI_CMD"
 const estnltkCommandEnv = "FINNESTDB_ESTNLTK_CMD"
 
+// External-analyzer subprocess timeouts. Both can be overridden with a Go
+// duration string ("30s", "1m"). EstNLTK defaults higher because each call
+// pays ~1s of Vabamorf model load before any analysis runs.
+const omorfiTimeoutEnv = "FINNESTDB_OMORFI_TIMEOUT"
+const estnltkTimeoutEnv = "FINNESTDB_ESTNLTK_TIMEOUT"
+const omorfiDefaultTimeout = 5 * time.Second
+const estnltkDefaultTimeout = 30 * time.Second
+
+// analyzerTimeout reads a Go duration string from envVar and returns it,
+// falling back to defaultDur on empty, malformed, or non-positive input.
+func analyzerTimeout(envVar string, defaultDur time.Duration) time.Duration {
+	raw := strings.TrimSpace(os.Getenv(envVar))
+	if raw == "" {
+		return defaultDur
+	}
+	parsed, err := time.ParseDuration(raw)
+	if err != nil || parsed <= 0 {
+		return defaultDur
+	}
+	return parsed
+}
+
 type TokenResult struct {
 	Form         string   `json:"form"`
 	StubLemma    string   `json:"stub_lemma,omitempty"`
@@ -433,7 +455,7 @@ func runExternalOmorfi(lang, text string) (*parserffi.AnalysisResult, error) {
 		return nil, fmt.Errorf("omorfi parser command is empty")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), analyzerTimeout(omorfiTimeoutEnv, omorfiDefaultTimeout))
 	defer cancel()
 
 	args := append(fields[1:], "--lang", lang)
@@ -474,7 +496,7 @@ func runExternalEstNLTK(lang, text string) (*parserffi.AnalysisResult, error) {
 		return nil, fmt.Errorf("estnltk parser command is empty")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), analyzerTimeout(estnltkTimeoutEnv, estnltkDefaultTimeout))
 	defer cancel()
 
 	args := append(fields[1:], "--lang", lang)

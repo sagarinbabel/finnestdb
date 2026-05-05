@@ -50,6 +50,14 @@ Default discovery:
 - nearest repo root containing `go.mod`
 - executable directory fallback
 
+Subprocess timeout: each call spawns a fresh Python process and reloads
+Vabamorf, so cold start alone is roughly 1 second per call. The default
+budget is `30s`, overridable with a Go duration string:
+
+```bash
+export FINNESTDB_ESTNLTK_TIMEOUT=1m
+```
+
 Setup:
 
 ```bash

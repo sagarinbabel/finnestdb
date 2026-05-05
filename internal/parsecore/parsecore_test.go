@@ -3,10 +3,45 @@ package parsecore
 import (
 	"slices"
 	"testing"
+	"time"
 
 	"finnestdb/internal/parserffi"
 	"finnestdb/internal/store"
 )
+
+func TestAnalyzerTimeoutFallsBackOnUnsetMalformedAndNonPositive(t *testing.T) {
+	const env = "FINNESTDB_TEST_TIMEOUT"
+
+	t.Setenv(env, "")
+	if got := analyzerTimeout(env, 7*time.Second); got != 7*time.Second {
+		t.Fatalf("empty env: got %v want 7s", got)
+	}
+
+	t.Setenv(env, "not-a-duration")
+	if got := analyzerTimeout(env, 7*time.Second); got != 7*time.Second {
+		t.Fatalf("malformed env: got %v want 7s", got)
+	}
+
+	t.Setenv(env, "0s")
+	if got := analyzerTimeout(env, 7*time.Second); got != 7*time.Second {
+		t.Fatalf("zero env: got %v want 7s", got)
+	}
+
+	t.Setenv(env, "-5s")
+	if got := analyzerTimeout(env, 7*time.Second); got != 7*time.Second {
+		t.Fatalf("negative env: got %v want 7s", got)
+	}
+
+	t.Setenv(env, "45s")
+	if got := analyzerTimeout(env, 7*time.Second); got != 45*time.Second {
+		t.Fatalf("override env: got %v want 45s", got)
+	}
+
+	t.Setenv(env, "1m30s")
+	if got := analyzerTimeout(env, 7*time.Second); got != 90*time.Second {
+		t.Fatalf("compound env: got %v want 90s", got)
+	}
+}
 
 func TestSupportedParsersIncludesOmorfi(t *testing.T) {
 	got := SupportedParsers()
