@@ -1,7 +1,7 @@
 .PHONY: all build clean parser server frontend run \
         import-dict-fi import-dict-et import-dict \
         reimport-dict-fi reimport-dict-et reimport-dict \
-        setup-omorfi eval eval-check compare-parsers
+        setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et
 
 # Default target
 all: build
@@ -111,6 +111,27 @@ $(OMORFI_MODEL):
 
 compare-parsers: parser
 	@bash scripts/parser-comparison.sh
+
+# ── Estonian analyzer comparison setup ────────────────────────────────────────
+#
+# Installs EstNLTK, which provides Vabamorf-backed Estonian morphological
+# analysis. After this target completes, the estnltk parser is available:
+#
+#     go run ./cmd/parsertest -dataset testdata/parser-eval/et/gold/et-manual-v1.json -parsers basic,custom,estnltk
+#
+# The bundled adapter at scripts/estnltk_adapter_example.py is auto-discovered,
+# or can be overridden with FINNESTDB_ESTNLTK_CMD.
+
+setup-estnltk:
+	@python3 -m venv .venv-estnltk
+	@.venv-estnltk/bin/python -m pip install --quiet --upgrade pip
+	@.venv-estnltk/bin/python -m pip install --quiet estnltk
+	@mkdir -p .cache/nltk_data .cache/matplotlib
+	@NLTK_DATA="$$(pwd)/.cache/nltk_data" .venv-estnltk/bin/python -m nltk.downloader -d .cache/nltk_data punkt_tab >/dev/null
+	@NLTK_DATA="$$(pwd)/.cache/nltk_data" MPLCONFIGDIR="$$(pwd)/.cache/matplotlib" .venv-estnltk/bin/python -c "from estnltk import Text; t = Text('Poes ootasin sõpra.'); t.tag_layer(['words', 'morph_analysis']); print('estnltk: OK')"
+
+compare-parsers-et: parser
+	@bash scripts/parser-comparison-et.sh
 
 # Run the standard local parser eval sweep without requiring external baselines.
 eval: parser

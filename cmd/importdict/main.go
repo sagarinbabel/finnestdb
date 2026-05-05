@@ -63,6 +63,16 @@ var posMap = map[string]string{
 	"affix":    "X",
 }
 
+type importMetadata struct {
+	Source        string
+	SourceName    string
+	SourceURL     string
+	SourceVersion string
+	License       string
+	Attribution   string
+	ChangesNote   string
+}
+
 func normalizePos(raw string) string {
 	if mapped, ok := posMap[strings.ToLower(strings.TrimSpace(raw))]; ok {
 		return mapped
@@ -120,6 +130,12 @@ func main() {
 	filePath := flag.String("file", "", "Path to local .jsonl, .jsonl.gz, or .jsonl.bz2 file (skips download)")
 	customGlosses := flag.String("custom-glosses", "", "Path to CSV file of custom gloss overrides (word,pos,lang,gloss)")
 	reimport := flag.Bool("reimport", false, "Drop existing entries for this lang before importing")
+	sourceName := flag.String("source-name", "kaikki.org", "Human-readable lexical source name for dict_metadata")
+	sourceURL := flag.String("source-url", "", "Canonical lexical source URL for dict_metadata")
+	sourceVersion := flag.String("source-version", "", "Source version, dump date, or release identifier for dict_metadata")
+	sourceLicense := flag.String("source-license", "Wiktionary-derived; verify per source terms", "License text or SPDX-like label for dict_metadata")
+	sourceAttribution := flag.String("source-attribution", "kaikki.org dictionary data derived from Wiktionary", "Attribution text to preserve with imported rows")
+	changesNote := flag.String("changes-note", "Normalized to FinEstDB lemma/form/POS schema", "Change notice for dict_metadata")
 	flag.Parse()
 
 	langCode := strings.ToLower(*lang)
@@ -198,20 +214,49 @@ func main() {
 		log.Printf("Applied %d custom gloss overrides from %s", n, *customGlosses)
 	}
 
-	// Record import metadata.
-	source := kaikkiURL[langCode]
-	if *filePath != "" {
-		source = *filePath
+	metadata := importMetadata{
+		SourceName:    strings.TrimSpace(*sourceName),
+		SourceURL:     strings.TrimSpace(*sourceURL),
+		SourceVersion: strings.TrimSpace(*sourceVersion),
+		License:       strings.TrimSpace(*sourceLicense),
+		Attribution:   strings.TrimSpace(*sourceAttribution),
+		ChangesNote:   strings.TrimSpace(*changesNote),
 	}
-	if _, err := db.Exec(
-		`INSERT OR REPLACE INTO dict_metadata (lang, source, imported_at, row_count) VALUES (?, ?, CURRENT_TIMESTAMP, ?)`,
-		dbLang, source, count,
-	); err != nil {
+	if metadata.SourceURL == "" {
+		metadata.SourceURL = kaikkiURL[langCode]
+	}
+	metadata.Source = metadata.SourceURL
+	if *filePath != "" {
+		metadata.Source = *filePath
+		if strings.TrimSpace(*sourceURL) == "" {
+			metadata.SourceURL = *filePath
+		}
+	}
+	if err := recordImportMetadata(db, dbLang, metadata, count); err != nil {
 		log.Printf("warn: could not update dict_metadata: %v", err)
 	}
 
 	fmt.Printf("\nDone. Imported %d entries for %s.\n", count, dbLang)
 	fmt.Printf("Run './finnestdb' to start the server.\n")
+}
+
+func recordImportMetadata(db *sql.DB, dbLang string, metadata importMetadata, rowCount int) error {
+	_, err := db.Exec(
+		`INSERT OR REPLACE INTO dict_metadata (
+			lang, source, source_name, source_url, source_version, license,
+			attribution, changes_note, imported_at, row_count
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`,
+		dbLang,
+		metadata.Source,
+		metadata.SourceName,
+		metadata.SourceURL,
+		metadata.SourceVersion,
+		metadata.License,
+		metadata.Attribution,
+		metadata.ChangesNote,
+		rowCount,
+	)
+	return err
 }
 
 // importJSONL streams the JSONL reader and inserts lemmas + forms into the DB.
@@ -420,10 +465,36 @@ func ensureSchema(db *sql.DB) error {
 		CREATE TABLE IF NOT EXISTS dict_metadata (
 			lang        TEXT NOT NULL,
 			source      TEXT NOT NULL,
+			source_name TEXT,
+			source_url  TEXT,
+			source_version TEXT,
+			license     TEXT,
+			attribution TEXT,
+			changes_note TEXT,
 			imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			row_count   INTEGER,
 			PRIMARY KEY (lang, source)
 		);
 	`)
-	return err
+	if err != nil {
+		return err
+	}
+	return ensureDictMetadataColumns(db)
+}
+
+func ensureDictMetadataColumns(db *sql.DB) error {
+	columns := []string{
+		"source_name TEXT",
+		"source_url TEXT",
+		"source_version TEXT",
+		"license TEXT",
+		"attribution TEXT",
+		"changes_note TEXT",
+	}
+	for _, column := range columns {
+		if _, err := db.Exec(`ALTER TABLE dict_metadata ADD COLUMN ` + column); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			return err
+		}
+	}
+	return nil
 }

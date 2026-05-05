@@ -4,15 +4,30 @@ import (
 	"slices"
 	"testing"
 
+	"finnestdb/internal/parserffi"
 	"finnestdb/internal/store"
 )
 
 func TestSupportedParsersIncludesOmorfi(t *testing.T) {
 	got := SupportedParsers()
-	want := []string{"basic", "custom", "omorfi"}
+	want := []string{"basic", "custom", "estnltk", "omorfi"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("supported parsers=%v want %v", got, want)
 	}
+}
+
+func TestParserDefinitionsExposeEstNLTKForEstonian(t *testing.T) {
+	defs := ParserDefinitions()
+	for _, def := range defs {
+		if def.Name != "estnltk" {
+			continue
+		}
+		if !slices.Equal(def.Languages, []string{"ET"}) {
+			t.Fatalf("estnltk languages=%v want [ET]", def.Languages)
+		}
+		return
+	}
+	t.Fatal("estnltk parser definition missing")
 }
 
 func TestOmorfiRulesPreferCustomFallbackAndTraceIt(t *testing.T) {
@@ -46,6 +61,40 @@ func TestOmorfiRulesPreferCustomFallbackAndTraceIt(t *testing.T) {
 	}
 	if len(token.Trace) == 0 {
 		t.Fatal("expected trace entry to be recorded")
+	}
+}
+
+func TestExternalAnalyzerParserUsesConfiguredSource(t *testing.T) {
+	db, err := store.NewDB(":memory:")
+	if err != nil {
+		t.Fatalf("NewDB: %v", err)
+	}
+	defer db.Close()
+
+	parser := externalAnalyzerParser{
+		name:   "estnltk",
+		lang:   "ET",
+		source: "analyzer:estnltk",
+		analyzer: func(_, _ string) (*parserffi.AnalysisResult, error) {
+			return &parserffi.AnalysisResult{Sentences: []parserffi.Sentence{
+				{Tokens: []parserffi.Token{
+					{Form: "Poes", Lemma: "pood", POS: "NOUN", GrammarLabel: "inessive"},
+				}},
+			}}, nil
+		},
+		overrideSet: defaultExternalAnalyzerRules,
+	}
+
+	got, err := parser.Parse(db, "ET", "Poes")
+	if err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	token := got.Sentences[0].Tokens[0]
+	if token.Source != "analyzer:estnltk" {
+		t.Fatalf("source=%q want analyzer:estnltk", token.Source)
+	}
+	if token.Lemma != "pood" || token.POS != "NOUN" || token.GrammarLabel != "inessive" {
+		t.Fatalf("token=%+v", token)
 	}
 }
 

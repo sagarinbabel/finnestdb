@@ -55,7 +55,7 @@ func TestNormalizePos(t *testing.T) {
 		{"adv", "ADV"},
 		{"particle", "PART"},
 		{"name", "PROPN"},
-		{"NOUN", "NOUN"},      // already uppercase passthrough
+		{"NOUN", "NOUN"},       // already uppercase passthrough
 		{"Unknown", "UNKNOWN"}, // unrecognized → uppercase
 		{"", ""},               // empty stays empty
 	}
@@ -176,6 +176,41 @@ func TestImportJSONL_PosNormalization(t *testing.T) {
 	}
 	if pos != "VERB" {
 		t.Errorf("pos = %q, want VERB", pos)
+	}
+}
+
+func TestRecordImportMetadataPreservesAttributionFields(t *testing.T) {
+	db := newTestDB(t)
+
+	err := recordImportMetadata(db, "ET", importMetadata{
+		Source:        "ekilex",
+		SourceName:    "EKI/Ekilex",
+		SourceURL:     "https://ekilex.ee/",
+		SourceVersion: "2026-05-05-export",
+		License:       "CC BY 4.0",
+		Attribution:   "Eesti Keele Instituut / EKI",
+		ChangesNote:   "Normalized to FinEstDB lemma/form/POS schema",
+	}, 42)
+	if err != nil {
+		t.Fatalf("recordImportMetadata: %v", err)
+	}
+
+	var sourceName, sourceURL, sourceVersion, license, attribution, changesNote string
+	var rowCount int
+	if err := db.QueryRow(
+		`SELECT source_name, source_url, source_version, license, attribution, changes_note, row_count
+		 FROM dict_metadata WHERE lang = 'ET' AND source = 'ekilex'`,
+	).Scan(&sourceName, &sourceURL, &sourceVersion, &license, &attribution, &changesNote, &rowCount); err != nil {
+		t.Fatalf("metadata query: %v", err)
+	}
+	if sourceName != "EKI/Ekilex" || sourceURL != "https://ekilex.ee/" || sourceVersion != "2026-05-05-export" {
+		t.Fatalf("unexpected source metadata: name=%q url=%q version=%q", sourceName, sourceURL, sourceVersion)
+	}
+	if license != "CC BY 4.0" || attribution != "Eesti Keele Instituut / EKI" || changesNote == "" {
+		t.Fatalf("unexpected attribution metadata: license=%q attribution=%q changes=%q", license, attribution, changesNote)
+	}
+	if rowCount != 42 {
+		t.Fatalf("row_count=%d want 42", rowCount)
 	}
 }
 

@@ -88,6 +88,9 @@ are language-specific.
 ### Dictionary and feedback plumbing
 
 - The lemma/form/gloss schema is the same for both languages.
+- Dictionary import metadata records source name, source URL, source version,
+  license, attribution, and change notes so EKI/Ekilex data can be imported
+  without losing provenance.
 - The known-words and parser-feedback subsystems treat language as a
   filter, not as a different data model.
 - Admin triage of corrections uses one queue and one workflow, with a

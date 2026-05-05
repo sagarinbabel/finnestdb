@@ -240,6 +240,12 @@ func (d *DB) initSchema() error {
 	CREATE TABLE IF NOT EXISTS dict_metadata (
 		lang        TEXT NOT NULL,
 		source      TEXT NOT NULL,
+		source_name TEXT,
+		source_url  TEXT,
+		source_version TEXT,
+		license     TEXT,
+		attribution TEXT,
+		changes_note TEXT,
 		imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		row_count   INTEGER,
 		PRIMARY KEY (lang, source)
@@ -313,7 +319,27 @@ func (d *DB) initSchema() error {
 	if _, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_card_state_introduced_at ON card_state(introduced_at) WHERE introduced_at IS NOT NULL`); err != nil {
 		return err
 	}
+	if err := d.ensureDictMetadataTable(); err != nil {
+		return err
+	}
 
+	return nil
+}
+
+func (d *DB) ensureDictMetadataTable() error {
+	columns := []string{
+		"source_name TEXT",
+		"source_url TEXT",
+		"source_version TEXT",
+		"license TEXT",
+		"attribution TEXT",
+		"changes_note TEXT",
+	}
+	for _, column := range columns {
+		if _, err := d.db.Exec(`ALTER TABLE dict_metadata ADD COLUMN ` + column); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			return err
+		}
+	}
 	return nil
 }
 

@@ -95,12 +95,34 @@ performance characteristics you need.
 
 ## Estonian Parallel Path
 
-For Estonian, the closest analogous baseline is EstNLTK / Vabamorf.
+For Estonian, the analogous baseline is now the `estnltk` parser mode, backed
+by EstNLTK / Vabamorf and normalized through
+`scripts/estnltk_adapter_example.py`.
 
 Practical maintained source:
 
 - PyPI: `estnltk`
 - repo: `estnltk/estnltk`
 
-That should be treated as a later fourth-parser or separate Estonian baseline,
-not as a blocker for Finnish Omorfi integration.
+Set:
+
+```bash
+export FINNESTDB_ESTNLTK_CMD="/absolute/path/to/python /absolute/path/to/scripts/estnltk_adapter_example.py"
+```
+
+or run:
+
+```bash
+make setup-estnltk
+```
+
+Then compare:
+
+```bash
+go run ./cmd/parsertest \
+  -dataset ./testdata/parser-eval/et/gold/et-manual-v1.json \
+  -parsers basic,custom,estnltk
+```
+
+See `docs/ESTONIAN_LEXICAL_PLAN.md` for the EKI/Ekilex lexical-data import
+plan and attribution requirements.
