@@ -96,36 +96,21 @@ def grammar_label(form: str) -> str:
     return CASE_LABELS.get(tags[-1], "")
 
 
-def tokenise_with_punctuation(sentence: str) -> list[str]:
-    return re.findall(r"\w+(?:[-']\w+)*|[^\w\s]", sentence, flags=re.UNICODE)
-
-
 def analyse_sentence(sentence: str) -> dict:
     from estnltk import Text
 
     text = Text(sentence)
     text.tag_layer(["words", "morph_analysis"])
-    analyses_by_form: dict[str, list[dict]] = {}
+
+    out_tokens = []
     for span in text["morph_analysis"]:
         annotation = best_annotation(span)
         form = getattr(span, "text", "")
-        lemma = raw_value(annotation, "lemma") or raw_value(annotation, "root") or form.lower()
-        pos = POS_LABELS.get(raw_value(annotation, "partofspeech"), "X")
-        vm_form = raw_value(annotation, "form")
-        analyses_by_form.setdefault(form, []).append(
-            {
-                "form": form,
-                "lemma": lemma.replace("_", ""),
-                "pos": pos,
-                "feats": {"vabamorf_form": vm_form} if vm_form else {},
-                "grammar_label": grammar_label(vm_form),
-                "mwe_id": None,
-            }
-        )
-
-    out_tokens = []
-    for form in tokenise_with_punctuation(sentence):
-        if re.fullmatch(r"\W+", form, flags=re.UNICODE):
+        if not form:
+            continue
+        raw_pos = raw_value(annotation, "partofspeech")
+        pos = POS_LABELS.get(raw_pos, "X")
+        if pos == "PUNCT" or (not raw_pos and re.fullmatch(r"\W+", form, flags=re.UNICODE)):
             out_tokens.append(
                 {
                     "form": form,
@@ -137,17 +122,15 @@ def analyse_sentence(sentence: str) -> dict:
                 }
             )
             continue
-        candidates = analyses_by_form.get(form) or analyses_by_form.get(form.lower())
-        if candidates:
-            out_tokens.append(candidates.pop(0))
-            continue
+        lemma = raw_value(annotation, "lemma") or raw_value(annotation, "root") or form.lower()
+        vm_form = raw_value(annotation, "form")
         out_tokens.append(
             {
                 "form": form,
-                "lemma": form.lower(),
-                "pos": "X",
-                "feats": {},
-                "grammar_label": "",
+                "lemma": lemma.replace("_", ""),
+                "pos": pos,
+                "feats": {"vabamorf_form": vm_form} if vm_form else {},
+                "grammar_label": grammar_label(vm_form),
                 "mwe_id": None,
             }
         )
