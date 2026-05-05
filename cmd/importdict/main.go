@@ -32,6 +32,8 @@ import (
 	"os"
 	"strings"
 
+	"finnestdb/internal/store"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -491,9 +493,10 @@ func applyCustomGlosses(db *sql.DB, filePath, dbLang string) (int, error) {
 
 // ensureSchema creates the forms, lemmas, and dict_metadata tables if they
 // don't exist. This allows the importer to run against a fresh database file
-// without needing to start the main server first.
+// without needing to start the main server first. The dict_metadata schema is
+// delegated to internal/store so both paths stay in sync.
 func ensureSchema(db *sql.DB) error {
-	_, err := db.Exec(`
+	if _, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS lemmas (
 			lemma TEXT NOT NULL,
 			pos   TEXT NOT NULL,
@@ -508,39 +511,8 @@ func ensureSchema(db *sql.DB) error {
 			lang  TEXT NOT NULL,
 			PRIMARY KEY (form, lang)
 		);
-		CREATE TABLE IF NOT EXISTS dict_metadata (
-			lang        TEXT NOT NULL,
-			source      TEXT NOT NULL,
-			source_name TEXT,
-			source_url  TEXT,
-			source_version TEXT,
-			license     TEXT,
-			attribution TEXT,
-			changes_note TEXT,
-			imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			row_count   INTEGER,
-			PRIMARY KEY (lang, source)
-		);
-	`)
-	if err != nil {
+	`); err != nil {
 		return err
 	}
-	return ensureDictMetadataColumns(db)
-}
-
-func ensureDictMetadataColumns(db *sql.DB) error {
-	columns := []string{
-		"source_name TEXT",
-		"source_url TEXT",
-		"source_version TEXT",
-		"license TEXT",
-		"attribution TEXT",
-		"changes_note TEXT",
-	}
-	for _, column := range columns {
-		if _, err := db.Exec(`ALTER TABLE dict_metadata ADD COLUMN ` + column); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
-			return err
-		}
-	}
-	return nil
+	return store.EnsureDictMetadataSchema(db)
 }
