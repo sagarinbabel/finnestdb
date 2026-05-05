@@ -41,6 +41,15 @@ var kaikkiURL = map[string]string{
 	"et": "https://kaikki.org/dictionary/Estonian/kaikki.org-dictionary-Estonian.jsonl",
 }
 
+// Source-attribution defaults applied only when importing the built-in
+// kaikki.org dump. Non-kaikki sources must supply these explicitly so EKI/
+// Ekilex (or any other licensed corpus) is never silently tagged as Wiktionary.
+const (
+	kaikkiSourceName    = "kaikki.org"
+	kaikkiSourceLicense = "Wiktionary-derived; verify per source terms"
+	kaikkiAttribution   = "kaikki.org dictionary data derived from Wiktionary"
+)
+
 // posMap normalizes kaikki.org POS strings (lowercase) to UPOS (uppercase).
 var posMap = map[string]string{
 	"noun":     "NOUN",
@@ -130,11 +139,11 @@ func main() {
 	filePath := flag.String("file", "", "Path to local .jsonl, .jsonl.gz, or .jsonl.bz2 file (skips download)")
 	customGlosses := flag.String("custom-glosses", "", "Path to CSV file of custom gloss overrides (word,pos,lang,gloss)")
 	reimport := flag.Bool("reimport", false, "Drop existing entries for this lang before importing")
-	sourceName := flag.String("source-name", "kaikki.org", "Human-readable lexical source name for dict_metadata")
+	sourceName := flag.String("source-name", "", "Human-readable lexical source name for dict_metadata (required for non-kaikki sources)")
 	sourceURL := flag.String("source-url", "", "Canonical lexical source URL for dict_metadata")
 	sourceVersion := flag.String("source-version", "", "Source version, dump date, or release identifier for dict_metadata")
-	sourceLicense := flag.String("source-license", "Wiktionary-derived; verify per source terms", "License text or SPDX-like label for dict_metadata")
-	sourceAttribution := flag.String("source-attribution", "kaikki.org dictionary data derived from Wiktionary", "Attribution text to preserve with imported rows")
+	sourceLicense := flag.String("source-license", "", "License text or SPDX-like label for dict_metadata (required for non-kaikki sources)")
+	sourceAttribution := flag.String("source-attribution", "", "Attribution text to preserve with imported rows (required for non-kaikki sources)")
 	changesNote := flag.String("changes-note", "Normalized to FinEstDB lemma/form/POS schema", "Change notice for dict_metadata")
 	flag.Parse()
 
@@ -143,6 +152,10 @@ func main() {
 		log.Fatalf("Unsupported language %q. Supported: fi, et", *lang)
 	}
 	dbLang := strings.ToUpper(langCode) // "fi" → "FI", "et" → "ET"
+
+	if err := resolveProvenance(*filePath, sourceName, sourceURL, sourceLicense, sourceAttribution); err != nil {
+		log.Fatalf("%v", err)
+	}
 
 	db, err := sql.Open("sqlite3", *dbPath)
 	if err != nil {
@@ -238,6 +251,39 @@ func main() {
 
 	fmt.Printf("\nDone. Imported %d entries for %s.\n", count, dbLang)
 	fmt.Printf("Run './finnestdb' to start the server.\n")
+}
+
+// resolveProvenance applies kaikki defaults when we are importing the built-in
+// kaikki dump, and otherwise requires the operator to spell out source name,
+// license, and attribution. It mutates the flag pointers in place.
+func resolveProvenance(filePath string, sourceName, sourceURL, sourceLicense, sourceAttribution *string) error {
+	usingKaikki := filePath == "" && strings.TrimSpace(*sourceURL) == ""
+	if usingKaikki {
+		if strings.TrimSpace(*sourceName) == "" {
+			*sourceName = kaikkiSourceName
+		}
+		if strings.TrimSpace(*sourceLicense) == "" {
+			*sourceLicense = kaikkiSourceLicense
+		}
+		if strings.TrimSpace(*sourceAttribution) == "" {
+			*sourceAttribution = kaikkiAttribution
+		}
+		return nil
+	}
+	var missing []string
+	if strings.TrimSpace(*sourceName) == "" {
+		missing = append(missing, "-source-name")
+	}
+	if strings.TrimSpace(*sourceLicense) == "" {
+		missing = append(missing, "-source-license")
+	}
+	if strings.TrimSpace(*sourceAttribution) == "" {
+		missing = append(missing, "-source-attribution")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("non-kaikki imports require explicit provenance: %s", strings.Join(missing, ", "))
+	}
+	return nil
 }
 
 func recordImportMetadata(db *sql.DB, dbLang string, metadata importMetadata, rowCount int) error {

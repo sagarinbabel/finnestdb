@@ -214,6 +214,66 @@ func TestRecordImportMetadataPreservesAttributionFields(t *testing.T) {
 	}
 }
 
+func TestResolveProvenance(t *testing.T) {
+	t.Run("kaikki defaults applied when no source flags given", func(t *testing.T) {
+		var name, url, license, attribution string
+		if err := resolveProvenance("", &name, &url, &license, &attribution); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if name != kaikkiSourceName || license != kaikkiSourceLicense || attribution != kaikkiAttribution {
+			t.Fatalf("kaikki defaults not applied: name=%q license=%q attribution=%q", name, license, attribution)
+		}
+	})
+
+	t.Run("operator overrides preserved", func(t *testing.T) {
+		name := "EKI/Ekilex"
+		url := ""
+		license := "CC BY 4.0"
+		attribution := "Eesti Keele Instituut / EKI"
+		if err := resolveProvenance("", &name, &url, &license, &attribution); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if name != "EKI/Ekilex" || license != "CC BY 4.0" || attribution != "Eesti Keele Instituut / EKI" {
+			t.Fatalf("operator values overwritten: name=%q license=%q attribution=%q", name, license, attribution)
+		}
+	})
+
+	t.Run("non-kaikki file requires explicit provenance", func(t *testing.T) {
+		var name, url, license, attribution string
+		err := resolveProvenance("/tmp/ekilex.jsonl", &name, &url, &license, &attribution)
+		if err == nil {
+			t.Fatalf("expected error for missing provenance flags")
+		}
+		for _, want := range []string{"-source-name", "-source-license", "-source-attribution"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Fatalf("error %q missing %q", err, want)
+			}
+		}
+	})
+
+	t.Run("non-kaikki source URL requires explicit provenance", func(t *testing.T) {
+		var name, license, attribution string
+		url := "https://ekilex.ee/some/export"
+		err := resolveProvenance("", &name, &url, &license, &attribution)
+		if err == nil {
+			t.Fatalf("expected error for missing provenance flags")
+		}
+	})
+
+	t.Run("non-kaikki with full provenance succeeds", func(t *testing.T) {
+		name := "EKI/Ekilex"
+		url := "https://ekilex.ee/some/export"
+		license := "CC BY 4.0"
+		attribution := "Eesti Keele Instituut / EKI"
+		if err := resolveProvenance("", &name, &url, &license, &attribution); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if name != "EKI/Ekilex" || license != "CC BY 4.0" {
+			t.Fatalf("operator values overwritten: name=%q license=%q", name, license)
+		}
+	})
+}
+
 func TestOpenJSONLReader_Plain(t *testing.T) {
 	r, err := openJSONLReader(strings.NewReader("hello"), "dict.jsonl")
 	if err != nil {
