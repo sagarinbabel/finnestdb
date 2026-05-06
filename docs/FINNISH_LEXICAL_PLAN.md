@@ -266,33 +266,36 @@ boundaries.
 - **Phase 3 — Kotus adapter.** Pull sanalista, populate
   `paradigm_class` on existing FI lemmas, insert any Kotus lemmas not
   yet present. Tests: lemma count grows; eval baseline unchanged.
-- **Phase 3.5 — Voikko generator spike.** Before committing to a 6M-row
-  seed artifact, prove the paradigm-generation path on a handful of
-  Kotus lemmas covering the major inflection classes. The installed
-  `voikkospell` ships morphological *analysis* (`-m` / `-M`), not a
-  built-in `--paradigm` *generator*. Confirm the actual generation
-  path (libvoikko C API, `voikkogen`, or a Python `libvoikko` script
-  under `scripts/`), the per-class form coverage, and the
-  Voikko-tag-to-UD-features mapping (e.g. `n_t` → `Case=Nom|Number=Plur`).
-  Output: a spike report under
-  [`experiments/`](../experiments/) plus a small fixture
-  `data/voikko/fi-voikko-spike.jsonl` covering ~50 lemmas. Tests: the
-  fixture round-trips through the eventual `cmd/importvoikko` shape.
-  This phase exists because the original Phase 4 plan assumed
-  `voikkospell --paradigm` works as documented; verifying the actual
-  generator and feature-mapping path is the riskiest implementation
-  detail in the whole Finnish track and worth de-risking before the
-  full seed.
-- **Phase 4 — Voikko seed.** Offline-generate
+- **Phase 3.5 — Voikko generator spike. (Done, 2026-05-06.)** Confirmed
+  that none of the candidate generation paths (`voikkospell --paradigm`,
+  `voikkogen`, libvoikko Python wrapper, libvoikko C API) actually
+  exposes a generator: the runtime is hardcoded analyzer-direction.
+  The Giellalt source-build path (HFST + lang-fin) does work and
+  produces correct paradigm forms, but the spike also surfaced a
+  better architecture overall — see Phases 4–5 below. Full report:
+  [experiments/2026-05-06-phase3.5-voikko-generator-spike.md](../experiments/2026-05-06-phase3.5-voikko-generator-spike.md).
+- **Phase 4 — Voikko seed.** ~~Offline-generate
   `data/voikko/fi-voikko-forms-<version>.jsonl.gz`, commit it, import
-  via the new `cmd/importvoikko/` binary. Reuses the generator and
-  feature mapping locked in Phase 3.5. Tests:
+  via the new `cmd/importvoikko/` binary.~~
+  **Superseded by the FST-runtime architecture below.** A 6M-row
+  static seed turned out to be the wrong artifact — porting the FST
+  *runtime* to Go gives faster lookups, smaller disk footprint, and
+  union coverage of Voikko + Giellalt in one move. See
+  [docs/FST_LEMMATIZER_ROADMAP.md](FST_LEMMATIZER_ROADMAP.md).
+- **Phase 4 (replacement) — FST lemmatizer in Go.** New package
+  `pkg/lemmatizer-fi-et/` with two subpackages: `vfst/` (Voikko VFST
+  runtime, ported from libvoikko sources) and `hfstol/` (HFST
+  optimised-lookup runtime, ported from upstream HFST). Vendored data:
+  `mor.vfst` from libvoikko upstream + `analyser-gt-desc.hfstol` for
+  Finnish (compiled from `giellalt/lang-fin`). Tests:
   consonant gradation, vowel harmony, *-nen* class, partitive plural
-  resolve correctly via Voikko-priority rows. Compare against frozen
-  baseline in `docs/baselines/`.
-- **Phase 5 — Resolution priority flip.** With `dict_metadata.priority`
-  populated, enrichment naturally picks Voikko over kaikki for forms.
-  Re-run eval; freeze new baseline.
+  resolve correctly via FST lookup. Compare against
+  [`docs/baselines/2026-05-06-pre-fst-*`](baselines/) (frozen
+  pre-change snapshot).
+- **Phase 5 — Estonian via Giellalt.** Repeat the Phase 4 build for
+  `giellalt/lang-est`; vendor ET `.hfstol`; extend `Lemmatize` to
+  cover ET. Voikko has no Estonian model so ET is Giellalt-only.
+  Compare against pre-change ET baselines.
 
 ## Migration Framework Plan
 
