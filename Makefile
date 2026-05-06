@@ -1,6 +1,6 @@
-.PHONY: all build clean parser server frontend run \
+.PHONY: all build clean parser server frontend run run-local setup-local \
         import-dict-fi import-dict-et import-dict import-dict-et-ekilex import-ekilex-et \
-        import-ekilex-details-et \
+        import-ekilex-details-et import-dict-et-recommended \
         fetch-ekilex-refresh fetch-ekilex-sample fetch-ekilex \
         reduce-ekilex \
         reimport-dict-fi reimport-dict-et reimport-dict \
@@ -68,15 +68,40 @@ import-dict-et-ekilex:
 		echo "EKILEX_API_KEY is required. Create one in your Ekilex user profile, then export EKILEX_API_KEY=..."; \
 		exit 1; \
 	fi
+	@echo "NOTE: Ekilex API import is best-effort and can be slow/flaky."
+	@echo "Recommended ET workflow is: make import-dict-et && make import-ekilex-et && make import-ekilex-details-et"
+	@echo "This target defaults to a small smoke import. Override EKILEX_LIMIT=... (or EKILEX_WORDS=...) if needed."
 	go run ./cmd/importdict -lang et -source-key ekilex -source-priority 20 -db finnestdb.db \
 		-source-name "EKI/Ekilex/Sõnaveeb" \
 		-source-url "https://ekilex.ee" \
 		-source-license "CC BY 4.0" \
 		-source-attribution "Eesti Keele Instituut; EKI sõnastiku- ja terminibaasisüsteem Ekilex; Sõnaveeb" \
-		-changes-note "Normalized to FinEstDB lemma/form/POS schema; monolingual definitions and translations flattened into gloss text"
+		-changes-note "Normalized to FinEstDB lemma/form/POS schema; monolingual definitions and translations flattened into gloss text" \
+		-ekilex-limit $(EKILEX_LIMIT) \
+		-ekilex-timeout $(EKILEX_TIMEOUT) \
+		-ekilex-retries $(EKILEX_RETRIES) \
+		$(if $(EKILEX_WORDS),-ekilex-words "$(EKILEX_WORDS)",)
+
+# Defaults for the Ekilex API smoke import target.
+EKILEX_LIMIT ?= 200
+EKILEX_TIMEOUT ?= 90s
+EKILEX_RETRIES ?= 3
 
 # Import both languages (first-time only).
 import-dict: import-dict-fi import-dict-et
+
+# Recommended, reliable Estonian import for local/dev:
+# - kaikki.org base dictionary
+# - tracked compact Ekilex public headwords snapshot
+# - tracked reduced Ekilex details drop (~6.2M forms)
+import-dict-et-recommended: import-dict-et import-ekilex-et import-ekilex-details-et
+
+# One-command local setup: build dictionaries if missing, then run.
+# Kept separate from `make run` so running the server doesn't implicitly start
+# multi-minute downloads/imports in CI or quick-dev loops.
+setup-local: import-dict-fi import-dict-et-recommended
+
+run-local: setup-local run
 
 # Adds missing Estonian EKI ühendsõnastik 2026 public headwords from the
 # tracked compact Ekilex snapshot. Existing Kaikki rows are preserved.

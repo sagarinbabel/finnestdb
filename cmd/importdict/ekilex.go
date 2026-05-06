@@ -17,6 +17,7 @@ type ekilexClient struct {
 	baseURL string
 	apiKey  string
 	http    *http.Client
+	retries int
 }
 
 type ekilexWordRef struct {
@@ -58,7 +59,7 @@ type ekilexEntry struct {
 	Forms []string
 }
 
-func newEkilexClient(baseURL, apiKey string) (*ekilexClient, error) {
+func newEkilexClient(baseURL, apiKey string, timeout time.Duration, retries int) (*ekilexClient, error) {
 	if strings.TrimSpace(apiKey) == "" {
 		return nil, errors.New("EKILEX_API_KEY is required; create an API key in your Ekilex user profile and export it before running the import")
 	}
@@ -66,34 +67,62 @@ func newEkilexClient(baseURL, apiKey string) (*ekilexClient, error) {
 	if baseURL == "" {
 		return nil, errors.New("ekilex base URL is empty")
 	}
+	if timeout <= 0 {
+		timeout = 45 * time.Second
+	}
+	if retries < 0 {
+		retries = 0
+	}
 	return &ekilexClient{
 		baseURL: baseURL,
 		apiKey:  apiKey,
+		retries: retries,
 		http: &http.Client{
-			Timeout: 45 * time.Second,
+			Timeout: timeout,
 		},
 	}, nil
 }
 
 func (c *ekilexClient) getJSON(path string, out any) error {
-	req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
-	if err != nil {
-		return err
-	}
-	req.Header.Set("ekilex-api-key", c.apiKey)
-	req.Header.Set("Accept", "application/json")
+	var lastErr error
+	for attempt := 0; attempt <= c.retries; attempt++ {
+		req, err := http.NewRequest(http.MethodGet, c.baseURL+path, nil)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("ekilex-api-key", c.apiKey)
+		req.Header.Set("Accept", "application/json")
 
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
+		resp, err := c.http.Do(req)
+		if err != nil {
+			lastErr = err
+			if attempt < c.retries {
+				time.Sleep(time.Duration(250*(attempt+1)) * time.Millisecond)
+				continue
+			}
+			return err
+		}
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
-		return fmt.Errorf("GET %s: HTTP %d: %s", path, resp.StatusCode, strings.TrimSpace(string(body)))
+		func() {
+			defer resp.Body.Close()
+			if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+				body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+				lastErr = fmt.Errorf("GET %s: HTTP %d: %s", path, resp.StatusCode, strings.TrimSpace(string(body)))
+				return
+			}
+			lastErr = json.NewDecoder(resp.Body).Decode(out)
+		}()
+
+		if lastErr == nil {
+			return nil
+		}
+		if attempt < c.retries {
+			time.Sleep(time.Duration(250*(attempt+1)) * time.Millisecond)
+			continue
+		}
+		return lastErr
 	}
-	return json.NewDecoder(resp.Body).Decode(out)
+	return lastErr
 }
 
 func (c *ekilexClient) searchWord(word string, datasets []string) ([]ekilexWordRef, error) {
