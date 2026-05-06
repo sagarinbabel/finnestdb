@@ -1174,7 +1174,7 @@ type ParseResponse struct {
 	Lang            string               `json:"lang"`
 	ParseID         *int64               `json:"parse_id,omitempty"`
 	TotalTokens     int                  `json:"total_tokens"`
-	ParseDurationMs int64                `json:"parse_duration_ms"`
+	ParseDurationMs float64              `json:"parse_duration_ms"`
 	Stats           parsecore.ParseStats `json:"stats"`
 	Words           []WordEntry          `json:"words"`
 }
@@ -1257,7 +1257,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		Lang:            parsed.Lang,
 		ParseID:         parseID,
 		TotalTokens:     parsed.TotalTokens,
-		ParseDurationMs: parsed.ParseDurationMs,
+		ParseDurationMs: float64(parsed.ParseDurationNs) / 1e6,
 		Stats:           parsed.Stats,
 		Words:           parsed.Words,
 	})

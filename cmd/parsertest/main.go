@@ -65,7 +65,7 @@ func main() {
 	for _, parser := range report.Parsers {
 		summary := report.Summary[parser]
 		fmt.Printf(
-			"%-6s lemma=%5.1f%% pos=%5.1f%% grammar=%5.1f%% full=%5.1f%% coverage=%5.1f%% avg=%4.1fms p50=%4.1fms p95=%4.1fms\n",
+			"%-6s lemma=%5.1f%% pos=%5.1f%% grammar=%5.1f%% full=%5.1f%% coverage=%5.1f%% avg=%7.3fms p50=%7.3fms p95=%7.3fms\n",
 			parser,
 			summary.LemmaAccuracy*100,
 			summary.POSAccuracy*100,
@@ -77,7 +77,12 @@ func main() {
 			summary.P95CaseDurationMs,
 		)
 		fmt.Printf(
-			"       obs unique=%4.1f resolved=%4.1f unresolved=%4.1f analyze=%4.1fms lookup=%4.1fms gloss=%4.1fms resolve=%4.1fms enrich=%4.1fms\n",
+			"       throughput=%s words/s (%s chars/s)\n",
+			formatRate(summary.WordsPerSecond),
+			formatRate(summary.CharsPerSecond),
+		)
+		fmt.Printf(
+			"       obs unique=%4.1f resolved=%4.1f unresolved=%4.1f analyze=%6.3fms lookup=%6.3fms gloss=%6.3fms resolve=%6.3fms enrich=%6.3fms\n",
 			summary.AvgUniqueForms,
 			summary.AvgResolvedTokens,
 			summary.AvgUnresolvedTokens,
@@ -105,6 +110,17 @@ func main() {
 				strings.Join(regression.PassingRefs, ","),
 			)
 		}
+	}
+}
+
+func formatRate(rate float64) string {
+	switch {
+	case rate >= 1_000_000:
+		return fmt.Sprintf("%.2fM", rate/1_000_000)
+	case rate >= 1_000:
+		return fmt.Sprintf("%.1fk", rate/1_000)
+	default:
+		return fmt.Sprintf("%.0f", rate)
 	}
 }
 

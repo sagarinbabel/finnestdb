@@ -49,7 +49,7 @@ work. The question: should we use Omorfi directly, or build our own parser?
 
 | Factor | Our Parser | Omorfi |
 |--------|-----------|--------|
-| **Speed** | Fast (Rust + dictionary lookup) | Slower (FST traversal + Python) |
+| **Speed** | ~40–50k words/s on FI on `custom`, single core ([baseline](baselines/2026-05-06-fi-summary.md#measured-throughput)) | FST traversal + Python subprocess startup; not yet benchmarked under our harness |
 | **Deployment** | Self-contained Go binary | Requires Python + HFST + .hfst files |
 | **Customization** | Add a rule in Go, redeploy | Fork FST project, recompile transducers |
 | **Licensing** | Permissive (we control it) | GPL-3.0 (copyleft implications) |
@@ -57,15 +57,28 @@ work. The question: should we use Omorfi directly, or build our own parser?
 
 ### Trade-off Accepted
 
-We accept that our parser may not match Omorfi's accuracy on edge cases. The goal is:
-
-> "95%+ of Omorfi accuracy at 10x the speed, with full control over rules."
+We accept that our parser may not match Omorfi's accuracy on edge
+cases. The goal is **comparable lemma/POS accuracy with deployment
+and licensing properties Omorfi can't give us** — speed is a
+property we own, not the headline argument.
 
 ### How We Measure Success
 
-- **Accuracy:** Compare lemma/POS output against gold-annotated test cases
-- **Speed:** Tokens per second (must stay fast as rules grow)
-- **Coverage:** Percentage of tokens resolved to dictionary entries
+- **Accuracy:** Compare lemma/POS output against gold-annotated test cases.
+- **Speed:** `cmd/parsertest` reports per-case latency (avg / p50 / p95
+  in ms, ns-precision under the hood) and aggregate `words/s` and
+  `chars/s` per parser per dataset. Current floor on Finnish is
+  ~40–50k words/s on `custom` against the 2026-05-06 dictionary state;
+  treat anything below that on the same datasets as a regression to
+  triage. Speed claims must always cite a measurement — comparing
+  finnestdb against external baselines requires running both under the
+  same harness, not eyeballing numbers from external papers.
+- **Coverage:** Percentage of tokens resolved to dictionary entries.
+
+> **Speed claims policy:** never quote a "we're faster than X" number
+> in this repo without a `cmd/parsertest` run on a comparable dataset
+> and a link to the JSON report. The 2026-05-06 timer fix (PR #103)
+> exists because we previously couldn't.
 
 ### Omorfi's Role
 

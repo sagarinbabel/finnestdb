@@ -108,7 +108,7 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 			Lang:            lang,
 			Parser:          parser,
 			TotalTokens:     3,
-			ParseDurationMs: 17,
+			ParseDurationNs: 17_000_000,
 			Stats: parsecore.ParseStats{
 				UniqueForms:      2,
 				TotalSentences:   1,
@@ -119,12 +119,12 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 					"stub": 1,
 				},
 				Timings: parsecore.ParseTimings{
-					AnalyzeMs:          5,
-					LookupFormsMs:      4,
-					LookupGlossesMs:    3,
-					ResolveSentencesMs: 2,
-					EnrichWordsMs:      1,
-					TotalMs:            17,
+					AnalyzeNs:          5_000_000,
+					LookupFormsNs:      4_000_000,
+					LookupGlossesNs:    3_000_000,
+					ResolveSentencesNs: 2_000_000,
+					EnrichWordsNs:      1_000_000,
+					TotalNs:            17_000_000,
 				},
 			},
 			Words: []parsecore.WordEntry{
@@ -161,7 +161,7 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 		t.Fatalf("total_tokens=%d want 3", resp.TotalTokens)
 	}
 	if resp.ParseDurationMs != 17 {
-		t.Fatalf("parse_duration_ms=%d want 17", resp.ParseDurationMs)
+		t.Fatalf("parse_duration_ms=%v want 17", resp.ParseDurationMs)
 	}
 	if resp.Stats.UniqueForms != 2 {
 		t.Fatalf("stats.unique_forms=%d want 2", resp.Stats.UniqueForms)
@@ -169,8 +169,8 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 	if resp.Stats.ResolvedTokens != 2 {
 		t.Fatalf("stats.resolved_tokens=%d want 2", resp.Stats.ResolvedTokens)
 	}
-	if resp.Stats.Timings.TotalMs != 17 {
-		t.Fatalf("stats.timings.total_ms=%d want 17", resp.Stats.Timings.TotalMs)
+	if resp.Stats.Timings.TotalNs != 17_000_000 {
+		t.Fatalf("stats.timings.total_ns=%d want 17_000_000", resp.Stats.Timings.TotalNs)
 	}
 	if len(resp.Words) != 2 {
 		t.Fatalf("words=%d want 2", len(resp.Words))
@@ -190,7 +190,7 @@ func TestHandleParseCreatesParseSessionForAuthenticatedUser(t *testing.T) {
 			Lang:            lang,
 			Parser:          parser,
 			TotalTokens:     2,
-			ParseDurationMs: 11,
+			ParseDurationNs: 11_000_000,
 			Stats:           parsecore.ParseStats{},
 			Words: []parsecore.WordEntry{
 				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 1},
@@ -241,7 +241,7 @@ func TestHandleParseHydratesLemmaStateForAuthenticatedUser(t *testing.T) {
 			Lang:            lang,
 			Parser:          parser,
 			TotalTokens:     2,
-			ParseDurationMs: 11,
+			ParseDurationNs: 11_000_000,
 			Stats:           parsecore.ParseStats{},
 			Words: []parsecore.WordEntry{
 				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 1},
@@ -1749,7 +1749,7 @@ func TestParseFeedbackSubmissionAndAdminReview(t *testing.T) {
 			Lang:            lang,
 			Parser:          parser,
 			TotalTokens:     2,
-			ParseDurationMs: 11,
+			ParseDurationNs: 11_000_000,
 			Stats:           parsecore.ParseStats{},
 			Words: []parsecore.WordEntry{
 				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 1},
