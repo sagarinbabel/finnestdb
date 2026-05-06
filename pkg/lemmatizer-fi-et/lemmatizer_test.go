@@ -64,3 +64,19 @@ func TestLemmatize_UnknownWord(t *testing.T) {
 		t.Errorf("expected empty for unknown word, got %d analyses: %+v", len(got), got)
 	}
 }
+
+func TestAppendAnalysisPreservesGrammarDistinctReadings(t *testing.T) {
+	seen := map[analysisKey]struct{}{}
+	var got []Analysis
+
+	got = appendAnalysis(got, seen, Analysis{Lemma: "mennä", UPOS: "VERB", Mood: "Ind", Person: "4"})
+	got = appendAnalysis(got, seen, Analysis{Lemma: "mennä", UPOS: "VERB", Mood: "Inf"})
+	got = appendAnalysis(got, seen, Analysis{Lemma: "mennä", UPOS: "VERB", Mood: "Ind", Person: "4"})
+
+	if len(got) != 2 {
+		t.Fatalf("expected two grammar-distinct readings, got %d: %+v", len(got), got)
+	}
+	if got[0].Mood != "Ind" || got[1].Mood != "Inf" {
+		t.Fatalf("output order should follow append/source priority order, got %+v", got)
+	}
+}

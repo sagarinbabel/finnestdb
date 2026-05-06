@@ -71,11 +71,13 @@ func (l *Lemmatizer) Close() error {
 // backends:
 //
 //   - For Finnish, both libvoikko (VFST, curated) and Giellalt (HFSTOL,
-//     broader coverage) are queried. On (lemma, UPOS) overlap the VFST
-//     reading wins because it's the more curated source. Giellalt-only
-//     readings are kept (they cover words VFST doesn't know about).
-//   - Compound readings from Giellalt (`+Cmp#`) are dropped if a
-//     non-compound reading exists for the same (lemma, UPOS).
+//     broader coverage) are queried. Exact morphology duplicates keep the
+//     VFST reading because it is the more curated source. Giellalt-only
+//     readings are kept, including grammar-distinct analyses for the same
+//     lemma and UPOS.
+//   - Compound readings from Giellalt (`+Cmp#`) are delayed until
+//     non-compound readings have been considered, so equivalent
+//     non-compound readings win without dropping grammar-distinct ones.
 //
 // The input word should already be lowercased; the FSTs are
 // case-sensitive and built on lowercase Finnish.
@@ -92,26 +94,24 @@ func (l *Lemmatizer) Lemmatize(lang, word string) []Analysis {
 }
 
 func (l *Lemmatizer) lemmatizeFI(word string) []Analysis {
-	merged := make(map[analysisKey]Analysis)
+	var out []Analysis
+	seen := make(map[analysisKey]struct{})
 
-	// 1. VFST first — populates the map with curated readings.
+	// 1. VFST first — establishes curated source priority and output order.
 	if l.fiVfst != nil {
 		for _, raw := range l.fiVfst.Analyze(word) {
 			a := voikkomap.Parse(raw)
 			if a.Lemma == "" {
 				continue
 			}
-			k := analysisKey{lemma: a.Lemma, upos: a.UPOS}
-			if _, exists := merged[k]; !exists {
-				merged[k] = a
-			}
+			out = appendAnalysis(out, seen, a)
 		}
 	}
 
-	// 2. HFSTOL second — fills coverage gaps. We only insert if (lemma,
-	//    UPOS) wasn't already covered by VFST, so VFST wins on overlap.
-	//    Compound analyses are deferred: a non-compound match for the
-	//    same (lemma, UPOS) takes priority.
+	// 2. HFSTOL second — fills coverage gaps. Exact duplicates are skipped
+	//    because VFST has already populated `seen`, but grammar-distinct
+	//    readings survive. Compound analyses are deferred so equivalent
+	//    non-compound matches take priority.
 	if l.fiHfstol != nil {
 		var compoundQueue []giellaltmap.Analysis
 		for _, raw := range l.fiHfstol.Analyze(word) {
@@ -123,32 +123,48 @@ func (l *Lemmatizer) lemmatizeFI(word string) []Analysis {
 				compoundQueue = append(compoundQueue, ga)
 				continue
 			}
-			k := analysisKey{lemma: ga.Lemma, upos: ga.UPOS}
-			if _, exists := merged[k]; !exists {
-				merged[k] = giellaltToAnalysis(ga)
-			}
+			out = appendAnalysis(out, seen, giellaltToAnalysis(ga))
 		}
 		for _, ga := range compoundQueue {
-			k := analysisKey{lemma: ga.Lemma, upos: ga.UPOS}
-			if _, exists := merged[k]; !exists {
-				merged[k] = giellaltToAnalysis(ga)
-			}
+			out = appendAnalysis(out, seen, giellaltToAnalysis(ga))
 		}
 	}
 
-	if len(merged) == 0 {
+	if len(out) == 0 {
 		return nil
-	}
-	out := make([]Analysis, 0, len(merged))
-	for _, a := range merged {
-		out = append(out, a)
 	}
 	return out
 }
 
 type analysisKey struct {
-	lemma string
-	upos  string
+	lemma        string
+	upos         string
+	grammarLabel string
+	number       string
+	tense        string
+	mood         string
+	person       string
+}
+
+func appendAnalysis(out []Analysis, seen map[analysisKey]struct{}, a Analysis) []Analysis {
+	k := makeAnalysisKey(a)
+	if _, exists := seen[k]; exists {
+		return out
+	}
+	seen[k] = struct{}{}
+	return append(out, a)
+}
+
+func makeAnalysisKey(a Analysis) analysisKey {
+	return analysisKey{
+		lemma:        a.Lemma,
+		upos:         a.UPOS,
+		grammarLabel: a.GrammarLabel,
+		number:       a.Number,
+		tense:        a.Tense,
+		mood:         a.Mood,
+		person:       a.Person,
+	}
 }
 
 func giellaltToAnalysis(g giellaltmap.Analysis) Analysis {
