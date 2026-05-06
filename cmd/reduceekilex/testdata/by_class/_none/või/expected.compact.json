@@ -1,0 +1,161 @@
+{
+  "word_id": 258019,
+  "lemma": "või",
+  "homonym_nr": 1,
+  "morphophono_form": "v`õi",
+  "word_class": "muutumatu",
+  "datasets": [
+    "eki",
+    "ety",
+    "gal",
+    "les"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 630319,
+      "dataset": "eki",
+      "pos": [
+        "konj"
+      ],
+      "definitions_et": [
+        "seob sisu poolest vastanduvaid, üksteist välistavaid, teist võimalust väljendavaid sõnu ja lauseosi",
+        "seob sõnu ja lausete osasid, mis näitavad eri võimalusi"
+      ],
+      "usages_et": [
+        "Kas kohvi või teed?",
+        "Kas maksate pangakaardiga või sularahas?",
+        "Kas sa soovid teed või kohvi?",
+        "Kas te maksate sularahas või ülekandega?",
+        "Olla või mitte olla.",
+        "Sõidan nädalaks või paariks maale.",
+        "Varem või hiljem lahkuvad lapsed kodust."
+      ],
+      "translations_en": [
+        "or"
+      ]
+    },
+    {
+      "meaning_id": 121812,
+      "dataset": "eki",
+      "definitions_et": [
+        "alustab lauset, kui see on mõeldud eelneva lause jätkuks"
+      ],
+      "usages_et": [
+        "Maasikad. Tänan, ei! Või siiski?"
+      ]
+    },
+    {
+      "meaning_id": 121813,
+      "dataset": "eki",
+      "definitions_et": [
+        "(viitab võimalikule tagajärjele:) vastasel juhul"
+      ],
+      "usages_et": [
+        "Palun vastake, või ma ei suuda kauem kannatada!"
+      ]
+    },
+    {
+      "meaning_id": 121814,
+      "dataset": "eki",
+      "definitions_et": [
+        "(alustab parandust:) see tähendab, täpsemalt"
+      ],
+      "usages_et": [
+        "Rongiga ei saa, või õigemini osaliselt saab, aga algul tuleb ikka bussiga sõita."
+      ],
+      "translations_en": [
+        "more exactly",
+        "more precisely"
+      ]
+    },
+    {
+      "meaning_id": 121815,
+      "dataset": "eki",
+      "pos": [
+        "adv",
+        "konj"
+      ],
+      "definitions_et": [
+        "rõhutab ja väljendab kahtlust, imestust, halvakspanu"
+      ]
+    },
+    {
+      "meaning_id": 121816,
+      "dataset": "eki",
+      "pos": [
+        "konj"
+      ],
+      "definitions_et": [
+        "esineb küsimusena jutustava lause lõpus",
+        "jutustava lause lõppu lisatuna muudab selle küsilauseks"
+      ],
+      "usages_et": [
+        "Ei tea, kas tuleb vihma ka või?",
+        "Nalja teed või?",
+        "Ootasid kaua või?",
+        "Tõesti või?"
+      ]
+    },
+    {
+      "meaning_id": 121817,
+      "dataset": "eki",
+      "pos": [
+        "adv"
+      ],
+      "definitions_et": [
+        "kas tõesti, ega ometi, vaevalt"
+      ],
+      "usages_et": [
+        "Või sa ise targem oled!",
+        "Või teie hakkate maja ehitama?"
+      ],
+      "translations_en": [
+        "as if",
+        "if",
+        "whether"
+      ]
+    },
+    {
+      "meaning_id": 121818,
+      "dataset": "eki",
+      "definitions_et": [
+        "väljendab ebamäärasust, hrl lause lõpus esineva ühendina või nii"
+      ],
+      "usages_et": [
+        "Katsu see asi ära klaarida või nii."
+      ]
+    },
+    {
+      "meaning_id": 121819,
+      "dataset": "eki",
+      "pos": [
+        "konj"
+      ],
+      "definitions_et": [
+        "(sageli piltlikes väljendites:) rõhutab, väljendab hinnangut"
+      ],
+      "usages_et": [
+        "Mine või vihast lõhki!",
+        "Tema juttu kuula või söömata."
+      ]
+    },
+    {
+      "meaning_id": 121820,
+      "dataset": "eki",
+      "definitions_et": [
+        "(väljendab kinnitust:) kuidas teisiti, aga muidugi"
+      ],
+      "usages_et": [
+        "Vapustav? – Või veel!",
+        "Või veel, seda ma ju ootasingi!"
+      ]
+    },
+    {
+      "meaning_id": 413733,
+      "dataset": "les",
+      "definitions_et": [
+        "sidesõnana"
+      ]
+    }
+  ]
+}

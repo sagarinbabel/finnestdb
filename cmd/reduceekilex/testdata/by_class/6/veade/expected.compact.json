@@ -1,0 +1,21 @@
+{
+  "word_id": 2197926,
+  "lemma": "veade",
+  "homonym_nr": 1,
+  "morphophono_form": "veade",
+  "inflection_type": "6",
+  "inflection_type_nr": "6",
+  "word_class": "noomen",
+  "datasets": [
+    "eki"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 1148680,
+      "dataset": "eki",
+      "definitions_et": [
+        "veateade"
+      ]
+    }
+  ]
+}

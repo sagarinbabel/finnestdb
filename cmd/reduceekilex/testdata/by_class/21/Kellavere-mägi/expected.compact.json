@@ -1,0 +1,24 @@
+{
+  "word_id": 1406900,
+  "lemma": "Kellavere mägi",
+  "homonym_nr": 1,
+  "morphophono_form": "Kellavere mägi",
+  "inflection_type": "21",
+  "inflection_type_nr": "21",
+  "word_class": "noomen",
+  "datasets": [
+    "eki"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 654897,
+      "dataset": "eki",
+      "pos": [
+        "prop"
+      ],
+      "definitions_et": [
+        "mägi Lääne-Viru maakonnas Vinni vallas"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "word_id": 2165935,
+  "lemma": "kämmalvaher",
+  "homonym_nr": 1,
+  "morphophono_form": "kämmal+vaher",
+  "inflection_type": "3",
+  "inflection_type_nr": "3",
+  "word_class": "noomen",
+  "datasets": [
+    "eki"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 1145162,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "Jaapani aiakunstis tuntuks saanud vaher"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 .PHONY: all build clean parser server frontend run \
         import-dict-fi import-dict-et import-dict import-dict-et-ekilex import-ekilex-et \
         fetch-ekilex-refresh fetch-ekilex-sample fetch-ekilex \
+        reduce-ekilex \
         reimport-dict-fi reimport-dict-et reimport-dict \
         setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et
 
@@ -106,6 +107,17 @@ EKILEX_RPS ?= 16
 fetch-ekilex:
 	go run ./cmd/fetchekilex fetch \
 	  -workers=$(EKILEX_WORKERS) -rps=$(EKILEX_RPS) -max-attempts=3
+
+# Reduces the gzipped raw payloads under localdata/ekilex/details/raw/ into
+# two sharded committable artifacts under data/ekilex/:
+#   - definitions/<letter>.jsonl: per-word lemma + morphology + meanings
+#   - forms/<letter>.tsv:         one row per inflected form (lemma, form, morph_code)
+# Sharding is by first lowercase letter of the lemma (Estonian alphabet plus
+# "_other"). Tests cover one fixture per inflection class encountered so far —
+# run `go test ./cmd/reduceekilex/` to verify, or `go test ./cmd/reduceekilex/
+# -update-golden` to refresh fixtures after intentional reducer changes.
+reduce-ekilex:
+	go run ./cmd/reduceekilex
 
 # Full refresh: drops existing entries then re-imports.
 reimport-dict-fi:

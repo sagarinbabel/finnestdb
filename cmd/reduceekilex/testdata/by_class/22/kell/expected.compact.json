@@ -1,0 +1,176 @@
+{
+  "word_id": 179946,
+  "lemma": "kell",
+  "homonym_nr": 1,
+  "morphophono_form": "k`ell",
+  "inflection_type": "22i",
+  "inflection_type_nr": "22",
+  "word_class": "noomen",
+  "datasets": [
+    "eki",
+    "ety",
+    "gal",
+    "les",
+    "mea",
+    "mer",
+    "mtkl",
+    "pur"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 38180,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "ese, mille pealt saab aega vaadata",
+        "mehaaniline või elektrooniline seade aja mõõtmiseks, mis hrl näitab tunde ja minuteid (nt osutitega numbrilaual või vahelduvate numbritega elektroonilisel ekraanil)",
+        "seade aja mõõtmiseks"
+      ],
+      "usages_et": [
+        "Head Šveitsi kellad.",
+        "Kell käib täpselt.",
+        "Kell on viis minutit ees. (= näitab viie minuti võrra rohkem kui õige on).",
+        "Kell on viis minutit taga. (= näitab viie minuti võrra vähem kui õige on).",
+        "Kuldkell.",
+        "Mu kell on seisma jäänud.",
+        "Raekoja kell lõi kaks."
+      ],
+      "translations_en": [
+        "clock",
+        "watch"
+      ]
+    },
+    {
+      "meaning_id": 38181,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "(ajanäitamise täpsusega seoses)"
+      ],
+      "usages_et": [
+        "Kell käib ette.",
+        "Kell käib taha.",
+        "Väga täpne kell."
+      ],
+      "translations_en": [
+        "clock",
+        "watch"
+      ]
+    },
+    {
+      "meaning_id": 637851,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "aeg, mida kell näitab",
+        "aeg, mida see ese näitab"
+      ],
+      "usages_et": [
+        "Kell on pool kaheksa.",
+        "Kell on viis minutit kuus läbi.",
+        "Ma olen kella kaheksast saadik tööl.",
+        "Mis kell on?",
+        "Mis kell sa tuled?",
+        "Mis kellaks ma pean tulema?",
+        "Mis kellani kontsert kestis?",
+        "Mis kellast see pood avatakse?",
+        "Palju kell on?"
+      ],
+      "translations_en": [
+        "o'clock",
+        "time",
+        "time of day"
+      ]
+    },
+    {
+      "meaning_id": 38183,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "elektri vm toimel töötav helistus-, märguandeseadeldis",
+        "enamasti pirni kujuga metallist ese, millega saab heli tekitada",
+        "kelluke",
+        "koonusja kujuga metallese, mille sees rippuva tila löökidest vastu korpust tekivad helid"
+      ],
+      "usages_et": [
+        "Jaani kiriku kellad kannavad Tartu linna kaitsepühakute Peetruse ja Pauluse nimesid.",
+        "Kell helises, tee uks lahti!",
+        "Kiriku tornis lüüakse kella."
+      ],
+      "translations_en": [
+        "bell"
+      ]
+    },
+    {
+      "meaning_id": 38184,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "kellahelin",
+        "selle eseme või seadeldisega tekitatud heli, kellahelin, kellakõlin",
+        "selle heli, hääl"
+      ],
+      "usages_et": [
+        "Kellad hakkasid helisema.",
+        "Tulija andis ukse taga pikalt kella."
+      ],
+      "translations_en": [
+        "bell"
+      ]
+    },
+    {
+      "meaning_id": 422348,
+      "dataset": "les",
+      "definitions_et": [
+        "määrsõna, mida kasutatakse koos kellaajaga"
+      ]
+    },
+    {
+      "meaning_id": 512547,
+      "dataset": "mtkl",
+      "translations_en": [
+        "chronometer",
+        "stop-watch"
+      ]
+    },
+    {
+      "meaning_id": 468974,
+      "dataset": "pur",
+      "translations_en": [
+        "bell"
+      ]
+    },
+    {
+      "meaning_id": 613155,
+      "dataset": "mea",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "mehaaniline või elektrooniline mõõtevahend aja mõõtmiseks",
+        "mõõtevahend, mida kasutatakse aja näitamiseks ja mõõtmiseks"
+      ],
+      "definitions_en": [
+        "device used to measure and indicate time"
+      ],
+      "usages_et": [
+        "Kell on üks vanimaid inimese leiutisi, mis vastab vajadusele mõõta ajavahemikke, mis on lühemad kui looduslikud ühikud, nagu päev, kuu ja aasta."
+      ],
+      "translations_en": [
+        "clock",
+        "time piece",
+        "timepiece"
+      ]
+    }
+  ]
+}

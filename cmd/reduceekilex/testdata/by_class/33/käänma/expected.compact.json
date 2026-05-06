@@ -1,0 +1,27 @@
+{
+  "word_id": 190618,
+  "lemma": "käänma",
+  "homonym_nr": 1,
+  "morphophono_form": "k`äänma",
+  "inflection_type": "33",
+  "inflection_type_nr": "33",
+  "word_class": "verb",
+  "datasets": [
+    "eki"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 50446,
+      "dataset": "eki",
+      "pos": [
+        "v"
+      ],
+      "definitions_et": [
+        "pöörama, käänama"
+      ],
+      "usages_et": [
+        "Kui mees kiviteed mööda hakkas kodu poole käänma, tuli vankril äkki ratas ära."
+      ]
+    }
+  ]
+}

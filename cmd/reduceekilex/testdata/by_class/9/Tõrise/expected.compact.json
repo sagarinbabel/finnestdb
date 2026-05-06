@@ -1,0 +1,24 @@
+{
+  "word_id": 1414683,
+  "lemma": "Tõrise",
+  "homonym_nr": 1,
+  "morphophono_form": "Tõrise",
+  "inflection_type": "9",
+  "inflection_type_nr": "9",
+  "word_class": "noomen",
+  "datasets": [
+    "eki"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 658731,
+      "dataset": "eki",
+      "pos": [
+        "prop"
+      ],
+      "definitions_et": [
+        "küla Saare maakonnas Saaremaa vallas (Kaarma kihelkonnas)"
+      ]
+    }
+  ]
+}

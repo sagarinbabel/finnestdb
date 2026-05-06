@@ -1,0 +1,23 @@
+{
+  "word_id": 206959,
+  "lemma": "nagu tuld tooma",
+  "homonym_nr": 1,
+  "inflection_type": "38i",
+  "inflection_type_nr": "38",
+  "word_class": "verb",
+  "datasets": [
+    "eki"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 68360,
+      "dataset": "eki",
+      "definitions_et": [
+        "(märgib väga lühiajalist külastust, põgusat läbiastumist)"
+      ],
+      "usages_et": [
+        "Sõpradele külla tuldi nagu tuld tooma."
+      ]
+    }
+  ]
+}

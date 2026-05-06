@@ -1,0 +1,23 @@
+{
+  "word_id": 230207,
+  "lemma": "Saatse saabas",
+  "homonym_nr": 1,
+  "inflection_type": "7",
+  "inflection_type_nr": "7",
+  "word_class": "noomen",
+  "datasets": [
+    "eki"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 93365,
+      "dataset": "eki",
+      "pos": [
+        "prop"
+      ],
+      "definitions_et": [
+        "saapakujuline ala Eesti kagunurgas Saatse ja Värska vahel, mis on Eesti küljest piirijoonega ära lõigatud ja kus maantee läbib umbes 1 km ulatuses Venemaad"
+      ]
+    }
+  ]
+}
