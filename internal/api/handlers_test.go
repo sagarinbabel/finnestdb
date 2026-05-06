@@ -405,6 +405,38 @@ func TestHandleParseExpandsHomonyms(t *testing.T) {
 	}
 }
 
+func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
+	api := newTestAPI(t)
+	parsed := &parsecore.ParseResult{
+		Lang: "ET",
+		Sentences: []parsecore.SentenceResult{
+			{
+				Text: "joon",
+				Tokens: []parsecore.TokenResult{
+					{Form: "joon", Lemma: "joon", POS: "NOUN"},
+				},
+			},
+		},
+	}
+	dict := map[string][]store.FormResolution{
+		"joon": {
+			{Lemma: "joon", POS: "VERB"},
+			{Lemma: "joon", POS: "NOUN"},
+		},
+	}
+
+	got := api.expandParsedWords(parsed, dict)
+	if len(got) != 2 {
+		t.Fatalf("len=%d want 2: %+v", len(got), got)
+	}
+	if got[0].Lemma != "joon" || got[0].POS != "NOUN" {
+		t.Fatalf("first=%s/%s want joon/NOUN: %+v", got[0].Lemma, got[0].POS, got)
+	}
+	if got[1].Lemma != "joon" || got[1].POS != "VERB" {
+		t.Fatalf("second=%s/%s want joon/VERB: %+v", got[1].Lemma, got[1].POS, got)
+	}
+}
+
 func TestHandleParseMapsAnalyzerValidationErrorsToBadRequest(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, _, _, _ string) (*parsecore.ParseResult, error) {
@@ -922,6 +954,63 @@ func TestLemmaStateRequiresAuthentication(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusUnauthorized, rec.Body.String())
+	}
+}
+
+func TestLemmaStatesBatchLookupReturnsCurrentStates(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "lemma-state-batch@example.com")
+
+	for _, body := range []string{
+		`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"known"}`,
+		`{"lang":"FI","lemma":"juosta","pos":"VERB","status":"ignored"}`,
+	} {
+		req := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(body))
+		for _, cookie := range cookies {
+			req.AddCookie(cookie)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("seed state status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/lemma-states", strings.NewReader(`{
+		"lang":"FI",
+		"lemmas":[
+			{"lemma":"kissa","pos":"NOUN"},
+			{"lemma":"juosta","pos":"VERB"},
+			{"lemma":"talo","pos":"NOUN"},
+			{"lemma":"kissa","pos":"NOUN"}
+		]
+	}`))
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var resp LemmaStateLookupResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	got := map[string]string{}
+	for _, state := range resp.States {
+		got[state.Lemma+"/"+state.POS] = state.Status
+	}
+	if got["kissa/NOUN"] != "known" {
+		t.Fatalf("kissa/NOUN=%q want known (states=%+v)", got["kissa/NOUN"], resp.States)
+	}
+	if got["juosta/VERB"] != "ignored" {
+		t.Fatalf("juosta/VERB=%q want ignored (states=%+v)", got["juosta/VERB"], resp.States)
+	}
+	if _, ok := got["talo/NOUN"]; ok {
+		t.Fatalf("neutral talo/NOUN should be omitted from response: %+v", resp.States)
 	}
 }
 

@@ -126,6 +126,21 @@ type LemmaStateResponse struct {
 	Status string `json:"status"`
 }
 
+type LemmaStateLookupItem struct {
+	Lemma  string `json:"lemma"`
+	POS    string `json:"pos"`
+	Status string `json:"status,omitempty"`
+}
+
+type LemmaStateLookupRequest struct {
+	Lang   string                 `json:"lang"`
+	Lemmas []LemmaStateLookupItem `json:"lemmas"`
+}
+
+type LemmaStateLookupResponse struct {
+	States []LemmaStateLookupItem `json:"states"`
+}
+
 type ParseFeedbackRequest struct {
 	ParseID              int64  `json:"parse_id"`
 	Lang                 string `json:"lang"`
@@ -737,7 +752,10 @@ func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][
 		if out[i].Count != out[j].Count {
 			return out[i].Count > out[j].Count
 		}
-		return out[i].Lemma < out[j].Lemma
+		if out[i].Lemma != out[j].Lemma {
+			return out[i].Lemma < out[j].Lemma
+		}
+		return out[i].POS < out[j].POS
 	})
 	return out
 }
@@ -1034,6 +1052,14 @@ func (a *API) HandleLemmaState(w http.ResponseWriter, r *http.Request) {
 	a.requireAuth(a.handleLemmaState).ServeHTTP(w, r)
 }
 
+func (a *API) HandleLemmaStates(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	a.requireAuth(a.handleLemmaStates).ServeHTTP(w, r)
+}
+
 func (a *API) handleLemmaState(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
 	var req LemmaStateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1079,6 +1105,56 @@ func (a *API) handleLemmaState(w http.ResponseWriter, r *http.Request, auth *Aut
 		POS:    pos,
 		Status: status,
 	})
+}
+
+func (a *API) handleLemmaStates(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	var req LemmaStateLookupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	lang := strings.ToUpper(strings.TrimSpace(req.Lang))
+	if lang != "FI" && lang != "ET" {
+		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
+		return
+	}
+
+	keys := make([]store.LemmaKey, 0, len(req.Lemmas))
+	seen := make(map[store.LemmaKey]struct{}, len(req.Lemmas))
+	for _, item := range req.Lemmas {
+		lemma := strings.TrimSpace(item.Lemma)
+		pos := strings.ToUpper(strings.TrimSpace(item.POS))
+		if lemma == "" || pos == "" {
+			continue
+		}
+		key := store.LemmaKey{Lemma: lemma, POS: pos}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		keys = append(keys, key)
+	}
+
+	states, err := a.store.BatchLemmaStates(auth.UserID, lang, keys)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	resp := LemmaStateLookupResponse{States: make([]LemmaStateLookupItem, 0, len(states))}
+	for _, key := range keys {
+		status := states[key]
+		if status == "" {
+			continue
+		}
+		resp.States = append(resp.States, LemmaStateLookupItem{
+			Lemma:  key.Lemma,
+			POS:    key.POS,
+			Status: status,
+		})
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
@@ -1625,6 +1701,7 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/decks/", a.HandleDeckByID)
 	mux.HandleFunc("/api/known-words", a.HandleKnownWords)
 	mux.HandleFunc("/api/lemma-state", a.HandleLemmaState)
+	mux.HandleFunc("/api/lemma-states", a.HandleLemmaStates)
 
 	// Review
 	mux.HandleFunc("/api/review/next", a.HandleReviewNext)
