@@ -757,7 +757,6 @@ body {
 
 .col-row    { width: 3rem; text-align: right; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .col-lemma  { width: 13rem; font-weight: 500; word-wrap: break-word; vertical-align: top; }
-.col-forms  { width: 8rem; color: var(--text-secondary); font-size: 0.85rem; word-wrap: break-word; }
 .col-def    { color: var(--text-secondary); font-size: 0.85rem; word-wrap: break-word; }
 .col-grammar { color: var(--text-secondary); font-size: 0.8rem; font-style: italic; }
 .grammar-label { background: var(--bg-secondary, #f0f0f0); padding: 2px 6px; border-radius: 3px; }
@@ -820,7 +819,6 @@ body {
     .results-meta { gap: 0.4rem; }
     .results-pill { font-size: 0.75rem; }
     .results-help { font-size: 0.8rem; }
-    .col-forms   { display: none; }
     .col-def     { display: none; }
     .col-grammar { display: none; }
 }
@@ -1197,27 +1195,26 @@ body {
     cursor: not-allowed;
 }
 
-/* Tooltip — appears immediately on hover/focus, no delay */
-[data-tooltip] {
-    position: relative;
-}
-[data-tooltip]:hover::after,
-[data-tooltip]:focus-visible::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: calc(100% + 4px);
-    left: 50%;
-    transform: translateX(-50%);
+/* Portal tooltip — appended to <body> by initPortalTooltips so it can escape
+   ancestor overflow:hidden / overflow-x:auto containers. Appears immediately
+   on hover/focus. The trigger element marks itself with [data-tooltip="…"]. */
+.portal-tooltip {
+    position: fixed;
+    transform: translate(-50%, -100%);
     padding: 0.25rem 0.5rem;
     background: var(--text-primary);
     color: var(--card-bg);
     border-radius: 4px;
     font-size: 0.72rem;
-    font-style: normal;
     font-weight: 500;
     white-space: nowrap;
     pointer-events: none;
-    z-index: 20;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.05s linear;
+}
+.portal-tooltip.visible {
+    opacity: 1;
 }
 
 .example-text .highlight-form {
@@ -1849,9 +1846,6 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
 .deck-list-title:hover,
 .deck-list-title:focus {
     text-decoration: underline;
-}
-body[data-results-context="deck"] .col-forms {
-    display: none;
 }
 .deck-list-meta {
     margin: 0;

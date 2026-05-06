@@ -298,6 +298,113 @@ func TestHandleParseHydratesLemmaStateForAuthenticatedUser(t *testing.T) {
 	}
 }
 
+// TestHandleParseExpandsHomonyms verifies that the import overview's words
+// list is dict-expanded the same way handleCreateDeck expands tokens, so the
+// unique-lemma count in the import overview matches the deck's unique count.
+func TestHandleParseExpandsHomonyms(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("joon", "NOUN", "line", "ET"); err != nil {
+		t.Fatalf("UpsertLemma joon: %v", err)
+	}
+	if err := api.store.UpsertLemma("jooma", "VERB", "drink", "ET"); err != nil {
+		t.Fatalf("UpsertLemma jooma: %v", err)
+	}
+	for _, r := range [][4]string{
+		{"joon", "joon", "NOUN", "ET"},
+		{"joon", "jooma", "VERB", "ET"},
+	} {
+		if err := api.store.UpsertForm(r[0], r[1], r[2], r[3]); err != nil {
+			t.Fatalf("UpsertForm %v: %v", r, err)
+		}
+	}
+
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang:        lang,
+			Parser:      "custom",
+			TotalTokens: 3,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "Ma joon vett.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Ma", Lemma: "mina", POS: "PRON"},
+						{Form: "joon", Lemma: "jooma", POS: "VERB"},
+						{Form: "vett", Lemma: "vesi", POS: "NOUN"},
+						{Form: ".", POS: "PUNCT"},
+					},
+				},
+			},
+			// Parser's pick: only one entry for "joon" (jooma/VERB).
+			Words: []parsecore.WordEntry{
+				{Lemma: "mina", POS: "PRON", Forms: []string{"Ma"}, Count: 1},
+				{Lemma: "jooma", POS: "VERB", Forms: []string{"joon"}, Count: 1, Gloss: "drink"},
+				{Lemma: "vesi", POS: "NOUN", Forms: []string{"vett"}, Count: 1},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"ET","text":"Ma joon vett."}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
+	}
+
+	var resp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	// Parser produced 3 entries (mina, jooma, vesi). After expansion the
+	// dict-known homonym joon/NOUN appears too — total 4, matching what the
+	// deck would have.
+	if len(resp.Words) != 4 {
+		t.Fatalf("len(words)=%d want 4 (mina, jooma, vesi, joon-noun): %+v", len(resp.Words), resp.Words)
+	}
+	byKey := map[string]parsecore.WordEntry{}
+	for _, w := range resp.Words {
+		byKey[w.Lemma+"/"+w.POS] = w
+	}
+	joonNoun, ok := byKey["joon/NOUN"]
+	if !ok {
+		t.Fatalf("joon/NOUN missing from expanded words: %+v", resp.Words)
+	}
+	if joonNoun.Gloss != "line" {
+		t.Errorf("joon/NOUN gloss=%q want line", joonNoun.Gloss)
+	}
+	if len(joonNoun.Forms) != 1 || joonNoun.Forms[0] != "joon" {
+		t.Errorf("joon/NOUN forms=%v want [joon]", joonNoun.Forms)
+	}
+	if joonNoun.Count != 1 {
+		t.Errorf("joon/NOUN count=%d want 1", joonNoun.Count)
+	}
+
+	// Order contract matches parsecore.enrichWords / GetDeckDetails: count
+	// desc, lemma asc. Map iteration in expandParsedWords would otherwise
+	// produce non-deterministic ordering and silently drift the API contract.
+	for i := 1; i < len(resp.Words); i++ {
+		prev, cur := resp.Words[i-1], resp.Words[i]
+		if cur.Count > prev.Count {
+			t.Errorf("words[%d..%d] not count-desc: %s(count=%d) before %s(count=%d)",
+				i-1, i, prev.Lemma, prev.Count, cur.Lemma, cur.Count)
+		}
+		if cur.Count == prev.Count && cur.Lemma < prev.Lemma {
+			t.Errorf("words[%d..%d] tie not lemma-asc: %s before %s",
+				i-1, i, prev.Lemma, cur.Lemma)
+		}
+	}
+	// Forms within each entry are alphabetical (parsecore.enrichWords:729 +
+	// GetDeckDetails:1223 contract).
+	for _, w := range resp.Words {
+		for j := 1; j < len(w.Forms); j++ {
+			if w.Forms[j-1] > w.Forms[j] {
+				t.Errorf("%s/%s forms not sorted: %v", w.Lemma, w.POS, w.Forms)
+				break
+			}
+		}
+	}
+}
+
 func TestHandleParseMapsAnalyzerValidationErrorsToBadRequest(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, _, _, _ string) (*parsecore.ParseResult, error) {

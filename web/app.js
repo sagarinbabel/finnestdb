@@ -206,6 +206,10 @@ async function handleSignout() {
     state.currentLemmaStates.clear();
     state.currentReviewCard = null;
     state.reviewDeckFilter = '';
+    try {
+        sessionStorage.removeItem(LAST_PARSE_KEY);
+    }
+    catch { }
     clearResultsDom();
     applyRoleVisibility();
     showToast('Signed out', 'info');
@@ -332,6 +336,16 @@ function renderRoute() {
     }
     if (route === '/admin/users') {
         void loadAdminUsers();
+    }
+    if (route === '/results' && !state.currentResults) {
+        // Hard refresh / direct navigation: re-hydrate from sessionStorage so
+        // the user doesn't land on an empty page. If nothing is cached, send
+        // them back to /inspect rather than leaving the shell empty.
+        void (async () => {
+            if (!await restoreLastParse()) {
+                window.location.hash = '#/inspect';
+            }
+        })();
     }
 }
 // ── Mobile nav ─────────────────────────────────────────────────────────────
@@ -1075,18 +1089,25 @@ function renderResultsTable(data) {
     help.textContent = hasGrammar
         ? `Coverage = dictionary-backed tokens. Grammar labels shown as badges when case/morphology was inferred.`
         : `Coverage = dictionary-backed tokens. Grammar labels appear when case/morphology inference is available.`;
+    // If a tooltip is currently visible, its trigger is about to be wiped by
+    // the innerHTML reassignment below. The browser won't fire mouseout for
+    // a removed-then-replaced element, so we hide explicitly to avoid a
+    // stuck tooltip when the user hasn't moved the mouse.
+    hidePortalTooltip();
     tbody.innerHTML = sortedWords.map((w, index) => {
-        const forms = w.forms.slice(0, 3).map(escapeHtml).join(', ')
-            + (w.forms.length > 3 ? ` +${w.forms.length - 3}` : '');
         const grammarBadge = w.grammar_label
             ? `<span class="grammar-badge">${escapeHtml(w.grammar_label)}</span>`
             : '';
         const rowKey = `${index}`;
+        // Example sentence is NOT rendered into the DOM until the user clicks
+        // the toggle. Storing the highlighted HTML in a data-* attribute keeps
+        // the text out of the searchable document, so browser find (Ctrl+F)
+        // can't match against collapsed examples.
         const exampleToggle = w.example_sentence
-            ? `<button type="button" class="example-toggle" data-example-toggle="${rowKey}" aria-expanded="false">▸ example</button>`
+            ? `<button type="button" class="example-toggle" data-example-toggle="${rowKey}" aria-expanded="false" data-example-html="${escapeAttr(highlightFormsInSentence(w.example_sentence, w.forms))}">▸ example</button>`
             : '';
         const exampleBlock = w.example_sentence
-            ? `<div class="example-text hidden" data-example-text="${rowKey}">${highlightFormsInSentence(w.example_sentence, w.forms)}</div>`
+            ? `<div class="example-text hidden" data-example-text="${rowKey}" hidden></div>`
             : '';
         const glossHtml = w.gloss
             ? escapeHtml(w.gloss)
@@ -1144,7 +1165,6 @@ function renderResultsTable(data) {
                 ${exampleToggle}
                 ${exampleBlock}
             </td>
-            <td class="col-forms">${forms}</td>
             <td class="col-def">${glossHtml}</td>
             <td class="col-count">${w.count}</td>
             ${actionCell}
@@ -1168,10 +1188,23 @@ function renderResultsTable(data) {
             const example = tbody.querySelector(`.example-text[data-example-text="${key}"]`);
             if (!example)
                 return;
-            example.classList.toggle('hidden');
-            const isOpen = !example.classList.contains('hidden');
-            btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-            btn.textContent = isOpen ? '▾ example' : '▸ example';
+            const willOpen = example.classList.contains('hidden');
+            if (willOpen) {
+                if (!example.innerHTML) {
+                    example.innerHTML = btn.dataset.exampleHtml || '';
+                }
+                example.classList.remove('hidden');
+                example.removeAttribute('hidden');
+            }
+            else {
+                example.classList.add('hidden');
+                example.setAttribute('hidden', '');
+                // Wipe the rendered HTML so Ctrl+F can't match it while
+                // collapsed (defense in depth alongside display:none).
+                example.innerHTML = '';
+            }
+            btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            btn.textContent = willOpen ? '▾ example' : '▸ example';
         });
     });
     // Wire up newly-rendered correction buttons
@@ -1233,7 +1266,7 @@ function showResults(data, textPreview, parserMode, context) {
     state.currentContext = context;
     state.currentParserMode = parserMode;
     state.currentTextPreview = preview;
-    state.currentSort = { key: 'row', dir: 'asc' };
+    state.currentSort = { key: 'tokens', dir: 'desc' };
     state.currentPOSFilter = 'all';
     state.currentLemmaStates.clear();
     state.pendingLemmaStates.clear();
@@ -1246,8 +1279,77 @@ function showResults(data, textPreview, parserMode, context) {
     renderResultsSaveState();
     // Re-apply role visibility so admin-only pills/cells show correctly.
     applyRoleVisibility();
-    if (context !== 'deck')
+    if (context !== 'deck') {
+        // Persist the parse so a hard refresh on /results doesn't drop the user
+        // onto an empty page. Deck detail handles its own refresh by re-fetching
+        // from /api/decks/:id, so we skip that context here.
+        persistLastParse(data, preview, parserMode, context);
         navigate('/results');
+    }
+}
+const LAST_PARSE_KEY = 'finnestdb:lastParse:v1';
+function persistLastParse(data, textPreview, parserMode, context) {
+    try {
+        const payload = {
+            data,
+            textPreview,
+            parserMode,
+            context,
+            sourceText: state.currentSourceText,
+        };
+        sessionStorage.setItem(LAST_PARSE_KEY, JSON.stringify(payload));
+    }
+    catch {
+        // Quota exceeded or sessionStorage unavailable — silently skip; the
+        // page will just be empty after refresh, same as before.
+    }
+}
+async function restoreLastParse() {
+    let payload;
+    try {
+        const raw = sessionStorage.getItem(LAST_PARSE_KEY);
+        if (!raw)
+            return false;
+        const parsed = JSON.parse(raw);
+        if (!parsed?.data || !parsed.context)
+            return false;
+        payload = parsed;
+    }
+    catch {
+        return false;
+    }
+    state.currentSourceText = payload.sourceText || '';
+    // Re-parse to refresh learning_state. The persisted snapshot freezes
+    // each WordEntry's learning_state at parse time, so any Known/Ignored
+    // mark the user made between the original parse and this restore would
+    // be rolled back when showResults reseeds state.currentLemmaStates from
+    // the snapshot. Hitting /api/parse again returns the same expansion plus
+    // current state from the server (handlers.go HandleParse).
+    if (payload.sourceText) {
+        try {
+            const resp = await fetch('/api/parse', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    lang: payload.data.lang,
+                    text: payload.sourceText,
+                    parser: payload.parserMode,
+                }),
+            });
+            if (resp.ok) {
+                const fresh = await resp.json();
+                showResults(fresh, payload.textPreview, payload.parserMode, payload.context);
+                return true;
+            }
+        }
+        catch {
+            // Network blip or server down — fall through to the cached
+            // snapshot below so the user still sees something.
+        }
+    }
+    showResults(payload.data, payload.textPreview, payload.parserMode, payload.context);
+    return true;
 }
 async function loadDeckDetail(deckID) {
     document.body.dataset.resultsContext = 'deck';
@@ -1889,6 +1991,66 @@ function initAdminFeedbackPage() {
             void reviewAdminFeedback(id, action);
     });
 }
+// Portal-style tooltip — pseudo-element ::after tooltips get clipped by
+// ancestor overflow (e.g. .word-table { overflow: hidden }), so we render a
+// single body-level element that's positioned via getBoundingClientRect and
+// can escape any ancestor stacking/clipping context.
+let portalTip = null;
+function ensurePortalTip() {
+    if (portalTip)
+        return portalTip;
+    portalTip = document.createElement('div');
+    portalTip.className = 'portal-tooltip';
+    portalTip.setAttribute('role', 'tooltip');
+    document.body.appendChild(portalTip);
+    return portalTip;
+}
+function showPortalTooltip(target) {
+    const text = target.getAttribute('data-tooltip');
+    if (!text)
+        return;
+    const el = ensurePortalTip();
+    el.textContent = text;
+    const rect = target.getBoundingClientRect();
+    el.style.left = `${rect.left + rect.width / 2}px`;
+    el.style.top = `${rect.top - 6}px`;
+    el.classList.add('visible');
+}
+function hidePortalTooltip() {
+    if (portalTip)
+        portalTip.classList.remove('visible');
+}
+function initPortalTooltips() {
+    // mouseover: show on trigger, hide on anything else. The "hide on
+    // non-trigger" branch matters when the table re-renders (sort change or
+    // lemma-state click): the trigger element is removed from the DOM
+    // without firing mouseout, so without this hide() the tooltip stays
+    // stuck. Combined with the explicit hidePortalTooltip() call from
+    // renderResultsTable for the no-mouse-move case.
+    document.addEventListener('mouseover', (e) => {
+        const t = e.target?.closest('[data-tooltip]');
+        if (t)
+            showPortalTooltip(t);
+        else
+            hidePortalTooltip();
+    });
+    document.addEventListener('mouseout', (e) => {
+        const t = e.target?.closest('[data-tooltip]');
+        if (t)
+            hidePortalTooltip();
+    });
+    document.addEventListener('focusin', (e) => {
+        const t = e.target?.closest('[data-tooltip]');
+        if (t)
+            showPortalTooltip(t);
+    });
+    document.addEventListener('focusout', (e) => {
+        const t = e.target?.closest('[data-tooltip]');
+        if (t)
+            hidePortalTooltip();
+    });
+    window.addEventListener('scroll', hidePortalTooltip, true);
+}
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
@@ -1902,6 +2064,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initReviewPage();
     initResultsSaveForm();
     initAdminFeedbackPage();
+    initPortalTooltips();
     document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
     document.getElementById('nav-signout')?.addEventListener('click', handleSignout);
     document.getElementById('nav-mobile-signout')?.addEventListener('click', handleSignout);
