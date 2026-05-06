@@ -153,18 +153,31 @@ The first time you run the app, you need to import the kaikki.org dictionary.
 This is a one-time operation (~5 minutes per language):
 
 ```bash
-make import-dict-fi    # Finnish  (~12-20M forms, downloads ~200MB)
-make import-dict-et    # Estonian (optional)
-make import-ekilex-et  # Estonian EKI 2026 public headwords (tracked snapshot)
+make import-dict-fi             # Finnish  (~12-20M forms, downloads ~200MB)
+make import-dict-et             # Estonian (optional)
+make import-ekilex-et           # Estonian EKI 2026 public headwords (tracked snapshot)
+make import-ekilex-details-et   # Estonian Ekilex full reduced drop (~178k lemmas, ~6.2M forms)
+make import-dict-et-ekilex      # Estonian Ekilex API (on-demand, requires EKILEX_API_KEY)
 ```
 
 `make run` does **not** auto-import — import once manually, then `make run`
 every subsequent time. The data persists in `finnestdb.db`.
 
+Imported rows carry a `source` and `source_priority`, so multiple sources can
+coexist deterministically (kaikki=10, ekilex=20, custom=100). Higher-priority
+rows replace lower-priority rows on conflict; lower-priority rows are kept
+when no higher-priority entry exists.
+
 The Ekilex snapshot is a compact export from EKI ühendsõnastik 2026 public
 headwords. It adds missing Estonian direct headword lookups without overwriting
 richer Kaikki-derived lemma/POS/gloss rows. The API key used to refresh that
 snapshot must stay local and is not needed to import the tracked snapshot.
+For end-to-end Ekilex enrichment (definitions, paradigms, ~6M form rows), the
+pipeline is `cmd/fetchekilex` (resumable scrape) → `cmd/reduceekilex`
+(golden-tested reduce) → tracked sharded data under
+[`data/ekilex/`](data/ekilex/) → `cmd/importekilexdetails` (bulk-load into
+the dictionary tables, multi-lemma aware). The first three stages run
+offline; only the loader step is required at deploy time.
 
 To force a full refresh (e.g. after a new kaikki.org release):
 
@@ -333,7 +346,9 @@ What still does **not** exist yet in the browser-facing parser flow:
 What **does** exist now for parser research:
 - gold-set evaluation datasets
 - a parser evaluation CLI
-- an external Omorfi adapter slot for Finnish baseline comparisons
+- external adapter slots for the Omorfi (FI) and EstNLTK (ET) baselines
+- an Ekilex (ET) extraction pipeline (`fetchekilex` → `reduceekilex`)
+  with golden-tested reductions tracked under `data/ekilex/`
 
 So the custom mode is stronger than the basic mode for many dictionary-backed
 cases, but it is still not a full morphology parser.
@@ -341,37 +356,61 @@ cases, but it is still not a full morphology parser.
 ## Project Structure
 
 ```
-/cmd/importdict      One-time dictionary import CLI (kaikki.org JSONL → SQLite)
-/cmd/parsertest      Parser evaluation CLI
-/cmd/server          Go HTTP server entry point
-/internal/api        API handlers (POST /api/parse, etc.)
-  handlers.go        Route handlers; parse requests delegate into parsecore
-/internal/eval       Dataset-based parser evaluation
-/internal/parsecore  Shared parser orchestration and parser registry
-/internal/parserffi  CGO bindings to the Rust parser library
-/internal/store      SQLite database layer
-  db.go              Schema + CRUD (users, decks, sentences, occurrences)
-  dict.go            BatchLookupForms (+ Finnish possessive strip), BatchLookupGlosses
-/parser              Rust parser library (stub tokenisation)
-/web                 Frontend (HTML, CSS, JavaScript)
-  index.html         Single-page app shell
-  app.js             Application logic (compiled from app.ts)
-  app.ts             TypeScript source
-  styles.css         Styling (light + dark theme)
-docs/                Additional documentation
-finnestdb-prd-alpha.md  Full product requirements document
+/cmd/server               Go HTTP server entry point
+/cmd/parsertest           Parser evaluation CLI (basic, custom, omorfi, estnltk)
+/cmd/parser-compare       Render parser-eval reports as a markdown comparison table
+/cmd/corpusmine           Mine corpus text for disagreement-heavy gold candidates
+/cmd/autoresearch         Automated rule-ablation loop driven by parser-eval
+/cmd/importdict           Dictionary import: kaikki.org JSONL or Ekilex API → SQLite
+/cmd/importekilex         Compact Ekilex public_word snapshot importer (ET headwords)
+/cmd/importekilexdetails  Bulk-load reduced Ekilex data drop into dict tables (ET)
+/cmd/fetchekilex          Resumable Ekilex /api/word/details scraper (multi-worker)
+/cmd/reduceekilex         Reduce raw Ekilex payloads to sharded JSONL/TSV artifacts
+/internal/api             API handlers (POST /api/parse, auth, decks, feedback)
+/internal/auth            Argon2id passwords + DB-backed sliding sessions
+/internal/eval            Dataset-based parser evaluation engine
+/internal/parsecore       Shared parser orchestration and parser registry
+/internal/parserffi       CGO bindings to the Rust parser library
+/internal/parserules      Per-language enrichment rules (finnish.go, estonian.go)
+/internal/store           SQLite layer
+  db.go                   Schema + CRUD (users, decks, sentences, occurrences,
+                          lemmas/forms with source priority, translations,
+                          definitions, paradigm_class, feats)
+  dict.go                 BatchLookupForms / BatchLookupGlosses
+/parser                   Rust tokenizer / sentence splitter (stub heuristics)
+/web                      Frontend (HTML, CSS, TypeScript)
+/data/ekilex              Tracked Ekilex CC BY 4.0 snapshots: public-word JSONL,
+                          sharded definitions/forms reductions, NOTICE.md
+/testdata/parser-eval     Frozen gold datasets per language
+/docs/baselines           Frozen parser-eval baseline reports
+finnestdb-prd-alpha.md    Full product requirements document
 ```
 
 ## Documentation
 
-- [Architecture](ARCHITECTURE.md)
-- [Getting Started Guide](docs/GETTING_STARTED.md)
+Architecture and ops:
+- [Architecture](ARCHITECTURE.md) and [docs/SYSTEM_VERSIONING.md](docs/SYSTEM_VERSIONING.md)
+- [Implementation Analysis](IMPLEMENTATION_ANALYSIS.md) · [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
+- [Documentation Changelog](docs/CHANGELOG.md) · [Decisions Log](docs/DECISIONS.md)
 - [Go-Live Checklist](docs/GO_LIVE_CHECKLIST.md)
-- [Omorfi Adapter Notes](docs/OMORFI_ADAPTER.md)
-- [Parser Eval Datasets](docs/PARSER_EVAL_DATASETS.md)
-- [Implementation Analysis](IMPLEMENTATION_ANALYSIS.md)
-- [PRD (Alpha)](finnestdb-prd-alpha.md)
+
+Product and strategy:
+- [PRD (Alpha)](finnestdb-prd-alpha.md) · [docs/FEATURES.md](docs/FEATURES.md)
 - [TODO / Findings](TODO.md)
+- [docs/CROSS_LANGUAGE_STRATEGY.md](docs/CROSS_LANGUAGE_STRATEGY.md) — what is shared vs. language-specific
+- [docs/ideas.md](docs/ideas.md) — exploratory roadmap, includes AI-native phasing
+
+Lexical pipelines:
+- [docs/FINNISH_LEXICAL_PLAN.md](docs/FINNISH_LEXICAL_PLAN.md) — Kotus + Voikko + kaikki.org
+- [docs/ESTONIAN_LEXICAL_PLAN.md](docs/ESTONIAN_LEXICAL_PLAN.md) — EstNLTK + EKI/Ekilex
+
+Parser tooling:
+- [docs/OMORFI_ADAPTER.md](docs/OMORFI_ADAPTER.md) · [docs/OMORFI_COMPARISON.md](docs/OMORFI_COMPARISON.md)
+- [docs/PARSER_EVAL_DATASETS.md](docs/PARSER_EVAL_DATASETS.md)
+- [docs/AUTORESEARCH.md](docs/AUTORESEARCH.md)
+
+Onboarding:
+- [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)
 
 ## License
 

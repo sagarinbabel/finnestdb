@@ -1,6 +1,6 @@
 # FinEstDB Architecture
 
-_Current as of 2026-05-01 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
+_Current as of 2026-05-06 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
 
 Role-aware Finnish and Estonian reading app focused on dictionary-backed
 lemmatization, deck creation, review, parser feedback, and parser evaluation.
@@ -15,6 +15,8 @@ number because they change independently.
 Current product surface on `main`:
 
 - public landing/about/sign-in routes
+- real password-based auth: Argon2id hashing + DB-backed sliding sessions in
+  `internal/auth`, plus `/admin/users` administration page
 - authenticated dashboard, Inspect, Decks, Review, and Results routes
 - admin-only parser workbench and feedback routes
 - Inspect page for Finnish or Estonian text
@@ -23,16 +25,36 @@ Current product surface on `main`:
 - results page with sortable output, POS filter chips, coverage gauge, and parse duration
 - structured parse-stage stats returned from `parsecore` and `/api/parse`
 - deck, known-word, review, and parse-feedback APIs
-- parser evaluation CLI for `basic`, `custom`, and `omorfi`
+- parser evaluation CLI for `basic`, `custom`, `omorfi`, and `estnltk`
 - dataset-driven evaluation workflow in `internal/eval`
 - expanded Finnish and Estonian gold datasets under `testdata/parser-eval/*/gold`
-- external-adapter slot for an Omorfi baseline in `internal/parsecore`
+- external-adapter slots in `internal/parsecore` for the Omorfi (FI) and
+  EstNLTK/Vabamorf (ET) baselines, with per-parser configurable subprocess
+  timeouts
+- multi-source dictionary tables: row-level `source` + `source_priority` on
+  `lemmas` and `forms`; conflict resolution favors higher priority
+- lexical-enrichment schema groundwork on `lemmas`/`forms`: `paradigm_class`
+  (FI Kotus class join key), `feats` (UD-style morph features as JSON),
+  plus dedicated `translations` and `definitions` tables
+- Estonian source-data pipeline end-to-end: `cmd/fetchekilex` resumable
+  scraper → `cmd/reduceekilex` golden-tested reducer → tracked CC BY 4.0
+  artifacts under `data/ekilex/` (~177k headwords) → loaded into the
+  dictionary tables by `cmd/importekilexdetails` (~178k lemmas, ~6.2M
+  form rows, ~15s wall time)
+- multi-lemma `forms` PK `(form, lang, lemma, pos)`: a single ambiguous
+  surface form (e.g. ET `joon` = noun "line" + 1Sg of `jooma`) maps to
+  multiple `(lemma, pos)` candidates; deck ingest emits one card per
+  candidate
 - Playwright coverage for parse/results, POS filtering, language switching, file upload, and mobile nav
 
 Important distinction:
 
 - `basic` and `custom` are admin workbench parser modes in the browser UI
-- `omorfi` exists today as an evaluation/parser-core integration point, but not as a browser button
+- `omorfi` and `estnltk` exist today as evaluation/parser-core integration
+  points, but not as browser buttons
+- The Finnish lexical pipeline (Kotus + Voikko + kaikki.org) is documented in
+  [`docs/FINNISH_LEXICAL_PLAN.md`](docs/FINNISH_LEXICAL_PLAN.md); only Phase 1
+  (schema delta) has shipped — no `cmd/importkotus` or `cmd/importvoikko` yet.
 
 ## High-Level Architecture
 
@@ -47,12 +69,12 @@ flowchart TB
 
   subgraph API["Go HTTP API"]
     Handlers["internal/api handlers"]
-    Auth["alpha auth / user context"]
+    Auth["password auth + sliding sessions (internal/auth)"]
   end
 
   subgraph ParserSystem["Parser system versioned independently"]
     ParseCore["parsecore analyzer registry"]
-    ParserModes["parser modes: basic, custom, omorfi"]
+    ParserModes["parser modes: basic, custom, omorfi, estnltk"]
     RustParser["Rust tokenizer / sentence splitter"]
     Enrichment["dictionary and morphology enrichment"]
     ParserEval["parser evaluation CLI"]
@@ -68,7 +90,7 @@ flowchart TB
 
   subgraph Data["Persistence and source data"]
     Store["SQLite store"]
-    Dict["kaikki dictionary import"]
+    Dict["multi-source dictionary import (kaikki, Ekilex, custom)"]
     Feedback["parse feedback"]
   end
 
@@ -129,10 +151,14 @@ CURRENT
 | - call parsecore.Analyze(...)                                                  |
 | - return JSON parse result plus parse stats                                    |
 |                                                                                |
+| Real auth surface (internal/auth):                                             |
+| - /api/auth/register, login, logout                                            |
+| - sliding sessions in user_sessions                                            |
+| - /admin/users management                                                      |
+|                                                                                |
 | Partial / not current UI focus:                                                |
 | - /api/decks                                                                   |
-| - mock /api/me                                                                 |
-| - mock review endpoints                                                        |
+| - review scheduling endpoints                                                  |
 +-----------------------------------+--------------------------------------------+
                                     |
                                     | parsecore.Analyze(db, lang, text, parser)
@@ -155,6 +181,7 @@ CURRENT
 | - basic   -> Rust analyzer + direct dictionary lookup                          |
 | - custom  -> Rust analyzer + fallback enrichment rules                         |
 | - omorfi  -> external Finnish adapter slot + override rules                    |
+| - estnltk -> external Estonian adapter (EstNLTK / Vabamorf)                    |
 +--------------------------+--------------------------+--------------------------+
                            |                          |
                            | FFI                      | forms/lemmas/glosses
@@ -163,11 +190,13 @@ CURRENT
 | Rust Parser Library            |      | SQLite + Dictionary Data               |
 | parser/src/lib.rs              |      | internal/store                         |
 |                                |      |                                        |
-| - NFC normalization            |      | - forms table                          |
-| - sentence splitting           |      | - lemmas table                         |
-| - tokenization                 |      | - dict metadata                        |
-| - heuristic POS guessing       |      | - users / decks / sentences            |
-|                                |      | - occurrence / cards / card_state      |
+| - NFC normalization            |      | - forms / lemmas (source priority,     |
+| - sentence splitting           |      |   paradigm_class, feats)               |
+| - tokenization                 |      | - translations / definitions           |
+| - heuristic POS guessing       |      | - dict_metadata (per-source provenance)|
+|                                |      | - users / user_sessions                |
+|                                |      | - decks / sentences / occurrence       |
+|                                |      | - cards / card_state                   |
 +--------------------------------+      +----------------------------------------+
 
 
@@ -178,7 +207,7 @@ CURRENT EVALUATION PATH
 | cmd/parsertest                                                                 |
 |                                                                                |
 | - load dataset JSON                                                            |
-| - choose parsers (basic, custom, omorfi)                                       |
+| - choose parsers (basic, custom, omorfi, estnltk)                              |
 | - run warmup/timed evaluation                                                  |
 | - write JSON report under reports/parser-eval                                  |
 +-----------------------------------+--------------------------------------------+
@@ -255,12 +284,16 @@ Files:
 
 - `cmd/server/main.go`
 - `internal/api/handlers.go`
+- `internal/auth/` — password hashing, session creation/validation,
+  registration, admin user management
 
 Responsibilities:
 
-- start the HTTP server
+- start the HTTP server with `Cache-Control: no-store` on static assets
 - initialize SQLite-backed store
-- expose parse plus partial auth/deck/review stub endpoints
+- expose parse, deck, review, and parse-feedback endpoints
+- expose real password-based auth (`/api/auth/register`, login, logout)
+  with Argon2id hashing and DB-backed sliding sessions (7-day expiry)
 - pass parse work into `internal/parsecore`
 
 ### 3. Parse Core
@@ -296,18 +329,39 @@ Responsibilities:
 
 Files:
 
-- `internal/store/db.go`
-- `internal/store/dict.go`
-- `cmd/importdict/main.go` (kaikki.org / Wiktionary)
-- `cmd/importekilex/main.go` (Ekilex public-headword snapshot — minimal)
-- `cmd/importekilexdetails/main.go` (Ekilex reduced data drop — definitions + forms)
+- `internal/store/db.go` — schema + `EnsureXxx` migration helpers
+- `internal/store/dict.go` — `BatchLookupForms`, `BatchLookupAllForms`
+  (multi-lemma), `BatchLookupGlosses`, Finnish possessive stripping
+- `cmd/importdict/` — kaikki.org JSONL or Ekilex API → SQLite (chooses
+  shape via `-source-key`)
+- `cmd/importekilex/` — compact Ekilex public-headword snapshot loader
+- `cmd/importekilexdetails/` — loads the reduced Ekilex data drop
+  (`data/ekilex/{definitions,forms}/`) into the dictionary tables;
+  ~178k lemmas + ~6.2M form rows
+- `cmd/fetchekilex/` — resumable Ekilex `/api/word/details` scraper
+- `cmd/reduceekilex/` — reduces raw payloads into sharded JSONL + TSV
+  artifacts, with golden tests covering all 41 Estonian inflection classes
 
 Responsibilities:
 
-- import dictionary data from kaikki.org and Ekilex
-- resolve forms to lemma/POS
-- supply glosses
-- store deck/sentence/occurrence data
+- import dictionary data from multiple sources (kaikki.org, Ekilex,
+  custom CSV overrides) and store it with row-level `source` and
+  `source_priority` for deterministic conflict resolution
+- preserve per-source attribution metadata (`source_name`, `source_url`,
+  `source_version`, `license`, `attribution`, `imported_at`,
+  `changes_note`) in `dict_metadata`
+- resolve forms to lemma/POS (multi-lemma aware via the
+  `(form, lang, lemma, pos)` PK), applying Finnish possessive stripping
+  and language-specific case-suffix fallbacks
+- supply glosses (today from `lemmas.gloss`; Phase 2 of the FI plan
+  moves them into `translations` and `definitions`)
+- maintain Finnish-specific lexical-enrichment columns
+  (`lemmas.paradigm_class`, `forms.feats`) and the new `translations` /
+  `definitions` tables
+- store deck/sentence/occurrence/review data; deck ingest expands a
+  single ambiguous surface form into one occurrence/card per dict
+  `(lemma, pos)` candidate
+- own user authentication state via `users` and `user_sessions`
 
 #### Multi-lemma forms
 
@@ -363,12 +417,19 @@ and only attribute to non-VERB POSes.
 
 Files:
 
-- `cmd/parsertest/main.go`
-- `cmd/corpusmine/main.go`
+- `cmd/parsertest/main.go` — runs gold datasets across selected parsers
+- `cmd/parser-compare/main.go` — assembles markdown comparison tables
+  from one or more `cmd/parsertest` reports
+- `cmd/corpusmine/main.go` — mines cleaned corpus text for
+  disagreement-heavy gold candidates
+- `cmd/autoresearch/main.go` — automated rule-ablation loop driven by
+  parser-eval; logs accepted/rejected mutations to JSONL
 - `internal/eval/eval.go`
-- `testdata/parser-eval/...`
+- `testdata/parser-eval/...` — Finnish and Estonian gold datasets
+- `docs/baselines/` — frozen baseline reports per parser/language
 - `docs/PARSER_EVAL_DATASETS.md`
-- `docs/OMORFI_ADAPTER.md`
+- `docs/OMORFI_ADAPTER.md` · `docs/OMORFI_COMPARISON.md`
+- `docs/AUTORESEARCH.md`
 
 Responsibilities:
 
@@ -377,6 +438,34 @@ Responsibilities:
 - record quality, observability, and performance metrics
 - detect regressions and priority failures
 - provide the workflow for judging parser improvements
+
+## Lexical Pipelines
+
+The two languages stitch together different source mixes behind the same
+multi-source schema. See
+[`docs/ESTONIAN_LEXICAL_PLAN.md`](docs/ESTONIAN_LEXICAL_PLAN.md) and
+[`docs/FINNISH_LEXICAL_PLAN.md`](docs/FINNISH_LEXICAL_PLAN.md).
+
+Estonian (live):
+
+- analyzer baseline: EstNLTK / Vabamorf via the `estnltk` adapter
+- lexical sources: kaikki.org (priority 10) + EKI/Ekilex (priority 20)
+- Ekilex bulk path: `cmd/fetchekilex` → `cmd/reduceekilex` → tracked
+  sharded artifacts in `data/ekilex/` → loaded by
+  `cmd/importekilexdetails` (multi-lemma aware, with morph-class
+  homonym disambiguation and `(lemma, pos)` gloss merging)
+- Ekilex API path (smaller queries, on-demand): `cmd/importdict
+  -source-key ekilex` against the `/api/word/details` endpoint
+
+Finnish (Phase 1 shipped, Phases 2–5 staged):
+
+- analyzer baseline: Omorfi adapter slot
+- planned lexical sources: kaikki.org (priority 10) + Kotus sanalista
+  (priority 10, fills `paradigm_class`) + Voikko-generated paradigms
+  (priority 30, fills `feats`)
+- Voikko runs once offline to produce
+  `data/voikko/fi-voikko-forms-<version>.jsonl.gz`; runtime imports
+  read it like any other JSONL source — no libvoikko at runtime
 
 ## Parser Modes and Baselines
 
@@ -401,6 +490,14 @@ Responsibilities:
   - configured through `FINNESTDB_OMORFI_CMD`
   - external adapter slot, not bundled runtime
   - useful for comparison against `basic` and `custom`
+
+- `estnltk`
+  - Estonian only
+  - configured through `FINNESTDB_ESTNLTK_CMD` (or autodiscovered from
+    `scripts/estnltk_adapter_example.py`)
+  - subprocess timeout overridable via `FINNESTDB_ESTNLTK_TIMEOUT`
+  - same JSON shape as the Rust FFI parser; comparison-only, not a
+    browser button
 
 ## Data Flow
 
@@ -428,9 +525,14 @@ Responsibilities:
 
 - The browser UI is still centered on `basic` and `custom`.
 - The nav shell is intentionally limited to the parser workbench surface.
-- The review/account system still exists mostly as partial backend scaffolding or stubs.
-- Omorfi is not bundled into normal app startup; it is an external adapter path.
+- Auth is real (Argon2id + DB-backed sessions), but the review/scheduling
+  flows on top still have partial scaffolding.
+- Omorfi and EstNLTK are not bundled into normal app startup; they are
+  external adapter paths used only by the evaluation CLI.
 - The evaluation pipeline is now a first-class architectural component.
+- The Finnish lexical pipeline is staged but not loaded:
+  `paradigm_class`, `feats`, `translations`, `definitions` exist as
+  empty/null columns and tables until Phases 2–5 of the FI plan land.
 
 ## Near-Term Direction
 
@@ -439,6 +541,13 @@ The intended sequence from the current codebase is:
 1. narrow or remove non-parser backend stubs that do not match the workbench product focus
 2. strengthen parser evaluation with more reviewed Finnish and Estonian gold data
 3. use eval regressions and observability metrics to drive targeted parser fixes
-4. compare custom rules against Omorfi baseline behavior
-5. build a richer lexical knowledge layer
-6. return later to accounts, known-word tracking, and review flows
+4. compare custom rules against the Omorfi (FI) and EstNLTK (ET) baselines
+5. continue the lexical pipelines:
+   - **ET**: load the reduced Ekilex artifacts from `data/ekilex/` into
+     the dictionary tables (in flight as
+     [#78](https://github.com/sagarinbabel/finnestdb/pull/78))
+   - **FI**: execute Phases 2–5 of
+     [`docs/FINNISH_LEXICAL_PLAN.md`](docs/FINNISH_LEXICAL_PLAN.md) —
+     kaikki refactor → Kotus adapter → Voikko offline seed →
+     resolution priority flip
+6. return later to known-word tracking and review-flow polish

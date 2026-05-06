@@ -6,6 +6,64 @@ product documentation. Code changes belong in git history, not here.
 Entries are reverse-chronological. Each entry links to the docs it
 introduced or modified so the docs index stays navigable.
 
+## 2026-05-06 — Lexical pipelines: ET ships, FI plan locks
+
+Locks the dictionary layer as multi-source with row-level provenance and
+priority, ships the Estonian source-data pipeline end-to-end, and stages
+the Finnish equivalent at the schema layer with a fully scoped plan.
+
+- Added [`docs/ESTONIAN_LEXICAL_PLAN.md`](ESTONIAN_LEXICAL_PLAN.md):
+  EstNLTK/Vabamorf as the analyzer baseline, EKI/Ekilex as the
+  sanctioned lexical-data source, attribution requirements per import,
+  parity correction flow shared with Finnish.
+- Added [`docs/FINNISH_LEXICAL_PLAN.md`](FINNISH_LEXICAL_PLAN.md): Kotus
+  sanalista + Voikko (offline paradigm computation) + kaikki.org
+  Wiktionary as the three open-source pillars; Kielitoimiston
+  deliberately excluded; five-phase rollout (Phase 1 schema delta
+  shipped, Phases 2–5 staged).
+- Added "Making it AI native" section in
+  [`docs/ideas.md`](ideas.md): five-phase roadmap for layering Claude
+  features (grounded `/api/explain`, agentic tutor, LLM morphology
+  fallback, embeddings, optional speech) onto the rule-based pipeline.
+- Updated [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md)
+  with EstNLTK adapter wiring and the dictionary-attribution metadata
+  contract.
+
+Locked decisions captured in this round of docs:
+
+- The dictionary tables carry row-level `source` and `source_priority`,
+  not a single dominant source. Per-language priority order is
+  `custom_overrides` (1000) > rich generators/curated (20–30) > kaikki
+  (10), with ties broken deterministically.
+- Finnish paradigm coverage is *computed* from Kotus class + Voikko
+  rather than scraped, and ships as a static JSONL artifact under
+  `data/voikko/` rather than via runtime libvoikko.
+- Translations and definitions live in dedicated tables (not
+  `lemmas.gloss`); schema groundwork (`paradigm_class`, `feats`,
+  `translations`, `definitions`) ships before the FI adapters that
+  populate them.
+- Schema migrations stay on the established idempotent
+  `ALTER TABLE`/`CREATE TABLE IF NOT EXISTS` pattern with grouped
+  `EnsureXxx` helpers in `internal/store/db.go`. A real migration
+  framework is deferred until non-additive migrations or merge-conflict
+  pressure force the move.
+- Wikisanakirja (via kaikki.org's Finnish edition) covers monolingual
+  FI definitions for alpha; Kielitoimiston is not bulk-imported.
+- The Ekilex pipeline is four binaries with distinct roles:
+  `cmd/fetchekilex` (resumable scrape against `/api/word/details`),
+  `cmd/reduceekilex` (golden-tested reduction into sharded JSONL/TSV),
+  `cmd/importekilexdetails` (bulk-load the reduced data drop into
+  `lemmas`/`forms`), and `cmd/importekilex` (the lighter public-headword
+  snapshot loader). `cmd/importdict -source-key ekilex` remains for
+  on-demand API queries.
+- Ambiguous surface forms get one row per `(lemma, pos)` candidate.
+  `forms` PK is `(form, lang, lemma, pos)` and the deck-ingest path
+  uses `BatchLookupAllForms` so a token like ET `joon` produces one
+  occurrence row (and one card) per dict candidate; the parser's
+  single pick is only used when the dict is silent. Migration handled
+  by `EnsureMultiLemmaSchema` / `rebuildIfLegacyKey` in
+  `internal/store/db.go`.
+
 ## 2026-05-01 — Architecture diagram and subsystem versioning
 
 Separates architecture visibility from subsystem behavior tracking.
