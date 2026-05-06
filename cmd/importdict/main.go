@@ -560,25 +560,5 @@ func ensureSchema(db *sql.DB) error {
 	if err := store.EnsureDictMetadataSchema(db); err != nil {
 		return err
 	}
-	return ensureDictionarySourceColumns(db)
-}
-
-func ensureDictionarySourceColumns(db *sql.DB) error {
-	for table, columns := range map[string][]string{
-		"lemmas": {
-			"source TEXT NOT NULL DEFAULT ''",
-			"source_priority INTEGER NOT NULL DEFAULT 0",
-		},
-		"forms": {
-			"source TEXT NOT NULL DEFAULT ''",
-			"source_priority INTEGER NOT NULL DEFAULT 0",
-		},
-	} {
-		for _, column := range columns {
-			if _, err := db.Exec(`ALTER TABLE ` + table + ` ADD COLUMN ` + column); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
-				return err
-			}
-		}
-	}
-	return nil
+	return store.EnsureDictionarySourceColumns(db)
 }
