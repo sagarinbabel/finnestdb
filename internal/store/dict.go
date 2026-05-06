@@ -13,11 +13,19 @@ import (
 // lemma and POS, along with metadata about how it was resolved.
 //
 //	Source values: "dict", "possessive", "compound", "case_suffix"
-//	GrammarLabel: e.g. "inessive" from case suffix stripping; empty for direct dict hits
+//	GrammarLabel: legacy single-attribute label (e.g. "inessive"); empty for
+//	  direct dict hits unless attached by stopgap or projected from Feats
+//	Feats: full UD FEATS string for the form (e.g.
+//	  "Case=Ine|Number=Sing"). Currently populated for ET via
+//	  cmd/importekilexdetails::ekilexMorphToFeats from Ekilex morph_codes.
+//	  When non-empty, takes precedence over GrammarLabel for downstream
+//	  display; GrammarLabel is back-projected from Feats' Case= attribute
+//	  for back-compat with the case-only metric.
 type FormResolution struct {
 	Lemma        string
 	POS          string
-	GrammarLabel string // e.g. "inessive", empty for direct dict hits
+	GrammarLabel string // e.g. "inessive", empty when no case info available
+	Feats        string // UD FEATS string, e.g. "Case=Ine|Number=Sing"
 	Source       string // how this resolution was found
 }
 
@@ -47,7 +55,7 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 	// Step 1 query fetches all candidates with source metadata so the picker
 	// can rank them. Steps 2–4 remain single-row lookups because their
 	// fallback paths commit to one resolution by construction.
-	stmtFormsAll, err := d.db.Prepare(`SELECT lemma, pos, source, source_priority FROM forms WHERE form = ? AND lang = ?`)
+	stmtFormsAll, err := d.db.Prepare(`SELECT lemma, pos, source, source_priority, COALESCE(feats, '') FROM forms WHERE form = ? AND lang = ?`)
 	if err != nil {
 		return result
 	}
@@ -116,11 +124,15 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 // Source / SourcePriority come from the row-level dictionary metadata; older
 // rows that pre-date the source-priority work have empty strings and zero
 // priority, which is fine — the case-match and POS heuristics still rank them.
+// Feats is the per-form UD FEATS string (e.g. "Case=Ine|Number=Sing"); empty
+// for rows imported from sources without per-form morphology (e.g.
+// kaikki.org). Populated for ET via Ekilex morph_codes (PR Plan-C/4).
 type formCandidate struct {
 	Lemma          string
 	POS            string
 	Source         string
 	SourcePriority int
+	Feats          string
 }
 
 // lookupBestForm runs the multi-row form lookup and ranks the candidates.
@@ -136,7 +148,7 @@ func lookupBestForm(stmt *sql.Stmt, surface, lowerSurface, lang string) (FormRes
 	var candidates []formCandidate
 	for rows.Next() {
 		var c formCandidate
-		if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority); err != nil {
+		if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority, &c.Feats); err != nil {
 			return FormResolution{}, false
 		}
 		candidates = append(candidates, c)
@@ -146,7 +158,63 @@ func lookupBestForm(stmt *sql.Stmt, surface, lowerSurface, lang string) (FormRes
 	}
 
 	best := pickBestFormCandidate(surface, candidates)
-	return FormResolution{Lemma: best.Lemma, POS: best.POS, Source: "dict"}, true
+	res := FormResolution{Lemma: best.Lemma, POS: best.POS, Feats: best.Feats, Source: "dict"}
+	// Project Case= from Feats to GrammarLabel for back-compat with the
+	// case-only metric. New code should consume Feats directly; the
+	// projection lets the existing eval keep working unchanged.
+	if best.Feats != "" {
+		res.GrammarLabel = caseFromFeats(best.Feats)
+	}
+	return res, true
+}
+
+// caseFromFeats extracts the Case= attribute from a UD FEATS string and
+// returns the lowercase English case name used by our existing
+// grammar_label vocabulary. Returns "" when FEATS has no Case= attribute
+// or when the value is Nominative (left implicit per existing convention,
+// matching cmd/importud/main.go).
+func caseFromFeats(feats string) string {
+	if feats == "" {
+		return ""
+	}
+	for _, pair := range strings.Split(feats, "|") {
+		eq := strings.Index(pair, "=")
+		if eq < 0 || pair[:eq] != "Case" {
+			continue
+		}
+		val := pair[eq+1:]
+		if val == "Nom" {
+			return "" // nominative implicit
+		}
+		if label, ok := udCaseToLegacyLabel[val]; ok {
+			return label
+		}
+		return ""
+	}
+	return ""
+}
+
+// udCaseToLegacyLabel maps UD Case= values to the lowercase English case
+// names used in our existing gold sets and grammar_label vocabulary.
+// Mirrors cmd/importud/main.go::udCaseToLabel — kept here separately so
+// the dict layer doesn't import a cmd/ package.
+var udCaseToLegacyLabel = map[string]string{
+	"Gen": "genitive",
+	"Par": "partitive",
+	"Ill": "illative",
+	"Ine": "inessive",
+	"Ela": "elative",
+	"All": "allative",
+	"Ade": "adessive",
+	"Abl": "ablative",
+	"Ess": "essive",
+	"Tra": "translative",
+	"Ins": "instructive",
+	"Abe": "abessive",
+	"Com": "comitative",
+	"Ter": "terminative",
+	"Acc": "accusative",
+	"Voc": "vocative",
 }
 
 // pickBestFormCandidate ranks candidates for a surface form. Ranking, higher

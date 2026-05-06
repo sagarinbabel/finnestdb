@@ -604,13 +604,30 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 
 	// Upsert: insert fresh, or upgrade source/source_priority on conflict
 	// when strictly stronger. See writeLemmas comment for rationale.
+	//
+	// 2026-05-07: extended to also write `feats` (UD FEATS string) derived
+	// from Ekilex's morph_code. Ekilex carries case+number+verbal-feature
+	// data per form; the import previously discarded it. See
+	// docs/LEARNINGS.md "Estonian still falls behind FI" entry.
+	//
+	// On conflict, feats is upgraded only if either the existing row
+	// has empty feats OR the new row's source_priority is strictly higher.
+	// This protects manually-curated rows from being overwritten by a
+	// re-import while still letting Ekilex fill in missing data on rows
+	// imported from sources (kaikki) that don't carry FEATS.
 	stmt, err := tx.Prepare(
-		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority)
-		 VALUES (?, ?, ?, 'ET', 'ekilex', 20)
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+		 VALUES (?, ?, ?, 'ET', 'ekilex', 20, ?)
 		 ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET
 		   source = excluded.source,
-		   source_priority = excluded.source_priority
-		 WHERE forms.source_priority < excluded.source_priority`,
+		   source_priority = excluded.source_priority,
+		   feats = CASE
+		     WHEN excluded.feats != '' AND (forms.feats IS NULL OR forms.feats = '' OR forms.source_priority < excluded.source_priority)
+		     THEN excluded.feats
+		     ELSE forms.feats
+		   END
+		 WHERE forms.source_priority < excluded.source_priority
+		    OR (forms.source_priority = excluded.source_priority AND (forms.feats IS NULL OR forms.feats = '') AND excluded.feats != '')`,
 	)
 	if err != nil {
 		return 0, err
@@ -661,11 +678,12 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 				continue
 			}
 			class := classifyMorphCode(morphCode)
+			feats := ekilexMorphToFeats(morphCode)
 			for upos := range poss {
 				if !posMatchesMorphClass(upos, class) {
 					continue
 				}
-				res, err := stmt.Exec(form, lemma, upos)
+				res, err := stmt.Exec(form, lemma, upos, feats)
 				if err != nil {
 					return fmt.Errorf("insert form %q %q %s: %w", form, lemma, upos, err)
 				}
@@ -752,6 +770,13 @@ func ensureSchema(db *sql.DB) error {
 	// idempotent CREATE TABLE IF NOT EXISTS pattern.
 	if err := store.EnsureLexicalEntryTables(db); err != nil {
 		return fmt.Errorf("lexical entry tables: %w", err)
+	}
+	// 2026-05-07: backfill the `feats` column on forms (and paradigm_class
+	// on lemmas) so the FEATS-from-morph_code import path can write into
+	// it. No-op on fresh DBs (CREATE TABLE in initSchema already includes
+	// these columns); only matters on legacy DBs being upgraded.
+	if err := store.EnsureLexicalEnrichmentColumns(db); err != nil {
+		return fmt.Errorf("lexical enrichment columns: %w", err)
 	}
 	return nil
 }
