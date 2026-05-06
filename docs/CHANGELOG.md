@@ -6,6 +6,51 @@ product documentation. Code changes belong in git history, not here.
 Entries are reverse-chronological. Each entry links to the docs it
 introduced or modified so the docs index stays navigable.
 
+## 2026-05-06c — UD treebank gold expansion (Plan C / PR 1)
+
+Lifts the parser-eval gold set from ~166 cases to ~14k cases (committed
+FI) / ~22k cases (FI committed + ET local) by ingesting the published
+Universal Dependencies treebanks for Finnish and Estonian.
+
+- Added [`cmd/importud`](../cmd/importud/main.go): pure-Go CoNLL-U →
+  parser-eval gold JSON converter. Skips MWT range rows and elliptical
+  nodes; preserves full UD FEATS string in a new `feats` field on each
+  token (forward-compat for the planned per-attribute eval); projects
+  `Case=Xxx` into the legacy `grammar_label` field for back-compat with
+  the existing case-only metric.
+- Added [`scripts/fetch-and-import-ud.sh`](../scripts/fetch-and-import-ud.sh):
+  clones each UD treebank under `data/ud-cache/` (gitignored) and runs
+  the importer over each train/dev/test split.
+- Added Makefile targets `make import-ud-gold-fi`, `make
+  import-ud-gold-et`, `make import-ud-gold` (both).
+- New committed FI gold (CC BY / CC BY-SA): ~9.8k cases / ~86k tokens
+  across UD-Finnish-TDT/FTB/PUD/OOD test+dev splits.
+- New local-only ET gold (CC BY-NC-SA — gitignored under
+  `testdata/parser-eval/et/gold/ud-et-*.json`): ~8k cases / ~115k
+  tokens across UD-Estonian-EDT/EWT test+dev.
+- Train splits go under `testdata/parser-eval/{fi,et}/gold-train/`
+  (gitignored) so headline `make compare-parsers` runs don't get
+  bloated by 30k-sentence files. Used for OOV/coverage analysis with
+  explicit `-dataset` flags.
+- Held-out discipline: [`scripts/parser-comparison.sh`](../scripts/parser-comparison.sh)
+  and [`scripts/parser-comparison-et.sh`](../scripts/parser-comparison-et.sh)
+  default discovery now excludes `*-dev-v*` files. Test sets are the
+  held-out anchor; dev is for per-commit watching (run explicitly with
+  `-dataset`).
+- [`ARCHITECTURE.md`](../ARCHITECTURE.md) §Evaluation Stack updated with
+  per-treebank table, license info, and held-out workflow.
+
+**Why now:** the old gold was 22 cases on fi-manual-v1, 4 on
+et-manual-v1. Any number computed on a 22-case set is one bad sentence
+away from a 4.5pp swing. UD gives us train/dev/test splits with
+human-checked morphology; we pay nothing to use them.
+
+**FST migration link:** still on the roadmap — see PRs
+[#106](https://github.com/sagarinbabel/finnestdb/pull/106) /
+[#107](https://github.com/sagarinbabel/finnestdb/pull/107). The expanded
+gold makes that migration's regression checks meaningful (a 3pp lemma
+gain on 22 cases is noise; on 86k tokens it's signal).
+
 ## 2026-05-06b — Eval harness parity + grammar-label stopgap
 
 Two changes to the parser-evaluation pipeline, plus a recorded decision on

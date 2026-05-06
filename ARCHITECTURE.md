@@ -423,12 +423,21 @@ Files:
 - `cmd/parsertest/main.go` — runs gold datasets across selected parsers
 - `cmd/parser-compare/main.go` — assembles markdown comparison tables
   from one or more `cmd/parsertest` reports
+- `cmd/importud/main.go` — converts Universal Dependencies CoNLL-U files
+  into our parser-eval gold JSON; drives Plan C / PR 1 corpus expansion
 - `cmd/corpusmine/main.go` — mines cleaned corpus text for
   disagreement-heavy gold candidates
 - `cmd/autoresearch/main.go` — automated rule-ablation loop driven by
   parser-eval; logs accepted/rejected mutations to JSONL
+- `scripts/fetch-and-import-ud.sh` — clone UD treebanks and run importud
+- `scripts/parser-comparison.sh` · `scripts/parser-comparison-et.sh` —
+  always include the analyzer baseline (omorfi/estnltk); fail fast when
+  missing
 - `internal/eval/eval.go`
-- `testdata/parser-eval/...` — Finnish and Estonian gold datasets
+- `testdata/parser-eval/{fi,et}/gold/` — committed gold (FI UD CC BY,
+  manual sets, fi-grammar-v1)
+- `testdata/parser-eval/{fi,et}/gold-train/` — gitignored UD train
+  splits, used for OOV/coverage only
 - `docs/baselines/` — frozen baseline reports per parser/language
 - `docs/PARSER_EVAL_DATASETS.md`
 - `docs/OMORFI_ADAPTER.md` · `docs/OMORFI_COMPARISON.md`
@@ -441,6 +450,32 @@ Responsibilities:
 - record quality, observability, and performance metrics
 - detect regressions and priority failures
 - provide the workflow for judging parser improvements
+
+Held-out discipline (introduced 2026-05-06c, Plan C / PR 1):
+
+- Every committed comparison report must include the analyzer baseline
+  column (omorfi for FI, estnltk for ET); see "Eval harness parity"
+  in `docs/CHANGELOG.md`
+- Default discovery in the comparison scripts excludes `*-dev-*` files
+  (used for per-commit watching, not headline eval) and `gold-train/`
+  files (used for OOV / coverage analysis only)
+- UD test sets are the held-out anchor; manual / fi-grammar-v1 / etc.
+  are curated adversarial sets retained alongside
+
+UD-derived gold (Plan C / PR 1):
+
+| Treebank      | License        | Test cases | Dev cases | Train cases | Gold JSON                                                           |
+|---------------|----------------|-----------:|----------:|------------:|---------------------------------------------------------------------|
+| Finnish-TDT   | CC BY-SA 4.0   |     1,554  |    1,358  |     12,204  | `fi/gold/ud-fi-tdt-{test,dev}-v1.json` + `gold-train/...`           |
+| Finnish-FTB   | CC BY 4.0      |     1,867  |    1,875  |     14,972  | `fi/gold/ud-fi-ftb-{test,dev}-v1.json` + `gold-train/...`           |
+| Finnish-PUD   | CC BY-SA 3.0   |     1,000  |        — |          — | `fi/gold/ud-fi-pud-test-v1.json`                                    |
+| Finnish-OOD   | CC BY-SA 4.0   |     2,119  |        — |          — | `fi/gold/ud-fi-ood-test-v1.json`                                    |
+| Estonian-EDT  | CC BY-NC-SA    |     3,190  |    3,110  |     24,419  | local-only (gitignored): `et/gold/ud-et-edt-{test,dev}-v1.json` etc. |
+| Estonian-EWT  | CC BY-NC-SA    |       910  |      823  |      5,380  | local-only (gitignored): `et/gold/ud-et-ewt-{test,dev}-v1.json` etc. |
+
+About 900k gold tokens locally (FI committed, ET local-only). Run
+`make import-ud-gold` after a fresh checkout to materialize the local
+files.
 
 ## Lexical Pipelines
 

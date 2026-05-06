@@ -37,8 +37,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ${#DATASETS[@]} -eq 0 ]]; then
+    # Default discovery: every et/gold/*.json EXCEPT dev splits (held-out
+    # discipline — see scripts/parser-comparison.sh comment).
     while IFS= read -r f; do DATASETS+=("$f"); done \
-        < <(ls testdata/parser-eval/et/gold/*.json 2>/dev/null | sort)
+        < <(ls testdata/parser-eval/et/gold/*.json 2>/dev/null | grep -v -- '-dev-v' | sort)
 fi
 
 if [[ ${#DATASETS[@]} -eq 0 ]]; then
