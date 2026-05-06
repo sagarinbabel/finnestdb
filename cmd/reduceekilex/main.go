@@ -621,7 +621,6 @@ func (s *formsSink) Close() error {
 	s.files = nil
 	return nil
 }
-
 func listRawFiles(rawDir string) ([]string, error) {
 	var out []string
 	err := filepath.Walk(rawDir, func(path string, info os.FileInfo, err error) error {
