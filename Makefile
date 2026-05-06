@@ -176,17 +176,33 @@ verify-dict:
 		"SELECT lang, source, source_priority, COUNT(*) AS rows FROM forms GROUP BY lang, source, source_priority ORDER BY lang, source_priority DESC, source"
 	@echo
 	@echo "── translations ──"
-	@sqlite3 -header -column finnestdb.db \
-		"SELECT lang, target_lang, source, COUNT(*) AS rows FROM translations GROUP BY lang, target_lang, source ORDER BY lang, source"
+	@if [ "$$(sqlite3 finnestdb.db "SELECT 1 FROM sqlite_master WHERE type='table' AND name='translations'" 2>/dev/null)" = "1" ]; then \
+		sqlite3 -header -column finnestdb.db \
+			"SELECT lang, target_lang, source, COUNT(*) AS rows FROM translations GROUP BY lang, target_lang, source ORDER BY lang, source"; \
+	else \
+		echo "(empty)"; \
+	fi
 	@echo
 	@echo "── definitions ──"
-	@sqlite3 -header -column finnestdb.db \
-		"SELECT lang, source, COUNT(*) AS rows FROM definitions GROUP BY lang, source ORDER BY lang, source" \
-		2>/dev/null || echo "(empty)"
+	@if [ "$$(sqlite3 finnestdb.db "SELECT 1 FROM sqlite_master WHERE type='table' AND name='definitions'" 2>/dev/null)" = "1" ]; then \
+		sqlite3 -header -column finnestdb.db \
+			"SELECT lang, source, COUNT(*) AS rows FROM definitions GROUP BY lang, source ORDER BY lang, source"; \
+	else \
+		echo "(empty)"; \
+	fi
 	@echo
 	@echo "── dict_metadata ──"
-	@sqlite3 -header -column finnestdb.db \
-		"SELECT lang, source, source_name, source_version, imported_at FROM dict_metadata ORDER BY lang, source"
+	@if [ "$$(sqlite3 finnestdb.db "SELECT 1 FROM sqlite_master WHERE type='table' AND name='dict_metadata'" 2>/dev/null)" = "1" ]; then \
+		if [ "$$(sqlite3 finnestdb.db "SELECT 1 FROM pragma_table_info('dict_metadata') WHERE name='source_name'" 2>/dev/null)" = "1" ]; then \
+			sqlite3 -header -column finnestdb.db \
+				"SELECT lang, source, source_name, source_version, imported_at FROM dict_metadata ORDER BY lang, source"; \
+		else \
+			sqlite3 -header -column finnestdb.db \
+				"SELECT lang, source, imported_at FROM dict_metadata ORDER BY lang, source"; \
+		fi; \
+	else \
+		echo "(empty)"; \
+	fi
 
 # ── Omorfi comparison setup ────────────────────────────────────────────────────
 #
