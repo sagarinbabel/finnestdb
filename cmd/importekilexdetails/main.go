@@ -35,6 +35,8 @@ import (
 	"sort"
 	"strings"
 
+	"finnestdb/internal/store"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -105,6 +107,16 @@ func main() {
 		log.Fatalf("schema: %v", err)
 	}
 
+	// Lift legacy (form, lang) PK and (deck, sentence, token) UNIQUE to the
+	// multi-lemma equivalents. CREATE TABLE IF NOT EXISTS is a no-op on
+	// existing DBs, so without this an existing finnestdb.db imported via
+	// cmd/importdict would silently keep its single-lemma schema and
+	// INSERT OR IGNORE would collapse ambiguous Ekilex rows like
+	// joon → joon/NOUN + joon → jooma/VERB to whichever was inserted first.
+	if err := store.EnsureMultiLemmaSchema(db); err != nil {
+		log.Fatalf("multi-lemma migration: %v", err)
+	}
+
 	defDir := filepath.Join(*dataDir, "definitions")
 	formsDir := filepath.Join(*dataDir, "forms")
 	if _, err := os.Stat(defDir); err != nil {
@@ -114,70 +126,101 @@ func main() {
 		log.Fatalf("forms dir %q: %v", formsDir, err)
 	}
 
-	// Pass 1: definitions → lemmas. Builds a (lemma, pos) → struct{} set the
-	// forms pass needs to know which (lemma, pos) pairs are legitimate.
-	log.Println("Pass 1: importing definitions → lemmas")
-	lemmaPOS, lemmaCount, err := importDefinitions(db, defDir)
+	// Pass 1: walk definitions and aggregate per (lemma, pos) so the gloss
+	// column gets the merged EN translations across all homonyms instead of
+	// only the first inserted one. (A naive per-entry write loses real
+	// glosses — e.g. aste#1 "step" vs aste#2 "degree" both collapse to
+	// aste/NOUN, and one would shadow the other.)
+	log.Println("Pass 1: aggregating definitions → lemmas")
+	lemmaPOS, err := aggregateDefinitions(defDir)
 	if err != nil {
 		log.Fatalf("definitions: %v", err)
 	}
-	log.Printf("  imported/updated %d lemma rows (%d unique lemma+pos)", lemmaCount, len(lemmaPOS))
+	log.Printf("  aggregated %d unique (lemma, pos) entries", countLemmaPOS(lemmaPOS))
 
-	// Pass 2: forms → forms table. Each (lemma, form) needs a POS, derived
-	// from the (lemma, *) entries in lemmaPOS. If a lemma had multiple
-	// distinct POS across its meanings (rare — the same headword providing
-	// noun and verb meanings under one homonym), we emit one form row per POS.
-	log.Println("Pass 2: importing forms")
-	formCount, err := importForms(db, formsDir, lemmaPOS)
+	// Pass 2: write the aggregated lemmas. Reports rows actually inserted
+	// (vs ignored because they collide with kaikki) and rows whose gloss
+	// got filled by Ekilex's merged translations.
+	log.Println("Pass 2: writing lemma rows")
+	lemmaInserted, glossFilled, err := writeLemmas(db, lemmaPOS)
+	if err != nil {
+		log.Fatalf("write lemmas: %v", err)
+	}
+	log.Printf("  inserted %d new lemma rows, filled gloss on %d existing rows", lemmaInserted, glossFilled)
+
+	// Pass 3: walk forms and write (form, lemma, pos, lang) rows. Tuples
+	// the importer actually emits is the count we care about (an Ekilex
+	// duplicate, e.g. PtsPtIps + PtsPtIpsNeg both yielding "joodud" for
+	// jooma/VERB, only adds one row; we don't double-count).
+	log.Println("Pass 3: writing form rows")
+	formInserted, err := importForms(db, formsDir, lemmaPOS)
 	if err != nil {
 		log.Fatalf("forms: %v", err)
 	}
-	log.Printf("  imported %d form rows", formCount)
+	log.Printf("  inserted %d new form rows", formInserted)
 
-	if err := upsertDictMetadata(db, *source, lemmaCount); err != nil {
+	if err := upsertDictMetadata(db, *source, countLemmaPOS(lemmaPOS)); err != nil {
 		log.Printf("warn: dict_metadata: %v", err)
 	}
 
-	fmt.Printf("\nDone. %d lemma rows, %d form rows imported from %s.\n", lemmaCount, formCount, *dataDir)
+	fmt.Printf("\nDone. %d unique (lemma, pos) Ekilex entries; %d lemma rows newly inserted; %d gloss fills; %d form rows newly inserted (data: %s).\n",
+		countLemmaPOS(lemmaPOS), lemmaInserted, glossFilled, formInserted, *dataDir)
 }
 
-// lemmaPOSMap maps a lemma to the set of POS values it appears with across
-// all its meanings. Used by the forms pass to assign a POS to each form row.
-type lemmaPOSMap map[string]map[string]struct{}
+// lemmaPOSMap maps a lemma to a set of POS values, each carrying the
+// accumulated EN translations across every Ekilex entry that contributed
+// to that (lemma, pos) pair. Multiple homonyms of the same lemma collapse
+// here when they share a POS — e.g. aste#1 ("step") and aste#2 ("degree"):
+// both are NOUN, so their translations merge into one
+// `lemmaPOSMap["aste"]["NOUN"]` slice.
+type lemmaPOSMap map[string]map[string]*lemmaPOSData
 
-// importDefinitions walks definitions/*.jsonl and inserts/updates lemmas.
-// Empty-gloss guard: if Ekilex has no EN translations for a lemma, an
-// existing non-empty gloss in the lemmas table is preserved.
-func importDefinitions(db *sql.DB, dir string) (lemmaPOSMap, int, error) {
+type lemmaPOSData struct {
+	// translations preserves insertion order; dedup happens at write time.
+	translations []string
+	// translationsSeen lowercases the dedup key so "Line" and "line" merge.
+	translationsSeen map[string]struct{}
+}
+
+func (m lemmaPOSMap) add(lemma, upos string, translations []string) {
+	posMap, ok := m[lemma]
+	if !ok {
+		posMap = make(map[string]*lemmaPOSData)
+		m[lemma] = posMap
+	}
+	d, ok := posMap[upos]
+	if !ok {
+		d = &lemmaPOSData{translationsSeen: make(map[string]struct{})}
+		posMap[upos] = d
+	}
+	for _, t := range translations {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
+		key := strings.ToLower(t)
+		if _, dup := d.translationsSeen[key]; dup {
+			continue
+		}
+		d.translationsSeen[key] = struct{}{}
+		d.translations = append(d.translations, t)
+	}
+}
+
+func countLemmaPOS(m lemmaPOSMap) int {
+	n := 0
+	for _, byPOS := range m {
+		n += len(byPOS)
+	}
+	return n
+}
+
+// aggregateDefinitions walks definitions/*.jsonl and builds the lemmaPOSMap.
+// No DB writes happen here — the returned aggregator is consumed by
+// writeLemmas and importForms.
+func aggregateDefinitions(dir string) (lemmaPOSMap, error) {
 	lemmaPOS := make(lemmaPOSMap)
 
-	tx, err := db.Begin()
-	if err != nil {
-		return nil, 0, err
-	}
-	defer tx.Rollback()
-
-	stmtInsert, err := tx.Prepare(
-		`INSERT OR IGNORE INTO lemmas (lemma, pos, gloss, lang) VALUES (?, ?, ?, 'ET')`,
-	)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer stmtInsert.Close()
-
-	// Empty-gloss guard: only fill gloss when the existing row has no gloss.
-	// This avoids clobbering a richer kaikki gloss with an empty Ekilex gloss
-	// (some Ekilex entries have ET definitions but no EN translations).
-	stmtFillGloss, err := tx.Prepare(
-		`UPDATE lemmas SET gloss = ? WHERE lemma = ? AND pos = ? AND lang = 'ET'
-		   AND (gloss IS NULL OR gloss = '')`,
-	)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer stmtFillGloss.Close()
-
-	count := 0
 	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -206,10 +249,10 @@ func importDefinitions(db *sql.DB, dir string) (lemmaPOSMap, int, error) {
 				continue
 			}
 
-			// Collect the union of POS for this entry. A lemma's meanings
-			// can have different `pos` values; record each distinct one.
+			// Collect distinct POSes this entry contributes. A single
+			// definition entry can have meanings with different pos codes;
+			// we attribute the entry's translations to each of them.
 			posSet := make(map[string]struct{})
-			gloss := joinTranslations(entry)
 			for _, m := range entry.Meanings {
 				for _, raw := range m.POS {
 					if upos, ok := posMap[raw]; ok {
@@ -226,54 +269,114 @@ func importDefinitions(db *sql.DB, dir string) (lemmaPOSMap, int, error) {
 				continue
 			}
 
+			translations := collectTranslations(entry)
 			for upos := range posSet {
-				if _, err := stmtInsert.Exec(lemma, upos, gloss); err != nil {
-					return fmt.Errorf("insert %q %s: %w", lemma, upos, err)
-				}
-				if gloss != "" {
-					if _, err := stmtFillGloss.Exec(gloss, lemma, upos); err != nil {
-						return fmt.Errorf("fill gloss %q %s: %w", lemma, upos, err)
-					}
-				}
-				count++
-				if _, ok := lemmaPOS[lemma]; !ok {
-					lemmaPOS[lemma] = make(map[string]struct{})
-				}
-				lemmaPOS[lemma][upos] = struct{}{}
+				lemmaPOS.add(lemma, upos, translations)
 			}
 		}
 		return scanner.Err()
 	})
 	if walkErr != nil {
-		return nil, 0, walkErr
+		return nil, walkErr
 	}
-	if err := tx.Commit(); err != nil {
-		return nil, 0, err
-	}
-	return lemmaPOS, count, nil
+	return lemmaPOS, nil
 }
 
-// joinTranslations dedups EN translations across all meanings (case-insensitive
-// match, original case preserved) and joins with "; ".
-func joinTranslations(entry definitionEntry) string {
-	seen := make(map[string]struct{})
-	out := make([]string, 0)
-	for _, m := range entry.Meanings {
-		for _, t := range m.TranslationsEN {
-			t = strings.TrimSpace(t)
-			if t == "" {
-				continue
+// writeLemmas issues one INSERT OR IGNORE + one conditional UPDATE per
+// aggregated (lemma, pos), with the merged Ekilex gloss. Returns
+// (newRowsInserted, glossFillsApplied) — both measured from RowsAffected
+// so they reflect actual database changes, not insert attempts.
+func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, 0, err
+	}
+	defer tx.Rollback()
+
+	stmtInsert, err := tx.Prepare(
+		`INSERT OR IGNORE INTO lemmas (lemma, pos, gloss, lang) VALUES (?, ?, ?, 'ET')`,
+	)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer stmtInsert.Close()
+
+	// Empty-gloss guard: only fill when the existing row has no gloss.
+	// Avoids clobbering richer kaikki glosses with Ekilex's (sometimes
+	// empty) translation set.
+	stmtFillGloss, err := tx.Prepare(
+		`UPDATE lemmas SET gloss = ? WHERE lemma = ? AND pos = ? AND lang = 'ET'
+		   AND (gloss IS NULL OR gloss = '')`,
+	)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer stmtFillGloss.Close()
+
+	inserted := 0
+	glossFilled := 0
+	for lemma, byPOS := range lemmaPOS {
+		for upos, data := range byPOS {
+			gloss := joinTranslationData(data)
+			res, err := stmtInsert.Exec(lemma, upos, gloss)
+			if err != nil {
+				return inserted, glossFilled, fmt.Errorf("insert %q %s: %w", lemma, upos, err)
 			}
-			key := strings.ToLower(t)
-			if _, dup := seen[key]; dup {
-				continue
+			if n, _ := res.RowsAffected(); n == 1 {
+				inserted++
 			}
-			seen[key] = struct{}{}
-			out = append(out, t)
+			if gloss != "" {
+				res, err := stmtFillGloss.Exec(gloss, lemma, upos)
+				if err != nil {
+					return inserted, glossFilled, fmt.Errorf("fill gloss %q %s: %w", lemma, upos, err)
+				}
+				if n, _ := res.RowsAffected(); n == 1 {
+					glossFilled++
+				}
+			}
 		}
 	}
+
+	if err := tx.Commit(); err != nil {
+		return inserted, glossFilled, err
+	}
+	return inserted, glossFilled, nil
+}
+
+// collectTranslations flattens an entry's per-meaning EN translations to a
+// single slice (no dedup yet — dedup happens in lemmaPOSMap.add since
+// aggregation crosses entries).
+func collectTranslations(entry definitionEntry) []string {
+	out := make([]string, 0)
+	for _, m := range entry.Meanings {
+		out = append(out, m.TranslationsEN...)
+	}
+	return out
+}
+
+// joinTranslationData sorts the deduplicated translations and joins with
+// "; " for the gloss column.
+func joinTranslationData(d *lemmaPOSData) string {
+	if d == nil || len(d.translations) == 0 {
+		return ""
+	}
+	out := make([]string, len(d.translations))
+	copy(out, d.translations)
 	sort.Strings(out)
 	return strings.Join(out, "; ")
+}
+
+// joinTranslations is kept for tests that exercise the per-entry path.
+func joinTranslations(entry definitionEntry) string {
+	d := &lemmaPOSData{translationsSeen: make(map[string]struct{})}
+	tmp := lemmaPOSMap{}
+	for _, t := range collectTranslations(entry) {
+		tmp.add("_", "_", []string{t})
+	}
+	if got, ok := tmp["_"]["_"]; ok {
+		d = got
+	}
+	return joinTranslationData(d)
 }
 
 // morphFormClass categorises an Ekilex morph_code as verbal, nominal, or
@@ -318,11 +421,17 @@ func posMatchesMorphClass(upos string, class morphFormClass) bool {
 	}
 }
 
-// importForms walks forms/*.tsv and inserts (form, lemma, pos) rows. Each
-// row's POS is taken from lemmaPOS[lemma], filtered against the morph_code:
-// verbal codes get attributed to VERB only, nominal codes to non-VERB
-// POSes. This matters when a lemma has multiple homonyms with different
-// POS — see classifyMorphCode for the rules.
+// importForms walks forms/*.tsv and inserts (form, lemma, pos) rows. POS is
+// taken from lemmaPOS[lemma], filtered against the morph_code: verbal codes
+// get attributed to VERB only, nominal codes to non-VERB POSes. This matters
+// when a lemma has multiple homonyms with different POS — see
+// classifyMorphCode for the rules.
+//
+// Returns the count of rows actually inserted (RowsAffected==1). Tuples
+// already present from a previous import (e.g. the same canonical form
+// being emitted under multiple morph codes — "joodud" PtsPtIps and
+// PtsPtIpsNeg both yield (joodud, jooma, VERB)) only insert once and are
+// not re-counted.
 func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 	tx, err := db.Begin()
 	if err != nil {
@@ -338,7 +447,7 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 	}
 	defer stmt.Close()
 
-	count := 0
+	inserted := 0
 	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -386,10 +495,13 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 				if !posMatchesMorphClass(upos, class) {
 					continue
 				}
-				if _, err := stmt.Exec(form, lemma, upos); err != nil {
+				res, err := stmt.Exec(form, lemma, upos)
+				if err != nil {
 					return fmt.Errorf("insert form %q %q %s: %w", form, lemma, upos, err)
 				}
-				count++
+				if n, _ := res.RowsAffected(); n == 1 {
+					inserted++
+				}
 			}
 		}
 		return scanner.Err()
@@ -400,7 +512,7 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
-	return count, nil
+	return inserted, nil
 }
 
 func upsertDictMetadata(db *sql.DB, source string, rowCount int) error {

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"finnestdb/internal/store"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -135,20 +137,28 @@ func TestImporter_EndToEnd_HandlesHomonymsAndEmptyGlossGuard(t *testing.T) {
 		t.Fatalf("seed kaikki: %v", err)
 	}
 
-	lemmaPOS, lemmaCount, err := importDefinitions(db, defDir)
+	lemmaPOS, err := aggregateDefinitions(defDir)
 	if err != nil {
-		t.Fatalf("importDefinitions: %v", err)
+		t.Fatalf("aggregateDefinitions: %v", err)
 	}
-	if lemmaCount == 0 {
-		t.Error("expected non-zero lemma count")
+	if countLemmaPOS(lemmaPOS) == 0 {
+		t.Error("expected non-zero (lemma, pos) count")
 	}
 
-	formCount, err := importForms(db, formsDir, lemmaPOS)
+	inserted, glossFilled, err := writeLemmas(db, lemmaPOS)
+	if err != nil {
+		t.Fatalf("writeLemmas: %v", err)
+	}
+	if inserted == 0 && glossFilled == 0 {
+		t.Error("expected non-zero inserted+glossFilled")
+	}
+
+	formInserted, err := importForms(db, formsDir, lemmaPOS)
 	if err != nil {
 		t.Fatalf("importForms: %v", err)
 	}
-	if formCount == 0 {
-		t.Error("expected non-zero form count")
+	if formInserted == 0 {
+		t.Error("expected non-zero form rows inserted")
 	}
 
 	// jooma should have both VERB and NOUN entries.
@@ -204,6 +214,164 @@ func TestImporter_EndToEnd_HandlesHomonymsAndEmptyGlossGuard(t *testing.T) {
 	}
 	if advGloss != "all the time" {
 		t.Errorf("24/7 ADV gloss = %q, want %q", advGloss, "all the time")
+	}
+}
+
+// TestImporter_MergesGlossesAcrossHomonyms guards against the P2 regression
+// codex flagged: two Ekilex entries that collapse into the same
+// (lemma, pos, lang) row (e.g. aste#1 "step" + aste#2 "degree", both NOUN)
+// must merge their EN translations into one gloss instead of dropping the
+// second insert.
+func TestImporter_MergesGlossesAcrossHomonyms(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	if err := writeAll(defDir, "a.jsonl",
+		`{"word_id":1,"lemma":"aste","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["step","stepping"]}]}`+"\n"+
+			`{"word_id":2,"lemma":"aste","homonym_nr":2,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["degree","rank"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	lemmaPOS, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaPOS); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	var gloss string
+	if err := db.QueryRow(`SELECT gloss FROM lemmas WHERE lemma='aste' AND pos='NOUN' AND lang='ET'`).Scan(&gloss); err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	want := "degree; rank; step; stepping"
+	if gloss != want {
+		t.Errorf("merged gloss = %q, want %q", gloss, want)
+	}
+}
+
+// TestImporter_RunsMultiLemmaMigration guards against the P1 regression
+// codex flagged: an existing finnestdb.db imported with the legacy
+// (form, lang) PK must be migrated to the multi-lemma PK before the
+// importer's INSERT OR IGNORE runs, otherwise ambiguous Ekilex rows like
+// joon → joon/NOUN + joon → jooma/VERB collapse to whichever was
+// inserted first.
+func TestImporter_RunsMultiLemmaMigration(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "legacy.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+
+	// Create the LEGACY single-lemma schema explicitly — what cmd/importdict
+	// would have left behind on a finnestdb.db built before PR #77.
+	if _, err := db.Exec(`
+		CREATE TABLE lemmas (
+			lemma TEXT NOT NULL,
+			pos   TEXT NOT NULL,
+			gloss TEXT,
+			lang  TEXT NOT NULL,
+			PRIMARY KEY(lemma, pos, lang)
+		);
+		CREATE TABLE forms (
+			form  TEXT NOT NULL,
+			lemma TEXT NOT NULL,
+			pos   TEXT NOT NULL,
+			lang  TEXT NOT NULL,
+			PRIMARY KEY (form, lang)
+		);
+	`); err != nil {
+		t.Fatalf("legacy schema: %v", err)
+	}
+
+	// Apply the same migration the main flow now runs before any inserts.
+	if err := store.EnsureMultiLemmaSchema(db); err != nil {
+		t.Fatalf("EnsureMultiLemmaSchema: %v", err)
+	}
+
+	// New PK admits two rows for the same (form, lang).
+	if _, err := db.Exec(`INSERT INTO forms (form, lemma, pos, lang) VALUES ('joon', 'joon', 'NOUN', 'ET')`); err != nil {
+		t.Fatalf("insert noun: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO forms (form, lemma, pos, lang) VALUES ('joon', 'jooma', 'VERB', 'ET')`); err != nil {
+		t.Errorf("insert verb candidate: %v (multi-lemma migration didn't apply)", err)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM forms WHERE form='joon' AND lang='ET'`).Scan(&n); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 2 {
+		t.Errorf("forms[joon] count = %d, want 2 (both homonyms preserved)", n)
+	}
+}
+
+// TestImporter_ReportsActualRowsInserted guards against the P3 regression
+// codex flagged: importer counters used to track INSERT attempts even when
+// the row was ignored. With RowsAffected they reflect actual writes.
+func TestImporter_ReportsActualRowsInserted(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	formsDir := filepath.Join(tmp, "forms")
+	if err := writeAll(defDir, "k.jsonl",
+		// Two homonym entries that collapse to a single (kass, NOUN) row —
+		// only one row is actually written.
+		`{"word_id":1,"lemma":"kass","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["cat"]}]}`+"\n"+
+			`{"word_id":2,"lemma":"kass","homonym_nr":2,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["pussy"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write defs: %v", err)
+	}
+	if err := writeAll(formsDir, "k.tsv",
+		"lemma\tform\tmorph_code\n"+
+			// Same canonical form emitted twice (e.g. PtsPtIps + PtsPtIpsNeg
+			// often share a surface) — should still INSERT only once.
+			"kass\tkassi\tSgG\n"+
+			"kass\tkassi\tSgP\n"+
+			"kass\tkass\tSgN\n",
+	); err != nil {
+		t.Fatalf("write forms: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	lemmaPOS, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+	inserted, _, err := writeLemmas(db, lemmaPOS)
+	if err != nil {
+		t.Fatalf("writeLemmas: %v", err)
+	}
+	if inserted != 1 {
+		t.Errorf("lemma rows inserted = %d, want 1 (kass#1 + kass#2 collapse to one row)", inserted)
+	}
+
+	formInserted, err := importForms(db, formsDir, lemmaPOS)
+	if err != nil {
+		t.Fatalf("importForms: %v", err)
+	}
+	// Three TSV rows but only two unique (form, lemma, pos): kassi/SgG and
+	// kassi/SgP both yield (kassi, kass, NOUN); kass/SgN yields (kass, kass, NOUN).
+	if formInserted != 2 {
+		t.Errorf("form rows inserted = %d, want 2 (one duplicate ignored)", formInserted)
 	}
 }
 
