@@ -6,6 +6,47 @@ product documentation. Code changes belong in git history, not here.
 Entries are reverse-chronological. Each entry links to the docs it
 introduced or modified so the docs index stays navigable.
 
+## 2026-05-07 — 3-column comparison reports + bootstrap CIs (Plan C / PR 2)
+
+Restructures `cmd/parser-compare` so committed comparison reports answer the
+right question by default: "did *our* parser regress against the analyzer
+upper bound?" Three-column headline (custom-prev / custom-now / analyzer)
+replaces the legacy "every parser side-by-side" framing, with case-level
+bootstrap CIs so 22-case noise can no longer be misread as signal.
+
+- Added `-baseline-dir` flag to [`cmd/parser-compare`](../cmd/parser-compare/main.go).
+  When set, each "now" report is paired by dataset name with a prior report
+  in that directory; the headline becomes `(custom-prev, custom-now, Δ,
+  analyzer)`. Without `-baseline-dir` the legacy table is the only output
+  (back-compat).
+- Added `-bootstrap N` flag (default 1000). Each accuracy cell shows
+  `82.3% ±0.4` — half the 95% case-level bootstrap CI width. Set
+  `-bootstrap 0` to disable. Deterministic seed by default so committed
+  reports diff cleanly.
+- Added `-main-parser` flag (default `custom`) to control which parser is
+  treated as "now" in the headline.
+- Legacy "all parsers" table moves to an appendix when `-baseline-dir` is
+  set; remains the default output otherwise.
+- 4 unit tests covering the per-case stats extractor, bootstrap
+  half-width on uniform vs heterogeneous accuracy, and analyzer-parser
+  detection.
+
+**Why now:** the eval harness changes in
+[#109](https://github.com/sagarinbabel/finnestdb/pull/109) and
+[#113](https://github.com/sagarinbabel/finnestdb/pull/113) gave us reliable
+gold + always-present analyzer columns. The remaining gap was the report
+structure itself: today's reports compare basic-vs-custom head-to-head, but
+the meaningful comparison is custom-prev vs custom-now (did we improve)
+against the analyzer (how far is the upper bound). Bootstrap CIs make it
+honest — a 2.2pp gain on 22 cases stops being headline-worthy.
+
+**FST migration link:** the per-attribute eval planned alongside the FST
+runtime ([PRs #106](https://github.com/sagarinbabel/finnestdb/pull/106) /
+[#107](https://github.com/sagarinbabel/finnestdb/pull/107)) will reuse the
+same `-baseline-dir` machinery — gold case files already carry a `feats`
+field after PR #113, so the per-attribute extension is purely on the
+report side.
+
 ## 2026-05-06c — UD treebank gold expansion (Plan C / PR 1)
 
 Lifts the parser-eval gold set from ~166 cases to ~14k cases (committed
