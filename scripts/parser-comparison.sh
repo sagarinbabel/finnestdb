@@ -37,9 +37,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ${#DATASETS[@]} -eq 0 ]]; then
-    # Default: every fi/gold/*.json that's actually present.
+    # Default discovery: every fi/gold/*.json EXCEPT dev splits. Test sets
+    # are the held-out headline; dev is for per-commit "watch" eval (run
+    # explicitly with -dataset). Train splits live under gold-train/ and
+    # never auto-discover. See docs/PARSER_EVAL_DATASETS.md for the
+    # held-out discipline introduced in PR Plan-C/1.
     while IFS= read -r f; do DATASETS+=("$f"); done \
-        < <(ls testdata/parser-eval/fi/gold/*.json 2>/dev/null | sort)
+        < <(ls testdata/parser-eval/fi/gold/*.json 2>/dev/null | grep -v -- '-dev-v' | sort)
 fi
 
 if [[ ${#DATASETS[@]} -eq 0 ]]; then
