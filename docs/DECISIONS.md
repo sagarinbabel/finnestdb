@@ -442,6 +442,77 @@ gradation/ternary-compound logic in `internal/parserules/` or
 
 ---
 
+## Decision 6: Numeric-Hyphen Tokenization Lives in the Shared Tokenizer
+
+**Date:** 2026-05-06
+
+### Context
+
+A user pasted Estonian text containing `65-aastane` ("65-year-old") into the
+parser during manual testing and noticed neither `65` nor `aastane` showed up
+as separate words. Pure numbers like `65` weren't tagged `NUM` either. The
+same construction is just as productive in Finnish (`65-vuotias`,
+`1990-luvulla`, etc.), and the tokenizer at
+[`parser/src/lib.rs:308`](../parser/src/lib.rs:308) takes an unused `_lang`
+parameter — Finnish was guaranteed to have the identical bug.
+
+### Decision
+
+Fix this in the shared Rust tokenizer with four pure-tokenizer rules. Do **not**
+add per-language entries to
+[`internal/parserules/finnish.go`](../internal/parserules/finnish.go) or
+[`internal/parserules/estonian.go`](../internal/parserules/estonian.go).
+
+- **R1** — split a chunk at the first hyphen where one side is pure digits and
+  the other starts with a letter (`65-aastane`, `65-vuotias`, `1990-luvulla`).
+  Skip mixed-prefix abbreviations (`B1-tase`, `well-known`).
+- **R2** — `guess_pos` returns `NUM` for `^\d+$`, `^\d+\.\d+$`,
+  `^\d+,\d+$`, with internal whitespace stripped.
+- **R3** — post-pass that merges `\d{1,3}( \d{3})+` runs into one NUM token.
+  Form keeps spaces (`"250 000"`); lemma drops them (`"250000"`) so SI-spaced
+  and unspaced numbers group as one entry in the words list.
+- **R4** — split a chunk at the only hyphen if both sides are pure digits
+  (`1990-2020`). Multi-hyphen forms (ISO dates `2026-05-06`) stay whole because
+  R4 requires exactly one hyphen.
+
+### Reasoning
+
+[`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md) lists
+*tokenization or sentence-split error* and *compound segmentation error* as
+shared error categories, and prescribes investing in shared infrastructure
+when one language surfaces a problem the other has too. This is exactly that
+case: the four rules are language-agnostic (digits, letters, hyphens, spaces
+are universals across FI/ET) and any per-language inflection of the freed
+stems (`aastane`, `vuotias`, `luku`) is handled by the existing language-
+specific lookup chain. Splitting the tokenizer fix into two per-language
+implementations would have been duplicate work with a high risk of drift.
+
+### Trade-off Accepted
+
+- Conservative R4 (one-hyphen-only) leaves ISO dates whole as a single
+  unresolved NOUN literal, which is the same as the pre-fix state for those
+  forms (no regression). A dedicated date detector can layer on later.
+- ET `65-aastast` (partitive of `65-aastane`) splits cleanly via R1 but
+  `aastast` doesn't lemmatize back to `aastane` without a `-ne` ADJ
+  inflection table — separate piece of work.
+- Negative numbers like `-5` stay as one token. Acceptable for alpha;
+  negation is usually written `miinus 5` in both languages.
+
+### How We Measure Success
+
+- 13 new Rust unit tests added; full suite: 41 passed, 0 failed.
+- Zero regression on all 6 existing gold datasets (et-grammar-v1,
+  et-manual-v1, fi-core-v1, fi-manual-v1, fi-manual-v2, fi-grammar-v1) at the
+  Phase-2 baseline DB. Numbers identical to
+  [2026-05-06b](baselines/2026-05-06b-summary.md).
+- A direct probe of 13 sentences across both languages (5 FI + 5 ET fix
+  cases + 3 regression cases) confirms R1–R4 produce the intended tokens
+and freed stems (`aastane`, `luku`) hit the dictionary cleanly. Full
+trace in
+[`docs/qa-reports/2026-05-06-numeric-hyphen-tokenization.md`](qa-reports/2026-05-06-numeric-hyphen-tokenization.md).
+
+---
+
 ## Open Questions
 
 1. **FST for novel words:** At what accuracy level do we need FST-like morphological
@@ -461,3 +532,4 @@ gradation/ternary-compound logic in `internal/parserules/` or
 | 2026-04-29 | Decision 4 added: parse feedback requires login in v1; source_text persisted only on feedback submit |
 | 2026-04-30 | Recorded parse-feedback persistence amendment: alpha ships authenticated parse-session storage as Option A |
 | 2026-05-06 | Decision 5 added: freeze the case-suffix table; further morphology work goes into the pure-Go FST runtime under `pkg/lemmatizer-fi-et/` (PRs #106/#107) |
+| 2026-05-06 | Decision 6 added: numeric-hyphen tokenization (R1–R4) lives in the shared Rust tokenizer, no per-language rule tables |

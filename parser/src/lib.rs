@@ -152,16 +152,132 @@ fn split_sentences(text: &str) -> Vec<String> {
     sentences
 }
 
+/// True iff `s` is non-empty and all characters are ASCII digits.
+fn is_all_digits(s: &str) -> bool {
+    !s.is_empty() && s.chars().all(|c| c.is_ascii_digit())
+}
+
+/// Try to split a chunk at a numeric hyphen boundary (rules R1 and R4).
+///
+/// R1 — digit/letter boundary: split at the first hyphen where one side is
+/// pure digits and the other starts with a letter. Examples that split:
+/// `65-aastane`, `1990-luvulla`, `aastane-65`. Examples that don't:
+/// `B1-tase` (mixed prefix), `well-known` (no digits).
+///
+/// R4 — single-hyphen digit/digit range: if there is exactly one hyphen and
+/// both sides are pure digits, split there. Examples that split: `1990-2020`,
+/// `12-15`. Examples that don't: `2026-05-06` (two hyphens — date pattern
+/// stays whole).
+///
+/// Returns `Some([left, "-", right])` on a split, `None` otherwise.
+fn try_split_numeric_hyphen(word: &str) -> Option<[String; 3]> {
+    let chars: Vec<char> = word.chars().collect();
+
+    // R1: scan for the first digit/letter (or letter/digit) hyphen boundary.
+    for i in 0..chars.len() {
+        if chars[i] != '-' {
+            continue;
+        }
+        let left: String = chars[..i].iter().collect();
+        let right: String = chars[i + 1..].iter().collect();
+        if left.is_empty() || right.is_empty() {
+            continue;
+        }
+        let left_digits = is_all_digits(&left);
+        let right_digits = is_all_digits(&right);
+        let right_starts_letter = right
+            .chars()
+            .next()
+            .map(|c| c.is_alphabetic())
+            .unwrap_or(false);
+        let left_ends_letter = left
+            .chars()
+            .last()
+            .map(|c| c.is_alphabetic())
+            .unwrap_or(false);
+        if (left_digits && right_starts_letter) || (left_ends_letter && right_digits) {
+            return Some([left, "-".to_string(), right]);
+        }
+    }
+
+    // R4: exactly one hyphen and both sides pure digits.
+    if word.chars().filter(|c| *c == '-').count() == 1 {
+        if let Some(pos) = word.find('-') {
+            let (left, rest) = word.split_at(pos);
+            let right = &rest[1..];
+            if is_all_digits(left) && is_all_digits(right) {
+                return Some([left.to_string(), "-".to_string(), right.to_string()]);
+            }
+        }
+    }
+
+    None
+}
+
+/// Merge adjacent NUM-shaped tokens that look like an SI thousand-separated
+/// number (rule R3).
+///
+/// Pattern: a non-punct token of 1–3 ASCII digits followed by one or more
+/// non-punct tokens of exactly 3 ASCII digits. The whole run collapses into
+/// one token whose form preserves the spaces (`"250 000"`); `create_token`
+/// strips the spaces when forming the lemma so spaced and unspaced numbers
+/// group together in the words list.
+///
+/// ```text
+///   ["Maja","maksis","250","000","eurot","."]
+///       → ["Maja","maksis","250 000","eurot","."]
+/// ```
+fn merge_thousand_separator(tokens: Vec<(String, bool)>) -> Vec<(String, bool)> {
+    let mut out: Vec<(String, bool)> = Vec::with_capacity(tokens.len());
+    let mut i = 0;
+    while i < tokens.len() {
+        let (form, is_pun) = &tokens[i];
+        if !*is_pun && is_all_digits(form) {
+            let first_len = form.chars().count();
+            if (1..=3).contains(&first_len) {
+                let mut end = i + 1;
+                while end < tokens.len() {
+                    let (next_form, next_is_pun) = &tokens[end];
+                    if *next_is_pun {
+                        break;
+                    }
+                    if !is_all_digits(next_form) {
+                        break;
+                    }
+                    if next_form.chars().count() != 3 {
+                        break;
+                    }
+                    end += 1;
+                }
+                if end > i + 1 {
+                    let parts: Vec<&str> = tokens[i..end].iter().map(|(f, _)| f.as_str()).collect();
+                    out.push((parts.join(" "), false));
+                    i = end;
+                    continue;
+                }
+            }
+        }
+        out.push((form.clone(), *is_pun));
+        i += 1;
+    }
+    out
+}
+
 /// Tokenize a sentence into (form, is_punct) pairs.
 ///
 /// For each whitespace-delimited chunk, peels leading and trailing punctuation
 /// into separate tokens. Hyphens inside words are preserved ("well-known"),
-/// and decimal numbers are kept intact ("3.14").
+/// and decimal numbers are kept intact ("3.14"). Numeric-hyphen compounds
+/// (`65-aastane`, `1990-luvulla`, `1990-2020`) are split at the hyphen via
+/// `try_split_numeric_hyphen`. Adjacent digit groups like `250 000` are
+/// merged into a single NUM-shaped token by `merge_thousand_separator`.
 ///
 /// ```text
 ///   "(kauppaan)." → [("(", true), ("kauppaan", false), (")", true), (".", true)]
 ///   "3.14"        → [("3.14", false)]
 ///   "well-known"  → [("well-known", false)]
+///   "65-aastane"  → [("65", false), ("-", true), ("aastane", false)]
+///   "250 000"     → [("250 000", false)]
 /// ```
 fn tokenize(sentence: &str) -> Vec<(String, bool)> {
     let mut tokens = Vec::new();
@@ -222,7 +338,15 @@ fn tokenize(sentence: &str) -> Vec<(String, bool)> {
                 }
             }
 
-            tokens.push((word, false));
+            // R1/R4: split numeric-hyphen compounds before emitting.
+            if let Some(parts) = try_split_numeric_hyphen(&word) {
+                let [head, hyphen, tail] = parts;
+                tokens.push((head, false));
+                tokens.push((hyphen, true));
+                tokens.push((tail, false));
+            } else {
+                tokens.push((word, false));
+            }
         }
 
         // Emit trailing punctuation (each char as its own PUNCT token).
@@ -231,7 +355,8 @@ fn tokenize(sentence: &str) -> Vec<(String, bool)> {
         }
     }
 
-    tokens
+    // R3: merge adjacent digit groups that look like SI thousand notation.
+    merge_thousand_separator(tokens)
 }
 
 /// Create a token from a form, marking punctuation with POS "PUNCT".
@@ -254,9 +379,17 @@ fn create_token(form: &str, is_punct_token: bool) -> Token {
         };
     }
 
-    // Non-punctuation: use form as lemma and guess POS via heuristic.
-    let lemma = form.to_lowercase();
+    // Non-punctuation: guess POS via heuristic and derive a lemma.
+    //
+    // For NUM tokens, the lemma drops whitespace so SI-spaced and unspaced
+    // numbers (`250 000` and `250000`) group as the same entry in the words
+    // list. Other POS keep the lowercased form.
     let pos = guess_pos(form);
+    let lemma = if pos == "NUM" {
+        form.chars().filter(|c| !c.is_whitespace()).collect()
+    } else {
+        form.to_lowercase()
+    };
     let grammar_label = format!("{} (stub)", pos);
 
     Token {
@@ -269,8 +402,28 @@ fn create_token(form: &str, is_punct_token: bool) -> Token {
     }
 }
 
-/// Simple POS guessing based on form (stub implementation)
+/// Simple POS guessing based on form (stub implementation).
+///
+/// R2: forms made up entirely of ASCII digits — optionally with a single
+/// `.` or `,` decimal separator, optionally with internal whitespace acting
+/// as a thousand separator — are tagged `NUM` before any other heuristic
+/// runs. This catches `65`, `1990`, `3.14`, `12,50`, and `250 000`.
 fn guess_pos(form: &str) -> String {
+    let stripped: String = form.chars().filter(|c| !c.is_whitespace()).collect();
+    if !stripped.is_empty() {
+        let only_digits = stripped.chars().all(|c| c.is_ascii_digit());
+        let is_decimal_with = |sep: char| -> bool {
+            let mut iter = stripped.split(sep);
+            match (iter.next(), iter.next(), iter.next()) {
+                (Some(a), Some(b), None) => is_all_digits(a) && is_all_digits(b),
+                _ => false,
+            }
+        };
+        if only_digits || is_decimal_with('.') || is_decimal_with(',') {
+            return "NUM".to_string();
+        }
+    }
+
     let lower = form.to_lowercase();
 
     // Check for common Finnish/Estonian verb endings
@@ -504,6 +657,144 @@ mod tests {
         assert_eq!(tok.lemma, "kirja");
     }
 
+    // ─── Numeric-hyphen splitting (R1, R4) ──────────────────────────────────
+    #[test]
+    fn test_tokenize_digit_letter_hyphen_split_et() {
+        // ET: "65-aastane" → ["65", "-", "aastane"]
+        let tokens = forms("65-aastane");
+        assert_eq!(tokens, vec!["65", "-", "aastane"]);
+    }
+
+    #[test]
+    fn test_tokenize_digit_letter_hyphen_split_fi() {
+        // FI: "65-vuotias" → ["65", "-", "vuotias"]
+        let tokens = forms("65-vuotias");
+        assert_eq!(tokens, vec!["65", "-", "vuotias"]);
+    }
+
+    #[test]
+    fn test_tokenize_digit_letter_hyphen_split_decade() {
+        // FI: "1990-luvulla" → ["1990", "-", "luvulla"]
+        let tokens = forms("1990-luvulla");
+        assert_eq!(tokens, vec!["1990", "-", "luvulla"]);
+    }
+
+    #[test]
+    fn test_tokenize_letter_digit_hyphen_split() {
+        // Reverse order also splits.
+        let tokens = forms("aastane-65");
+        assert_eq!(tokens, vec!["aastane", "-", "65"]);
+    }
+
+    #[test]
+    fn test_tokenize_mixed_prefix_does_not_split() {
+        // "B1" is alphanumeric (mixed), not pure digits → don't split.
+        let tokens = forms("B1-tase");
+        assert_eq!(tokens, vec!["B1-tase"]);
+    }
+
+    #[test]
+    fn test_tokenize_letters_letters_does_not_split() {
+        // Already covered by test_tokenize_hyphen_preserved, but reaffirm under
+        // the new rule set.
+        let tokens = forms("well-known");
+        assert_eq!(tokens, vec!["well-known"]);
+    }
+
+    #[test]
+    fn test_tokenize_digit_digit_range_splits() {
+        // R4: single hyphen, both sides pure digits → split.
+        let tokens = forms("1990-2020");
+        assert_eq!(tokens, vec!["1990", "-", "2020"]);
+    }
+
+    #[test]
+    fn test_tokenize_iso_date_does_not_split() {
+        // R4 only fires on a single hyphen — ISO dates have two and stay whole.
+        let tokens = forms("2026-05-06");
+        assert_eq!(tokens, vec!["2026-05-06"]);
+    }
+
+    #[test]
+    fn test_tokenize_split_with_trailing_punct() {
+        // Trailing "." peels first, then the inner chunk splits.
+        let tokens = forms("65-aastane.");
+        assert_eq!(tokens, vec!["65", "-", "aastane", "."]);
+    }
+
+    #[test]
+    fn test_tokenize_split_inside_brackets() {
+        let tokens = forms("(65-aastane)");
+        assert_eq!(tokens, vec!["(", "65", "-", "aastane", ")"]);
+    }
+
+    // ─── Thousand-separator merge (R3) ──────────────────────────────────────
+    #[test]
+    fn test_tokenize_thousand_space_merge_two_groups() {
+        let tokens = forms("250 000 eurot");
+        assert_eq!(tokens, vec!["250 000", "eurot"]);
+    }
+
+    #[test]
+    fn test_tokenize_thousand_space_merge_three_groups() {
+        let tokens = forms("1 234 567 syntyi");
+        assert_eq!(tokens, vec!["1 234 567", "syntyi"]);
+    }
+
+    #[test]
+    fn test_tokenize_thousand_merge_stops_at_non_three_digit() {
+        // Second chunk is 2 digits, not 3 → no merge.
+        let tokens = forms("12 34 sai");
+        assert_eq!(tokens, vec!["12", "34", "sai"]);
+    }
+
+    #[test]
+    fn test_tokenize_thousand_merge_skips_non_digit_first() {
+        // First non-punct token isn't all-digits → nothing to merge.
+        let tokens = forms("Maja 000 kallis");
+        assert_eq!(tokens, vec!["Maja", "000", "kallis"]);
+    }
+
+    // ─── NUM POS (R2) ───────────────────────────────────────────────────────
+    #[test]
+    fn test_guess_pos_pure_integer() {
+        assert_eq!(guess_pos("65"), "NUM");
+        assert_eq!(guess_pos("1990"), "NUM");
+    }
+
+    #[test]
+    fn test_guess_pos_decimal_period() {
+        assert_eq!(guess_pos("3.14"), "NUM");
+    }
+
+    #[test]
+    fn test_guess_pos_decimal_comma() {
+        assert_eq!(guess_pos("12,50"), "NUM");
+    }
+
+    #[test]
+    fn test_guess_pos_thousand_spaced() {
+        assert_eq!(guess_pos("250 000"), "NUM");
+        assert_eq!(guess_pos("1 234 567"), "NUM");
+    }
+
+    #[test]
+    fn test_create_token_num_strips_space_in_lemma() {
+        // Form keeps the space, lemma strips it so "250 000" and "250000"
+        // group as one entry in the words list.
+        let tok = create_token("250 000", false);
+        assert_eq!(tok.pos, "NUM");
+        assert_eq!(tok.form, "250 000");
+        assert_eq!(tok.lemma, "250000");
+    }
+
+    #[test]
+    fn test_create_token_num_decimal_lemma() {
+        let tok = create_token("3.14", false);
+        assert_eq!(tok.pos, "NUM");
+        assert_eq!(tok.lemma, "3.14");
+    }
+
     // ─── End-to-end: analyze_text_internal ──────────────────────────────────
     #[test]
     fn test_analyze_punct_separation() {
@@ -523,6 +814,63 @@ mod tests {
             !token_forms.contains(&"kauppaan)."),
             "should not contain 'kauppaan).': {:?}",
             token_forms
+        );
+    }
+
+    #[test]
+    fn test_analyze_numeric_hyphen_split_et() {
+        // Full pipeline: "Ta on 65-aastane." → "65" tagged NUM, "aastane"
+        // emitted as a separate word token so the dictionary lookup can
+        // resolve it on the Go side.
+        let result = analyze_text_internal("ET", "Ta on 65-aastane.").unwrap();
+        let tokens = &result.sentences[0].tokens;
+        let pairs: Vec<(&str, &str)> = tokens
+            .iter()
+            .map(|t| (t.form.as_str(), t.pos.as_str()))
+            .collect();
+        assert!(
+            pairs.contains(&("65", "NUM")),
+            "expected ('65','NUM'): {:?}",
+            pairs
+        );
+        assert!(
+            pairs.iter().any(|(f, _)| *f == "aastane"),
+            "expected token 'aastane': {:?}",
+            pairs
+        );
+        assert!(
+            !pairs.iter().any(|(f, _)| *f == "65-aastane"),
+            "should not keep '65-aastane' as one token: {:?}",
+            pairs
+        );
+    }
+
+    #[test]
+    fn test_analyze_thousand_spaced_number() {
+        let result = analyze_text_internal("ET", "Maja maksis 250 000 eurot.").unwrap();
+        let tokens = &result.sentences[0].tokens;
+        let merged = tokens
+            .iter()
+            .find(|t| t.form == "250 000")
+            .expect("expected merged '250 000' token");
+        assert_eq!(merged.pos, "NUM");
+        assert_eq!(merged.lemma, "250000");
+    }
+
+    #[test]
+    fn test_analyze_year_range_split() {
+        let result = analyze_text_internal("ET", "Tegevus toimus aastatel 1990-2020.").unwrap();
+        let tokens = &result.sentences[0].tokens;
+        let pairs: Vec<(&str, &str)> = tokens
+            .iter()
+            .map(|t| (t.form.as_str(), t.pos.as_str()))
+            .collect();
+        assert!(pairs.contains(&("1990", "NUM")), "{:?}", pairs);
+        assert!(pairs.contains(&("2020", "NUM")), "{:?}", pairs);
+        assert!(
+            pairs.iter().any(|(f, p)| *f == "-" && *p == "PUNCT"),
+            "expected hyphen as PUNCT: {:?}",
+            pairs
         );
     }
 }

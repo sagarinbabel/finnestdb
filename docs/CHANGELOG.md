@@ -100,6 +100,26 @@ how *not* to fix grammar accuracy.
   runtime is. TODO items #15 (ternary compounds) and #16 (consonant
   gradation) are gated behind the FST migration as a result.
 
+## 2026-05-06 — Numeric-hyphen tokenization (FI + ET)
+
+Surfaced by manual testing on Estonian text containing `65-aastane`. The
+shared Rust tokenizer at [`parser/src/lib.rs`](../parser/src/lib.rs) was
+keeping `65-aastane`, `1990-luvulla`, `250 000`, etc. as opaque single tokens
+or pairs of NOUN stubs, with no `NUM` POS for digit forms. Confirmed Finnish
+had the identical bug (the tokenizer ignores its `_lang` parameter).
+
+Following [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md) on
+shared error categories and shared-pipeline investments, the fix is four
+tokenizer-only rules (R1–R4) — no per-language rule tables.
+
+- Added [`docs/qa-reports/2026-05-06-numeric-hyphen-tokenization.md`](qa-reports/2026-05-06-numeric-hyphen-tokenization.md):
+  bug repro, root cause, R1–R4 with worked examples in both languages,
+  measured impact (zero regression on all 6 existing gold datasets), and
+  follow-ups.
+- Added Decision 6 to [`docs/DECISIONS.md`](DECISIONS.md) recording that
+  numeric-hyphen handling lives in the shared tokenizer rather than in
+  language-specific rule tables.
+
 ## 2026-05-06 — Lexical pipelines: ET ships, FI plan locks
 
 Locks the dictionary layer as multi-source with row-level provenance and
