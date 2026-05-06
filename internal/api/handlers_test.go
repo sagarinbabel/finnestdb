@@ -990,6 +990,238 @@ func TestCreateDeckSkipsKnownWordsWhenSeedingCards(t *testing.T) {
 	}
 }
 
+// TestCreateDeckExpandsAmbiguousTokenIntoMultipleCards verifies the
+// multi-lemma model: when the dict knows that "joon" is both noun and 1Sg of
+// jooma, a single occurrence in the source text creates one card per
+// candidate. Both lemmas register against the deck's word count.
+func TestCreateDeckExpandsAmbiguousTokenIntoMultipleCards(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("joon", "NOUN", "line", "ET"); err != nil {
+		t.Fatalf("UpsertLemma joon: %v", err)
+	}
+	if err := api.store.UpsertLemma("jooma", "VERB", "drink", "ET"); err != nil {
+		t.Fatalf("UpsertLemma jooma: %v", err)
+	}
+	for _, r := range [][4]string{
+		{"joon", "joon", "NOUN", "ET"},
+		{"joon", "jooma", "VERB", "ET"},
+	} {
+		if err := api.store.UpsertForm(r[0], r[1], r[2], r[3]); err != nil {
+			t.Fatalf("UpsertForm %v: %v", r, err)
+		}
+	}
+
+	// Parser picks ONE lemma for the ambiguous "joon" — which one doesn't
+	// matter: the deck-ingest layer re-queries the dict and emits all
+	// candidates regardless of the parser's pick.
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "Ma joon vett.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Ma", Lemma: "mina", POS: "PRON"},
+						{Form: "joon", Lemma: "jooma", POS: "VERB"},
+						{Form: "vett", Lemma: "vesi", POS: "NOUN"},
+						{Form: ".", POS: "PUNCT"},
+					},
+				},
+			},
+		}, nil
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "joon@example.com")
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Joon test","lang":"ET","text":"Ma joon vett."}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create deck status=%d want %d body=%q", createRec.Code, http.StatusOK, createRec.Body.String())
+	}
+
+	auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
+	if err != nil || auth == nil {
+		t.Fatal("expected authenticated user")
+	}
+
+	// Cards: mina (PRON), joon (NOUN) and jooma (VERB) for the ambiguous
+	// token, plus vesi (NOUN) — 4 total. PUNCT is dropped.
+	cardCount, err := api.store.CountCards(auth.UserID, "ET")
+	if err != nil {
+		t.Fatalf("CountCards: %v", err)
+	}
+	if cardCount != 4 {
+		t.Fatalf("card_count=%d want 4 (mina, joon-noun, jooma-verb, vesi)", cardCount)
+	}
+
+	// Deck stats: Unique counts distinct (lemma, pos) pairs across the deck's
+	// occurrences. Both joon/NOUN and jooma/VERB should be present even
+	// though only one surface "joon" appeared.
+	stats, err := api.store.GetUserDeckStats(auth.UserID)
+	if err != nil {
+		t.Fatalf("GetUserDeckStats: %v", err)
+	}
+	if len(stats) != 1 {
+		t.Fatalf("got %d deck stats rows, want 1", len(stats))
+	}
+	if stats[0].Unique != 4 {
+		t.Errorf("Unique=%d want 4 (mina, joon-noun, jooma-verb, vesi)", stats[0].Unique)
+	}
+}
+
+func TestCreateDeckExpandsAmbiguousTokenAcrossMixedCaseForms(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("joon", "NOUN", "line", "ET"); err != nil {
+		t.Fatalf("UpsertLemma joon: %v", err)
+	}
+	if err := api.store.UpsertLemma("jooma", "VERB", "drink", "ET"); err != nil {
+		t.Fatalf("UpsertLemma jooma: %v", err)
+	}
+	for _, r := range [][4]string{
+		{"joon", "joon", "NOUN", "ET"},
+		{"joon", "jooma", "VERB", "ET"},
+	} {
+		if err := api.store.UpsertForm(r[0], r[1], r[2], r[3]); err != nil {
+			t.Fatalf("UpsertForm %v: %v", r, err)
+		}
+	}
+
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "joon. Joon.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "joon", Lemma: "jooma", POS: "VERB"},
+						{Form: ".", POS: "PUNCT"},
+						// The parser pick is deliberately different: this catches
+						// regressions where original-case dict lookup misses "Joon".
+						{Form: "Joon", Lemma: "parser-only", POS: "X"},
+						{Form: ".", POS: "PUNCT"},
+					},
+				},
+			},
+		}, nil
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "mixed-case@example.com")
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Mixed case","lang":"ET","text":"joon. Joon."}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create deck status=%d body=%q", createRec.Code, createRec.Body.String())
+	}
+
+	auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
+	if err != nil || auth == nil {
+		t.Fatal("expected authenticated user")
+	}
+	cardCount, err := api.store.CountCards(auth.UserID, "ET")
+	if err != nil {
+		t.Fatalf("CountCards: %v", err)
+	}
+	if cardCount != 2 {
+		t.Fatalf("card_count=%d want 2 (joon-noun and jooma-verb only)", cardCount)
+	}
+}
+
+// TestCreateDeckSilentDictKeepsParserPick verifies that when the dict has no
+// candidates for a surface form, the parser's lemma is used (no expansion).
+func TestCreateDeckSilentDictKeepsParserPick(t *testing.T) {
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "Kassakaaperdaja kõnnib.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kassakaaperdaja", Lemma: "kassakaaperdaja", POS: "NOUN"},
+						{Form: "kõnnib", Lemma: "kõndima", POS: "VERB"},
+						{Form: ".", POS: "PUNCT"},
+					},
+				},
+			},
+		}, nil
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "silent@example.com")
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Silent","lang":"ET","text":"Kassakaaperdaja kõnnib."}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create deck status=%d body=%q", createRec.Code, createRec.Body.String())
+	}
+
+	auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
+	if err != nil || auth == nil {
+		t.Fatal("expected authenticated user")
+	}
+	cardCount, err := api.store.CountCards(auth.UserID, "ET")
+	if err != nil {
+		t.Fatalf("CountCards: %v", err)
+	}
+	if cardCount != 2 {
+		t.Errorf("card_count=%d want 2 (no dict expansion)", cardCount)
+	}
+}
+
+func TestExpandTokenLemmasUsesDictCandidatesWhenPresent(t *testing.T) {
+	dict := map[string][]store.FormResolution{
+		"joon": {{Lemma: "joon", POS: "NOUN", Source: "dict"}, {Lemma: "jooma", POS: "VERB", Source: "dict"}},
+	}
+	got := expandTokenLemmas(parsecore.TokenResult{Form: "joon", Lemma: "jooma", POS: "VERB"}, dict)
+	if len(got) != 2 {
+		t.Fatalf("len(got)=%d want 2: %+v", len(got), got)
+	}
+	want := map[tokenLemma]bool{{Lemma: "joon", POS: "NOUN"}: true, {Lemma: "jooma", POS: "VERB"}: true}
+	for _, tl := range got {
+		if !want[tl] {
+			t.Errorf("unexpected expansion %+v", tl)
+		}
+		delete(want, tl)
+	}
+	if len(want) != 0 {
+		t.Errorf("missing expansions: %+v", want)
+	}
+}
+
+func TestExpandTokenLemmasFallsBackToParserPickWhenDictSilent(t *testing.T) {
+	got := expandTokenLemmas(
+		parsecore.TokenResult{Form: "kassakaaperdaja", Lemma: "kassakaaperdaja", POS: "NOUN"},
+		map[string][]store.FormResolution{},
+	)
+	if len(got) != 1 || got[0] != (tokenLemma{Lemma: "kassakaaperdaja", POS: "NOUN"}) {
+		t.Errorf("got %+v, want single parser pick", got)
+	}
+}
+
+func TestExpandTokenLemmasDropsPunctAndEmptyLemmaTokens(t *testing.T) {
+	if got := expandTokenLemmas(parsecore.TokenResult{Form: "?", POS: "PUNCT"}, nil); len(got) != 0 {
+		t.Errorf("PUNCT: got %+v, want empty", got)
+	}
+	if got := expandTokenLemmas(parsecore.TokenResult{Form: "", Lemma: "", POS: "NOUN"}, nil); len(got) != 0 {
+		t.Errorf("empty form: got %+v, want empty", got)
+	}
+}
+
 func TestDeckListRenameAndDeleteFlow(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {

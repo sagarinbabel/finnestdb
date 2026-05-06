@@ -185,6 +185,9 @@ func (d *DB) initSchema() error {
 		PRIMARY KEY(lemma, pos, lang)
 	);
 
+	-- One row per (token, lemma, pos). A single ambiguous surface form (e.g. ET
+	-- "joon" = noun "line" or 1Sg of "jooma" / drink) writes multiple rows at
+	-- the same (deck_id, sentence_id, token_ix). See EnsureMultiLemmaSchema.
 	CREATE TABLE IF NOT EXISTS occurrence (
 		deck_id INTEGER NOT NULL,
 		sentence_id INTEGER NOT NULL,
@@ -193,7 +196,7 @@ func (d *DB) initSchema() error {
 		pos TEXT NOT NULL,
 		FOREIGN KEY(deck_id) REFERENCES decks(id),
 		FOREIGN KEY(sentence_id) REFERENCES sentences(id),
-		UNIQUE(deck_id, sentence_id, token_ix)
+		UNIQUE(deck_id, sentence_id, token_ix, lemma, pos)
 	);
 
 	CREATE TABLE IF NOT EXISTS cards (
@@ -235,7 +238,10 @@ func (d *DB) initSchema() error {
 	);
 
 	-- Dictionary: maps inflected surface forms to their canonical lemma + POS.
-	-- PRIMARY KEY (form, lang) = one lemma per surface form per language (first-import wins).
+	-- PRIMARY KEY (form, lang, lemma, pos) = a surface form may map to multiple
+	-- (lemma, pos) pairs to model homonyms (e.g. ET "joon" = noun "line" or
+	-- 1Sg of verb "jooma" / drink). See EnsureMultiLemmaSchema for the
+	-- legacy (form, lang) PK migration.
 	-- Finnish possessive forms (e.g. "kirjassani") are NOT imported here; they are handled
 	-- at enrichment time via suffix stripping (see internal/store/dict.go).
 	CREATE TABLE IF NOT EXISTS forms (
@@ -243,7 +249,7 @@ func (d *DB) initSchema() error {
 		lemma TEXT NOT NULL,
 		pos   TEXT NOT NULL,
 		lang  TEXT NOT NULL,
-		PRIMARY KEY (form, lang)
+		PRIMARY KEY (form, lang, lemma, pos)
 	);
 
 	-- Tracks when dictionary data was imported and from which source.
@@ -343,7 +349,148 @@ func (d *DB) initSchema() error {
 		return err
 	}
 
+	if err := EnsureMultiLemmaSchema(d.db); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// EnsureMultiLemmaSchema rebuilds the forms and occurrence tables to allow
+// multiple (lemma, pos) rows per surface form / per token. This models
+// homonyms — e.g. ET "joon" is both the noun "line" (SgN of joon) and the
+// 1Sg of the verb "jooma" / drink — so a single occurrence of "joon" in a
+// sentence creates one row per candidate, and "joon + 1, jooma + 1" both
+// hold for deck stats.
+//
+// Applies idempotently: detects whether the migration has already run by
+// checking the table's CREATE statement in sqlite_master. The rebuild
+// preserves whatever columns the existing table has (so it survives the
+// later addition of source / source_priority columns by
+// EnsureDictionarySourceColumns on a rebased main).
+//
+// Pre-migration:
+//
+//	forms      PRIMARY KEY (form, lang)
+//	occurrence UNIQUE      (deck_id, sentence_id, token_ix)
+//
+// Post-migration:
+//
+//	forms      PRIMARY KEY (form, lang, lemma, pos)
+//	occurrence UNIQUE      (deck_id, sentence_id, token_ix, lemma, pos)
+//
+// Both new keys are strict supersets, so existing rows always satisfy the
+// new constraint.
+func EnsureMultiLemmaSchema(db *sql.DB) error {
+	if err := rebuildIfLegacyKey(db, "forms",
+		"PRIMARY KEY (form, lang, lemma, pos)"); err != nil {
+		return fmt.Errorf("forms multi-lemma migration: %w", err)
+	}
+	if err := rebuildIfLegacyKey(db, "occurrence",
+		"UNIQUE(deck_id, sentence_id, token_ix, lemma, pos)"); err != nil {
+		return fmt.Errorf("occurrence multi-lemma migration: %w", err)
+	}
+	return nil
+}
+
+// rebuildIfLegacyKey rebuilds the named table with the supplied key clause if
+// the current sqlite_master CREATE statement doesn't already contain it.
+// The rebuild copies whatever columns the legacy table had so this survives
+// the later addition of source / source_priority by
+// EnsureDictionarySourceColumns on a rebased main.
+func rebuildIfLegacyKey(db *sql.DB, table, keyClause string) error {
+	var createSQL string
+	err := db.QueryRow(
+		`SELECT sql FROM sqlite_master WHERE type='table' AND name=?`,
+		table,
+	).Scan(&createSQL)
+	if err == sql.ErrNoRows {
+		// Table doesn't exist yet — initSchema's CREATE handles fresh DBs.
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if strings.Contains(createSQL, keyClause) {
+		return nil // already migrated
+	}
+
+	cols, err := tableColumns(db, table)
+	if err != nil {
+		return err
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	colDefs := make([]string, 0, len(cols))
+	colNames := make([]string, 0, len(cols))
+	for _, c := range cols {
+		def := c.Name + " " + c.Type
+		if c.NotNull {
+			def += " NOT NULL"
+		}
+		if c.DfltValue.Valid {
+			def += " DEFAULT " + c.DfltValue.String
+		}
+		colDefs = append(colDefs, def)
+		colNames = append(colNames, c.Name)
+	}
+
+	createNew := fmt.Sprintf(
+		`CREATE TABLE %s_new (%s, %s)`,
+		table, strings.Join(colDefs, ", "), keyClause,
+	)
+	if _, err := tx.Exec(createNew); err != nil {
+		return fmt.Errorf("create %s_new: %w", table, err)
+	}
+
+	colList := strings.Join(colNames, ", ")
+	copySQL := fmt.Sprintf(
+		`INSERT INTO %s_new (%s) SELECT %s FROM %s`,
+		table, colList, colList, table,
+	)
+	if _, err := tx.Exec(copySQL); err != nil {
+		return fmt.Errorf("copy %s rows: %w", table, err)
+	}
+
+	if _, err := tx.Exec(`DROP TABLE ` + table); err != nil {
+		return fmt.Errorf("drop %s: %w", table, err)
+	}
+	if _, err := tx.Exec(fmt.Sprintf(`ALTER TABLE %s_new RENAME TO %s`, table, table)); err != nil {
+		return fmt.Errorf("rename %s_new: %w", table, err)
+	}
+
+	return tx.Commit()
+}
+
+type sqliteColumn struct {
+	Name      string
+	Type      string
+	NotNull   bool
+	DfltValue sql.NullString
+}
+
+func tableColumns(db *sql.DB, table string) ([]sqliteColumn, error) {
+	rows, err := db.Query(`SELECT name, type, "notnull", dflt_value FROM pragma_table_info(?)`, table)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []sqliteColumn
+	for rows.Next() {
+		var c sqliteColumn
+		var nn int
+		if err := rows.Scan(&c.Name, &c.Type, &nn, &c.DfltValue); err != nil {
+			return nil, err
+		}
+		c.NotNull = nn != 0
+		out = append(out, c)
+	}
+	return out, rows.Err()
 }
 
 // GetOrCreateUser is the legacy seeding helper used by tests and store
