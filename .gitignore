@@ -1,6 +1,17 @@
 # Build artifacts
 finnestdb
 finnestdb.exe
+importkotus
+importdict
+importekilex
+importekilexdetails
+fetchekilex
+reduceekilex
+parsertest
+parser-compare
+corpusmine
+autoresearch
+server
 *.db
 *.db-shm
 *.db-wal
