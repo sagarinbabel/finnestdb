@@ -5,6 +5,7 @@ import (
 	"compress/bzip2"
 	"compress/gzip"
 	"database/sql"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -538,4 +539,397 @@ func TestBzip2ReaderCompiles(t *testing.T) {
 	gz.Close()
 	// Just verify bzip2.NewReader exists (compile check).
 	_ = bzip2.NewReader(bytes.NewReader(buf.Bytes()))
+}
+
+func TestImportJSONL_WritesTranslations(t *testing.T) {
+	// Phase 2 PR 1: every sense's every gloss becomes a row in translations
+	// with target_lang='EN', flat sense_idx counter, source='kaikki'.
+	db := newTestDB(t)
+
+	jsonl := `{"word":"pankki","pos":"noun","lang_code":"fi","senses":[` +
+		`{"glosses":["bank (financial institution)","financial institution"]},` +
+		`{"glosses":["bank (storage)"]},` +
+		`{"glosses":["embankment"]}` +
+		`],"forms":[]}`
+
+	if _, _, err := importJSONLRaw(db, jsonl, "FI"); err != nil {
+		t.Fatalf("importJSONL: %v", err)
+	}
+
+	rows, err := db.Query(
+		`SELECT sense_idx, text, target_lang, source FROM translations
+		 WHERE lemma='pankki' AND pos='NOUN' AND lang='FI' ORDER BY sense_idx`)
+	if err != nil {
+		t.Fatalf("query translations: %v", err)
+	}
+	defer rows.Close()
+
+	var got []struct {
+		idx                int
+		text, target, src string
+	}
+	for rows.Next() {
+		var r struct {
+			idx                int
+			text, target, src string
+		}
+		if err := rows.Scan(&r.idx, &r.text, &r.target, &r.src); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		got = append(got, r)
+	}
+
+	want := []struct {
+		idx                int
+		text, target, src string
+	}{
+		{0, "bank (financial institution)", "EN", "kaikki"},
+		{1, "financial institution", "EN", "kaikki"},
+		{2, "bank (storage)", "EN", "kaikki"},
+		{3, "embankment", "EN", "kaikki"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("translation rows: got %d, want %d (%+v)", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("translation row %d: got %+v, want %+v", i, got[i], want[i])
+		}
+	}
+
+	// lemmas.gloss should still cache the first gloss for backwards compat.
+	var gloss string
+	if err := db.QueryRow(
+		`SELECT gloss FROM lemmas WHERE lemma='pankki' AND pos='NOUN' AND lang='FI'`,
+	).Scan(&gloss); err != nil {
+		t.Fatalf("query lemma gloss: %v", err)
+	}
+	if gloss != "bank (financial institution)" {
+		t.Errorf("lemmas.gloss cache: got %q, want %q", gloss, "bank (financial institution)")
+	}
+}
+
+func TestImportJSONL_TranslationsIdempotent(t *testing.T) {
+	// Re-running the same import must not error or duplicate rows. The
+	// translations PK (lemma, pos, lang, target_lang, sense_idx, source)
+	// + INSERT OR IGNORE handles this.
+	db := newTestDB(t)
+
+	jsonl := `{"word":"talo","pos":"noun","lang_code":"fi","senses":[{"glosses":["house"]},{"glosses":["building"]}],"forms":[]}`
+
+	if _, _, err := importJSONLRaw(db, jsonl, "FI"); err != nil {
+		t.Fatalf("first import: %v", err)
+	}
+	if _, _, err := importJSONLRaw(db, jsonl, "FI"); err != nil {
+		t.Fatalf("second import: %v", err)
+	}
+
+	var n int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM translations WHERE lemma='talo' AND lang='FI'`,
+	).Scan(&n); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 2 {
+		t.Errorf("translation rows after re-import: got %d, want 2 (no duplicates)", n)
+	}
+}
+
+func TestImportJSONL_TranslationsSkipEmptyGlosses(t *testing.T) {
+	// Whitespace-only or empty gloss strings should not produce rows.
+	db := newTestDB(t)
+
+	jsonl := `{"word":"sanaa","pos":"noun","lang_code":"fi","senses":[{"glosses":["word","",""]},{"glosses":["   "]},{"glosses":["term"]}],"forms":[]}`
+
+	if _, _, err := importJSONLRaw(db, jsonl, "FI"); err != nil {
+		t.Fatalf("importJSONL: %v", err)
+	}
+
+	rows, err := db.Query(
+		`SELECT sense_idx, text FROM translations WHERE lemma='sanaa' AND lang='FI' ORDER BY sense_idx`)
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	defer rows.Close()
+	var got []string
+	for rows.Next() {
+		var idx int
+		var text string
+		if err := rows.Scan(&idx, &text); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		got = append(got, fmt.Sprintf("%d:%s", idx, text))
+	}
+	want := []string{"0:word", "1:term"}
+	if !equalStringSliceTest(got, want) {
+		t.Errorf("translations: got %v, want %v", got, want)
+	}
+}
+
+// equalStringSliceTest is a small helper since the package's strings_test
+// helpers aren't visible here.
+func equalStringSliceTest(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func TestImportJSONL_TranslationsRefreshOnConflict(t *testing.T) {
+	// Re-running an import after upstream gloss text changed must update
+	// the `text` column, not silently keep the old text. Codex P2.
+	db := newTestDB(t)
+
+	v1 := `{"word":"talo","pos":"noun","lang_code":"fi","senses":[{"glosses":["house"]}],"forms":[]}`
+	if _, _, err := importJSONLRaw(db, v1, "FI"); err != nil {
+		t.Fatalf("v1 import: %v", err)
+	}
+
+	v2 := `{"word":"talo","pos":"noun","lang_code":"fi","senses":[{"glosses":["house, dwelling"]}],"forms":[]}`
+	if _, _, err := importJSONLRaw(db, v2, "FI"); err != nil {
+		t.Fatalf("v2 import: %v", err)
+	}
+
+	var text string
+	if err := db.QueryRow(
+		`SELECT text FROM translations WHERE lemma='talo' AND lang='FI' AND sense_idx=0`,
+	).Scan(&text); err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if text != "house, dwelling" {
+		t.Errorf("translation text after re-import: got %q, want %q (refresh on conflict)",
+			text, "house, dwelling")
+	}
+}
+
+func TestReimport_ClearsTranslations(t *testing.T) {
+	// -reimport must wipe the translations table for the language too,
+	// so removed senses don't leave stale rows behind. Reproduces the
+	// scenario from sagarinbabel's review note on the original PR head:
+	// import a 2-gloss entry, run reimport, import a 1-gloss version,
+	// only the 1-gloss row should remain.
+	db := newTestDB(t)
+
+	twoGloss := `{"word":"talo","pos":"noun","lang_code":"fi","senses":[{"glosses":["house"]},{"glosses":["building"]}],"forms":[]}`
+	if _, _, err := importJSONLRaw(db, twoGloss, "FI"); err != nil {
+		t.Fatalf("first import: %v", err)
+	}
+
+	// Simulate the -reimport cleanup the way main() does it.
+	if _, err := db.Exec(`DELETE FROM forms WHERE lang = ?`, "FI"); err != nil {
+		t.Fatalf("drop forms: %v", err)
+	}
+	if _, err := db.Exec(`DELETE FROM lemmas WHERE lang = ?`, "FI"); err != nil {
+		t.Fatalf("drop lemmas: %v", err)
+	}
+	if _, err := db.Exec(`DELETE FROM translations WHERE lang = ?`, "FI"); err != nil {
+		t.Fatalf("drop translations: %v", err)
+	}
+
+	oneGloss := `{"word":"talo","pos":"noun","lang_code":"fi","senses":[{"glosses":["house"]}],"forms":[]}`
+	if _, _, err := importJSONLRaw(db, oneGloss, "FI"); err != nil {
+		t.Fatalf("second import: %v", err)
+	}
+
+	var n int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM translations WHERE lemma='talo' AND lang='FI'`,
+	).Scan(&n); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("translation rows after reimport: got %d, want 1 (stale 2nd-sense row should be gone)", n)
+	}
+
+	// And the surviving text should be the new one.
+	var text string
+	if err := db.QueryRow(
+		`SELECT text FROM translations WHERE lemma='talo' AND lang='FI' AND sense_idx=0`,
+	).Scan(&text); err != nil {
+		t.Fatalf("query text: %v", err)
+	}
+	if text != "house" {
+		t.Errorf("translation text: got %q, want %q", text, "house")
+	}
+}
+
+func TestImportJSONL_NormalRerunRemovesOrphanedSenses(t *testing.T) {
+	// Sagar's blocking scenario on PR #85: re-running an import without
+	// -reimport must drop translation rows for senses that disappeared
+	// upstream. Without this, a kaikki refresh that prunes a sense
+	// leaves its sense_idx row stranded; once the read path queries
+	// translations, it would surface the stale gloss.
+	db := newTestDB(t)
+
+	twoGloss := `{"word":"talo","pos":"noun","lang_code":"fi","senses":[{"glosses":["house"]},{"glosses":["building"]}],"forms":[]}`
+	if _, _, err := importJSONLRaw(db, twoGloss, "FI"); err != nil {
+		t.Fatalf("first import: %v", err)
+	}
+
+	var n int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM translations WHERE lemma='talo' AND lang='FI'`,
+	).Scan(&n); err != nil {
+		t.Fatalf("count after first import: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("after 1st import: got %d rows, want 2", n)
+	}
+
+	// Re-run with the second sense gone. NO -reimport flag.
+	oneGloss := `{"word":"talo","pos":"noun","lang_code":"fi","senses":[{"glosses":["house"]}],"forms":[]}`
+	if _, _, err := importJSONLRaw(db, oneGloss, "FI"); err != nil {
+		t.Fatalf("second import: %v", err)
+	}
+
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM translations WHERE lemma='talo' AND lang='FI'`,
+	).Scan(&n); err != nil {
+		t.Fatalf("count after rerun: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("after normal rerun: got %d rows, want 1 (orphaned sense should be removed)", n)
+	}
+
+	// And the surviving row is the new one.
+	var text string
+	if err := db.QueryRow(
+		`SELECT text FROM translations WHERE lemma='talo' AND lang='FI' AND sense_idx=0`,
+	).Scan(&text); err != nil {
+		t.Fatalf("query text: %v", err)
+	}
+	if text != "house" {
+		t.Errorf("surviving text: got %q, want %q", text, "house")
+	}
+}
+
+func TestImportJSONL_NormalRerunPreservesOtherSourcesTranslations(t *testing.T) {
+	// The pre-import wipe is scoped by (lang, source), so a kaikki
+	// rerun must NOT touch translations from other sources for the
+	// same language. Guards against the wipe being too broad.
+	db := newTestDB(t)
+
+	// Pre-seed an "ekilex" row for the same headword (simulating a
+	// future state where Ekilex translations are written too).
+	if _, err := db.Exec(
+		`INSERT INTO translations (lemma, pos, lang, target_lang, text, sense_idx, source)
+		 VALUES ('talo', 'NOUN', 'FI', 'EN', 'ekilex-house', 0, 'ekilex')`,
+	); err != nil {
+		t.Fatalf("seed ekilex: %v", err)
+	}
+
+	jsonl := `{"word":"talo","pos":"noun","lang_code":"fi","senses":[{"glosses":["house"]}],"forms":[]}`
+	if _, _, err := importJSONLRaw(db, jsonl, "FI"); err != nil {
+		t.Fatalf("kaikki import: %v", err)
+	}
+
+	// kaikki row should exist.
+	var kaikkiText string
+	if err := db.QueryRow(
+		`SELECT text FROM translations WHERE lemma='talo' AND source='kaikki' AND lang='FI'`,
+	).Scan(&kaikkiText); err != nil {
+		t.Fatalf("query kaikki: %v", err)
+	}
+	if kaikkiText != "house" {
+		t.Errorf("kaikki: got %q, want %q", kaikkiText, "house")
+	}
+
+	// ekilex row must be untouched.
+	var ekilexText string
+	if err := db.QueryRow(
+		`SELECT text FROM translations WHERE lemma='talo' AND source='ekilex' AND lang='FI'`,
+	).Scan(&ekilexText); err != nil {
+		t.Fatalf("query ekilex: %v", err)
+	}
+	if ekilexText != "ekilex-house" {
+		t.Errorf("ekilex preserved: got %q, want %q (kaikki wipe should not touch other sources)",
+			ekilexText, "ekilex-house")
+	}
+}
+
+// errReader returns its data once then errors. Used to simulate a
+// mid-stream reader failure (truncated download, network blip, etc.).
+type errReader struct {
+	data []byte
+	pos  int
+	err  error
+}
+
+func (r *errReader) Read(p []byte) (int, error) {
+	if r.pos >= len(r.data) {
+		return 0, r.err
+	}
+	n := copy(p, r.data[r.pos:])
+	r.pos += n
+	return n, nil
+}
+
+func TestImportJSONL_StreamFailurePreservesExistingTranslations(t *testing.T) {
+	// Sagar's blocking scenario on PR #85: when importJSONL's stream
+	// returns an error before any batch commits, the pre-import
+	// translations DELETE must roll back along with the partial
+	// inserts. Otherwise a refresh that fails mid-stream leaves the
+	// dictionary with no translations for this source — strictly
+	// worse than the pre-import state. Mirrors the existing
+	// "fail without leaving the dictionary incomplete" guarantee for
+	// forms/lemmas.
+	db := newTestDB(t)
+
+	// Pre-seed a kaikki translation as the "existing" state.
+	if _, err := db.Exec(
+		`INSERT INTO translations (lemma, pos, lang, target_lang, text, sense_idx, source)
+		 VALUES ('talo', 'NOUN', 'FI', 'EN', 'house', 0, 'kaikki')`,
+	); err != nil {
+		t.Fatalf("seed translation: %v", err)
+	}
+
+	var before int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM translations WHERE lang='FI' AND source='kaikki'`,
+	).Scan(&before); err != nil {
+		t.Fatalf("count before: %v", err)
+	}
+	if before != 1 {
+		t.Fatalf("seed: got %d rows, want 1", before)
+	}
+
+	// Reader returns part of a JSONL line then errors mid-stream. The
+	// partial line never produces a complete entry; scanner.Err()
+	// returns the read error.
+	streamErr := &errReader{
+		data: []byte(`{"word":"some","pos":"noun","lang_code":"fi","senses"`),
+		err:  io.ErrUnexpectedEOF,
+	}
+
+	_, _, err := importJSONL(db, streamErr, "FI", importSourceConfig{Name: "kaikki", Priority: 10})
+	if err == nil {
+		t.Fatal("expected stream error, got nil")
+	}
+
+	// The pre-existing translation must survive the failed import.
+	var after int
+	if err := db.QueryRow(
+		`SELECT COUNT(*) FROM translations WHERE lang='FI' AND source='kaikki'`,
+	).Scan(&after); err != nil {
+		t.Fatalf("count after: %v", err)
+	}
+	if after != 1 {
+		t.Errorf("after stream failure: got %d rows, want 1 (DELETE should have rolled back with the failed transaction)", after)
+	}
+
+	// And the surviving content is the original.
+	var text string
+	if err := db.QueryRow(
+		`SELECT text FROM translations WHERE lemma='talo' AND lang='FI' AND source='kaikki'`,
+	).Scan(&text); err != nil {
+		t.Fatalf("query text: %v", err)
+	}
+	if text != "house" {
+		t.Errorf("surviving text: got %q, want %q (original)", text, "house")
+	}
 }
