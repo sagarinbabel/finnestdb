@@ -28,11 +28,11 @@ enjoyable instead of a dictionary lookup grind.
 
 ## How You Learn With FinEstDB
 
-The core loop is `paste -> inspect -> correct -> deck -> review`.
+The signed-in core loop is `paste -> inspect -> correct -> deck -> review`.
 
-1. Paste or upload text in Finnish or Estonian (stored on your account when
-   signed in; ephemeral when not — see
-   [What We Store During Alpha](#what-we-store-during-alpha)).
+1. Sign in, then paste or upload text in Finnish or Estonian. Signed-in
+   parses are stored on your account; see
+   [What We Store During Alpha](#what-we-store-during-alpha).
 2. Inspect the parsed result: every unique word, its lemma, its meaning.
 3. Correct the parser if it gets a word wrong (logged-in users only).
 4. Save the parsed vocabulary as a deck.
@@ -75,18 +75,18 @@ result.
 
 ## Words With Multiple Senses
 
-Some words in Estonian and Finnish look identical but represent more than
-one dictionary lemma. The clearest Estonian example is **joon**: it is the
-noun "line" (`joon` SgN) *and* the 1st-person-singular form of the verb
-**jooma** ("to drink") — Estonian morphology alone can't tell which sense
-the writer meant.
+Some words in Estonian and Finnish look identical but can represent more than
+one dictionary lemma. For example, Estonian **joon** can be the noun "line"
+(`joon` SgN) or the 1st-person-singular form of the verb **jooma** ("to
+drink") — morphology alone can't always tell which sense the writer meant.
 
-When you save a text containing one of these ambiguous words to a deck,
-FinEstDB creates a card for each candidate sense. A single occurrence of
-"joon" produces two cards — `joon` (noun) and `jooma` (verb) — and the
-deck's word count reflects both. You review them independently; if you
-only ever encounter "joon" in drink-context the noun card simply waits
-quietly until you mark it known or ignored.
+When the dictionary contains multiple candidates for a surface form,
+FinEstDB creates a card for each candidate sense when you save that parse to
+a deck, and the deck's word count reflects all candidates. You review them
+independently; if one sense is irrelevant for your text, mark it known or
+ignored. This behavior is dictionary-coverage dependent: if the current
+dictionary only has one candidate for a surface form, only one card is
+created.
 
 If the dictionary has no entry for a word, the parser's single best guess
 is used and only one card is created. The dictionary is only authoritative
@@ -113,7 +113,7 @@ alpha targets web first; native packaging is out of scope.
 ## Roles in the Product
 
 - **Anonymous visitor**: can see the landing/product explanation and
-  sign in. Cannot create decks, review, or submit corrections.
+  sign in. Browser Parse, Decks, Review, and corrections require sign-in.
 - **User**: can paste text, see a lightweight parse-inspection view,
   import known words, create and review decks, and submit parser
   corrections.
@@ -128,8 +128,9 @@ Anonymous correction submission is out of scope for alpha.
 
 ## What We Store During Alpha
 
-- When you are **not signed in**, parses are ephemeral. We do not store your
-  pasted text on our servers.
+- In the browser alpha, Parse is behind sign-in. Direct unauthenticated API
+  parses, when used by development tooling, are ephemeral and do not return a
+  stored parse ID.
 - When you are **signed in**, the text you paste into Inspect is stored with
   your account. We do this so parser corrections can keep their original
   context and so a parse-history UI can exist later.
