@@ -6,7 +6,8 @@
         reimport-dict-fi reimport-dict-et reimport-dict verify-dict \
         setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et \
         import-ud-gold import-ud-gold-fi import-ud-gold-et \
-        scrape-gutenberg-fi silvertag-fi
+        scrape-gutenberg-fi silvertag-fi \
+        scrape-runosto silvertag-runosto
 
 # Default target
 all: build
@@ -346,4 +347,25 @@ silvertag-fi: parser
 	    -input data/silver-fi/raw \
 	    -output testdata/parser-eval/fi/silver/gutenberg-fi-silver-v1.json \
 	    -name gutenberg-fi-silver-v1 \
+	    -version v1
+
+# ── Silver corpus: runosto.net Finnish poetry (Plan C / PR 7) ────────────────
+#
+# WP REST API scraper. Polite (800 ms between requests). Output gitignored
+# at data/silver-fi-runosto/ — public-domain Finnish poetry, but we don't
+# commit ~6 MB of regenerable data.
+RUNOSTO_TARGET_TOKENS ?= 200000
+scrape-runosto:
+	go run ./cmd/scraperunosto \
+	    -target-tokens $(RUNOSTO_TARGET_TOKENS) \
+	    -out data/silver-fi-runosto/raw \
+	    -manifest data/silver-fi-runosto/manifest.jsonl
+
+silvertag-runosto: parser
+	@export DYLD_LIBRARY_PATH="$$(pwd)/parser/target/release:$${DYLD_LIBRARY_PATH:-}"; \
+	go run ./cmd/silvertag \
+	    -lang FI \
+	    -input data/silver-fi-runosto/raw \
+	    -output testdata/parser-eval/fi/silver/runosto-fi-silver-v1.json \
+	    -name runosto-fi-silver-v1 \
 	    -version v1

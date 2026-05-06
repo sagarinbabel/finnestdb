@@ -6,6 +6,41 @@ product documentation. Code changes belong in git history, not here.
 Entries are reverse-chronological. Each entry links to the docs it
 introduced or modified so the docs index stays navigable.
 
+## 2026-05-07 — runosto.net Finnish poetry silver (Plan C / PR 7)
+
+Adds an adversarial-domain silver source: ~195k tokens of Finnish
+poetry from runosto.net, fetched via the site's WordPress REST API.
+
+- Added [`cmd/scraperunosto`](../cmd/scraperunosto/main.go): paginates
+  `https://runosto.net/wp-json/wp/v2/posts?per_page=100&page=N`, strips
+  WP-rendered HTML to plain text (paragraph and `<br/>` boundaries
+  preserved as newlines), saves per-poem .txt files plus a
+  manifest.jsonl with id, title, slug, source URL, fetched_at, token
+  count.
+- Polite scraper: 800 ms between requests, transparent User-Agent.
+  Idempotent re-runs.
+- First-run output: ~1300 poems / **194,947 tokens** before exhausting
+  the WP API at page 15.
+- Output gitignored (per-author PD status varies; manifest preserved
+  for reproducibility). Regenerate with `make scrape-runosto`.
+- Added Makefile target `make silvertag-runosto` that runs the silver
+  tagger from PR #121 against this corpus, producing
+  `testdata/parser-eval/fi/silver/runosto-fi-silver-v1.json` (also
+  gitignored, ~30 MB regenerable in ~10s).
+- 4 unit test functions covering HTML stripping (paragraphs, br tags,
+  named entities, numeric and hex character entities), token counting.
+
+**Why poetry as adversarial:** archaic case forms, inverted syntax,
+abbreviated words, rare vocabulary. Tagging accuracy here is a
+floor-test — if custom does well on Gutenberg novels and badly on
+runosto verse, that's diagnostic.
+
+**License:** the site doesn't carry a single corpus license. Most
+listed authors (Aleksis Kivi, Eino Leino, Runeberg, anonymous folk
+verse from the Kanteletar) are unambiguously PD in Finland (life +
+70 years). Some modern authors may not be. Per-author judgement
+applies; manifest preserves traceability.
+
 ## 2026-05-07 — Silver tagger (Plan C / PR 6)
 
 Turns the raw Gutenberg-FI corpus from PR #115 into ~508k tagged silver

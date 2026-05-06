@@ -14,6 +14,7 @@ corpusmine
 autoresearch
 server
 /scrapegutenberg
+/scraperunosto
 /silvertag
 *.db
 *.db-shm
@@ -79,6 +80,12 @@ testdata/parser-eval/et/gold/ud-et-*.json
 # Don't commit the bulky output; commit the raw text + the manifest.
 testdata/parser-eval/fi/silver/
 testdata/parser-eval/et/silver/
+
+# runosto.net poetry corpus. ~6 MB of mostly-public-domain Finnish verse
+# scraped from the WP REST API. Per-author copyright status varies, so
+# we keep the raw text local; the manifest at
+# data/silver-fi-runosto/manifest.jsonl is committed for reproducibility.
+data/silver-fi-runosto/raw/
 
 # Claude Code
 .claude/
