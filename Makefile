@@ -118,7 +118,6 @@ fetch-ekilex:
 # -update-golden` to refresh fixtures after intentional reducer changes.
 reduce-ekilex:
 	go run ./cmd/reduceekilex
-
 # Full refresh: drops existing entries then re-imports.
 reimport-dict-fi:
 	go run ./cmd/importdict -lang fi -db finnestdb.db -reimport
