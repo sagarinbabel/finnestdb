@@ -43,7 +43,7 @@ func TestAnalyzerTimeoutFallsBackOnUnsetMalformedAndNonPositive(t *testing.T) {
 	}
 }
 
-func TestSupportedParsersIncludesOmorfi(t *testing.T) {
+func TestSupportedParsersList(t *testing.T) {
 	got := SupportedParsers()
 	want := []string{"basic", "custom", "estnltk", "omorfi"}
 	if !slices.Equal(got, want) {
