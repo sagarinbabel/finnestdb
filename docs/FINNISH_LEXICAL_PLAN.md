@@ -80,9 +80,14 @@ These were decided before implementation began.
    (https://kaino.kotus.fi/sanat/nykysuomi/), not Voikko's joukahainen
    re-export. The official distribution is more likely to be maintained
    and is the canonical authority for Kotus class assignments.
-6. **Schema migration: minimal `PRAGMA user_version` block now, real
-   migration framework deferred** — see [Migration Framework Plan](#migration-framework-plan)
-   below.
+6. **Schema migration: idempotent `ALTER TABLE` with duplicate-column
+   error tolerance** — the established codebase pattern (see
+   `EnsureDictionarySourceColumns` in `internal/store/db.go`, landed in
+   #67). Real migration framework deferred — see
+   [Migration Framework Plan](#migration-framework-plan) below. (The
+   original draft of this doc proposed `PRAGMA user_version`; aligning
+   with the existing convention is cleaner than introducing a parallel
+   mechanism.)
 7. **Wikisanakirja for monolingual FI definitions** (via kaikki.org's
    Finnish edition extract). Kielitoimiston not in scope for alpha.
 8. **`feats` column not backfilled for existing kaikki.org form rows.**
@@ -209,12 +214,12 @@ to a real source.
 ## Phasing
 
 Each phase ends in a working system; nothing is half-built across PR
-boundaries. Phase 1 cannot start until [#67] merges.
+boundaries.
 
 - **Phase 1 — FI schema delta.** `paradigm_class` on `lemmas`, `feats`
-  on `forms`, new `translations` and `definitions` tables. Stacked on
-  [#67]. No behavior change. Tests: schema migration round-trip;
-  parser eval baseline unchanged.
+  on `forms`, new `translations` and `definitions` tables. No behavior
+  change. Shipped in #76 once #67 merged. Tests: schema migration
+  round-trip; parser eval baseline unchanged.
 - **Phase 2 — kaikki.org refactor.** Move EN glosses to `translations`,
   FI defs to `definitions`. Update enrichment to read from new tables
   with fallback to `lemmas.gloss`. Tests: parser eval baseline
@@ -234,11 +239,16 @@ boundaries. Phase 1 cannot start until [#67] merges.
 
 ## Migration Framework Plan
 
-For now, schema changes ride on a minimal pattern that mirrors what
-[#67] uses: `PRAGMA user_version` checks at startup with conditional
-`ALTER TABLE` / `CREATE TABLE` blocks in
-[`internal/store/db.go`](../internal/store/db.go)'s `ensureSchema`.
-This is acceptable while migrations are infrequent and append-only.
+For now, schema changes ride on the established codebase pattern: each
+migration is an idempotent `ALTER TABLE ... ADD COLUMN` (or
+`CREATE TABLE IF NOT EXISTS`) that tolerates the SQLite "duplicate
+column name" error on re-run. Grouped backfills get exported helpers
+named `EnsureXxx` in [`internal/store/db.go`](../internal/store/db.go),
+called by both the server's `ensureSchema` and any standalone importer
+that needs the same shape. See `EnsureDictionarySourceColumns` (from
+[#67]) and `EnsureLexicalEnrichmentColumns` (from Phase 1) as
+references. No `PRAGMA user_version` is used. This is acceptable while
+migrations are infrequent and append-only.
 
 A real migration framework is deferred until at least one of these is
 true:
@@ -254,7 +264,8 @@ When that happens, the framework should:
 
 - Live under `internal/store/migrations/` as numbered SQL files
   (`0001_initial.sql`, `0002_source_priority.sql`, ...).
-- Track applied versions in a `schema_migrations` table.
+- Track applied versions in a `schema_migrations` table (or `PRAGMA
+  user_version`, decided at framework introduction).
 - Run forward-only at startup; rollback handled out-of-band by ops.
 - Be a single PR — not introduced lazily alongside a feature.
 
