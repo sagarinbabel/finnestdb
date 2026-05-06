@@ -12,7 +12,7 @@ workbench.
   - [Build & Start](#build--start)
   - [Frontend Build](#frontend-build)
   - [Dictionary import](#dictionary-import)
-    - [Refreshing the Ekilex enrichment data](#refreshing-the-ekilex-enrichment-data)
+    - [Refreshing the Ekilex data](#refreshing-ekilex-data)
   - [Testing the Parse Feature](#testing-the-parse-feature)
   - [Language Validation](#language-validation)
   - [Known Limitations](#known-limitations)
@@ -180,27 +180,29 @@ pipeline is `cmd/fetchekilex` (resumable scrape) → `cmd/reduceekilex`
 the dictionary tables, multi-lemma aware). The first three stages run
 offline; only the loader step is required at deploy time.
 
-#### Refreshing the Ekilex enrichment data
+#### Refreshing Ekilex Data
 
-Most contributors will not need to run this — the reduced output is already
-committed under [`data/ekilex/`](data/ekilex/). Run it only when refreshing
-the upstream snapshot. The full pipeline is four ordered steps:
+**Most contributors will not need to run this — the reduced output is already
+committed under [`data/ekilex/`](data/ekilex/).** You only need to run it only refreshing
+the latest Ekilex data. The full pipeline is four ordered steps, most users will only need step 4:
 
-1. **Fetch the list of words** — `make fetch-ekilex-refresh` re-fetches
-   `/api/public_word/eki` and overwrites the tracked headword queue
-   (`data/ekilex/eki-public-words-2026-et.jsonl`) *only if* the headword
-   set has changed.
-2. **Scrape per-word details** — `make fetch-ekilex` (see below) walks the
-   queue and pulls `/api/word/details` for every `word_id`, writing gzipped
-   raw payloads under `localdata/ekilex/details/raw/` (gitignored).
-3. **Extract / reduce** — `make reduce-ekilex` reduces the raw payloads
-   into sharded committable artifacts under [`data/ekilex/`](data/ekilex/):
-   `definitions/<letter>.jsonl` (lemma + morphology + meanings) and
-   `forms/<letter>.tsv` (one row per inflected form). Golden-tested; see
-   the `reduce-ekilex` notes in [Makefile](Makefile).
-4. **Load into the dictionary** — `make import-ekilex-details-et` bulk-loads
-   the reduced data into the lemma/form/translation tables in
-   `finnestdb.db`. This is the only step required at deploy time.
+1. **Fetch the list of words** — `make fetch-ekilex-refresh` 
+   - re-fetches `/api/public_word/eki` and overwrites the tracked headword list
+      (`data/ekilex/eki-public-words-2026-et.jsonl`) 
+   - only updates if the headword set has changed
+2. **Scrape per-word details** — `make fetch-ekilex` 
+   - see setup instructions below
+   - goes through the wordlist from step 1 and pulls `/api/word/details` for every `word_id`
+   - writes gzipped raw payloads under `localdata/ekilex/details/raw/` (gitignored)
+3. **Extract / reduce** — `make reduce-ekilex`
+   - reduces the raw payloads into sharded committable artifacts under [`data/ekilex/`](data/ekilex/):
+     - `definitions/<letter>.jsonl`: extracts lemma + morphology + meanings
+     - `forms/<letter>.tsv`: a list of inflected forms, one row per inflected form with the corresponding lemma
+   - Golden-tested; see the `reduce-ekilex` notes in [Makefile](Makefile).
+4. **Load into the dictionary** — `make import-ekilex-details-et` 
+   - bulk-loads the reduced data into the lemma/form/translation tables in
+      `finnestdb.db`
+   - this is the only step required at deploy time
 
 `make fetch-ekilex-sample` is an optional aid alongside step 2: it fetches a
 small spread of headwords with both the `eki`-filtered and unfiltered dataset
