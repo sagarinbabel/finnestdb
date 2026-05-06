@@ -59,7 +59,7 @@ Near-term items that remain open after Phase 1 and Phase 2:
 - [ ] Either implement real auth/deck/review behavior or narrow the exposed stub endpoints so the server surface matches the current product focus
 - [ ] Freeze refreshed baseline reports that include the new observability fields and latest Finnish/Estonian gold sets
 - [ ] Review additional Finnish and Estonian draft cases for promotion after more corpus mining
-- [ ] Use the new eval regressions to prioritize parser fixes, starting with recursive compounds and consonant gradation
+- [ ] Use the new eval regressions to prioritize parser fixes. Recursive compounds and consonant gradation are *not* candidates here — they're gated behind the FST migration ([PR #106](https://github.com/sagarinbabel/finnestdb/pull/106) / [#107](https://github.com/sagarinbabel/finnestdb/pull/107)). See `docs/DECISIONS.md` Decision 5.
 - [ ] Add analyzer cache-hit and unknown-lemma counters to complement the existing stage-timing stats
 - [ ] Document the expected browser-QA setup more clearly in the repo so Playwright use is obvious on a fresh checkout
 
@@ -123,9 +123,10 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
    - [ ] Define pattern matching rules
 
 3. **Parser quality fixes from eval regressions**
-   - [ ] Extend `tryCompoundSplit()` to handle recursive/ternary compounds (e.g. "lentokenttäbussi" = lento+kenttä+bussi)
-   - [ ] Add Finnish consonant gradation tables for common stem alternations
+   - ~~Extend `tryCompoundSplit()` to handle recursive/ternary compounds~~ — DEFERRED to FST migration. The libvoikko VFST handles compounds natively via concatenated `[Xp]...[X]` segments; see PR [#107](https://github.com/sagarinbabel/finnestdb/pull/107). Don't add this to `tryCompoundSplit`.
+   - ~~Add Finnish consonant gradation tables~~ — REJECTED. Gradation belongs in the FST's lexicon-aware paradigm tables, not in string-rewrite rules over the surface. See `docs/DECISIONS.md` Decision 5.
    - [ ] Re-run Finnish and Estonian gold baselines after each fix and keep only justified gains
+   - [ ] **Stopgap to remove**: `attachCaseLabelIfStemMatches` in `internal/store/dict.go` is a temporary patch to lift `grammar_label` accuracy off zero on dict hits. Remove once the FST runtime ([PR #107](https://github.com/sagarinbabel/finnestdb/pull/107) and follow-ups) emits FEATS for direct dict hits.
 
 ### Medium Priority
 
@@ -203,15 +204,17 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
     - [ ] Monitor unknown lemma frequency
     - [ ] Create dashboards/alerts for parser health
 
-15. **Three-part compound splitting**
-    - [ ] Extend `tryCompoundSplit()` to handle recursive/ternary compounds (e.g. "lentokenttäbussi" = lento+kenttä+bussi)
-    - Currently only binary splits are supported, which covers ~90% of Finnish/Estonian compounds
-    - Profile real-world miss rates before implementing — may not be worth the false-positive risk
+15. **Three-part compound splitting** — ~~SUPERSEDED by FST migration~~
+    - Recursive compounds are handled natively by libvoikko VFST via concatenated `[Xp]...[X]` segments; see [PR #107](https://github.com/sagarinbabel/finnestdb/pull/107) (FI) and the planned ET equivalent.
+    - Do NOT extend `tryCompoundSplit()` — see `docs/DECISIONS.md` Decision 5.
 
-16. **Consonant gradation rules**
-    - [ ] Add Finnish consonant gradation tables (kk→k, pp→p, tt→t, etc.) to case suffix stripping
-    - Case suffix stripping currently requires an exact stem match in the lemmas table; gradation would allow "kaupassa" → "kauppa" (pp→p at morpheme boundary)
-    - Requires a rule table mapping strong↔weak grade pairs; start with the 15 most common patterns
+16. **Consonant gradation rules** — ~~REJECTED~~
+    - Gradation does not belong in `internal/parserules/` or
+      `internal/store/dict.go::tryCaseSuffixStrip`. It belongs in the FST's
+      lexicon-aware paradigm tables (`pkg/lemmatizer-fi-et/`).
+    - Adding strong↔weak grade pairs to a string-rewrite path produces
+      false positives at lemma boundaries and double-counts cases the FST
+      already handles. See `docs/DECISIONS.md` Decision 5.
 
 17. **Bloom filter for compound pre-filtering**
     - [ ] Profile compound splitting performance on large texts (10k+ tokens) before implementing

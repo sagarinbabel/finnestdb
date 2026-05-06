@@ -36,6 +36,14 @@ type FormResolution struct {
 //	Step 4: [FI + ET] Case suffix strip → lemma-candidate lookup in lemmas table
 //	Step 5: Not resolved → absent from map → caller falls back to stub
 //
+// In "custom" mode, after step 1 succeeds the case-suffix matcher is also run
+// purely to attach a GrammarLabel (case name) to the dict result. The forms
+// table only stores (lemma, pos), so without this pass every direct dict hit
+// would carry an empty grammar label and grammar-accuracy would always be 0%
+// on dict-resolved tokens. This is a stopgap until the FST runtime
+// (PRs #106/#107) emits FEATS natively — see docs/DECISIONS.md for the
+// rationale on not extending the suffix table further.
+//
 // Returns a map from form → FormResolution.
 // Forms that cannot be resolved are absent from the map.
 func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) map[string]FormResolution {
@@ -76,6 +84,15 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		// against the original-case surface so PROPN homonyms don't beat
 		// common-noun lemmas on lowercase surfaces.
 		if best, ok := lookupBestForm(stmtFormsAll, form, lower, lang); ok {
+			// Stopgap (custom mode): the dict knows lemma+POS but not the
+			// inflectional case. Run the case-suffix matcher additively to
+			// attach a label, only when the suffix-strip points to the same
+			// lemma we just resolved (otherwise the label would belong to a
+			// different word). This will be removed once the FST runtime in
+			// pkg/lemmatizer-fi-et/ produces FEATS for direct hits.
+			if parserMode == "custom" && best.GrammarLabel == "" {
+				best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
+			}
 			result[form] = best
 			continue
 		}
@@ -333,6 +350,33 @@ func tryCompoundSplit(stmtForms *sql.Stmt, form, lang string) (FormResolution, b
 }
 
 // ─── Case suffix stripping ──────────────────────────────────────────────────
+
+// attachCaseLabelIfStemMatches augments a successful dict resolution with a
+// case label, when the case-suffix matcher independently arrives at the same
+// lemma. Stopgap until the FST runtime (PRs #106/#107) lands and emits FEATS
+// for direct dict hits.
+//
+// Returns the input unchanged if no label can be attached. Conservative by
+// design: a label is attached only when both
+//   - case-suffix-strip succeeds on the surface, and
+//   - the suffix-strip lemma exactly matches the dict lemma.
+//
+// The lemma-equality guard prevents false positives where the suffix happens
+// to terminate a different word (e.g. dict says `aas` "meadow", suffix-strip
+// would say "inessive of `aa`" — different lemma, no label attached).
+func attachCaseLabelIfStemMatches(stmtLemmas *sql.Stmt, dictResolution FormResolution, lower, lang string) FormResolution {
+	suffixes := parserules.FinnishCaseSuffixes
+	if lang == "ET" {
+		suffixes = parserules.EstonianCaseSuffixes
+	}
+	labeled, ok := tryCaseSuffixStrip(stmtLemmas, lower, lang, suffixes)
+	if !ok || labeled.Lemma != dictResolution.Lemma || labeled.GrammarLabel == "" {
+		return dictResolution
+	}
+	dictResolution.GrammarLabel = labeled.GrammarLabel
+	dictResolution.Source = dictResolution.Source + "+case_suffix_label"
+	return dictResolution
+}
 
 // tryCaseSuffixStrip strips case suffixes and validates the stem against the
 // lemmas table (stricter than forms — reduces false positives from short suffixes).

@@ -314,6 +314,121 @@ If parser-quality work outgrows the volunteer feedback signal, revisit anonymous
 
 ---
 
+## Decision 5: Don't Extend the Case-Suffix Table; the FST is the Real Answer
+
+**Date:** 2026-05-06
+
+### Context
+
+`internal/parserules/{finnish,estonian}.go` defines suffix→case-label tables
+(15 Finnish entries, 17 Estonian entries) used by
+`internal/store/dict.go::tryCaseSuffixStrip`. The matcher strips a suffix off
+the surface form, looks up the residual stem in the `lemmas` table, and on
+hit returns `(lemma, pos, grammar_label)`.
+
+The natural-feeling reaction to the 0% grammar-accuracy result on
+`grammar_label` (see `docs/baselines/2026-05-06b-summary.md`) is to grow this
+table — add more suffix entries, encode consonant gradation, handle ternary
+compounds, etc. Existing TODO items #15 (three-part compound splitting) and
+#16 (consonant gradation rules) point in that direction. We are choosing
+**not** to.
+
+### Decision
+
+**Freeze the case-suffix table at its current size.** Any further morphology
+investment goes into the pure-Go FST runtime under
+[`pkg/lemmatizer-fi-et/`](../pkg/lemmatizer-fi-et/) — see
+[PR #106](https://github.com/sagarinbabel/finnestdb/pull/106) (roadmap +
+spike) and
+[PR #107](https://github.com/sagarinbabel/finnestdb/pull/107) (Voikko VFST Go
+port, FI step 5).
+
+Two near-term exceptions are in scope:
+
+1. **The stopgap label-attach pass on dict hits**
+   (`attachCaseLabelIfStemMatches` in `internal/store/dict.go`). Lifts grammar
+   accuracy off zero on tokens whose stem doesn't change under inflection.
+   Explicitly stopgap; removed once the FST runtime emits FEATS for direct
+   hits.
+2. **Bug fixes** to existing entries if a wrong label is being attached.
+
+### Reasoning
+
+Suffix-stripping is the wrong *shape* of operation for Finnish/Estonian
+morphology. Five reasons, each grounded in real tokens from our gold sets:
+
+1. **Stem alternation can't be expressed by end-of-string rules.**
+   `toas → tuba` (et-grammar-v1, inessive of "room"): suffix-strip removes
+   `s`, leaves `toa`, but the lemma is `tuba` — `o ↔ u` flips inside the
+   stem with consonant alternation. A suffix table operates only on the
+   suffix; it has no way to encode "after stripping `s`, also rewrite
+   `oa → uba` for stems in grade-alternation class III." Encoding that is
+   reimplementing an FST with worse abstractions. Same with `Naabri →
+   naaber` (epenthetic vowel), `linnas → linn` (final-`a` deletion after
+   `s`-stripping), `majja → maja` (gemination + `a`-insertion produced
+   the illative; reverse isn't a suffix strip at all).
+
+2. **Suffix-shaped lemmas trigger false positives.** `aas` (meadow), `mees`
+   (man), `loss` (castle) all end in `s`. Stripping `s` gives `aa` / `mee` /
+   `los` — none of which are lemmas. The table has no way to know which
+   `-s` is paradigmatic and which is part of the lemma. An FST knows
+   because it has the lexicon and the inflectional paradigm together.
+
+3. **Genuine ambiguity needs a candidate set, not a single answer.**
+   `linnas` is `Case=Ine|Number=Sing` of `linn` ("in the city") AND, in
+   some readings, `Case=Gen|Number=Sing` of a personal name `linnas`. A
+   suffix table emits one tuple `(lemma, label)`; the alternative is
+   discarded. Real morphology produces a candidate set and lets the
+   disambiguator pick. `pickBestFormCandidate` already exists for direct
+   dict — case-suffix-strip output should be folded into the same ranker
+   in the FST world, not the suffix world.
+
+4. **Compound interaction.** Estonian compounds extensively. Suffix-strip
+   over-fires on compounds: `linnasüda` ("city heart") ending in
+   suffix-shaped `a` parses as essive of a fake lemma. Compounds need to
+   be split *before* suffix logic, and the split needs paradigm-class
+   awareness — FST territory.
+
+5. **We are already building the FST.** PRs
+   [#106](https://github.com/sagarinbabel/finnestdb/pull/106) /
+   [#107](https://github.com/sagarinbabel/finnestdb/pull/107) port the
+   libvoikko VFST runtime to pure Go and embed `mor.vfst` directly. The
+   suffix table is throwaway code by the time the FST integration
+   finishes (PR 4 of 4 in that series). Extending it is engineering
+   against our own roadmap.
+
+### Trade-off Accepted
+
+The stopgap will not produce grammar labels for stem-alternating forms
+(`toas`, `Naabri`, `linnas`-as-inessive). That's acceptable because:
+
+- Stem-alternating forms are exactly what the FST handles natively;
+- The existing 15+17 entries are sufficient to lift grammar accuracy off
+  zero on the easy majority case (Finnish has cleaner suffixation than
+  Estonian; Estonian's harder cases were always going to need the FST).
+
+### What This Closes
+
+- **TODO #15** (three-part compound splitting) — DEFER to FST migration.
+  The VFST handles compounds natively via concatenated `[Xp]...[X]`
+  segments; see `pkg/lemmatizer-fi-et/voikkomap/` parser in PR #107.
+- **TODO #16** (consonant gradation rules in suffix-strip) — REJECT.
+  Gradation lives in the FST's lexicon-aware paradigm tables, not in
+  string-rewrite rules over the surface.
+
+Both items are restated in `TODO.md` under the
+"FST migration supersedes" section.
+
+### How to Revisit
+
+If the FST migration stalls or is reversed, this decision should be
+re-litigated. Until then, PRs that add suffix-table entries or implement
+gradation/ternary-compound logic in `internal/parserules/` or
+`internal/store/dict.go` should be redirected to
+`pkg/lemmatizer-fi-et/` instead.
+
+---
+
 ## Open Questions
 
 1. **FST for novel words:** At what accuracy level do we need FST-like morphological
@@ -332,3 +447,4 @@ If parser-quality work outgrows the volunteer feedback signal, revisit anonymous
 | 2026-04-28 | Initial decisions documented: custom parser rationale, architecture, evaluation approach, roadmap |
 | 2026-04-29 | Decision 4 added: parse feedback requires login in v1; source_text persisted only on feedback submit |
 | 2026-04-30 | Recorded parse-feedback persistence amendment: alpha ships authenticated parse-session storage as Option A |
+| 2026-05-06 | Decision 5 added: freeze the case-suffix table; further morphology work goes into the pure-Go FST runtime under `pkg/lemmatizer-fi-et/` (PRs #106/#107) |
