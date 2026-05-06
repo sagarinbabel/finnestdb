@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -653,5 +654,236 @@ func TestImporter_UpgradesSourceOnConflictWhenAtLeastAsAuthoritative(t *testing.
 	if src != "custom_overrides" || prio != 100 {
 		t.Errorf("custom form downgrade leak: got source=%q priority=%d, want custom_overrides/100",
 			src, prio)
+	}
+}
+
+func TestWriteTranslations_BasicWrite(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	if err := writeAll(defDir, "k.jsonl",
+		`{"word_id":1,"lemma":"koer","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["dog","hound"]},{"pos":["s"],"translations_en":["bad"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write defs: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaPOS); err != nil {
+		t.Fatalf("writeLemmas: %v", err)
+	}
+
+	written, err := writeTranslations(db, lemmaPOS)
+	if err != nil {
+		t.Fatalf("writeTranslations: %v", err)
+	}
+	if written != 3 {
+		t.Errorf("translations written = %d, want 3 (bad+dog+hound after dedup)", written)
+	}
+
+	rows, err := db.Query(
+		`SELECT sense_idx, text, target_lang, source FROM translations
+		 WHERE lemma='koer' AND pos='NOUN' AND lang='ET' ORDER BY sense_idx`)
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	defer rows.Close()
+	got := []string{}
+	for rows.Next() {
+		var idx int
+		var text, target, src string
+		if err := rows.Scan(&idx, &text, &target, &src); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		got = append(got, fmt.Sprintf("%d:%s/%s/%s", idx, text, target, src))
+	}
+	// sortedTranslations sorts the deduplicated set: ["bad", "dog", "hound"].
+	want := []string{"0:bad/EN/ekilex", "1:dog/EN/ekilex", "2:hound/EN/ekilex"}
+	if !equalStringSlices(got, want) {
+		t.Errorf("translations: got %v, want %v", got, want)
+	}
+}
+
+func TestWriteTranslations_RewriteRemovesOrphanedSenses(t *testing.T) {
+	// Mirrors PR #85's TestImportJSONL_NormalRerunRemovesOrphanedSenses:
+	// when an entry's translation list shrinks upstream, the obsolete
+	// sense_idx rows must be removed on the next run. The pre-write
+	// DELETE + rebuild handles this.
+	tmp := t.TempDir()
+	defDirA := filepath.Join(tmp, "defs-a")
+	defDirB := filepath.Join(tmp, "defs-b")
+	if err := writeAll(defDirA, "k.jsonl",
+		`{"word_id":1,"lemma":"koer","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["dog","hound","cur"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write A: %v", err)
+	}
+	if err := writeAll(defDirB, "k.jsonl",
+		`{"word_id":1,"lemma":"koer","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["dog"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write B: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	// First import: 3 translations.
+	lemmaA, _, err := aggregateDefinitions(defDirA)
+	if err != nil {
+		t.Fatalf("aggregate A: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaA); err != nil {
+		t.Fatalf("writeLemmas A: %v", err)
+	}
+	if _, err := writeTranslations(db, lemmaA); err != nil {
+		t.Fatalf("writeTranslations A: %v", err)
+	}
+
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM translations WHERE lemma='koer'`).Scan(&n); err != nil {
+		t.Fatalf("count A: %v", err)
+	}
+	if n != 3 {
+		t.Fatalf("after A: got %d rows, want 3", n)
+	}
+
+	// Second import: only 1 translation. Stale sense_idx 1, 2 should go.
+	lemmaB, _, err := aggregateDefinitions(defDirB)
+	if err != nil {
+		t.Fatalf("aggregate B: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaB); err != nil {
+		t.Fatalf("writeLemmas B: %v", err)
+	}
+	if _, err := writeTranslations(db, lemmaB); err != nil {
+		t.Fatalf("writeTranslations B: %v", err)
+	}
+
+	if err := db.QueryRow(`SELECT COUNT(*) FROM translations WHERE lemma='koer'`).Scan(&n); err != nil {
+		t.Fatalf("count B: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("after B (shrunk): got %d rows, want 1 (orphans should be removed)", n)
+	}
+}
+
+func TestWriteTranslations_PreservesOtherSourcesTranslations(t *testing.T) {
+	// The pre-import DELETE is scoped by (lang='ET', source='ekilex').
+	// A pre-existing kaikki translation row for the same lemma must
+	// survive an Ekilex re-run.
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	if err := writeAll(defDir, "k.jsonl",
+		`{"word_id":1,"lemma":"koer","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["dog"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write defs: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	// Pre-seed a kaikki translation row.
+	if _, err := db.Exec(
+		`INSERT INTO translations (lemma, pos, lang, target_lang, text, sense_idx, source)
+		 VALUES ('koer', 'NOUN', 'ET', 'EN', 'kaikki-dog', 0, 'kaikki')`,
+	); err != nil {
+		t.Fatalf("seed kaikki: %v", err)
+	}
+
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaPOS); err != nil {
+		t.Fatalf("writeLemmas: %v", err)
+	}
+	if _, err := writeTranslations(db, lemmaPOS); err != nil {
+		t.Fatalf("writeTranslations: %v", err)
+	}
+
+	// kaikki row preserved.
+	var kaikkiText string
+	if err := db.QueryRow(
+		`SELECT text FROM translations WHERE lemma='koer' AND source='kaikki' AND lang='ET'`,
+	).Scan(&kaikkiText); err != nil {
+		t.Fatalf("query kaikki: %v", err)
+	}
+	if kaikkiText != "kaikki-dog" {
+		t.Errorf("kaikki preserved: got %q, want %q (Ekilex wipe scope was too broad)", kaikkiText, "kaikki-dog")
+	}
+
+	// ekilex row written.
+	var ekilexText string
+	if err := db.QueryRow(
+		`SELECT text FROM translations WHERE lemma='koer' AND source='ekilex' AND lang='ET'`,
+	).Scan(&ekilexText); err != nil {
+		t.Fatalf("query ekilex: %v", err)
+	}
+	if ekilexText != "dog" {
+		t.Errorf("ekilex written: got %q, want %q", ekilexText, "dog")
+	}
+}
+
+func TestWriteTranslations_NoTranslationsETOnlyEntry(t *testing.T) {
+	// Some Ekilex entries have only ET definitions and no EN
+	// translations (the "muutumatu"-with-no-meanings tail). They
+	// should produce zero translation rows, not crash.
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	if err := writeAll(defDir, "k.jsonl",
+		// definitions only, no translations_en
+		`{"word_id":1,"lemma":"koer","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"definitions_et":["loom"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write defs: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaPOS); err != nil {
+		t.Fatalf("writeLemmas: %v", err)
+	}
+
+	written, err := writeTranslations(db, lemmaPOS)
+	if err != nil {
+		t.Fatalf("writeTranslations: %v", err)
+	}
+	if written != 0 {
+		t.Errorf("ET-only entry: got %d rows, want 0", written)
 	}
 }
