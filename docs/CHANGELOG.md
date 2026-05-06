@@ -16,7 +16,7 @@ the Finnish equivalent at the schema layer with a fully scoped plan.
   EstNLTK/Vabamorf as the analyzer baseline, EKI/Ekilex as the
   sanctioned lexical-data source, attribution requirements per import,
   parity correction flow shared with Finnish.
-- Added [`docs/FINNISH_LEXICAL_PLAN.md`](FINNISH_LEXICAL_PLAN.md): Kotus
+- Added [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md): Kotus
   sanalista + Voikko (offline paradigm computation) + kaikki.org
   Wiktionary as the three open-source pillars; Kielitoimiston
   deliberately excluded; five-phase rollout (Phase 1 schema delta

@@ -53,7 +53,7 @@ Important distinction:
 - `omorfi` and `estnltk` exist today as evaluation/parser-core integration
   points, but not as browser buttons
 - The Finnish lexical pipeline (Kotus + Voikko + kaikki.org) is documented in
-  [`docs/FINNISH_LEXICAL_PLAN.md`](docs/FINNISH_LEXICAL_PLAN.md); only Phase 1
+  [`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md); only Phase 1
   (schema delta) has shipped — no `cmd/importkotus` or `cmd/importvoikko` yet.
 
 ## High-Level Architecture
@@ -444,7 +444,7 @@ Responsibilities:
 The two languages stitch together different source mixes behind the same
 multi-source schema. See
 [`docs/ESTONIAN_LEXICAL_PLAN.md`](docs/ESTONIAN_LEXICAL_PLAN.md) and
-[`docs/FINNISH_LEXICAL_PLAN.md`](docs/FINNISH_LEXICAL_PLAN.md).
+[`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md).
 
 Estonian (live):
 
@@ -547,7 +547,7 @@ The intended sequence from the current codebase is:
      the dictionary tables (in flight as
      [#78](https://github.com/sagarinbabel/finnestdb/pull/78))
    - **FI**: execute Phases 2–5 of
-     [`docs/FINNISH_LEXICAL_PLAN.md`](docs/FINNISH_LEXICAL_PLAN.md) —
+     [`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md) —
      kaikki refactor → Kotus adapter → Voikko offline seed →
      resolution priority flip
 6. return later to known-word tracking and review-flow polish

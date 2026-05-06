@@ -11,7 +11,7 @@ Driver: Phase 3.5 spike, recorded in
 
 ## What changed in plan
 
-The original [Finnish lexical plan](FINNISH_LEXICAL_PLAN.md) had a Phase 4
+The original [Finnish lexical plan](LEXICAL_PLAN.md) had a Phase 4
 that would offline-generate ~6M Finnish forms via a Voikko paradigm
 generator and import them into SQLite as static rows. The Phase 3.5
 spike shut that path down: libvoikko ships an *analyzer* runtime, not a
@@ -69,7 +69,7 @@ not for morphological analysis.
 | **1** | `pkg/lemmatizer-fi-et/vfst/`, vendored `mor.vfst`, golden tests, Voikko-tag → UD-features mapping, `Lemmatize` interface, parser integration for FI | FI eval ≥ baseline on all four datasets; new package has unit tests; integration through `internal/parsecore` |
 | **2** | `pkg/lemmatizer-fi-et/hfstol/`, vendored Giellalt FI `.hfstol`, merged `Lemmatize` results with dedup | FI eval coverage ↑ on at least one dataset; no regressions |
 | **3** | Build `giellalt/lang-est`, vendor ET `.hfstol`, ET integration | ET eval coverage ↑ on at least one dataset |
-| **4** | Final delta vs baseline, `docs/FST_LEMMATIZER.md` (architecture + attribution + perf numbers), update `FINNISH_LEXICAL_PLAN.md` to mark Phase 4 superseded | Numbers documented, plan updated, attribution complete |
+| **4** | Final delta vs baseline, `docs/FST_LEMMATIZER.md` (architecture + attribution + perf numbers), update `LEXICAL_PLAN.md` to mark Phase 4 superseded | Numbers documented, plan updated, attribution complete |
 
 Reviewer for the series: **@chickendude**.
 

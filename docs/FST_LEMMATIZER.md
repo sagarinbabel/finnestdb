@@ -3,7 +3,7 @@
 This document describes finnestdb's Finnish + Estonian morphological
 analysis layer as it stands after the four-PR migration completed
 2026-05-06. It supersedes the original
-[FINNISH_LEXICAL_PLAN.md](FINNISH_LEXICAL_PLAN.md) Phase 4 (Voikko
+[LEXICAL_PLAN.md](LEXICAL_PLAN.md) Phase 4 (Voikko
 SQLite seed) and Phase 5 (resolution priority flip).
 
 For the migration journey itself — what was tried, what failed, what
@@ -42,7 +42,7 @@ filesystem coupling. Lookup latency is ~35–43 µs per word.
 
 ## Why this exists
 
-The original [FINNISH_LEXICAL_PLAN.md](FINNISH_LEXICAL_PLAN.md) called
+The original [LEXICAL_PLAN.md](LEXICAL_PLAN.md) called
 for a 6M-row SQLite "seed" of every Finnish form generated offline by
 Voikko. The Phase 3.5 spike (2026-05-06) shut that path down: the
 released `voikkospell` binary ships only the *analyzer*, not a
