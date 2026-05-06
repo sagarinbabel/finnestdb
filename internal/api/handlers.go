@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -723,6 +724,16 @@ func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][
 		}
 		out = append(out, entry)
 	}
+
+	// Match parsecore.enrichWords / GetDeckDetails ordering: count desc, then
+	// lemma asc. Map iteration above is non-deterministic, so without this
+	// step the API contract for parsed.Words would silently drift.
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Count != out[j].Count {
+			return out[i].Count > out[j].Count
+		}
+		return out[i].Lemma < out[j].Lemma
+	})
 	return out
 }
 

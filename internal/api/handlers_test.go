@@ -378,6 +378,21 @@ func TestHandleParseExpandsHomonyms(t *testing.T) {
 	if joonNoun.Count != 1 {
 		t.Errorf("joon/NOUN count=%d want 1", joonNoun.Count)
 	}
+
+	// Order contract matches parsecore.enrichWords / GetDeckDetails: count
+	// desc, lemma asc. Map iteration in expandParsedWords would otherwise
+	// produce non-deterministic ordering and silently drift the API contract.
+	for i := 1; i < len(resp.Words); i++ {
+		prev, cur := resp.Words[i-1], resp.Words[i]
+		if cur.Count > prev.Count {
+			t.Errorf("words[%d..%d] not count-desc: %s(count=%d) before %s(count=%d)",
+				i-1, i, prev.Lemma, prev.Count, cur.Lemma, cur.Count)
+		}
+		if cur.Count == prev.Count && cur.Lemma < prev.Lemma {
+			t.Errorf("words[%d..%d] tie not lemma-asc: %s before %s",
+				i-1, i, prev.Lemma, cur.Lemma)
+		}
+	}
 }
 
 func TestHandleParseMapsAnalyzerValidationErrorsToBadRequest(t *testing.T) {
