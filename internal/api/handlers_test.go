@@ -1261,6 +1261,112 @@ func TestDeckListRenameAndDeleteFlow(t *testing.T) {
 	}
 }
 
+func TestGetDeckDetail(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+		t.Fatalf("UpsertLemma kissa: %v", err)
+	}
+	if err := api.store.UpsertLemma("juosta", "VERB", "to run", "FI"); err != nil {
+		t.Fatalf("UpsertLemma juosta: %v", err)
+	}
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "Kissa juoksee.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+						{Form: "juoksee", Lemma: "juosta", POS: "VERB"},
+					},
+				},
+				{
+					Text: "Kissa nukkuu.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+						{Form: "nukkuu", Lemma: "nukkua", POS: "VERB"},
+					},
+				},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "deck-detail@example.com")
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Detail deck","lang":"FI","text":"Kissa juoksee. Kissa nukkuu."}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create status=%d want %d body=%q", createRec.Code, http.StatusOK, createRec.Body.String())
+	}
+	var created CreateDeckResponse
+	if err := json.NewDecoder(bytes.NewReader(createRec.Body.Bytes())).Decode(&created); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/decks/%d", created.DeckID), nil)
+	for _, cookie := range cookies {
+		getReq.AddCookie(cookie)
+	}
+	getRec := httptest.NewRecorder()
+	mux.ServeHTTP(getRec, getReq)
+	if getRec.Code != http.StatusOK {
+		t.Fatalf("get status=%d want %d body=%q", getRec.Code, http.StatusOK, getRec.Body.String())
+	}
+
+	var detail DeckDetailResponse
+	if err := json.NewDecoder(bytes.NewReader(getRec.Body.Bytes())).Decode(&detail); err != nil {
+		t.Fatalf("decode detail response: %v", err)
+	}
+	if detail.ID != created.DeckID {
+		t.Errorf("ID=%d want %d", detail.ID, created.DeckID)
+	}
+	if detail.Title != "Detail deck" {
+		t.Errorf("Title=%q want %q", detail.Title, "Detail deck")
+	}
+	if detail.Lang != "FI" {
+		t.Errorf("Lang=%q want FI", detail.Lang)
+	}
+	if detail.TotalTokens != 4 {
+		t.Errorf("TotalTokens=%d want 4 (2 sentences × 2 tokens)", detail.TotalTokens)
+	}
+	wordsByLemma := map[string]WordEntry{}
+	for _, w := range detail.Words {
+		wordsByLemma[w.Lemma] = w
+	}
+	kissa, ok := wordsByLemma["kissa"]
+	if !ok {
+		t.Fatalf("kissa missing from words: %+v", detail.Words)
+	}
+	if kissa.Count != 2 {
+		t.Errorf("kissa count=%d want 2", kissa.Count)
+	}
+	if kissa.Gloss != "cat" {
+		t.Errorf("kissa gloss=%q want cat", kissa.Gloss)
+	}
+	if kissa.ExampleSentence == "" {
+		t.Errorf("kissa example sentence empty")
+	}
+	if _, ok := wordsByLemma["juosta"]; !ok {
+		t.Errorf("juosta missing from words: %+v", detail.Words)
+	}
+
+	// 404 for someone else's deck.
+	otherCookies := loginAndReturnCookies(t, mux, "other-user@example.com")
+	otherReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/decks/%d", created.DeckID), nil)
+	for _, cookie := range otherCookies {
+		otherReq.AddCookie(cookie)
+	}
+	otherRec := httptest.NewRecorder()
+	mux.ServeHTTP(otherRec, otherReq)
+	if otherRec.Code != http.StatusNotFound {
+		t.Errorf("other-user GET status=%d want 404 body=%q", otherRec.Code, otherRec.Body.String())
+	}
+}
+
 func TestReviewFlowAnswerAndMarkKnown(t *testing.T) {
 	api := newTestAPI(t)
 	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {

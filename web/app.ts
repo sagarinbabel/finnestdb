@@ -91,6 +91,15 @@ interface DeckListResponse {
     decks: DeckSummary[];
 }
 
+interface DeckDetailResponse {
+    id:           number;
+    title:        string;
+    lang:         string;
+    created_at:   string;
+    total_tokens: number;
+    words:        WordEntry[];
+}
+
 interface KnownLemma {
     lemma: string;
     pos:   string;
@@ -156,7 +165,7 @@ type Role = 'anon' | 'user' | 'admin';
 type SortKey = 'row' | 'lemma' | 'pos' | 'forms' | 'definition' | 'tokens';
 type POSFilter = 'all' | 'NOUN' | 'VERB' | 'ADJ' | 'ADV' | 'other';
 type ParserMode = 'basic' | 'custom';
-type ResultsContext = 'inspect' | 'workbench';
+type ResultsContext = 'inspect' | 'workbench' | 'deck';
 type LemmaStateStatus = 'known' | 'ignored';
 
 interface SortState { key: SortKey; dir: 'asc' | 'desc'; }
@@ -174,6 +183,8 @@ const state = {
     currentParserMode:  'basic' as ParserMode,
     currentTextPreview: '',
     currentSourceText:  '',
+    currentDeckID:      null as number | null,
+    currentDeckCreatedAt: '' as string,
     currentRow:         null as CorrectionRowContext | null,
     currentSort:        { key: 'row', dir: 'asc' } as SortState,
     currentPOSFilter:   'all' as POSFilter,
@@ -410,6 +421,8 @@ function setActiveNavLink(route: string): void {
     });
 }
 
+const DECK_DETAIL_RE = /^\/decks\/(\d+)$/;
+
 function isRouteAllowed(route: string): { allowed: boolean; redirect?: string } {
     const role = state.role;
 
@@ -422,7 +435,8 @@ function isRouteAllowed(route: string): { allowed: boolean; redirect?: string } 
 
     // Authenticated-only routes
     const userOnly = ['/dashboard', '/inspect', '/decks', '/review', '/results'];
-    if (userOnly.includes(route)) {
+    const isDeckDetail = DECK_DETAIL_RE.test(route);
+    if (userOnly.includes(route) || isDeckDetail) {
         if (role === 'anon') return { allowed: false, redirect: '/signin' };
         return { allowed: true };
     }
@@ -437,11 +451,21 @@ function isRouteAllowed(route: string): { allowed: boolean; redirect?: string } 
 
 function renderRoute(): void {
     let route = currentRoute();
-    if (!ROUTE_TO_PAGE[route]) route = '/';
+    const deckMatch = route.match(DECK_DETAIL_RE);
+    if (!deckMatch && !ROUTE_TO_PAGE[route]) route = '/';
 
     const guard = isRouteAllowed(route);
     if (!guard.allowed && guard.redirect) {
         window.location.hash = `#${guard.redirect}`;
+        return;
+    }
+
+    if (deckMatch) {
+        // Deck detail reuses the results page.
+        showPage('results-page');
+        setActiveNavLink('/decks');
+        closeMobileNav();
+        void loadDeckDetail(Number(deckMatch[1]));
         return;
     }
 
@@ -703,7 +727,7 @@ function renderDecksPage(): void {
         const knownPct = deck.unique > 0 ? Math.round((deck.known / deck.unique) * 100) : 0;
         return `<article class="deck-list-item">
             <div>
-                <h2>${escapeHtml(deck.title)}</h2>
+                <h2><a href="#/decks/${deck.id}" class="deck-list-title">${escapeHtml(deck.title)}</a></h2>
                 <p class="deck-list-meta">${langName} · ${deck.known}/${deck.unique} known (${knownPct}%) · ${deck.due} due</p>
             </div>
             <div class="deck-list-actions">
@@ -1329,12 +1353,18 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
     const uniqueLemmas = data.words.length;
     const coverage = computeCoverageScore(data);
 
-    document.getElementById('results-title')!.textContent =
-        `"${preview}${ellipsis}" (${langName})`;
+    document.body.dataset.resultsContext = context;
 
-    // For users, hide internal parser-mode pill; show a softer label.
+    document.getElementById('results-title')!.textContent = context === 'deck'
+        ? `${preview} (${langName})`
+        : `"${preview}${ellipsis}" (${langName})`;
+
+    // Parser pill: deck shows "Saved deck", inspect shows a softer label,
+    // workbench/admin shows the parser mode.
     const parserPill = document.getElementById('results-parser')!;
-    if (context === 'inspect' && state.role !== 'admin') {
+    if (context === 'deck') {
+        parserPill.textContent = 'Saved deck';
+    } else if (context === 'inspect' && state.role !== 'admin') {
         parserPill.textContent = 'Your text';
     } else {
         parserPill.textContent = formatParserMode(parserMode);
@@ -1342,6 +1372,17 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
 
     document.getElementById('results-duration')!.textContent =
         `Parse time ${formatParseDuration(data.parse_duration_ms)}`;
+
+    const createdPill = document.getElementById('results-created');
+    if (createdPill) {
+        if (context === 'deck' && state.currentDeckCreatedAt) {
+            createdPill.textContent = `Saved ${state.currentDeckCreatedAt}`;
+            createdPill.classList.remove('hidden');
+        } else {
+            createdPill.textContent = '';
+            createdPill.classList.add('hidden');
+        }
+    }
 
     const coverageFill  = document.getElementById('coverage-fill')!;
     const coverageValue = document.getElementById('coverage-value')!;
@@ -1373,12 +1414,49 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
     // Re-apply role visibility so admin-only pills/cells show correctly.
     applyRoleVisibility();
 
-    navigate('/results');
+    if (context !== 'deck') navigate('/results');
+}
+
+async function loadDeckDetail(deckID: number): Promise<void> {
+    const titleEl = document.getElementById('results-title');
+    if (titleEl) titleEl.textContent = 'Loading deck…';
+
+    try {
+        const resp = await fetch(`/api/decks/${deckID}`, { credentials: 'same-origin' });
+        if (resp.status === 404) {
+            showToast('Deck not found.', 'error');
+            navigate('/decks');
+            return;
+        }
+        if (!resp.ok) throw new Error(await resp.text() || 'Failed to load deck');
+        const data: DeckDetailResponse = await resp.json();
+        state.currentDeckID = data.id;
+        state.currentDeckCreatedAt = formatDeckCreatedAt(data.created_at);
+        state.currentSourceText = '';
+        const parseResponse: ParseResponse = {
+            lang:              data.lang,
+            total_tokens:      data.total_tokens,
+            parse_duration_ms: 0,
+            words:             data.words,
+        };
+        showResults(parseResponse, data.title, 'basic', 'deck');
+    } catch (err: any) {
+        showToast(err.message || 'Failed to load deck.', 'error');
+        navigate('/decks');
+    }
+}
+
+function formatDeckCreatedAt(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 function renderResultsSaveState(): void {
+    const cta = document.querySelector<HTMLElement>('.results-deck-cta');
     const form = document.getElementById('results-save-form');
     const input = document.getElementById('results-deck-title') as HTMLInputElement | null;
+    if (cta) cta.classList.toggle('hidden', state.currentContext === 'deck');
     if (!form || !input) return;
     form.classList.add('hidden');
     const langName = state.currentResults?.lang === 'ET' ? 'Estonian' : 'Finnish';
@@ -2009,6 +2087,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('nav-mobile-signout')?.addEventListener('click', handleSignout);
 
     document.getElementById('results-back')?.addEventListener('click', () => {
+        if (state.currentContext === 'deck') {
+            navigate('/decks');
+            return;
+        }
         navigate(state.currentContext === 'workbench' ? '/admin/workbench' : '/inspect');
     });
 

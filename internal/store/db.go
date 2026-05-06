@@ -1105,6 +1105,80 @@ func (d *DB) DeleteDeck(userID, deckID int64) error {
 	return tx.Commit()
 }
 
+type DeckLemma struct {
+	Lemma           string
+	POS             string
+	Count           int
+	Gloss           string
+	ExampleSentence string
+}
+
+type DeckDetails struct {
+	Deck
+	TotalTokens int
+	Lemmas      []DeckLemma
+}
+
+// GetDeckDetails returns the deck's metadata and an aggregated list of
+// (lemma, pos) entries with counts, glosses, and a representative example
+// sentence. Returns sql.ErrNoRows if the deck does not exist or is not
+// owned by userID.
+func (d *DB) GetDeckDetails(userID, deckID int64) (*DeckDetails, error) {
+	var details DeckDetails
+	err := d.db.QueryRow(
+		`SELECT id, user_id, title, lang, created_at
+		   FROM decks WHERE id = ? AND user_id = ?`,
+		deckID, userID,
+	).Scan(&details.ID, &details.UserID, &details.Title, &details.Lang, &details.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := d.db.Query(
+		`SELECT o.lemma,
+		        o.pos,
+		        COUNT(*) AS cnt,
+		        COALESCE(l.gloss, '') AS gloss,
+		        COALESCE((
+		            SELECT s.text
+		              FROM occurrence o2
+		              JOIN sentences s ON s.id = o2.sentence_id
+		             WHERE o2.deck_id = o.deck_id
+		               AND o2.lemma   = o.lemma
+		               AND o2.pos     = o.pos
+		             ORDER BY o2.sentence_id, o2.token_ix
+		             LIMIT 1
+		        ), '') AS example
+		   FROM occurrence o
+		   LEFT JOIN lemmas l
+		          ON l.lemma = o.lemma
+		         AND l.pos   = o.pos
+		         AND l.lang  = ?
+		  WHERE o.deck_id = ?
+		  GROUP BY o.lemma, o.pos, l.gloss
+		  ORDER BY cnt DESC, o.lemma`,
+		details.Lang, deckID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	details.Lemmas = []DeckLemma{}
+	for rows.Next() {
+		var item DeckLemma
+		if err := rows.Scan(&item.Lemma, &item.POS, &item.Count, &item.Gloss, &item.ExampleSentence); err != nil {
+			return nil, err
+		}
+		details.TotalTokens += item.Count
+		details.Lemmas = append(details.Lemmas, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return &details, nil
+}
+
 // CreateOccurrence records that a lemma+pos token appeared at position tokenIx
 // within the given sentence (which belongs to the given deck).
 func (d *DB) CreateOccurrence(deckID, sentenceID int64, tokenIx int, lemma, pos string) error {

@@ -714,6 +714,8 @@ func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	switch r.Method {
+	case http.MethodGet:
+		a.handleGetDeck(w, auth, deckID)
 	case http.MethodPatch:
 		var req UpdateDeckRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -747,6 +749,62 @@ func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+type DeckDetailResponse struct {
+	ID          int64       `json:"id"`
+	Title       string      `json:"title"`
+	Lang        string      `json:"lang"`
+	CreatedAt   time.Time   `json:"created_at"`
+	TotalTokens int         `json:"total_tokens"`
+	Words       []WordEntry `json:"words"`
+}
+
+func (a *API) handleGetDeck(w http.ResponseWriter, auth *AuthContext, deckID int64) {
+	details, err := a.store.GetDeckDetails(auth.UserID, deckID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Deck not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	keys := make([]store.LemmaKey, 0, len(details.Lemmas))
+	for _, item := range details.Lemmas {
+		keys = append(keys, store.LemmaKey{Lemma: item.Lemma, POS: item.POS})
+	}
+	states, err := a.store.BatchLemmaStates(auth.UserID, details.Lang, keys)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	words := make([]WordEntry, 0, len(details.Lemmas))
+	for _, item := range details.Lemmas {
+		entry := WordEntry{
+			Lemma:           item.Lemma,
+			POS:             item.POS,
+			Forms:           []string{item.Lemma},
+			Count:           item.Count,
+			Gloss:           item.Gloss,
+			ExampleSentence: item.ExampleSentence,
+		}
+		if status := states[store.LemmaKey{Lemma: item.Lemma, POS: item.POS}]; status != "" {
+			entry.LearningState = status
+		}
+		words = append(words, entry)
+	}
+
+	writeJSON(w, http.StatusOK, DeckDetailResponse{
+		ID:          details.ID,
+		Title:       details.Title,
+		Lang:        details.Lang,
+		CreatedAt:   details.CreatedAt,
+		TotalTokens: details.TotalTokens,
+		Words:       words,
+	})
 }
 
 func (a *API) HandleKnownWords(w http.ResponseWriter, r *http.Request) {
