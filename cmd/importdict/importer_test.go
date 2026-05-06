@@ -565,12 +565,12 @@ func TestImportJSONL_WritesTranslations(t *testing.T) {
 	defer rows.Close()
 
 	var got []struct {
-		idx                int
+		idx               int
 		text, target, src string
 	}
 	for rows.Next() {
 		var r struct {
-			idx                int
+			idx               int
 			text, target, src string
 		}
 		if err := rows.Scan(&r.idx, &r.text, &r.target, &r.src); err != nil {
@@ -580,7 +580,7 @@ func TestImportJSONL_WritesTranslations(t *testing.T) {
 	}
 
 	want := []struct {
-		idx                int
+		idx               int
 		text, target, src string
 	}{
 		{0, "bank (financial institution)", "EN", "kaikki"},

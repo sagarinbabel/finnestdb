@@ -47,15 +47,15 @@ import (
 )
 
 type Experiment struct {
-	Iteration  int               `json:"iteration"`
-	Timestamp  string            `json:"timestamp"`
-	Mutation   MutationDetails   `json:"mutation"`
-	Baseline   map[string]float64 `json:"baseline_metric"`
-	Candidate  map[string]float64 `json:"candidate_metric"`
-	Delta      float64           `json:"delta"`
-	Metric     string            `json:"metric"`
-	Verdict    string            `json:"verdict"` // "kept" | "reverted" | "skipped"
-	Reason     string            `json:"reason,omitempty"`
+	Iteration int                `json:"iteration"`
+	Timestamp string             `json:"timestamp"`
+	Mutation  MutationDetails    `json:"mutation"`
+	Baseline  map[string]float64 `json:"baseline_metric"`
+	Candidate map[string]float64 `json:"candidate_metric"`
+	Delta     float64            `json:"delta"`
+	Metric    string             `json:"metric"`
+	Verdict   string             `json:"verdict"` // "kept" | "reverted" | "skipped"
+	Reason    string             `json:"reason,omitempty"`
 }
 
 type MutationDetails struct {

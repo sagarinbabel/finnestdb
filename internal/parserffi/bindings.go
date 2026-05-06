@@ -58,4 +58,3 @@ func AnalyzeText(lang, text string) (*AnalysisResult, error) {
 
 	return &result, nil
 }
-

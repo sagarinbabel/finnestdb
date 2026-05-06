@@ -38,28 +38,28 @@ import (
 // Unused fields are intentionally absent; json.Unmarshal silently drops them.
 
 type rawWordDetails struct {
-	Word     rawWord     `json:"word"`
-	Lexemes  []rawLexeme `json:"lexemes"`
+	Word    rawWord     `json:"word"`
+	Lexemes []rawLexeme `json:"lexemes"`
 }
 
 type rawWord struct {
-	WordID          int64          `json:"wordId"`
-	WordValue       string         `json:"wordValue"`
-	Lang            string         `json:"lang"`
-	HomonymNr       int            `json:"homonymNr"`
-	MorphophonoForm string         `json:"morphophonoForm"`
-	MorphComment    string         `json:"morphComment"`
-	DatasetCodes    []string       `json:"datasetCodes"`
-	Paradigms       []rawParadigm  `json:"paradigms"`
+	WordID          int64         `json:"wordId"`
+	WordValue       string        `json:"wordValue"`
+	Lang            string        `json:"lang"`
+	HomonymNr       int           `json:"homonymNr"`
+	MorphophonoForm string        `json:"morphophonoForm"`
+	MorphComment    string        `json:"morphComment"`
+	DatasetCodes    []string      `json:"datasetCodes"`
+	Paradigms       []rawParadigm `json:"paradigms"`
 }
 
 type rawParadigm struct {
-	ParadigmID        int64       `json:"paradigmId"`
-	InflectionType    string      `json:"inflectionType"`
-	InflectionTypeNr  string      `json:"inflectionTypeNr"`
-	WordClass         string      `json:"wordClass"`
-	Comment           string      `json:"comment"`
-	Forms             []rawForm   `json:"forms"`
+	ParadigmID       int64     `json:"paradigmId"`
+	InflectionType   string    `json:"inflectionType"`
+	InflectionTypeNr string    `json:"inflectionTypeNr"`
+	WordClass        string    `json:"wordClass"`
+	Comment          string    `json:"comment"`
+	Forms            []rawForm `json:"forms"`
 }
 
 // inflectionType / inflectionTypeNr arrive as either strings ("22e") or
@@ -128,8 +128,8 @@ type rawLangValue struct {
 }
 
 type rawSynonymLangGroup struct {
-	Lang     string        `json:"lang"`
-	Synonyms []rawSynonym  `json:"synonyms"`
+	Lang     string       `json:"lang"`
+	Synonyms []rawSynonym `json:"synonyms"`
 }
 
 type rawSynonym struct {

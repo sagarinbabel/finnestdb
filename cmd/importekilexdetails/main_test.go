@@ -481,9 +481,10 @@ func equalStringSlices(a, b []string) bool {
 
 // TestImporter_TagsRowsWithSourceAndPriority guards against the regression
 // found in PR #83's baseline: cmd/importekilexdetails set source on
-// dict_metadata only, leaving inserted lemmas/forms with source='' and
-// source_priority=0. Without the row-level tag, the lookup ranker has
-// nothing to rank by when distinguishing kaikki from Ekilex candidates.
+// dict_metadata only, leaving inserted lemmas/forms with the source
+// column at the empty string and source_priority at 0. Without the
+// row-level tag, the lookup ranker has nothing to rank by when
+// distinguishing kaikki from Ekilex candidates.
 func TestImporter_TagsRowsWithSourceAndPriority(t *testing.T) {
 	tmp := t.TempDir()
 	defDir := filepath.Join(tmp, "definitions")
