@@ -204,6 +204,7 @@ func tryFSTAnalyze(lem *lemmatizer.Lemmatizer, lang, lower string) (FormResoluti
 		Lemma:        a.Lemma,
 		POS:          a.UPOS,
 		GrammarLabel: a.GrammarLabel,
+		Feats:        featsFromFSTAnalysis(a),
 		Source:       "fst",
 	}, true
 }
