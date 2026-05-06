@@ -405,6 +405,7 @@ Lexical pipelines:
 - [docs/ESTONIAN_LEXICAL_PLAN.md](docs/ESTONIAN_LEXICAL_PLAN.md) — EstNLTK + EKI/Ekilex
 
 Parser tooling:
+- [docs/PARSER_EVOLUTION.md](docs/PARSER_EVOLUTION.md) — chronological log of parser-quality measurements and what moved them
 - [docs/OMORFI_ADAPTER.md](docs/OMORFI_ADAPTER.md) · [docs/OMORFI_COMPARISON.md](docs/OMORFI_COMPARISON.md)
 - [docs/PARSER_EVAL_DATASETS.md](docs/PARSER_EVAL_DATASETS.md)
 - [docs/AUTORESEARCH.md](docs/AUTORESEARCH.md)

@@ -5,6 +5,10 @@ This directory contains **frozen baseline measurements** from
 the parser had at a given date so we can detect regressions or measure
 improvements over time.
 
+For the cross-measurement narrative — what changed between dates and
+why — see [`../PARSER_EVOLUTION.md`](../PARSER_EVOLUTION.md). This
+directory is the data; that doc is the story.
+
 ## How to read a baseline file
 
 Each `YYYY-MM-DD-<dataset>.json` is the raw report emitted by
