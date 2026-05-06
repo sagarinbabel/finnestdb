@@ -98,6 +98,39 @@ path that attributes suggestions to the **parser run used during deck creation**
 (a stored `parse_session`). It does not yet imply any automated parser training
 or immediate dictionary mutation.
 
+### “Suggest fix” (parser feedback) flow — recommended UX + semantics
+
+**Intent:** “Suggest fix” is **parser feedback**, not an immediate “fix my deck”
+action. Submissions are meant to be reviewed (admin queue) and inform future
+dictionary/enrichment/parser improvements.
+
+Recommended improvements:
+
+- **Always attach a parse session**
+  - Inspect results already carry `parse_id` from `POST /api/parse`.
+  - Reopened deck detail should also carry a real `parse_id` (either the deck’s
+    originating `parse_session`, or a new “replay” session created on open).
+  - Avoid any UX that exposes the button but cannot submit.
+
+- **Make copy explicit**
+  - Consider renaming the CTA to “Report parser issue” / “Suggest correction”.
+  - In the modal, state clearly: feedback is queued for review and **does not**
+    immediately change deck contents.
+
+- **Include enough context for triage**
+  - Show the source sentence (with the surface form highlighted).
+  - Include parser mode and whatever stable token reference is available
+    (occurrence, token index, etc.) so reviewers can reproduce.
+
+- **Close the loop**
+  - On success: confirm submission and that it’s queued for review.
+  - On failure: show a specific, actionable reason (missing parse session,
+    auth required, etc.), not a generic error.
+
+- **Guardrails**
+  - Hide/disable for rows that are not meaningful to correct (e.g. PUNCT).
+  - Add basic spam-prevention later (rate limiting / dedupe) as needed.
+
 ## Build and Tooling
 
 ### Core build
