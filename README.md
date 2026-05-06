@@ -101,7 +101,7 @@ you submit:
 
 - `õ` present → Estonian (this character never appears in Finnish)
 - `ä`/`ö` > 1.5% of letters → Finnish
-- Neither → warning shown (advisory only; you can still parse)
+- Neither → advisory unknown-language warning; you can still parse
 
 ---
 

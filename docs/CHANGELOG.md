@@ -6,6 +6,19 @@ product documentation. Code changes belong in git history, not here.
 Entries are reverse-chronological. Each entry links to the docs it
 introduced or modified so the docs index stays navigable.
 
+## 2026-05-07 — Runtime docs parity pass
+
+Aligns user-facing docs with the E2E behavior report in
+[`docs/qa-reports/2026-05-06-e2e-doc-behavior-report.md`](qa-reports/2026-05-06-e2e-doc-behavior-report.md).
+
+- [`README.md`](../README.md) now distinguishes unknown-language advisory
+  warnings from blocking Finnish/Estonian mismatch warnings in the language
+  detection overview.
+- [`docs/FEATURES.md`](FEATURES.md) now describes the signed-in browser Parse
+  flow, clarifies that direct unauthenticated API parses are ephemeral
+  development behavior, and frames multi-candidate deck cards as
+  dictionary-coverage dependent rather than guaranteed for the `joon` example.
+
 ## 2026-05-06c — UD treebank gold expansion (Plan C / PR 1)
 
 Lifts the parser-eval gold set from ~166 cases to ~14k cases (committed
@@ -139,11 +152,11 @@ Locked decisions captured in this round of docs:
   on-demand API queries.
 - Ambiguous surface forms get one row per `(lemma, pos)` candidate.
   `forms` PK is `(form, lang, lemma, pos)` and the deck-ingest path
-  uses `BatchLookupAllForms` so a token like ET `joon` produces one
-  occurrence row (and one card) per dict candidate; the parser's
-  single pick is only used when the dict is silent. Migration handled
-  by `EnsureMultiLemmaSchema` / `rebuildIfLegacyKey` in
-  `internal/store/db.go`.
+  uses `BatchLookupAllForms` so, when the dictionary has multiple
+  candidates for a surface form such as ET `joon`, the saved deck gets
+  one occurrence row (and one card) per dict candidate; the parser's
+  single pick is only used when the dict is silent. Migration handled by
+  `EnsureMultiLemmaSchema` / `rebuildIfLegacyKey` in `internal/store/db.go`.
 
 ## 2026-05-01 — Architecture diagram and subsystem versioning
 
