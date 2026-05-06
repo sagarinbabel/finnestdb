@@ -1,0 +1,3739 @@
+IHMISVIHAAJA
+
+Viisinäytöksinen huvinäytelmä
+
+Kirj.
+
+MOLIÈRE
+
+
+Suomentanut
+
+Otto Manninen
+
+
+
+
+
+Porvoossa,
+Werner Söderström Osakeyhtiö,
+1929.
+
+
+
+
+
+
+HENKILÖT:
+
+Alceste, Célimènen kosija.
+Philinte, Alcesten ystävä.
+Oronte, Célimènen kosija.
+Célimène.
+Eliante, Célimènen serkku.
+Arsinoé, Célimènen ystävätär.
+Acaste    | markiiseja.
+Clitandre,|
+Basque, Célimènen palvelija.
+Marsalkkaoikeuden lähetti.
+Dubois, Alcesten palvelija.
+
+Tapahtuu Pariisissa, Célimènen luona.
+
+
+
+
+ENSIMMÄINEN NÄYTÖS.
+
+
+/*
+Ensimmäinen kohtaus.
+
+    Philinte, Alceste.
+
+PHILINTE.
+
+Mikä nyt? Mitä varten te...?
+
+ALCESTE (istuen tuolissaan).
+
+                            Jättäkää minut, menkää!
+
+PHILINTE.
+
+Tuon kumman puuskan mik' oikein nyt teihin henkää?
+
+ALCESTE.
+
+Minut jättäkää, johan kuulitte, tiehenne, pois!
+
+PHILINTE.
+
+Mua suuttumatta ettekö kuunnella vois?
+
+ALCESTE.
+
+Minä tahdon suuttua, mitään en kuunnella halaa.
+
+PHILINTE.
+
+En ymmärrä noin ylen ärtyistä mielialaa,
+ja outoa on toki parhailta ystäviltä...
+
+ALCESTE (nousten kiivaasti).
+
+Minä ystävänne? Pois minut listalta siltä!
+Tähän asti se kyll' olin, vaan sen jälkeen, mit' äsken
+näin teistä, tietämään minä teitä käsken,
+ett' en ole ystävä enää: en sydämissä
+minä mitään sijaa halua vilpillisissä.
+
+PHILINTE.
+
+Mun syyni siis kaiken on armonne ulkopuolla?
+
+ALCESTE.
+
+Tulis teidän sulasta häpeästä jo kuolla;
+tuo käytös on puolustamattoman katalaa,
+ja jokaista kunnian miestä se kuohuttaa.
+Ylint' ystävyyttä te jollekin liehakoitte,
+ylenpalttiseks ihan intonne kukkuroitte,
+hän teiltä saa tuhat vakuutusta ja valaa,
+muka jos miten palvella häntä mielenne palaa;
+ja kun kysyn, mikä hän sitten on miehiään,
+hädintuskin tunnette, tiedätte nimeäkään.
+Hänest' erotessanne harras intonne haihtui,
+ja tuo ylin ystävä ventovieraaksi vaihtui.
+Jumal'auta, on alhaista, kehnoa, viheliäistä
+noin vetää sielunsa vilppiin ja viekasteluun;
+jos öisin noin minä tehnyt, niin ensi puun
+minä oksaan hirttäytyisin.
+
+PHILINTE.
+
+                           En erinäistä
+näe syytä hirteen mennä mä sittenkään,
+ja pyydän siis, ett' ette pahaksi panne,
+jos hiukan lievitän tuimaa tuomiotanne
+ja luvallanne hirttäytymättä jään.
+
+ALCESTE.
+
+Ei paranna asiaa tuo mauton pilanne.
+
+PHILINTE.
+
+Tositodella, mitenkä siis piti hoitaa se tilanne?
+
+ALCESTE.
+
+On oltava suora, ja kunnian mies ei vakaa
+sano sanaa, jot' ei sydän todeksi tunne ja takaa.
+
+PHILINTE.
+
+Syli auki jos kohtaa ken ilon-innoissaan,
+kai samalla rahalla sen toki maksaa saan,
+samall' innolla vastaan, suon samat vakuutukset,
+valat valoista, lupauksista lupaukset.
+
+ALCESTE.
+
+Ei, en voi sietää, kun liukkaasti liehakoivat
+ja liehivät noin nuo muotileijonat oivat;
+niin mitään en vihaa kuin moisia imarteluita
+ja vakuutuksia, väänteitä, kumarteluita,
+noit' auliita syleilyitä aina ja aina
+ja puheenparsia, jotka ei mitään paina,
+kun kohteliaisuutta määrää ja vertaa vailla
+saa kunnon mies ja epatto samalla lailla.
+Mitä maksaa, jos syleilee joku altista vannoin
+ikiystävyyttä innoin ja arvonannoin
+ja ylistää ylös pilviin, kun suitsutus on
+sama suussa häll' edess' ensi hulttion?
+Jos kunnioitus noin halpa on kaupankalu,
+ei enää se olla voi jalon sielun halu.
+Ei suuria maksa sen ilmaus korkeinkaan,
+jos kaiken maailman kanssa se tasataan.
+Vain ansion pohjalla arvo ja kunnia lepää;
+ken kaikille arvon suo, sen kaikilta epää.
+Ajan tään kun vikoja puollatte, hitto vie,
+se mies, joka mulle on mieleen, te ette lie.
+Minä sydäntä vältän noin välkeäsuosioista,
+jok' ansioll' ei tee eroa minkäänmoista.
+Eron tarkan ma vaadin, enk' ajatustani salaa:
+joka miehen ystävän ystävä olla en halaa.
+
+PHILINTE.
+
+Tavan vaatima kohteliaisuus lie kukaties
+toki tarpeen kun kerran on hienon maailman mies.
+
+ALCESTE.
+
+Ei, armotta ansaitsis, sanon, rankaisun raippaa
+petoskauppa, mi pitää varjona ystävänvaippaa.
+Mies olkoon mies, ja jos kenen kohdannemme,
+puhe suoraan tulkoon pohjasta sydämemme;
+se puhukoon ja turhilla konsanaan
+korulausein' älköön verhotko tunteitaan.
+
+PHILINTE.
+
+On seikkoja, joissa ei sovi millään tavoin,
+vaan naurettavaa ois suoruus täysi ja avoin;
+ja kuinka teill' onkin ankarat kunnian lait,
+paras joskus, jos sydämen aatoksista on vait.
+Vai sopiiko todella vasten naamaa jokaista
+kaikk' ajatuksensa heistä vain julki tokaista?
+Ja jos joku tympäisee tahi nostaa vihan,
+heti tuleeko hälle se suoraan ilmaista ihan?
+
+ALCESTE.
+
+Niin pitää.
+
+PHILINTE.
+
+            Siis Émilielle, ett' ei tule sorjaa
+niin vanhasta, vaikka jo kuinkakin paikkaa ja korjaa,
+ihomaalit ne että jo kaikkia iljettää?
+
+ALCESTE.
+
+Miks ei?
+
+PHILINTE.
+
+         Dorilaalle, että se pöyhkäpää
+joka ihmisen kyllästyttää, kun kerskuvan kuullaan
+hänen suvustaan ja sen töistä suurella suullaan.
+
+ALCESTE.
+
+Se on tietty.
+
+PHILINTE.
+
+              Te laskette pilaa.
+
+ALCESTE.
+
+                                 En laisinkaan,
+ja tässä kohden en säästä ma ainoaakaan.
+Miten silmääni loukkaa, kuohuun sappeni saakaan,
+mitä hovi ja kaupunki kaikki on kukkuranaan!
+Syvän harmin, murheen synkeän valtaan jään,
+kun nään, kuink' elää ihmiset keskenään:
+vain kaikkialla liehintä, mairitus matala,
+edunpyynti, vääryys vain, petos, konnuus katala.
+En enää malta, se raivoon mieleni raastaa,
+koko ihmisheimon tahtoisin taistoon haastaa.
+
+PHILINTE.
+
+Filosoofinen harminne on vähän liian hurjaa.
+Sen nousua nauran noin minä mustan nurjaa,
+ja minust' on, kuin me oisimme veljekset nuo,
+jotk' »Aviomiesten koulu» eteemme luo
+ja joilla...
+
+ALCESTE.
+
+             En kaipaa tylsiä vertailujanne.
+
+PHILINTE.
+
+En kaipaa torailujanne ma, totta vie.
+Ei muutu maailma toiseksi touhustanne.
+Ja suoruus kun niin herkkua teistä lie,
+sanon suoraan: ilvenäytöksen tarjoo täyden
+tuo saarnatautinne kaikkien kimppuun käyden,
+ja moinen kiivailu tään ajan tapoja vastaan
+saa teidät ihmisten nauruksi ainoastaan.
+
+ALCESTE.
+
+Sen parempi, hitto vie! Sitä tahdonkin juuri.
+Hyvä merkki, mainio, siitä on iloni suuri:
+mua ihmiset inhottaa, sit' en sietää vois,
+minut ilkiöt nuo jos viisaaksi arviois.
+
+PHILINTE.
+
+Kovin ihmisluonto teiss' ison nostaa vihan.
+
+ALCESTE.
+
+Niin, peloittavaan se saa minut vimmaan ihan.
+
+PHILINTE.
+
+Siis poikkeuksetta ihmis-parka jok'ainoa
+saa kantaa karsaan paheksuntanne painoa,
+vaikk' aika tää toki keskellä paljon kieron...
+
+ALCESTE.
+
+Ei, kaikkia heit' ylisummaan vihaan ja vieron:
+ovat toiset häijyjä heistä ja tekevät pahaa,
+taas toiset häijyjä vastaan velttoa vahaa,
+pahe nostaa heiss' ei vihan vimmaa voi,
+kuten nostaa se sielussa, jonk' avu aateloi.
+Noin suositun kunnottomuuden huippuunsa johtaa
+pääkelmi tuo, kera jonk' on mull' oikeusjuttu;
+läpi naamion oikea kettu kyll' ilmi hohtaa,
+joka paikassa juonistaan hän on tietty ja tuttu.
+Tuo laupias katse ja makea ääni viedä
+voi verkkoon oudon vain, jok' ei varoa tiedä.
+Noin häpeäpaaluun pantava hylky huoleti hiipi,
+ylös maailman portaita likaisin keinoin kiipi.
+Ja moinen kun kunnian loistoon koroitetaan,
+se on ansion pilkka, se saa avun punastumaan.
+Nimet, arvot mitkä jos häpeämättä hän ostaa,
+hänet kurja kunnia tuo kenen silmissä nostaa?
+Hän on roisto, sanoa saatte, kirottu konna,
+ja kaikki sen myöntävät totena kiistatonna.
+Joka piiriin pääsy tuon toki häntyrin naaman,
+hymyt, tervehdykset mairivat pitää saaman.
+Ja virkapaikasta jostain jos kilpa lie,
+sivu kelpomiehen se veijari kyllä sen vie.
+Jumal'auta, katkerasti mun mieltäni raastaa,
+kun noin näen hemmoteltavan paheen saastaa,
+ja monesti mieleni tuntee vetoa vinhaa
+erämaahan, pakoon ihmisten parvea inhaa.
+
+PHILINTE.
+
+Hyvä Jumala, suututte suott' ajan tapojen takia
+ja ihmisluonnolle liiaksi luette lakia.
+Sit' ei tilin alle niin pidä panna tiukan,
+voi lempeämpi sen virheille olla hiukan.
+On maailmassa hyveelle tarpeen taito,
+ja haitata suoruus voi ylen suora ja aito;
+tosi viisaus ei mene liiallisuuksiin kuunaan,
+vaan järkevä kohtuus sillä on mittapuunaan.
+Tuo rautainen siveys, muinaiskausilta saatu,
+kovin toist' on kuin tämän aikamme tapa ja laatu:
+ylen täydelliseksi se heikon ihmisen vaatii;
+vaan niin paras olla, kuin lain ajan luonne laatii.
+On verraton hulluus, muuta jos koittaa kuka
+ja luulee maailman parantavansa muka.
+Joka päivä mä kuin tekin nään sadat seikat, joista
+tulos oivempi ois, jos kulkis ne tolaa toista;
+vaan jos mitä nähnenkin joka askelella,
+en teidän tapaanne tahdo ma kiukutella;
+otan rauhallisesti ihmiset, niinkuin ne ovat,
+miks sais meno maailman multa tuomiot kovat?
+Sovun maltilla sillä, luulen ma, paremmin sovin
+kuin sapelianne te kaupungin kanssa ja hovin.
+
+ALCESTE.
+
+Mut tuo niin sujuvasuinen maltti ja sopu
+se eikö mistään tulistu, mistään lopu?
+Jos sattuu niin, ett' ystävä teidät pettää,
+jos juonillaan joku teidät paljaaksi kettää
+tai kulkuun saa huhut ilkeät teistä ken,
+te vihastumattako siedätte kaiken sen?
+
+PHILINTE.
+
+Niin, virheet nuo, joist' aihe on nurkunne karvaan,
+minä ominaisiksi ihmisluonnolle arvaan;
+eik' enemmän mua loukkaa, jos ihminen on
+edun kärkkyjä, veijari viekas ja tunnoton,
+kuin korppikotkat jos haaskalle himokkaita,
+jos apinat varkaita, sudet on raateliaita.
+
+ALCESTE.
+
+Minä jäisinkö kynsiin varkaan, petturin, pedon
+enk' yrittäis... Sanan multa ja hengenvedon
+jumaliste jo salpaa nokkaviisaus moinen.
+
+PHILINTE.
+
+Todentotta, vaiti on ollakin teille parhain,
+ei vastapuoltanne ilkkua liian varhain,
+vaan valppaasti hoitaa juttunne kuin sekin toinen.
+
+ALCESTE.
+
+Sit' en minä tee, tähän sanaan se tietäkää.
+
+PHILINTE.
+
+No, kuka sen hoitaa, kenenkä huostaan se jää?
+
+ALCESTE.
+
+Kenen? Järjen, totuuden, oikean asian huostaan.
+
+PHILINTE.
+
+Siis ette käynnille ees mene tuomarin luoksi?
+
+ALCESTE.
+
+Mull' onko asia kiero, vai minkä vuoksi?
+
+PHILINTE.
+
+Ei kyllä, vaan vastaanne juonitteluilla juostaan,
+ja...
+
+ALCESTE.
+
+      En askelta astu, ma ajanko juttua väärää
+vai oikeaa?
+
+PHILINTE.
+
+            Siin' oikeus pelkkä ei riitä.
+
+ALCESTE.
+
+En hievahda.
+
+PHILINTE.
+
+             Vastustajanne, hän kyllä häärää
+ja saattaa vehkeilyillään...
+
+ALCESTE.
+
+                             En välitä siitä.
+
+PHILINTE.
+
+Iso erehdys.
+
+ALCESTE.
+
+             Olkoon! Sen nään, kun on tuomio tuttu.
+
+PHILINTE.
+
+Vaan...
+
+ALCESTE.
+
+        Menettää tosi riemu on mulle juttu.
+
+PHILINTE.
+
+Ihan tottako...
+
+ALCESTE.
+
+                Saa tämä oikeudenkäynti näyttää,
+niin häikäilytönkö häijyys ihmiset täyttää
+ja kehnous, riettaus, luihuus, ett' antaa vois
+he väärän tuomion kaiken maailman nähden?
+
+PHILINTE.
+
+Mikä ihminen!
+
+ALCESTE.
+
+              Ihanan tuon tosiasian tähden
+sais tappio tulla, jos kuinkakin kallis ois.
+
+PHILINTE.
+
+Jos teidän haastavan noin kuka kuulla saisi,
+hän nauruun hillittömään heti purskahtaisi.
+
+ALCESTE.
+
+Sen pahempi sille, ken nauraa.
+
+PHILINTE.
+
+                               Vaan suoruus tuo,
+jost' ette mitään missään tinkiä suo,
+täys rehellisyys, johon itsenne haarniskoitte,
+häness' asuuko myös, jota lemmitte, jumaloitte?
+Sitä ihmettelen, kun on suhteenne ihmiskuntaan
+noin rikki, noin päätynyt vihaan ja halveksuntaan,
+miten sittenkin moisista inhon ja vihastuksen
+esineistä te löysitte silmäinne ihastuksen;
+ja oudompi viel' on se vaali ja merkillisempi,
+joss' ohjannut sydäntänne on oikkuisa lempi.
+Tuo uskollinen Éliante, hän teistä pitää,
+teit' armaasti katsoo kaino Arsinoé;
+heist' ette huoli, sai toiveet ne turhaan itää,
+Célimènen siteissä sielunne riemuitsee.
+Hän kiemailee, on ilkeäkieli jos kukaan,
+ajan tapoja seuraa, ui virran mukaan.
+Jos niitä niin julmasti vihaatte, mitä se tietää,
+kun niin hyvin naisessa tuossa ne voitte sietää?
+Jos on kaunis hän, enääkö ei vika viaksi jää?
+Ne anteeks suotteko, vai niit' ettekö nää?
+
+ALCESTE.
+
+Ei, nuoren lesken tuon minä tunnen, kaikin
+näen virheineen, joskohta hän lempeni saikin.
+On hellä se hehku, mutta en sokene siitä;
+ne ensimmäisenä näen ja paheksun niitä.
+Vaan kuinka hyvänsä, turha mun peitellä koittaa:
+olen heikko, on hällä tenho, mi sieluni voittaa.
+Viat nuo näen, tuomitsen niitä, mut tuomiot kumoo
+tuo sulous suuri ja lempimään minut lumoo:
+se voiton vie, ja vihdoin lempeni varmaan
+ajan virheistä puhdistaa hänen sielunsa armaan.
+
+PHILINTE.
+
+Ei vähää tehnyt, joka sen aikaan sai.
+Teit' uskotte siis hänen lempivän?
+
+ALCESTE.
+
+                                   Totta kai!
+Hänt' enhän lempis, jos en sitä uskoa voisi.
+
+PHILINTE.
+
+Vaan jos hänen lempensä tiedätte omistavanne,
+miks olette kilpailijoista niin kiukuissanne?
+
+ALCESTE.
+
+Sydän omansa omistaa ihan yksin soisi,
+ja tänne mä saavun vain, ett' ilmaista saisin,
+mitä tunnen ja halaan sydämin hehkuvaisin.
+
+PHILINTE.
+
+Minä teinä, jos mieltäni myöten valita voisin,
+Eliante serkulle huokaukseni toisin.
+Teit' ihaelee hän, on vilpitön, suora; en naista
+ma ketään tiedä teille niin soveltuvaista.
+
+ALCESTE.
+
+Se on totta, niin joka päivä järkeni hokee;
+mut turhaan järki lempeä ohjata kokee.
+
+PHILINTE.
+
+Kovin pelkään, kunpahan lempenne toiveet vain
+ei pettäis...
+
+
+Toinen kohtaus.
+
+    Oronte, Alceste, Philinte.
+
+ORONTE.
+
+             Sanoivat mulle, ett' ostoksilla
+Éliante ja myös Célimène ovat kaupungilla;
+vaan teidän kun olevan täällä ma kuulla sain,
+minut tunnustamaan halu vilpitön tänne ajaa,
+teit' että mä ihailen ihan ilman rajaa
+ja että senvuoksi jo kauan on ollut mulla
+halu palava ystävyyteen kanssanne tulla.
+Mun sydämessäni ansio arvon saa,
+ja se ystävyyttänne hartaasti halajaa.
+Mun laistani ystävää, jok' ei häily, ei horju,
+minä toivon, kukaan ei hevin luotaan torju.
+    (Alcestelle.)
+Olen puhutellut teitä, jos suvaitsette.
+
+    (Alceste ikään kuin herää ajatuksistaan eikä näytä
+    ymmärtävän, että Oronte puhuu hänelle.)
+
+ALCESTE.
+
+Mua, herra?
+
+ORONTE.
+
+            Niin. Pahaks ehkä sen ottanette?
+
+ALCESTE.
+
+En suinkaan, se vain minust' on ylen yllättävää,
+kovin odottamaton on mulle kunnia tää.
+
+ORONTE.
+
+Teit' yllättääkö, jos ihailun ilmi tuoda
+ma tohdin, jot' ois syy kaikkien teille suoda?
+
+ALCESTE.
+
+Hyvä herra...
+
+ORONTE.
+
+              Ei koko valtioss' ole toista
+niin kunnollista, niin loistava-ansioista.
+
+ALCESTE.
+
+Hyvä herra...
+
+ORONTE.
+
+              Niin korkeaks arvonne arvioin:
+maan parhaist' olette parhain ja valioin.
+
+ALCESTE.
+
+Hyvä herra...
+
+ORONTE.
+
+              Musertakoon minut taivas, jos en
+puhu totta! Ja vahvisteeksi — suottehan sen —
+minä teitä nyt syleilen täydestä sydämestä.
+Saan ystävänne kai olla, sit' ettehän estä?
+Käsi lyökää käteen! Suostuttehan, sitä ette
+kai evätä voi...?
+
+ALCESTE.
+
+                  Hyvä herra...
+
+ORONTE.
+
+                                Te epäelette?
+
+ALCESTE.
+
+Hyvä herra, se kunnia liian suuri on mulle;
+mutt' ystäväks ei kädenkäänteessä kukaan tulle.
+Se on jotain arkaa ja pyhää, ja tuota pikaa
+sitä tyrkyttää sen arvoa loukkaa ja likaa.
+Se valikointia herkkää ja varmaa vaatii,
+tuta toisensa täytyy, ennenkuin liittoja laatii;
+ehk' emme lopulta sietäisi toinen toista,
+vaan kerran katua saisimme liittoa moista.
+
+ORONTE.
+
+Todentotta, nuo sanat lähtivät viisaan suusta,
+niist' enemmän ihailen teitä kuin mistään muusta.
+Siis luokoon aika sen luottavan suhteen, mihin
+minä teidän parhaaksenne jo kaikkeni vihin.
+Jos hovissa suositusta te tarvitsette,
+mua kuningas kuuntelee, kuten tietänette:
+mua suuresti suosii hän kuin harvoja muita,
+olen aivan läheisimpiä uskotuita.
+Sanon vain: olen palvelijanne ma kaikin tavoin,
+ja teillä kun arvio niin on herkkä ja avoin,
+niin alkeiksi toivotun ihanan ystäväliiton
+tää sonetti lukekaa ihan tuoreeltaan,
+niin kuulen, tokkohan julkaistavaksi siit' on.
+
+ALCESTE.
+
+Hyvä herra, sit' en minä kelpaa ratkaisemaan,
+sitä älkää pyytäkö.
+
+ORONTE.
+
+                    Miksei?
+
+ALCESTE.
+
+                            En vikaani vois
+minä välttää: suotavaa minä suorempi oisin.
+
+ORONTE.
+
+Sitä pyydänkin. Syy valittaa minun ois,
+jos ois puhe toisin teillä ja ajatus toisin,
+kun vetoan arvosteluunne vilpittömään.
+
+ALCESTE.
+
+No, jos sitä haluatte, niin yritetään.
+
+ORONTE.
+
+Sonetti... niin, sonetti, nähkääs... On toivo... Mulle
+eräs nainen toivoa, palkaksi ihailulle,
+näet soi... On toivo... suur', uljas se ei ole runo,
+vain vienoa kaihoa, soinnuiks ei muuta puno.
+
+    (Vilkaisee aina keskeyttäissään Alcesteen.)
+
+ALCESTE.
+
+No, katsokaamme.
+
+ORONTE.
+
+                 On toivo... Niin, en, paha kyllä,
+mä tiedä, sen sanonnall' onko ja tyylittelyllä
+se hiottu valmius, joss' ette löytäis vikaa.
+
+ALCESTE.
+
+Niin, saamme nähdä.
+
+ORONTE.
+
+                    Muuten, sen tein hyvin pikaa,
+vain neljännestunnissa sepitin sen runopukuun.
+
+ALCESTE.
+
+Niin, katsokaamme, herra; täss' ei tule aika lukuun.
+
+ORONTE.
+
+    On toivo hoivamme, sen hoito
+    vie huolen hetkeks unholaan;
+    vaan, Phyllis, mikä hoiva koito,
+    jos muut' ei tuo se mukanaan!
+
+PHILINTE.
+
+Jo tuo pala pieni on minusta verraton.
+
+ALCESTE (hiljaa).
+
+Teill' otsaa siis sitä kauniiks sanoa on?
+
+ORONTE.
+
+    Vähempi, ah, josp' ollut oisi
+    tuo suosionne, jonka sain,
+    niin turhaa tuhlaust' ei toisi,
+    vain toivon mulle lahjoittain!
+
+PHILINTE.
+
+Kuink' onkaan kaikki sorvattu muotoon siroon!
+
+ALCESTE (hiljaa).
+
+Oh, halpa tyhmyyden liehijä, kielenne kiroon!
+
+ORONTE.
+
+    Jos sydämeni polte, kaipuu
+    ikuiseen odotukseen haipuu,
+    vain kuolo on sen määränpää.
+
+    Sit' etsii oikkujenne orja:
+    jää epätoivoon, Phyllis sorja,
+    ken toivomaan vain aina jää.
+
+PHILINTE.
+
+On ihmeen viehättävästi se viety loppuun.
+
+ALCESTE (hiljaa, syrjään).
+
+Lopu itse jo loruines, mene hornaan ja hoppuun!
+Kun rutto jo moista myrkyttäjää ei korjaa!
+
+PHILINTE.
+
+En kuullut kuunaan runoa noin ole sorjaa.
+
+ALCESTE (hiljaa, syrjään).
+
+Tuhat tulimmaista!...
+
+ORONTE.
+
+                   Te mairitte, mahdatte luulla...
+
+PHILINTE.
+
+Ei, ei, en suinkaan.
+
+ALCESTE (hiljaa, syrjään).
+
+                     Oh, petturi, täydellä suulla!
+
+ORONTE (Alcestelle).
+
+Vaan te, te puheenne muistatte, pyydän teitä,
+toden suoran sanottehan, sitä ettehän peitä?
+
+ALCESTE.
+
+Hyvä herra, on arka keskustelumme aine,
+niin mairett' on kirjoittelustamme kiitos ja maine.
+Mut taannoin eräälle, jonk' en nimeä sano,
+ma virkoin, kun näin hänen neronsa sepusteluita,
+ett' aisoissa arvon miehen on ennen muita
+syy pitää kirjoitussyyhy ja kiitoksen jano
+ja suistaa kaikk' iso into kuuluksi tulla
+vain moisella turhalla muotiaskartelulla,
+ja ettei touhulla näytellä tuotteita noita
+hevin muuta kuin nauretun narrin mainetta voita.
+
+ORONTE.
+
+Te väitätte siis, ettei sovi sormien pano
+muka mulle siihen leikkiin?
+
+ALCESTE.
+
+                            Sitä en sano.
+Vaan virkoin, ett' eloton tekele tympäisee;
+tuo heikkous tuomaan huonon huudon jo riittää,
+sadat parhaat ansiot muuks sit' ei enää tee:
+vian ihmiset ennen moittii kuin ansion kiittää.
+
+ORONTE.
+
+Sonetilleni ette siis ole suopea tälle?
+
+ALCESTE.
+
+Ei, sitä en sano. Vaan varoitukseksi hälle
+ma osoitin, kuink' ihan kunnon miehistä monta
+kynä-into on tehnyt narria auttamatonta.
+
+ORONTE.
+
+Siis kirjoitanko ma kehnosti, samalla tapaa?
+
+ALCESTE.
+
+Ei, sitä en sano. Vaan sanoin: te olette vapaa,
+mikä pakko teidän on runoja sepustaa,
+ja pahusko vielä ne painattamaankin saa?
+Lie puollettavissa kehnokin kirjanide,
+jos on poloisen kyhääjänsä se hengenpide.
+Mutt' uskokaa mua, kiusaus kestäkää,
+nuo juttunne julkisuudelta estäkää,
+nimest' älkää hienon miehen, mi hoviss' on teillä,
+te luopuko ikinä mistään hinnasta pois,
+kynäniekan kehnon laihoilla seppeleillä
+jott' ahne painaja otsanne laakerois.
+Tätä koetin miehelle sille mä selvitellä.
+
+ORONTE.
+
+Hyvä, mainio, mahtanen yskän jo ymmärrellä.
+Vaan saiskohan kuulla, mi runoa vaivaa, vaikka...
+
+ALCESTE.
+
+Sanon suoraan: on kabinetti sen oikea paikka!
+Esikuvien huonojen nojass' on runoelunne,
+ja ilmaisultanne puuttuu luonto ja tunne.
+
+  Mit' on mokoma »huolen vieminen unholaan»
+  ja tuollainen »muun tuominen mukanaan»?
+  Tuo: »turhaa tuhlaust' ei toisi,
+  vain toivon mulle lahjoittain»?
+  Tai: »jää epätoivoon, Phyllis sorja,
+  ken toivomaan vain aina jää»?
+
+Kuvakieli tuo tekohelyissä turhissa helkkää,
+vaill' innoitusta, ilmettä, totuutta vailla;
+se on teeskenneltyä, vain sanaleikkiä pelkkää,
+tosi luonto ei milloinkaan puhu tuolla lailla.
+Minut täyttää tää ajan tärvelty aisti kammoin;
+isät hienostumattomat herkemmin tajusi ammoin,
+ja vastaamaan ei kaikki, mitä se kiittää,
+voi jotain tällaista vanhaa laulua riittää:
+
+    Kuningas jos kuulun sois
+    Pariisinsa mulle:
+    kultas siihen vaihda pois,
+    vahinkoon et tulle —
+    ei, sanon, en Pariisias
+    kaipaa, Henrik kuningas;
+    kultaisempi, hei, helei,
+    oma on kulta mulle.
+
+On vanhaa tyyli, on soinnutus avutonta;
+mutt' ettekö nää, miten vastaa se vertaa monta
+kaikk' äitelän soreat nuo sanasorvailunne,
+miten siitä puhuu puhtaana väkevä tunne?
+
+    Kuningas jos kuulun sois
+    Pariisinsa mulle:
+    kultas siihen vaihda pois,
+    vahinkoon et tulle —
+    ei, sanon, en Pariisias
+    kaipaa, Henrik kuningas;
+    kultaisempi, hei, helei,
+    oma on kulta mulle.
+
+Se, nähkääs, on sydämen todella tuntevan kieltä.
+    (Philintelle, joka nauraa.)
+Niin, en kysy herra naurajan kaunomieltä,
+on toista se kuin nykymuotisten soinnutelmien
+korukukkaisuus ja välkyntä väärien helmien.
+
+ORONTE.
+
+Mun runoni, sen sanon teille, on moitteeton.
+
+ALCESTE.
+
+Niin arvioida teill' omat syynne on;
+vaan suvaitkaa, jos mulla on syitä muita,
+jotk' arvioonne ei ole alistetuita.
+
+ORONTE.
+
+Muut kiittäneet sit' on suurella ihastelulla.
+
+ALCESTE.
+
+Heill' on kyky teeskennellä. Sit' ei ole mulla.
+
+ORONTE.
+
+Noin viisautt', uskotte, teill' on siis kukkuroittain.
+
+ALCESTE.
+
+Ei, viisaamp' öisin runonne kiitosta soittain.
+
+ORONTE.
+
+Hyvin hylkäystuomionne ma saatan kestää.
+
+ALCESTE.
+
+On pakko, jos suvaitsette, sit' ei voi estää.
+
+ORONTE.
+
+Ois hauska nähdä, kuink' erinomaista runoa
+te itse samasta aiheesta voisitte punoa.
+
+ALCESTE.
+
+Paha kyllä, se yhtä kurjaa syntyä vois;
+mutt' ihmisten nähtäväksi sit' enpä tois.
+
+ORONTE.
+
+Sanat suuret on teillä, ja itseviisaus moinen...
+
+ALCESTE.
+
+Minä teille en suitsuta, en, paras etsiä toinen.
+
+ORONTE.
+
+Kovin, pikku herra, teillä on koppava ääni.
+
+ALCESTE.
+
+Iso herra, vain ihan parhaiksi, kautta pääni.
+
+PHILINTE (astuen väliin).
+
+Hyvät herrat, jo riittää! Laatkaa jo riidastanne.
+
+ORONTE.
+
+Ah niin, olen väärässä, väistyä parhaaksi huomaan.
+Olen altis, herra, palvelukseni suomaan.
+
+ALCESTE.
+
+Olen, herra, teidän nöyrin palvelijanne.
+
+
+Kolmas kohtaus.
+
+    Philinte, Alceste.
+
+PHILINTE.
+
+Kas nyt, mitä tuotti se liika vilpittömyys!
+Nyt on hankittu tällainen harmi ja ikävyys.
+Näin kyllä, hän mielistelyit' oli etsimässä...
+
+ALCESTE.
+
+Loru lopettakaa.
+
+PHILINTE.
+
+                 Mut...
+
+ALCESTE.
+
+                        Teitä en kaipaa tässä.
+
+PHILINTE.
+
+Tämä liian on...
+
+ALCESTE.
+
+                 Saanko ma rauhan?
+
+PHILINTE.
+
+                                   Jos...
+
+ALCESTE.
+
+                                          Olkaa jo vait te!
+
+PHILINTE.
+
+Mikä syy?
+
+ALCESTE.
+
+          En kuule.
+
+PHILINTE.
+
+                    Mut...
+
+ALCESTE.
+
+                          Ihanko...!
+
+PHILINTE.
+
+                                     Kiusan nyt saitte!
+
+ALCESTE.
+
+Tuhat tulimmaista! Menkää, en tarvitse teitä.
+
+PHILINTE.
+
+Te puhutte pilaa, ei, tähän teit' en heitä.
+
+
+
+
+TOINEN NÄYTÖS.
+
+
+Ensimmäinen kohtaus.
+
+    Alceste, Célimène.
+
+ALCESTE.
+
+Hyvä rouva, jos minun suoraan puhua suotte,
+te käytöksellänne murhetta mulle tuotte;
+mun sydämessäni nousee nurku ja nuhde,
+ja kaiketi meidän on pakko katkaista suhde.
+Niin, pettäisin teitä, jos puhuisin teille toisin:
+tämä vielä eroon vie, se on torjumatonta;
+jos väittäisin muuta ja kertaa jos miten monta,
+niin vakuutellut turhia vain minä oisin.
+
+CÉLIMÈNE.
+
+Siis tullaksenne vain mua torumaan
+minä teidät kotiinsaattajakseni saan?
+
+ALCESTE.
+
+Minä en toru, vaan kovin teillä on aulis ja avoin
+ain' ihailijoillenne suosio, kelle vain;
+niit' ympärillänne pidätte parvittain,
+ja sitä en voi minä sietää, en millään tavoin.
+
+CÉLIMÈNE.
+
+Rikos onko teistä, jos ihailijoita on mulla?
+Jos mieltyvät minuun, minkä mä sille voin?
+Mua katsomaan halu heillä jos harras on tulla,
+kepin otanko, iskuinko pois ajan ankaroin?
+
+ALCESTE.
+
+Ei, rouva, ei keppiä tarvita, vain sydän, jolla
+ei niin halu ain' ole niitten mieliksi olla.
+Joka paikassa tenhonne lumoo, sen tiedän, luo,
+vaan lumotun luotaan se enää ei lähteä suo;
+tuo kiemailu, kaikki jok' ihailijanne kiehtoo,
+se heidät täyteen hehkuun ja liekkiin liehtoo.
+Kovin hymyileväinen toive, mi heissä herää,
+yhä ympärillenne kilpailijoita kerää.
+Pian luopuis, jos supistaisitte suosiotanne,
+tuo huokailijoitten kihinä kimpustanne.
+Vaan sanokaas toki, rouva, mill' ihmeen lailla
+niin miellyttää tuo Clitandrenne teitä voi?
+Teot mitkä, mitk' avut, ansiot vertaa vailla
+hänet arvoiseks sen kunnian aateloi?
+Hänet silmissänne mi nostaa noin, edut mitkä,
+hänen pikkusormensa kynsikö pitkän pitkä?
+Te, niinkuin muutkin, te ihastutteko noihin
+kiharperuukin valtavan vaaleihin kiehkuroihin?
+Nuo laajatko polvien pitsikaulurit vai
+nuo kirjavat nauhuskimput sen aikaan sai?
+Vai tuoko on polvihousujen väljyys roima
+jalon ihailijanne väkevä viehätysvoima,
+tuo hirnuva nauru ja naukuva äänen nuotti
+lumokeino se, suosionne mi hälle tuotti?
+
+CÉLIMÈNE.
+
+Te hälle kaunaa kannatte aivan syyttä.
+Minä tarvitsen, ettekö tiedä, sit' ystävyyttä:
+mun oikeusjuttuni puolesta puuhaamaan
+hän on luvannut pyytää kaikkia tuttaviaan.
+
+ALCESTE.
+
+Se menettäkää, jos ilman puuhia noita
+mua loukkaavan kilpaajan sitä ette voita.
+
+CÉLIMÈNE.
+
+Johan luulonne epäilee koko maailmaa.
+
+ALCESTE.
+
+Koko maailmahan sulan suosion teiltä saa.
+
+CÉLIMÈNE.
+
+Mut tuskaanne rauhoittaa toki pitäis tuon,
+kun vain tasan kaikkien kesken suosion suon;
+syy suuttua todellisempi teillä oisi,
+se jos yhden ainoan suosikin valikoisi.
+
+ALCESTE.
+
+Mua luulevaiseksi moititte, vaan mit' on mulla,
+mill' ette mielistellyt te kaikkia heitä?
+
+CÉLIMÈNE.
+
+Teill' on se tieto, että ma rakastan teitä.
+
+ALCESTE.
+
+Ja varmuuteen miten voin minä siitä tulla?
+
+CÉLIMÈNE.
+
+Minä arvelen, että kun kuulitte multa sen,
+tulis tunnustuksen teille jo riittää moisen.
+
+ALCESTE.
+
+Vaan ken voi minulle takeen tarjota, ken,
+koht' ettette kuulla suo sitä jonkun toisen?
+
+CÉLIMÈNE.
+
+Todell' imarteluun on lempijä aulis aina,
+ja siksi niin kohtelias te mahdatte olla.
+Hyv' on. Teit' ettei enää se huoli paina,
+puran puheeni kaiken tällä ma tuokiolla.
+Sydän teit' oma pettää kaikkia petollisemmin.
+Nyt tyytyä voitte.
+
+ALCESTE.
+
+                   Oh, miksi mä teitä lemmin?
+Sydän-parkani pauloistanne jos päästä vois,
+siit' onnesta armoa taivaan se kiittävä ois!
+Tein kaikkeni, minkä voin, sit' en piiloon peitä,
+tuo että murtuis kauhea kahle multa;
+vain kiihtivät turhat ponnistukseni tulta,
+näin synteini tähden mun täytyy lempiä teitä.
+
+CÉLIMÈNE.
+
+Se on totta, sen lemmen liekki on vertaa vailla!
+
+ALCESTE.
+
+Niin, lempi se uhmata voi koko maailmaa,
+se käy yli ymmärryksen, ei rakastaa
+ole kukaan kuunaan saattanut sillä lailla.
+
+CÉLIMÈNE.
+
+Tapa on todell' uppo-uus: ketä rakastatte,
+sen kanssa te riitaa kaikesta rakennatte;
+äkäpuheit' on lempenne leimu, ei mitään muuta,
+viel' ei lie nähty lempeä noin torasuuta.
+
+ALCESTE.
+
+Se teistähän riippuu vain, jos ei harmini lopu.
+Saa riittää jo riita, on hartain toivoni sopu.
+Puhukaamme avoimesti, mun kuulla suokaa...
+
+
+Toinen kohtaus.
+
+    Célimène, Alceste, Basque.
+
+CÉLIMÈNE.
+
+Mitä nyt?
+
+BASQUE.
+
+          Markiisi Acaste.
+
+CÉLIMÈNE.
+
+                           No, sisälle tuokaa.
+
+
+Kolmas kohtaus.
+
+    Célimène, Alceste.
+
+ALCESTE.
+
+En koskaan kahden kanssanne puhua saa!
+Joka vieraan tulla teill' aina on auki ovi.
+Edes ainoan kerran ettekö ilmoittaa
+te voisi, että nyt teille ei oikein sovi?
+
+CÉLIMÈNE.
+
+Hänet pitäiskö suututtaa minun suotta siis?
+
+ALCESTE.
+
+Kovin muista te välitätte ja minusta viis.
+
+CÉLIMÈNE.
+
+Se on mies, jok' ei sitä ikinä anteeks anna,
+jos tietäis tulonsa voitavan pahaksi panna.
+
+ALCESTE.
+
+Ja mitä te siitä? Se arkailu suotta on aivan.
+
+CÉLIMÈNE.
+
+Hyvä Jumala! Moisten suosio maksaa vaivan.
+Hänen kaltaisillaan on, ties miten, piirissä hovin
+pito suun ja äänen suuri ja mahtava kovin.
+Joka keskustelussa ne ylinnä keikaroivat;
+toist' eivät auta, mut vahingoittaa ne voivat;
+ja vaikka ois miten paljon puolella muita,
+hyvä noit' ei suututtaa ole nokkelasuita.
+
+ALCESTE.
+
+No niin, mihin vetoankin, se teihin ei pysty,
+te ette liehijälaumaanne ikävysty,
+ja varovaisuus vai muka teidät sai...
+
+
+Neljäs kohtaus.
+
+    Basque, Alceste, Célimène.
+
+BASQUE.
+
+Markiisi Clitandre, rouva.
+
+ALCESTE.
+
+                           Niin, totta kai!
+
+    (Liikahtaa poistuakseen.)
+
+CÉLIMÈNE.
+
+Mihin nyt?
+
+ALCESTE.
+
+           Minä poistun.
+
+CÉLIMÈNE.
+
+                         Jääkää.
+
+ALCESTE.
+
+                                 Ja minkä tähden?
+
+CÉLIMÈNE.
+
+Minä pyydän.
+
+ALCESTE.
+
+             En voi.
+
+CÉLIMÈNE.
+
+                     Minä tahdon.
+
+ALCESTE.
+
+                                  Ei, minä lähden.
+Vain kiusaa mulle keskustelunne tois,
+minut siihen pakottaa toki liikaa ois.
+
+CÉLIMÈNE.
+
+Minä tahdon, kuulkaa, tahdon.
+
+ALCESTE.
+
+                              Ei, sit' en kestä.
+
+CÉLIMÈNE.
+
+No, menkää sitten, menkää. En kiellä, en estä.
+
+
+Viides kohtaus.
+
+    Éliante, Philinte, Acaste, Clitandre. Alceste, Célimène, Basque.
+
+ÉLIANTE (Célimènelle).
+
+Markiisit saapuivat kumpikin kanssamme, kai
+se on ilmoitettu?
+
+CÉLIMÈNE.
+
+                   On kyllä.
+    (Basquelle.)
+                             Tuoleja tänne!
+    (Basque tuo istuinta ja poistuu.)
+    (Alcestelle.)
+Te jäittekin?
+
+ALCESTE.
+
+              Niin; nyt valitkaa! Minä tai
+nuo herrat! Sen vaadin, se on nyt päätettävänne.
+
+CÉLIMÈNE.
+
+Oh, vaiti!
+
+ALCESTE.
+
+           Nyt toden selvän ma tahdon kuulla.
+
+CÉLIMÈNE.
+
+Te mieletön.
+
+ALCESTE.
+
+             Ei. Heti selko, nyt suoralla suulla!
+
+CÉLIMÈNE.
+
+Ah!
+
+ALCESTE.
+
+    Teidän on päättäminen.
+
+CÉLIMÈNE.
+
+                           Te laskette pilaa.
+
+ALCESTE.
+
+Nyt valitkaa! Tätä inhoan valhetilaa.
+
+CLITANDRE.
+
+Tulen Louvresta, aamukutsuista kuninkaan.
+Cléontelle, saakeli soi, taas nauroimme kovin.
+Häll' eikö ystävää ole vihjaamaan,
+miten hupsu se raukka siellä on silmissä hovin?
+
+CÉLIMÈNE.
+
+Todell' outo siin otus keskellä hienoston hosuu;
+joka ainoa kummeksuu, ken vain liki osuu;
+ja kotvan jos kohtaamasta hänt' ollut on vapaa,
+yhä kummallisempana vain hänet jälleen tapaa.
+
+ACASTE.
+
+Jumaliste, jos puhe kummista miehistä on,
+juur'ikään kimppuuni sain perin tukalan herran:
+Damon lorusuu mua paahteessa auringon
+piti kantotuolini vieressä tunnin verran.
+Se on puhuja kumma; jutella pitkä juttu,
+jok' ei sano mitään, se hälle on taito tuttu.
+Mitä haastelu tarkoittaa, sit' ei mikään äly
+voi arvata, muuta ei kuulu kuin äänen häly.
+
+ÉLIANTE (Philintelle).
+
+Hyvin alkaa; jo ottanut on puhe vauhdin täyden,
+kuten ainakin lähimmäisien kimppuun käyden.
+
+CLITANDRE.
+
+Timante on, rouva, myös perin kelpo luonne.
+
+CÉLIMÈNE.
+
+Salaperäistä kaikk', ihan kiireestä kantaan asti,
+joka katse täynnä sit' on, joka kasvonjuonne;
+ei toimita mitään, mut touhuss' on loputtomasti.
+Joka sanansa sanoo hän tärkeissä väänteissä naama,
+on vähissä hengin sen herran käsiinsä saama:
+vähän väliä kesken kaiken hän tulee ja nyhjää
+ja kuiskaa salaisuuden, jok' on typö-tyhjää;
+joka joutavimmasta hän ison ihmeen sorvaa,
+hyvänpäivänkin sopottaa ihan suu liki korvaa.
+
+ACASTE.
+
+Ja entä Géralde?
+
+CÉLIMÈNE.
+
+                 Oh, ilmetty ikävyys!
+Ei hetkeksikään hält' unhotu ylhäisyys;
+on seura korkeuksien piiriä pelkkää,
+vain herttuat, prinssit, prinsessat suusta helkkää.
+Hält' arvoa saa vain säädyn ja synnyn maine,
+hevot, vaunut, koirat on ainoa puheen aine;
+»sinä» ylempiensä kanssa hän tahtoo olla,
+sana »herra» se hällä on romuna ullakolla.
+
+CLITANDRE.
+
+Bélisen on kanssa hän, kuulemma, parasta pataa.
+
+CÉLIMÈNE.
+
+Sen höppänän! Senhän on seura kuin erämaata!
+Marttyyrin tuskat mulle hän tuo, kun laata
+hänen käynneillään puhe tahtoo keskelle rataa.
+Ei mitään hän keksi, saa lappamall' ihan lappaa,
+tuo tympeys keskustelun heti uhkaa tappaa.
+Kulut puheenparret on turvana vain, kun murtaa
+hänen äänettömyyttään kokee tylsää ja turtaa;
+ja ilmat ja tuulet ja rumat ja kauniit säät
+ne on pian pohdittu loppuun, ja siihen jäät.
+Ja vierailu tuo, joka mielt' ei viehätä erin,
+se vielä venyy peljättävästi perin.
+Ja kelloon jos vilkuu, ei haukotuksia salaa,
+se hänt' ei liikuta enemmän kuin puupalaa.
+
+ACASTE.
+
+Miten teist' on Adraste?
+
+CÉLIMÈNE.
+
+                        Hän kaikist' on ylpeistä ylpein,
+pöhöll' itse-ihailusta, siin' uiden ja kylpein.
+Hovi hänt' ei kylliksi huomaa, ei arvoon nosta,
+joka päivä kunniansa se hältä kuulee;
+uus vääryys jok' arvosta, virasta, suosiosta
+vain koituu sille, mit' itsestänsä hän luulee.
+
+CLITANDRE.
+
+Tuo nuori Cléon, mikä hänestä mielenne on?
+Hän vetäähän luokseen hienoimman hienoston.
+
+CÉLIMÈNE.
+
+Häll' oiva on kokki, jommoista harvoin löytää,
+ja vierailut isäntää ne ei koske, vaan pöytää.
+
+ÉLIANTE.
+
+On hienoa kaikki, mitä on tarjona siellä.
+
+CÉLIMÈNE.
+
+Niin, kunpa hänt' itseään ei tarjona ois:
+hänen tyhmyyttään ei voi hevin herkkuna niellä,
+se kemuilta niiltä vie maun kaiken pois.
+
+PHILINTE.
+
+Mutt' entä Damis, hänen setänsä, eikö hän nauti
+syyst' arvoa?
+
+CÉLIMÈNE.
+
+              Ystäviini hän lukeutuu.
+
+PHILINTE.
+
+Mies hieno, mink' ymmärrän, viisaampi kuin moni muu.
+
+CÉLIMÈNE.
+
+Hän on sietämätön älyn räiskyjä, häll' on se tauti;
+puhe henkevyytt' ihan puhkuu, ja alituinen
+häll' on päänpinnistys olla sukkelasuinen.
+Siit' asti kuin otti hän käydäkseen älypäästä,
+tuo makutuomari ankara mitään ei säästä;
+muka kynästä keltään ei muuta kuin vikoja vuoda,
+ja kaunosielun, sen ei sovi kiitosta suoda.
+Ken moittia osaa, se hänest' on oppinut aito,
+ja ihailla, nauttia on vain hölmöjen taito.
+Kaikk' aikamme tuotteet tuomiten tavalla tuolla
+hän istuu ihmisten kaikkien yläpuolia.
+On kehnoa, muut mitä keskustelee ja pohtii;
+jos ottais osaa, ois liikaa se alentumista;
+käsivarret ristissä neronsa korkeuksista
+vain säälien katsoo, jos ken mitä virkkaa tohtii.
+
+ALCESTE.
+
+Kuva sattuva, saakeli soi, ihan suurenmoinen!
+
+CLITANDRE (Célimènelle).
+
+Kyky teill' on verraton kuvata ihminen toinen!
+
+ALCESTE.
+
+Hovin herttaiset herrat, vain lisää, puhdasta tehden!
+Kukin vuoroonsa saakoon vain oman kunnialehden!
+Mutt' eteenne kuka heistä nyt astuis vain,
+niin vastaan kiidätte, kilvalla ojentain
+kätt' ystävän, vannoen hänt' yhä palvelevanne,
+ja sinetöi valat liehivä suudelmanne.
+
+CLITANDRE.
+
+Miks soimaatte meitä? Jos tuomiotanne ei karta
+puhe tää, niin nuhdelkaa talon valtiatarta!
+
+ALCESTE.
+
+Jumal'auta, on teissä syy; jos sukkeluuteen
+kehunaurullanne te kiihdätte hänt' yhä uuteen;
+hänen ilkamoiva mielensä innostusta
+saa tuosta tunnottomasta imartelusta;
+ja pilailuun halu pienempi hällä ois,
+auliita jos taputteluita se ain' ei sois.
+Niin, liehijöillä on lähinnä syy ja vastuu,
+jos horjahtaa ja harhaan niin moni astuu.
+
+PHILINTE.
+
+Teilt' ihmiset nuo saa suojaa nyt erityistä,
+vaan itse te moititte heit' ihan samoista syistä!
+
+CÉLIMÈNE.
+
+Ja vastaanko herra Alceste ei riidellä sais?
+Hän muihinko mukautuis, ei uis eri uomaa?
+Joka paikass' eikö julki hän julistais
+tuot' inttämis-intoa, taitoa taivaan suomaa?
+Hänest' ei muill' ymmärryst' ole minkäänlaista,
+jos ken mitä virkkaa, hän mieltä on vastakkaista.
+Ois laumaa hän latteaa heti mielestään,
+jos samaa mieltä hän ois kera kenenkään.
+Niin riippuu kiinni hän kiistäjä-kunniastaan,
+sotisovass' ett' usein itseäänkin on vastaan;
+oman mielipiteensä hän nurin nujertaa
+heti kohta, jos toisen suusta sen kuulla saa.
+
+ALCESTE.
+
+On naurajat puolellanne, mit' enää mulla
+ois sanottavaa, vain antaa jatkoa tulla!
+
+PHILINTE.
+
+Mut tunnustakaa, sehän totta on ainoastaan:
+jos sanoo noin tai näin, te väitätte vastaan;
+ain' ärtyisyytenne puuskille syitä riittää,
+ei salli se moittia eikä se salli kiittää.
+
+ALCESTE.
+
+Ja entä jos, jumal'auta! Eivätkö tee
+ain' ihmiset väärin, aina ärsytä mieltä?
+Mitä muuten kuin tunnottomasti ne tuomitsee?
+On myrkkyistä moite, ja kiitos on vilpin kieltä.
+
+CÉLIMÈNE.
+
+Mut...
+
+ALCESTE.
+
+       Ei, sanon, ei, tähän vaikka mun täytyis kuolla!
+Mua iljettää ilonpitonne tavalla tuolla;
+ja väärin on ruokkia mielenne intoa suurta,
+vian moitittavan jok' on sallinut ottaa juurta.
+
+CLITANDRE.
+
+Puhe kumma! En tätä ennen uskonut ois,
+teiss' että, rouva, vikaa keksiä vois.
+
+ACASTE.
+
+Teiss' ihailen viehättävintä ma luojan luomaa,
+vaan vikaa, virhett' ei silmäni siinä huomaa.
+
+ALCESTE.
+
+Mun silmäni huomaa ne kaikki, ei piile ne multa,
+hän tietää sen, niitä en säästä ma nuhtelulta.
+Sitä vähemmin mairittelee, mitä syvemmin lempii,
+valerakkautt' on, joka vikoja hellii ja hempii.
+Nuo karkoittaisin ma ritarit raukkamaiset,
+joka toiveeni, oikkuni orjat tottelevaiset,
+nuo liehijät, huiminkin päähänpistoni joilta
+saa yllykett' ylen suopeilta suitsuttajoilta.
+
+CÉLIMÈNE.
+
+Siis teiltä jos sydän ohjeensa ottava ois,
+sanat lemmen pakko on lempivän panna pois,
+siin' ilmaus sen ylin nähdä ja kunniakkain,
+ett' oikein on silmitön sille, jok' on muka rakkain.
+
+ÉLIANTE.
+
+Ei lempi liioin seuranne ohjeita niitä;
+kuka lempijä valittuaan ei kehu ja kiitä?
+Hält' ihailijan ei silmissä mitään puutu,
+häness' ei ole mitään, mi ihailtavaks ei muutu;
+vika itse on täydellisyys, jota jumaloidaan,
+joka saa nimet kauneimmat, mitä keksiä voidaan.
+On kalpea kuin jalo lilja, ja tummakulma
+on tenhotar vain, jos on musta kuin murjaani julma;
+siro, solakka varreltaan, jos on laiha kuin ruoto;
+jos lihava, silloin on valtiattaren muoto;
+joka siistiin sievyyteen vähät huolta hukkaa,
+siin' ihailla koreilutonta voi luonnonkukkaa,
+iso kasvultaan, jumalattaren vartalon sai vaan,
+taas kääpiö ilmennys hento on ihmeistä taivaan,
+on ylpeys ylhäistä, ruhtinaallista mieltä,
+älyn välkettä viekkaus, tyhmyys sydäntä hyvää;
+on pirteä vain, jos liiaksi pieksää kieltä;
+jos on tuppisuu, se kainoutta on syvää.
+Niin lempijälle, jonk' oikein on liekissä rinta,
+on armaan viatkin viehätyst' ihaninta.
+
+ALCESTE.
+
+Minä jyrkästi taas olen...
+
+CÉLIMÉNE.
+
+                           Lopettakaamme jo tähän.
+Nyt galleriassa käyskentelemme vähän.
+Mitä, herrat, jo poisko?
+
+CLITANDRE ja ACASTE.
+
+                         Jos sallitte, viivymme tovin.
+
+ALCESTE.
+
+Hätä noitten lähdöstä teill' oli siis niin kovin.
+Hyvät herrat, jääkää, jos mielitte, vaan minä en
+mene ennenkuin te poistutte, ilmoitan sen.
+
+ACASTE.
+
+Mull' on koko päivä vapaa, en muuta karta,
+jos emme vaivaa vain talon valtiatarta.
+
+CLITANDRE.
+
+Hovin iltapiiriä kunhan en laimin lyö,
+mua kutsu ei muuanne mikään toimi ja työ.
+
+CÉLIMÈNE (Alcestelle).
+
+Pilan tekoa, niinkö?
+
+ALCESTE.
+
+                     Ei toki millään tapaa;
+saas nähdä, vain minust' ollako mielitte vapaa.
+
+
+Kuudes kohtaus.
+
+    Basque, Alceste, Célimène, Éliante, Acaste, Philinte. Clitandre.
+
+BASQUE (Alcestelle).
+
+Siell' on eräs mies, sanan tärkeän tuovansa sanoo
+ja kiireellisen, heti puheille pääsyä anoo.
+
+ALCESTE.
+
+Sano, ettei kiireitä asioit' ole mulla.
+
+BASQUE.
+
+On leveät poimuliepeet takissa hällä
+ja kultaiset juovat.
+
+CÉLIMÈNE.
+
+                     No, katsokaahan ja tulla
+hänen suokaa sisään.
+
+
+Seitsemäs kohtaus.
+
+    Marsalkanoikeuden lähetti, Alceste, Célimène. Eliante, Acaste,
+    Philinte, Clitandre.
+
+ALCESTE (oikeudenlähetille).
+
+                    Mik' aihe on käynnillä tällä,
+hyvä herra?
+
+OIKEUDENLÄHETTI.
+
+Sananen vain, jos tuokion suotte.
+
+ALCESTE.
+
+Vain julki virkkakaa sana, jonka tuotte.
+
+OIKEUDENLÄHETTI.
+
+Marsalkkaoikeuteen heti saapumaan
+minä teidät, herra, sen käskystä haastaa saan.
+
+ALCESTE.
+
+Kenet? minutko, herra?
+
+OIKEUDENLÄHETTI.
+
+                       Niin, teidät.
+
+ALCESTE.
+
+                                     Ja miksi, mä kysyn.
+
+PHILINTE.
+
+Syyks äskeinen hassu sonettiriitanne riittää.
+
+CÉLIMÈNE.
+
+Mikä?
+
+PHILINTE.
+
+      Kanss' ol' Oronten nostaa hän käsirysyn
+runonpätkästä, jota ei halunnut kiltisti kiittää.
+Kai alkuunsa asian tahtovat vaimentaa.
+
+ALCESTE.
+
+Ikin' eivät kehnoon mielistelyyn mua saa.
+
+PHILINTE.
+
+Mutt' oikeus vaatii, että sen kutsua kuullaan.
+
+ALCESTE.
+
+Mikä sovinto meidän kesken syntyvän luullaan?
+Marsalkkaoikeudessako tuomitaan
+minut tuo runotuherrus oivaksi tunnustamaan?
+En peruuta sanaakaan, mitä lausuin siitä,
+se on kehno.
+
+PHILINTE.
+
+Mutt' eikö nyt vähempi jyrkkyys riitä?
+
+ALCESTE.
+
+En tingi, on surkeasti hän käyttänyt sulkaa.
+
+PHILINTE.
+
+Ei silti saa noin silmitön olla. Tulkaa,
+kas niin.
+
+ALCESTE.
+
+          Minä lähden, mut ei mua peruuttamaan
+saa mikään.
+
+PHILINTE.
+
+            Tulkaa jo, teitä odotetaan.
+
+ALCESTE.
+
+Jos kuningas itse sit' ei nimenomaan määrää,
+hyväks en sano runoa, josta ne noin nyt häärää.
+Peto vie, se on huono, sill' ei ole puolustusta,
+sais armotta hirttää sellaisten sepustelusta.
+    (Clitandrelle ja Acastelle, jotka nauravat.)
+Jumal'auta, herrat, teille sen huvittelunne
+sain helpolla aikaan.
+
+CÉLIMÈNE.
+
+                      Pian nyt menkää, kunne
+on mentävä.
+
+ALCESTE.
+
+            Menenkin, vaan heti sieltä palaan,
+ja silloin selvitetään, mikä jäi nyt salaan.
+
+
+
+
+KOLMAS NÄYTÖS.
+
+
+Ensimmäinen kohtaus.
+
+    Clitandre, Acaste.
+
+CLITANDRE.
+
+Rakas markiisi, niin näkös tyytyväiseltä näyttää,
+ei huolt' ole mistään, vain ilo mieles täyttää.
+Kysyn suoraan, tuon ilon syy ihan onko siis
+tositotta, ei vain uskoa toivelmiis?
+
+ACASTE.
+
+Minä, saakeli vieköön, en näe miltään puolen,
+miten tarkastankin, aihetta harmin ja huolen.
+Olen nuor', olen varakas sekä kuulun sukuun,
+joka luetaan tämän maan valiointen lukuun,
+ja virkaa ja arvoa, luulen ma, ei ole monta,
+mun Iaiseni saada mik' ei olis vaivatonta.
+Ja, kerskaamatta, se tiettyä lie kenties:
+mull' uljuutt' on, jota vaill' ei mies ole mies;
+on kunnia-asian nostossa nähdä saatu
+kyll' usein sen yhtä tuima kuin huima laatu.
+Äly, aisti kaikkea arvostella on mulla,
+opinkäynnittä osata haastaa, ei ymmälle tulla;
+ja muodolla tuntijan, taiteen ystävän hartaan
+joka näyttämöuutuutta seurata, taa lavapartaan
+ain' istua hienosti, taputuksia johtaa,
+niin palkita paukuttain joka kaunista kohtaa.
+Näkö mulla on komea kai, siro käytösparsi,
+on kauniit hampaat, solakka kasvu ja varsi;
+puku kehuitta kuosia hienointa, viimeisintä, —
+sitä vastaan ei hevin, luulen ma, kukaan intä.
+Ylint' arvonantia kaikilta nauttia saan,
+olen naisten lempimä, suosima valtiaan.
+Jos siis, rakas markiisi, mull' osa, onni on moinen,
+kai tyytyväinen syystä ma olla voinen.
+
+CLITANDRE.
+
+Vaan miksi, kun muualla helpot on voitot sulla,
+tääll' aikaas hukkaat turhalla huokaelulla?
+
+ACASTE.
+
+Peto vie, minun Iaiseni luotu on muuta varten,
+ei orjaksi oikuille kylmien kaunotarten.
+Saa palaa ja palvoa joutavanpäiväinen mies,
+yhä niskoilla heltymättömän hempukan ies,
+saa riutua jalkoihin säälittä tallaaviin
+ja turvata huokauksiin ja kyyneliin
+ja uskollisell' yhä huolella, huomiolla
+sitä tavoittaa, mit' ei ansaitse ansiolla.
+Mun Iaiseni mies ei lempeä velaksi anna,
+veli markiisi, yksin ei kaikkia kuluja kanna.
+Kuink' onkin naissulo kalkista kallehinta,
+niin meill' on myös, minä arvelen, täysi hinta;
+sydän moinen kuin mun omaks saada jos mieli on kellä,
+ei voi siit' ilmaiseksi hän ylvästellä;
+ja kummallekin saman voiton jos kauppa takaa,
+myös uhraukset saa tasan kumpikin jakaa.
+
+CLITANDRE.
+
+Siis, markiisi, tääll' ylen suuri on suosio sulla?
+
+ACASTE.
+
+Jokin aihe on, markiisi, moisella arvelulla.
+
+CLITANDRE.
+
+Se on suunnaton erehdys, mua usko, se heitä,
+älä mieltäsi mairi sill', älä silmiäs peitä.
+
+ACASTE.
+
+Oh, mairinpa suottakin, peitänpä haluni takaa.
+
+CLITANDRE.
+
+Mikä päähäsi sai, niin tääll' ett' onnes on vakaa?
+
+ACASTE.
+
+Minä mieltäni mairin.
+
+CLITANDRE.
+
+                      Mi sulle sen toivon tuottaa?
+
+ACASTE.
+
+Minä silmäni peitän.
+
+CLITANDRE.
+
+                      Sa takeenko sait, mihin luottaa?
+
+ACASTE.
+
+Minä erehdyn, kuuletko?
+
+CLITANDRE.
+
+                        Onko sulle ja konsa
+Célimène siis ilmaissut salaisen suosionsa?
+
+ACASTE.
+
+Ei, sain tylyn kohtelun.
+
+CLITANDRE.
+
+                         Tee hyvin, vastaa jo mulle.
+
+ACASTE.
+
+Vain rukkaset pelkät.
+
+CLITANDRE.
+
+                      Nyt piste jo pilaelulle!
+Mitä toiveita sulle on suotu, se virka suoraan.
+
+ACASTE.
+
+Olen hyljätty minä, sa suosikki onnen hyvän;
+sain palkaks ihailustani inhon syvän,
+kai jonakin päivänä jään minä jatkoksi nuoraan.
+
+CLITANDRE.
+
+No, maltuhan, markiisi, emmekö sopia vois
+siit' että, jos näyttänyt meistä on jommankumman
+joku selvä merkki olevan suositumman
+Célimènen sydämelle, niin toinen pois
+heti väistyy, voittajan tiellä ei tahdo olla,
+suo lemmenkilvan loppua sovinnolla?
+
+ACASTE.
+
+Oh, helkkari vie, puhe moinen on hauska kuulla.
+Minä suostun, sen teen niin sydämellä kuin suulla.
+Hys, hiljaa!
+
+
+Toinen kohtaus.
+
+    Célimène, Acaste, Clitandre.
+
+CÉLIMÈNE.
+
+            Täälläkö vielä...?
+
+CLITANDRE.
+
+                               Kas, lempi tahtoi
+vain jäämään.
+
+CÉLIMÈNE.
+
+              Jyrisi vaunut, kukahan mahtoi
+nyt tulla?
+
+CLITANDRE.
+
+           En arvaa.
+
+
+Kolmas kohtaus.
+
+    Basque, Célimène, Acaste, Clitandre.
+
+BASQUE.
+
+                    Rouva, Arsinoé
+tuli käynnille.
+
+CÉLIMÈNE.
+
+                Mitähän nyt se nainen on vajaa?
+
+BASQUE.
+
+Éliante on seurana siellä.
+
+CÉLIMÈNE.
+
+                           Mit' aikonee,
+mikä saa tähän käyntiin, mitä hän takaa ajaa?
+
+ACASTE.
+
+Niin, hänhän on siveys itse, se maine kulkee,
+täynn' intoa moista...
+
+CÉLIMÈNE.
+
+                     Niin, hurskastella hän julkee;
+sydän maailman kiehtoma, taivasta huulet hokee,
+kovin saada, jos vain kenet sais, hän koukkuunsa kokee.
+Kadesilmin katsoo, kateus povessa kiehuu,
+kun ihailijoita toisen liepeillä liehuu.
+Ja tuo hyve hyljätty, asuja aution majan,
+yhä sättii ja soimaa vikoja sokean ajan,
+tekosiveytensä huntuun, kylläkin harvaan,
+tuon kokee peitellä tyhjyytensä hän karvaan,
+vähät sulonsa arvoon auttaa sill', että soimaa
+hän rikokseksi kaikkea viehätysvoimaa.
+Toki lempijä saada sen naisen ois halu haikein,
+Alcestenkin ympärillä hän moisin on aikein;
+näet loukkaus hälle on, solvaus sulojen arkain,
+kun hält' olen ihailijan muka vienyt varkain.
+Voi lemmenkateutensa hän kätkeä vaivoin,
+mua kalvaa kaikkialla, min voi, salaraivoin.
+Niin hupsua, sanalla sanoin, en tunne toista,
+hän juonikkain on kaikista juonikoista,
+ja...
+
+
+Neljäs kohtaus.
+
+    Arsinoé, Célimène, Clitandre, Acaste.
+
+CÉLIMÈNE.
+
+      Ah, mikä onnensuoma nyt teidät tuokaan?
+Juur' aattelin, mikähän teille on mahtanut tulla.
+
+ARSINOÉ.
+
+Eräs vihjaus virkkaa on tuloni aiheena mulla.
+
+CÉLIMÈNE.
+
+Ah, mink' ilon mieluisa käyntinne mulle suokaan!
+
+    (Clitandre ja Acaste poistuvat nauraen.)
+
+Viides kohtaus.
+
+ARSINOÉ, Célimène.
+
+ARSINOÉ.
+
+Nepäs lähtivät parhaiks, ettei paremmin vois.
+
+CÉLIMÈNE.
+
+Mutt' istukaa.
+
+ARSINOÉ.
+
+               Rakas rouva, ei tarvitse lainkaan.
+Niin, ei saa vaieta ystävä vaiteliainkaan,
+jos siit' etu ystävän kallein kärsivä ois;
+ja meille kun aarre kaikista kallein ja parhain
+on hyve ja kunnia varjella myöhään ja varhain,
+ei harras ystävyyteni erästä seikkaa
+mun salata salli, mi kunniatanne leikkaa.
+Olin eräässä valioseurassa eilen juuri,
+puhe teist' oli kesken kaiken, ja — en sitä kiellä —
+sai käytöstapanne, koreilunhalunne suuri
+paha kyllä, rouva, paljonkin moitetta siellä.
+Tuo liehijälauma, jonka te laskette luoksi,
+jutut, juorut kepeän keimaelunne vuoksi,
+sai tuomitsijaa ne uskomattoman monta
+ja aivan ansaitsemattoman armotonta.
+Minun kantani kylläkin arvaatte: teitä koin
+minä siinä puolustaa, mink' ikinä voin;
+kun on viaton tarkoitus, sanoin, on viasta vapaa,
+menin takuuseen, teiss' ettei tahroja tapaa.
+Vaan tiedätte, elämässä on moista, jota
+ei puolustaa voi parhaalla tahdollakaan;
+en kyennyt torjumaan sitä tuomiota,
+johon elämäntapanne syynä on tavallaan;
+näet huonolta voi se ihmisten silmissä näyttää,
+kaikk' ei ole juorua vain, jonk' ilkeys täyttää;
+ja tapanne nuo, se jos vain tosi-tahtonne ois,
+ne vähemmän antaa tuomion aihetta vois.
+Ei siks, ett' ois ihan siveys saanut vikaa;
+ei mieltäni, varjele taivas, se luulo likaa.
+Vaan rikoksen varjo on monelle merkki jo siitä,
+ja syytön tunto jos onkin, se yksin ei riitä.
+Rakas rouva, teillä, sen tiedän, on liiaksi järkeä,
+teist' että loukkaava ois tämä vihjaus tärkeä
+ja sen muu muka aihe kuin halu harras ja avoin
+vain parastanne palvella kaikella tavoin.
+
+CÉLIMÈNE.
+
+Rakas neiti, syvä on kiitollisuuteni tunne.
+Sekö vois mua loukata? Ei toki, palvelunne
+vain vastapalvelun vaatii, ja vihjata saan
+myös seikkaan ma kunniatanne koskevaan;
+ja ihmisten huhut kun noin tosi ystävän lailla,
+mua takana purevat puhutte vilppiä vailla,
+esimerkkiä herttaista palvelijanne kokee
+siis seurata kertoen, mitä ne teistä hokee.
+Olin toissa päivänä eräällä vierailulla,
+jalon jaloa seuraa ol' onni tavata mulla;
+oli puheena puhdas vaellus elämän tiellä,
+tosihurskas mieli, ja teistäkin haastoivat siellä.
+Tekosiveys, sanoivat, saarnaava, tuomaroiva
+esikuvaksi ei ole heist' erikoisen oiva,
+valeverho teeskelty ankaran virheettömyyden,
+iankaikkinen kalkatus hyveen ja säädyllisyyden,
+hätähuudot ja ilmeet, kuin synti ja saastaisuus
+pilanlaskun ois pieninkin viaton vallattomuus,
+omahyväisyys ain' itsensä esiin tuova,
+alas kaikkiin muihin säälivän katseen luova,
+tuo nuhde ja tuomio ainainen näistä ja noista
+ihan viattomista ja puhtaista asioista,
+se, suoraan sanoen, moitetta sai kuin saikin,
+koko seura samaa mielt' oli äänin kaikin.
+»Mit' auttaa», sanoivat, »ulkohurskaus moinen,
+tuo siveä kuori, jos sisus on tuiki toinen?
+Ei kukaan jalommin rukoilla, paastota jaksa,
+vaan palvelijoitaan hän lyö, ei palkkoja maksa.
+Joka paikassa jumalisuuttaan hän julki näyttää,
+vaan kauniista käydäkseen ihomaalia käyttää.
+Ei katsoa tahdo hän taiteen alastomuuteen,
+mut tuntee vetoa luonnon todellisuuteen.»
+Minä teitä puolustin heitä kaikkia vastaan,
+sen vakuutin olevan parjaust' ainoastaan;
+vaan jäin alakynteen, ja sen piti kannan tiukan
+koko seura, ett' ois paras teille, jos pienempi hiukan
+tuo huolenpitonne toisten teoista ois
+ja omia hiukan valppaammin vartiois;
+ett' itsestään saa visuja tutkistelulta
+se pitää, ken mielii tulla ja tuomita muita;
+esikuvaksi kelvatkoon oman elämän suhteen,
+ken muille antajaks astuu neuvon ja nuhteen;
+ja parempi vielä, jos tarvis on, niitten huomaan,
+jotk' asetti taivas, se virka vain suostua suomaan.
+Myös teillä, sen tiedän, on aivan liiaksi järkeä,
+teist' että loukkaava ois tämä vihjaus tärkeä
+ja sen muu muka aihe kuin halu harras ja avoin
+vain parastanne palvella kaikella tavoin.
+
+ARSINOÉ.
+
+Kuink' olla voikin karvasta moite kuulla,
+moist' enp' ois saavani vastaust' osannut luulla.
+Sen ärtyisyys, hyvä rouva, kyll' ilmaisee,
+miten neuvoni suoruus mieltänne kirvelee.
+
+CÉLIMÈNE.
+
+Päinvastoin; jos ihmisill' olis oivallusta,
+näin toisilleen he vuoroin neuvoja tois:
+tapa vilpitön tuo sitä suurt' olis sokaistusta,
+joss' on kukin itseensä nähden, torjuva pois.
+Jos vain te tahdotte, niin yhä vastakin vaihtaa
+näin lupaamme luottamusta, ei mitään kaihtaa,
+vaan kaikk' ihan suoraan ilmaista ystävän suulla,
+mitä saamme, minusta te, minä teistä, kuulla.
+
+ARSINOÉ.
+
+Oh, teistä, rouva, ei moitetta kuule kukaan;
+ei, minussa vain sen aihetta runsaasti riittää.
+
+CÉLIMÈNE.
+
+Voi kaikkea, luulisin, moittia, kaikkea kiittää,
+syit' aina löytää ikänsä, makunsa mukaan.
+Ikäkausi on muuan hilpeän leikin ja lemmen,
+ikä toinen on omansa huoleen ja hurskailuun.
+Voi viisainta olla se, kons' ajat nuoren hemmen
+on menneet ja kukkeus kohdannut syksyn kuun:
+voi peitellä pettymykset se katkeratkin.
+Kenties minä kerran hyvinkin teitä matkin:
+tuo kaikk' ikä tullessaan; vaan vanhojen kuosi
+ei maita, kun kahdeskymmenes vasta on vuosi.
+
+ARSINOÉ.
+
+Etu verraton tottakin, kas sitä kerskua kesti,
+sitä nuoruutta toitotettu on totisesti!
+Jos on vähän vanhempi toinen, tuskinpa vaan
+syy silti on olla niin hirveän olevinaan;
+enk' ymmärrä, merkillinen mist' into se itää.
+sitä piikitellä ett' yhä minulle pitää.
+
+CÉLIMÈNE.
+
+Minä myöskään en, miks aina ja kaikkialla
+saan olla hampaissanne ma, moitteenne alla.
+Mikä syy yhä minuun on vihaanne purkaa noin?
+Vähiss' ihailijanne jos lie, mitä sille ma voin?
+Ja jos minä herätän lempeä, mieltymystä,
+joka päivä jos ympärilläni ylistystä
+minä kuulla saan, jota mulle te ette sois,
+se onko mun vikani? Millä sen torjuisin pois?
+Teill' on rata avoin, en kai minä estä teitä,
+luo lumota saatte ja kiehtoa vaikka keitä.
+
+ARSINOÉ.
+
+Oh, ihailijainneko luvun te luulla voitte
+niin kateeksi käyvän, jolla te mahtavoitte?
+Ei varsin vaikea arvata lie sitä taksaa,
+mitä niistä saa tähän maailmanaikaan maksaa.
+Vai uskoa pitäiskö, koko sen kuhinan nähden,
+vain polvistuttavan puhtautenne tähden,
+vain vakavan tunteen saattavan hehkuun heitä,
+vain hyveillenne sen sitovan seppeleitä?
+Johan hölmöjä ihmiset ois — lume joutava mikään
+ei niin vain sokaista voi. Minä montakin näin,
+jotk' ihailijoit' ois saamaan kuin luotuja ikään,
+mutt' ei päly lainkaan liehijät heihin päin.
+Voi siitä päätellä, heit' omaks ettei voita,
+jos ei suo suuria ennakkosuosioita;
+ei ketään vangitsemaan sulot silmät riitä,
+muull' ostaa ne ihailut saa, joka mielii niitä.
+Ylen ylväs älkää olko siis voitoista noista,
+ei kunniaa kovin tuo ne, ei liioin loista;
+vähän hillitkää lumovoimanne luulottelulta
+ja noin yli olkain älkää katselko muita.
+Kademieltä jos valloitukset toisivat moiset,
+ois helppo mun tehdä, kuin tekevät yhdet ja toiset,
+vähät piitata mistään ja teille se osoittaa,
+ett' ihailijoita jos tahtoo, niin niitä saa.
+
+CÉLIMÈNE.
+
+Siis saakaa! Se osoittakaa toki nimessä Herran!
+Toki kiehtova olkaa, kun keinon tiedätte kerran!
+Mitä enää te...?
+
+ARSINOÉ.
+
+Ei, hyvä rouva, jo lopettakaamme,
+vain kiihdyksiin täll' itsemme suotta saamme:
+jo oisinkin hyvästellyt ja lähtenyt pois,
+jos vaunuja vain ei pakko mun vartoa ois.
+
+CÉLIMÈNE.
+
+Miten kauan mielitte vain, tähän voitte jäädä,
+pois kiirehtimään toki teitä ei mikään häädä;
+vaan väsymättä turhalla kursailulla
+jätän seuraan parempaan minä teidät; soi
+tämän herran parhaiks suopea sattuma tulla,
+hän sijani täyttää paljoa paremmin voi.
+
+
+Kuudes kohtaus.
+
+    Alceste, Célimène, Arsinoé.
+
+CÉLIMÈNE.
+
+Alceste, mun täytyy pikkuinen kirje piirtää,
+sitä syyllä ei millään tuonnemmaks sovi siirtää;
+te neitiä huvittakaa, hän on mielellään
+epäkohteliaisuuden anteeks antava tään.
+
+
+Seitsemäs kohtaus.
+
+    ALCESTE, ARSINOÉ.
+
+ARSINOÉ.
+
+Ei viel' ole vaununi tulleet, ja siis te jäätte
+mun seuraani kotvaksi, niin hänen tahtovan näätte;
+ja parhaalla tahdollaankaan ei tarjota vois
+hän mitään, näin joka mieluista mulle ois.
+Ain' arvonanto, kiintymys, myötätunto
+niit' ympäröi, joiss' ylevä loistaa kunto;
+ja teissä on sillä salainen tenho, mi heti
+minut kaikkien harrastustenne puolelle veti.
+Minä soisin, ett' oikeammin jo arviois
+hovi arvonne, teihin suosiokatseen lois:
+syy teillä on nurkua, kun tähän saakka noin
+se on syrjäytetty, ma oikein suuttua voin.
+
+ALCESTE.
+
+Mikä antais aiheen moiselle valittelulle?
+Mikä pitäis valtion palkita palvelus mulle?
+Mitä tehnyt niin olen ansiokasta kovin,
+mun että syy ois nurkua nurjuutta hovin?
+
+ARSINOÉ.
+
+Ei tehneet ne kuuluja palveluksia aina
+nuo, sen suosion hohteessa jotk' ovat onnekkaina.
+On tarpeen tilaisuus, mihin kykyä käyttää,
+ja ansionne, mi niin mitan korkean täyttää,
+tulis...
+
+ALCESTE.
+
+         Antakaa jo mun ansioitteni olla!
+Mitä niihin on asiaa hovin huomiolla?
+Jopa sillä aika urakka ois, jo vaan,
+jos kaikkien ansiot joutuis se penkomaan.
+
+ARSINOÉ.
+
+Tosi-ansiot itse itsensä ilmi tuovat.
+Monet suuren suurta arvoa teille suovat;
+teit' eilenkin kahdella taholla tärkeällä,
+voin kertoa, kiitetty on ihan kiittämällä.
+
+ALCESTE.
+
+Oh, kiitos on tähän aikaan helpolla saatua,
+ei mitään eroa millään, ei kysytä laatua;
+kaikk' yhtälailla on korkea-ansioista;
+mikä kunnia enää on saada kiitosta moista?
+Sitä kaikista veisaavat, kukin parhaansa tehden;
+luen kamaripalvelijastani palstoilta lehden.
+
+ARSINOÉ.
+
+Joku teitä jos viehättäis hovivirka, mi tois
+jalon kuntonne julki, se hartain toivoni ois.
+Vain vihjaus sinnepäin, niin liikkeelle voimia
+heti saadaan, jotka sen hyväksi voivat toimia;
+mull' yksi ja toinen käytettävissäni lie,
+jok' auttaa ja katsoo, että on sileä tie.
+
+ALCESTE.
+
+Ja mitähän tehtävää olis siellä mulla?
+Mun sisullani sen piiriss' ei toimeen tulla.
+Sinä miehenä, miksi loi minut luoja, sovin
+ylen huonosti hengittämään minä ilmaa hovin.
+Ihan vaill' olen avuja noita, jotk' antaa ponnen
+siell' etunsa hoitaa ja kiivetä portaita onnen.
+En osaa muuta kuin suora ja vilpitön olla,
+en vehkeillä, näytellä viekkaalla naamiolla;
+ja ajatustaan jos kyky puuttuu peittää,
+paras silloin selkänsä taa tämä maa pian heittää.
+Hovist' ulkona kyllä on vailla sen suomaa tukea
+ja kunnia-arvoja, joihin se saattaa pukea;
+mutt' eip' ole myöskään harmia ainiaista
+siell' osaa noloa näytellä, narrimaista,
+ei sietämään mitä tahansa nöyristäytyä,
+ei herra sen-ja-sen runoja kiittää täytyä,
+ei rouva jos-kelle suitsuttaa simasuulla,
+hovileijonaimme ei älyn leikkiä kuulla.
+
+ARSINOÉ.
+
+Hovi jääköön, teitä kun houkuttavan ei näy;
+vaan sydämenvalintaanne mun sääliksi käy.
+Ja jos sanon suoraan, mit' aattelen siitä, soisin,
+ett' ois se onnellisempi ja osunut toisin.
+Osan ansaitsisitte paremman: arvoisenne
+hän ei ole, tuo, jok' on kiehtonut sydämenne.
+
+ALCESTE.
+
+Kun puhutte noin, mun suokaa mieleenne johtaa,
+ett' omaa ystäväänne se tuomio kohtaa.
+
+ARSINOÉ.
+
+Niin, mutta sit' enää ei tuntoni nähdä siedä,
+noin vääryyttä teille kun tehdään, vaikk' ette tiedä.
+Näen kohtalonne, ja tuskaa se mulle tuottaa,
+sanon kaikki: on uskoton hän, johon lempenne luottaa.
+
+ALCESTE.
+
+Noin huolehtinut minust' ei ole kukaan toinen,
+saa velkaan lempivän mielen vihjaus moinen.
+
+ARSINOÉ.
+
+Kuink' ystävä onkin, hän ei — sit' en sanoa emmi —
+sydänt' ansaitse, jonka antaa kunnian mies,
+hän itse vain teeskentelee, hän teitä ei lemmi.
+
+ALCESTE.
+
+Voi olla, kukapa sydämet tunsi ja ties?
+Minä kiitän teitä rakkaan kristityn työstä,
+jok' ymmärsi sydämeeni sen epäilyn syöstä.
+
+ARSINOÉ.
+
+Jos tahdotte pitää silmät siteissä harhain,
+ei siitä sen enempää siis; sehän on parhain.
+
+ALCESTE.
+
+Ei, vaan mitä puhuttekin, se ei selvitä pulmaa;
+epätieto, epäily siinä on julminta julmaa;
+ja mitään muuta en vihjattavan minä sois,
+kuin mink' oma silmäni todeksi tunteva ois.
+
+ARSINOÉ.
+
+Hyv' on! Pian näette, jos sitä mielenne kysyy,
+perinpohjin, mi siinä on totta ja totena pysyy.
+Omin silmin näette varmaakin varmemmasti;
+mua suvaitkaa vain saattaa kotiini asti,
+niin nähtävänänne on todiste torjumaton,
+ett' ihanaisenne pettänyt teitä on;
+ja hellimistä jos vain sydänhaavanne halaa,
+voi toiset silmät sen tuskaan lohtua valaa.
+
+
+
+
+NELJÄS NÄYTÖS.
+
+
+Ensimmäinen kohtaus.
+
+    Éliante, Philinte.
+
+PHILINTE.
+
+Ei ikinä mielt' ole nähty niin itsepäistä,
+ei sovinnon syntymistä niin väkinäistä.
+Koki häntä ne taivutella, mut turhin vaivoin,
+ois ennen kallio siirtynyt kannaltaan;
+niin outoa niill' ei herroilla milloinkaan
+lie ollut riitaa pohtia tuomariaivoin
+»Hyvät herrat, en peruuta, ei tule kysymykseen,
+olen valmis muuten jos mihin myönnytykseen.
+Miten hänt' on loukattu? Mistä hän sydämystyy?
+Se kunnian viekö, jos huonosti kynään pystyy?
+Pahaks otti mun hyvän neuvoni: miesten mies
+voi olla, vaan runoilijaksi kehno kenties.
+Nimi, kunnia ei toki riipu seikoista niistä;
+hän on hieno mies, sitä vastaan en ikinä kiistä,
+kyky, kunto, ansio suuria mittoja täyttää
+joka suhteessa, mutta hän kurjasti kynää käyttää.
+Tavat upeat pitää kuin ainakin ylimys aito,
+on mainio häll' ase-, ratsastus-, tanssitaito;
+kehun kaikkea, vaan hänen runojansa — ei, kiitos!
+Kun kerran sen paremmin niissä ei liity liitos,
+on viisas, ken vimmalle sille ei valtaa anna,
+jos siihen ei kuoleman uhalla pakkoa panna.»
+Tulos ainoa, jonk' iso sovintotouhu tuotti,
+johon viimein hän taipui suurella suostuttelulla,
+oli myönnytys, nyt muka leppeämpänä nuotti:
+»Minä valitan, että on niin maku vaativa mulla,
+ja mieliksenne, herra, todella soisin,
+ett' ihastuneempi runoonne ollut oisin.»
+Ja päälle syleily vain heti kiireen hoppuun,
+ja vihdoin niin koko toimitus saatiin loppuun.
+
+ÉLIANTE.
+
+Hänen menettelynsä on meist' ylen omituista,
+mutt' edukseen siten juuri hän eroo muista;
+tuo rehellisyys, joll' aina hän ratsastaa,
+on sentään jotain jaloa, sankarimaista:
+tähän maailmanaikaan se hyve on harvinaista, —
+kunp' ois hänen kaltaisiansa vain täynnä maa!
+
+PHILINTE.
+
+Mitä enemmän katselen häntä, sit' ihmeellisempi
+on seikka, ett' on hänet vallannut kiihkeä lempi:
+sisun sellaisen luoja kelle jos kerran loi,
+mikä kumma rakastumaan hänet saada voi?
+Ja sitäkin kummempi, että serkkunne juuri
+oli oleva tuo hänen ihastuksensa suuri.
+
+ÉLIANTE.
+
+Sen näyttää se vain, mikä usein on nähdä saatu,
+ett' ain' ei lempeen vie sama luonteenlaatu.
+Jutut nuo sopusoinnusta, sielun mi sieluun liittää,
+tämä ainoa tapaus kumoamaan jo riittää.
+
+PHILINTE.
+
+Vaan rakastaakohan serkkunne todella häntä?
+
+ÉLIANTE.
+
+Sitä tarkoin tietää on vähän vaikeanläntä.
+Miten tutkia, onko se totta? Sit' itse ei saata
+hän sanoa, ei oman sydämen oikkuja taata;
+ihan tiedotonta on joskus sen ihastunta,
+taas joskus luulee lemmeksi tyhjää unta.
+
+PHILINTE.
+
+Ei ystävä parkamme aavistakaan, mitä huolta
+hän vielä saa, minä pelkään, serkulta tuolta;
+todentotta, mun sydämeni jos hänellä oisi,
+ihan toisaanne katsehiaan sen kaipaus loisi
+ja paremmin valiten kalleimman onnensa kai
+näkis suosiossa, jot' aina hän teiltä sai.
+
+ÉLIANTE.
+
+Minä puutu en puolin, en toisin; on kaikkien toisten
+paras antaa rauhassa selvitä seikkojen moisten.
+Alcesten valintaa minä en vedä vastaan;
+päinvastoin siit' ylint' onnea hälle soisin;
+jos riippuis asia minusta ainoastaan,
+hänet armaalleen minä itse ilolla toisin.
+Vaan jos — näet voisihan sattua silläkin lailla —
+ois lemmestä unelmoinut hän onnea vailla,
+joku toinen jos kosija kukkaset saava ois,
+hänen toiveitaan kukaties minä voisin kuulla,
+ja tappion tuon jos saiskin hän taholla muulla,
+sitä en minä katsois syyksi torjua pois.
+
+PHILINTE.
+
+Minä myöskään en vedä vastaan, hälle kun huomaan
+niin armaan suosion teidän suostuvan suomaan.
+Vois itse hän virkkaa, jos tahtois, mik' ollut vakaa
+on kehoitukseni, neuvoni tavan takaa.
+Mutt' yhteen ne kaksi jos liittyvät Hymenin liiton,
+jos teist' ohi vie hänen toiveensa toisin viitoin,
+niin mun ylin toivoni ois sulosuosio tuo,
+jota sydämenne niin runsaasti hälle suo,
+ylin onneni, jos se, kun hän oven siltä salpaa,
+ylenkatsois ei mun kaipaustani halpaa.
+
+ÉLIANTE.
+
+Te laskette pilaa, Philinte.
+
+PHILINTE.
+
+                             En; lausun julki
+vain sen, mitä sisimpäänsä sieluni sulki;
+ah, jospa se hetki vain pian joutua vois
+joka avoimesti mun kättänne anoa sois.
+
+
+Toinen kohtaus.
+
+    Alceste, Éliante, Philinte.
+
+ALCESTE.
+
+Ah, miksi on kohdannut mua loukkaus moinen!
+Minut murtaa se, jos miten mieleni haarniskoinen.
+
+ÉLIANTE.
+
+Mikä teidät noin nyt on saattanut kiihdyksiin?
+
+ALCESTE.
+
+Eräs tieto, jok' iskullaan minut armotta murhaa;
+koko luomakunta jos luhistuis, se ei niin
+mua murjois kuin tämä tuska. Oh, unta turhaa
+oli rakkaus... mennyttä... sanotuksi en saa...
+
+ÉLIANTE.
+
+Vähän rauhoittukaa, rakas ystävä, malttukaa.
+
+ALCESTE.
+
+Vanhurskas taivas! Niin ihana olla, ja rinta
+niin pahetta täynnä kurjinta, alhaisinta!
+
+ÉLIANTE.
+
+Kuka teille on...
+
+ALCESTE.
+
+                  Kaikki murskattu, tallattu maaksi!
+Olen petetty, oh, olen pistetty kuoliaaksi!
+Célimène... hän... että hän minut pettää vois!
+Célimène on uskoton... ken sitä uskonut ois!
+
+ÉLIANTE.
+
+Teill' onkohan täysiä syitä nyt epäilyynne?
+
+PHILINTE.
+
+Vain ehk' ovat tuulen tuomia luuloja syynne;
+voi kuvittelut pian mieltänne luulevaista...
+
+ALCESTE.
+
+Omat hommanne hoidelkaa, tuhat tulimmaista!
+Luja liiankin mulla on taskussa todiste siitä,
+on kirje hältä Orontelle — eikö se riitä? —
+omakätinen kirje, häväistykseni tään,
+hänen häpeänsä mä selvästi siitä nään.
+Oronteen suostui, jonk' uskoin vain nostavan harmin,
+ma jonk' olin vaarattomuudesta kaikkein varmin!
+
+PHILINTE.
+
+Voi erehdyttää kirje, ehk' olla voi
+se viattomampi, kuin miksi sen arvioi.
+
+ALCESTE.
+
+Hyvä herra, vieläkin kerran: miks ette heitä
+mua rauhaan ja vain pysy siinä, mi koskee teitä?
+
+ÉLIANTE.
+
+Tuo kiihtymys hillitkää, miten vääryys suuri
+lie tehtykin...
+
+ALCESTE.
+
+                Vain te sen hillitä voitte, te juuri.
+Teilt' apua tää sydäntuskani etsii ja anoo,
+te kirvoitus suokaa, jota sen polte janoo.
+Te kostakaa teko tunnoton kavalan naisen,
+joka lemmen petti niin lujan ja luottavaisen,
+petos kostakaa, joka teitäkin kuohuttaa.
+
+ÉLIANTE.
+
+Minä! Millä sen kostaisin?
+
+ALCESTE.
+
+                           Tää sydän valitkaa.
+Omaks ottakaa te se tuolta uskottomalta;
+niin maksaa hälle mulla on keino ja valta;
+hänet rankaisen sillä, ett' omistan teille ja vannon
+syvän lemmen, ikuisen ihailun, arvonannon
+ja palvelun hartaimman, tosimman, tottelevimman,
+kaikk' uhrit palavat sydämen uskollisimman.
+
+ÉLIANTE.
+
+Tuo tuskanne mieleeni koskee syvälle käyden,
+myös ymmärrän tarjouksenne arvon täyden;
+mutt' ehk' ei niin ole pahoin laita, kuin näyttää,
+halu koston haihtua voi, mi nyt mielenne täyttää.
+Jos tehneenkin väärin niin ihanan olennon näkee,
+kaikk' ei käy täytäntöön, mitä päättää ja käkee:
+syy jos miten ankara vaatiskin eroon varmaan,
+pian viattomuudeksi taas vika muuttuu armaan,
+kaikk' äkkiä katoo kauna ja pahastus;
+se tunnetaan, mit' on lempivän vihastus.
+
+ALCESTE.
+
+Ei, ei, tämä häväistys kuolemankarvas on kovin;
+rikon kaikki: on mahdotonta, ett' enää sovin.
+Tämä päätös ei tästään muutu. Päähäni turmaa
+ma toivotan, jos mua ikinä enää hän hurmaa.
+Hän tulee. Se kiihtää vihani kiivastusta;
+mult' ankaran moitteen saa hänen tekonsa musta,
+hänet musertakoon se, ja sitten sydämen, mihin
+sulot viekkaat ne enää ei pysty, mä teille vihin.
+
+
+Kolmas kohtaus.
+
+    Célimène. Alceste.
+
+ALCESTE (syrjään).
+
+Miten, taivaan vallat, mieleni hillitä voin?
+
+CÉLIMÈNE.
+
+Mikä nyt? Näkö miksi teillä on kiihtynyt noin?
+Mitä tietää, noin kun rintanne puuskuu ja huokaa,
+noin synkät on silmänluontinne, kuulla suokaa.
+
+ALCESTE.
+
+Ett' ei vedä vertoja teille, mit' ihmisrinta
+on ikinä kätkenyt viekkautt' uskottominta;
+ei kohtalo, hornanhenget, ei taivaan kirous
+ole luonut mitään niin häijyä milloinkaan.
+
+CÉLIMÈNE.
+
+Sepä sievä tervehdys, todella verraton sirous!
+
+ALCESTE.
+
+Pila pankaa pois, se on huonosti paikallaan.
+Ois teidän punastuttava pikemminkin,
+te pettäjä! Siitä on selvä todiste mulla.
+Sitä ties se, ett' olin mielellä ahdistetulla,
+sitä lempeni palkaks aina jo aavistinkin:
+epäluuloni, niin muka loukkaava, vainusi vain
+tätä onnettomuutta, kunnes sen ilmi saikin;
+ja kuinka teeskentelittekin taidoin kaikin,
+oma tähteni sanoi jo, mitä mä peljätä sain.
+Mutt' älkää luulko, ett' ilman kostoa siedän,
+kun häväisty, tuskaan syösty mä täll' olen tapaa.
+Ei tottele ketään tunteen valta, sen tiedän,
+ja lempi vaatii, että sen vaali on vapaa;
+ei sydämeen väkivalloin tunkeu kukaan,
+oman ottaa valtiaansa se mielensä mukaan.
+Eik' yhtään valittamista mull' olla ois,
+jos suunne suoraan ja vilpittä puhunut ois;
+heti kielto jos tullut ois, mull' oikeus nurkua
+ois ollut nurjuutt' onneni ainoastaan.
+Vaan valhesuosioll' ottaa lempeni vastaan
+on petos, on kataluus, jok' ei ansaitse surkua,
+jot' ei ikipäivänä kyllin rangaista voi.
+Sulut murtain jo suuttumus mieleni kukkuroi.
+Niin, peljätä saatte vaikka mit' ikinä ihan;
+mua ei oma itseni ohjaa, vaan vimma vihan.
+Minut murhasitte pistoin te kavaloin,
+äänt' enää järjen ei mieleni kuulla malta,
+sit' ohjaa vain oikean vihastukseni valta,
+enk' enää takaa, mitä mä tehdä voin.
+
+CÉLIMÈNE.
+
+Ja mistä on, kuulkaas, mielenne kuohu raju?
+Teilt' onko kadonnut kaikki järki ja taju?
+
+ALCESTE.
+
+Niin on, meni multa se silloin, kun mulle juotti
+tuo kavala kauneus myrkyn, mi turmani tuotti,
+kun uskoin, että sen olennon arvo ol' aito,
+niin viehättäväinen joss' ilmeni ihanuus.
+
+CÉLIMÈNE.
+
+Mikä petos on kohdannut teitä, mik' uskottomuus?
+
+ALCESTE.
+
+Miten viekas sydän, mik' ovela teeskelytaito!
+Vaan mulla on keino, mi naamion teiltä riistää:
+tätä silmätkää, oma nähkää kättenne työ!
+Tämä avoin kirje teilt' alas aseet lyö,
+sen todistusta vastaan on turha kiistää.
+
+CÉLIMÈNE.
+
+Ja tuoko se noin on raivostuttanut teitä?
+
+ALCESTE.
+
+Sen näätte, ja poskianne ei punastus peitä?
+
+CÉLIMÈNE.
+
+Ja miksikä peittäis? Selitättekö syyn?
+
+ALCESTE.
+
+Teiss' yhtyy rohkeus vilppiin ja teeskentelyyn!
+Se on nimeä vailla, sen ehkäpä kiellättekin?
+
+CÉLIMÈNE.
+
+Oman kirjoitukseni kieltäisin? — Aatos sekin!
+
+ALCESTE.
+
+Sitä tyynnä te katsotte, teit' ei hämille saa
+rikos tuo mua vastaan, jota se todistaa?
+
+CÉLIMÈNE.
+
+Todentotta, en toista tunne niin suurta houkkaa.
+
+ALCESTE.
+
+Tämän sitovan todisteenko te torjutte pois?
+Tuo suhde Oronteen siis eikö se mitään ois,
+mikä teille on häpeäksi ja minua loukkaa?
+
+CÉLIMÈNE.
+
+Oronteen? Ken sanoo, että se kirje on hälle?
+
+IHMISVIHAAJA 285
+
+ALCESTE.
+
+Ne, joilta sen tänään sain. Vaan jos joku toinen
+sen saaja lie — todeks ottaa jos sananne voinen —
+mikä lievitys loukkaukselle siitä on tälle?
+Se oisko pienempi silloin ja vähempi syynne?
+
+CÉLIMÈNE.
+
+Mutt' entä jos kirje jollekin naiselle on,
+mitä aihetta silloin on vihaanne, syyttelyynne?
+
+ALCESTE.
+
+Oh, selitys mainio, veruke verraton!
+Tätä käännett' en odottanut, se mun täytyy myöntää.
+Se mult' epäluulot pois muka tyyten työntää!
+Noin paksuunko juoneen te todella turvaudutte?
+Muut niin ihan onttopäiksikö otaksutte?
+Saas kuulla, millä metkulla tosiaan
+todeks ilmivalhe se tehdä on teillä tuuma,
+miten naista saatte sen kirjeen tarkoittamaan,
+joss' uhkuu niin joka sanasta lempi kuuma.
+Niin, tehkää se, suokaa sen uskottavaksi tulla,
+kun on kirjeessä näin...
+
+CÉLIMÈNE.
+
+                         Ei, ei ole halua mulla.
+Mua teidän on naurettavaa noin vallita pyytää
+ja tohtia tuollaista vasten silmiä syytää.
+
+ALCESTE.
+
+Ei, ei, ihan tyynesti, selittäkäähän vähän,
+miten naiselle nainen on sanonut tapaan tähän.
+
+CÉLIMÈNE.
+
+Sit' en tee, en mieliksi moisten komentajainkaan!
+Mitä tahansa luulkaa, se ei mua liikuta lainkaan.
+
+ALCESTE.
+
+Minä pyydän, osoittakaa, miten olla voi
+tämä kirje naiselle, vain sitä pyydän ja anon.
+
+CÉLIMÈNE.
+
+Ei, se on Orontelle, uskoa saatte, sen sanon.
+Hän on ihana kavaljeeri, kaikk' aateloi
+hänen olentoaan, joka sanaansa ihailen salaa:
+minä myönnän ja tunnustan, mitä mielenne halaa.
+Niin, tehkää päätöksenne nyt suoraa kättä,
+täll' enää kauemmin päätäni särkemättä.
+
+ALCESTE.
+
+Oi taivas, ken julmuutta keksisi julmempaa!
+Sydänt' onko näin kiusattu, sen koko kärsimisvoimaa!
+Mun oikea vihani vilpistä kuohahtaa,
+olen syyttäjä minä, ja hän mua syyttää ja soimaa!
+Epäluuloni, tuskani armotta kukkuroidaan,
+pahint' uskoa saan, ja sill' ylväästi ilkamoidaan!
+Ja sydämeni on silti niin kurjasti laita,
+näit' inhoja kahleita ettei se katko ja taita,
+ei haarniskoimana ylhän jo halveksinnan
+jätä kiittämätöntä, pois revi pohjasta rinnan!
+Mua vastaan, te viekas, kuink' osaatte mainiosti
+mun heikkouttani käyttää ja eduksi tään
+kirolemmen kääntää, jonka ne leimuun nosti,
+nuo silmät petolliset, niin hillittömään!
+Edes torjukaa tuo syy, joka teitä varjoo,
+noin eessäni syyllistä näyttelemästä jo laatkaa;
+tuo kirje, jos voitte sen, viattomaksi taatkaa,
+mun lempeni siihen kaikkensa avuksi tarjoo;
+te näyttäkää edes näköä viattomuuden,
+koen ottaa sen takeeksi sielunne uskollisuuden.
+Saa luulevaisuus teidät hulluksi ihan!
+
+CÉLIMÈNE.
+
+Te lempeä ansaitsis ette, te puuskuja vihan.
+Mikä pakottais mua — tietää tahtoisin syyn —
+ett' alentuisin halpaan ma teeskentelyyn?
+Jos kerran tunteeni toiseen kiintynyt ois,
+miks avoimesti en sitä virkkaa vois?
+Omat vakuutukseni tyhjääkö ainoastaan
+epäluulojen noitten on loputtomuutta vastaan?
+Tae moinen eikö se niiden verroille riitä?
+Mua eikö se loukkaa, että te kuulette niitä?
+Sydän naisen kauan se kamppaelee ja empii,
+vähäll' ei, ei väleen tunnusta, että lempii;
+ei kainous, kunnia, naiselle niin ylen kallis,
+sen tunteen voittoa myöntää, ei ilmaista sallis;
+mutt' arvelut kaikki jos voittaa se, saako mies
+vain epäillä valheeks sen vakuutusta kenties?
+Rikost' eikö hän tee, jos ei usko, mit' ilmaisemaan
+saa itsensä vain isot taistelut taisteltuaan?
+Oh, mun tulis suuttua tuollaiseen epäluuloon,
+teit' ollenkaan mun ei tulis ottaa kuuloon.
+Olen hupsu ja harmistun siit' itseeni ihan,
+kun jotain on hellyyttä viel' yhä sijasta vihan;
+ois totta jo toiseen mun kiintyä aika ja antaa
+tosisyytä noin mua syyttää ja päälleni kantaa.
+
+ALCESTE.
+
+Oh, pettäjätär, miten voimaton teit' olen vastaan!
+Sulot sananne kai mun pettävät ainoastaan!
+Mutt' olkoon, ma kuljen, kunne kohtalo ohjaa;
+teit' uskomaan koko sieluni altis on,
+tuta kunnes saan, mik' on sielunne sisintä pohjaa,
+mua siellä vaaniiko vain petos tunnoton.
+
+CÉLIMÉNE.
+
+Ja rakkautt' olevinaan mua kohtaan on moinen!
+
+ALCESTE.
+
+Niin äärettömästi ei rakasta kukaan toinen.
+Jott' oikein intonsa ilmi se rakkaus tois,
+ihan orvoimman sois teillä se olleen olon,
+niin, teihin ett' ihastunutta ei ketään ois,
+ett' oisitte joutunut uhriksi puutteen ja polon,
+ett' antanut syntymälahjaks ei taivas suurta
+ois rikkautt', arvoa, jaloa ei sukujuurta,
+niin korvata saanut mun lempeni rajaton
+kaikk' ois, mitä rikkoi karsaus kohtalon,
+ja mull' ilo ylpeä oisi, ett' ottanut vastaan
+kaikk' oisitte lempeni uhrina ainoastaan.
+
+CÉLIMÈNE.
+
+Tepä suotte toiselle hyvää kummalla tapaa!
+Siit' avusta taivas suokoon mun olla vapaa.
+Kas vain: Dubois, ja niin puku lystikäs yllä.
+
+
+Neljäs kohtaus.
+
+    Dubois, Célimène, Alceste.
+
+ALCESTE.
+
+Noin miks olet laiteltu, moisella hätäilyllä
+miks saavut?
+
+DUBOIS.
+
+              Herra...
+
+ALCESTE.
+
+                       No?
+
+DUBOIS.
+
+                           Tärkeät salaisuudet...
+
+ALCESTE.
+
+Ja mitkä?
+
+DUBOIS.
+
+          Nyt uhkaa, herra, ahdingot uudet.
+
+ALCESTE.
+
+Mitä?
+
+DUBOIS.
+
+      Puhunko ääneen?
+
+ALCESTE.
+
+                      Puhu, ja joutua koita!
+
+DUBOIS.
+
+Kai kukaan ei kuuntele täällä...
+
+ALCESTE.
+
+                                 Oh, kujeita noita!
+Puhu suoraan!
+
+DUBOIS.
+
+Herra, me saamme nyt muuttaa majaa.
+
+ALCESTE.
+
+Mitä?
+
+DUBOIS.
+
+      Tiehemme torvia toitottamatta ajaa.
+
+ALCESTE.
+
+Ja miksi?
+
+DUBOIS.
+
+          Sanon, saamme nyt matkata maita ja teitä.
+
+ALCESTE.
+
+Mitä varten?
+
+DUBOIS.
+
+             Vain lähdemme emmekä hyvästi heitä.
+
+ALCESTE.
+
+Mikä syy sun on puhua noin? Sano, selitys anna!
+
+DUBOIS.
+
+Se syy, ett' on paras pillit jo pussiin panna.
+
+ALCESTE.
+
+Sinä vintiö, oh, minä halkaisen sulta pään,
+jos et tätä sotkuas selitä selvempään.
+
+DUBOIS.
+
+Joku mies, näkö joll' oli tuima ja musta puku,
+tuli, keittiöön ihan tunkihe, paperin pisti,
+johon harakanvarpait' on pantu niin saakuristi,
+ett' itse pirultakaan ei luontuis luku.
+Se oikeusjuttuunne kuuluu, sen arvata voinen,
+vaan sais pahanhengenkin pyörälle paperi moinen.
+
+ALCESTE.
+
+Miten sitten, lurjus, paperist' olet tuosta
+sen lukenut, että mun pakko on pakoon juosta?
+
+DUBOIS.
+
+Tuli, nähkääs, hetki sen jälkeen eräs — sen herran
+olen nähnyt luonanne yhden ja toisen kerran —
+kovin teitä hän tavata tahtoi, ja kun ei voinut,
+niin tietäen, ett' ain' alttiisti ahkeroinut
+olen palvella teitä, hän sanan tuomaan salaa
+mua pyys... hänen nimensä... kas, kun ei mieleen palaa!
+
+ALCESTE.
+
+Nimi sikseen, lurjus, ja asiast' anna jo selko.
+
+DUBOIS.
+
+Hän on ystäviänne, se riittää. On hällä pelko,
+ett' uhkaa vaara ja vankeus teitä, ja parhain
+nyt on pako vain, ja mahdollisimman varhain.
+
+ALCESTE.
+
+Mitä, eikö hän sanonut mitään sen tarkempaa?
+
+DUBOIS.
+
+Ei, pyysi vain paperia ja mustetta tuomaan
+ja kirjoitti kirjeen, joka, jos arvata saa,
+tähän kaikkeen tarkoitettu on valoa luomaan.
+
+ALCESTE.
+
+Siis tänne se!
+
+CÉLIMÈNE.
+
+               Mistähän oikein kysymys lie?
+
+ALCESTE.
+
+En tiedä, vaan selon siitä nyt hankkia aion.
+Hiton kiusankappale, kauanko aikaa se vie?
+
+DUBOIS (kauan etsittyään taskuistaan).
+
+Kova lykky, kotona pöydällänne se kai on.
+
+ALCESTE.
+
+Sinä sietäisit...
+
+CÉLIMÈNE.
+
+                  Älkää turhaan nyt harmitelko,
+tähän selkkaukseen vain hankkikaa heti selko.
+
+ALCESTE.
+
+On kuin ihan itse kohtalo vannonut ois,
+minut seurastanne ett' aina se häätää pois;
+vaan pyydän sen uhallakin, lupa ett' ois mulla
+viel' iltakäynnille tänään luoksenne tulla.
+
+
+
+
+VIIDES NÄYTÖS.
+
+
+Ensimmäinen kohtaus.
+
+    Alceste, Philinte.
+
+ALCESTE.
+
+Ei, päätös on tehty, sit' enää en sikseen heitä.
+
+PHILINTE.
+
+Mutt' isku ei kovempikaan toki vaatisi teitä...
+
+ALCESTE.
+
+Te puhua saatte ja pohtia parhaanne mukaan,
+se päätös pysyy, sit' ei pura mikään, ei kukaan;
+ajan tään on turmelus täyttänyt, senpä tähden
+minä eroan ihmisten parista, pakoon lähden.
+On kaikk', ihan kaikki mun riitapuoltani vastaan,
+on kunnia, kohtuus, on rehellisyys, on lait;
+yks aatos ol' asiastani ainoastaan,
+sen oikeuteen lupa luottaa mull' oli kait.
+Vaan pahoin pettyneeni nyt siinä nään:
+on oikeus mulla, ja häviölle mä jään!
+Vie voiton konna, häpeätöistään tuttu,
+sitä juhlii vääryys uus, uus häpeäjuttu!
+Tien suoruus ja rehtiys väistyen roistolle tarjoo!
+Minut tuhoo hän, ja sen työn lain pyhyys varjoo!
+Hänen naamansa ulkokullatut väänteet lumoo
+lujan oikeuden, sen käytön kääntää ja kumoo.
+Minä tuomion saan, se on kruunu sen roiston töiden;
+vaan viel' ei riitä se, lisäksi rettelöiden
+eräs viheliäinen kirja nyt kiertää ja kulkee,
+niin törkeä, raskaint' ett' ansaitsis rangaistusta
+sen lukemisestakin, saati sen sepustelusta, —
+ja mua sen tekijäks syyttää se veijari julkee!
+Ja Oronte, kas, samaa hän salajuonia hokee
+ja luihusti vahvistaa sitä valhetta kokee!
+Hän, mies hovin silmissä hienoin ja valioin!
+Ja muuta en tehnyt kuin olin suora ja tosi,
+hänen runostaan vain mieleni julki toin,
+kun niin kivenkovaan hän sitä kärtti ja kosi!
+Ja hälle kun vastaan, niinkuin kunnia vaatii,
+en tahdo pettää häntä, en totuuttakaan,
+nyt hän kera muitten mun päähäni valheita laatii,
+vihamieheni katkerimman nyt hänestä saan!
+Siit' ei lepy, ei sitä anteeks anna hän koskaan,
+kun tuohon en ihastunut minä sonetti-roskaan!
+Ja ihmiset — Herran veri! — ne moist' ovat maata!
+Mihin niit' ei kärkyntä arvon ja maineen saata!
+Se heissä on rehellisyys, hyve, kunnia, kunto
+ja miehuus, oikeamielisyys, omatunto!
+Ei, kiusaa kärsin jo liian kukkurapäältä;
+pois rosvojen, murhamiesten parista täältä!
+Kun elätte, konnat, kuin sudet keskenänne,
+en ikinä enää saavu sekaanne tänne.
+
+PHILINTE.
+
+Tuo päätös minusta tuntuu liialta hopulta;
+niin paha, kuin luulette, ei paha tää ole lopulta.
+Ei vastapuolenne kaikkine kanteineen
+teit' onnistunut toki saamaan vankeuteen;
+eduks ollut ei tehdä ilmiantoa väärää,
+vain asiansa tärvellen noin hän häärää.
+
+ALCESTE.
+
+Hän! Siitä ei pelkoa hällä, hän ei jää loukkuun,
+lupa hällä turvata on joka konnankoukkuun;
+ja kaukana siitä, ett' etunsa tärvelis tällä,
+on kahta parempi asema huomenna hällä.
+
+PHILINTE.
+
+Mutt' ei todeks ottanut lie moni oikeastaan,
+mitä onkin hän juoruja keksinyt teitä vastaan;
+se uhka jo tuntuu varsin vaarattomalta;
+ja oikeudessa — teill' onhan valitusvalta —
+sen vaikutus teille pelkäksi eduksi kai on,
+tuo tuomio voidaan...
+
+ALCESTE.
+
+                      Ei, minä tyytyä aion.
+Miten saakin sen nurjuus mieleni kapinoimaan,
+minä kaikella muotoa tahdon sen jäävän voimaan:
+se oivasti näyttää, mit' arvoa oikeus saa;
+minä tahdon, ett' ajoille toisille todistaa
+kuin kuulu muistomerkki se, kuinka vähän
+ties ihmisyydestä ihmiset aikaan tähän.
+Parikymmentä tuhatta mulle se saattaa maksaa,
+vaan niinpä mull' oikeus on myös samalla taksaa
+kirouksia kirkkaita ihmisluonnolle antaa,
+sen vilpille vihaa sammumatonta kantaa.
+
+PHILINTE.
+
+Kas niin...
+
+ALCESTE.
+
+            Kas niin, on vaivanne liikaa varsin:
+tämän parannatteko puhein ja puheenparsin?
+Kai ettehän juljenne kaiken tään menon saastaa
+päin silmiä sievistellä, sen puolesta haastaa?
+
+PHILINTE.
+
+Minä myönnän, mit' ikinä mielitte: kaikkea johtaa
+etu itsekäs, julkeat juonet, ei muuta kohtaa;
+vain viekkaus enää on viirinä, viittana tiellä,
+tulis ihmisten toista laatua olla, en kiellä;
+ovat kehnoja, kieroja kyllä, vaan sekö ois
+syy riittävä ihmisten seurasta siirtyä pois?
+Kaikk' ihmisluonnon viat ja virheet nuo
+ne meidän elämänviisautt' oppia suo;
+se jalointa hyveen harjoitusta on juuri:
+jos rehellisyys ois kaikkien ojennusnuora,
+joka sydän jos ois hyvä, harras, vilpitön, suora,
+jäis hyödyttömiksi hyveitä joukko suuri;
+nehän takeena meille on maltin ja tasapainon,
+kun vääryyttä kärsiä saamme ja valtaa vainon;
+ja sydämessä kun hyve ja kunto on syvä...
+
+
+ALCESTE.
+
+Puhetaito on teillä ihmeteltävän hyvä,
+ja kultaista viisautta se tulvii aivan;
+vaan puheenne sorja on hukkaa ajan ja vaivan.
+Syvin viisaus mulle on, että mä väistyn pois:
+en voi minä kieltäni hallita niin kuin pitäis,
+minä saattaisin sanoa, mistä en vastata vois,
+mist' ikävyyksiä taas yhä uusia itäis.
+Pois kiista, nyt odottamaan Célimèneä jään,
+hänet saanko ma päätökseen tähän yhtymään;
+mua kohtaan sydämen kiintymyst' onko hällä,
+se tulkoon todistetuksi hetkellä tällä.
+
+PHILINTE.
+
+Me käymme hänt' odottamaan Élianten luoksi.
+
+ALCESTE.
+
+Ei, mieleni liian on järkkynyt huolten vuoksi.
+Te menkää sinne, sopukan pienen tään
+minä varjoon vain kera mustan murheeni jään.
+
+PHILINTE.
+
+Se seura hyvinkin hyljättäväksi joutaa,
+ja tänne koht' Élianten ma tahdon noutaa.
+
+
+Toinen kohtaus.
+
+    Oronte, Célimène, Alceste.
+
+ORONTE.
+
+Niin, osoittakaa jo vihdoinkin, ett' ihan varmaan
+minut teihin liittää saa side liiton armaan;
+tae täysi jo suokaa tunteenne kiintymisestä;
+epätietoisuutta ei lempivä kärsi, ei kestä.
+Jos hellyttänyt lie rintani hehku teitä,
+sit' ettehän enää piilota multa ja peitä?
+Ja merkki, jot' anon, joll' onneni voitte taata,
+on, että Alcesten kosinnan käskette laata,
+hänet rakkaudelleni uhraatte ettekä säästä,
+hänt' ette enää täst'edes luoksenne päästä.
+
+CÉLIMÈNE.
+
+Mist' yltynyt teissä on häneen tuo viha suuri?
+Tehän niin hänt' ennen ylistelitte juuri!
+
+ORONTE.
+
+Rakas rouva, nyt ei sitä poiketa pohtimaan;
+josp' ois oma sydämenne vain avatumpi!
+Minä pyydän, valitkaa pian jompikumpi;
+luja mull' on päätös, se omaanne vartoo vaan.
+
+ALCESTE (astuen esiin nurkastaan).
+
+Niin, rouva, on aivan oikein, mitä hän anoo;
+nyt valita saatte; mun pyyntöni samaa sanoo;
+sama huoli on mulla, mun samoin mieleni palaa:
+mun lempeni varmaa merkkiä vaatii ja halaa.
+Tätä enää ei pitkittää voi loputtomiin,
+nyt aika on teidän vastata näin tai niin.
+
+ORONTE.
+
+Hyvä herra, en tuppaudu minä millään tapaa
+toki häiritsemään, hyvä onnenne olkoon vapaa.
+
+ALCESTE.
+
+Kade lempeni lie tai ei, niin en jakopalaa
+hänen lemmestään, hyvä herra, ma halaa.
+
+ORONTE.
+
+Te jos saatte ja lempenne suuremman arvonannon...
+
+ALCESTE.
+
+Veto pieninkään jos hällä on teihin päin...
+
+ORONTE.
+
+Hänt' en sen koommin tavoita, sen minä vannon.
+
+ALCESTE.
+
+Valan kalliin teen, hänet viimeisen kerran nyt näin.
+
+ORONTE.
+
+Niin, rouva, arkaelutta nyt selko suokaa.
+
+ALCESTE.
+
+Ihan pelotta, rouva, tunteenne ilmi tuokaa.
+
+ORONTE.
+
+Vain tarvis on virkkaa, kumpi on suositumpi.
+
+ALCESTE.
+
+Vain tarvis ratkaista, valita jompikumpi.
+
+ORONTE.
+
+Mitä? Tuntuuko teistä se valinta vaikealta?
+
+ALCESTE.
+
+Mitä? Jäättekö ymmälle, näytätte horjuvalta?
+
+CÉLIMÈNE.
+
+Hyvä Jumala, kuinka te kummasti kimppuun käytte,
+ja kumpikin menettäneen ihan mielenne näytte
+Minä kyll' olen selvillä, en sitä siksi peitä
+ei arvele sydämeni, ei arpaa heitä,
+ei hääly se kahtaanne; helposti katsoi ja heti
+kukin omansa aina, kun luo sydän sydäntä veti.
+Mutt' ois toden puhuen tuskaksi mielen kainon
+näin salatuimpansa täss' ihan julki haastaa:
+sanat, joiden tunnustus toisen sydäntä raastaa,
+ne kahden kesken kuiskaeltava vain on.
+Sydän lemmestään kyll' antaa vihiä arkaa,
+mutt' ei toki kärttäinkään ihan silmille karkaa;
+ja riittää, jos vienommin vihjein tajuamaan
+sen lempijän saa, jok' on pettynyt toiveissaan.
+
+ORONTE.
+
+Ei, ei, vain selvä vastaus suoralla suulla —
+sit' en pelkää, se toivoni on.
+
+ALCESTE.
+
+                               Ja sen vaadin ma kuulla.
+Vain selvyytt' ennen kaikkea vaatia tohdin,
+en kursailemista, en sääliä missään kohdin.
+Kyky teillä on kaikkia pauloissa pitää pitkään,
+mutt' enää ei kiertelyt auta, ei mutkat mitkään:
+nyt vastauksen te annatte selvälleen,
+jos ette, silloin päätelmät siitä teen,
+sen osaan tulkita vait-olon tarkoituksen
+ja katson saaneeni karsaimman vastauksen.
+
+ORONTE.
+
+Hyvä herra, kiivastuksesta tuosta ma kiitän,
+ja samaa vaatimaan oman sanani liitän.
+
+CÉLIMÈNE.
+
+Miten keksittekin mua kiusata toinen ja toinen!
+Teist' onko oikeutettua kärttely moinen?
+Ma enkö jo sanonut, mikä on esteenä mulla?
+Oh, kas Éliante — saa tuomariksi hän tulla.
+
+
+Kolmas kohtaus.
+
+    Éliante, Philinte, Célimène, Oronte, Alceste.
+
+CÉLIMÈNE.
+
+Käy, serkku kulta, kimppuuni kiihkoin kuumin
+kaks ahdistajaa täss' aivan kuin yksin tuumin.
+Mua ilmaisemaan ihan kilpaa vaativat noin
+heti paikalla, kummanko heistä ma valikoin,
+he karttavat päätöstä, heti mi hetkestä tästä
+pois toisen tuomitsis mua lähestymästä.
+Näin onko kummasti kosittu milloinkaan?
+
+ÉLIANTE.
+
+Mult' älkää kysykö — ehkäpä vastaamaan
+satun toisin, kuin toivoisitte: mult' arvon parhaan
+puhe suora saa, joka ketään ei johda harhaan.
+
+ORONTE.
+
+Hyvä rouva, nyt turhaan kielenne kierrellä kokee.
+
+ALCESTE.
+
+Täss' auta ei verukkeet, mitä huulenne hokee.
+
+ORONTE.
+
+Tosi täytyy, on tarvis nyt sanoa, ei sitä peittää.
+
+ALCESTE.
+
+Ei tarvitse muuta kuin sanomatta se heittää.
+
+ORONTE.
+
+Sana ainoa vain, niin riitamme loppuvan näätte.
+
+ALCESTE.
+
+Ja minä kyll' ymmärrän yskän, jos vaiti jäätte.
+
+
+Neljäs kohtaus.
+
+    Acaste, Clitandre, Arsinoé, Philinte, Éliante, Oronte,
+    Célimène, Alceste.
+
+
+ACASTE.
+
+Jalo rouva, kai meidän saapua sallinette
+ja kanssamme pienen seikkasen selvittelette.
+
+CLITANDRE (Orontelle ja Alcestelle).
+
+Sepä onni, herrat, ett' olette täällä, sillä
+siin' olette näät tekin osilla yhteisillä.
+
+ARSINOÉ (Célimènelle).
+
+Minut nähdessänne kai mielenne hämmästyy,
+mut tuloni tänne on näitten herrojen syy:
+minut tapaavat, heidän syyttävän teitä kuulen
+ma teosta, jonk' ihan mahdottomaksi luulen.
+Pidän liiaksi arvossa teitä, en ikinä moista
+teist' usko; mun todistaa omat silmäni toista
+kuin kaikki, mitä he väitteensä tueksi toi.
+Vähät riitansa unohtaa toki ystävät voi,
+siks seurasin heitä, että mä nähdä saisin,
+sen herjan kuinka te yltänne pesette pois.
+
+ACASTE.
+
+Niin, rouva, me kysymme mielin odottavaisin,
+mitä puolusteita menettelyllänne ois.
+Tämä kirje Clitandrelle kirjoittamanne on varmaan?
+
+CLITANDRE.
+
+Sai teiltä Acaste tämän tervehdyksenne armaan?
+
+ACASTE (Orontelle ja Alcestelle).
+
+Niin, herrat, se on käsialaa tuttua aivan,
+hänen herttaisuutensa saattanut epäilemättä
+hyvin teidät on tuntemaan sitä kynää ja kättä;
+vaan todellakin tämä lukea maksaa vaivan.
+
+»Olettepa te omituinen ihminen, kun paheksutte minun iloisuuttani ja
+moititte minua siitä, ettei minulla muka ole milloinkaan niin hauskaa
+kuin silloin, kun en ole teidän seurassanne. Ei voi olla sen väärempää
+väitettä, ja ellette pian tule pyytämään anteeksi tätä loukkausta,
+niin en lepy teihin kuuna päivänä. Tuo pitkä vikomtin koikale...»
+
+Hän oispa nyt täällä!
+
+»Tuo pitkä vikomtin koikale, jolla te aloitatte valitusvirtenne, on
+mies, johon mieltyä ei pälkähtäisi päähänikään; näin hänen kerrankin
+kolmen neljännestunnin ajan syljeskelevän kaivoon, jotta syntyisi
+renkaita veteen, enkä sen koommin ole voinut saada hyvää ajatusta
+hänestä. Entäs sitten pikku markiisi...»
+
+Minä itse olen se, sen sanon kerskaelutta.
+
+»Entä sitten pikku markiisi, joka eilen piteli kättäni niin kauan!
+Minusta ei ole mitään niin ohukaista kuin koko hänen olentonsa, eikä
+hänessä ole muuta mieheen vivahtavaa kuin viitta ja miekka. Tuo
+vihreänauhainen taas...»
+
+    (Alcestelle.)
+
+Nyt on teidän vuoronne.
+
+»Tuo vihreänauhainen taas, hän huvittaa minua toisinaan
+tuittupäisyydellään ja äksyllä äreydellään, mutta sadat kerrat
+on hän minusta koko maailman ikävin ihminen ihmiseltä. Ja
+sonetinsorvaajaa...»
+
+    (Orontelle.)
+
+Te saatte nyt osanne.
+
+»Ja sonetinsorvaajaa, joka on ruvennut neroniekaksi ja tahtoo
+kivenkovaan olla runoilija koko maailman uhalla, niin, minä en viitsi
+kuunnellakaan, mitä hän sanoo, ja hänen proosansa on minusta yhtä
+väsyttävää kuin hänen runonsakin. Tietäkää siis, ettei minulla aina
+ole niin hauskaa, kuin te kuvittelette, että tosiaan kaipaan teitä
+enemmän kuin soisin kaikissa niissä kutsuissa, joihin minut vedetään,
+ja että rakastetun olennon läsnäolo on huvitustemme ihanin höyste.»
+
+CLITANDRE.
+
+Ja nyt minä, kuulkaas, näin:
+
+»Tuo teidän Clitandrenne, josta te puhutte ja joka on niin mesimakea
+maikailija, on viimeinen mies, johon minä voisin kiintyä. Hän on
+hupsu, kun kuvittelee ja uskoo olevansa rakastettu, ja te samoin,
+kun ette usko. Tulkaa järkiinne ja vaihtakaa käsitystä hänen kanssaan,
+käykää luonani niin usein kuin voitte ja auttakaa minua kestämään
+hänen harmillista tungetteluaan.»
+
+Tosikauniin luonteen malli on siinä, ja tietää,
+hyvä rouva, mahdatte kai, nimen minkä se sietää.
+Tämä riittää, me sydämenne korean kuvan
+joka paikassa esitellä nyt otamme luvan.
+
+ACASTE.
+
+Sanan saattaisin virkkaa, on aihe verraton ihan,
+mut teitä en katso arvoiseksi ma vihan;
+ja pikku markiisillepa lohtuna kai on
+pian sydämet arvollisemmat, sen näyttää aion.
+
+
+Viides kohtaus.
+
+    Célimène, Éliante, Arsinoé, Oronte, Philinte.
+
+ORONTE.
+
+Minun mieleni näinkö raatelette te vain
+sen jälkeen kun kaikki ne hellät kirjeenne sain?
+Te lempeä teeskentelette, sen naamiolla
+koko miessuvun oma te vuoroin lupaatte olla!
+Oh, enää narrinanne en juosta halaa,
+minä onnea kiitän, kun näin, mitä naamio salaa.
+Sydän mulle on voittona takaisin saatu ja vapaa
+ja kostona menetys, joka teitä tapaa.
+    (Alcestelle.)
+Teit' enää en häntä saamasta aio estää,
+hänen kanssaan kaupat tehkää, niin että ne kestää.
+
+
+Kuudes kohtaus.
+
+    Célimène, Éliante, Arsinoé, Alceste, Philinte.
+
+ARSINOÉ (Célimènelle).
+
+Todentotta, on tuo teko mustin, mi tehty lie,
+en vaieta voi, olen vallassa kuohun moisen.
+Tuo kataluudessa kaikesta voiton vie!
+Minä en hevin sekaannu seikkoihin ihmisen toisen;
+vaan herra Alceste, jost' onnea saisitte kiittää,
+mies, jonka kunto ja kunnia aateloi,
+joka rakasti teitä, ihaili, jumaloi,
+mutt' ansaitsi hän...
+
+ALCESTE.
+
+                      Minä hoidan sen itse, se riittää,
+se jättäkää minun huostaani kerrassaan,
+tuot' älkää ottako turhaa vaivaa ja huolta.
+Miten pidättekin nyt loukatun sydämen puolta,
+ei intoanne se kykene palkitsemaan.
+Jos toisen valintaan minut kostoni johtais,
+niin teitä ei se valinta silloin kohtais.
+
+ARSINOÉ.
+
+Hohoo, vai luulette, että se aatos on mulla,
+niin kiivas veto siipaksi sivullenne tulla?
+Teiss' itserakkaus saanut on vallan täyden,
+jos elätte moisten luulojen lumoissa käyden:
+tuon rouvan tähderomu on tarjoke, jota
+ei vastaan niin ihmeellä ihastuksella ota.
+Se luulo pankaa, se korkea nuotti pois.
+Mun laiseni naiset ei toki teille sovi;
+vain hälle te huokailkaa yhä hehkussa povi,
+se ihana liitto nähdä mun riemuni ois.
+
+
+Seitsemäs kohtaus.
+
+    Célimène, Éliante, Alceste, Philinte.
+
+ALCESTE (Célimènelle).
+
+Kas niin, minä vaieten vain tämän kaiken näin,
+minä annoin kaikkien puhua edeltäpäin.
+Joko nyt olen malttanut mieltäni kyllin pitkään,
+ma saanko jo...
+
+CÉLIMÈNE.
+
+                Saatte tuomita mielenne mukaan,
+te olette oikeutettu, te, muu ei kukaan,
+ei liikaa mulle teilt' ole moitteet mitkään.
+Olen tehnyt väärin, en hämmennystäni salaa,
+enk' etsiä tyhjiä puolustelulta halaa.
+Minä muiden vihaa halveksun ainoastaan,
+mut tunnustan, ett' olen rikkonut teitä vastaan.
+Ei ihme, jos pahastuttekin menettelyyni,
+minä ymmärrän, miten suureksi katsotte syyni,
+teist' onhan nyt petollisuuteni ilmeinen ihan,
+mua kohtaan teillä on kyllin aihetta vihan.
+Siis vihatkaa mua!
+
+ALCESTE.
+
+                   Pettäjätär, miten voisin?
+Miten rakkaudestani niin minä voiton saan?
+Jos kuinkakin syvästi teitä vihata soisin,
+oman sydämen siihen saanko ma suostumaan?
+    (Eliantelle ja Philintelle.)
+Niin, näette nyt, mihin arvoton kiintymys ajaa,
+mun heikkouttani kumpikin todistakaa.
+Vaan täss' ei viel' ole kaikki, se kannustaa
+minut etsimään ihan äärimmäistäkin rajaa.
+Joka viisaaks ihmisen sanoo, se totuutta loukkaa,
+ken sydämeensä ei kätkisi heikkoa houkkaa?
+    (Célimènelle.)
+Voin unohtaa, te uskoton, tekonne nuo,
+kaikk' anteeks sydämeni ne teille suo,
+vain lukee ne nuoruuden heikkoudeksi, mi horjui,
+ajan turmellun houkutusta mi turhaan torjui,
+jos sydämenne yhtyy mun päätökseeni
+luot' ihmisten kauas suunnata askeleeni
+ja erämaahan, miss' elää on mieli mulla,
+jos ette kahden mun kanssani emmi tulla.
+Sitten vain — se varmaan on kaikkien mielipide —
+nuo kurjat kirjeenne saatatte sovittaa,
+ja tekoon, mi tyrmistymään jalon sydämen saa,
+ei tunteeni sammu, ei katkea lempemme side.
+
+CÉLIMÈNE.
+
+Näin nuornako pitäisi taakseni maailma heittää
+ja erämaahanne itsenne haudata pitää!
+
+ALCESTE.
+
+Jos sydämen sydämeen tosi lempi liittää,
+mitä silloin merkitsee koko maailma muu?
+Meill' onhan toisemme, eikö sen pitäis riittää?
+
+CÉLIMÈNE.
+
+Täss' iässä yksinäisyyttä kammostuu;
+mull' ei ole sielua kyllin suurta ja ylhää,
+ei päätöstä tehdä se voi noin jyrkkää ja jylhää.
+Jos muuten tyydytte siihen, ett' omanne oisin,
+niin Hymenin kahleisiin minä suostua voisin
+ja kanssanne...
+
+ALCESTE.
+
+                Ei, nyt inhoksi lempeni vaihtui,
+tuon kieltonne valossa vihdoin se haave haihtui.
+Teit' ei sido minuun kiintymys syvä, en tulle
+minä kaikeksi teille, niinkuin te kaikeksi mulle,
+siis luovun teistä, ja tunnottomuutenne tuo
+nämä kahleet arvottomat iäks yltäni luo.
+
+
+Kahdeksas kohtaus.
+
+    Éliante, Alceste, Philinte.
+
+ALCESTE (Éliantelle).
+
+Sadat hyveet korottamassa on kauneuttanne,
+teiss' yksin sydämen vilpittömyyttä mä näin;
+olen kauan jo teihin ma katsonut ylöspäin,
+niinp' olla mun suokaa ainainen ihailijanne.
+On halpa tarjota teille — se anteeks suokaa —
+sydän tää, joka synkeyttä ja huolta huokaa;
+alan ymmärtää jo, ett' olen arvoton kovin,
+tähän onnenliittoon ett' ylen huonosti sovin;
+mikä teille tarjottavaks sydän enää ois,
+jonk' olento, halvempi teitä, on viskannut pois!
+Ja vihdoin...
+
+ÉLIANTE.
+
+              Niin, sitä seuratkaa näkökantaa:
+minä kylläkin tiedän, kelle käteni antaa,
+en ymmällä lie — jos ystävällenne tälle
+sen ojentaisin, se kenties kelpaisi hälle.
+
+PHILINTE.
+
+On korkein toivoni, että sen kunnian saisin,
+veren, hengen sen puolesta uhrata uskaltaisin.
+
+ALCESTE.
+
+Tosionnea teille toivotan, toisianne
+noin kaikkena rakastakaa elinaikananne.
+Minä, kaikkien pettämä, vääryyden vainon alta
+pois pakenen kuilusta, missä on paheilla valta,
+haen, kunnes löytyy niin syrjäinen seutu kenties,
+siell' että on vapaus olla kunnian mies.
+
+PHILINTE.
+
+Nyt tulkaa, tarvis on kaikki keinomme käyttää,
+ett' aikomustaan tuota hän ei sais täyttää.
+*/

@@ -13,6 +13,7 @@ parser-compare
 corpusmine
 autoresearch
 server
+/scrapegutenberg
 *.db
 *.db-shm
 *.db-wal
