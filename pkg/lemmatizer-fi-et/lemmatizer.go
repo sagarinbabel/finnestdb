@@ -24,6 +24,9 @@ var fiMorVfst []byte
 //go:embed data/fi/analyser-gt-desc.hfstol
 var fiGiellaltHfstol []byte
 
+//go:embed data/et/analyser-gt-desc.hfstol
+var etGiellaltHfstol []byte
+
 // Analysis is one structured reading of a surface form. Re-exported so
 // callers don't reach into voikkomap or giellaltmap.
 type Analysis = voikkomap.Analysis
@@ -34,7 +37,7 @@ type Analysis = voikkomap.Analysis
 type Lemmatizer struct {
 	fiVfst   *vfst.Transducer
 	fiHfstol *hfstol.Transducer
-	// future: etHfstol for Estonian (PR 3)
+	etHfstol *hfstol.Transducer
 }
 
 // New constructs a Lemmatizer with all currently-supported language
@@ -50,7 +53,13 @@ func New() (*Lemmatizer, error) {
 		_ = fiV.Close()
 		return nil, fmt.Errorf("lemmatizer: load embedded FI analyser-gt-desc.hfstol: %w", err)
 	}
-	return &Lemmatizer{fiVfst: fiV, fiHfstol: fiH}, nil
+	etH, err := hfstol.OpenBytes(etGiellaltHfstol)
+	if err != nil {
+		_ = fiV.Close()
+		_ = fiH.Close()
+		return nil, fmt.Errorf("lemmatizer: load embedded ET analyser-gt-desc.hfstol: %w", err)
+	}
+	return &Lemmatizer{fiVfst: fiV, fiHfstol: fiH, etHfstol: etH}, nil
 }
 
 // Close releases backing resources. After Close, Lemmatize is unsafe.
@@ -62,6 +71,10 @@ func (l *Lemmatizer) Close() error {
 	if l.fiHfstol != nil {
 		_ = l.fiHfstol.Close()
 		l.fiHfstol = nil
+	}
+	if l.etHfstol != nil {
+		_ = l.etHfstol.Close()
+		l.etHfstol = nil
 	}
 	return nil
 }
@@ -86,9 +99,49 @@ func (l *Lemmatizer) Lemmatize(lang, word string) []Analysis {
 	switch lang {
 	case "FI":
 		return l.lemmatizeFI(word)
+	case "ET":
+		return l.lemmatizeET(word)
 	default:
 		return nil
 	}
+}
+
+// lemmatizeET runs only the Giellalt HFSTOL (no Voikko equivalent for
+// Estonian). Compound dedup matches the FI path.
+func (l *Lemmatizer) lemmatizeET(word string) []Analysis {
+	if l.etHfstol == nil {
+		return nil
+	}
+	merged := make(map[analysisKey]Analysis)
+	var compoundQueue []giellaltmap.Analysis
+	for _, raw := range l.etHfstol.Analyze(word) {
+		ga := giellaltmap.Parse(raw)
+		if ga.Lemma == "" || ga.UPOS == "" {
+			continue
+		}
+		if ga.IsCompound {
+			compoundQueue = append(compoundQueue, ga)
+			continue
+		}
+		k := analysisKey{lemma: ga.Lemma, upos: ga.UPOS}
+		if _, exists := merged[k]; !exists {
+			merged[k] = giellaltToAnalysis(ga)
+		}
+	}
+	for _, ga := range compoundQueue {
+		k := analysisKey{lemma: ga.Lemma, upos: ga.UPOS}
+		if _, exists := merged[k]; !exists {
+			merged[k] = giellaltToAnalysis(ga)
+		}
+	}
+	if len(merged) == 0 {
+		return nil
+	}
+	out := make([]Analysis, 0, len(merged))
+	for _, a := range merged {
+		out = append(out, a)
+	}
+	return out
 }
 
 func (l *Lemmatizer) lemmatizeFI(word string) []Analysis {

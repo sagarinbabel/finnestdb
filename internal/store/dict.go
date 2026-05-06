@@ -111,13 +111,16 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 			continue
 		}
 
-		// Step 5: VFST morphological analysis (FI only). Catches forms the
-		// SQLite-driven steps couldn't resolve — e.g. less-common derivations,
-		// compounds whose halves aren't both in the forms table, and rare
-		// inflected forms whose lemmas aren't in the lemmas table.
-		if lang == "FI" {
-			if lem := d.finnishLemmatizer(); lem != nil {
-				if resolved, ok := tryVFSTAnalyze(lem, lower); ok {
+		// Step 5: FST morphological analysis (FI + ET). Catches forms the
+		// SQLite-driven steps couldn't resolve — e.g. less-common
+		// derivations, compounds whose halves aren't both in the forms
+		// table, and rare inflected forms whose lemmas aren't in the
+		// lemmas table. For FI this hits both libvoikko (VFST) and
+		// Giellalt (HFSTOL) with VFST-priority on overlap; for ET it's
+		// Giellalt-only (Voikko has no Estonian model).
+		if lang == "FI" || lang == "ET" {
+			if lem := d.fstLemmatizer(); lem != nil {
+				if resolved, ok := tryFSTAnalyze(lem, lang, lower); ok {
 					result[form] = resolved
 					continue
 				}
@@ -127,12 +130,13 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 	return result
 }
 
-// tryVFSTAnalyze runs libvoikko's Finnish morphology FST on lower and
-// returns the highest-priority FormResolution if any analysis exists.
-// "Highest priority" today is just the first analysis returned by the
-// FST; PR 2 will rank across multiple FST sources.
-func tryVFSTAnalyze(lem *lemmatizer.Lemmatizer, lower string) (FormResolution, bool) {
-	analyses := lem.Lemmatize("FI", lower)
+// tryFSTAnalyze runs the unified Lemmatizer against lower for the
+// given lang and returns the highest-priority FormResolution if any
+// analysis exists. The merge logic (VFST > Giellalt for FI; Giellalt
+// only for ET; non-compound > compound) lives in pkg/lemmatizer-fi-et;
+// this helper just picks the first valid analysis it returns.
+func tryFSTAnalyze(lem *lemmatizer.Lemmatizer, lang, lower string) (FormResolution, bool) {
+	analyses := lem.Lemmatize(lang, lower)
 	if len(analyses) == 0 {
 		return FormResolution{}, false
 	}
@@ -144,7 +148,7 @@ func tryVFSTAnalyze(lem *lemmatizer.Lemmatizer, lower string) (FormResolution, b
 			Lemma:        a.Lemma,
 			POS:          a.UPOS,
 			GrammarLabel: a.GrammarLabel,
-			Source:       "vfst",
+			Source:       "fst",
 		}, true
 	}
 	return FormResolution{}, false
