@@ -416,10 +416,6 @@ func (externalAttachGrammarRule) Apply(_ string, token *TokenResult, _, custom s
 	return true
 }
 
-func defaultOmorfiRules() []externalAnalyzerRule {
-	return defaultExternalAnalyzerRules()
-}
-
 func defaultExternalAnalyzerRules() []externalAnalyzerRule {
 	return []externalAnalyzerRule{
 		externalPreferDirectDictRule{},

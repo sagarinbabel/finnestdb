@@ -81,7 +81,7 @@ func TestOmorfiRulesPreferCustomFallbackAndTraceIt(t *testing.T) {
 		Source:       "possessive",
 	}
 
-	applied := defaultOmorfiRules()[1].Apply("FI", token, direct, custom)
+	applied := defaultExternalAnalyzerRules()[1].Apply("FI", token, direct, custom)
 	if !applied {
 		t.Fatal("expected custom fallback rule to apply")
 	}
