@@ -275,7 +275,7 @@ func ekilexEntriesFromDetails(details *ekilexWordDetails, fallbackLemma string) 
 			Forms: forms,
 		})
 	}
-	if len(entries) == 0 && fallbackLemma != "" {
+	if len(entries) == 0 && len(details.Lexemes) == 0 && fallbackLemma != "" {
 		entries = append(entries, ekilexEntry{
 			Lemma: normalizeDictText(fallbackLemma),
 			POS:   normalizePos(details.WordClass),
@@ -372,9 +372,6 @@ func collectEkilexWordRefs(raw any) []ekilexWordRef {
 			}
 		case map[string]any:
 			id := intFromAny(x["wordId"])
-			if id == 0 {
-				id = intFromAny(x["id"])
-			}
 			if id != 0 {
 				seen[id] = ekilexWordRef{WordID: id, Value: stringFromAny(x["value"])}
 			}
