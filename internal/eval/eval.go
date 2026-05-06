@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"finnestdb/internal/parsecore"
 	"finnestdb/internal/store"
@@ -76,6 +77,8 @@ type ParserSummary struct {
 	AvgCaseDurationMs     float64 `json:"avg_case_duration_ms"`
 	P50CaseDurationMs     float64 `json:"p50_case_duration_ms"`
 	P95CaseDurationMs     float64 `json:"p95_case_duration_ms"`
+	WordsPerSecond        float64 `json:"words_per_second"`
+	CharsPerSecond        float64 `json:"chars_per_second"`
 	AvgUniqueForms        float64 `json:"avg_unique_forms"`
 	AvgResolvedTokens     float64 `json:"avg_resolved_tokens"`
 	AvgUnresolvedTokens   float64 `json:"avg_unresolved_tokens"`
@@ -96,10 +99,10 @@ type CaseReport struct {
 }
 
 type DurationStats struct {
-	Samples []int64 `json:"samples"`
-	AvgMs   float64 `json:"avg_ms"`
-	P50Ms   float64 `json:"p50_ms"`
-	P95Ms   float64 `json:"p95_ms"`
+	SamplesNs []int64 `json:"samples_ns"`
+	AvgMs     float64 `json:"avg_ms"`
+	P50Ms     float64 `json:"p50_ms"`
+	P95Ms     float64 `json:"p95_ms"`
 }
 
 type TokenCompare struct {
@@ -245,7 +248,7 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 					return nil, fmt.Errorf("case %s parser %s: %w", c.ID, parser, err)
 				}
 				last = parsed
-				samples = append(samples, parsed.ParseDurationMs)
+				samples = append(samples, parsed.ParseDurationNs)
 			}
 			if last == nil {
 				return nil, fmt.Errorf("case %s parser %s: no result", c.ID, parser)
@@ -255,7 +258,7 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 			caseReport.Stats[parser] = last.Stats
 			comparisons := compareCase(c, last)
 			caseReport.Comparisons[parser] = comparisons
-			summaries[parser].consume(last, comparisons, samples)
+			summaries[parser].consume(last, comparisons, samples, utf8.RuneCountInString(c.Text))
 		}
 		report.Cases = append(report.Cases, caseReport)
 	}
@@ -293,29 +296,33 @@ type summaryAccumulator struct {
 	fullCorrect             int
 	totalTokens             int
 	resolvedTokens          int
-	allDurations            []int64
+	allDurationsNs          []int64
 	caseCount               int
 	uniqueFormsTotal        int
 	resolvedTokensTotal     int
 	unresolvedTokensTotal   int
-	analyzeMsTotal          int64
-	lookupFormsMsTotal      int64
-	lookupGlossesMsTotal    int64
-	resolveSentencesMsTotal int64
-	enrichWordsMsTotal      int64
+	analyzeNsTotal          int64
+	lookupFormsNsTotal      int64
+	lookupGlossesNsTotal    int64
+	resolveSentencesNsTotal int64
+	enrichWordsNsTotal      int64
+	throughputCharsTotal    int64
+	throughputWordsTotal    int64
 }
 
-func (s *summaryAccumulator) consume(parsed *parsecore.ParseResult, comparisons []TokenCompare, durations []int64) {
-	s.allDurations = append(s.allDurations, durations...)
+func (s *summaryAccumulator) consume(parsed *parsecore.ParseResult, comparisons []TokenCompare, durations []int64, charsPerRun int) {
+	s.allDurationsNs = append(s.allDurationsNs, durations...)
 	s.caseCount++
 	s.uniqueFormsTotal += parsed.Stats.UniqueForms
 	s.resolvedTokensTotal += parsed.Stats.ResolvedTokens
 	s.unresolvedTokensTotal += parsed.Stats.UnresolvedTokens
-	s.analyzeMsTotal += parsed.Stats.Timings.AnalyzeMs
-	s.lookupFormsMsTotal += parsed.Stats.Timings.LookupFormsMs
-	s.lookupGlossesMsTotal += parsed.Stats.Timings.LookupGlossesMs
-	s.resolveSentencesMsTotal += parsed.Stats.Timings.ResolveSentencesMs
-	s.enrichWordsMsTotal += parsed.Stats.Timings.EnrichWordsMs
+	s.analyzeNsTotal += parsed.Stats.Timings.AnalyzeNs
+	s.lookupFormsNsTotal += parsed.Stats.Timings.LookupFormsNs
+	s.lookupGlossesNsTotal += parsed.Stats.Timings.LookupGlossesNs
+	s.resolveSentencesNsTotal += parsed.Stats.Timings.ResolveSentencesNs
+	s.enrichWordsNsTotal += parsed.Stats.Timings.EnrichWordsNs
+	s.throughputCharsTotal += int64(charsPerRun) * int64(len(durations))
+	s.throughputWordsTotal += int64(parsed.TotalTokens) * int64(len(durations))
 	for _, sentence := range parsed.Sentences {
 		for _, token := range sentence.Tokens {
 			if token.POS == "PUNCT" {
@@ -348,7 +355,11 @@ func (s *summaryAccumulator) consume(parsed *parsecore.ParseResult, comparisons 
 }
 
 func (s *summaryAccumulator) finish() ParserSummary {
-	stats := summarizeDurations(s.allDurations)
+	stats := summarizeDurations(s.allDurationsNs)
+	var totalNs int64
+	for _, sample := range s.allDurationsNs {
+		totalNs += sample
+	}
 	return ParserSummary{
 		ExpectedTokens:        s.expectedTokens,
 		LemmaAccuracy:         ratio(s.lemmaCorrect, s.expectedTokens),
@@ -359,15 +370,24 @@ func (s *summaryAccumulator) finish() ParserSummary {
 		AvgCaseDurationMs:     stats.AvgMs,
 		P50CaseDurationMs:     stats.P50Ms,
 		P95CaseDurationMs:     stats.P95Ms,
+		WordsPerSecond:        throughputPerSecond(s.throughputWordsTotal, totalNs),
+		CharsPerSecond:        throughputPerSecond(s.throughputCharsTotal, totalNs),
 		AvgUniqueForms:        averageInt(s.uniqueFormsTotal, s.caseCount),
 		AvgResolvedTokens:     averageInt(s.resolvedTokensTotal, s.caseCount),
 		AvgUnresolvedTokens:   averageInt(s.unresolvedTokensTotal, s.caseCount),
-		AvgAnalyzeMs:          averageInt64(s.analyzeMsTotal, s.caseCount),
-		AvgLookupFormsMs:      averageInt64(s.lookupFormsMsTotal, s.caseCount),
-		AvgLookupGlossesMs:    averageInt64(s.lookupGlossesMsTotal, s.caseCount),
-		AvgResolveSentencesMs: averageInt64(s.resolveSentencesMsTotal, s.caseCount),
-		AvgEnrichWordsMs:      averageInt64(s.enrichWordsMsTotal, s.caseCount),
+		AvgAnalyzeMs:          nsAverageMs(s.analyzeNsTotal, s.caseCount),
+		AvgLookupFormsMs:      nsAverageMs(s.lookupFormsNsTotal, s.caseCount),
+		AvgLookupGlossesMs:    nsAverageMs(s.lookupGlossesNsTotal, s.caseCount),
+		AvgResolveSentencesMs: nsAverageMs(s.resolveSentencesNsTotal, s.caseCount),
+		AvgEnrichWordsMs:      nsAverageMs(s.enrichWordsNsTotal, s.caseCount),
 	}
+}
+
+func throughputPerSecond(total, totalNs int64) float64 {
+	if totalNs <= 0 {
+		return 0
+	}
+	return float64(total) / float64(totalNs) * 1e9
 }
 
 func compareCase(c DatasetCase, parsed *parsecore.ParseResult) []TokenCompare {
@@ -441,29 +461,29 @@ func findOccurrence(tokens []parsecore.TokenResult, surface string, occurrence i
 	return parsecore.TokenResult{}, false
 }
 
-func summarizeDurations(samples []int64) DurationStats {
-	stats := DurationStats{Samples: slices.Clone(samples)}
-	if len(samples) == 0 {
+func summarizeDurations(samplesNs []int64) DurationStats {
+	stats := DurationStats{SamplesNs: slices.Clone(samplesNs)}
+	if len(samplesNs) == 0 {
 		return stats
 	}
-	var total int64
-	for _, sample := range samples {
-		total += sample
+	var totalNs int64
+	for _, sample := range samplesNs {
+		totalNs += sample
 	}
-	stats.AvgMs = float64(total) / float64(len(samples))
-	stats.P50Ms = percentile(samples, 0.50)
-	stats.P95Ms = percentile(samples, 0.95)
+	stats.AvgMs = float64(totalNs) / float64(len(samplesNs)) / 1e6
+	stats.P50Ms = percentileNsToMs(samplesNs, 0.50)
+	stats.P95Ms = percentileNsToMs(samplesNs, 0.95)
 	return stats
 }
 
-func percentile(samples []int64, p float64) float64 {
-	if len(samples) == 0 {
+func percentileNsToMs(samplesNs []int64, p float64) float64 {
+	if len(samplesNs) == 0 {
 		return 0
 	}
-	cloned := slices.Clone(samples)
+	cloned := slices.Clone(samplesNs)
 	sort.Slice(cloned, func(i, j int) bool { return cloned[i] < cloned[j] })
 	idx := int(float64(len(cloned)-1) * p)
-	return float64(cloned[idx])
+	return float64(cloned[idx]) / 1e6
 }
 
 func computePriorityRegressions(report *Report) []PriorityRegression {
@@ -518,11 +538,11 @@ func averageInt(total, count int) float64 {
 	return float64(total) / float64(count)
 }
 
-func averageInt64(total int64, count int) float64 {
+func nsAverageMs(totalNs int64, count int) float64 {
 	if count == 0 {
 		return 0
 	}
-	return float64(total) / float64(count)
+	return float64(totalNs) / float64(count) / 1e6
 }
 
 func slugify(s string) string {
