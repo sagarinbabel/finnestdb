@@ -298,6 +298,88 @@ func TestHandleParseHydratesLemmaStateForAuthenticatedUser(t *testing.T) {
 	}
 }
 
+// TestHandleParseExpandsHomonyms verifies that the import overview's words
+// list is dict-expanded the same way handleCreateDeck expands tokens, so the
+// unique-lemma count in the import overview matches the deck's unique count.
+func TestHandleParseExpandsHomonyms(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("joon", "NOUN", "line", "ET"); err != nil {
+		t.Fatalf("UpsertLemma joon: %v", err)
+	}
+	if err := api.store.UpsertLemma("jooma", "VERB", "drink", "ET"); err != nil {
+		t.Fatalf("UpsertLemma jooma: %v", err)
+	}
+	for _, r := range [][4]string{
+		{"joon", "joon", "NOUN", "ET"},
+		{"joon", "jooma", "VERB", "ET"},
+	} {
+		if err := api.store.UpsertForm(r[0], r[1], r[2], r[3]); err != nil {
+			t.Fatalf("UpsertForm %v: %v", r, err)
+		}
+	}
+
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang:        lang,
+			Parser:      "custom",
+			TotalTokens: 3,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "Ma joon vett.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Ma", Lemma: "mina", POS: "PRON"},
+						{Form: "joon", Lemma: "jooma", POS: "VERB"},
+						{Form: "vett", Lemma: "vesi", POS: "NOUN"},
+						{Form: ".", POS: "PUNCT"},
+					},
+				},
+			},
+			// Parser's pick: only one entry for "joon" (jooma/VERB).
+			Words: []parsecore.WordEntry{
+				{Lemma: "mina", POS: "PRON", Forms: []string{"Ma"}, Count: 1},
+				{Lemma: "jooma", POS: "VERB", Forms: []string{"joon"}, Count: 1, Gloss: "drink"},
+				{Lemma: "vesi", POS: "NOUN", Forms: []string{"vett"}, Count: 1},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"ET","text":"Ma joon vett."}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
+	}
+
+	var resp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	// Parser produced 3 entries (mina, jooma, vesi). After expansion the
+	// dict-known homonym joon/NOUN appears too — total 4, matching what the
+	// deck would have.
+	if len(resp.Words) != 4 {
+		t.Fatalf("len(words)=%d want 4 (mina, jooma, vesi, joon-noun): %+v", len(resp.Words), resp.Words)
+	}
+	byKey := map[string]parsecore.WordEntry{}
+	for _, w := range resp.Words {
+		byKey[w.Lemma+"/"+w.POS] = w
+	}
+	joonNoun, ok := byKey["joon/NOUN"]
+	if !ok {
+		t.Fatalf("joon/NOUN missing from expanded words: %+v", resp.Words)
+	}
+	if joonNoun.Gloss != "line" {
+		t.Errorf("joon/NOUN gloss=%q want line", joonNoun.Gloss)
+	}
+	if len(joonNoun.Forms) != 1 || joonNoun.Forms[0] != "joon" {
+		t.Errorf("joon/NOUN forms=%v want [joon]", joonNoun.Forms)
+	}
+	if joonNoun.Count != 1 {
+		t.Errorf("joon/NOUN count=%d want 1", joonNoun.Count)
+	}
+}
+
 func TestHandleParseMapsAnalyzerValidationErrorsToBadRequest(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, _, _, _ string) (*parsecore.ParseResult, error) {

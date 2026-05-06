@@ -631,6 +631,101 @@ func expandTokenLemmas(token parsecore.TokenResult, dict map[string][]store.Form
 	return []tokenLemma{{Lemma: lemma, POS: token.POS}}
 }
 
+// expandParsedWords reapplies the same dict-driven homonym expansion that
+// handleCreateDeck runs, producing one WordEntry per (lemma, pos) candidate
+// the dictionary knows of for each token. The result mirrors the (lemma, pos)
+// shape of the deck the user would get if they saved this parse, so the
+// import overview's unique-lemma count agrees with the deck's unique count.
+//
+// For (lemma, pos) entries the parser also picked, GrammarLabel,
+// ExampleSentence, and Gloss are inherited from the parser's WordEntry. For
+// homonym alternatives the parser didn't pick, GrammarLabel stays empty;
+// ExampleSentence and Gloss are derived from the first matching token's
+// sentence and a dictionary lookup respectively.
+func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][]store.FormResolution) []parsecore.WordEntry {
+	type aggKey struct {
+		lemma string
+		pos   string
+	}
+	type aggEntry struct {
+		forms       []string
+		formSet     map[string]struct{}
+		count       int
+		exampleText string
+	}
+	agg := map[aggKey]*aggEntry{}
+
+	for _, sent := range parsed.Sentences {
+		for _, token := range sent.Tokens {
+			for _, exp := range expandTokenLemmas(token, dict) {
+				key := aggKey{lemma: exp.Lemma, pos: exp.POS}
+				e, ok := agg[key]
+				if !ok {
+					e = &aggEntry{formSet: map[string]struct{}{}, exampleText: sent.Text}
+					agg[key] = e
+				}
+				e.count++
+				if token.Form != "" {
+					if _, dup := e.formSet[token.Form]; !dup {
+						e.formSet[token.Form] = struct{}{}
+						e.forms = append(e.forms, token.Form)
+					}
+				}
+			}
+		}
+	}
+
+	// Defensive: if we couldn't extract any tokens (e.g. a test fixture or a
+	// degenerate parse with empty Sentences), fall back to whatever the parser
+	// already produced rather than discarding it.
+	if len(agg) == 0 {
+		return parsed.Words
+	}
+
+	parserIndex := map[aggKey]*parsecore.WordEntry{}
+	for i := range parsed.Words {
+		k := aggKey{lemma: parsed.Words[i].Lemma, pos: parsed.Words[i].POS}
+		parserIndex[k] = &parsed.Words[i]
+	}
+
+	missingGlossKeys := make([]store.LemmaKey, 0)
+	for key := range agg {
+		pe, ok := parserIndex[key]
+		if !ok || pe.Gloss == "" {
+			missingGlossKeys = append(missingGlossKeys, store.LemmaKey{Lemma: key.lemma, POS: key.pos})
+		}
+	}
+	glosses := map[store.LemmaKey]string{}
+	if len(missingGlossKeys) > 0 {
+		glosses = a.store.BatchLookupGlosses(missingGlossKeys, parsed.Lang)
+	}
+
+	out := make([]parsecore.WordEntry, 0, len(agg))
+	for key, e := range agg {
+		entry := parsecore.WordEntry{
+			Lemma:           key.lemma,
+			POS:             key.pos,
+			Forms:           e.forms,
+			Count:           e.count,
+			ExampleSentence: e.exampleText,
+		}
+		if pe, ok := parserIndex[key]; ok {
+			entry.Gloss = pe.Gloss
+			entry.GrammarLabel = pe.GrammarLabel
+			if pe.ExampleSentence != "" {
+				entry.ExampleSentence = pe.ExampleSentence
+			}
+		}
+		if entry.Gloss == "" {
+			if g, ok := glosses[store.LemmaKey{Lemma: key.lemma, POS: key.pos}]; ok {
+				entry.Gloss = g
+			}
+		}
+		out = append(out, entry)
+	}
+	return out
+}
+
 func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
 	var req CreateDeckRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1217,6 +1312,13 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), status)
 		return
 	}
+
+	// Apply the same dict-driven homonym expansion that handleCreateDeck runs,
+	// so the import overview's unique-lemma count matches the count of the
+	// deck the user gets when saving. See expandParsedWords for details.
+	uniqueForms := collectSurfaceForms(parsed.Sentences)
+	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang)
+	parsed.Words = a.expandParsedWords(parsed, dictCandidates)
 
 	auth, err := a.getCurrentUser(r)
 	if err != nil {
