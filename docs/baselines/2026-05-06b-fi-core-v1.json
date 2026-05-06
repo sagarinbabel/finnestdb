@@ -1,6 +1,6 @@
 {
-  "run_id": "20260506T111839Z-fi-core",
-  "generated_at": "2026-05-06T11:18:39Z",
+  "run_id": "20260506T114222Z-fi-core",
+  "generated_at": "2026-05-06T11:42:22Z",
   "dataset": {
     "name": "fi-core",
     "version": "v1",
@@ -11,7 +11,7 @@
     "basic",
     "custom"
   ],
-  "git_commit": "5e6d55d",
+  "git_commit": "3a893ba",
   "benchmark": {
     "warmup_runs": 1,
     "repeat_runs": 3
