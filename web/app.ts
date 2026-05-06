@@ -378,6 +378,28 @@ function clearResultsDom(): void {
     if (workbenchText) workbenchText.value = '';
 }
 
+function beginDeckDetailLoading(): void {
+    // Deck detail reuses the results page, so proactively clear any prior results
+    // DOM to prevent stale rows/actions from remaining interactive while the deck
+    // fetch is in flight.
+    const tbody = document.getElementById('word-table-body');
+    if (tbody) tbody.innerHTML = '';
+    state.currentResults = null;
+    state.currentContext = 'deck';
+    state.currentRow = null;
+    state.pendingLemmaStates.clear();
+    state.currentLemmaStates.clear();
+
+    const titleEl = document.getElementById('results-title');
+    if (titleEl) titleEl.textContent = 'Loading deck…';
+    const durationEl = document.getElementById('results-duration');
+    if (durationEl) durationEl.textContent = '';
+    const statsEl = document.getElementById('results-stats');
+    if (statsEl) statsEl.textContent = '';
+    const parserEl = document.getElementById('results-parser');
+    if (parserEl) parserEl.textContent = '';
+}
+
 // ── Hash router ────────────────────────────────────────────────────────────
 
 const ROUTE_TO_PAGE: Record<string, string> = {
@@ -463,6 +485,7 @@ function renderRoute(): void {
     if (deckMatch) {
         // Deck detail reuses the results page.
         showPage('results-page');
+        beginDeckDetailLoading();
         setActiveNavLink('/decks');
         closeMobileNav();
         void loadDeckDetail(Number(deckMatch[1]));
@@ -1256,6 +1279,7 @@ function renderResultsTable(data: ParseResponse): void {
     const sortedWords = sortWords(filteredWords, state.currentSort);
     const hasGrammar = data.words.some(word => Boolean(word.grammar_label));
     const showActions = state.role === 'user' || state.role === 'admin';
+    const showCorrection = showActions && state.currentContext !== 'deck';
 
     help.textContent = hasGrammar
         ? `Coverage = dictionary-backed tokens. Grammar labels shown as badges when case/morphology was inferred.`
@@ -1288,6 +1312,14 @@ function renderResultsTable(data: ParseResponse): void {
         const rowStatusHtml = rowStatus
             ? `<span class="word-state-badge ${rowStatus}">${rowStatus === 'known' ? 'Known' : 'Ignored'}</span>`
             : '';
+        const correctionButton = showCorrection
+            ? `<button type="button" class="btn btn-link btn-sm correction-btn"
+                    data-lemma="${escapeHtml(w.lemma)}"
+                    data-pos="${escapeHtml(w.pos)}"
+                    data-surface="${escapeHtml(surfaceForm)}"
+                    data-grammar="${escapeHtml(w.grammar_label || '')}">Suggest fix</button>`
+            : '';
+
         const actionCell = showActions
             ? `<td class="col-actions"><div class="word-actions">
                 ${rowStatusHtml}
@@ -1301,11 +1333,7 @@ function renderResultsTable(data: ParseResponse): void {
                     data-lemma="${escapeHtml(w.lemma)}"
                     data-pos="${escapeHtml(w.pos)}"
                     ${rowPending || rowStatus === 'ignored' ? 'disabled' : ''}>Ignore</button>
-                <button type="button" class="btn btn-link btn-sm correction-btn"
-                    data-lemma="${escapeHtml(w.lemma)}"
-                    data-pos="${escapeHtml(w.pos)}"
-                    data-surface="${escapeHtml(surfaceForm)}"
-                    data-grammar="${escapeHtml(w.grammar_label || '')}">Suggest fix</button>
+                ${correctionButton}
                </div></td>`
             : '';
 
@@ -1334,7 +1362,7 @@ function renderResultsTable(data: ParseResponse): void {
         });
     });
 
-    // Wire up newly-rendered correction buttons
+    // Wire up newly-rendered correction buttons.
     tbody.querySelectorAll<HTMLButtonElement>('.correction-btn').forEach(btn => {
         btn.addEventListener('click', () => openCorrectionModal({
             lemma:                  btn.dataset.lemma   || '',
