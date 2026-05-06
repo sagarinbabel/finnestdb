@@ -875,8 +875,11 @@ async function deleteKnownWord(lemma: string, pos: string): Promise<void> {
 
 // ── Language detection (shared between inspect + workbench) ────────────────
 
+const LANG_DETECT_MIN_CHARS = 20;
+const LANG_DETECT_SAMPLE_CHARS = 4096;
+
 function detectLang(text: string): 'FI' | 'ET' | 'unknown' {
-    const lower = text.toLowerCase();
+    const lower = text.slice(0, LANG_DETECT_SAMPLE_CHARS).toLowerCase();
     const letters = lower.match(/[a-zäöüõ]/g) || [];
     if (letters.length === 0) return 'unknown';
     if (/õ/.test(lower)) return 'ET';
@@ -963,7 +966,7 @@ function updateCharCount(els: ParseFormElements): void {
 }
 
 function updateLangWarning(els: ParseFormElements, gateInspectButton: boolean): void {
-    if (els.text.value.trim().length < 20) {
+    if (els.text.value.trim().length < LANG_DETECT_MIN_CHARS) {
         els.warning.classList.add('hidden');
         els.switchBtn.classList.add('hidden');
         if (gateInspectButton) gateSubmit('inspect-submit', false);
@@ -995,6 +998,27 @@ function gateSubmit(id: string, disabled: boolean): void {
     if (btn) btn.disabled = disabled;
 }
 
+function maybeAutoSwitchFromIngest(
+    els: ParseFormElements,
+    gateInspectButton: boolean,
+    source: 'paste' | 'file',
+): void {
+    const text = els.text.value;
+    if (text.trim().length < LANG_DETECT_MIN_CHARS) {
+        updateLangWarning(els, gateInspectButton);
+        return;
+    }
+
+    const detected = detectLang(text);
+    if (detected !== 'unknown' && detected !== els.lang.value) {
+        els.lang.value = detected;
+        const sourceLabel = source === 'paste' ? 'pasted text' : 'file content';
+        showToast(`Switched to ${detected === 'FI' ? 'Finnish' : 'Estonian'} — detected from ${sourceLabel}`, 'info');
+    }
+
+    updateLangWarning(els, gateInspectButton);
+}
+
 function initInspectForm(): void {
     const els = getInspectEls();
     if (!els) return;
@@ -1006,14 +1030,7 @@ function initInspectForm(): void {
 
     els.text.addEventListener('paste', () => {
         setTimeout(() => {
-            const text = els.text.value;
-            if (text.trim().length < 20) return;
-            const detected = detectLang(text);
-            if (detected !== 'unknown' && detected !== els.lang.value) {
-                els.lang.value = detected;
-                showToast(`Switched to ${detected === 'FI' ? 'Finnish' : 'Estonian'} — detected from text`, 'info');
-                updateLangWarning(els, true);
-            }
+            maybeAutoSwitchFromIngest(els, true, 'paste');
         }, 0);
     });
 
@@ -1034,7 +1051,7 @@ function initInspectForm(): void {
         const text = await file.text();
         els.text.value = text.slice(0, MAX_CHARS);
         updateCharCount(els);
-        updateLangWarning(els, true);
+        maybeAutoSwitchFromIngest(els, true, 'file');
     });
 
     const form = document.getElementById('inspect-form') as HTMLFormElement | null;
@@ -1057,14 +1074,7 @@ function initWorkbenchForm(): void {
 
     els.text.addEventListener('paste', () => {
         setTimeout(() => {
-            const text = els.text.value;
-            if (text.trim().length < 20) return;
-            const detected = detectLang(text);
-            if (detected !== 'unknown' && detected !== els.lang.value) {
-                els.lang.value = detected;
-                showToast(`Switched to ${detected === 'FI' ? 'Finnish' : 'Estonian'} — detected from text`, 'info');
-                updateLangWarning(els, false);
-            }
+            maybeAutoSwitchFromIngest(els, false, 'paste');
         }, 0);
     });
 
@@ -1085,7 +1095,7 @@ function initWorkbenchForm(): void {
         const text = await file.text();
         els.text.value = text.slice(0, MAX_CHARS);
         updateCharCount(els);
-        updateLangWarning(els, false);
+        maybeAutoSwitchFromIngest(els, false, 'file');
     });
 
     const handle = (mode: ParserMode, btnId: string) => async (e: Event) => {
