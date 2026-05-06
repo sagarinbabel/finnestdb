@@ -254,10 +254,15 @@ boundaries.
   on `forms`, new `translations` and `definitions` tables. No behavior
   change. Shipped in #76 once #67 merged. Tests: schema migration
   round-trip; parser eval baseline unchanged.
-- **Phase 2 — kaikki.org refactor.** Move EN glosses to `translations`,
-  FI defs to `definitions`. Update enrichment to read from new tables
-  with fallback to `lemmas.gloss`. Tests: parser eval baseline
-  unchanged; UI still renders glosses.
+- **Phase 2 — kaikki.org refactor.** Shipped 2026-05-06 across four
+  PRs. Move EN glosses to `translations` (#85 for kaikki, #89 for
+  Ekilex extending the same pattern to ET). Update enrichment to
+  read from `translations` with fallback to `lemmas.gloss` (#86).
+  Eval baseline unchanged on the post-#84 reference DB.
+  FI definitions (target_lang='FI') still pending an fi.wiktionary
+  import path; not blocking subsequent phases. See
+  [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) for the
+  measurement entry.
 - **Phase 3 — Kotus adapter.** Pull sanalista, populate
   `paradigm_class` on existing FI lemmas, insert any Kotus lemmas not
   yet present. Tests: lemma count grows; eval baseline unchanged.
@@ -337,9 +342,13 @@ implementation:
   [`scripts/`](../scripts/) and is locked alongside the Phase 3.5
   spike (so Phase 4 only writes; it doesn't decide).
 - **kaikki.org extraction of fi.wiktionary defs vs en.wiktionary
-  glosses.** Need to confirm kaikki.org's Finnish dump exposes both
-  cleanly via `senses[*].glosses` plus a language-of-edition flag.
-  Verify during Phase 2.
+  glosses.** Phase 2 (#85) deferred this — the write path hard-codes
+  `target_lang='EN'` because both FI and ET kaikki dumps are
+  en.wiktionary extractions whose glosses are English. Loading
+  fi.wiktionary's Finnish-language definitions into
+  `definitions` (target_lang='FI') needs a separate kaikki dump
+  (`https://kaikki.org/fiwiktionary/`) and a future import path —
+  not blocking Phase 3/4.
 
 ## See Also
 
