@@ -324,7 +324,7 @@ func cmdSample(args []string) error {
 	keyEnv := fs.String("key-env", "EKILEX_API_KEY", "")
 	queue := fs.String("queue", "data/ekilex/eki-public-words-2026-et.jsonl", "")
 	outDir := fs.String("out-dir", "localdata/ekilex/details/samples", "")
-	wordsFlag := fs.String("words", "koer,maja,jooksma,kell,või", "comma-separated lemmas")
+	wordsFlag := fs.String("words", "koer,maja,jooksma,kell,või", "comma-separated lemmas; only the first matching word_id is returned for duplicate lemmas — use -word-ids for explicit coverage")
 	idsFlag := fs.String("word-ids", "", "comma-separated word_ids (overrides -words)")
 	variants := fs.String("datasets-compare", "eki,", "comma-separated dataset filters; empty value = no filter")
 	fs.Parse(args)
