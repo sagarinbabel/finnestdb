@@ -65,11 +65,6 @@ def configure_local_caches() -> None:
         os.environ.setdefault("MPLCONFIGDIR", str(mpl_config))
 
 
-def split_sentences(text: str) -> list[str]:
-    parts = re.split(r"(?<=[.!?])\s+", text.strip())
-    return [part for part in parts if part]
-
-
 def raw_value(annotation: Any, key: str, default: str = "") -> str:
     if isinstance(annotation, dict):
         value = annotation.get(key, default)
@@ -96,45 +91,54 @@ def grammar_label(form: str) -> str:
     return CASE_LABELS.get(tags[-1], "")
 
 
-def analyse_sentence(sentence: str) -> dict:
+def token_for_span(span: Any) -> dict | None:
+    annotation = best_annotation(span)
+    form = getattr(span, "text", "")
+    if not form:
+        return None
+    raw_pos = raw_value(annotation, "partofspeech")
+    pos = POS_LABELS.get(raw_pos, "X")
+    if pos == "PUNCT" or (not raw_pos and re.fullmatch(r"\W+", form, flags=re.UNICODE)):
+        return {
+            "form": form,
+            "lemma": form,
+            "pos": "PUNCT",
+            "feats": {},
+            "grammar_label": "PUNCT_CLOSE" if form in ".,;:!?)" else "",
+            "mwe_id": None,
+        }
+    lemma = raw_value(annotation, "lemma") or raw_value(annotation, "root") or form.lower()
+    vm_form = raw_value(annotation, "form")
+    return {
+        "form": form,
+        "lemma": lemma.replace("_", ""),
+        "pos": pos,
+        "feats": {"vabamorf_form": vm_form} if vm_form else {},
+        "grammar_label": grammar_label(vm_form),
+        "mwe_id": None,
+    }
+
+
+def analyse_text(raw_text: str) -> list[dict]:
     from estnltk import Text
 
-    text = Text(sentence)
-    text.tag_layer(["words", "morph_analysis"])
+    text = Text(raw_text)
+    text.tag_layer(["sentences", "words", "morph_analysis"])
 
-    out_tokens = []
-    for span in text["morph_analysis"]:
-        annotation = best_annotation(span)
-        form = getattr(span, "text", "")
-        if not form:
-            continue
-        raw_pos = raw_value(annotation, "partofspeech")
-        pos = POS_LABELS.get(raw_pos, "X")
-        if pos == "PUNCT" or (not raw_pos and re.fullmatch(r"\W+", form, flags=re.UNICODE)):
-            out_tokens.append(
-                {
-                    "form": form,
-                    "lemma": form,
-                    "pos": "PUNCT",
-                    "feats": {},
-                    "grammar_label": "PUNCT_CLOSE" if form in ".,;:!?)" else "",
-                    "mwe_id": None,
-                }
-            )
-            continue
-        lemma = raw_value(annotation, "lemma") or raw_value(annotation, "root") or form.lower()
-        vm_form = raw_value(annotation, "form")
-        out_tokens.append(
-            {
-                "form": form,
-                "lemma": lemma.replace("_", ""),
-                "pos": pos,
-                "feats": {"vabamorf_form": vm_form} if vm_form else {},
-                "grammar_label": grammar_label(vm_form),
-                "mwe_id": None,
-            }
-        )
-    return {"tokens": out_tokens}
+    sentences: list[dict] = []
+    for sentence in text["sentences"]:
+        sent_start = sentence.start
+        sent_end = sentence.end
+        out_tokens = []
+        for span in text["morph_analysis"]:
+            if span.start < sent_start or span.end > sent_end:
+                continue
+            token = token_for_span(span)
+            if token is not None:
+                out_tokens.append(token)
+        if out_tokens:
+            sentences.append({"tokens": out_tokens})
+    return sentences
 
 
 def main() -> int:
@@ -154,7 +158,7 @@ def main() -> int:
         return 0
 
     try:
-        sentences = [analyse_sentence(sentence) for sentence in split_sentences(text)]
+        sentences = analyse_text(text)
     except ImportError:
         print("estnltk is not installed. Run `make setup-estnltk`.", file=sys.stderr)
         return 2
