@@ -182,3 +182,122 @@ func TestComputePriorityRegressions_FocusParserLoses(t *testing.T) {
 		t.Fatalf("surface=%q want kirjassani", got[0].Surface)
 	}
 }
+
+// TestCompareFeatsByAttribute checks the per-attribute comparator for the
+// FEATS migration. Recall-of-gold semantics: attributes the parser added
+// that gold didn't are silently ignored; missed gold attributes are
+// reported as false.
+func TestCompareFeatsByAttribute(t *testing.T) {
+	cases := []struct {
+		name     string
+		expected string
+		actual   string
+		want     map[string]bool
+	}{
+		{
+			name:     "exact match",
+			expected: "Case=Ine|Number=Sing",
+			actual:   "Case=Ine|Number=Sing",
+			want:     map[string]bool{"Case": true, "Number": true},
+		},
+		{
+			name:     "one wrong",
+			expected: "Case=Ine|Number=Sing",
+			actual:   "Case=Par|Number=Sing",
+			want:     map[string]bool{"Case": false, "Number": true},
+		},
+		{
+			name:     "actual missing one",
+			expected: "Case=Ine|Number=Sing",
+			actual:   "Case=Ine",
+			want:     map[string]bool{"Case": true, "Number": false},
+		},
+		{
+			name:     "actual richer than gold (extra ignored)",
+			expected: "Case=Ine",
+			actual:   "Case=Ine|Number=Sing|Person=3",
+			want:     map[string]bool{"Case": true},
+		},
+		{
+			name:     "actual empty",
+			expected: "Case=Ine|Number=Sing",
+			actual:   "",
+			want:     map[string]bool{"Case": false, "Number": false},
+		},
+		{
+			name:     "gold empty returns nil",
+			expected: "",
+			actual:   "Case=Ine",
+			want:     nil,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := compareFeatsByAttribute(tc.expected, tc.actual)
+			if len(got) != len(tc.want) {
+				t.Fatalf("len got %d, want %d", len(got), len(tc.want))
+			}
+			for k, v := range tc.want {
+				if got[k] != v {
+					t.Errorf("%q got %v, want %v", k, got[k], v)
+				}
+			}
+		})
+	}
+}
+
+// TestSummaryAccumulator_FeatsAttributes verifies that the accumulator
+// counts per-attribute correctness and that ParserSummary surfaces it.
+func TestSummaryAccumulator_FeatsAttributes(t *testing.T) {
+	acc := &summaryAccumulator{}
+	parsed := &parsecore.ParseResult{
+		Stats: parsecore.ParseStats{},
+		Sentences: []parsecore.SentenceResult{
+			{Tokens: []parsecore.TokenResult{
+				{Form: "a", Lemma: "a", POS: "NOUN", Resolved: true},
+				{Form: "b", Lemma: "b", POS: "NOUN", Resolved: true},
+			}},
+		},
+	}
+	comparisons := []TokenCompare{
+		{
+			Expected: TokenExpected{Lemma: "a", POS: "NOUN", Feats: "Case=Ine|Number=Sing"},
+			Actual:   TokenActual{Found: true, Lemma: "a", POS: "NOUN", Feats: "Case=Ine|Number=Sing"},
+			Match: TokenMatch{
+				Lemma: true, POS: true, Grammar: true,
+				FeatsStrict: true,
+				FeatsByAttr: map[string]bool{"Case": true, "Number": true},
+				Full:        true,
+			},
+		},
+		{
+			Expected: TokenExpected{Lemma: "b", POS: "NOUN", Feats: "Case=Par|Number=Sing"},
+			Actual:   TokenActual{Found: true, Lemma: "b", POS: "NOUN", Feats: "Case=Ine|Number=Sing"},
+			Match: TokenMatch{
+				Lemma: true, POS: true, Grammar: false,
+				FeatsStrict: false,
+				FeatsByAttr: map[string]bool{"Case": false, "Number": true},
+				Full:        false,
+			},
+		},
+	}
+
+	acc.consume(parsed, comparisons, []int64{1, 1}, 4)
+	got := acc.finish()
+
+	// Per-attribute: Case 1/2 = 0.5, Number 2/2 = 1.0
+	if got.FeatsAccuracyByAttribute["Case"] != 0.5 {
+		t.Errorf("Case accuracy: got %v want 0.5", got.FeatsAccuracyByAttribute["Case"])
+	}
+	if got.FeatsAccuracyByAttribute["Number"] != 1.0 {
+		t.Errorf("Number accuracy: got %v want 1.0", got.FeatsAccuracyByAttribute["Number"])
+	}
+	// Strict: 1/2 = 0.5
+	if got.FeatsStrictAccuracy != 0.5 {
+		t.Errorf("FeatsStrictAccuracy: got %v want 0.5", got.FeatsStrictAccuracy)
+	}
+	// Recall (micro-averaged): correct=3 (Case=1, Number=2) / eligible=4 → 0.75
+	if got.FeatsRecall != 0.75 {
+		t.Errorf("FeatsRecall: got %v want 0.75", got.FeatsRecall)
+	}
+}

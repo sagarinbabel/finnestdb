@@ -572,11 +572,15 @@ func TestBatchLookupForms_AttachCaseLabelOnDictHit(t *testing.T) {
 	if r.GrammarLabel != "inessive" {
 		t.Errorf("talossa: grammar label got %q, want inessive", r.GrammarLabel)
 	}
-	// Either the FST-promotion path (preferred) or the case-suffix
-	// stopgap (fallback when FST has no analysis) attaches the label —
-	// both are valid as of 2026-05-07. Source records which path won.
-	if !strings.Contains(r.Source, "+fst_label") && !strings.Contains(r.Source, "+case_suffix_label") {
-		t.Errorf("talossa: source should record additive label (fst or case_suffix); got %q", r.Source)
+	// Any of three additive-attachment paths is valid as of 2026-05-07:
+	//   * +fst_feats: FST step promotion attached full FEATS
+	//   * +fst_label: FST step promotion attached label only (rare)
+	//   * +case_suffix_label: stopgap fallback when FST has no analysis
+	src := r.Source
+	if !strings.Contains(src, "+fst_feats") &&
+		!strings.Contains(src, "+fst_label") &&
+		!strings.Contains(src, "+case_suffix_label") {
+		t.Errorf("talossa: source should record additive label (fst_feats / fst_label / case_suffix); got %q", src)
 	}
 }
 

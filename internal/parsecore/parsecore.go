@@ -50,10 +50,16 @@ type TokenResult struct {
 	Lemma        string   `json:"lemma"`
 	POS          string   `json:"pos"`
 	GrammarLabel string   `json:"grammar_label,omitempty"`
-	Source       string   `json:"source"`
-	Resolved     bool     `json:"resolved"`
-	Trace        []string `json:"trace,omitempty"`
-	RuleTrace    []string `json:"rule_trace,omitempty"`
+	// Feats is the full UD FEATS string for the token (e.g.
+	// "Case=Ine|Number=Sing|Person=3"). Populated from
+	// store.FormResolution.Feats (Ekilex morph_code, FST analysis, or
+	// future sources). GrammarLabel remains for back-compat with the
+	// case-only metric and is back-projected from Feats' Case= attribute.
+	Feats     string   `json:"feats,omitempty"`
+	Source    string   `json:"source"`
+	Resolved  bool     `json:"resolved"`
+	Trace     []string `json:"trace,omitempty"`
+	RuleTrace []string `json:"rule_trace,omitempty"`
 }
 
 type SentenceResult struct {
@@ -672,6 +678,7 @@ func resolveDictionarySentences(sentences []parsedSentence, formResolutions map[
 				resolved.Lemma = dictRes.Lemma
 				resolved.POS = dictRes.POS
 				resolved.GrammarLabel = dictRes.GrammarLabel
+				resolved.Feats = dictRes.Feats
 				resolved.Source = dictRes.Source
 				resolved.Resolved = true
 				resolved.Trace = append(resolved.Trace, fmt.Sprintf("resolution:%s lemma=%s pos=%s", dictRes.Source, dictRes.Lemma, dictRes.POS))

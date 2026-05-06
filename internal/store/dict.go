@@ -90,17 +90,17 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		lower := strings.ToLower(form)
 
 		// FST step promotion (2026-05-07): run the FST in parallel with
-		// the dict so direct hits can carry grammar_label too. Without
-		// this, the FST only fires on dict misses (~5% of tokens) and
-		// the post-FST baseline reported 1.4% / 2.0% grammar accuracy
-		// because most tokens hit dict step 1 and never see the analyzer.
+		// the dict so direct hits can carry grammar_label and feats too.
+		// Without this, the FST only fires on dict misses (~5% of tokens)
+		// and most tokens hit dict step 1 never seeing the analyzer.
 		// See docs/LEARNINGS.md "FST and stopgap cover different paths".
-		var fstLabel, fstLemma string
+		var fstLabel, fstLemma, fstFeats string
 		if parserMode == "custom" && (lang == "FI" || lang == "ET") {
 			if lem := d.fstLemmatizer(); lem != nil {
 				if a, ok := pickFirstFSTAnalysis(lem.Lemmatize(lang, lower)); ok {
 					fstLabel = a.GrammarLabel
 					fstLemma = a.Lemma
+					fstFeats = featsFromFSTAnalysis(a)
 				}
 			}
 		}
@@ -110,22 +110,31 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		// against the original-case surface so PROPN homonyms don't beat
 		// common-noun lemmas on lowercase surfaces.
 		if best, ok := lookupBestForm(stmtFormsAll, form, lower, lang); ok {
-			// Attach grammar_label, in priority order:
-			//   1. FST analysis (when lemma agrees with dict's lemma —
+			// Attach grammar_label / feats, in priority order:
+			//   1. dict.feats from forms.feats (Ekilex morph_code in ET);
+			//      already populated by lookupBestForm. Highest priority.
+			//   2. FST analysis (when lemma agrees with dict's lemma —
 			//      lemma-equality guard prevents attaching a label that
 			//      belongs to a different word).
-			//   2. Case-suffix stopgap (only when FST didn't fire or
+			//   3. Case-suffix stopgap (only when FST didn't fire or
 			//      didn't agree on the lemma).
-			// The stopgap can be removed once the FEATS migration lands
-			// and we measure full-FEATS accuracy; today, since gold only
-			// has Case=, both paths produce equivalent grammar_label
-			// values for non-stem-alternating cases.
-			if parserMode == "custom" && best.GrammarLabel == "" {
-				if fstLabel != "" && fstLemma == best.Lemma {
-					best.GrammarLabel = fstLabel
-					best.Source = best.Source + "+fst_label"
-				} else {
-					best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
+			if parserMode == "custom" {
+				// FEATS attachment: dict.feats wins; otherwise take from FST.
+				if best.Feats == "" && fstFeats != "" && fstLemma == best.Lemma {
+					best.Feats = fstFeats
+					if best.GrammarLabel == "" {
+						best.GrammarLabel = caseFromFeats(fstFeats)
+					}
+					best.Source = best.Source + "+fst_feats"
+				}
+				// grammar_label fallback when neither dict nor FST gave one.
+				if best.GrammarLabel == "" {
+					if fstLabel != "" && fstLemma == best.Lemma {
+						best.GrammarLabel = fstLabel
+						best.Source = best.Source + "+fst_label"
+					} else {
+						best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
+					}
 				}
 			}
 			result[form] = best
@@ -212,6 +221,48 @@ func pickFirstFSTAnalysis(analyses []lemmatizer.Analysis) (lemmatizer.Analysis, 
 	}
 	return lemmatizer.Analysis{}, false
 }
+
+// featsFromFSTAnalysis assembles a UD FEATS string from the structured
+// fields the FST runtime emits. Mirrors cmd/importekilexdetails::feats.go's
+// shape so a token's FEATS string is comparable across sources. Returns
+// "" when no attribute has a value.
+func featsFromFSTAnalysis(a lemmatizer.Analysis) string {
+	var pairs []string
+	if a.GrammarLabel != "" {
+		if udCase, ok := caseLegacyToUD[a.GrammarLabel]; ok {
+			pairs = append(pairs, "Case="+udCase)
+		}
+	}
+	if a.Number != "" {
+		pairs = append(pairs, "Number="+a.Number)
+	}
+	if a.Person != "" {
+		pairs = append(pairs, "Person="+a.Person)
+	}
+	if a.Tense != "" {
+		pairs = append(pairs, "Tense="+a.Tense)
+	}
+	if a.Mood != "" {
+		pairs = append(pairs, "Mood="+a.Mood)
+	}
+	if len(pairs) == 0 {
+		return ""
+	}
+	sort.Strings(pairs)
+	return strings.Join(pairs, "|")
+}
+
+// caseLegacyToUD inverts udCaseToLegacyLabel. The FST runtime emits the
+// lowercase English name (e.g. "inessive") via voikkomap/giellaltmap; we
+// reverse it to the UD code ("Ine") to assemble a UD FEATS string.
+var caseLegacyToUD = func() map[string]string {
+	out := make(map[string]string, len(udCaseToLegacyLabel))
+	for k, v := range udCaseToLegacyLabel {
+		out[v] = k
+	}
+	out["nominative"] = "Nom" // not in udCaseToLegacyLabel because we project Nom→empty for grammar_label, but we want it back when assembling FEATS
+	return out
+}()
 
 // formCandidate is the internal shape used while ranking multi-lemma matches.
 // Source / SourcePriority come from the row-level dictionary metadata; older
