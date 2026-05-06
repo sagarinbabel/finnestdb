@@ -93,6 +93,11 @@ Current UI features:
 - deck save, deck list, and review flow
 - theme toggle
 
+Note: Deck-detail “Suggest fix” feedback is currently wired as a **stub/skeleton**
+path that attributes suggestions to the **parser run used during deck creation**
+(a stored `parse_session`). It does not yet imply any automated parser training
+or immediate dictionary mutation.
+
 ## Build and Tooling
 
 ### Core build

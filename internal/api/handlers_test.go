@@ -1330,6 +1330,12 @@ func TestGetDeckDetail(t *testing.T) {
 	if detail.Lang != "FI" {
 		t.Errorf("Lang=%q want FI", detail.Lang)
 	}
+	if detail.Parser != "custom" {
+		t.Errorf("Parser=%q want custom", detail.Parser)
+	}
+	if detail.ParseID == nil || *detail.ParseID <= 0 {
+		t.Errorf("ParseID=%v want non-nil positive", detail.ParseID)
+	}
 	if detail.TotalTokens != 4 {
 		t.Errorf("TotalTokens=%d want 4 (2 sentences × 2 tokens)", detail.TotalTokens)
 	}

@@ -165,6 +165,9 @@ func (d *DB) initSchema() error {
 		user_id INTEGER NOT NULL,
 		title TEXT NOT NULL,
 		lang TEXT NOT NULL,
+		-- Optional: if present, deck-detail "Suggest fix" can attribute feedback to
+		-- the parse session that produced the deck.
+		parse_session_id INTEGER,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY(user_id) REFERENCES users(id)
 	);
@@ -368,7 +371,22 @@ func (d *DB) initSchema() error {
 	if err := EnsureMultiLemmaSchema(d.db); err != nil {
 		return err
 	}
+	if err := EnsureDeckParseSessionColumn(d.db); err != nil {
+		return err
+	}
 
+	return nil
+}
+
+func EnsureDeckParseSessionColumn(db *sql.DB) error {
+	// Backfill for older DB files (fresh DBs already include the column in CREATE TABLE).
+	if _, err := db.Exec(`ALTER TABLE decks ADD COLUMN parse_session_id INTEGER`); err != nil {
+		// SQLite does not support IF NOT EXISTS for ADD COLUMN; treat "duplicate column"
+		// as idempotent success.
+		if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -1115,6 +1133,7 @@ type DeckLemma struct {
 
 type DeckDetails struct {
 	Deck
+	ParseSessionID *int64
 	TotalTokens int
 	Lemmas      []DeckLemma
 }
@@ -1125,13 +1144,17 @@ type DeckDetails struct {
 // owned by userID.
 func (d *DB) GetDeckDetails(userID, deckID int64) (*DeckDetails, error) {
 	var details DeckDetails
+	var parseSessionID sql.NullInt64
 	err := d.db.QueryRow(
-		`SELECT id, user_id, title, lang, created_at
+		`SELECT id, user_id, title, lang, parse_session_id, created_at
 		   FROM decks WHERE id = ? AND user_id = ?`,
 		deckID, userID,
-	).Scan(&details.ID, &details.UserID, &details.Title, &details.Lang, &details.CreatedAt)
+	).Scan(&details.ID, &details.UserID, &details.Title, &details.Lang, &parseSessionID, &details.CreatedAt)
 	if err != nil {
 		return nil, err
+	}
+	if parseSessionID.Valid {
+		details.ParseSessionID = &parseSessionID.Int64
 	}
 
 	rows, err := d.db.Query(
@@ -1177,6 +1200,24 @@ func (d *DB) GetDeckDetails(userID, deckID int64) (*DeckDetails, error) {
 		return nil, err
 	}
 	return &details, nil
+}
+
+func (d *DB) SetDeckParseSession(userID, deckID, parseSessionID int64) error {
+	res, err := d.db.Exec(
+		`UPDATE decks SET parse_session_id = ? WHERE id = ? AND user_id = ?`,
+		parseSessionID, deckID, userID,
+	)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 // CreateOccurrence records that a lemma+pos token appeared at position tokenIx
