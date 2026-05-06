@@ -108,7 +108,7 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 			Lang:            lang,
 			Parser:          parser,
 			TotalTokens:     3,
-			ParseDurationMs: 17,
+			ParseDurationNs: 17_000_000,
 			Stats: parsecore.ParseStats{
 				UniqueForms:      2,
 				TotalSentences:   1,
@@ -119,12 +119,12 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 					"stub": 1,
 				},
 				Timings: parsecore.ParseTimings{
-					AnalyzeMs:          5,
-					LookupFormsMs:      4,
-					LookupGlossesMs:    3,
-					ResolveSentencesMs: 2,
-					EnrichWordsMs:      1,
-					TotalMs:            17,
+					AnalyzeNs:          5_000_000,
+					LookupFormsNs:      4_000_000,
+					LookupGlossesNs:    3_000_000,
+					ResolveSentencesNs: 2_000_000,
+					EnrichWordsNs:      1_000_000,
+					TotalNs:            17_000_000,
 				},
 			},
 			Words: []parsecore.WordEntry{
@@ -161,7 +161,7 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 		t.Fatalf("total_tokens=%d want 3", resp.TotalTokens)
 	}
 	if resp.ParseDurationMs != 17 {
-		t.Fatalf("parse_duration_ms=%d want 17", resp.ParseDurationMs)
+		t.Fatalf("parse_duration_ms=%v want 17", resp.ParseDurationMs)
 	}
 	if resp.Stats.UniqueForms != 2 {
 		t.Fatalf("stats.unique_forms=%d want 2", resp.Stats.UniqueForms)
@@ -169,8 +169,8 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 	if resp.Stats.ResolvedTokens != 2 {
 		t.Fatalf("stats.resolved_tokens=%d want 2", resp.Stats.ResolvedTokens)
 	}
-	if resp.Stats.Timings.TotalMs != 17 {
-		t.Fatalf("stats.timings.total_ms=%d want 17", resp.Stats.Timings.TotalMs)
+	if resp.Stats.Timings.TotalNs != 17_000_000 {
+		t.Fatalf("stats.timings.total_ns=%d want 17_000_000", resp.Stats.Timings.TotalNs)
 	}
 	if len(resp.Words) != 2 {
 		t.Fatalf("words=%d want 2", len(resp.Words))
@@ -190,7 +190,7 @@ func TestHandleParseCreatesParseSessionForAuthenticatedUser(t *testing.T) {
 			Lang:            lang,
 			Parser:          parser,
 			TotalTokens:     2,
-			ParseDurationMs: 11,
+			ParseDurationNs: 11_000_000,
 			Stats:           parsecore.ParseStats{},
 			Words: []parsecore.WordEntry{
 				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 1},
@@ -241,7 +241,7 @@ func TestHandleParseHydratesLemmaStateForAuthenticatedUser(t *testing.T) {
 			Lang:            lang,
 			Parser:          parser,
 			TotalTokens:     2,
-			ParseDurationMs: 11,
+			ParseDurationNs: 11_000_000,
 			Stats:           parsecore.ParseStats{},
 			Words: []parsecore.WordEntry{
 				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 1},
@@ -402,6 +402,38 @@ func TestHandleParseExpandsHomonyms(t *testing.T) {
 				break
 			}
 		}
+	}
+}
+
+func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
+	api := newTestAPI(t)
+	parsed := &parsecore.ParseResult{
+		Lang: "ET",
+		Sentences: []parsecore.SentenceResult{
+			{
+				Text: "joon",
+				Tokens: []parsecore.TokenResult{
+					{Form: "joon", Lemma: "joon", POS: "NOUN"},
+				},
+			},
+		},
+	}
+	dict := map[string][]store.FormResolution{
+		"joon": {
+			{Lemma: "joon", POS: "VERB"},
+			{Lemma: "joon", POS: "NOUN"},
+		},
+	}
+
+	got := api.expandParsedWords(parsed, dict)
+	if len(got) != 2 {
+		t.Fatalf("len=%d want 2: %+v", len(got), got)
+	}
+	if got[0].Lemma != "joon" || got[0].POS != "NOUN" {
+		t.Fatalf("first=%s/%s want joon/NOUN: %+v", got[0].Lemma, got[0].POS, got)
+	}
+	if got[1].Lemma != "joon" || got[1].POS != "VERB" {
+		t.Fatalf("second=%s/%s want joon/VERB: %+v", got[1].Lemma, got[1].POS, got)
 	}
 }
 
@@ -922,6 +954,63 @@ func TestLemmaStateRequiresAuthentication(t *testing.T) {
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusUnauthorized, rec.Body.String())
+	}
+}
+
+func TestLemmaStatesBatchLookupReturnsCurrentStates(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "lemma-state-batch@example.com")
+
+	for _, body := range []string{
+		`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"known"}`,
+		`{"lang":"FI","lemma":"juosta","pos":"VERB","status":"ignored"}`,
+	} {
+		req := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(body))
+		for _, cookie := range cookies {
+			req.AddCookie(cookie)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("seed state status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/lemma-states", strings.NewReader(`{
+		"lang":"FI",
+		"lemmas":[
+			{"lemma":"kissa","pos":"NOUN"},
+			{"lemma":"juosta","pos":"VERB"},
+			{"lemma":"talo","pos":"NOUN"},
+			{"lemma":"kissa","pos":"NOUN"}
+		]
+	}`))
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var resp LemmaStateLookupResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	got := map[string]string{}
+	for _, state := range resp.States {
+		got[state.Lemma+"/"+state.POS] = state.Status
+	}
+	if got["kissa/NOUN"] != "known" {
+		t.Fatalf("kissa/NOUN=%q want known (states=%+v)", got["kissa/NOUN"], resp.States)
+	}
+	if got["juosta/VERB"] != "ignored" {
+		t.Fatalf("juosta/VERB=%q want ignored (states=%+v)", got["juosta/VERB"], resp.States)
+	}
+	if _, ok := got["talo/NOUN"]; ok {
+		t.Fatalf("neutral talo/NOUN should be omitted from response: %+v", resp.States)
 	}
 }
 
@@ -1856,7 +1945,7 @@ func TestParseFeedbackSubmissionAndAdminReview(t *testing.T) {
 			Lang:            lang,
 			Parser:          parser,
 			TotalTokens:     2,
-			ParseDurationMs: 11,
+			ParseDurationNs: 11_000_000,
 			Stats:           parsecore.ParseStats{},
 			Words: []parsecore.WordEntry{
 				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 1},

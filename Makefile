@@ -4,7 +4,8 @@
         fetch-ekilex-refresh fetch-ekilex-sample fetch-ekilex \
         reduce-ekilex \
         reimport-dict-fi reimport-dict-et reimport-dict verify-dict \
-        setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et
+        setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et \
+        import-ud-gold import-ud-gold-fi import-ud-gold-et
 
 # Default target
 all: build
@@ -280,6 +281,26 @@ setup-estnltk:
 
 compare-parsers-et: parser
 	@bash scripts/parser-comparison-et.sh
+
+# ── UD treebank gold-set ingest (Plan C / PR 1) ──────────────────────────────
+#
+# Clone Universal Dependencies treebanks and project them into our parser-eval
+# gold JSON format. ~1M gold tokens combined (FI + ET, train+dev+test).
+#
+# FI gold files are committed (CC BY / CC BY-SA). ET gold is gitignored (CC
+# BY-NC-SA — we run it locally for internal eval only). Train splits go under
+# gold-train/ for both languages and are gitignored regardless of license
+# because they're large and only used for OOV/coverage analysis.
+#
+# Re-running is idempotent and fast (~30s) — the heavy step is the initial
+# clone (~50 MB per treebank, cached under data/ud-cache/).
+import-ud-gold-fi:
+	@bash scripts/fetch-and-import-ud.sh fi
+
+import-ud-gold-et:
+	@bash scripts/fetch-and-import-ud.sh et
+
+import-ud-gold: import-ud-gold-fi import-ud-gold-et
 
 # Run the standard local parser eval sweep without requiring external baselines.
 eval: parser

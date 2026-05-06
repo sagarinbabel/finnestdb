@@ -271,7 +271,7 @@ This was the first measurement event. Prior to [#29](https://github.com/sagarinb
 **Open issues this surfaced**:
 
 - ET compound splitter buggy on `Rongisõit` (et-0032): producing a non-substring lemma. Quietly fixed between this baseline and 2026-05-05.
-- Per-case timing rounds to 0ms (eval-tooling limitation; needs nanosecond precision).
+- ~~Per-case timing rounds to 0ms (eval-tooling limitation; needs nanosecond precision).~~ Resolved 2026-05-06 in PR #103: the eval timer now records `time.Now()` deltas as int64 nanoseconds end-to-end (`samples_ns` in the report JSON; `*_ms` summary fields are now sub-ms float64). Re-baselining the 2026-05-06 datasets surfaced ~40–50k words/s on `custom` for typical Finnish input — see [`baselines/2026-05-06-fi-summary.md#measured-throughput`](baselines/2026-05-06-fi-summary.md#measured-throughput).
 - Grammar accuracy at 0% suggests case-suffix rules need to fire alongside dict, or dict needs to ship grammar labels itself.
 
 ## Reading this doc

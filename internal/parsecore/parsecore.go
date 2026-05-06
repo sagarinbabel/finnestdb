@@ -73,12 +73,12 @@ type WordEntry struct {
 }
 
 type ParseTimings struct {
-	AnalyzeMs          int64 `json:"analyze_ms"`
-	LookupFormsMs      int64 `json:"lookup_forms_ms"`
-	LookupGlossesMs    int64 `json:"lookup_glosses_ms"`
-	ResolveSentencesMs int64 `json:"resolve_sentences_ms"`
-	EnrichWordsMs      int64 `json:"enrich_words_ms"`
-	TotalMs            int64 `json:"total_ms"`
+	AnalyzeNs          int64 `json:"analyze_ns"`
+	LookupFormsNs      int64 `json:"lookup_forms_ns"`
+	LookupGlossesNs    int64 `json:"lookup_glosses_ns"`
+	ResolveSentencesNs int64 `json:"resolve_sentences_ns"`
+	EnrichWordsNs      int64 `json:"enrich_words_ns"`
+	TotalNs            int64 `json:"total_ns"`
 }
 
 type ParseStats struct {
@@ -95,7 +95,7 @@ type ParseResult struct {
 	Lang            string           `json:"lang"`
 	Parser          string           `json:"parser"`
 	TotalTokens     int              `json:"total_tokens"`
-	ParseDurationMs int64            `json:"parse_duration_ms"`
+	ParseDurationNs int64            `json:"parse_duration_ns"`
 	Stats           ParseStats       `json:"stats"`
 	Words           []WordEntry      `json:"words"`
 	Sentences       []SentenceResult `json:"sentences"`
@@ -197,7 +197,7 @@ func (p dictionaryParser) Name() string { return p.name }
 func (p dictionaryParser) Parse(db *store.DB, lang, text string) (*ParseResult, error) {
 	parseStartedAt := time.Now()
 	result, err := p.analyzer(lang, text)
-	analyzeMs := time.Since(parseStartedAt).Milliseconds()
+	analyzeNs := time.Since(parseStartedAt).Nanoseconds()
 	if err != nil {
 		return nil, fmt.Errorf("parse error: %w", err)
 	}
@@ -210,35 +210,35 @@ func (p dictionaryParser) Parse(db *store.DB, lang, text string) (*ParseResult, 
 	lookupStartedAt := time.Now()
 	uniqueForms := collectUniqueForms(sentences)
 	formResolutions := db.BatchLookupForms(uniqueForms, lang, p.lookupMode)
-	lookupFormsMs := time.Since(lookupStartedAt).Milliseconds()
+	lookupFormsNs := time.Since(lookupStartedAt).Nanoseconds()
 
 	glossLookupStartedAt := time.Now()
 	lemmaKeys := resolvedLemmaKeys(formResolutions)
 	glosses := db.BatchLookupGlosses(lemmaKeys, lang)
-	lookupGlossesMs := time.Since(glossLookupStartedAt).Milliseconds()
+	lookupGlossesNs := time.Since(glossLookupStartedAt).Nanoseconds()
 
 	resolveStartedAt := time.Now()
 	detailedSentences := resolveDictionarySentences(sentences, formResolutions)
-	resolveSentencesMs := time.Since(resolveStartedAt).Milliseconds()
+	resolveSentencesNs := time.Since(resolveStartedAt).Nanoseconds()
 
 	enrichStartedAt := time.Now()
 	words := enrichWords(detailedSentences, glosses)
-	enrichWordsMs := time.Since(enrichStartedAt).Milliseconds()
-	parseDurationMs := time.Since(parseStartedAt).Milliseconds()
+	enrichWordsNs := time.Since(enrichStartedAt).Nanoseconds()
+	parseDurationNs := time.Since(parseStartedAt).Nanoseconds()
 	stats := computeParseStats(detailedSentences, len(uniqueForms), ParseTimings{
-		AnalyzeMs:          analyzeMs,
-		LookupFormsMs:      lookupFormsMs,
-		LookupGlossesMs:    lookupGlossesMs,
-		ResolveSentencesMs: resolveSentencesMs,
-		EnrichWordsMs:      enrichWordsMs,
-		TotalMs:            parseDurationMs,
+		AnalyzeNs:          analyzeNs,
+		LookupFormsNs:      lookupFormsNs,
+		LookupGlossesNs:    lookupGlossesNs,
+		ResolveSentencesNs: resolveSentencesNs,
+		EnrichWordsNs:      enrichWordsNs,
+		TotalNs:            parseDurationNs,
 	})
 
 	return &ParseResult{
 		Lang:            lang,
 		Parser:          p.name,
 		TotalTokens:     countTokens(words),
-		ParseDurationMs: parseDurationMs,
+		ParseDurationNs: parseDurationNs,
 		Stats:           stats,
 		Words:           words,
 		Sentences:       detailedSentences,
@@ -261,7 +261,7 @@ func (p externalAnalyzerParser) Parse(db *store.DB, lang, text string) (*ParseRe
 	}
 	parseStartedAt := time.Now()
 	result, err := p.analyzer(lang, text)
-	analyzeMs := time.Since(parseStartedAt).Milliseconds()
+	analyzeNs := time.Since(parseStartedAt).Nanoseconds()
 	if err != nil {
 		return nil, err
 	}
@@ -275,7 +275,7 @@ func (p externalAnalyzerParser) Parse(db *store.DB, lang, text string) (*ParseRe
 	uniqueForms := collectUniqueForms(sentences)
 	directResolutions := db.BatchLookupForms(uniqueForms, lang, "basic")
 	customResolutions := db.BatchLookupForms(uniqueForms, lang, "custom")
-	lookupFormsMs := time.Since(lookupStartedAt).Milliseconds()
+	lookupFormsNs := time.Since(lookupStartedAt).Nanoseconds()
 	rules := p.overrideSet()
 
 	resolveStartedAt := time.Now()
@@ -319,7 +319,7 @@ func (p externalAnalyzerParser) Parse(db *store.DB, lang, text string) (*ParseRe
 		}
 		detailedSentences = append(detailedSentences, outSent)
 	}
-	resolveSentencesMs := time.Since(resolveStartedAt).Milliseconds()
+	resolveSentencesNs := time.Since(resolveStartedAt).Nanoseconds()
 
 	glossLookupStartedAt := time.Now()
 	lemmaKeys := make([]store.LemmaKey, 0, len(lemmaSet))
@@ -327,26 +327,26 @@ func (p externalAnalyzerParser) Parse(db *store.DB, lang, text string) (*ParseRe
 		lemmaKeys = append(lemmaKeys, key)
 	}
 	glosses := db.BatchLookupGlosses(lemmaKeys, lang)
-	lookupGlossesMs := time.Since(glossLookupStartedAt).Milliseconds()
+	lookupGlossesNs := time.Since(glossLookupStartedAt).Nanoseconds()
 
 	enrichStartedAt := time.Now()
 	words := enrichWords(detailedSentences, glosses)
-	enrichWordsMs := time.Since(enrichStartedAt).Milliseconds()
-	parseDurationMs := time.Since(parseStartedAt).Milliseconds()
+	enrichWordsNs := time.Since(enrichStartedAt).Nanoseconds()
+	parseDurationNs := time.Since(parseStartedAt).Nanoseconds()
 	stats := computeParseStats(detailedSentences, len(uniqueForms), ParseTimings{
-		AnalyzeMs:          analyzeMs,
-		LookupFormsMs:      lookupFormsMs,
-		LookupGlossesMs:    lookupGlossesMs,
-		ResolveSentencesMs: resolveSentencesMs,
-		EnrichWordsMs:      enrichWordsMs,
-		TotalMs:            parseDurationMs,
+		AnalyzeNs:          analyzeNs,
+		LookupFormsNs:      lookupFormsNs,
+		LookupGlossesNs:    lookupGlossesNs,
+		ResolveSentencesNs: resolveSentencesNs,
+		EnrichWordsNs:      enrichWordsNs,
+		TotalNs:            parseDurationNs,
 	})
 
 	return &ParseResult{
 		Lang:            lang,
 		Parser:          p.name,
 		TotalTokens:     countTokens(words),
-		ParseDurationMs: parseDurationMs,
+		ParseDurationNs: parseDurationNs,
 		Stats:           stats,
 		Words:           words,
 		Sentences:       detailedSentences,
