@@ -703,6 +703,11 @@ func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][
 
 	out := make([]parsecore.WordEntry, 0, len(agg))
 	for key, e := range agg {
+		// Forms: alphabetical, matching parsecore.enrichWords (sort.Strings)
+		// and GetDeckDetails' GROUP_CONCAT-then-strings.Sort path. Without
+		// this the API would hand example-highlighting and other consumers
+		// a different ordering depending on which entry point produced it.
+		sort.Strings(e.forms)
 		entry := parsecore.WordEntry{
 			Lemma:           key.lemma,
 			POS:             key.pos,

@@ -393,6 +393,16 @@ func TestHandleParseExpandsHomonyms(t *testing.T) {
 				i-1, i, prev.Lemma, cur.Lemma)
 		}
 	}
+	// Forms within each entry are alphabetical (parsecore.enrichWords:729 +
+	// GetDeckDetails:1223 contract).
+	for _, w := range resp.Words {
+		for j := 1; j < len(w.Forms); j++ {
+			if w.Forms[j-1] > w.Forms[j] {
+				t.Errorf("%s/%s forms not sorted: %v", w.Lemma, w.POS, w.Forms)
+				break
+			}
+		}
+	}
 }
 
 func TestHandleParseMapsAnalyzerValidationErrorsToBadRequest(t *testing.T) {
