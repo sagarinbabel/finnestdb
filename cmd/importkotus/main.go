@@ -1,67 +1,76 @@
-// cmd/importkotus imports the Kotus Nykysuomen sanalista XML into the
+// cmd/importkotus imports the Kotus Nykysuomen sanalista into the
 // finnestdb dictionary. Phase 3 of docs/FINNISH_LEXICAL_PLAN.md: populate
-// the paradigm_class column on FI lemmas with the Kotus inflection class
-// (1–78) so the future Voikko adapter (Phase 4) has the join key it needs.
+// paradigm_class on FI lemmas with the Kotus inflection class so the
+// future Voikko adapter (Phase 4) has the join key it needs.
 //
-// Source: official Kotus distribution at https://kaino.kotus.fi/sanat/nykysuomi/
+// Source: official Kotus distribution at
+// https://kaino.kotus.fi/lataa/nykysuomensanalista2024.txt
+// (linked from
+// https://kotus.fi/sanakirjat/kielitoimiston-sanakirja/nykysuomen-sana-aineistot/nykysuomen-sanalista/)
 // License: CC BY 4.0
 //
 // Usage:
 //
-//	go run ./cmd/importkotus -db finnestdb.db -file kotus-sanalista_v1.xml
+//	go run ./cmd/importkotus -db finnestdb.db \
+//	    -file data/kotus/nykysuomensanalista2024.txt
 //
-// Conflict policy (different from cmd/importdict's):
+// File format (confirmed against the 2024 distribution; PR 3.1's earlier
+// XML guess turned out wrong — Kotus ships the modern sanalista as a
+// header-prefixed TSV):
+//
+//	Hakusana    Homonymia    Sanaluokka                       Taivutustiedot
+//	aakkonen                 substantiivi                     38
+//	aalto                    substantiivi                     1*I
+//	aallottaa                verbi                            53*C
+//	sininen                  adjektiivi, substantiivi         38
+//	kuusi       1            substantiivi                     27
+//	kuusi       2            numeraali                        27
+//	aaltoallas               substantiivi                     ← empty Taivutustiedot
+//
+// Field layout:
+//
+//	Hakusana       — the headword (one entry, possibly with a leading "‑"
+//	                 for derivational suffixes; the parser preserves these
+//	                 in their original form).
+//	Homonymia      — empty or "1".."4" for words that share a surface
+//	                 form but differ in meaning. Our schema collapses
+//	                 multiple homonyms of the same (lemma, pos) onto one
+//	                 row; the writer logs whichever paradigm_class arrived
+//	                 last for that key.
+//	Sanaluokka     — Finnish word-class label. Comma-separated when one
+//	                 headword is multi-class (e.g. "adjektiivi,
+//	                 substantiivi" for sininen). Plus-separated forms
+//	                 like "adverbi + kieltoverbi" are leaf-classed by the
+//	                 first part. Maps to UPOS via wordClassMap below.
+//	Taivutustiedot — Inflection class number, optionally followed by
+//	                 *<gradation-letter> (e.g. "1", "38", "1*I", "41*A").
+//	                 Empty for compound nouns and other entries Kotus
+//	                 doesn't taivutus-classify; those still get a
+//	                 dictionary row but with paradigm_class=NULL.
+//
+// Conflict policy (different from cmd/importdict's source-priority upsert):
 //
 //	For lemmas already in the database (typically from kaikki.org), this
 //	importer ONLY updates paradigm_class. It does NOT touch source,
-//	source_priority, gloss, or any other column. Kotus enriches existing
-//	rows with morphology metadata; it does not claim authority over the
-//	headword itself.
+//	source_priority, or gloss. Kotus enriches existing rows with
+//	morphology metadata; it does not claim authority over the headword.
 //
 //	For lemmas not yet in the database (Kotus-only), it inserts a fresh
-//	row at source='kotus', priority=10, gloss=NULL, paradigm_class set.
+//	row at source='kotus', priority=10, gloss=NULL, with paradigm_class
+//	set when Taivutustiedot is non-empty (NULL otherwise).
 //
-// POS inference (assumed schema; refine in Phase 3.2 against real data):
-//
-//	Type numbers 1–49: NOUN (default for nominals; some are adjectives,
-//	  e.g. types 38 sininen, 41 vieras — heuristic not exact)
-//	Type numbers 50–51: NUM (cardinal numerals like kahdeksan)
-//	Type numbers 52–78: VERB
-//	Other: X
-//
-// When a Kotus headword already exists in lemmas under a specific POS
-// (e.g. kaikki imported "sininen" as ADJ), this importer queries existing
-// rows first and upgrades paradigm_class for each existing (lemma, pos).
-// Only Kotus-only headwords use the default POS inference, so the ADJ
-// vs NOUN ambiguity for nominals only matters for entries kaikki missed.
-//
-// XML schema (kotus-sanalista_v1):
-//
-//	<kotus-sanalista version="1">
-//	  <st>
-//	    <s>aakkonen</s>
-//	    <t><tn>32</tn></t>
-//	  </st>
-//	  <st>
-//	    <s>aalto</s>
-//	    <t><tn>1</tn><av>F</av></t>
-//	  </st>
-//	</kotus-sanalista>
-//
-// `tn` is the taivutustyyppi (inflection class number).
-// `av` is the asteVaihtelu (consonant gradation pattern, letter A–N).
-// paradigm_class is stored as either "<tn>" or "<tn>-<av>" (e.g. "32" or "1-F").
+//	Multi-class entries (e.g. sininen as ADJ+NOUN) write/upgrade once per
+//	UPOS — both rows get paradigm_class.
 package main
 
 import (
+	"bufio"
 	"database/sql"
-	"encoding/xml"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 
 	"finnestdb/internal/store"
@@ -72,22 +81,27 @@ import (
 const (
 	kotusSource         = "kotus"
 	kotusSourcePriority = 10
-	kotusSourceName     = "Kotus / Nykysuomen sanalista"
+	kotusSourceName     = "Kotus / Nykysuomen sanalista 2024"
 	kotusSourceLicense  = "CC BY 4.0"
 	kotusAttribution    = "Kotus, Kotimaisten kielten keskus / Nykysuomen sanalista"
-	kotusSourceURL      = "https://kaino.kotus.fi/sanat/nykysuomi/"
+	kotusSourceURL      = "https://kaino.kotus.fi/lataa/nykysuomensanalista2024.txt"
+	kotusSourceVersion  = "2024"
 )
 
-// kotusEntry is the parsed shape of a single <st> element.
+// kotusEntry is the parsed shape of a single TSV row.
 type kotusEntry struct {
-	Headword       string
-	InflectionType string // "tn" — empty if missing
-	Gradation      string // "av" — empty if absent
+	Headword       string   // Hakusana
+	Homonym        string   // Homonymia ("" or "1".."4")
+	WordClasses    []string // raw Finnish names, possibly multiple per entry
+	InflectionType string   // numeric portion of Taivutustiedot
+	Gradation      string   // gradation letter after "*" — "" if absent
 }
 
-// ParadigmClass formats the entry's class as a stable TEXT key for the
-// lemmas.paradigm_class column. Keeping `tn-av` joined in one column
-// matches the schema and makes the Voikko adapter's join trivial.
+// ParadigmClass formats Taivutustiedot for the lemmas.paradigm_class
+// column. "" if the entry has no inflection class. The compact text form
+// matches the on-disk Kotus encoding ("38", "1-I"), with "*" rewritten
+// to "-" so the column value is a stable identifier without shell-quoting
+// pitfalls if it ever ends up in a script.
 func (e kotusEntry) ParadigmClass() string {
 	if e.InflectionType == "" {
 		return ""
@@ -98,88 +112,143 @@ func (e kotusEntry) ParadigmClass() string {
 	return e.InflectionType + "-" + e.Gradation
 }
 
-// inferPOSFromInflectionType maps a Kotus inflection class number to a
-// default UPOS. Used only when a Kotus-only headword needs a fresh row;
-// existing kaikki rows always preserve their own POS.
-//
-// The 1–49 range is nominals (nouns + adjectives) — we default to NOUN
-// because most type-classified words in the language are nouns, and
-// Phase 4's Voikko generator only cares about the class number anyway.
-// 52–78 is verbs. Type 51 is for words like kahdeksan (cardinal numerals)
-// and is grouped with NUM here.
-func inferPOSFromInflectionType(tn string) string {
-	n, err := strconv.Atoi(tn)
-	if err != nil {
-		return "X"
-	}
-	switch {
-	case n >= 1 && n <= 49:
-		return "NOUN"
-	case n == 50, n == 51:
-		return "NUM"
-	case n >= 52 && n <= 78:
-		return "VERB"
-	default:
-		return "X"
-	}
+// wordClassMap maps Kotus's Finnish Sanaluokka labels to UPOS. Coverage
+// is based on the unique values seen in the 2024 distribution. When the
+// label is one we don't recognise the writer skips inserting a new row
+// (existing rows are still upgraded with paradigm_class — that path
+// doesn't depend on POS inference).
+var wordClassMap = map[string]string{
+	"substantiivi":        "NOUN",
+	"adjektiivi":          "ADJ",
+	"verbi":               "VERB",
+	"adverbi":             "ADV",
+	"interjektio":         "INTJ",
+	"pronomini":           "PRON",
+	"numeraali":           "NUM",
+	"järjestysluku":       "NUM",
+	"konjunktio":          "CCONJ",
+	"rinnastuskonjunktio": "CCONJ",
+	"alistuskonjunktio":   "SCONJ",
+	"postpositio":         "ADP",
+	"prepositio":          "ADP",
+	"kieltoverbi":         "AUX",
+	"partikkeli":          "PART",
 }
 
-// streamSanalista decodes the XML token-by-token and invokes fn for each
-// <st> entry as it's parsed — never materializing the full list. Used by
-// Import to keep memory O(1) on a 95k-headword distribution. fn returning
-// an error stops the stream and surfaces the error to the caller (the
-// surrounding transaction is what makes this an atomic abort).
-//
-// Returns the count of <st> elements skipped because they had no <s>
-// headword (defensive — the real distribution shouldn't have these).
-func streamSanalista(r io.Reader, fn func(kotusEntry) error) (int, error) {
-	dec := xml.NewDecoder(r)
+// mapWordClass picks a UPOS for a single Kotus class label. Returns the
+// UPOS and true on success; "X" and false if the label is unknown.
+// Plus-separated compounds like "adverbi + kieltoverbi" are leaf-classed
+// by the first segment — the second is typically a co-occurrence
+// annotation, not the head class.
+func mapWordClass(s string) (string, bool) {
+	s = strings.TrimSpace(s)
+	if i := strings.Index(s, " + "); i >= 0 {
+		s = strings.TrimSpace(s[:i])
+	}
+	if upos, ok := wordClassMap[s]; ok {
+		return upos, true
+	}
+	return "X", false
+}
 
-	type tElem struct {
-		TN string `xml:"tn"`
-		AV string `xml:"av"`
+// parseTaivutus splits Taivutustiedot into (inflection-type, gradation).
+// Handles four patterns seen in the 2024 distribution:
+//
+//	"38"           → ("38", "")            — single class, no gradation
+//	"1*I"          → ("1", "I")            — single class with gradation
+//	"73, (77)"     → ("73", "")            — primary 73 + parenthesized alt
+//	"72*D, 74*D"   → ("72", "D")           — primary 72*D + alt 74*D
+//	"(9)"          → ("9", "")             — sole class wrapped in parens
+//	""             → ("", "")              — no class (compound)
+//
+// 152 rows in the 2024 dump have comma-separated alternatives. We
+// take the first entry as the primary (parens stripped) and drop the
+// alts. Phase 4's Voikko adapter consumes paradigm_class as a single
+// join key; alternatives can become a separate column or a follow-up
+// when we have a use case for them.
+func parseTaivutus(s string) (string, string) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "", ""
 	}
-	type stElem struct {
-		S string `xml:"s"`
-		T tElem  `xml:"t"`
+	if i := strings.Index(s, ","); i >= 0 {
+		s = strings.TrimSpace(s[:i])
 	}
+	// Strip surrounding parens (e.g. "(9)" → "9", "(77)" → "77").
+	s = strings.Trim(s, "()")
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "", ""
+	}
+	if i := strings.Index(s, "*"); i >= 0 {
+		return s[:i], s[i+1:]
+	}
+	return s, ""
+}
+
+// streamSanalista reads the TSV row-by-row and invokes fn for each
+// non-header non-empty data row. fn returning an error stops the stream
+// and surfaces the error to the caller — the surrounding transaction
+// is what makes that an atomic abort. Memory stays O(1) regardless of
+// input size, which matters at 100k+ rows.
+//
+// Returns the count of rows skipped (empty headword or unparseable
+// shape). Header detection is permissive: a row whose first cell starts
+// with "Hakusana" is treated as the header even if column count is off,
+// since the file's first line is exactly that.
+func streamSanalista(r io.Reader, fn func(kotusEntry) error) (int, error) {
+	scanner := bufio.NewScanner(r)
+	// 256KB max line — well above anything seen in the 2024 dump.
+	scanner.Buffer(make([]byte, 64*1024), 256*1024)
 
 	skipped := 0
-	for {
-		tok, err := dec.Token()
-		if err == io.EOF {
-			break
+	for lineNo := 0; scanner.Scan(); lineNo++ {
+		line := scanner.Text()
+		if lineNo == 0 && strings.HasPrefix(line, "Hakusana") {
+			continue // header row
 		}
-		if err != nil {
-			return skipped, fmt.Errorf("xml decode: %w", err)
-		}
-		se, ok := tok.(xml.StartElement)
-		if !ok || se.Name.Local != "st" {
+		if line == "" {
 			continue
 		}
-		var st stElem
-		if err := dec.DecodeElement(&st, &se); err != nil {
-			return skipped, fmt.Errorf("decode <st>: %w", err)
+		fields := strings.Split(line, "\t")
+		if len(fields) < 4 {
+			skipped++
+			continue
 		}
-		head := strings.TrimSpace(st.S)
+		head := strings.TrimSpace(fields[0])
 		if head == "" {
 			skipped++
 			continue
 		}
+		homonym := strings.TrimSpace(fields[1])
+		// Sanaluokka splits on comma into multiple word-class labels.
+		var classes []string
+		for _, c := range strings.Split(fields[2], ",") {
+			if c = strings.TrimSpace(c); c != "" {
+				classes = append(classes, c)
+			}
+		}
+		tn, gr := parseTaivutus(fields[3])
+
 		if err := fn(kotusEntry{
 			Headword:       head,
-			InflectionType: strings.TrimSpace(st.T.TN),
-			Gradation:      strings.TrimSpace(st.T.AV),
+			Homonym:        homonym,
+			WordClasses:    classes,
+			InflectionType: tn,
+			Gradation:      gr,
 		}); err != nil {
 			return skipped, err
 		}
 	}
+	if err := scanner.Err(); err != nil {
+		return skipped, fmt.Errorf("scan: %w", err)
+	}
 	return skipped, nil
 }
 
-// ParseSanalista is a slice-returning convenience wrapper around
-// streamSanalista. Tests use this; the production Import path uses
-// streamSanalista directly so it doesn't accumulate the full list.
+// ParseSanalista is a slice-returning wrapper around streamSanalista,
+// kept for tests. Production goes through streamSanalista directly so
+// it doesn't accumulate the full list.
 func ParseSanalista(r io.Reader) ([]kotusEntry, int, error) {
 	var out []kotusEntry
 	skipped, err := streamSanalista(r, func(e kotusEntry) error {
@@ -191,87 +260,114 @@ func ParseSanalista(r io.Reader) ([]kotusEntry, int, error) {
 
 // importStats summarises a run.
 type importStats struct {
-	EntriesProcessed  int
-	ParadigmsUpgraded int // existing rows whose paradigm_class was set/changed
-	NewLemmasInserted int // rows inserted at source='kotus'
-	HeadwordsWithNoTN int // entries we skipped because tn was empty
+	EntriesProcessed       int // total data rows seen in the TSV
+	ParadigmsUpgraded      int // existing rows whose paradigm_class was set/changed
+	NewLemmasInserted      int // rows inserted at source='kotus'
+	HeadwordsWithoutClass  int // entries where every Sanaluokka label was unknown
+	EntriesWithoutParadigm int // entries with empty Taivutustiedot (compounds etc.)
 }
 
 // kotusWriter holds the prepared statements + accumulating stats used
-// by Import's per-entry callback. Factored out so streamSanalista can
-// invoke the write logic on each <st> as it's decoded — no intermediate
-// slice, O(1) memory regardless of input size.
+// by Import's per-entry callback. Factored so streamSanalista can drive
+// the write logic on each TSV row as it's parsed.
 type kotusWriter struct {
 	stats              *importStats
 	stmtUpdateExisting *sql.Stmt
-	stmtListPOS        *sql.Stmt
+	stmtCheckPOS       *sql.Stmt
 	stmtInsertNew      *sql.Stmt
 }
 
 func (w *kotusWriter) write(e kotusEntry) error {
-	// EntriesProcessed counts XML <st> elements, not rows touched. A
-	// single entry can fan out into multiple paradigm-class updates
-	// (e.g. sininen at both ADJ and NOUN), so summing the row counters
-	// would over-count entries. Increment once per entry, before any
-	// row-level work decides which counters fire.
+	// EntriesProcessed counts TSV rows, not row effects. A single Kotus
+	// row with multi-class Sanaluokka fans out into multiple writes;
+	// deriving the count from row counters would over-count.
 	w.stats.EntriesProcessed++
 
 	paradigm := e.ParadigmClass()
 	if paradigm == "" {
-		w.stats.HeadwordsWithNoTN++
+		w.stats.EntriesWithoutParadigm++
+	}
+
+	// Map the current row's Sanaluokka labels to a deduplicated UPOS
+	// set. Updates and inserts are scoped to THIS list — any existing
+	// row at a POS the current row doesn't claim is left untouched.
+	//
+	// Why scoped: the TSV often has the same headword on multiple
+	// rows with different Sanaluokka (`aika` row 1 NOUN, row 2 ADJ+ADV;
+	// `kuurata` row 1 NOUN row 2 VERB; `piilevä` row 1 ADJ row 2 NOUN).
+	// An "update every existing POS" approach corrupts adjacent rows —
+	// e.g. row 2 of `aika` would clobber the NOUN paradigm with the
+	// ADJ row's class, and never insert the actual ADJ/ADV rows.
+	uposSet := map[string]bool{}
+	var poses []string
+	for _, c := range e.WordClasses {
+		upos, ok := mapWordClass(c)
+		if !ok {
+			continue
+		}
+		if uposSet[upos] {
+			continue
+		}
+		uposSet[upos] = true
+		poses = append(poses, upos)
+	}
+	if len(poses) == 0 {
+		// Every Sanaluokka label was unknown; nothing safe to do.
+		w.stats.HeadwordsWithoutClass++
 		return nil
 	}
 
-	// Find existing rows for this headword.
-	var existingPOS []string
-	rows, err := w.stmtListPOS.Query(e.Headword)
-	if err != nil {
-		return fmt.Errorf("list pos %q: %w", e.Headword, err)
-	}
-	for rows.Next() {
-		var p string
-		if err := rows.Scan(&p); err != nil {
-			rows.Close()
-			return err
-		}
-		existingPOS = append(existingPOS, p)
-	}
-	if err := rows.Err(); err != nil {
-		rows.Close()
-		return fmt.Errorf("list pos %q: cursor: %w", e.Headword, err)
-	}
-	rows.Close()
-
-	if len(existingPOS) > 0 {
-		for _, pos := range existingPOS {
-			res, err := w.stmtUpdateExisting.Exec(paradigm, e.Headword, pos)
+	for _, pos := range poses {
+		// Existence check (Scan into NullString just to avoid an
+		// "unused result" lint; the value is unused — only the
+		// presence/absence of the row matters here).
+		var dummy sql.NullString
+		err := w.stmtCheckPOS.QueryRow(e.Headword, pos).Scan(&dummy)
+		if err == sql.ErrNoRows {
+			res, err := w.stmtInsertNew.Exec(e.Headword, pos, nullableParadigm(paradigm))
 			if err != nil {
-				return fmt.Errorf("update %q %s: %w", e.Headword, pos, err)
+				return fmt.Errorf("insert %q %s: %w", e.Headword, pos, err)
 			}
 			if n, _ := res.RowsAffected(); n == 1 {
-				w.stats.ParadigmsUpgraded++
+				w.stats.NewLemmasInserted++
 			}
+			continue
 		}
-		return nil
-	}
-
-	pos := inferPOSFromInflectionType(e.InflectionType)
-	res, err := w.stmtInsertNew.Exec(e.Headword, pos, paradigm)
-	if err != nil {
-		return fmt.Errorf("insert %q %s: %w", e.Headword, pos, err)
-	}
-	if n, _ := res.RowsAffected(); n == 1 {
-		w.stats.NewLemmasInserted++
+		if err != nil {
+			return fmt.Errorf("check pos %q %s: %w", e.Headword, pos, err)
+		}
+		// Row exists at this POS. Only UPDATE paradigm_class when the
+		// current row HAS one — otherwise we'd nullify a previously
+		// imported class (`piilevä` row 2 has empty Taivutustiedot
+		// and would clobber row 1's class 10 with NULL).
+		if paradigm == "" {
+			continue
+		}
+		res, err := w.stmtUpdateExisting.Exec(paradigm, e.Headword, pos)
+		if err != nil {
+			return fmt.Errorf("update %q %s: %w", e.Headword, pos, err)
+		}
+		if n, _ := res.RowsAffected(); n == 1 {
+			w.stats.ParadigmsUpgraded++
+		}
 	}
 	return nil
 }
 
-// Import runs an end-to-end streaming import: decodes the XML
-// token-by-token and writes each entry via the same transaction-scoped
-// prepared statements. Memory stays O(1) regardless of input size.
-// The DB must already have the post-Phase-1 schema (paradigm_class
-// column on lemmas) — the caller is expected to have run
-// store.EnsureLexicalEnrichmentColumns.
+// nullableParadigm returns nil when the paradigm string is empty so the
+// SQL driver writes NULL (not the empty string). Compound headwords
+// that Kotus doesn't classify get paradigm_class IS NULL.
+func nullableParadigm(p string) interface{} {
+	if p == "" {
+		return nil
+	}
+	return p
+}
+
+// Import runs an end-to-end streaming import: reads the TSV row-by-row
+// and writes each entry via the same transaction-scoped statements.
+// Memory stays O(1) regardless of input size. The DB must already have
+// the post-Phase-1 schema (paradigm_class column on lemmas).
 func Import(db *sql.DB, r io.Reader) (importStats, error) {
 	stats := importStats{}
 
@@ -291,10 +387,6 @@ func Import(db *sql.DB, r io.Reader) (importStats, error) {
 	if err != nil {
 		return stats, err
 	}
-	// w.write incremented EntriesProcessed for each <st> the stream
-	// dispatched to the callback. Add the empty-headword <st>s that
-	// streamSanalista skipped before they reached the callback so the
-	// total matches "<st> elements seen in XML."
 	stats.EntriesProcessed += skipped
 
 	if err := tx.Commit(); err != nil {
@@ -303,12 +395,9 @@ func Import(db *sql.DB, r io.Reader) (importStats, error) {
 	return stats, nil
 }
 
-// newKotusWriter prepares the three statements the per-entry write
-// path uses, sharing them across the streaming callback. Caller must
-// Close() the writer (defers the prepared-statement closes).
+// newKotusWriter prepares the three statements the per-entry write path
+// uses, sharing them across the streaming callback. Caller must Close().
 func newKotusWriter(tx *sql.Tx, stats *importStats) (*kotusWriter, error) {
-	// Update-only statement: leaves source / source_priority / gloss
-	// alone. Used when the lemma already exists (typically from kaikki).
 	stmtUpdateExisting, err := tx.Prepare(
 		`UPDATE lemmas SET paradigm_class = ?
 		 WHERE lemma = ? AND pos = ? AND lang = 'FI'`,
@@ -316,45 +405,41 @@ func newKotusWriter(tx *sql.Tx, stats *importStats) (*kotusWriter, error) {
 	if err != nil {
 		return nil, err
 	}
-	stmtListPOS, err := tx.Prepare(
-		`SELECT pos FROM lemmas WHERE lemma = ? AND lang = 'FI'`,
+	// Existence check scoped by (lemma, pos). Returning paradigm_class
+	// is incidental — the callback only cares whether the row exists.
+	stmtCheckPOS, err := tx.Prepare(
+		`SELECT paradigm_class FROM lemmas WHERE lemma = ? AND pos = ? AND lang = 'FI'`,
 	)
 	if err != nil {
 		stmtUpdateExisting.Close()
 		return nil, err
 	}
-	// Insert-only statement for Kotus-exclusive headwords. INSERT OR
-	// IGNORE rather than upsert because the existing-rows branch already
-	// handled the conflict case — if we reach this and a row already
-	// exists, the listPOS lookup raced with another writer or the input
-	// has duplicates; either way IGNORE preserves the prior row.
 	stmtInsertNew, err := tx.Prepare(
 		`INSERT OR IGNORE INTO lemmas (lemma, pos, gloss, lang, source, source_priority, paradigm_class)
 		 VALUES (?, ?, NULL, 'FI', 'kotus', 10, ?)`,
 	)
 	if err != nil {
 		stmtUpdateExisting.Close()
-		stmtListPOS.Close()
+		stmtCheckPOS.Close()
 		return nil, err
 	}
 	return &kotusWriter{
 		stats:              stats,
 		stmtUpdateExisting: stmtUpdateExisting,
-		stmtListPOS:        stmtListPOS,
+		stmtCheckPOS:       stmtCheckPOS,
 		stmtInsertNew:      stmtInsertNew,
 	}, nil
 }
 
 func (w *kotusWriter) Close() error {
 	w.stmtUpdateExisting.Close()
-	w.stmtListPOS.Close()
+	w.stmtCheckPOS.Close()
 	w.stmtInsertNew.Close()
 	return nil
 }
 
-// writeKotusEntries is the slice-based write path kept for tests; it
-// drives the same kotusWriter as Import but reads from a pre-built
-// slice instead of a stream. Production callers should use Import.
+// writeKotusEntries is the slice-based write path kept for tests; drives
+// the same kotusWriter Import uses but reads from a pre-built slice.
 func writeKotusEntries(db *sql.DB, entries []kotusEntry) (importStats, error) {
 	stats := importStats{}
 
@@ -381,12 +466,9 @@ func writeKotusEntries(db *sql.DB, entries []kotusEntry) (importStats, error) {
 
 func main() {
 	dbPath := flag.String("db", "finnestdb.db", "Path to SQLite database")
-	filePath := flag.String("file", "", "Path to Kotus sanalista XML file (required)")
+	filePath := flag.String("file", "data/kotus/nykysuomensanalista2024.txt",
+		"Path to Kotus sanalista TSV file (defaults to the tracked artifact)")
 	flag.Parse()
-
-	if *filePath == "" {
-		log.Fatal("-file is required (path to Kotus sanalista XML)")
-	}
 
 	f, err := os.Open(*filePath)
 	if err != nil {
@@ -410,8 +492,14 @@ func main() {
 		log.Fatalf("import: %v", err)
 	}
 
-	log.Printf("Done. processed=%d  paradigms_upgraded=%d  new_lemmas_inserted=%d  skipped_no_tn=%d",
-		stats.EntriesProcessed, stats.ParadigmsUpgraded, stats.NewLemmasInserted, stats.HeadwordsWithNoTN)
+	log.Printf(
+		"Done. processed=%d  paradigms_upgraded=%d  new_lemmas_inserted=%d  no_known_class=%d  no_paradigm=%d",
+		stats.EntriesProcessed,
+		stats.ParadigmsUpgraded,
+		stats.NewLemmasInserted,
+		stats.HeadwordsWithoutClass,
+		stats.EntriesWithoutParadigm,
+	)
 
 	if err := upsertDictMetadata(db, stats.NewLemmasInserted+stats.ParadigmsUpgraded); err != nil {
 		log.Printf("warn: dict_metadata: %v", err)
@@ -419,11 +507,7 @@ func main() {
 }
 
 // ensureSchema creates the lemmas + forms tables on a fresh DB and runs
-// the shared idempotent migrations so this importer can stand alone,
-// the way cmd/importekilexdetails does. Forms is created (even though
-// this importer never writes to it) because EnsureDictionarySourceColumns
-// alters both lemmas and forms. Order matters: CREATE first so the
-// ALTER TABLE migrations have something to alter.
+// the shared idempotent migrations so this importer can stand alone.
 func ensureSchema(db *sql.DB) error {
 	if _, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS lemmas (
@@ -456,16 +540,15 @@ func ensureSchema(db *sql.DB) error {
 }
 
 // upsertDictMetadata records the Kotus import in dict_metadata so the
-// provenance table reflects this PR's data. License + attribution come
-// from the constants above; row_count is touched-rows for this run.
+// provenance table reflects the source.
 func upsertDictMetadata(db *sql.DB, rowCount int) error {
 	_, err := db.Exec(
 		`INSERT OR REPLACE INTO dict_metadata
 		 (lang, source, source_name, source_url, source_version, license, attribution, changes_note, imported_at, row_count)
 		 VALUES ('FI', ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`,
 		kotusSource, kotusSourceName, kotusSourceURL,
-		"", kotusSourceLicense, kotusAttribution,
-		"Mapped <tn> + <av> into paradigm_class TEXT; default POS by class range; existing rows enriched in place",
+		kotusSourceVersion, kotusSourceLicense, kotusAttribution,
+		"Mapped Sanaluokka → UPOS, Taivutustiedot → paradigm_class TEXT (with *<gradation> rewritten to -<gradation>); existing rows enriched in place",
 		rowCount,
 	)
 	return err

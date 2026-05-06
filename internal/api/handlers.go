@@ -950,8 +950,11 @@ func (a *API) handleLemmaState(w http.ResponseWriter, r *http.Request, auth *Aut
 		err = a.store.MarkLemmaKnown(auth.UserID, lang, lemma, pos)
 	case "ignored":
 		err = a.store.MarkLemmaIgnored(auth.UserID, lang, lemma, pos)
+	case "", "neutral":
+		err = a.store.ClearLemmaState(auth.UserID, lang, lemma, pos)
+		status = ""
 	default:
-		http.Error(w, "Status must be known or ignored", http.StatusBadRequest)
+		http.Error(w, "Status must be known, ignored, or empty", http.StatusBadRequest)
 		return
 	}
 	if err != nil {
@@ -1171,7 +1174,7 @@ type ParseResponse struct {
 	Lang            string               `json:"lang"`
 	ParseID         *int64               `json:"parse_id,omitempty"`
 	TotalTokens     int                  `json:"total_tokens"`
-	ParseDurationMs int64                `json:"parse_duration_ms"`
+	ParseDurationMs float64              `json:"parse_duration_ms"`
 	Stats           parsecore.ParseStats `json:"stats"`
 	Words           []WordEntry          `json:"words"`
 }
@@ -1254,7 +1257,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		Lang:            parsed.Lang,
 		ParseID:         parseID,
 		TotalTokens:     parsed.TotalTokens,
-		ParseDurationMs: parsed.ParseDurationMs,
+		ParseDurationMs: float64(parsed.ParseDurationNs) / 1e6,
 		Stats:           parsed.Stats,
 		Words:           parsed.Words,
 	})

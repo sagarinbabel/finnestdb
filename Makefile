@@ -1,6 +1,6 @@
 .PHONY: all build clean parser server frontend run run-local setup-local \
         import-dict-fi import-dict-et import-dict import-dict-et-ekilex import-ekilex-et \
-        import-ekilex-details-et import-dict-et-recommended \
+        import-ekilex-details-et import-dict-et-recommended import-kotus-fi import-dict-fi-recommended \
         fetch-ekilex-refresh fetch-ekilex-sample fetch-ekilex \
         reduce-ekilex \
         reimport-dict-fi reimport-dict-et reimport-dict verify-dict \
@@ -96,10 +96,16 @@ import-dict: import-dict-fi import-dict-et
 # - tracked reduced Ekilex details drop (~6.2M forms)
 import-dict-et-recommended: import-dict-et import-ekilex-et import-ekilex-details-et
 
+# Recommended Finnish setup. Layered:
+# - kaikki.org base dictionary (translations, glosses, forms)
+# - Kotus Nykysuomen sanalista (paradigm_class for ~104k headwords; CC BY 4.0)
+# Voikko paradigm seed (Phase 4) lands later — see docs/FINNISH_LEXICAL_PLAN.md.
+import-dict-fi-recommended: import-dict-fi import-kotus-fi
+
 # One-command local setup: build dictionaries if missing, then run.
 # Kept separate from `make run` so running the server doesn't implicitly start
 # multi-minute downloads/imports in CI or quick-dev loops.
-setup-local: import-dict-fi import-dict-et-recommended
+setup-local: import-dict-fi-recommended import-dict-et-recommended
 
 run-local: setup-local run
 
@@ -116,6 +122,16 @@ import-ekilex-et:
 # cmd/importekilexdetails for the table.
 import-ekilex-details-et:
 	go run ./cmd/importekilexdetails -db finnestdb.db -data data/ekilex
+
+# ── Kotus Nykysuomen sanalista (Finnish inflection class metadata) ────────────
+# Phase 3 of docs/FINNISH_LEXICAL_PLAN.md. Reads the tracked TSV under
+# data/kotus/ (CC BY 4.0; see data/kotus/NOTICE.md) and fills paradigm_class
+# on existing FI lemmas. Existing rows from kaikki keep their source/gloss;
+# only paradigm_class is set. Kotus-only headwords are inserted at
+# source='kotus', priority=10. See cmd/importkotus for the full conflict
+# policy.
+import-kotus-fi:
+	go run ./cmd/importkotus -db finnestdb.db -file data/kotus/nykysuomensanalista2024.txt
 
 # ── Ekilex /api/word/details enrichment scrape ────────────────────────────────
 # Requires EKILEX_API_KEY in the environment. Raw responses land under

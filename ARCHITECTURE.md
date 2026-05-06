@@ -22,6 +22,9 @@ Current product surface on `main`:
 - Inspect page for Finnish or Estonian text
 - parser selection in the admin workbench: `basic` and `custom`
 - file load support for `.txt` / `.md`
+- hybrid language policy: high-confidence paste/file ingest auto-switches the
+  selector, detected FI/ET mismatches block parse until explicit switch, and
+  unknown-language warnings remain advisory
 - results page with sortable output, POS filter chips, coverage gauge, and parse duration
 - structured parse-stage stats returned from `parsecore` and `/api/parse`
 - deck, known-word, review, and parse-feedback APIs
@@ -134,7 +137,7 @@ CURRENT
 | - Workbench nav shell                                                          |
 | - Parse Text page                                                              |
 | - Parser buttons: basic, custom                                                |
-| - Language warning and file load                                               |
+| - Language auto-switch, warning, and file load                                 |
 | - Results table, POS filter chips                                              |
 | - Coverage gauge and parse duration                                            |
 +-----------------------------------+--------------------------------------------+

@@ -22,10 +22,17 @@ Each `YYYY-MM-DD-<dataset>.json` is the raw report emitted by
 | `grammar_accuracy`| Fraction with correct grammar_label (only counts cases where gold has a label) |
 | `full_accuracy`   | Fraction with all of lemma + POS + grammar correct |
 | `resolved_coverage` | Fraction of input tokens the parser resolved to a dictionary entry |
-| `avg/p50/p95_case_duration_ms` | Per-case latency in milliseconds |
+| `avg/p50/p95_case_duration_ms` | Per-case latency in milliseconds, sub-ms float (PR #103: nanosecond-precision timer) |
+| `words_per_second` / `chars_per_second` | Aggregate throughput across the dataset (sum of non-PUNCT tokens or runes, divided by total wall time across all repeats; PR #103) |
 | `avg_unique_forms` | Average distinct non-punctuation surface forms per case |
 | `avg_resolved_tokens` / `avg_unresolved_tokens` | Average resolved vs unresolved non-punctuation tokens per case |
-| `avg_*_ms` timing fields | Average analyzer, form lookup, gloss lookup, sentence resolution, and word enrichment time per case |
+| `avg_*_ms` timing fields | Average analyzer, form lookup, gloss lookup, sentence resolution, and word enrichment time per case (sub-ms float) |
+
+The per-case raw samples live under `cases[].duration_ms[<parser>].samples_ns`
+as `int64` nanoseconds — those are what the summary `_ms` floats are
+derived from. Older baselines (pre-PR #103) used a `samples` field in
+integer milliseconds; reading the unit off the field name is the
+forward-compatible way to interpret these.
 
 ## How to reproduce
 

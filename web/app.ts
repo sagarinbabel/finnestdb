@@ -23,6 +23,26 @@ const POS_LABELS: Record<string, string> = {
     X:     'Other',
 };
 
+const POS_ABBREV: Record<string, string> = {
+    NOUN:  'n',
+    VERB:  'v',
+    ADJ:   'adj',
+    ADV:   'adv',
+    PRON:  'pron',
+    DET:   'det',
+    ADP:   'adp',
+    NUM:   'num',
+    PUNCT: 'punct',
+    SYM:   'sym',
+    INTJ:  'intj',
+    CCONJ: 'conj',
+    SCONJ: 'conj',
+    PART:  'part',
+    AUX:   'aux',
+    PROPN: 'pn',
+    X:     '?',
+};
+
 interface WordEntry {
     lemma:             string;
     pos:               string;
@@ -263,6 +283,10 @@ function escapeAttr(str: string): string {
 
 function posLabel(pos: string): string {
     return POS_LABELS[pos] || pos;
+}
+
+function posAbbrev(pos: string): string {
+    return POS_ABBREV[pos] || pos.toLowerCase();
 }
 
 function lemmaStateKey(lang: string, lemma: string, pos: string): string {
@@ -649,7 +673,7 @@ function renderDashboard(): void {
 
     const decks = state.dashboard?.decks || [];
     if (decks.length === 0) {
-        decksList.innerHTML = `<p class="empty-state">No decks yet — paste some text under <a href="#/inspect">Inspect</a> to get started.</p>`;
+        decksList.innerHTML = `<p class="empty-state">No decks yet — paste some text under <a href="#/inspect">Parse</a> to get started.</p>`;
         return;
     }
 
@@ -670,37 +694,48 @@ async function refreshDashboardData(options: { rerenderRoute?: boolean } = {}): 
     }
 }
 
-async function markResultLemma(status: LemmaStateStatus, lemma: string, pos: string, trigger: HTMLButtonElement): Promise<void> {
+type LemmaStateUpdate = LemmaStateStatus | 'neutral';
+
+async function markResultLemma(status: LemmaStateUpdate, lemma: string, pos: string, trigger: HTMLButtonElement): Promise<void> {
     const lang = state.currentResults?.lang;
     if (!lang) return;
 
     const stateKey = lemmaStateKey(lang, lemma, pos);
     if (state.pendingLemmaStates.has(stateKey)) return;
     state.pendingLemmaStates.add(stateKey);
-    const originalLabel = trigger.textContent || '';
     trigger.disabled = true;
-    trigger.textContent = status === 'known' ? 'Marking...' : 'Ignoring...';
     if (state.currentResults) {
         renderResultsTable(state.currentResults);
     }
     try {
+        const body = status === 'neutral'
+            ? { lang, lemma, pos, status: '' }
+            : { lang, lemma, pos, status };
         const resp = await fetch('/api/lemma-state', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify({ lang, lemma, pos, status }),
+            body: JSON.stringify(body),
         });
         if (!resp.ok) {
             throw new Error(await resp.text() || 'Failed to update word');
         }
 
-        state.currentLemmaStates.set(stateKey, status);
+        if (status === 'neutral') {
+            state.currentLemmaStates.delete(stateKey);
+        } else {
+            state.currentLemmaStates.set(stateKey, status);
+        }
         await refreshDashboardData({ rerenderRoute: false });
-        showToast(status === 'known' ? 'Word marked known.' : 'Word ignored.', 'success');
+        const toastMsg = status === 'known'
+            ? 'Word marked known.'
+            : status === 'ignored'
+                ? 'Word ignored.'
+                : 'Word reset to unknown.';
+        showToast(toastMsg, 'success');
     } catch (err: any) {
         showToast(err.message || 'Failed to update word.', 'error');
         trigger.disabled = false;
-        trigger.textContent = originalLabel;
     } finally {
         state.pendingLemmaStates.delete(stateKey);
         if (state.currentResults) {
@@ -875,8 +910,11 @@ async function deleteKnownWord(lemma: string, pos: string): Promise<void> {
 
 // ── Language detection (shared between inspect + workbench) ────────────────
 
+const LANG_DETECT_MIN_CHARS = 20;
+const LANG_DETECT_SAMPLE_CHARS = 4096;
+
 function detectLang(text: string): 'FI' | 'ET' | 'unknown' {
-    const lower = text.toLowerCase();
+    const lower = text.slice(0, LANG_DETECT_SAMPLE_CHARS).toLowerCase();
     const letters = lower.match(/[a-zäöüõ]/g) || [];
     if (letters.length === 0) return 'unknown';
     if (/õ/.test(lower)) return 'ET';
@@ -963,7 +1001,7 @@ function updateCharCount(els: ParseFormElements): void {
 }
 
 function updateLangWarning(els: ParseFormElements, gateInspectButton: boolean): void {
-    if (els.text.value.trim().length < 20) {
+    if (els.text.value.trim().length < LANG_DETECT_MIN_CHARS) {
         els.warning.classList.add('hidden');
         els.switchBtn.classList.add('hidden');
         if (gateInspectButton) gateSubmit('inspect-submit', false);
@@ -995,6 +1033,27 @@ function gateSubmit(id: string, disabled: boolean): void {
     if (btn) btn.disabled = disabled;
 }
 
+function maybeAutoSwitchFromIngest(
+    els: ParseFormElements,
+    gateInspectButton: boolean,
+    source: 'paste' | 'file',
+): void {
+    const text = els.text.value;
+    if (text.trim().length < LANG_DETECT_MIN_CHARS) {
+        updateLangWarning(els, gateInspectButton);
+        return;
+    }
+
+    const detected = detectLang(text);
+    if (detected !== 'unknown' && detected !== els.lang.value) {
+        els.lang.value = detected;
+        const sourceLabel = source === 'paste' ? 'pasted text' : 'file content';
+        showToast(`Switched to ${detected === 'FI' ? 'Finnish' : 'Estonian'} — detected from ${sourceLabel}`, 'info');
+    }
+
+    updateLangWarning(els, gateInspectButton);
+}
+
 function initInspectForm(): void {
     const els = getInspectEls();
     if (!els) return;
@@ -1006,14 +1065,7 @@ function initInspectForm(): void {
 
     els.text.addEventListener('paste', () => {
         setTimeout(() => {
-            const text = els.text.value;
-            if (text.trim().length < 20) return;
-            const detected = detectLang(text);
-            if (detected !== 'unknown' && detected !== els.lang.value) {
-                els.lang.value = detected;
-                showToast(`Switched to ${detected === 'FI' ? 'Finnish' : 'Estonian'} — detected from text`, 'info');
-                updateLangWarning(els, true);
-            }
+            maybeAutoSwitchFromIngest(els, true, 'paste');
         }, 0);
     });
 
@@ -1034,7 +1086,7 @@ function initInspectForm(): void {
         const text = await file.text();
         els.text.value = text.slice(0, MAX_CHARS);
         updateCharCount(els);
-        updateLangWarning(els, true);
+        maybeAutoSwitchFromIngest(els, true, 'file');
     });
 
     const form = document.getElementById('inspect-form') as HTMLFormElement | null;
@@ -1057,14 +1109,7 @@ function initWorkbenchForm(): void {
 
     els.text.addEventListener('paste', () => {
         setTimeout(() => {
-            const text = els.text.value;
-            if (text.trim().length < 20) return;
-            const detected = detectLang(text);
-            if (detected !== 'unknown' && detected !== els.lang.value) {
-                els.lang.value = detected;
-                showToast(`Switched to ${detected === 'FI' ? 'Finnish' : 'Estonian'} — detected from text`, 'info');
-                updateLangWarning(els, false);
-            }
+            maybeAutoSwitchFromIngest(els, false, 'paste');
         }, 0);
     });
 
@@ -1085,7 +1130,7 @@ function initWorkbenchForm(): void {
         const text = await file.text();
         els.text.value = text.slice(0, MAX_CHARS);
         updateCharCount(els);
-        updateLangWarning(els, false);
+        maybeAutoSwitchFromIngest(els, false, 'file');
     });
 
     const handle = (mode: ParserMode, btnId: string) => async (e: Event) => {
@@ -1129,7 +1174,7 @@ async function runParse(
     if (context === 'workbench') setParseButtonsDisabled(true);
     if (activeBtn) {
         activeBtn.disabled = true;
-        activeBtn.textContent = context === 'inspect' ? 'Inspecting…' : 'Parsing…';
+        activeBtn.textContent = 'Parsing…';
     }
 
     try {
@@ -1271,50 +1316,72 @@ function renderResultsTable(data: ParseResponse): void {
             ? `<span class="grammar-badge">${escapeHtml(w.grammar_label)}</span>`
             : '';
 
-        const exampleHtml = w.example_sentence
-            ? `<details class="example-details">
-                <summary class="example-toggle">▸ example</summary>
-                <span class="example-text">${highlightFormsInSentence(w.example_sentence, w.forms)}</span>
-               </details>`
+        const rowKey = `${index}`;
+        const exampleToggle = w.example_sentence
+            ? `<button type="button" class="example-toggle" data-example-toggle="${rowKey}" aria-expanded="false">▸ example</button>`
+            : '';
+        const exampleBlock = w.example_sentence
+            ? `<div class="example-text hidden" data-example-text="${rowKey}">${highlightFormsInSentence(w.example_sentence, w.forms)}</div>`
             : '';
 
         const glossHtml = w.gloss
             ? escapeHtml(w.gloss)
             : '<span class="no-gloss">Missing</span>';
 
-        const posPill = `<span class="pos-pill" data-pos="${escapeHtml(w.pos)}">${escapeHtml(posLabel(w.pos))}</span>`;
+        const posPill = `<span class="pos-pill" data-pos="${escapeHtml(w.pos)}" data-tooltip="${escapeHtml(posLabel(w.pos))}">${escapeHtml(posAbbrev(w.pos))}</span>`;
 
         const surfaceForm = w.forms[0] || w.lemma;
         const rowStatus = currentLemmaState(w.lemma, w.pos);
         const rowPending = state.pendingLemmaStates.has(lemmaStateKey(data.lang, w.lemma, w.pos));
-        const rowStatusHtml = rowStatus
-            ? `<span class="word-state-badge ${rowStatus}">${rowStatus === 'known' ? 'Known' : 'Ignored'}</span>`
-            : '';
+        const isKnown = rowStatus === 'known';
+        const isIgnored = rowStatus === 'ignored';
+        const knownNextStatus = isKnown ? 'neutral' : 'known';
+        const ignoreNextStatus = isIgnored ? 'neutral' : 'ignored';
+        const knownTooltip = isKnown ? 'Mark as unknown' : 'Mark as known';
+        const ignoreTooltip = isIgnored ? 'Stop ignoring' : 'Ignore';
+        const knownIcon = isKnown
+            ? '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3.5 8.5l3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+            : '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+        const trashIcon = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 4h10M6.5 4V2.5h3V4M5 4l.7 9.5a1 1 0 001 .9h2.6a1 1 0 001-.9L11 4M7 7v5M9 7v5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        const pencilIcon = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M11.5 2.5l2 2-7.5 7.5-2.5.5.5-2.5 7.5-7.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
         const actionCell = showActions
             ? `<td class="col-actions"><div class="word-actions">
-                ${rowStatusHtml}
-                <button type="button" class="btn btn-link btn-sm word-state-btn"
-                    data-lemma-status="known"
+                <button type="button"
+                    class="word-pill word-pill-known${isKnown ? ' is-active' : ''}"
+                    data-lemma-status="${knownNextStatus}"
                     data-lemma="${escapeHtml(w.lemma)}"
                     data-pos="${escapeHtml(w.pos)}"
-                    ${rowPending || rowStatus === 'known' ? 'disabled' : ''}>Known</button>
-                <button type="button" class="btn btn-link btn-sm word-state-btn"
-                    data-lemma-status="ignored"
+                    data-tooltip="${knownTooltip}"
+                    ${rowPending ? 'disabled' : ''}>
+                    ${knownIcon}<span>${isKnown ? 'Known' : 'Unknown'}</span>
+                </button>
+                <button type="button"
+                    class="word-icon-btn word-icon-ignore${isIgnored ? ' is-active' : ''}"
+                    data-lemma-status="${ignoreNextStatus}"
                     data-lemma="${escapeHtml(w.lemma)}"
                     data-pos="${escapeHtml(w.pos)}"
-                    ${rowPending || rowStatus === 'ignored' ? 'disabled' : ''}>Ignore</button>
-                <button type="button" class="btn btn-link btn-sm correction-btn"
+                    data-tooltip="${ignoreTooltip}"
+                    aria-label="${ignoreTooltip}"
+                    ${rowPending ? 'disabled' : ''}>${trashIcon}</button>
+                <button type="button" class="word-icon-btn correction-btn"
                     data-lemma="${escapeHtml(w.lemma)}"
                     data-pos="${escapeHtml(w.pos)}"
                     data-surface="${escapeHtml(surfaceForm)}"
-                    data-grammar="${escapeHtml(w.grammar_label || '')}">Suggest fix</button>
+                    data-grammar="${escapeHtml(w.grammar_label || '')}"
+                    data-tooltip="Suggest fix"
+                    aria-label="Suggest fix">${pencilIcon}</button>
                </div></td>`
             : '';
-
-        return `<tr>
+        return `<tr class="word-row">
             <td class="col-row">${index + 1}</td>
-            <td class="col-lemma">${escapeHtml(w.lemma)}${grammarBadge}${exampleHtml}</td>
-            <td class="col-pos">${posPill}</td>
+            <td class="col-lemma">
+                <div class="lemma-pos-grid">
+                    <span class="lemma-side">${escapeHtml(w.lemma)}${grammarBadge}</span>
+                    <span class="pos-side">${posPill}</span>
+                </div>
+                ${exampleToggle}
+                ${exampleBlock}
+            </td>
             <td class="col-forms">${forms}</td>
             <td class="col-def">${glossHtml}</td>
             <td class="col-count">${w.count}</td>
@@ -1325,14 +1392,26 @@ function renderResultsTable(data: ParseResponse): void {
     updateSortButtons();
     updatePOSFilterButtons();
 
-    tbody.querySelectorAll<HTMLButtonElement>('.word-state-btn').forEach(btn => {
+    tbody.querySelectorAll<HTMLButtonElement>('.word-pill, .word-icon-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const status = btn.dataset.lemmaStatus as LemmaStateStatus | undefined;
+            const status = btn.dataset.lemmaStatus as LemmaStateUpdate | undefined;
             const lemma = btn.dataset.lemma || '';
             const pos = btn.dataset.pos || '';
             if (status && lemma && pos) {
                 void markResultLemma(status, lemma, pos, btn);
             }
+        });
+    });
+
+    tbody.querySelectorAll<HTMLButtonElement>('.example-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const key = btn.dataset.exampleToggle || '';
+            const example = tbody.querySelector<HTMLElement>(`.example-text[data-example-text="${key}"]`);
+            if (!example) return;
+            example.classList.toggle('hidden');
+            const isOpen = !example.classList.contains('hidden');
+            btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            btn.textContent = isOpen ? '▾ example' : '▸ example';
         });
     });
 
@@ -1420,8 +1499,11 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
 }
 
 async function loadDeckDetail(deckID: number): Promise<void> {
+    document.body.dataset.resultsContext = 'deck';
     const titleEl = document.getElementById('results-title');
     if (titleEl) titleEl.textContent = 'Loading deck…';
+    const tbody = document.getElementById('word-table-body');
+    if (tbody) tbody.innerHTML = '';
 
     try {
         const resp = await fetch(`/api/decks/${deckID}`, { credentials: 'same-origin' });

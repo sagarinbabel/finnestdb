@@ -1,6 +1,6 @@
 {
-  "run_id": "20260506T082557Z-fi-core",
-  "generated_at": "2026-05-06T08:25:57Z",
+  "run_id": "20260506T205051Z-fi-core",
+  "generated_at": "2026-05-06T20:50:51Z",
   "dataset": {
     "name": "fi-core",
     "version": "v1",
@@ -11,10 +11,10 @@
     "basic",
     "custom"
   ],
-  "git_commit": "46d8b77",
+  "git_commit": "7a832de",
   "benchmark": {
-    "warmup_runs": 1,
-    "repeat_runs": 3
+    "warmup_runs": 2,
+    "repeat_runs": 5
   },
   "summary": {
     "basic": {
@@ -24,17 +24,19 @@
       "grammar_accuracy": 0,
       "full_accuracy": 0.35,
       "resolved_coverage": 0.9130434782608695,
-      "avg_case_duration_ms": 0,
-      "p50_case_duration_ms": 0,
-      "p95_case_duration_ms": 0,
+      "avg_case_duration_ms": 0.09741663333333334,
+      "p50_case_duration_ms": 0.093791,
+      "p95_case_duration_ms": 0.126375,
+      "words_per_second": 39349.885149661306,
+      "chars_per_second": 311377.3520538416,
       "avg_unique_forms": 3.8333333333333335,
       "avg_resolved_tokens": 3.5,
       "avg_unresolved_tokens": 0.3333333333333333,
-      "avg_analyze_ms": 0,
-      "avg_lookup_forms_ms": 0,
-      "avg_lookup_glosses_ms": 0,
-      "avg_resolve_sentences_ms": 0,
-      "avg_enrich_words_ms": 0
+      "avg_analyze_ms": 0.013826333333333335,
+      "avg_lookup_forms_ms": 0.03790266666666666,
+      "avg_lookup_glosses_ms": 0.036784333333333336,
+      "avg_resolve_sentences_ms": 0.0019373333333333332,
+      "avg_enrich_words_ms": 0.0025485
     },
     "custom": {
       "expected_tokens": 20,
@@ -43,17 +45,19 @@
       "grammar_accuracy": 0,
       "full_accuracy": 0.35,
       "resolved_coverage": 0.9565217391304348,
-      "avg_case_duration_ms": 0,
-      "p50_case_duration_ms": 0,
-      "p95_case_duration_ms": 0,
+      "avg_case_duration_ms": 0.09496660000000001,
+      "p50_case_duration_ms": 0.092834,
+      "p95_case_duration_ms": 0.117708,
+      "words_per_second": 40365.06870134693,
+      "chars_per_second": 319410.54363674525,
       "avg_unique_forms": 3.8333333333333335,
       "avg_resolved_tokens": 3.6666666666666665,
       "avg_unresolved_tokens": 0.16666666666666666,
-      "avg_analyze_ms": 0,
-      "avg_lookup_forms_ms": 0,
-      "avg_lookup_glosses_ms": 0,
-      "avg_resolve_sentences_ms": 0,
-      "avg_enrich_words_ms": 0
+      "avg_analyze_ms": 0.013083333333333334,
+      "avg_lookup_forms_ms": 0.03933333333333334,
+      "avg_lookup_glosses_ms": 0.034777833333333334,
+      "avg_resolve_sentences_ms": 0.0026458333333333334,
+      "avg_enrich_words_ms": 0.0024515
     }
   },
   "cases": [
@@ -63,24 +67,28 @@
       "token_count": 3,
       "duration_ms": {
         "basic": {
-          "samples": [
-            0,
-            0,
-            0
+          "samples_ns": [
+            105500,
+            120500,
+            98708,
+            108583,
+            91333
           ],
-          "avg_ms": 0,
-          "p50_ms": 0,
-          "p95_ms": 0
+          "avg_ms": 0.1049248,
+          "p50_ms": 0.1055,
+          "p95_ms": 0.108583
         },
         "custom": {
-          "samples": [
-            0,
-            0,
-            0
+          "samples_ns": [
+            90917,
+            102625,
+            96375,
+            88458,
+            88583
           ],
-          "avg_ms": 0,
-          "p50_ms": 0,
-          "p95_ms": 0
+          "avg_ms": 0.0933916,
+          "p50_ms": 0.090917,
+          "p95_ms": 0.096375
         }
       },
       "stats": {
@@ -95,12 +103,12 @@
             "punct": 1
           },
           "timings": {
-            "analyze_ms": 0,
-            "lookup_forms_ms": 0,
-            "lookup_glosses_ms": 0,
-            "resolve_sentences_ms": 0,
-            "enrich_words_ms": 0,
-            "total_ms": 0
+            "analyze_ns": 13708,
+            "lookup_forms_ns": 36666,
+            "lookup_glosses_ns": 36541,
+            "resolve_sentences_ns": 1875,
+            "enrich_words_ns": 2000,
+            "total_ns": 91333
           }
         },
         "custom": {
@@ -114,12 +122,12 @@
             "punct": 1
           },
           "timings": {
-            "analyze_ms": 0,
-            "lookup_forms_ms": 0,
-            "lookup_glosses_ms": 0,
-            "resolve_sentences_ms": 0,
-            "enrich_words_ms": 0,
-            "total_ms": 0
+            "analyze_ns": 12833,
+            "lookup_forms_ns": 34583,
+            "lookup_glosses_ns": 34458,
+            "resolve_sentences_ns": 4417,
+            "enrich_words_ns": 1709,
+            "total_ns": 88583
           }
         }
       },
@@ -288,24 +296,28 @@
       "token_count": 5,
       "duration_ms": {
         "basic": {
-          "samples": [
-            0,
-            0,
-            0
+          "samples_ns": [
+            126375,
+            124333,
+            134292,
+            149042,
+            125125
           ],
-          "avg_ms": 0,
-          "p50_ms": 0,
-          "p95_ms": 0
+          "avg_ms": 0.1318334,
+          "p50_ms": 0.126375,
+          "p95_ms": 0.134292
         },
         "custom": {
-          "samples": [
-            0,
-            0,
-            0
+          "samples_ns": [
+            116375,
+            111000,
+            110791,
+            108167,
+            105125
           ],
-          "avg_ms": 0,
-          "p50_ms": 0,
-          "p95_ms": 0
+          "avg_ms": 0.1102916,
+          "p50_ms": 0.110791,
+          "p95_ms": 0.111
         }
       },
       "stats": {
@@ -320,12 +332,12 @@
             "punct": 1
           },
           "timings": {
-            "analyze_ms": 0,
-            "lookup_forms_ms": 0,
-            "lookup_glosses_ms": 0,
-            "resolve_sentences_ms": 0,
-            "enrich_words_ms": 0,
-            "total_ms": 0
+            "analyze_ns": 17792,
+            "lookup_forms_ns": 53792,
+            "lookup_glosses_ns": 46250,
+            "resolve_sentences_ns": 2833,
+            "enrich_words_ns": 2750,
+            "total_ns": 125125
           }
         },
         "custom": {
@@ -339,12 +351,12 @@
             "punct": 1
           },
           "timings": {
-            "analyze_ms": 0,
-            "lookup_forms_ms": 0,
-            "lookup_glosses_ms": 0,
-            "resolve_sentences_ms": 0,
-            "enrich_words_ms": 0,
-            "total_ms": 0
+            "analyze_ns": 15792,
+            "lookup_forms_ns": 43542,
+            "lookup_glosses_ns": 40625,
+            "resolve_sentences_ns": 2333,
+            "enrich_words_ns": 2250,
+            "total_ns": 105125
           }
         }
       },
@@ -617,24 +629,28 @@
       "token_count": 5,
       "duration_ms": {
         "basic": {
-          "samples": [
-            0,
-            0,
-            0
+          "samples_ns": [
+            93791,
+            97458,
+            95417,
+            92000,
+            95709
           ],
-          "avg_ms": 0,
-          "p50_ms": 0,
-          "p95_ms": 0
+          "avg_ms": 0.094875,
+          "p50_ms": 0.095417,
+          "p95_ms": 0.095709
         },
         "custom": {
-          "samples": [
-            0,
-            0,
-            0
+          "samples_ns": [
+            119458,
+            117708,
+            115250,
+            121542,
+            115958
           ],
-          "avg_ms": 0,
-          "p50_ms": 0,
-          "p95_ms": 0
+          "avg_ms": 0.1179832,
+          "p50_ms": 0.117708,
+          "p95_ms": 0.119458
         }
       },
       "stats": {
@@ -650,12 +666,12 @@
             "stub": 2
           },
           "timings": {
-            "analyze_ms": 0,
-            "lookup_forms_ms": 0,
-            "lookup_glosses_ms": 0,
-            "resolve_sentences_ms": 0,
-            "enrich_words_ms": 0,
-            "total_ms": 0
+            "analyze_ns": 17209,
+            "lookup_forms_ns": 37875,
+            "lookup_glosses_ns": 35416,
+            "resolve_sentences_ns": 2250,
+            "enrich_words_ns": 2375,
+            "total_ns": 95709
           }
         },
         "custom": {
@@ -671,12 +687,12 @@
             "stub": 1
           },
           "timings": {
-            "analyze_ms": 0,
-            "lookup_forms_ms": 0,
-            "lookup_glosses_ms": 0,
-            "resolve_sentences_ms": 0,
-            "enrich_words_ms": 0,
-            "total_ms": 0
+            "analyze_ns": 15917,
+            "lookup_forms_ns": 57000,
+            "lookup_glosses_ns": 34792,
+            "resolve_sentences_ns": 2084,
+            "enrich_words_ns": 3542,
+            "total_ns": 115958
           }
         }
       },
@@ -900,24 +916,28 @@
       "token_count": 4,
       "duration_ms": {
         "basic": {
-          "samples": [
-            0,
-            0,
-            0
+          "samples_ns": [
+            99542,
+            94125,
+            91875,
+            89250,
+            97208
           ],
-          "avg_ms": 0,
-          "p50_ms": 0,
-          "p95_ms": 0
+          "avg_ms": 0.0944,
+          "p50_ms": 0.094125,
+          "p95_ms": 0.097208
         },
         "custom": {
-          "samples": [
-            0,
-            0,
-            0
+          "samples_ns": [
+            93459,
+            92834,
+            87875,
+            94500,
+            96166
           ],
-          "avg_ms": 0,
-          "p50_ms": 0,
-          "p95_ms": 0
+          "avg_ms": 0.0929668,
+          "p50_ms": 0.093459,
+          "p95_ms": 0.0945
         }
       },
       "stats": {
@@ -932,12 +952,12 @@
             "punct": 1
           },
           "timings": {
-            "analyze_ms": 0,
-            "lookup_forms_ms": 0,
-            "lookup_glosses_ms": 0,
-            "resolve_sentences_ms": 0,
-            "enrich_words_ms": 0,
-            "total_ms": 0
+            "analyze_ns": 12458,
+            "lookup_forms_ns": 38333,
+            "lookup_glosses_ns": 38750,
+            "resolve_sentences_ns": 1792,
+            "enrich_words_ns": 5333,
+            "total_ns": 97208
           }
         },
         "custom": {
@@ -951,12 +971,12 @@
             "punct": 1
           },
           "timings": {
-            "analyze_ms": 0,
-            "lookup_forms_ms": 0,
-            "lookup_glosses_ms": 0,
-            "resolve_sentences_ms": 0,
-            "enrich_words_ms": 0,
-            "total_ms": 0
+            "analyze_ns": 12291,
+            "lookup_forms_ns": 40917,
+            "lookup_glosses_ns": 38667,
+            "resolve_sentences_ns": 1791,
+            "enrich_words_ns": 2000,
+            "total_ns": 96166
           }
         }
       },
@@ -1125,24 +1145,28 @@
       "token_count": 3,
       "duration_ms": {
         "basic": {
-          "samples": [
-            0,
-            0,
-            0
+          "samples_ns": [
+            79500,
+            78500,
+            75709,
+            80208,
+            77791
           ],
-          "avg_ms": 0,
-          "p50_ms": 0,
-          "p95_ms": 0
+          "avg_ms": 0.07834160000000001,
+          "p50_ms": 0.0785,
+          "p95_ms": 0.0795
         },
         "custom": {
-          "samples": [
-            0,
-            0,
-            0
+          "samples_ns": [
+            76750,
+            76834,
+            79333,
+            79833,
+            75333
           ],
-          "avg_ms": 0,
-          "p50_ms": 0,
-          "p95_ms": 0
+          "avg_ms": 0.07761660000000001,
+          "p50_ms": 0.076834,
+          "p95_ms": 0.079333
         }
       },
       "stats": {
@@ -1157,12 +1181,12 @@
             "punct": 1
           },
           "timings": {
-            "analyze_ms": 0,
-            "lookup_forms_ms": 0,
-            "lookup_glosses_ms": 0,
-            "resolve_sentences_ms": 0,
-            "enrich_words_ms": 0,
-            "total_ms": 0
+            "analyze_ns": 10291,
+            "lookup_forms_ns": 30167,
+            "lookup_glosses_ns": 33958,
+            "resolve_sentences_ns": 1458,
+            "enrich_words_ns": 1375,
+            "total_ns": 77791
           }
         },
         "custom": {
@@ -1176,12 +1200,12 @@
             "punct": 1
           },
           "timings": {
-            "analyze_ms": 0,
-            "lookup_forms_ms": 0,
-            "lookup_glosses_ms": 0,
-            "resolve_sentences_ms": 0,
-            "enrich_words_ms": 0,
-            "total_ms": 0
+            "analyze_ns": 10375,
+            "lookup_forms_ns": 29708,
+            "lookup_glosses_ns": 29584,
+            "resolve_sentences_ns": 1417,
+            "enrich_words_ns": 3708,
+            "total_ns": 75333
           }
         }
       },
@@ -1300,24 +1324,28 @@
       "token_count": 3,
       "duration_ms": {
         "basic": {
-          "samples": [
-            0,
-            0,
-            0
+          "samples_ns": [
+            82625,
+            84250,
+            77125,
+            81333,
+            75292
           ],
-          "avg_ms": 0,
-          "p50_ms": 0,
-          "p95_ms": 0
+          "avg_ms": 0.080125,
+          "p50_ms": 0.081333,
+          "p95_ms": 0.082625
         },
         "custom": {
-          "samples": [
-            0,
-            0,
-            0
+          "samples_ns": [
+            78875,
+            78625,
+            74916,
+            77458,
+            77875
           ],
-          "avg_ms": 0,
-          "p50_ms": 0,
-          "p95_ms": 0
+          "avg_ms": 0.0775498,
+          "p50_ms": 0.077875,
+          "p95_ms": 0.078625
         }
       },
       "stats": {
@@ -1332,12 +1360,12 @@
             "punct": 1
           },
           "timings": {
-            "analyze_ms": 0,
-            "lookup_forms_ms": 0,
-            "lookup_glosses_ms": 0,
-            "resolve_sentences_ms": 0,
-            "enrich_words_ms": 0,
-            "total_ms": 0
+            "analyze_ns": 11500,
+            "lookup_forms_ns": 30583,
+            "lookup_glosses_ns": 29791,
+            "resolve_sentences_ns": 1416,
+            "enrich_words_ns": 1458,
+            "total_ns": 75292
           }
         },
         "custom": {
@@ -1351,12 +1379,12 @@
             "punct": 1
           },
           "timings": {
-            "analyze_ms": 0,
-            "lookup_forms_ms": 0,
-            "lookup_glosses_ms": 0,
-            "resolve_sentences_ms": 0,
-            "enrich_words_ms": 0,
-            "total_ms": 0
+            "analyze_ns": 11292,
+            "lookup_forms_ns": 30250,
+            "lookup_glosses_ns": 30541,
+            "resolve_sentences_ns": 3833,
+            "enrich_words_ns": 1500,
+            "total_ns": 77875
           }
         }
       },

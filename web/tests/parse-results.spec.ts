@@ -67,7 +67,7 @@ test('about page explains the product', async ({ page }) => {
   await expect(page.locator('#about-page')).toHaveClass(/active/);
   await expect(page.locator('.about-hero h1')).toContainText('How FinEstDB works');
   await expect(page.locator('.about-steps')).toContainText('Paste a text');
-  await expect(page.locator('.about-steps')).toContainText('Inspect the words');
+  await expect(page.locator('.about-steps')).toContainText('Parse the words');
 });
 
 test('anonymous user trying admin workbench is redirected', async ({ page }) => {
@@ -123,6 +123,7 @@ test('successful sign-in lands on dashboard', async ({ page }) => {
 
   await page.goto('/#/signin');
   await page.getByLabel('Email').fill('alice@example.com');
+  await page.getByLabel('Password').fill('password123');
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   await expect(page.locator('#dashboard-page')).toHaveClass(/active/);
@@ -172,7 +173,7 @@ test('user dashboard shows stats and product nav, no admin links', async ({ page
   await expect(page.locator('#stat-known')).toHaveText('1,234');
 
   // User nav visible
-  await expect(page.getByRole('link', { name: 'Inspect' }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Parse' }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Decks' }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Review' }).first()).toBeVisible();
 
@@ -186,7 +187,7 @@ test('user inspect flow parses text and shows results with correction entry poin
 
   await expect(page.locator('#inspect-page')).toHaveClass(/active/);
   await page.locator('#inspect-text').fill(mixedFinnishText);
-  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await page.getByRole('button', { name: 'Parse text' }).click();
 
   await expect(page.locator('#results-page')).toHaveClass(/active/);
   // Internal parser-mode terminology must be hidden from non-admin users
@@ -218,7 +219,7 @@ test('user can mark result rows known or ignored from inspect results', async ({
 
   await page.goto('/#/inspect');
   await page.locator('#inspect-text').fill(mixedFinnishText);
-  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
 
   const firstRow = page.locator('#word-table-body tr').first();
@@ -315,7 +316,7 @@ test('user can save inspected results as a deck and review the first due card', 
 
   await page.goto('/#/inspect');
   await page.locator('#inspect-text').fill('Kissa juoksee.');
-  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await page.getByRole('button', { name: 'Parse text' }).click();
 
   await expect(page.locator('#results-page')).toHaveClass(/active/);
   await page.getByRole('button', { name: 'Save as deck' }).click();
@@ -519,6 +520,39 @@ test('inspect lang mismatch warning blocks parse until switching languages', asy
   await expect(page.locator('#inspect-submit')).toBeEnabled();
 });
 
+test('inspect paste auto-switches high-confidence language', async ({ page }) => {
+  await mockMe(page, 'user');
+  await page.goto('/#/inspect');
+
+  await page.locator('#inspect-lang').selectOption('ET');
+  const finnish = 'Menin pankkiin tänään ja söin hyvää leipää.';
+  await page.locator('#inspect-text').evaluate((el, value) => {
+    const input = el as HTMLTextAreaElement;
+    input.value = value as string;
+    input.dispatchEvent(new Event('paste', { bubbles: true }));
+  }, finnish);
+
+  await expect(page.locator('#inspect-lang')).toHaveValue('FI');
+  await expect(page.locator('#inspect-lang-warning')).toBeHidden();
+  await expect(page.locator('#inspect-submit')).toBeEnabled();
+});
+
+test('inspect file load auto-switches high-confidence language', async ({ page }) => {
+  await mockMe(page, 'user');
+  await page.goto('/#/inspect');
+
+  await page.locator('#inspect-lang').selectOption('ET');
+  await page.locator('#inspect-file').setInputFiles({
+    name: 'finnish.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('Menin pankkiin tänään ja söin hyvää leipää.'),
+  });
+
+  await expect(page.locator('#inspect-lang')).toHaveValue('FI');
+  await expect(page.locator('#inspect-lang-warning')).toBeHidden();
+  await expect(page.locator('#inspect-submit')).toBeEnabled();
+});
+
 // ── Results route is auth-only and signout clears prior parse state ────────
 
 test('anonymous user trying /#/results is redirected to sign-in', async ({ page }) => {
@@ -558,7 +592,7 @@ test('signing out clears prior parse results from memory and route', async ({ pa
 
   await page.goto('/#/inspect');
   await page.locator('#inspect-text').fill(mixedFinnishText);
-  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
   await expect(page.locator('.correction-btn').first()).toBeVisible();
 
@@ -585,7 +619,7 @@ test('correction submit shows error toast on backend failure', async ({ page }) 
 
   await page.goto('/#/inspect');
   await page.locator('#inspect-text').fill(mixedFinnishText);
-  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
 
   await page.locator('.correction-btn').first().click();
@@ -612,7 +646,7 @@ test('correction submit posts the PR-53 /api/parse/feedback contract', async ({ 
 
   await page.goto('/#/inspect');
   await page.locator('#inspect-text').fill(mixedFinnishText);
-  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
 
   await page.locator('.correction-btn').first().click();
@@ -664,7 +698,7 @@ test('correction modal disables submit when no parse_id is attached', async ({ p
 
   await page.goto('/#/inspect');
   await page.locator('#inspect-text').fill(mixedFinnishText);
-  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
 
   await page.locator('.correction-btn').first().click();
@@ -679,7 +713,7 @@ test('mobile keeps the correction entry point visible at 375 px', async ({ page 
   await page.setViewportSize({ width: 375, height: 800 });
   await page.goto('/#/inspect');
   await page.locator('#inspect-text').fill(mixedFinnishText);
-  await page.getByRole('button', { name: 'Inspect text' }).click();
+  await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
   await expect(page.locator('.correction-btn').first()).toBeVisible();
 });

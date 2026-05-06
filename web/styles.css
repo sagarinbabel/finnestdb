@@ -715,6 +715,7 @@ body {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.95rem;
+    table-layout: fixed;
 }
 
 .word-table th {
@@ -755,46 +756,64 @@ body {
 }
 
 .col-row    { width: 3rem; text-align: right; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-.col-lemma  { font-weight: 500; }
-.col-pos    { color: var(--text-secondary); font-size: 0.85rem; }
-.col-forms  { color: var(--text-secondary); font-size: 0.85rem; }
-.col-def    { color: var(--text-secondary); font-size: 0.85rem; max-width: 260px; }
+.col-lemma  { width: 13rem; font-weight: 500; word-wrap: break-word; vertical-align: top; }
+.col-forms  { width: 8rem; color: var(--text-secondary); font-size: 0.85rem; word-wrap: break-word; }
+.col-def    { color: var(--text-secondary); font-size: 0.85rem; word-wrap: break-word; }
 .col-grammar { color: var(--text-secondary); font-size: 0.8rem; font-style: italic; }
 .grammar-label { background: var(--bg-secondary, #f0f0f0); padding: 2px 6px; border-radius: 3px; }
-.col-count  { text-align: right; font-variant-numeric: tabular-nums; }
+.col-count  { width: 7rem; text-align: left; font-variant-numeric: tabular-nums; }
+.col-actions { width: 13rem; }
 
 .no-gloss { color: var(--text-secondary); opacity: 0.5; }
 .no-grammar { color: var(--text-secondary); opacity: 0.5; font-style: normal; }
 .is-hidden { display: none; }
 
-/* Example sentence toggle (native <details>, no JS) */
-.example-details {
-    margin-top: 0.25rem;
+/* Lemma cell — lemma + abbreviated POS pill on one line, optional example
+   below. The POS column itself has been removed; the abbreviated pill
+   inherits column space from the lemma column. */
+.lemma-pos-grid {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+.lemma-side {
+    word-wrap: break-word;
+}
+.pos-side {
+    flex: 0 0 auto;
 }
 
 .example-toggle {
+    display: block;
+    margin-top: 0.25rem;
+    padding: 0;
+    background: none;
+    border: none;
+    font-family: inherit;
     font-size: 0.75rem;
     color: var(--accent);
     cursor: pointer;
     user-select: none;
-    list-style: none; /* hide default marker in Firefox */
+    text-align: left;
 }
-
-.example-toggle::-webkit-details-marker { display: none; } /* hide default marker in Chrome */
-
-.example-details[open] .example-toggle {
+.example-toggle[aria-expanded="true"] {
     color: var(--text-secondary);
 }
 
 .example-text {
     display: block;
     margin-top: 0.25rem;
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--accent);
     font-size: 0.8rem;
     color: var(--text-secondary);
     font-style: italic;
     line-height: 1.5;
-    padding-left: 0.5rem;
-    border-left: 2px solid var(--border);
+    overflow-wrap: anywhere;
+}
+.example-text.hidden {
+    display: none;
 }
 
 @media (max-width: 600px) {
@@ -1115,29 +1134,90 @@ body {
     vertical-align: middle;
 }
 
-/* Example sentence polish */
-.example-details {
-    margin-top: 0.35rem;
+/* Word actions: known toggle pill + ignore icon button */
+.word-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
 }
-
-.example-details[open] {
-    margin-bottom: 0.25rem;
-}
-
-.example-text {
-    display: block;
-    margin-top: 0.35rem;
-    padding: 0.5rem 0.75rem;
-    background: var(--bg-secondary);
-    border-left: 3px solid var(--accent);
-    border-radius: 0 4px 4px 0;
-    font-size: 0.8rem;
+.word-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
     color: var(--text-secondary);
-    font-style: italic;
-    line-height: 1.6;
-    max-height: 200px;
-    overflow: hidden;
-    transition: max-height 0.2s ease-out;
+    font: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.word-pill:hover:not([disabled]) {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+.word-pill.is-active {
+    background: color-mix(in srgb, var(--accent) 25%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+    color: var(--text-primary);
+}
+.word-pill[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.word-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.word-icon-btn:hover:not([disabled]) {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+.word-icon-btn.is-active {
+    background: color-mix(in srgb, #d04444 25%, transparent);
+    border-color: color-mix(in srgb, #d04444 60%, transparent);
+    color: var(--text-primary);
+}
+.word-icon-btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Tooltip — appears immediately on hover/focus, no delay */
+[data-tooltip] {
+    position: relative;
+}
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.25rem 0.5rem;
+    background: var(--text-primary);
+    color: var(--card-bg);
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-style: normal;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 20;
 }
 
 .example-text .highlight-form {
@@ -2665,8 +2745,8 @@ h2 {
     color: var(--text-secondary);
     font-family: var(--font-mono);
     font-size: 11px;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    text-transform: none;
 }
 
 .word-table tbody tr:hover {

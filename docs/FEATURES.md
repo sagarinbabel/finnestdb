@@ -44,6 +44,19 @@ every other deck that contains the same lemma. Deleting a deck does not
 erase what you have learned — it only removes that particular source
 material.
 
+## Language Selection
+
+FinEstDB uses a hybrid language policy so the common path stays fast without
+silently parsing under the wrong language.
+
+- High-confidence pasted or file-loaded text auto-switches to Finnish or
+  Estonian when the detected language differs from the selector.
+- Manually typed text and later selector changes keep the explicit guardrail:
+  if selected and detected languages conflict, parse is blocked until you
+  switch to the detected language.
+- Unknown-language warnings are advisory. You can still parse text that does
+  not contain enough Finnish or Estonian signal.
+
 ## Current Inspect Results
 
 Inspect currently shows dictionary coverage, not personalized comprehension.
