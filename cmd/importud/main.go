@@ -130,6 +130,7 @@ type udCase struct {
 
 type udToken struct {
 	Surface      string `json:"surface"`
+	Occurrence   int    `json:"occurrence,omitempty"`
 	Lemma        string `json:"lemma"`
 	POS          string `json:"pos"`
 	GrammarLabel string `json:"grammar_label,omitempty"`
@@ -151,17 +152,19 @@ func parseConllu(r *os.File, idPrefix string) ([]udCase, int, int, error) {
 	)
 
 	var (
-		sentText   string
-		sentID     string
-		sentTokens []udToken
-		sawError   bool
-		seqIndex   int
+		sentText       string
+		sentID         string
+		sentTokens     []udToken
+		surfaceCounts  map[string]int
+		sawError       bool
+		seqIndex       int
 	)
 	flush := func() {
 		defer func() {
 			sentText = ""
 			sentID = ""
 			sentTokens = nil
+			surfaceCounts = nil
 			sawError = false
 		}()
 		if len(sentTokens) == 0 {
@@ -222,6 +225,13 @@ func parseConllu(r *os.File, idPrefix string) ([]udCase, int, int, error) {
 			sawError = true
 			continue
 		}
+		// Skip punctuation tokens. internal/eval/eval.go compares against
+		// flattenNonPunct(parsed.Sentences), which removes PUNCT before
+		// matching, so PUNCT tokens kept here would be impossible misses
+		// and inflate the accuracy denominators.
+		if upos == "PUNCT" {
+			continue
+		}
 		featsClean := ""
 		if feats != "_" && feats != "" {
 			featsClean = feats
@@ -232,6 +242,17 @@ func parseConllu(r *os.File, idPrefix string) ([]udCase, int, int, error) {
 			POS:          upos,
 			GrammarLabel: caseLabelFromFeats(featsClean),
 			Feats:        featsClean,
+		}
+		// Count per-sentence surface occurrences. eval.findOccurrence
+		// counts the Nth parsed token with this surface, so repeats need
+		// explicit Occurrence > 1 — leave the first one with the implicit
+		// default of 1 (handled by the eval `omitempty` zero-fallback).
+		if surfaceCounts == nil {
+			surfaceCounts = make(map[string]int)
+		}
+		surfaceCounts[surface]++
+		if surfaceCounts[surface] > 1 {
+			tok.Occurrence = surfaceCounts[surface]
 		}
 		sentTokens = append(sentTokens, tok)
 	}
