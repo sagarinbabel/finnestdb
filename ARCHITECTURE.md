@@ -429,6 +429,10 @@ Files:
   disagreement-heavy gold candidates
 - `cmd/autoresearch/main.go` — automated rule-ablation loop driven by
   parser-eval; logs accepted/rejected mutations to JSONL
+- `cmd/scrapegutenberg/main.go` — Plan C / PR 3 silver-corpus scraper
+  for Project Gutenberg Finnish books
+- `cmd/silvertag/main.go` — Plan C / PR 6 silver-tagger; runs
+  pkg/lemmatizer-fi-et over raw text and emits gold-format JSON
 - `scripts/fetch-and-import-ud.sh` — clone UD treebanks and run importud
 - `scripts/parser-comparison.sh` · `scripts/parser-comparison-et.sh` —
   always include the analyzer baseline (omorfi/estnltk); fail fast when
@@ -436,8 +440,12 @@ Files:
 - `internal/eval/eval.go`
 - `testdata/parser-eval/{fi,et}/gold/` — committed gold (FI UD CC BY,
   manual sets, fi-grammar-v1)
+- `testdata/parser-eval/{fi,et}/silver/` — committed silver (auto-tagged
+  raw corpora; Plan C / PR 6+)
 - `testdata/parser-eval/{fi,et}/gold-train/` — gitignored UD train
   splits, used for OOV/coverage only
+- `data/silver-fi/` — Plan C silver-tier raw corpus (Gutenberg-FI
+  text + JSONL manifest); silvertag turns this into silver gold
 - `docs/baselines/` — frozen baseline reports per parser/language
 - `docs/PARSER_EVAL_DATASETS.md`
 - `docs/OMORFI_ADAPTER.md` · `docs/OMORFI_COMPARISON.md`
