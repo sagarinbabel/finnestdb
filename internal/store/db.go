@@ -88,9 +88,12 @@ type DeckSentenceInput struct {
 
 type DeckTokenInput struct {
 	TokenIx int
-	Form    string
-	Lemma   string
-	POS     string
+	// Form is the surface form of the token as it appeared in the source
+	// text (e.g. "Eestit" for lemma "Eesti"). Stored on the occurrence row's
+	// `surface` column so the deck detail view can highlight real inflections.
+	Form  string
+	Lemma string
+	POS   string
 }
 
 type KnownLemma struct {
@@ -1208,6 +1211,7 @@ func (d *DB) GetDeckDetails(userID, deckID int64) (*DeckDetails, error) {
 	defer rows.Close()
 
 	details.Lemmas = []DeckLemma{}
+	idx := map[LemmaKey]int{}
 	for rows.Next() {
 		var item DeckLemma
 		var formsCSV string
@@ -1219,11 +1223,13 @@ func (d *DB) GetDeckDetails(userID, deckID int64) (*DeckDetails, error) {
 			sort.Strings(item.Forms)
 		}
 		details.TotalTokens += item.Count
+		idx[LemmaKey{Lemma: item.Lemma, POS: item.POS}] = len(details.Lemmas)
 		details.Lemmas = append(details.Lemmas, item)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+
 	return &details, nil
 }
 
@@ -1445,6 +1451,37 @@ func (d *DB) MarkLemmaIgnored(userID int64, lang, lemma, pos string) error {
 		`DELETE FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
 		userID, lang, lemma, pos,
 	); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// ClearLemmaState removes the given (lemma, pos) from both the known and
+// ignored lists for a user, returning the lemma to the neutral / unknown
+// state. If a deck containing this lemma was created while the lemma was
+// known/ignored, CreateDeckWithSentences would have skipped seeding a card
+// row — so we ensure one here so the lemma is reachable from the review
+// queue once the user has marked it unknown again.
+func (d *DB) ClearLemmaState(userID int64, lang, lemma, pos string) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(
+		`DELETE FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
+		userID, lang, lemma, pos,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(
+		`DELETE FROM user_ignored_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
+		userID, lang, lemma, pos,
+	); err != nil {
+		return err
+	}
+	if _, err := ensureCard(tx, userID, lang, lemma, pos); err != nil {
 		return err
 	}
 	return tx.Commit()

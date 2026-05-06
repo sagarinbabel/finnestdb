@@ -990,6 +990,112 @@ func TestCreateDeckSkipsKnownWordsWhenSeedingCards(t *testing.T) {
 	}
 }
 
+// TestClearLemmaStateEnsuresCardWhenDeckSkippedSeeding covers both ways a
+// deck-create can skip ensureCard for a lemma — the lemma was already known,
+// or already ignored — and verifies that clearing the state via /api/lemma-state
+// seeds a card so the lemma becomes reviewable. Both paths share the same
+// ClearLemmaState body, but parallel coverage guards against a future
+// regression that would split them.
+func TestClearLemmaStateEnsuresCardWhenDeckSkippedSeeding(t *testing.T) {
+	cases := []struct {
+		name        string
+		preState    string // "known" or "ignored" — applied before deck create
+		emailSuffix string
+	}{
+		{name: "known", preState: "known", emailSuffix: "known"},
+		{name: "ignored", preState: "ignored", emailSuffix: "ignored"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			api := newTestAPI(t)
+			if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+				t.Fatalf("UpsertLemma: %v", err)
+			}
+			if err := api.store.UpsertForm("kissa", "kissa", "NOUN", "FI"); err != nil {
+				t.Fatalf("UpsertForm: %v", err)
+			}
+
+			api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+				return &parsecore.ParseResult{
+					Lang: lang,
+					Sentences: []parsecore.SentenceResult{
+						{
+							Text: "Kissa juoksee.",
+							Tokens: []parsecore.TokenResult{
+								{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+								{Form: "juoksee", Lemma: "juosta", POS: "VERB"},
+								{Form: ".", POS: "PUNCT"},
+							},
+						},
+					},
+				}, nil
+			}
+
+			mux := newTestMux(t, api)
+			cookies := loginAndReturnCookies(t, mux, "clear-card-"+tc.emailSuffix+"@example.com")
+
+			// Mark kissa with the pre-state via /api/lemma-state, mirroring the
+			// existing real-user flows (known-word import for "known", trash-
+			// icon button on a parse result for "ignored").
+			preReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state",
+				strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"`+tc.preState+`"}`))
+			for _, cookie := range cookies {
+				preReq.AddCookie(cookie)
+			}
+			preRec := httptest.NewRecorder()
+			mux.ServeHTTP(preRec, preReq)
+			if preRec.Code != http.StatusOK {
+				t.Fatalf("pre-state mark status=%d body=%q", preRec.Code, preRec.Body.String())
+			}
+
+			createReq := httptest.NewRequest(http.MethodPost, "/api/decks",
+				strings.NewReader(`{"title":"Test deck","lang":"FI","text":"Kissa juoksee."}`))
+			for _, cookie := range cookies {
+				createReq.AddCookie(cookie)
+			}
+			createRec := httptest.NewRecorder()
+			mux.ServeHTTP(createRec, createReq)
+			if createRec.Code != http.StatusOK {
+				t.Fatalf("create deck status=%d body=%q", createRec.Code, createRec.Body.String())
+			}
+
+			auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
+			if err != nil || auth == nil {
+				t.Fatal("expected authenticated user")
+			}
+
+			// Pre-condition: only juosta has a card; kissa was skipped because
+			// it was already known/ignored at deck-create time.
+			if cardCount, _ := api.store.CountCards(auth.UserID, "FI"); cardCount != 1 {
+				t.Fatalf("pre-clear card_count=%d want 1", cardCount)
+			}
+
+			// Clear via the API — the user "marks as unknown" / "stops ignoring".
+			clearReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state",
+				strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":""}`))
+			for _, cookie := range cookies {
+				clearReq.AddCookie(cookie)
+			}
+			clearRec := httptest.NewRecorder()
+			mux.ServeHTTP(clearRec, clearReq)
+			if clearRec.Code != http.StatusOK {
+				t.Fatalf("clear status=%d body=%q", clearRec.Code, clearRec.Body.String())
+			}
+
+			// Post-condition: kissa now has a card row, so it's reachable from
+			// the review queue.
+			cardCount, err := api.store.CountCards(auth.UserID, "FI")
+			if err != nil {
+				t.Fatalf("CountCards: %v", err)
+			}
+			if cardCount != 2 {
+				t.Fatalf("post-clear card_count=%d want 2 (juosta + kissa now seeded)", cardCount)
+			}
+		})
+	}
+}
+
 // TestCreateDeckExpandsAmbiguousTokenIntoMultipleCards verifies the
 // multi-lemma model: when the dict knows that "joon" is both noun and 1Sg of
 // jooma, a single occurrence in the source text creates one card per
