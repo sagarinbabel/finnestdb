@@ -466,14 +466,54 @@ type LemmaKey struct {
 // BatchLookupGlosses resolves a slice of LemmaKeys to their English gloss strings.
 // Returns a map from LemmaKey → gloss. Keys with no entry in the lemmas table
 // are absent from the map (caller treats absent as empty gloss).
+//
+// Phase 2 read path: prefer the translations table over lemmas.gloss when
+// both exist for the same source. The JOIN on
+// (lemma, pos, lang, source) deliberately couples each translation row
+// to its co-written lemma row — this lets us rank by lemmas.source_priority
+// without adding a denormalized priority column to translations.
+//
+// Three cases the query handles together:
+//
+//   1. kaikki-imported entry (lemmas + translations both written by kaikki):
+//      JOIN matches, source_priority=10, returns translations.text. Same
+//      string as lemmas.gloss for typical entries (sense_idx=0); behavior
+//      change only when sense_idx=0 is whitespace and a later sense wins.
+//
+//   2. custom-override applied via -custom-glosses (lemmas.gloss replaced
+//      by source='custom' priority=100, but applyCustomGlosses doesn't
+//      write to translations): JOIN finds no translations row matching
+//      source='custom', falls through to lemmas.gloss → custom override
+//      returned. Preserves the documented custom-glosses contract from
+//      README without applyCustomGlosses needing changes here.
+//
+//   3. multiple sources writing translations for the same (lemma, pos)
+//      (forthcoming once Ekilex translations land via PR 4): each row's
+//      JOINed lemmas.source_priority decides; deterministic by ORDER BY.
 func (d *DB) BatchLookupGlosses(lemmas []LemmaKey, lang string) map[LemmaKey]string {
 	result := make(map[LemmaKey]string, len(lemmas))
 	if len(lemmas) == 0 {
 		return result
 	}
 
-	stmt, err := d.db.Prepare(
-		`SELECT COALESCE(gloss, '') FROM lemmas WHERE lemma = ? AND pos = ? AND lang = ?`,
+	// Single statement queries both tables and falls back deterministically.
+	// The translations subquery returns NULL when the JOIN fails (e.g. no
+	// matching translation row for the current lemmas.source); COALESCE
+	// then falls through to lemmas.gloss, then to '' if neither exists.
+	stmt, err := d.db.Prepare(`
+		SELECT COALESCE(
+		  (SELECT t.text
+		   FROM translations t
+		   JOIN lemmas l ON l.lemma = t.lemma
+		                AND l.pos   = t.pos
+		                AND l.lang  = t.lang
+		                AND l.source = t.source
+		   WHERE t.lemma = ? AND t.pos = ? AND t.lang = ? AND t.target_lang = 'EN'
+		   ORDER BY l.source_priority DESC, t.sense_idx ASC
+		   LIMIT 1),
+		  (SELECT gloss FROM lemmas WHERE lemma = ? AND pos = ? AND lang = ?),
+		  ''
+		)`,
 	)
 	if err != nil {
 		return result
@@ -482,7 +522,7 @@ func (d *DB) BatchLookupGlosses(lemmas []LemmaKey, lang string) map[LemmaKey]str
 
 	for _, k := range lemmas {
 		var gloss string
-		if err := stmt.QueryRow(k.Lemma, k.POS, lang).Scan(&gloss); err == nil && gloss != "" {
+		if err := stmt.QueryRow(k.Lemma, k.POS, lang, k.Lemma, k.POS, lang).Scan(&gloss); err == nil && gloss != "" {
 			result[k] = gloss
 		}
 	}

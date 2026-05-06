@@ -219,6 +219,32 @@ Default priority order for FI:
 `custom_overrides` is the existing `-custom-glosses` CSV path, promoted
 to a real source.
 
+### Risk to watch
+
+Phase 2's gloss read path intentionally does **not** rank raw
+`translations` rows in isolation. It joins each translation row back to
+its co-written `lemmas` row on `(lemma, pos, lang, source)` and uses the
+lemma row's `source_priority` to decide which translation wins.
+
+That keeps one source of truth for priority and preserves the current
+`-custom-glosses` behavior, but it also creates an invariant future
+importers must preserve:
+
+- If a source writes `translations`, it must also write or update the
+  matching `lemmas` row with the same `source` and the intended
+  `source_priority`.
+- If a future adapter writes `translations` rows without a matching
+  `lemmas.source`, `BatchLookupGlosses` will ignore those translations by
+  design.
+- A naive "translations first" query would regress custom overrides:
+  stale `kaikki` translations would beat `lemmas.gloss` rows written by
+  `-custom-glosses`.
+
+Concrete follow-up: when `cmd/importekilexdetails` gains translations, it
+must keep its `lemmas.source='ekilex'` rows in sync with the
+`translations.source='ekilex'` rows it writes, or the new read path will
+silently fall back to the wrong gloss source.
+
 ## Phasing
 
 Each phase ends in a working system; nothing is half-built across PR
