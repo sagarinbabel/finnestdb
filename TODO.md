@@ -62,7 +62,6 @@ Near-term items that remain open after Phase 1 and Phase 2:
 - [ ] Use the new eval regressions to prioritize parser fixes, starting with recursive compounds and consonant gradation
 - [ ] Add analyzer cache-hit and unknown-lemma counters to complement the existing stage-timing stats
 - [ ] Document the expected browser-QA setup more clearly in the repo so Playwright use is obvious on a fresh checkout
-- [ ] Add deck-detail regression coverage: ensure deck loads clear/disable stale results UI, and ensure correction (“Suggest fix”) is hidden/disabled when no `parse_id` is attached (reopened decks)
 
 ## Critical Findings
 
