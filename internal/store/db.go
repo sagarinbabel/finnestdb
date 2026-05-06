@@ -252,33 +252,9 @@ func (d *DB) initSchema() error {
 		PRIMARY KEY (form, lang)
 	);
 
-	-- Cross-language translations of a lemma into a target language. Replaces
-	-- stuffing target-language glosses into lemmas.gloss when multiple senses
-	-- or sources are involved. lemmas.gloss stays as a denormalized "primary
-	-- translation" cache.
-	CREATE TABLE IF NOT EXISTS translations (
-		lemma       TEXT NOT NULL,
-		pos         TEXT NOT NULL,
-		lang        TEXT NOT NULL,
-		target_lang TEXT NOT NULL,
-		text        TEXT NOT NULL,
-		sense_idx   INTEGER NOT NULL DEFAULT 0,
-		source      TEXT NOT NULL,
-		PRIMARY KEY (lemma, pos, lang, target_lang, sense_idx, source)
-	);
-
-	-- Monolingual definitions in the source language. Populated from
-	-- Wikisanakirja via kaikki.org and from any future native-language
-	-- dictionary sources.
-	CREATE TABLE IF NOT EXISTS definitions (
-		lemma     TEXT NOT NULL,
-		pos       TEXT NOT NULL,
-		lang      TEXT NOT NULL,
-		sense_idx INTEGER NOT NULL DEFAULT 0,
-		text      TEXT NOT NULL,
-		source    TEXT NOT NULL,
-		PRIMARY KEY (lemma, pos, lang, sense_idx, source)
-	);
+	-- translations and definitions schemas are owned by EnsureLexicalEntryTables
+	-- below; both the server and the importer call it so the table set stays in
+	-- one place.
 
 	-- dict_metadata schema is owned by EnsureDictMetadataSchema below; both the
 	-- server and the importer call it so the column set stays in one place.

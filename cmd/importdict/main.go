@@ -573,5 +573,8 @@ func ensureSchema(db *sql.DB) error {
 	if err := store.EnsureDictionarySourceColumns(db); err != nil {
 		return err
 	}
-	return store.EnsureLexicalEnrichmentColumns(db)
+	if err := store.EnsureLexicalEnrichmentColumns(db); err != nil {
+		return err
+	}
+	return store.EnsureLexicalEntryTables(db)
 }
