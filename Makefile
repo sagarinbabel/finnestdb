@@ -3,7 +3,7 @@
         import-ekilex-details-et import-dict-et-recommended \
         fetch-ekilex-refresh fetch-ekilex-sample fetch-ekilex \
         reduce-ekilex \
-        reimport-dict-fi reimport-dict-et reimport-dict \
+        reimport-dict-fi reimport-dict-et reimport-dict verify-dict \
         setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et
 
 # Default target
@@ -161,6 +161,48 @@ reimport-dict-et:
 	go run ./cmd/importdict -lang et -db finnestdb.db -reimport
 
 reimport-dict: reimport-dict-fi reimport-dict-et
+
+# verify-dict prints row counts per (table, lang, source) so you can quickly
+# confirm a re-import populated what it should. Phase 2 (translations table)
+# is hard to verify by eyeballing the UI — this gives a one-glance answer to
+# "did kaikki translations land?" / "did Ekilex translations land?".
+verify-dict:
+	@echo "── lemmas ──"
+	@sqlite3 -header -column finnestdb.db \
+		"SELECT lang, source, source_priority, COUNT(*) AS rows FROM lemmas GROUP BY lang, source, source_priority ORDER BY lang, source_priority DESC, source"
+	@echo
+	@echo "── forms ──"
+	@sqlite3 -header -column finnestdb.db \
+		"SELECT lang, source, source_priority, COUNT(*) AS rows FROM forms GROUP BY lang, source, source_priority ORDER BY lang, source_priority DESC, source"
+	@echo
+	@echo "── translations ──"
+	@if [ "$$(sqlite3 finnestdb.db "SELECT 1 FROM sqlite_master WHERE type='table' AND name='translations'" 2>/dev/null)" = "1" ]; then \
+		sqlite3 -header -column finnestdb.db \
+			"SELECT lang, target_lang, source, COUNT(*) AS rows FROM translations GROUP BY lang, target_lang, source ORDER BY lang, source"; \
+	else \
+		echo "(empty)"; \
+	fi
+	@echo
+	@echo "── definitions ──"
+	@if [ "$$(sqlite3 finnestdb.db "SELECT 1 FROM sqlite_master WHERE type='table' AND name='definitions'" 2>/dev/null)" = "1" ]; then \
+		sqlite3 -header -column finnestdb.db \
+			"SELECT lang, source, COUNT(*) AS rows FROM definitions GROUP BY lang, source ORDER BY lang, source"; \
+	else \
+		echo "(empty)"; \
+	fi
+	@echo
+	@echo "── dict_metadata ──"
+	@if [ "$$(sqlite3 finnestdb.db "SELECT 1 FROM sqlite_master WHERE type='table' AND name='dict_metadata'" 2>/dev/null)" = "1" ]; then \
+		if [ "$$(sqlite3 finnestdb.db "SELECT 1 FROM pragma_table_info('dict_metadata') WHERE name='source_name'" 2>/dev/null)" = "1" ]; then \
+			sqlite3 -header -column finnestdb.db \
+				"SELECT lang, source, source_name, source_version, imported_at FROM dict_metadata ORDER BY lang, source"; \
+		else \
+			sqlite3 -header -column finnestdb.db \
+				"SELECT lang, source, imported_at FROM dict_metadata ORDER BY lang, source"; \
+		fi; \
+	else \
+		echo "(empty)"; \
+	fi
 
 # ── Omorfi comparison setup ────────────────────────────────────────────────────
 #

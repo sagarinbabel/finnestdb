@@ -23,21 +23,53 @@ once Voikko-equivalent enrichment lands for FI.
 
 | Date | Commit | FI fi-manual-v1 lemma | ET et-grammar-v1 lemma | FI grammar | ET grammar | ET coverage |
 |---|---|---:|---:|---:|---:|---:|
-| 2026-05-06b (post-priority-fix) | (PR 0.5 head) | **81.4** | **88.6** | 0.0 | 0.0 | **100.0** |
+| 2026-05-06c (Phase 2 ships) | [`615556e`][c-2026-05-06c] | 81.4 | 88.6 | 0.0 | 0.0 | 100.0 |
+| 2026-05-06b (post-priority-fix) | [`b327d4f`][c-2026-05-06b] | **81.4** | **88.6** | 0.0 | 0.0 | **100.0** |
 | 2026-05-06 | [`46d8b77`][c-2026-05-06] | 81.4 | 80.0 | 0.0 | 0.0 | 100.0 |
 | 2026-05-05 | [`af111c2`][c-2026-05-05] | — | 88.6 | — | 2.0 | 94.6 |
 | 2026-05-05 (estnltk ceiling) | [`af111c2`][c-2026-05-05] | — | **98.1** | — | **92.2** | 100.0 |
 | 2026-04-28 | [`bb744ba`][c-2026-04-28] | 72.9 | 87.6 | 0.0 | 2.0 | 94.6 |
 
+[c-2026-05-06c]: https://github.com/sagarinbabel/finnestdb/commit/615556e
+[c-2026-05-06b]: https://github.com/sagarinbabel/finnestdb/commit/b327d4f
 [c-2026-05-06]: https://github.com/sagarinbabel/finnestdb/commit/46d8b77
 [c-2026-05-05]: https://github.com/sagarinbabel/finnestdb/commit/af111c2
 [c-2026-04-28]: https://github.com/sagarinbabel/finnestdb/commit/bb744ba
 
 ## Entries
 
+### 2026-05-06c — Phase 2 ships translations table end-to-end
+
+**Commit**: [`615556e`][c-2026-05-06c] (PRs [#85](https://github.com/sagarinbabel/finnestdb/pull/85), [#86](https://github.com/sagarinbabel/finnestdb/pull/86), [#89](https://github.com/sagarinbabel/finnestdb/pull/89))
+
+Phase 2 of [`docs/FINNISH_LEXICAL_PLAN.md`](FINNISH_LEXICAL_PLAN.md) is shipped across both languages. Each kaikki and Ekilex sense's English translation is now its own row in the `translations` table; the read path consults `translations` first, falling back to `lemmas.gloss` only when no row matches.
+
+**Headline numbers** (custom parser): identical to 2026-05-06b. Phase 2 doesn't move accuracy or coverage — eval doesn't measure gloss text correctness. The change is structural, not behavioral.
+
+**Changes since 2026-05-06b**:
+
+- [#85](https://github.com/sagarinbabel/finnestdb/pull/85) — `cmd/importdict` writes per-sense translation rows from kaikki dumps. Three review iterations hardened the upsert + cleanup pattern: refresh-on-conflict, source-scoped wipe to remove orphaned senses, DELETE inside the transaction so a stream failure rolls back to the pre-import state.
+- [#86](https://github.com/sagarinbabel/finnestdb/pull/86) — `internal/store/dict.go` `BatchLookupGlosses` queries `translations` JOINed to `lemmas` on `(lemma, pos, lang, source)`. The JOIN is the load-bearing design choice: it lets the query rank by `lemmas.source_priority` without a denormalized priority column, AND makes `-custom-glosses` overrides "just work" (the JOIN finds no `source='custom'` translation, falls through to `lemmas.gloss`).
+- [#89](https://github.com/sagarinbabel/finnestdb/pull/89) — `cmd/importekilexdetails` extends #85's pattern to ET. All of #85's review-iteration lessons applied upfront so #89 went through review without a repeat round.
+
+**Net effect**:
+
+- **No accuracy/coverage movement**. As designed — Phase 2 was structural. Verified on `/tmp/finnestdb-baseline.db` (the post-#84 reference); both FI and ET return identical numbers via the lemmas.gloss fallback path that's still hit when translations rows aren't populated.
+- **Translation rows now driving glosses for kaikki entries** when a fresh DB is built under the new code. For pre-existing DBs imported before #85 (the typical user state), the fallback path runs and behavior matches pre-Phase-2 exactly.
+- **Multi-source translations supported** end-to-end. When kaikki and Ekilex both have a translation for the same `(lemma, pos)`, the read path picks the one whose `lemmas.source_priority` is higher — i.e., whichever source won the lemma upsert.
+- **`-custom-glosses` contract preserved**. The CSV-driven override path writes only to `lemmas.gloss`. The new read path's JOIN finds no matching translation row, falls back to `lemmas.gloss`, custom override surfaces. Unchanged user-visible behavior.
+
+**Open issues this surfaced**:
+
+- `applyCustomGlosses` doesn't write to `translations`. Custom overrides still flow through `lemmas.gloss` only. Works correctly via fallback, but if/when we want custom overrides to participate in multi-translation surfaces, that path needs to mirror the kaikki write pattern.
+- fi.wiktionary's Finnish-language definitions (`target_lang='FI'`) are still unused. The `definitions` table exists; no importer writes to it. Filed for a future PR after Phase 3/4 stabilize.
+- Eval doesn't measure gloss correctness. Phase 2's main effect — richer multi-translation data available to clients — is invisible to the parser-eval harness. A future evolution entry for "Inspect UI shows multiple translations" would surface it qualitatively if/when that ships.
+
+---
+
 ### 2026-05-06b — Source-aware lookup recovery
 
-**Commit**: TBD (PR 0.5 head)
+**Commit**: [`b327d4f`][c-2026-05-06b]
 **Detail**: [`baselines/2026-05-06b-summary.md`](baselines/2026-05-06b-summary.md)
 
 Same dictionary state as 2026-05-06; the only thing that changed is
