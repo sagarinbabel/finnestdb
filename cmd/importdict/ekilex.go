@@ -194,7 +194,9 @@ func importEkilex(db *sql.DB, client *ekilexClient, dbLang string, datasets, wor
 			return processed, err
 		}
 		for _, entry := range ekilexEntriesFromDetails(details, ref.Value) {
-			entry.Forms = uniqueStrings(append(entry.Forms, paradigmForms...))
+			combinedForms := append([]string{}, entry.Forms...)
+			combinedForms = append(combinedForms, paradigmForms...)
+			entry.Forms = uniqueStrings(combinedForms)
 			if _, err := stmtLemma.Exec(entry.Lemma, entry.POS, entry.Gloss, dbLang, source.Name, source.Priority); err != nil {
 				return processed, err
 			}

@@ -206,9 +206,6 @@ func main() {
 	if sourceConfig.Name == "" {
 		log.Fatal("source-key is required")
 	}
-	if sourceConfig.Name == "ekilex" && *sourcePriority == 10 {
-		sourceConfig.Priority = 20
-	}
 
 	if err := resolveProvenance(*filePath, sourceConfig.Name, sourceName, sourceURL, sourceLicense, sourceAttribution); err != nil {
 		log.Fatalf("%v", err)
