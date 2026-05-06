@@ -551,6 +551,7 @@ func ensureSchema(db *sql.DB) error {
 			lang  TEXT NOT NULL,
 			source TEXT NOT NULL DEFAULT '',
 			source_priority INTEGER NOT NULL DEFAULT 0,
+			paradigm_class TEXT,
 			PRIMARY KEY(lemma, pos, lang)
 		);
 		CREATE TABLE IF NOT EXISTS forms (
@@ -560,6 +561,7 @@ func ensureSchema(db *sql.DB) error {
 			lang  TEXT NOT NULL,
 			source TEXT NOT NULL DEFAULT '',
 			source_priority INTEGER NOT NULL DEFAULT 0,
+			feats TEXT,
 			PRIMARY KEY (form, lang)
 		);
 	`); err != nil {
@@ -568,5 +570,8 @@ func ensureSchema(db *sql.DB) error {
 	if err := store.EnsureDictMetadataSchema(db); err != nil {
 		return err
 	}
-	return store.EnsureDictionarySourceColumns(db)
+	if err := store.EnsureDictionarySourceColumns(db); err != nil {
+		return err
+	}
+	return store.EnsureLexicalEnrichmentColumns(db)
 }

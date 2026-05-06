@@ -184,6 +184,7 @@ func (d *DB) initSchema() error {
 		lang TEXT NOT NULL,
 		source TEXT NOT NULL DEFAULT '',
 		source_priority INTEGER NOT NULL DEFAULT 0,
+		paradigm_class TEXT,
 		PRIMARY KEY(lemma, pos, lang)
 	);
 
@@ -247,7 +248,36 @@ func (d *DB) initSchema() error {
 		lang  TEXT NOT NULL,
 		source TEXT NOT NULL DEFAULT '',
 		source_priority INTEGER NOT NULL DEFAULT 0,
+		feats TEXT,
 		PRIMARY KEY (form, lang)
+	);
+
+	-- Cross-language translations of a lemma into a target language. Replaces
+	-- stuffing target-language glosses into lemmas.gloss when multiple senses
+	-- or sources are involved. lemmas.gloss stays as a denormalized "primary
+	-- translation" cache.
+	CREATE TABLE IF NOT EXISTS translations (
+		lemma       TEXT NOT NULL,
+		pos         TEXT NOT NULL,
+		lang        TEXT NOT NULL,
+		target_lang TEXT NOT NULL,
+		text        TEXT NOT NULL,
+		sense_idx   INTEGER NOT NULL DEFAULT 0,
+		source      TEXT NOT NULL,
+		PRIMARY KEY (lemma, pos, lang, target_lang, sense_idx, source)
+	);
+
+	-- Monolingual definitions in the source language. Populated from
+	-- Wikisanakirja via kaikki.org and from any future native-language
+	-- dictionary sources.
+	CREATE TABLE IF NOT EXISTS definitions (
+		lemma     TEXT NOT NULL,
+		pos       TEXT NOT NULL,
+		lang      TEXT NOT NULL,
+		sense_idx INTEGER NOT NULL DEFAULT 0,
+		text      TEXT NOT NULL,
+		source    TEXT NOT NULL,
+		PRIMARY KEY (lemma, pos, lang, sense_idx, source)
 	);
 
 	-- dict_metadata schema is owned by EnsureDictMetadataSchema below; both the
@@ -346,6 +376,12 @@ func (d *DB) initSchema() error {
 	if err := EnsureDictionarySourceColumns(d.db); err != nil {
 		return err
 	}
+	if err := EnsureLexicalEnrichmentColumns(d.db); err != nil {
+		return err
+	}
+	if err := EnsureLexicalEntryTables(d.db); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -411,6 +447,54 @@ func EnsureDictionarySourceColumns(db *sql.DB) error {
 		}
 	}
 	return nil
+}
+
+// EnsureLexicalEnrichmentColumns backfills paradigm_class on lemmas (the join
+// key from a paradigm-class adapter like Kotus to a paradigm generator like
+// Voikko) and feats on forms (UD-style morph features as JSON). Fresh DBs
+// already get these columns via the CREATE TABLE statements above; this
+// exists for upgrade compatibility, mirroring EnsureDictionarySourceColumns.
+func EnsureLexicalEnrichmentColumns(db *sql.DB) error {
+	for table, columns := range map[string][]string{
+		"lemmas": {"paradigm_class TEXT"},
+		"forms":  {"feats TEXT"},
+	} {
+		for _, column := range columns {
+			if _, err := db.Exec(`ALTER TABLE ` + table + ` ADD COLUMN ` + column); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// EnsureLexicalEntryTables creates the translations and definitions tables if
+// they don't yet exist. Fresh DBs already get them via the CREATE TABLE
+// statements above; this exists for upgrade compatibility on databases
+// created before these tables were introduced.
+func EnsureLexicalEntryTables(db *sql.DB) error {
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS translations (
+			lemma       TEXT NOT NULL,
+			pos         TEXT NOT NULL,
+			lang        TEXT NOT NULL,
+			target_lang TEXT NOT NULL,
+			text        TEXT NOT NULL,
+			sense_idx   INTEGER NOT NULL DEFAULT 0,
+			source      TEXT NOT NULL,
+			PRIMARY KEY (lemma, pos, lang, target_lang, sense_idx, source)
+		);
+		CREATE TABLE IF NOT EXISTS definitions (
+			lemma     TEXT NOT NULL,
+			pos       TEXT NOT NULL,
+			lang      TEXT NOT NULL,
+			sense_idx INTEGER NOT NULL DEFAULT 0,
+			text      TEXT NOT NULL,
+			source    TEXT NOT NULL,
+			PRIMARY KEY (lemma, pos, lang, sense_idx, source)
+		);
+	`)
+	return err
 }
 
 // GetOrCreateUser is the legacy seeding helper used by tests and store
