@@ -135,6 +135,7 @@ func loadBaselineDir(dir string) (map[string]*eval.Report, error) {
 		return nil, err
 	}
 	out := make(map[string]*eval.Report)
+	srcPath := make(map[string]string)
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
 			continue
@@ -149,25 +150,18 @@ func loadBaselineDir(dir string) (map[string]*eval.Report, error) {
 		if r.Dataset.Name == "" {
 			continue
 		}
-		// Keep the latest by mtime when multiple files exist.
-		if existing, ok := out[r.Dataset.Name]; ok {
+		if _, ok := out[r.Dataset.Name]; ok {
 			info, _ := e.Info()
-			existingInfo, _ := os.Stat(filepath.Join(dir, existingFilename(existing)))
+			existingInfo, _ := os.Stat(srcPath[r.Dataset.Name])
 			if info != nil && existingInfo != nil && !info.ModTime().After(existingInfo.ModTime()) {
 				continue
 			}
 		}
 		out[r.Dataset.Name] = r
+		srcPath[r.Dataset.Name] = path
 	}
 	return out, nil
 }
-
-// existingFilename is a no-op placeholder — we don't track which on-disk file
-// corresponds to a Report after loading. Used only by loadBaselineDir's
-// most-recent-wins logic; if the file isn't found it falls through to
-// "always replace," which is fine for the common case of one file per
-// dataset.
-func existingFilename(r *eval.Report) string { return r.Dataset.Name + ".json" }
 
 // emitBeforeAfterTable renders the headline (Dataset, Metric, custom-prev,
 // custom-now, Δ, analyzer) table, plus an entry-marker for missing baselines
