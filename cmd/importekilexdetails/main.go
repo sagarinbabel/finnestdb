@@ -49,21 +49,21 @@ const maxBadLineSamples = 10
 // posMap converts an Ekilex meaning-level POS code to UPOS. The table is
 // documented in ARCHITECTURE.md (Dictionary section).
 var posMap = map[string]string{
-	"s":        "NOUN",
-	"v":        "VERB",
-	"vrm":      "VERB",
-	"adj":      "ADJ",
-	"adjg":     "ADJ",
-	"adjid":    "ADJ",
-	"adv":      "ADV",
-	"prop":     "PROPN",
-	"propgen":  "PROPN",
-	"pron":     "PRON",
-	"num":      "NUM",
-	"postp":    "ADP",
-	"prep":     "ADP",
-	"konj":     "CCONJ",
-	"interj":   "INTJ",
+	"s":       "NOUN",
+	"v":       "VERB",
+	"vrm":     "VERB",
+	"adj":     "ADJ",
+	"adjg":    "ADJ",
+	"adjid":   "ADJ",
+	"adv":     "ADV",
+	"prop":    "PROPN",
+	"propgen": "PROPN",
+	"pron":    "PRON",
+	"num":     "NUM",
+	"postp":   "ADP",
+	"prep":    "ADP",
+	"konj":    "CCONJ",
+	"interj":  "INTJ",
 }
 
 // wordClassFallback applies when a meaning has no `pos` field. The Ekilex
@@ -83,10 +83,10 @@ type definitionEntry struct {
 	WordClass string   `json:"word_class"`
 	Datasets  []string `json:"datasets"`
 	Meanings  []struct {
-		POS             []string `json:"pos"`
-		DefinitionsET   []string `json:"definitions_et"`
-		TranslationsEN  []string `json:"translations_en"`
-		UsagesET        []string `json:"usages_et"`
+		POS            []string `json:"pos"`
+		DefinitionsET  []string `json:"definitions_et"`
+		TranslationsEN []string `json:"translations_en"`
+		UsagesET       []string `json:"usages_et"`
 	} `json:"meanings"`
 }
 
@@ -280,10 +280,10 @@ func countLemmaPOS(m lemmaPOSMap) int {
 // definitions JSONL — silent skips would let upstream schema drift go
 // unnoticed.
 type aggregateStats struct {
-	badLines    int
-	badSamples  []string // up to maxBadLineSamples, "<file>:<line>: <error>"
-	emptyLemma  int      // valid JSON but missing Lemma
-	noPOS       int      // entry had no POS we could resolve
+	badLines   int
+	badSamples []string // up to maxBadLineSamples, "<file>:<line>: <error>"
+	emptyLemma int      // valid JSON but missing Lemma
+	noPOS      int      // entry had no POS we could resolve
 }
 
 // aggregateDefinitions walks definitions/*.jsonl and builds the lemmaPOSMap.

@@ -13,10 +13,10 @@
 //
 // To extend the parser with a new rule:
 //
-//	1. Add an entry to the relevant table in finnish.go or estonian.go.
-//	2. Run `go test ./...` and `go run ./cmd/parsertest -dataset … -parsers custom`.
-//	3. Diff the new report against the matching baseline in docs/baselines/.
-//	4. If accuracy improved with no regressions, commit the change.
+//  1. Add an entry to the relevant table in finnish.go or estonian.go.
+//  2. Run `go test ./...` and `go run ./cmd/parsertest -dataset … -parsers custom`.
+//  3. Diff the new report against the matching baseline in docs/baselines/.
+//  4. If accuracy improved with no regressions, commit the change.
 //
 // This is the file an agent (or a human) edits when iterating on parser rules.
 // It deliberately has zero coupling to DB, parser-mode plumbing, or eval code.

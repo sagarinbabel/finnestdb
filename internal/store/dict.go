@@ -475,21 +475,21 @@ type LemmaKey struct {
 //
 // Three cases the query handles together:
 //
-//   1. kaikki-imported entry (lemmas + translations both written by kaikki):
-//      JOIN matches, source_priority=10, returns translations.text. Same
-//      string as lemmas.gloss for typical entries (sense_idx=0); behavior
-//      change only when sense_idx=0 is whitespace and a later sense wins.
+//  1. kaikki-imported entry (lemmas + translations both written by kaikki):
+//     JOIN matches, source_priority=10, returns translations.text. Same
+//     string as lemmas.gloss for typical entries (sense_idx=0); behavior
+//     change only when sense_idx=0 is whitespace and a later sense wins.
 //
-//   2. custom-override applied via -custom-glosses (lemmas.gloss replaced
-//      by source='custom' priority=100, but applyCustomGlosses doesn't
-//      write to translations): JOIN finds no translations row matching
-//      source='custom', falls through to lemmas.gloss → custom override
-//      returned. Preserves the documented custom-glosses contract from
-//      README without applyCustomGlosses needing changes here.
+//  2. custom-override applied via -custom-glosses (lemmas.gloss replaced
+//     by source='custom' priority=100, but applyCustomGlosses doesn't
+//     write to translations): JOIN finds no translations row matching
+//     source='custom', falls through to lemmas.gloss → custom override
+//     returned. Preserves the documented custom-glosses contract from
+//     README without applyCustomGlosses needing changes here.
 //
-//   3. multiple sources writing translations for the same (lemma, pos)
-//      (forthcoming once Ekilex translations land via PR 4): each row's
-//      JOINed lemmas.source_priority decides; deterministic by ORDER BY.
+//  3. multiple sources writing translations for the same (lemma, pos)
+//     (forthcoming once Ekilex translations land via PR 4): each row's
+//     JOINed lemmas.source_priority decides; deterministic by ORDER BY.
 func (d *DB) BatchLookupGlosses(lemmas []LemmaKey, lang string) map[LemmaKey]string {
 	result := make(map[LemmaKey]string, len(lemmas))
 	if len(lemmas) == 0 {

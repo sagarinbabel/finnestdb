@@ -150,4 +150,3 @@ func truncateBytes(b []byte, n int) []byte {
 	}
 	return append(append([]byte{}, b[:n]...), '.', '.', '.')
 }
-

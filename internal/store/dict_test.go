@@ -770,7 +770,7 @@ func TestBatchLookupGlosses_NullGloss(t *testing.T) {
 // seedFormsWithSource inserts (form, lemma, pos, lang, source, source_priority).
 func seedFormsWithSource(t *testing.T, db *DB, rows []struct {
 	form, lemma, pos, lang, source string
-	priority                        int
+	priority                       int
 }) {
 	t.Helper()
 	for _, r := range rows {
@@ -791,7 +791,7 @@ func TestBatchLookupForms_PrefersLowercaseLemmaOnLowercaseSurface(t *testing.T) 
 	db := newTestDB(t)
 	seedFormsWithSource(t, db, []struct {
 		form, lemma, pos, lang, source string
-		priority                        int
+		priority                       int
 	}{
 		{"linnas", "linn", "NOUN", "ET", "kaikki", 10},
 		{"linnas", "Linna", "PROPN", "ET", "ekilex", 20}, // higher source priority but uppercase lemma
@@ -813,7 +813,7 @@ func TestBatchLookupForms_DemotesPROPNOnLowercaseSurface(t *testing.T) {
 	db := newTestDB(t)
 	seedFormsWithSource(t, db, []struct {
 		form, lemma, pos, lang, source string
-		priority                        int
+		priority                       int
 	}{
 		{"koer", "koer", "PROPN", "ET", "ekilex", 20},
 		{"koer", "koer", "NOUN", "ET", "kaikki", 10},
@@ -835,7 +835,7 @@ func TestBatchLookupForms_AllowsPROPNOnUppercaseSurface(t *testing.T) {
 	db := newTestDB(t)
 	seedFormsWithSource(t, db, []struct {
 		form, lemma, pos, lang, source string
-		priority                        int
+		priority                       int
 	}{
 		{"linnas", "linn", "NOUN", "ET", "kaikki", 10},
 		{"linnas", "Linna", "PROPN", "ET", "ekilex", 20},
@@ -858,7 +858,7 @@ func TestBatchLookupForms_HigherPriorityWinsAmongEqualCandidates(t *testing.T) {
 	db := newTestDB(t)
 	seedFormsWithSource(t, db, []struct {
 		form, lemma, pos, lang, source string
-		priority                        int
+		priority                       int
 	}{
 		{"talvel", "tali", "NOUN", "ET", "ekilex", 20},
 		{"talvel", "talv", "NOUN", "ET", "kaikki", 10},
@@ -880,7 +880,7 @@ func TestBatchLookupForms_DeterministicTiebreak(t *testing.T) {
 	db := newTestDB(t)
 	seedFormsWithSource(t, db, []struct {
 		form, lemma, pos, lang, source string
-		priority                        int
+		priority                       int
 	}{
 		{"x", "beta", "NOUN", "ET", "kaikki", 10},
 		{"x", "alpha", "NOUN", "ET", "kaikki", 10},
@@ -903,7 +903,7 @@ func TestBatchLookupForms_LegacyRowsWithEmptySource(t *testing.T) {
 	db := newTestDB(t)
 	seedFormsWithSource(t, db, []struct {
 		form, lemma, pos, lang, source string
-		priority                        int
+		priority                       int
 	}{
 		{"linnas", "linn", "NOUN", "ET", "", 0},
 		{"linnas", "Linna", "PROPN", "ET", "", 0},
@@ -920,7 +920,7 @@ func TestBatchLookupForms_LegacyRowsWithEmptySource(t *testing.T) {
 // the post-Phase-1 / post-#67 schema (with source / source_priority).
 func seedLemmasFull(t *testing.T, db *DB, rows []struct {
 	lemma, pos, gloss, lang, source string
-	priority                         int
+	priority                        int
 }) {
 	t.Helper()
 	for _, r := range rows {
@@ -936,7 +936,7 @@ func seedLemmasFull(t *testing.T, db *DB, rows []struct {
 
 func seedTranslations(t *testing.T, db *DB, rows []struct {
 	lemma, pos, lang, target, text, source string
-	senseIdx                                int
+	senseIdx                               int
 }) {
 	t.Helper()
 	for _, r := range rows {
@@ -958,13 +958,13 @@ func TestBatchLookupGlosses_PrefersTranslationsOverLemmasGloss(t *testing.T) {
 	db := newTestDB(t)
 	seedLemmasFull(t, db, []struct {
 		lemma, pos, gloss, lang, source string
-		priority                         int
+		priority                        int
 	}{
 		{"talo", "NOUN", "stale-cache", "FI", "kaikki", 10},
 	})
 	seedTranslations(t, db, []struct {
 		lemma, pos, lang, target, text, source string
-		senseIdx                                int
+		senseIdx                               int
 	}{
 		{"talo", "NOUN", "FI", "EN", "house", "kaikki", 0},
 	})
@@ -981,7 +981,7 @@ func TestBatchLookupGlosses_FallsBackToLemmasGlossWhenNoTranslations(t *testing.
 	db := newTestDB(t)
 	seedLemmasFull(t, db, []struct {
 		lemma, pos, gloss, lang, source string
-		priority                         int
+		priority                        int
 	}{
 		{"talo", "NOUN", "house-from-cache", "FI", "kaikki", 10},
 	})
@@ -1006,7 +1006,7 @@ func TestBatchLookupGlosses_CustomOverrideViaLemmasGlossWins(t *testing.T) {
 	db := newTestDB(t)
 	seedLemmasFull(t, db, []struct {
 		lemma, pos, gloss, lang, source string
-		priority                         int
+		priority                        int
 	}{
 		{"talo", "NOUN", "domain-specific override", "FI", "custom", 100},
 	})
@@ -1014,7 +1014,7 @@ func TestBatchLookupGlosses_CustomOverrideViaLemmasGlossWins(t *testing.T) {
 	// first, then -custom-glosses; the kaikki rows weren't cleared).
 	seedTranslations(t, db, []struct {
 		lemma, pos, lang, target, text, source string
-		senseIdx                                int
+		senseIdx                               int
 	}{
 		{"talo", "NOUN", "FI", "EN", "stale kaikki text", "kaikki", 0},
 	})
@@ -1038,14 +1038,14 @@ func TestBatchLookupGlosses_HigherPriorityTranslationWins(t *testing.T) {
 	db := newTestDB(t)
 	seedLemmasFull(t, db, []struct {
 		lemma, pos, gloss, lang, source string
-		priority                         int
+		priority                        int
 	}{
 		// Lemma row was last written by ekilex, which won the upsert.
 		{"talo", "NOUN", "ekilex-cache", "ET", "ekilex", 20},
 	})
 	seedTranslations(t, db, []struct {
 		lemma, pos, lang, target, text, source string
-		senseIdx                                int
+		senseIdx                               int
 	}{
 		// Both sources have translations rows for the same headword.
 		{"talo", "NOUN", "ET", "EN", "kaikki text", "kaikki", 0},
@@ -1065,13 +1065,13 @@ func TestBatchLookupGlosses_LowerSenseIdxWinsWithinSameSource(t *testing.T) {
 	db := newTestDB(t)
 	seedLemmasFull(t, db, []struct {
 		lemma, pos, gloss, lang, source string
-		priority                         int
+		priority                        int
 	}{
 		{"pankki", "NOUN", "stale", "FI", "kaikki", 10},
 	})
 	seedTranslations(t, db, []struct {
 		lemma, pos, lang, target, text, source string
-		senseIdx                                int
+		senseIdx                               int
 	}{
 		{"pankki", "NOUN", "FI", "EN", "embankment", "kaikki", 5},
 		{"pankki", "NOUN", "FI", "EN", "bank (financial)", "kaikki", 0},
