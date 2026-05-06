@@ -683,6 +683,7 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 			for _, exp := range expandTokenLemmas(token, dictCandidates) {
 				sentence.Tokens = append(sentence.Tokens, store.DeckTokenInput{
 					TokenIx: tokenIx,
+					Form:    token.Form,
 					Lemma:   exp.Lemma,
 					POS:     exp.POS,
 				})
@@ -801,10 +802,13 @@ func (a *API) handleGetDeck(w http.ResponseWriter, auth *AuthContext, deckID int
 		entry := WordEntry{
 			Lemma:           item.Lemma,
 			POS:             item.POS,
-			Forms:           []string{item.Lemma},
+			Forms:           item.Forms,
 			Count:           item.Count,
 			Gloss:           item.Gloss,
 			ExampleSentence: item.ExampleSentence,
+		}
+		if len(entry.Forms) == 0 {
+			entry.Forms = []string{item.Lemma}
 		}
 		if status := states[store.LemmaKey{Lemma: item.Lemma, POS: item.POS}]; status != "" {
 			entry.LearningState = status

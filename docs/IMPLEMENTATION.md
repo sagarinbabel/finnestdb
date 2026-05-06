@@ -96,7 +96,9 @@ Current UI features:
 Note: Deck-detail “Suggest fix” feedback is currently wired as a **stub/skeleton**
 path that attributes suggestions to the **parser run used during deck creation**
 (a stored `parse_session`). It does not yet imply any automated parser training
-or immediate dictionary mutation.
+or immediate dictionary mutation. Deck-detail rows use stored occurrence surface
+forms, so submitted feedback reports a real source form rather than falling back
+to the aggregate lemma.
 
 ### “Suggest fix” (parser feedback) flow — recommended UX + semantics
 

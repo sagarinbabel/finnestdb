@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -87,6 +88,7 @@ type DeckSentenceInput struct {
 
 type DeckTokenInput struct {
 	TokenIx int
+	Form    string
 	Lemma   string
 	POS     string
 }
@@ -198,6 +200,7 @@ func (d *DB) initSchema() error {
 		deck_id INTEGER NOT NULL,
 		sentence_id INTEGER NOT NULL,
 		token_ix INTEGER NOT NULL,
+		surface TEXT NOT NULL DEFAULT '',
 		lemma TEXT NOT NULL,
 		pos TEXT NOT NULL,
 		FOREIGN KEY(deck_id) REFERENCES decks(id),
@@ -371,10 +374,25 @@ func (d *DB) initSchema() error {
 	if err := EnsureMultiLemmaSchema(d.db); err != nil {
 		return err
 	}
+	if err := EnsureOccurrenceSurfaceColumn(d.db); err != nil {
+		return err
+	}
 	if err := EnsureDeckParseSessionColumn(d.db); err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func EnsureOccurrenceSurfaceColumn(db *sql.DB) error {
+	// Backfill for older DB files (fresh DBs already include the column in CREATE TABLE).
+	if _, err := db.Exec(`ALTER TABLE occurrence ADD COLUMN surface TEXT NOT NULL DEFAULT ''`); err != nil {
+		// SQLite does not support IF NOT EXISTS for ADD COLUMN; treat "duplicate column"
+		// as idempotent success.
+		if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -951,11 +969,11 @@ func createSentence(q sqlReadWriter, deckID int64, text, lang string) (int64, er
 	return result.LastInsertId()
 }
 
-func createOccurrence(q sqlReadWriter, deckID, sentenceID int64, tokenIx int, lemma, pos string) error {
+func createOccurrence(q sqlReadWriter, deckID, sentenceID int64, tokenIx int, surface, lemma, pos string) error {
 	_, err := q.Exec(
-		`INSERT OR IGNORE INTO occurrence (deck_id, sentence_id, token_ix, lemma, pos)
-		 VALUES (?, ?, ?, ?, ?)`,
-		deckID, sentenceID, tokenIx, lemma, pos,
+		`INSERT OR IGNORE INTO occurrence (deck_id, sentence_id, token_ix, surface, lemma, pos)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		deckID, sentenceID, tokenIx, surface, lemma, pos,
 	)
 	return err
 }
@@ -1051,7 +1069,7 @@ func (d *DB) CreateDeckWithSentences(userID int64, title, lang string, sentences
 			if token.Lemma == "" || token.POS == "" {
 				continue
 			}
-			if err := createOccurrence(tx, deckID, sentenceID, token.TokenIx, token.Lemma, token.POS); err != nil {
+			if err := createOccurrence(tx, deckID, sentenceID, token.TokenIx, token.Form, token.Lemma, token.POS); err != nil {
 				return 0, err
 			}
 		}
@@ -1126,6 +1144,7 @@ func (d *DB) DeleteDeck(userID, deckID int64) error {
 type DeckLemma struct {
 	Lemma           string
 	POS             string
+	Forms           []string
 	Count           int
 	Gloss           string
 	ExampleSentence string
@@ -1134,8 +1153,8 @@ type DeckLemma struct {
 type DeckDetails struct {
 	Deck
 	ParseSessionID *int64
-	TotalTokens int
-	Lemmas      []DeckLemma
+	TotalTokens    int
+	Lemmas         []DeckLemma
 }
 
 // GetDeckDetails returns the deck's metadata and an aggregated list of
@@ -1160,6 +1179,7 @@ func (d *DB) GetDeckDetails(userID, deckID int64) (*DeckDetails, error) {
 	rows, err := d.db.Query(
 		`SELECT o.lemma,
 		        o.pos,
+		        COALESCE(GROUP_CONCAT(DISTINCT NULLIF(o.surface, '')), '') AS forms,
 		        COUNT(*) AS cnt,
 		        COALESCE(l.gloss, '') AS gloss,
 		        COALESCE((
@@ -1190,8 +1210,13 @@ func (d *DB) GetDeckDetails(userID, deckID int64) (*DeckDetails, error) {
 	details.Lemmas = []DeckLemma{}
 	for rows.Next() {
 		var item DeckLemma
-		if err := rows.Scan(&item.Lemma, &item.POS, &item.Count, &item.Gloss, &item.ExampleSentence); err != nil {
+		var formsCSV string
+		if err := rows.Scan(&item.Lemma, &item.POS, &formsCSV, &item.Count, &item.Gloss, &item.ExampleSentence); err != nil {
 			return nil, err
+		}
+		if formsCSV != "" {
+			item.Forms = strings.Split(formsCSV, ",")
+			sort.Strings(item.Forms)
 		}
 		details.TotalTokens += item.Count
 		details.Lemmas = append(details.Lemmas, item)
@@ -1223,7 +1248,7 @@ func (d *DB) SetDeckParseSession(userID, deckID, parseSessionID int64) error {
 // CreateOccurrence records that a lemma+pos token appeared at position tokenIx
 // within the given sentence (which belongs to the given deck).
 func (d *DB) CreateOccurrence(deckID, sentenceID int64, tokenIx int, lemma, pos string) error {
-	return createOccurrence(d.db, deckID, sentenceID, tokenIx, lemma, pos)
+	return createOccurrence(d.db, deckID, sentenceID, tokenIx, "", lemma, pos)
 }
 
 // FormsCount returns the number of rows in the forms table for the given lang.

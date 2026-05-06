@@ -1353,11 +1353,17 @@ func TestGetDeckDetail(t *testing.T) {
 	if kissa.Gloss != "cat" {
 		t.Errorf("kissa gloss=%q want cat", kissa.Gloss)
 	}
+	if got := strings.Join(kissa.Forms, ","); got != "Kissa" {
+		t.Errorf("kissa forms=%v want [Kissa]", kissa.Forms)
+	}
 	if kissa.ExampleSentence == "" {
 		t.Errorf("kissa example sentence empty")
 	}
-	if _, ok := wordsByLemma["juosta"]; !ok {
+	juosta, ok := wordsByLemma["juosta"]
+	if !ok {
 		t.Errorf("juosta missing from words: %+v", detail.Words)
+	} else if got := strings.Join(juosta.Forms, ","); got != "juoksee" {
+		t.Errorf("juosta forms=%v want [juoksee]", juosta.Forms)
 	}
 
 	// 404 for someone else's deck.
