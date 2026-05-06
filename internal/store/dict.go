@@ -30,6 +30,74 @@ type FormResolution struct {
 	Source       string // how this resolution was found
 }
 
+// FormCandidate is one analysis of a surface form. A surface form may
+// have multiple candidates from different paths (dict rows, FST
+// analyses, suffix-stripping fallbacks). The legacy single-resolution
+// API returns the ranker's pick via FormResolution; multi-candidate
+// callers access the full list via BatchLookupAllCandidates.
+//
+// This is the foundational type for the candidate-merging architecture
+// described in docs/CANDIDATE_MERGING_ARCHITECTURE.md. Phase 1 (this
+// type plus BatchLookupAllCandidates) is shipped; Phase 2 will rewrite
+// BatchLookupForms internals to gather candidates from all paths in
+// parallel and pass the union to the ranker.
+type FormCandidate struct {
+	Lemma          string
+	POS            string
+	Feats          string  // UD FEATS, e.g. "Case=Ine|Number=Sing"
+	GrammarLabel   string  // case-only projection for back-compat
+	Source         string  // "dict" | "possessive" | "compound" | "case_suffix" | "fst"
+	SourcePriority int     // dict source-priority + path-specific bonus
+	Confidence     float64 // 0-1; reserved for Phase 2/3 disambiguator
+}
+
+// AsResolution downcasts a FormCandidate to the legacy FormResolution
+// shape. Used when feeding a multi-candidate path's pick back into a
+// caller that still expects FormResolution.
+func (c FormCandidate) AsResolution() FormResolution {
+	return FormResolution{
+		Lemma:        c.Lemma,
+		POS:          c.POS,
+		Feats:        c.Feats,
+		GrammarLabel: c.GrammarLabel,
+		Source:       c.Source,
+	}
+}
+
+// candidateFromResolution upcasts a legacy FormResolution into a
+// FormCandidate. Used by the Phase 1 BatchLookupAllCandidates wrapper
+// and during Phase 2's incremental rewrite. Confidence is left at 0
+// (unset); SourcePriority is left at 0 unless the caller fills it.
+func candidateFromResolution(r FormResolution) FormCandidate {
+	return FormCandidate{
+		Lemma:        r.Lemma,
+		POS:          r.POS,
+		Feats:        r.Feats,
+		GrammarLabel: r.GrammarLabel,
+		Source:       r.Source,
+	}
+}
+
+// BatchLookupAllCandidates is the multi-candidate equivalent of
+// BatchLookupForms. Returns every candidate from every analysis path
+// for each form, before any ranking. Phase 1 wraps the existing
+// single-result flow (so the result list always has 0 or 1 elements);
+// Phase 2 will rewrite the internals to gather candidates from all
+// paths in parallel.
+//
+// Forms with no candidates are absent from the map. Order within the
+// candidate slice is not guaranteed by the API today, but Phase 2 will
+// document the order as match-source-priority then deterministic
+// tiebreak.
+func (d *DB) BatchLookupAllCandidates(forms []string, lang string, parserMode string) map[string][]FormCandidate {
+	resolutions := d.BatchLookupForms(forms, lang, parserMode)
+	out := make(map[string][]FormCandidate, len(resolutions))
+	for form, r := range resolutions {
+		out[form] = []FormCandidate{candidateFromResolution(r)}
+	}
+	return out
+}
+
 // Suffix tables (FinnishPossessiveSuffixes, FinnishCaseSuffixes,
 // EstonianCaseSuffixes) live in the parserules package — see
 // internal/parserules/ for the data and how to extend it.
