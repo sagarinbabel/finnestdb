@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	"finnestdb/internal/parserules"
+	lemmatizer "finnestdb/pkg/lemmatizer-fi-et"
 )
 
 // FormResolution holds the result of resolving a surface form to its canonical
@@ -34,7 +35,8 @@ type FormResolution struct {
 //	Step 2: [FI only] Possessive suffix strip → re-lookup in forms table
 //	Step 3: [FI + ET] Compound split → both halves in forms table
 //	Step 4: [FI + ET] Case suffix strip → lemma-candidate lookup in lemmas table
-//	Step 5: Not resolved → absent from map → caller falls back to stub
+//	Step 5: [FI only] VFST morphological analysis (libvoikko mor.vfst)
+//	Step 6: Not resolved → absent from map → caller falls back to stub
 //
 // Returns a map from form → FormResolution.
 // Forms that cannot be resolved are absent from the map.
@@ -108,8 +110,44 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 			result[form] = resolved
 			continue
 		}
+
+		// Step 5: VFST morphological analysis (FI only). Catches forms the
+		// SQLite-driven steps couldn't resolve — e.g. less-common derivations,
+		// compounds whose halves aren't both in the forms table, and rare
+		// inflected forms whose lemmas aren't in the lemmas table.
+		if lang == "FI" {
+			if lem := d.finnishLemmatizer(); lem != nil {
+				if resolved, ok := tryVFSTAnalyze(lem, lower); ok {
+					result[form] = resolved
+					continue
+				}
+			}
+		}
 	}
 	return result
+}
+
+// tryVFSTAnalyze runs libvoikko's Finnish morphology FST on lower and
+// returns the highest-priority FormResolution if any analysis exists.
+// "Highest priority" today is just the first analysis returned by the
+// FST; PR 2 will rank across multiple FST sources.
+func tryVFSTAnalyze(lem *lemmatizer.Lemmatizer, lower string) (FormResolution, bool) {
+	analyses := lem.Lemmatize("FI", lower)
+	if len(analyses) == 0 {
+		return FormResolution{}, false
+	}
+	for _, a := range analyses {
+		if a.Lemma == "" || a.UPOS == "" {
+			continue
+		}
+		return FormResolution{
+			Lemma:        a.Lemma,
+			POS:          a.UPOS,
+			GrammarLabel: a.GrammarLabel,
+			Source:       "vfst",
+		}, true
+	}
+	return FormResolution{}, false
 }
 
 // formCandidate is the internal shape used while ranking multi-lemma matches.
