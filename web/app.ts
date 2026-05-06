@@ -137,6 +137,14 @@ interface KnownWordsListResponse {
     known_words: KnownLemma[];
 }
 
+interface LemmaStateLookupResponse {
+    states: Array<{
+        lemma:  string;
+        pos:    string;
+        status: LemmaStateStatus;
+    }>;
+}
+
 interface ReviewCardResponse {
     card_id:     string;
     mode:        string;
@@ -1228,9 +1236,11 @@ function computeCoverageScore(data: ParseResponse): {
 } {
     const definedRows = data.words.filter(word => Boolean(word.gloss)).length;
     const definedTokens = data.words.reduce((sum, word) => sum + (word.gloss ? word.count : 0), 0);
+    const expandedTokens = data.words.reduce((sum, word) => sum + word.count, 0);
+    const tokenDenominator = Math.max(data.total_tokens, expandedTokens);
     const rowCoverage = data.words.length === 0 ? 0 : definedRows / data.words.length;
-    const tokenCoverage = data.total_tokens === 0 ? 0 : definedTokens / data.total_tokens;
-    const score = Math.round(((tokenCoverage * 0.7) + (rowCoverage * 0.3)) * 100);
+    const tokenCoverage = tokenDenominator === 0 ? 0 : definedTokens / tokenDenominator;
+    const score = Math.min(100, Math.round(((tokenCoverage * 0.7) + (rowCoverage * 0.3)) * 100));
     return { score, definedRows, definedTokens, rowCoverage, tokenCoverage };
 }
 
@@ -1559,6 +1569,50 @@ function persistLastParse(data: ParseResponse, textPreview: string, parserMode: 
     }
 }
 
+async function hydrateLearningStates(data: ParseResponse): Promise<ParseResponse> {
+    const seen = new Set<string>();
+    const lemmas: Array<{ lemma: string; pos: string }> = [];
+    for (const word of data.words) {
+        const lemma = word.lemma.trim();
+        const pos = word.pos.trim();
+        if (!lemma || !pos) continue;
+        const key = `${lemma}\u0000${pos}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        lemmas.push({ lemma, pos });
+    }
+    if (lemmas.length === 0) return data;
+
+    try {
+        const resp = await fetch('/api/lemma-states', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ lang: data.lang, lemmas }),
+        });
+        if (!resp.ok) return data;
+        const payload: LemmaStateLookupResponse = await resp.json();
+        const states = new Map<string, LemmaStateStatus>();
+        for (const item of payload.states || []) {
+            if (item.status) {
+                states.set(lemmaStateKey(data.lang, item.lemma, item.pos), item.status);
+            }
+        }
+        return {
+            ...data,
+            words: data.words.map(word => {
+                const refreshed: WordEntry = { ...word };
+                delete refreshed.learning_state;
+                const status = states.get(lemmaStateKey(data.lang, word.lemma, word.pos));
+                if (status) refreshed.learning_state = status;
+                return refreshed;
+            }),
+        };
+    } catch {
+        return data;
+    }
+}
+
 async function restoreLastParse(): Promise<boolean> {
     let payload: PersistedParse;
     try {
@@ -1573,36 +1627,10 @@ async function restoreLastParse(): Promise<boolean> {
 
     state.currentSourceText = payload.sourceText || '';
 
-    // Re-parse to refresh learning_state. The persisted snapshot freezes
-    // each WordEntry's learning_state at parse time, so any Known/Ignored
-    // mark the user made between the original parse and this restore would
-    // be rolled back when showResults reseeds state.currentLemmaStates from
-    // the snapshot. Hitting /api/parse again returns the same expansion plus
-    // current state from the server (handlers.go HandleParse).
-    if (payload.sourceText) {
-        try {
-            const resp = await fetch('/api/parse', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'same-origin',
-                body: JSON.stringify({
-                    lang:   payload.data.lang,
-                    text:   payload.sourceText,
-                    parser: payload.parserMode,
-                }),
-            });
-            if (resp.ok) {
-                const fresh: ParseResponse = await resp.json();
-                showResults(fresh, payload.textPreview, payload.parserMode, payload.context);
-                return true;
-            }
-        } catch {
-            // Network blip or server down — fall through to the cached
-            // snapshot below so the user still sees something.
-        }
-    }
-
-    showResults(payload.data, payload.textPreview, payload.parserMode, payload.context);
+    // Refresh only learning_state. Re-posting to /api/parse would create a new
+    // parse_sessions row for authenticated users, making refresh a write.
+    const fresh = await hydrateLearningStates(payload.data);
+    showResults(fresh, payload.textPreview, payload.parserMode, payload.context);
     return true;
 }
 
