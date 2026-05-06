@@ -242,7 +242,7 @@ func TestRecordImportMetadataPreservesAttributionFields(t *testing.T) {
 func TestResolveProvenance(t *testing.T) {
 	t.Run("kaikki defaults applied when no source flags given", func(t *testing.T) {
 		var name, url, license, attribution string
-		if err := resolveProvenance("", &name, &url, &license, &attribution); err != nil {
+		if err := resolveProvenance("", "kaikki", &name, &url, &license, &attribution); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if name != kaikkiSourceName || license != kaikkiSourceLicense || attribution != kaikkiAttribution {
@@ -255,7 +255,7 @@ func TestResolveProvenance(t *testing.T) {
 		url := ""
 		license := "CC BY 4.0"
 		attribution := "Eesti Keele Instituut / EKI"
-		if err := resolveProvenance("", &name, &url, &license, &attribution); err != nil {
+		if err := resolveProvenance("", "kaikki", &name, &url, &license, &attribution); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if name != "EKI/Ekilex" || license != "CC BY 4.0" || attribution != "Eesti Keele Instituut / EKI" {
@@ -265,7 +265,7 @@ func TestResolveProvenance(t *testing.T) {
 
 	t.Run("non-kaikki file requires explicit provenance", func(t *testing.T) {
 		var name, url, license, attribution string
-		err := resolveProvenance("/tmp/ekilex.jsonl", &name, &url, &license, &attribution)
+		err := resolveProvenance("/tmp/ekilex.jsonl", "ekilex", &name, &url, &license, &attribution)
 		if err == nil {
 			t.Fatalf("expected error for missing provenance flags")
 		}
@@ -279,7 +279,7 @@ func TestResolveProvenance(t *testing.T) {
 	t.Run("non-kaikki source URL requires explicit provenance", func(t *testing.T) {
 		var name, license, attribution string
 		url := "https://ekilex.ee/some/export"
-		err := resolveProvenance("", &name, &url, &license, &attribution)
+		err := resolveProvenance("", "ekilex", &name, &url, &license, &attribution)
 		if err == nil {
 			t.Fatalf("expected error for missing provenance flags")
 		}
@@ -290,11 +290,34 @@ func TestResolveProvenance(t *testing.T) {
 		url := "https://ekilex.ee/some/export"
 		license := "CC BY 4.0"
 		attribution := "Eesti Keele Instituut / EKI"
-		if err := resolveProvenance("", &name, &url, &license, &attribution); err != nil {
+		if err := resolveProvenance("", "ekilex", &name, &url, &license, &attribution); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if name != "EKI/Ekilex" || license != "CC BY 4.0" {
 			t.Fatalf("operator values overwritten: name=%q license=%q", name, license)
+		}
+	})
+
+	t.Run("non-kaikki source key with kaikki URL fallback is rejected", func(t *testing.T) {
+		var name, url, license, attribution string
+		err := resolveProvenance("", "ekilex", &name, &url, &license, &attribution)
+		if err == nil {
+			t.Fatalf("expected error: -source-key=ekilex with no -file/-source-url should be rejected")
+		}
+		for _, want := range []string{"-source-key", "ekilex", "-file", "-source-url"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Fatalf("error %q missing %q", err, want)
+			}
+		}
+	})
+
+	t.Run("kaikki source key tolerates uppercase and surrounding whitespace", func(t *testing.T) {
+		var name, url, license, attribution string
+		if err := resolveProvenance("", "  Kaikki  ", &name, &url, &license, &attribution); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if name != kaikkiSourceName {
+			t.Fatalf("expected kaikki defaults applied; name=%q", name)
 		}
 	})
 }
