@@ -246,14 +246,8 @@ func (d *DB) initSchema() error {
 		PRIMARY KEY (form, lang)
 	);
 
-	-- Tracks when dictionary data was imported and from which source.
-	CREATE TABLE IF NOT EXISTS dict_metadata (
-		lang        TEXT NOT NULL,
-		source      TEXT NOT NULL,
-		imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-		row_count   INTEGER,
-		PRIMARY KEY (lang, source)
-	);
+	-- dict_metadata schema is owned by EnsureDictMetadataSchema below; both the
+	-- server and the importer call it so the column set stays in one place.
 
 	CREATE TABLE IF NOT EXISTS parse_sessions (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -342,7 +336,48 @@ func (d *DB) initSchema() error {
 	if _, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_card_state_introduced_at ON card_state(introduced_at) WHERE introduced_at IS NOT NULL`); err != nil {
 		return err
 	}
+	if err := EnsureDictMetadataSchema(d.db); err != nil {
+		return err
+	}
 
+	return nil
+}
+
+// EnsureDictMetadataSchema is the single source of truth for the dict_metadata
+// table. It creates the table on a fresh DB and backfills missing columns on
+// older DB files. Both the server (internal/store) and the standalone importer
+// (cmd/importdict) call it so the schema cannot drift between the two paths.
+func EnsureDictMetadataSchema(db *sql.DB) error {
+	if _, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS dict_metadata (
+			lang        TEXT NOT NULL,
+			source      TEXT NOT NULL,
+			source_name TEXT,
+			source_url  TEXT,
+			source_version TEXT,
+			license     TEXT,
+			attribution TEXT,
+			changes_note TEXT,
+			imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			row_count   INTEGER,
+			PRIMARY KEY (lang, source)
+		);
+	`); err != nil {
+		return err
+	}
+	columns := []string{
+		"source_name TEXT",
+		"source_url TEXT",
+		"source_version TEXT",
+		"license TEXT",
+		"attribution TEXT",
+		"changes_note TEXT",
+	}
+	for _, column := range columns {
+		if _, err := db.Exec(`ALTER TABLE dict_metadata ADD COLUMN ` + column); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			return err
+		}
+	}
 	return nil
 }
 

@@ -19,6 +19,29 @@ import (
 const MaxTextChars = 300_000
 
 const omorfiCommandEnv = "FINNESTDB_OMORFI_CMD"
+const estnltkCommandEnv = "FINNESTDB_ESTNLTK_CMD"
+
+// External-analyzer subprocess timeouts. Both can be overridden with a Go
+// duration string ("30s", "1m"). EstNLTK defaults higher because each call
+// pays ~1s of Vabamorf model load before any analysis runs.
+const omorfiTimeoutEnv = "FINNESTDB_OMORFI_TIMEOUT"
+const estnltkTimeoutEnv = "FINNESTDB_ESTNLTK_TIMEOUT"
+const omorfiDefaultTimeout = 5 * time.Second
+const estnltkDefaultTimeout = 30 * time.Second
+
+// analyzerTimeout reads a Go duration string from envVar and returns it,
+// falling back to defaultDur on empty, malformed, or non-positive input.
+func analyzerTimeout(envVar string, defaultDur time.Duration) time.Duration {
+	raw := strings.TrimSpace(os.Getenv(envVar))
+	if raw == "" {
+		return defaultDur
+	}
+	parsed, err := time.ParseDuration(raw)
+	if err != nil || parsed <= 0 {
+		return defaultDur
+	}
+	return parsed
+}
 
 type TokenResult struct {
 	Form         string   `json:"form"`
@@ -138,6 +161,7 @@ func ParserDefinitions() []ParserDefinition {
 		{Name: "basic", Description: "Rust tokenizer plus direct dictionary lookup", Languages: []string{"FI", "ET"}},
 		{Name: "custom", Description: "Rust tokenizer plus possessive, compound, and case-suffix fallbacks", Languages: []string{"FI", "ET"}},
 		{Name: "omorfi", Description: "External Finnish baseline adapter with inspectable override rules", Languages: []string{"FI"}},
+		{Name: "estnltk", Description: "External Estonian EstNLTK/Vabamorf baseline adapter with inspectable override rules", Languages: []string{"ET"}},
 	}
 }
 
@@ -145,7 +169,20 @@ func registry() map[string]parser {
 	return map[string]parser{
 		"basic":  dictionaryParser{name: "basic", lookupMode: "basic", analyzer: parserffi.AnalyzeText},
 		"custom": dictionaryParser{name: "custom", lookupMode: "custom", analyzer: parserffi.AnalyzeText},
-		"omorfi": omorfiParser{analyzer: runExternalOmorfi},
+		"omorfi": externalAnalyzerParser{
+			name:        "omorfi",
+			lang:        "FI",
+			source:      "analyzer:omorfi",
+			analyzer:    runExternalOmorfi,
+			overrideSet: defaultExternalAnalyzerRules,
+		},
+		"estnltk": externalAnalyzerParser{
+			name:        "estnltk",
+			lang:        "ET",
+			source:      "analyzer:estnltk",
+			analyzer:    runExternalEstNLTK,
+			overrideSet: defaultExternalAnalyzerRules,
+		},
 	}
 }
 
@@ -208,15 +245,19 @@ func (p dictionaryParser) Parse(db *store.DB, lang, text string) (*ParseResult, 
 	}, nil
 }
 
-type omorfiParser struct {
-	analyzer baseAnalyzer
+type externalAnalyzerParser struct {
+	name        string
+	lang        string
+	source      string
+	analyzer    baseAnalyzer
+	overrideSet func() []externalAnalyzerRule
 }
 
-func (p omorfiParser) Name() string { return "omorfi" }
+func (p externalAnalyzerParser) Name() string { return p.name }
 
-func (p omorfiParser) Parse(db *store.DB, lang, text string) (*ParseResult, error) {
-	if lang != "FI" {
-		return nil, fmt.Errorf("omorfi parser only supports FI")
+func (p externalAnalyzerParser) Parse(db *store.DB, lang, text string) (*ParseResult, error) {
+	if lang != p.lang {
+		return nil, fmt.Errorf("%s parser only supports %s", p.name, p.lang)
 	}
 	parseStartedAt := time.Now()
 	result, err := p.analyzer(lang, text)
@@ -225,7 +266,7 @@ func (p omorfiParser) Parse(db *store.DB, lang, text string) (*ParseResult, erro
 		return nil, err
 	}
 	if result == nil {
-		return nil, fmt.Errorf("omorfi parser returned no result")
+		return nil, fmt.Errorf("%s parser returned no result", p.name)
 	}
 
 	sentences := toParsedSentences(result)
@@ -235,7 +276,7 @@ func (p omorfiParser) Parse(db *store.DB, lang, text string) (*ParseResult, erro
 	directResolutions := db.BatchLookupForms(uniqueForms, lang, "basic")
 	customResolutions := db.BatchLookupForms(uniqueForms, lang, "custom")
 	lookupFormsMs := time.Since(lookupStartedAt).Milliseconds()
-	rules := defaultOmorfiRules()
+	rules := p.overrideSet()
 
 	resolveStartedAt := time.Now()
 	detailedSentences := make([]SentenceResult, 0, len(sentences))
@@ -250,9 +291,9 @@ func (p omorfiParser) Parse(db *store.DB, lang, text string) (*ParseResult, erro
 				Lemma:        strings.ToLower(token.StubLemma),
 				POS:          token.StubPOS,
 				GrammarLabel: token.GrammarLabel,
-				Source:       "analyzer:omorfi",
+				Source:       p.source,
 				Resolved:     token.StubLemma != "" && token.StubPOS != "" && token.StubPOS != "X",
-				Trace:        []string{fmt.Sprintf("analyzer:omorfi lemma=%s pos=%s", token.StubLemma, token.StubPOS)},
+				Trace:        []string{fmt.Sprintf("%s lemma=%s pos=%s", p.source, token.StubLemma, token.StubPOS)},
 			}
 			if token.StubPOS == "PUNCT" {
 				resolved.Lemma = token.Form
@@ -303,7 +344,7 @@ func (p omorfiParser) Parse(db *store.DB, lang, text string) (*ParseResult, erro
 
 	return &ParseResult{
 		Lang:            lang,
-		Parser:          "omorfi",
+		Parser:          p.name,
 		TotalTokens:     countTokens(words),
 		ParseDurationMs: parseDurationMs,
 		Stats:           stats,
@@ -312,16 +353,16 @@ func (p omorfiParser) Parse(db *store.DB, lang, text string) (*ParseResult, erro
 	}, nil
 }
 
-type omorfiRule interface {
+type externalAnalyzerRule interface {
 	Name() string
 	Apply(lang string, token *TokenResult, direct, custom store.FormResolution) bool
 }
 
-type omorfiPreferDirectDictRule struct{}
+type externalPreferDirectDictRule struct{}
 
-func (omorfiPreferDirectDictRule) Name() string { return "prefer_direct_dict_when_unknown" }
+func (externalPreferDirectDictRule) Name() string { return "prefer_direct_dict_when_unknown" }
 
-func (omorfiPreferDirectDictRule) Apply(_ string, token *TokenResult, direct, _ store.FormResolution) bool {
+func (externalPreferDirectDictRule) Apply(_ string, token *TokenResult, direct, _ store.FormResolution) bool {
 	if direct.Lemma == "" {
 		return false
 	}
@@ -336,11 +377,11 @@ func (omorfiPreferDirectDictRule) Apply(_ string, token *TokenResult, direct, _ 
 	return true
 }
 
-type omorfiPreferCustomFallbackRule struct{}
+type externalPreferCustomFallbackRule struct{}
 
-func (omorfiPreferCustomFallbackRule) Name() string { return "prefer_custom_fallback_when_unknown" }
+func (externalPreferCustomFallbackRule) Name() string { return "prefer_custom_fallback_when_unknown" }
 
-func (omorfiPreferCustomFallbackRule) Apply(_ string, token *TokenResult, _, custom store.FormResolution) bool {
+func (externalPreferCustomFallbackRule) Apply(_ string, token *TokenResult, _, custom store.FormResolution) bool {
 	if custom.Lemma == "" {
 		return false
 	}
@@ -356,11 +397,11 @@ func (omorfiPreferCustomFallbackRule) Apply(_ string, token *TokenResult, _, cus
 	return true
 }
 
-type omorfiAttachGrammarRule struct{}
+type externalAttachGrammarRule struct{}
 
-func (omorfiAttachGrammarRule) Name() string { return "attach_custom_grammar_label" }
+func (externalAttachGrammarRule) Name() string { return "attach_custom_grammar_label" }
 
-func (omorfiAttachGrammarRule) Apply(_ string, token *TokenResult, _, custom store.FormResolution) bool {
+func (externalAttachGrammarRule) Apply(_ string, token *TokenResult, _, custom store.FormResolution) bool {
 	if token.GrammarLabel != "" || custom.GrammarLabel == "" {
 		return false
 	}
@@ -375,11 +416,11 @@ func (omorfiAttachGrammarRule) Apply(_ string, token *TokenResult, _, custom sto
 	return true
 }
 
-func defaultOmorfiRules() []omorfiRule {
-	return []omorfiRule{
-		omorfiPreferDirectDictRule{},
-		omorfiPreferCustomFallbackRule{},
-		omorfiAttachGrammarRule{},
+func defaultExternalAnalyzerRules() []externalAnalyzerRule {
+	return []externalAnalyzerRule{
+		externalPreferDirectDictRule{},
+		externalPreferCustomFallbackRule{},
+		externalAttachGrammarRule{},
 	}
 }
 
@@ -410,7 +451,7 @@ func runExternalOmorfi(lang, text string) (*parserffi.AnalysisResult, error) {
 		return nil, fmt.Errorf("omorfi parser command is empty")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), analyzerTimeout(omorfiTimeoutEnv, omorfiDefaultTimeout))
 	defer cancel()
 
 	args := append(fields[1:], "--lang", lang)
@@ -431,14 +472,61 @@ func runExternalOmorfi(lang, text string) (*parserffi.AnalysisResult, error) {
 	return &result, nil
 }
 
+func runExternalEstNLTK(lang, text string) (*parserffi.AnalysisResult, error) {
+	cmdSpec := strings.TrimSpace(os.Getenv(estnltkCommandEnv))
+	if cmdSpec == "" {
+		if py, err := exec.LookPath("python3"); err == nil {
+			if path, ok := findEstNLTKAdapter(); ok {
+				if venvPy, ok := findSiblingVenvPython(path, ".venv-estnltk"); ok {
+					py = venvPy
+				}
+				cmdSpec = py + " " + path
+			}
+		}
+	}
+	if cmdSpec == "" {
+		return nil, fmt.Errorf("estnltk parser is not configured; set %s or run `make setup-estnltk`", estnltkCommandEnv)
+	}
+	fields := strings.Fields(cmdSpec)
+	if len(fields) == 0 {
+		return nil, fmt.Errorf("estnltk parser command is empty")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), analyzerTimeout(estnltkTimeoutEnv, estnltkDefaultTimeout))
+	defer cancel()
+
+	args := append(fields[1:], "--lang", lang)
+	cmd := exec.CommandContext(ctx, fields[0], args...)
+	cmd.Stdin = strings.NewReader(text)
+	out, err := cmd.Output()
+	if ctx.Err() == context.DeadlineExceeded {
+		return nil, fmt.Errorf("estnltk parser timed out")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("estnltk parser failed: %w", err)
+	}
+
+	var result parserffi.AnalysisResult
+	if err := json.Unmarshal(out, &result); err != nil {
+		return nil, fmt.Errorf("estnltk parser returned invalid JSON: %w", err)
+	}
+	return &result, nil
+}
+
+func findEstNLTKAdapter() (string, bool) {
+	return findRepoScript("scripts/estnltk_adapter_example.py")
+}
+
 // findOmorfiAdapter locates the bundled python adapter script in a way that
 // works whether the caller's cwd is the repo root, a sub-package directory
 // (`go test ./internal/parsecore`), or an installed-binary deployment.
 //
 // Returns the absolute path to the script and true on success.
 func findOmorfiAdapter() (string, bool) {
-	const scriptRel = "scripts/omorfi_adapter_example.py"
+	return findRepoScript("scripts/omorfi_adapter_example.py")
+}
 
+func findRepoScript(scriptRel string) (string, bool) {
 	// 1. cwd-relative.
 	if abs, err := filepath.Abs(scriptRel); err == nil {
 		if _, err := os.Stat(abs); err == nil {
@@ -473,6 +561,26 @@ func findOmorfiAdapter() (string, bool) {
 		}
 	}
 
+	return "", false
+}
+
+func findSiblingVenvPython(scriptPath, venvName string) (string, bool) {
+	dir := filepath.Dir(scriptPath)
+	for i := 0; i < 4; i++ {
+		if filepath.Base(dir) == "scripts" {
+			repoRoot := filepath.Dir(dir)
+			candidate := filepath.Join(repoRoot, venvName, "bin", "python")
+			if _, err := os.Stat(candidate); err == nil {
+				return candidate, true
+			}
+			return "", false
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
 	return "", false
 }
 

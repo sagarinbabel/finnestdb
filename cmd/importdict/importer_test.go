@@ -55,7 +55,7 @@ func TestNormalizePos(t *testing.T) {
 		{"adv", "ADV"},
 		{"particle", "PART"},
 		{"name", "PROPN"},
-		{"NOUN", "NOUN"},      // already uppercase passthrough
+		{"NOUN", "NOUN"},       // already uppercase passthrough
 		{"Unknown", "UNKNOWN"}, // unrecognized → uppercase
 		{"", ""},               // empty stays empty
 	}
@@ -177,6 +177,101 @@ func TestImportJSONL_PosNormalization(t *testing.T) {
 	if pos != "VERB" {
 		t.Errorf("pos = %q, want VERB", pos)
 	}
+}
+
+func TestRecordImportMetadataPreservesAttributionFields(t *testing.T) {
+	db := newTestDB(t)
+
+	err := recordImportMetadata(db, "ET", importMetadata{
+		Source:        "ekilex",
+		SourceName:    "EKI/Ekilex",
+		SourceURL:     "https://ekilex.ee/",
+		SourceVersion: "2026-05-05-export",
+		License:       "CC BY 4.0",
+		Attribution:   "Eesti Keele Instituut / EKI",
+		ChangesNote:   "Normalized to FinEstDB lemma/form/POS schema",
+	}, 42)
+	if err != nil {
+		t.Fatalf("recordImportMetadata: %v", err)
+	}
+
+	var sourceName, sourceURL, sourceVersion, license, attribution, changesNote string
+	var rowCount int
+	if err := db.QueryRow(
+		`SELECT source_name, source_url, source_version, license, attribution, changes_note, row_count
+		 FROM dict_metadata WHERE lang = 'ET' AND source = 'ekilex'`,
+	).Scan(&sourceName, &sourceURL, &sourceVersion, &license, &attribution, &changesNote, &rowCount); err != nil {
+		t.Fatalf("metadata query: %v", err)
+	}
+	if sourceName != "EKI/Ekilex" || sourceURL != "https://ekilex.ee/" || sourceVersion != "2026-05-05-export" {
+		t.Fatalf("unexpected source metadata: name=%q url=%q version=%q", sourceName, sourceURL, sourceVersion)
+	}
+	if license != "CC BY 4.0" || attribution != "Eesti Keele Instituut / EKI" || changesNote == "" {
+		t.Fatalf("unexpected attribution metadata: license=%q attribution=%q changes=%q", license, attribution, changesNote)
+	}
+	if rowCount != 42 {
+		t.Fatalf("row_count=%d want 42", rowCount)
+	}
+}
+
+func TestResolveProvenance(t *testing.T) {
+	t.Run("kaikki defaults applied when no source flags given", func(t *testing.T) {
+		var name, url, license, attribution string
+		if err := resolveProvenance("", &name, &url, &license, &attribution); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if name != kaikkiSourceName || license != kaikkiSourceLicense || attribution != kaikkiAttribution {
+			t.Fatalf("kaikki defaults not applied: name=%q license=%q attribution=%q", name, license, attribution)
+		}
+	})
+
+	t.Run("operator overrides preserved", func(t *testing.T) {
+		name := "EKI/Ekilex"
+		url := ""
+		license := "CC BY 4.0"
+		attribution := "Eesti Keele Instituut / EKI"
+		if err := resolveProvenance("", &name, &url, &license, &attribution); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if name != "EKI/Ekilex" || license != "CC BY 4.0" || attribution != "Eesti Keele Instituut / EKI" {
+			t.Fatalf("operator values overwritten: name=%q license=%q attribution=%q", name, license, attribution)
+		}
+	})
+
+	t.Run("non-kaikki file requires explicit provenance", func(t *testing.T) {
+		var name, url, license, attribution string
+		err := resolveProvenance("/tmp/ekilex.jsonl", &name, &url, &license, &attribution)
+		if err == nil {
+			t.Fatalf("expected error for missing provenance flags")
+		}
+		for _, want := range []string{"-source-name", "-source-license", "-source-attribution"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Fatalf("error %q missing %q", err, want)
+			}
+		}
+	})
+
+	t.Run("non-kaikki source URL requires explicit provenance", func(t *testing.T) {
+		var name, license, attribution string
+		url := "https://ekilex.ee/some/export"
+		err := resolveProvenance("", &name, &url, &license, &attribution)
+		if err == nil {
+			t.Fatalf("expected error for missing provenance flags")
+		}
+	})
+
+	t.Run("non-kaikki with full provenance succeeds", func(t *testing.T) {
+		name := "EKI/Ekilex"
+		url := "https://ekilex.ee/some/export"
+		license := "CC BY 4.0"
+		attribution := "Eesti Keele Instituut / EKI"
+		if err := resolveProvenance("", &name, &url, &license, &attribution); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if name != "EKI/Ekilex" || license != "CC BY 4.0" {
+			t.Fatalf("operator values overwritten: name=%q license=%q", name, license)
+		}
+	})
 }
 
 func TestOpenJSONLReader_Plain(t *testing.T) {

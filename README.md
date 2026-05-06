@@ -76,7 +76,7 @@ When a text is saved as a deck, every token is also recorded in an `occurrence`
 table (`deck_id, sentence_id, token_index, lemma, pos`), enabling per-word
 sentence counts and corpus analytics in the review phase.
 
-### Two parser modes today
+### Parser modes today
 
 The current app exposes two parser modes on the parse page:
 
@@ -86,10 +86,12 @@ The current app exposes two parser modes on the parse page:
   - Finnish/Estonian compound splitting
   - Finnish/Estonian case suffix stripping
 
-So today these are best understood as **two parser modes**, not two completely
-separate morphology engines. The next planned parser milestone is an
-**Omorfi-backed Finnish baseline** that we can compare against the custom mode
-for quality and speed.
+The parser core also has evaluation-only external adapter modes:
+
+- **Omorfi** for Finnish (`omorfi`)
+- **EstNLTK/Vabamorf** for Estonian (`estnltk`)
+
+These are baseline/comparison adapters, not browser-facing parser buttons.
 
 ### Language detection
 
@@ -222,6 +224,7 @@ Standard make targets:
 ```bash
 make eval
 make compare-parsers
+make compare-parsers-et
 make eval-check
 ```
 
@@ -235,6 +238,12 @@ Run the expanded Finnish comparison set:
 
 ```bash
 go run ./cmd/parsertest -dataset ./testdata/parser-eval/fi/gold/fi-core-v1.json -parsers basic,custom,omorfi
+```
+
+Run the expanded Estonian comparison set:
+
+```bash
+go run ./cmd/parsertest -dataset ./testdata/parser-eval/et/gold/et-manual-v1.json -parsers basic,custom,estnltk
 ```
 
 This will:
@@ -258,6 +267,7 @@ Available parser names:
 - `basic`
 - `custom`
 - `omorfi`
+- `estnltk`
 
 `omorfi` is an external-adapter slot for a third Finnish baseline. To enable it,
 set `FINNESTDB_OMORFI_CMD` to a command that reads source text from stdin and
@@ -271,6 +281,17 @@ go run ./cmd/parsertest \
   -dataset ./testdata/parser-eval/fi-gold-small.json \
   -parsers basic,custom,omorfi
 ```
+
+`estnltk` is the equivalent external-adapter slot for Estonian. To enable it:
+
+```bash
+make setup-estnltk
+go run ./cmd/parsertest \
+  -dataset ./testdata/parser-eval/et/gold/et-manual-v1.json \
+  -parsers basic,custom,estnltk
+```
+
+See `docs/ESTONIAN_LEXICAL_PLAN.md` for the EKI/Ekilex lexical-data import plan.
 
 Dataset format:
 - `name`, `version`, `language`

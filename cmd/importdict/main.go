@@ -32,6 +32,8 @@ import (
 	"os"
 	"strings"
 
+	"finnestdb/internal/store"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -40,6 +42,15 @@ var kaikkiURL = map[string]string{
 	"fi": "https://kaikki.org/dictionary/Finnish/kaikki.org-dictionary-Finnish.jsonl",
 	"et": "https://kaikki.org/dictionary/Estonian/kaikki.org-dictionary-Estonian.jsonl",
 }
+
+// Source-attribution defaults applied only when importing the built-in
+// kaikki.org dump. Non-kaikki sources must supply these explicitly so EKI/
+// Ekilex (or any other licensed corpus) is never silently tagged as Wiktionary.
+const (
+	kaikkiSourceName    = "kaikki.org"
+	kaikkiSourceLicense = "Wiktionary-derived; verify per source terms"
+	kaikkiAttribution   = "kaikki.org dictionary data derived from Wiktionary"
+)
 
 // posMap normalizes kaikki.org POS strings (lowercase) to UPOS (uppercase).
 var posMap = map[string]string{
@@ -61,6 +72,16 @@ var posMap = map[string]string{
 	"suffix":   "X",
 	"prefix":   "X",
 	"affix":    "X",
+}
+
+type importMetadata struct {
+	Source        string
+	SourceName    string
+	SourceURL     string
+	SourceVersion string
+	License       string
+	Attribution   string
+	ChangesNote   string
 }
 
 func normalizePos(raw string) string {
@@ -120,6 +141,12 @@ func main() {
 	filePath := flag.String("file", "", "Path to local .jsonl, .jsonl.gz, or .jsonl.bz2 file (skips download)")
 	customGlosses := flag.String("custom-glosses", "", "Path to CSV file of custom gloss overrides (word,pos,lang,gloss)")
 	reimport := flag.Bool("reimport", false, "Drop existing entries for this lang before importing")
+	sourceName := flag.String("source-name", "", "Human-readable lexical source name for dict_metadata (required for non-kaikki sources)")
+	sourceURL := flag.String("source-url", "", "Canonical lexical source URL for dict_metadata")
+	sourceVersion := flag.String("source-version", "", "Source version, dump date, or release identifier for dict_metadata")
+	sourceLicense := flag.String("source-license", "", "License text or SPDX-like label for dict_metadata (required for non-kaikki sources)")
+	sourceAttribution := flag.String("source-attribution", "", "Attribution text to preserve with imported rows (required for non-kaikki sources)")
+	changesNote := flag.String("changes-note", "Normalized to FinEstDB lemma/form/POS schema", "Change notice for dict_metadata")
 	flag.Parse()
 
 	langCode := strings.ToLower(*lang)
@@ -127,6 +154,10 @@ func main() {
 		log.Fatalf("Unsupported language %q. Supported: fi, et", *lang)
 	}
 	dbLang := strings.ToUpper(langCode) // "fi" → "FI", "et" → "ET"
+
+	if err := resolveProvenance(*filePath, sourceName, sourceURL, sourceLicense, sourceAttribution); err != nil {
+		log.Fatalf("%v", err)
+	}
 
 	db, err := sql.Open("sqlite3", *dbPath)
 	if err != nil {
@@ -198,20 +229,82 @@ func main() {
 		log.Printf("Applied %d custom gloss overrides from %s", n, *customGlosses)
 	}
 
-	// Record import metadata.
-	source := kaikkiURL[langCode]
-	if *filePath != "" {
-		source = *filePath
+	metadata := importMetadata{
+		SourceName:    strings.TrimSpace(*sourceName),
+		SourceURL:     strings.TrimSpace(*sourceURL),
+		SourceVersion: strings.TrimSpace(*sourceVersion),
+		License:       strings.TrimSpace(*sourceLicense),
+		Attribution:   strings.TrimSpace(*sourceAttribution),
+		ChangesNote:   strings.TrimSpace(*changesNote),
 	}
-	if _, err := db.Exec(
-		`INSERT OR REPLACE INTO dict_metadata (lang, source, imported_at, row_count) VALUES (?, ?, CURRENT_TIMESTAMP, ?)`,
-		dbLang, source, count,
-	); err != nil {
+	if metadata.SourceURL == "" {
+		metadata.SourceURL = kaikkiURL[langCode]
+	}
+	metadata.Source = metadata.SourceURL
+	if *filePath != "" {
+		metadata.Source = *filePath
+		if strings.TrimSpace(*sourceURL) == "" {
+			metadata.SourceURL = *filePath
+		}
+	}
+	if err := recordImportMetadata(db, dbLang, metadata, count); err != nil {
 		log.Printf("warn: could not update dict_metadata: %v", err)
 	}
 
 	fmt.Printf("\nDone. Imported %d entries for %s.\n", count, dbLang)
 	fmt.Printf("Run './finnestdb' to start the server.\n")
+}
+
+// resolveProvenance applies kaikki defaults when we are importing the built-in
+// kaikki dump, and otherwise requires the operator to spell out source name,
+// license, and attribution. It mutates the flag pointers in place.
+func resolveProvenance(filePath string, sourceName, sourceURL, sourceLicense, sourceAttribution *string) error {
+	usingKaikki := filePath == "" && strings.TrimSpace(*sourceURL) == ""
+	if usingKaikki {
+		if strings.TrimSpace(*sourceName) == "" {
+			*sourceName = kaikkiSourceName
+		}
+		if strings.TrimSpace(*sourceLicense) == "" {
+			*sourceLicense = kaikkiSourceLicense
+		}
+		if strings.TrimSpace(*sourceAttribution) == "" {
+			*sourceAttribution = kaikkiAttribution
+		}
+		return nil
+	}
+	var missing []string
+	if strings.TrimSpace(*sourceName) == "" {
+		missing = append(missing, "-source-name")
+	}
+	if strings.TrimSpace(*sourceLicense) == "" {
+		missing = append(missing, "-source-license")
+	}
+	if strings.TrimSpace(*sourceAttribution) == "" {
+		missing = append(missing, "-source-attribution")
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("non-kaikki imports require explicit provenance: %s", strings.Join(missing, ", "))
+	}
+	return nil
+}
+
+func recordImportMetadata(db *sql.DB, dbLang string, metadata importMetadata, rowCount int) error {
+	_, err := db.Exec(
+		`INSERT OR REPLACE INTO dict_metadata (
+			lang, source, source_name, source_url, source_version, license,
+			attribution, changes_note, imported_at, row_count
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?)`,
+		dbLang,
+		metadata.Source,
+		metadata.SourceName,
+		metadata.SourceURL,
+		metadata.SourceVersion,
+		metadata.License,
+		metadata.Attribution,
+		metadata.ChangesNote,
+		rowCount,
+	)
+	return err
 }
 
 // importJSONL streams the JSONL reader and inserts lemmas + forms into the DB.
@@ -400,9 +493,10 @@ func applyCustomGlosses(db *sql.DB, filePath, dbLang string) (int, error) {
 
 // ensureSchema creates the forms, lemmas, and dict_metadata tables if they
 // don't exist. This allows the importer to run against a fresh database file
-// without needing to start the main server first.
+// without needing to start the main server first. The dict_metadata schema is
+// delegated to internal/store so both paths stay in sync.
 func ensureSchema(db *sql.DB) error {
-	_, err := db.Exec(`
+	if _, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS lemmas (
 			lemma TEXT NOT NULL,
 			pos   TEXT NOT NULL,
@@ -417,13 +511,8 @@ func ensureSchema(db *sql.DB) error {
 			lang  TEXT NOT NULL,
 			PRIMARY KEY (form, lang)
 		);
-		CREATE TABLE IF NOT EXISTS dict_metadata (
-			lang        TEXT NOT NULL,
-			source      TEXT NOT NULL,
-			imported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-			row_count   INTEGER,
-			PRIMARY KEY (lang, source)
-		);
-	`)
-	return err
+	`); err != nil {
+		return err
+	}
+	return store.EnsureDictMetadataSchema(db)
 }
