@@ -298,14 +298,66 @@ Files:
 
 - `internal/store/db.go`
 - `internal/store/dict.go`
-- `cmd/importdict/main.go`
+- `cmd/importdict/main.go` (kaikki.org / Wiktionary)
+- `cmd/importekilex/main.go` (Ekilex public-headword snapshot — minimal)
+- `cmd/importekilexdetails/main.go` (Ekilex reduced data drop — definitions + forms)
 
 Responsibilities:
 
-- import dictionary data from kaikki.org
+- import dictionary data from kaikki.org and Ekilex
 - resolve forms to lemma/POS
 - supply glosses
 - store deck/sentence/occurrence data
+
+#### Multi-lemma forms
+
+The `forms` table uses `PRIMARY KEY (form, lang, lemma, pos)` so a single
+surface form can map to multiple `(lemma, pos)` candidates. This models
+homonyms — e.g. ET `joon` is both the noun "line" (`SgN` of `joon`) and
+the 1st-person-singular form of the verb `jooma` ("to drink"). At deck
+ingest time, every dict candidate becomes its own `occurrence` row and
+its own card; the parser's single pick is only used when the dict has
+no entries for the form.
+
+The corresponding `occurrence` UNIQUE is
+`(deck_id, sentence_id, token_ix, lemma, pos)`. Migration from the legacy
+single-lemma schema is handled by `EnsureMultiLemmaSchema` in
+`internal/store/db.go`.
+
+#### POS mapping (Ekilex → UPOS)
+
+`cmd/importekilexdetails` translates Ekilex meaning-level POS codes (and
+falls back to entry-level `word_class` when the meaning has no POS) into
+Universal POS codes the parser pipeline emits. The mapping:
+
+| Ekilex `meaning.pos` | UPOS | Notes |
+|---|---|---|
+| `s` | `NOUN` | substantive |
+| `v`, `vrm` | `VERB` | `vrm` is rare |
+| `adj`, `adjg`, `adjid` | `ADJ` | |
+| `adv` | `ADV` | |
+| `prop`, `propgen` | `PROPN` | proper noun |
+| `pron` | `PRON` | |
+| `num` | `NUM` | |
+| `postp`, `prep` | `ADP` | |
+| `konj` | `CCONJ` | no C/S split visible in data |
+| `interj` | `INTJ` | |
+
+Fallback when `meaning.pos` is empty (uses entry-level `word_class`):
+
+| `word_class` | UPOS |
+|---|---|
+| `noomen` | `NOUN` |
+| `verb` | `VERB` |
+| `muutumatu` | `X` |
+
+Forms in `forms/<letter>.tsv` carry only `(lemma, form, morph_code)` —
+they don't say which homonym a form belongs to. When a lemma has multiple
+homonyms with different POS (e.g. `jooma` is both VERB and NOUN), the
+importer disambiguates by classifying the morph code: codes prefixed
+`Ind/Imp/Knd/Kvt/Sup/Pts/Inf/Ger/Neg` are verbal and only attribute to
+VERB; codes prefixed `Sg/Pl` (and the invariant marker `ID`) are nominal
+and only attribute to non-VERB POSes.
 
 ### 6. Evaluation Stack
 
