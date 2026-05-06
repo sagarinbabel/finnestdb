@@ -341,9 +341,11 @@ function renderRoute() {
         // Hard refresh / direct navigation: re-hydrate from sessionStorage so
         // the user doesn't land on an empty page. If nothing is cached, send
         // them back to /inspect rather than leaving the shell empty.
-        if (!restoreLastParse()) {
-            window.location.hash = '#/inspect';
-        }
+        void (async () => {
+            if (!await restoreLastParse()) {
+                window.location.hash = '#/inspect';
+            }
+        })();
     }
 }
 // ── Mobile nav ─────────────────────────────────────────────────────────────
@@ -1087,6 +1089,11 @@ function renderResultsTable(data) {
     help.textContent = hasGrammar
         ? `Coverage = dictionary-backed tokens. Grammar labels shown as badges when case/morphology was inferred.`
         : `Coverage = dictionary-backed tokens. Grammar labels appear when case/morphology inference is available.`;
+    // If a tooltip is currently visible, its trigger is about to be wiped by
+    // the innerHTML reassignment below. The browser won't fire mouseout for
+    // a removed-then-replaced element, so we hide explicitly to avoid a
+    // stuck tooltip when the user hasn't moved the mouse.
+    hidePortalTooltip();
     tbody.innerHTML = sortedWords.map((w, index) => {
         const grammarBadge = w.grammar_label
             ? `<span class="grammar-badge">${escapeHtml(w.grammar_label)}</span>`
@@ -1297,21 +1304,52 @@ function persistLastParse(data, textPreview, parserMode, context) {
         // page will just be empty after refresh, same as before.
     }
 }
-function restoreLastParse() {
+async function restoreLastParse() {
+    let payload;
     try {
         const raw = sessionStorage.getItem(LAST_PARSE_KEY);
         if (!raw)
             return false;
-        const payload = JSON.parse(raw);
-        if (!payload?.data || !payload.context)
+        const parsed = JSON.parse(raw);
+        if (!parsed?.data || !parsed.context)
             return false;
-        state.currentSourceText = payload.sourceText || '';
-        showResults(payload.data, payload.textPreview, payload.parserMode, payload.context);
-        return true;
+        payload = parsed;
     }
     catch {
         return false;
     }
+    state.currentSourceText = payload.sourceText || '';
+    // Re-parse to refresh learning_state. The persisted snapshot freezes
+    // each WordEntry's learning_state at parse time, so any Known/Ignored
+    // mark the user made between the original parse and this restore would
+    // be rolled back when showResults reseeds state.currentLemmaStates from
+    // the snapshot. Hitting /api/parse again returns the same expansion plus
+    // current state from the server (handlers.go HandleParse).
+    if (payload.sourceText) {
+        try {
+            const resp = await fetch('/api/parse', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    lang: payload.data.lang,
+                    text: payload.sourceText,
+                    parser: payload.parserMode,
+                }),
+            });
+            if (resp.ok) {
+                const fresh = await resp.json();
+                showResults(fresh, payload.textPreview, payload.parserMode, payload.context);
+                return true;
+            }
+        }
+        catch {
+            // Network blip or server down — fall through to the cached
+            // snapshot below so the user still sees something.
+        }
+    }
+    showResults(payload.data, payload.textPreview, payload.parserMode, payload.context);
+    return true;
 }
 async function loadDeckDetail(deckID) {
     document.body.dataset.resultsContext = 'deck';
@@ -1957,53 +1995,61 @@ function initAdminFeedbackPage() {
 // ancestor overflow (e.g. .word-table { overflow: hidden }), so we render a
 // single body-level element that's positioned via getBoundingClientRect and
 // can escape any ancestor stacking/clipping context.
+let portalTip = null;
+function ensurePortalTip() {
+    if (portalTip)
+        return portalTip;
+    portalTip = document.createElement('div');
+    portalTip.className = 'portal-tooltip';
+    portalTip.setAttribute('role', 'tooltip');
+    document.body.appendChild(portalTip);
+    return portalTip;
+}
+function showPortalTooltip(target) {
+    const text = target.getAttribute('data-tooltip');
+    if (!text)
+        return;
+    const el = ensurePortalTip();
+    el.textContent = text;
+    const rect = target.getBoundingClientRect();
+    el.style.left = `${rect.left + rect.width / 2}px`;
+    el.style.top = `${rect.top - 6}px`;
+    el.classList.add('visible');
+}
+function hidePortalTooltip() {
+    if (portalTip)
+        portalTip.classList.remove('visible');
+}
 function initPortalTooltips() {
-    let tip = null;
-    const ensure = () => {
-        if (tip)
-            return tip;
-        tip = document.createElement('div');
-        tip.className = 'portal-tooltip';
-        tip.setAttribute('role', 'tooltip');
-        document.body.appendChild(tip);
-        return tip;
-    };
-    const show = (target) => {
-        const text = target.getAttribute('data-tooltip');
-        if (!text)
-            return;
-        const el = ensure();
-        el.textContent = text;
-        const rect = target.getBoundingClientRect();
-        el.style.left = `${rect.left + rect.width / 2}px`;
-        el.style.top = `${rect.top - 6}px`;
-        el.classList.add('visible');
-    };
-    const hide = () => {
-        if (tip)
-            tip.classList.remove('visible');
-    };
+    // mouseover: show on trigger, hide on anything else. The "hide on
+    // non-trigger" branch matters when the table re-renders (sort change or
+    // lemma-state click): the trigger element is removed from the DOM
+    // without firing mouseout, so without this hide() the tooltip stays
+    // stuck. Combined with the explicit hidePortalTooltip() call from
+    // renderResultsTable for the no-mouse-move case.
     document.addEventListener('mouseover', (e) => {
         const t = e.target?.closest('[data-tooltip]');
         if (t)
-            show(t);
+            showPortalTooltip(t);
+        else
+            hidePortalTooltip();
     });
     document.addEventListener('mouseout', (e) => {
         const t = e.target?.closest('[data-tooltip]');
         if (t)
-            hide();
+            hidePortalTooltip();
     });
     document.addEventListener('focusin', (e) => {
         const t = e.target?.closest('[data-tooltip]');
         if (t)
-            show(t);
+            showPortalTooltip(t);
     });
     document.addEventListener('focusout', (e) => {
         const t = e.target?.closest('[data-tooltip]');
         if (t)
-            hide();
+            hidePortalTooltip();
     });
-    window.addEventListener('scroll', hide, true);
+    window.addEventListener('scroll', hidePortalTooltip, true);
 }
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
