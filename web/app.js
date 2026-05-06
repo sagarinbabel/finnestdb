@@ -32,6 +32,8 @@ const state = {
     currentParserMode: 'basic',
     currentTextPreview: '',
     currentSourceText: '',
+    currentDeckID: null,
+    currentDeckCreatedAt: '',
     currentRow: null,
     currentSort: { key: 'row', dir: 'asc' },
     currentPOSFilter: 'all',
@@ -207,6 +209,31 @@ function clearResultsDom() {
     if (workbenchText)
         workbenchText.value = '';
 }
+function beginDeckDetailLoading() {
+    // Deck detail reuses the results page, so proactively clear any prior results
+    // DOM to prevent stale rows/actions from remaining interactive while the deck
+    // fetch is in flight.
+    const tbody = document.getElementById('word-table-body');
+    if (tbody)
+        tbody.innerHTML = '';
+    state.currentResults = null;
+    state.currentContext = 'deck';
+    state.currentRow = null;
+    state.pendingLemmaStates.clear();
+    state.currentLemmaStates.clear();
+    const titleEl = document.getElementById('results-title');
+    if (titleEl)
+        titleEl.textContent = 'Loading deck…';
+    const durationEl = document.getElementById('results-duration');
+    if (durationEl)
+        durationEl.textContent = '';
+    const statsEl = document.getElementById('results-stats');
+    if (statsEl)
+        statsEl.textContent = '';
+    const parserEl = document.getElementById('results-parser');
+    if (parserEl)
+        parserEl.textContent = '';
+}
 // ── Hash router ────────────────────────────────────────────────────────────
 const ROUTE_TO_PAGE = {
     '/': 'landing-page',
@@ -245,6 +272,7 @@ function setActiveNavLink(route) {
         el.classList.toggle('active', el.dataset.route === route);
     });
 }
+const DECK_DETAIL_RE = /^\/decks\/(\d+)$/;
 function isRouteAllowed(route) {
     const role = state.role;
     // Admin-only routes
@@ -257,7 +285,8 @@ function isRouteAllowed(route) {
     }
     // Authenticated-only routes
     const userOnly = ['/dashboard', '/inspect', '/decks', '/review', '/results'];
-    if (userOnly.includes(route)) {
+    const isDeckDetail = DECK_DETAIL_RE.test(route);
+    if (userOnly.includes(route) || isDeckDetail) {
         if (role === 'anon')
             return { allowed: false, redirect: '/signin' };
         return { allowed: true };
@@ -270,11 +299,21 @@ function isRouteAllowed(route) {
 }
 function renderRoute() {
     let route = currentRoute();
-    if (!ROUTE_TO_PAGE[route])
+    const deckMatch = route.match(DECK_DETAIL_RE);
+    if (!deckMatch && !ROUTE_TO_PAGE[route])
         route = '/';
     const guard = isRouteAllowed(route);
     if (!guard.allowed && guard.redirect) {
         window.location.hash = `#${guard.redirect}`;
+        return;
+    }
+    if (deckMatch) {
+        // Deck detail reuses the results page.
+        showPage('results-page');
+        beginDeckDetailLoading();
+        setActiveNavLink('/decks');
+        closeMobileNav();
+        void loadDeckDetail(Number(deckMatch[1]));
         return;
     }
     showPage(ROUTE_TO_PAGE[route]);
@@ -523,7 +562,7 @@ function renderDecksPage() {
         const knownPct = deck.unique > 0 ? Math.round((deck.known / deck.unique) * 100) : 0;
         return `<article class="deck-list-item">
             <div>
-                <h2>${escapeHtml(deck.title)}</h2>
+                <h2><a href="#/decks/${deck.id}" class="deck-list-title">${escapeHtml(deck.title)}</a></h2>
                 <p class="deck-list-meta">${langName} · ${deck.known}/${deck.unique} known (${knownPct}%) · ${deck.due} due</p>
             </div>
             <div class="deck-list-actions">
@@ -1027,6 +1066,7 @@ function renderResultsTable(data) {
     const sortedWords = sortWords(filteredWords, state.currentSort);
     const hasGrammar = data.words.some(word => Boolean(word.grammar_label));
     const showActions = state.role === 'user' || state.role === 'admin';
+    const showCorrection = showActions && state.currentContext !== 'deck';
     help.textContent = hasGrammar
         ? `Coverage = dictionary-backed tokens. Grammar labels shown as badges when case/morphology was inferred.`
         : `Coverage = dictionary-backed tokens. Grammar labels appear when case/morphology inference is available.`;
@@ -1052,6 +1092,13 @@ function renderResultsTable(data) {
         const rowStatusHtml = rowStatus
             ? `<span class="word-state-badge ${rowStatus}">${rowStatus === 'known' ? 'Known' : 'Ignored'}</span>`
             : '';
+        const correctionButton = showCorrection
+            ? `<button type="button" class="btn btn-link btn-sm correction-btn"
+                    data-lemma="${escapeHtml(w.lemma)}"
+                    data-pos="${escapeHtml(w.pos)}"
+                    data-surface="${escapeHtml(surfaceForm)}"
+                    data-grammar="${escapeHtml(w.grammar_label || '')}">Suggest fix</button>`
+            : '';
         const actionCell = showActions
             ? `<td class="col-actions"><div class="word-actions">
                 ${rowStatusHtml}
@@ -1065,11 +1112,7 @@ function renderResultsTable(data) {
                     data-lemma="${escapeHtml(w.lemma)}"
                     data-pos="${escapeHtml(w.pos)}"
                     ${rowPending || rowStatus === 'ignored' ? 'disabled' : ''}>Ignore</button>
-                <button type="button" class="btn btn-link btn-sm correction-btn"
-                    data-lemma="${escapeHtml(w.lemma)}"
-                    data-pos="${escapeHtml(w.pos)}"
-                    data-surface="${escapeHtml(surfaceForm)}"
-                    data-grammar="${escapeHtml(w.grammar_label || '')}">Suggest fix</button>
+                ${correctionButton}
                </div></td>`
             : '';
         return `<tr>
@@ -1094,7 +1137,7 @@ function renderResultsTable(data) {
             }
         });
     });
-    // Wire up newly-rendered correction buttons
+    // Wire up newly-rendered correction buttons.
     tbody.querySelectorAll('.correction-btn').forEach(btn => {
         btn.addEventListener('click', () => openCorrectionModal({
             lemma: btn.dataset.lemma || '',
@@ -1111,11 +1154,17 @@ function showResults(data, textPreview, parserMode, context) {
     const ellipsis = preview.length >= 60 ? '…' : '';
     const uniqueLemmas = data.words.length;
     const coverage = computeCoverageScore(data);
-    document.getElementById('results-title').textContent =
-        `"${preview}${ellipsis}" (${langName})`;
-    // For users, hide internal parser-mode pill; show a softer label.
+    document.body.dataset.resultsContext = context;
+    document.getElementById('results-title').textContent = context === 'deck'
+        ? `${preview} (${langName})`
+        : `"${preview}${ellipsis}" (${langName})`;
+    // Parser pill: deck shows "Saved deck", inspect shows a softer label,
+    // workbench/admin shows the parser mode.
     const parserPill = document.getElementById('results-parser');
-    if (context === 'inspect' && state.role !== 'admin') {
+    if (context === 'deck') {
+        parserPill.textContent = 'Saved deck';
+    }
+    else if (context === 'inspect' && state.role !== 'admin') {
         parserPill.textContent = 'Your text';
     }
     else {
@@ -1123,6 +1172,17 @@ function showResults(data, textPreview, parserMode, context) {
     }
     document.getElementById('results-duration').textContent =
         `Parse time ${formatParseDuration(data.parse_duration_ms)}`;
+    const createdPill = document.getElementById('results-created');
+    if (createdPill) {
+        if (context === 'deck' && state.currentDeckCreatedAt) {
+            createdPill.textContent = `Saved ${state.currentDeckCreatedAt}`;
+            createdPill.classList.remove('hidden');
+        }
+        else {
+            createdPill.textContent = '';
+            createdPill.classList.add('hidden');
+        }
+    }
     const coverageFill = document.getElementById('coverage-fill');
     const coverageValue = document.getElementById('coverage-value');
     coverageFill.style.width = `${coverage.score}%`;
@@ -1149,11 +1209,51 @@ function showResults(data, textPreview, parserMode, context) {
     renderResultsSaveState();
     // Re-apply role visibility so admin-only pills/cells show correctly.
     applyRoleVisibility();
-    navigate('/results');
+    if (context !== 'deck')
+        navigate('/results');
+}
+async function loadDeckDetail(deckID) {
+    const titleEl = document.getElementById('results-title');
+    if (titleEl)
+        titleEl.textContent = 'Loading deck…';
+    try {
+        const resp = await fetch(`/api/decks/${deckID}`, { credentials: 'same-origin' });
+        if (resp.status === 404) {
+            showToast('Deck not found.', 'error');
+            navigate('/decks');
+            return;
+        }
+        if (!resp.ok)
+            throw new Error(await resp.text() || 'Failed to load deck');
+        const data = await resp.json();
+        state.currentDeckID = data.id;
+        state.currentDeckCreatedAt = formatDeckCreatedAt(data.created_at);
+        state.currentSourceText = '';
+        const parseResponse = {
+            lang: data.lang,
+            total_tokens: data.total_tokens,
+            parse_duration_ms: 0,
+            words: data.words,
+        };
+        showResults(parseResponse, data.title, 'basic', 'deck');
+    }
+    catch (err) {
+        showToast(err.message || 'Failed to load deck.', 'error');
+        navigate('/decks');
+    }
+}
+function formatDeckCreatedAt(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime()))
+        return '';
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 function renderResultsSaveState() {
+    const cta = document.querySelector('.results-deck-cta');
     const form = document.getElementById('results-save-form');
     const input = document.getElementById('results-deck-title');
+    if (cta)
+        cta.classList.toggle('hidden', state.currentContext === 'deck');
     if (!form || !input)
         return;
     form.classList.add('hidden');
@@ -1764,6 +1864,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('nav-signout')?.addEventListener('click', handleSignout);
     document.getElementById('nav-mobile-signout')?.addEventListener('click', handleSignout);
     document.getElementById('results-back')?.addEventListener('click', () => {
+        if (state.currentContext === 'deck') {
+            navigate('/decks');
+            return;
+        }
         navigate(state.currentContext === 'workbench' ? '/admin/workbench' : '/inspect');
     });
     document.querySelectorAll('.sort-btn').forEach(btn => {
