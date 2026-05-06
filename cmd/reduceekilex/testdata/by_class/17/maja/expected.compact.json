@@ -1,0 +1,137 @@
+{
+  "word_id": 199880,
+  "lemma": "maja",
+  "homonym_nr": 1,
+  "morphophono_form": "maja",
+  "inflection_type": "17u",
+  "inflection_type_nr": "17",
+  "word_class": "noomen",
+  "datasets": [
+    "eki",
+    "ety",
+    "gal",
+    "les",
+    "mer",
+    "sarh"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 60873,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "hoone inimestele elamiseks, töötamiseks, nende teenindamiseks vms",
+        "hoone, kus inimesed elavad või töötavad"
+      ],
+      "usages_et": [
+        "Elame ühes majas.",
+        "Firma kolis uude majja.",
+        "Kodumaja.",
+        "Maja taga on kuur ja garaaž.",
+        "Meie maja asub mere ääres.",
+        "Mitu tuba teie majas on?",
+        "Palkmaja."
+      ],
+      "translations_en": [
+        "building",
+        "house",
+        "residential building"
+      ]
+    },
+    {
+      "meaning_id": 60874,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "(ühes hoones elava pere, majaliste, majapidamise kohta)"
+      ],
+      "usages_et": [
+        "Alarm ehmatas terve maja üles.",
+        "Neil on alailma puudus majas."
+      ]
+    },
+    {
+      "meaning_id": 60875,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "(restorani vms asutuse, selle töötajate kohta)",
+        "teatud asutus koos vastava hoonega"
+      ],
+      "usages_et": [
+        "Pidu toimus Õpetajate Majas.",
+        "Suupisted veini kõrvale on maja poolt."
+      ],
+      "translations_en": [
+        "house",
+        "place"
+      ]
+    },
+    {
+      "meaning_id": 60876,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "(teatri, kino publiku ja sellele mõeldud ruumide kohta)"
+      ],
+      "usages_et": [
+        "Etendus läks tühjale majale."
+      ]
+    },
+    {
+      "meaning_id": 60877,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "mõne asutuse või hoone nime(tuse) osana"
+      ],
+      "usages_et": [
+        "Mustpeade maja.",
+        "Õpetajate maja."
+      ]
+    },
+    {
+      "meaning_id": 60878,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "kolmikust ja paarist koosnev kaardikombinatsioon pokkeris"
+      ]
+    },
+    {
+      "meaning_id": 60879,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "(astroloogias:) sodiaagimärgiga seotud mõiste, horoskoobi põhielemente"
+      ]
+    },
+    {
+      "meaning_id": 571670,
+      "dataset": "sarh",
+      "definitions_et": [
+        "üheks elamuks projekteeritud hoone"
+      ],
+      "definitions_en": [
+        "building designed as one dwelling"
+      ],
+      "translations_en": [
+        "house"
+      ]
+    }
+  ]
+}

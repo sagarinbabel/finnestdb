@@ -1,0 +1,177 @@
+{
+  "word_id": 173981,
+  "lemma": "jooksma",
+  "homonym_nr": 1,
+  "morphophono_form": "j`ooksma",
+  "inflection_type": "32",
+  "inflection_type_nr": "32",
+  "word_class": "verb",
+  "morph_comment": "Muutevormid \u003ceki-foreign\u003ej`oosta, j`oostud, j`oostes\u003c/eki-foreign\u003e jts on erandlikud.",
+  "datasets": [
+    "eki",
+    "ety",
+    "gal",
+    "les",
+    "mer"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 31395,
+      "dataset": "eki",
+      "pos": [
+        "v"
+      ],
+      "definitions_et": [
+        "(inimeste, loomade kohta:) jalgadel kiiresti edasi liikuma, jalga jala ette tõstes",
+        "jalgadel kiiresti edasi liikuma"
+      ],
+      "usages_et": [
+        "Jooksime bussi peale.",
+        "Jooksin hingeldades kohale.",
+        "Jooksin võistlustel 100 meetrit 12 sekundiga.",
+        "Koerad pidid vanamemme pikali jooksma.",
+        "Ma jooksen igal hommikul.",
+        "Poiss jooksis kõigest väest.",
+        "Sportlane jooksis 400 meetrit hea ajaga."
+      ],
+      "translations_en": [
+        "run"
+      ]
+    },
+    {
+      "meaning_id": 31396,
+      "dataset": "eki",
+      "definitions_et": [
+        "(rutates) minema või käima"
+      ],
+      "usages_et": [
+        "Jookseb ühtelugu arstide vahet.",
+        "Jooksin poodi leiva järele."
+      ],
+      "translations_en": [
+        "blast",
+        "bolt",
+        "dart",
+        "dash",
+        "go",
+        "hurry",
+        "race",
+        "rush",
+        "speed"
+      ]
+    },
+    {
+      "meaning_id": 31397,
+      "dataset": "eki",
+      "pos": [
+        "v"
+      ],
+      "definitions_et": [
+        "(hrl vedeliku või peeneteralise aine kohta:) voolama, valguma",
+        "vedeliku kohta: voolama"
+      ],
+      "usages_et": [
+        "Kivi alt jookseb väike allikas.",
+        "Lasin veel kraanist joosta.",
+        "Nina hakkas verd jooksma.",
+        "Pisarad jooksid mööda nägu.",
+        "Suhkur jooksis katkisest kotist põrandale.",
+        "Vesi jooksis vanni."
+      ],
+      "translations_en": [
+        "flow",
+        "run",
+        "stream"
+      ]
+    },
+    {
+      "meaning_id": 31398,
+      "dataset": "eki",
+      "pos": [
+        "v"
+      ],
+      "definitions_et": [
+        "kiiresti või ühetasaselt liikuma, (nagu) pinda mööda libisema"
+      ],
+      "usages_et": [
+        "Külmajudinad jooksid üle selja.",
+        "Laev jooksis karile.",
+        "Pianisti sõrmed jooksid väledalt üle klahvide.",
+        "Silme ees jooksid värvilised rõngad."
+      ],
+      "translations_en": [
+        "move",
+        "run"
+      ]
+    },
+    {
+      "meaning_id": 31399,
+      "dataset": "eki",
+      "pos": [
+        "v"
+      ],
+      "definitions_et": [
+        "pidevalt, pikana kulgema või toimuma, (ajas, ruumis) kaugemale, edasi liikuma"
+      ],
+      "usages_et": [
+        "Akna kõrvalt jookseb pragu vundamendini.",
+        "Maantee jooksis loogeldes kaugusesse.",
+        "Palk jookseb, ehkki pole juba mitu päeva tööle jõudnud.",
+        "Tehke rutem, aeg jookseb!",
+        "Võlgu oleva arve pealt hakkab viivis jooksma.",
+        "Üle põranda jookseb pikk punane vaip."
+      ],
+      "translations_en": [
+        "flow",
+        "go",
+        "lead",
+        "move along",
+        "pass",
+        "proceed",
+        "progress",
+        "run"
+      ]
+    },
+    {
+      "meaning_id": 31400,
+      "dataset": "eki",
+      "pos": [
+        "v"
+      ],
+      "definitions_et": [
+        "edenema, sujuma, laabuma, ladusalt toimuma"
+      ],
+      "usages_et": [
+        "Jutt jookseb tal libedalt.",
+        "Küll täna jookseb kaart hästi."
+      ],
+      "translations_en": [
+        "advance",
+        "bloom",
+        "develop",
+        "flow",
+        "go",
+        "go well",
+        "progress"
+      ]
+    },
+    {
+      "meaning_id": 31401,
+      "dataset": "eki",
+      "pos": [
+        "v"
+      ],
+      "definitions_et": [
+        "(filmi, saate kohta:) linastuma, eetris või kinolinal olema"
+      ],
+      "usages_et": [
+        "Mis film praegu kinos jookseb?"
+      ],
+      "translations_en": [
+        "be screened",
+        "come",
+        "go"
+      ]
+    }
+  ]
+}
