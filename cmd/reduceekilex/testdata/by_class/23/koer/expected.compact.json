@@ -1,0 +1,97 @@
+{
+  "word_id": 183007,
+  "lemma": "koer",
+  "homonym_nr": 1,
+  "morphophono_form": "k`oer",
+  "inflection_type": "23i",
+  "inflection_type_nr": "23",
+  "word_class": "noomen",
+  "datasets": [
+    "eki",
+    "esterm",
+    "ety",
+    "gal",
+    "les"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 41676,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "karvane loom, keda võetakse lemmikloomaks või maja valvama",
+        "peamiselt hundist põlvnev koduloom, keda peetakse majavalvurina ja lemmikloomana"
+      ],
+      "usages_et": [
+        "Koer hakkas võõra peale haukuma.",
+        "Koerte varjupaiga töötajad soovitavad panna koera kaelarihma külge omaniku telefoninumbri.",
+        "Käin iga hommik koeraga jalutamas.",
+        "See koer ainult haugub, ta ei hammusta.",
+        "Truu nagu koer."
+      ],
+      "translations_en": [
+        "dog"
+      ]
+    },
+    {
+      "meaning_id": 41677,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "Hiina astroloogias üks kaheteistkümnest loomamärgist, mis mõjutab ja tähistab teatavat aastat ja sellel aastal sündinud inimeste iseloomuomadusi",
+        "astroloogias",
+        "koera-aastal sündinu"
+      ],
+      "usages_et": [
+        "Koerale sobivad partneriteks Tiiger ja Hobune."
+      ],
+      "translations_en": [
+        "Dog"
+      ]
+    },
+    {
+      "meaning_id": 41678,
+      "dataset": "eki",
+      "pos": [
+        "adj"
+      ],
+      "definitions_et": [
+        "ulakas, üleannetu, vallatu",
+        "ulakas, ülekäte läinud"
+      ],
+      "usages_et": [
+        "Poiss kasvanud üles, elavam ja koerem teistest ..",
+        "„Eks ma üks koer poiss olin,“ tunnistab dirigent kooliajale tagasi mõeldes."
+      ],
+      "translations_en": [
+        "naughty"
+      ]
+    },
+    {
+      "meaning_id": 336841,
+      "dataset": "ety",
+      "translations_en": [
+        "dog"
+      ]
+    },
+    {
+      "meaning_id": 704475,
+      "dataset": "esterm",
+      "definitions_et": [
+        "hundi alamliik (Canis lupus familiaris) või koera perekonna liik (Canis familiaris), mille inimesed on kodustanud"
+      ],
+      "definitions_en": [
+        "a kept animal of the Canis lupus species",
+        "domestic mammal of the family Canidae (order Carnivora)"
+      ],
+      "translations_en": [
+        "dog",
+        "domestic dog"
+      ]
+    }
+  ]
+}
