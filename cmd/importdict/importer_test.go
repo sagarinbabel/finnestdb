@@ -322,6 +322,131 @@ func TestResolveProvenance(t *testing.T) {
 	})
 }
 
+func TestEkilexEntriesFromDetails(t *testing.T) {
+	details := &ekilexWordDetails{
+		WordClass: "noomen",
+		Paradigms: []struct {
+			Forms []struct {
+				Value string `json:"value"`
+				Mode  string `json:"mode"`
+			} `json:"forms"`
+		}{
+			{Forms: []struct {
+				Value string `json:"value"`
+				Mode  string `json:"mode"`
+			}{
+				{Value: "Suuline", Mode: "WORD"},
+				{Value: "suulise", Mode: "FORM"},
+			}},
+		},
+		Lexemes: []struct {
+			Words       []string `json:"words"`
+			WordLang    string   `json:"wordLang"`
+			DatasetCode string   `json:"datasetCode"`
+			POS         []struct {
+				Code  string `json:"code"`
+				Value string `json:"value"`
+			} `json:"pos"`
+			Definitions []struct {
+				Value string `json:"value"`
+				Lang  string `json:"lang"`
+			} `json:"definitions"`
+			MeaningWords []struct {
+				Value    string `json:"value"`
+				Language string `json:"language"`
+			} `json:"meaningWords"`
+		}{
+			{
+				Words:    []string{"Suuline"},
+				WordLang: "est",
+				POS: []struct {
+					Code  string `json:"code"`
+					Value string `json:"value"`
+				}{{Code: "adj", Value: "adjektiiv"}},
+				Definitions: []struct {
+					Value string `json:"value"`
+					Lang  string `json:"lang"`
+				}{{Value: "kõneldud kujul olev", Lang: "est"}},
+				MeaningWords: []struct {
+					Value    string `json:"value"`
+					Language string `json:"language"`
+				}{{Value: "oral", Language: "eng"}},
+			},
+		},
+	}
+
+	entries := ekilexEntriesFromDetails(details, "")
+	if len(entries) != 1 {
+		t.Fatalf("len(entries)=%d want 1", len(entries))
+	}
+	if entries[0].Lemma != "suuline" || entries[0].POS != "ADJ" {
+		t.Fatalf("entry lemma/POS = %q/%q, want suuline/ADJ", entries[0].Lemma, entries[0].POS)
+	}
+	if entries[0].Gloss != "kõneldud kujul olev; eng: oral" {
+		t.Fatalf("gloss=%q", entries[0].Gloss)
+	}
+	if strings.Join(entries[0].Forms, ",") != "suuline,suulise" {
+		t.Fatalf("forms=%v", entries[0].Forms)
+	}
+}
+
+func TestEkilexEntriesFromDetailsSkipsFallbackWhenOnlyNonEstonianLexemes(t *testing.T) {
+	details := &ekilexWordDetails{
+		WordClass: "subst",
+		Lexemes: []struct {
+			Words       []string `json:"words"`
+			WordLang    string   `json:"wordLang"`
+			DatasetCode string   `json:"datasetCode"`
+			POS         []struct {
+				Code  string `json:"code"`
+				Value string `json:"value"`
+			} `json:"pos"`
+			Definitions []struct {
+				Value string `json:"value"`
+				Lang  string `json:"lang"`
+			} `json:"definitions"`
+			MeaningWords []struct {
+				Value    string `json:"value"`
+				Language string `json:"language"`
+			} `json:"meaningWords"`
+		}{
+			{
+				Words:    []string{"house"},
+				WordLang: "eng",
+			},
+		},
+	}
+
+	entries := ekilexEntriesFromDetails(details, "maja")
+	if len(entries) != 0 {
+		t.Fatalf("len(entries)=%d want 0 for non-Estonian-only lexemes: %+v", len(entries), entries)
+	}
+}
+
+func TestCollectEkilexWordRefsIgnoresGenericNestedIDs(t *testing.T) {
+	raw := map[string]any{
+		"results": []any{
+			map[string]any{"wordId": float64(42), "value": "maja"},
+			map[string]any{
+				"id":    float64(9001),
+				"value": "metadata row",
+				"dataset": map[string]any{
+					"id":    float64(123),
+					"value": "eki",
+				},
+			},
+		},
+	}
+
+	refs := collectEkilexWordRefs(raw)
+	if len(refs) != 1 {
+		t.Fatalf("len(refs)=%d want 1: %+v", len(refs), refs)
+	}
+	if refs[0].WordID != 42 || refs[0].Value != "maja" {
+		t.Fatalf("refs[0]=%+v want wordId 42 value maja", refs[0])
+	}
+}
+
 func TestOpenJSONLReader_Plain(t *testing.T) {
 	r, err := openJSONLReader(strings.NewReader("hello"), "dict.jsonl")
 	if err != nil {

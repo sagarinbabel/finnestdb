@@ -1,5 +1,5 @@
 .PHONY: all build clean parser server frontend run \
-        import-dict-fi import-dict-et import-dict import-ekilex-et \
+        import-dict-fi import-dict-et import-dict import-dict-et-ekilex import-ekilex-et \
         reimport-dict-fi reimport-dict-et reimport-dict \
         setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et
 
@@ -59,6 +59,18 @@ import-dict-et:
 	else \
 		echo "Estonian dictionary already imported. Run 'make reimport-dict-et' to force refresh."; \
 	fi
+
+import-dict-et-ekilex:
+	@if [ -z "$$EKILEX_API_KEY" ]; then \
+		echo "EKILEX_API_KEY is required. Create one in your Ekilex user profile, then export EKILEX_API_KEY=..."; \
+		exit 1; \
+	fi
+	go run ./cmd/importdict -lang et -source-key ekilex -source-priority 20 -db finnestdb.db \
+		-source-name "EKI/Ekilex/Sõnaveeb" \
+		-source-url "https://ekilex.ee" \
+		-source-license "CC BY 4.0" \
+		-source-attribution "Eesti Keele Instituut; EKI sõnastiku- ja terminibaasisüsteem Ekilex; Sõnaveeb" \
+		-changes-note "Normalized to FinEstDB lemma/form/POS schema; monolingual definitions and translations flattened into gloss text"
 
 # Import both languages (first-time only).
 import-dict: import-dict-fi import-dict-et
