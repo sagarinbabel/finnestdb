@@ -59,9 +59,10 @@ These were decided before implementation began.
 
 1. **Voikko deployment: precompute paradigms offline.** The build pipeline
    runs Voikko once, produces a JSONL seed file
-   (`testdata/seed/fi-voikko-forms.jsonl.gz`), and ships it as a static
-   artifact. The runtime importer reads it like any other JSONL source.
-   No cgo, no libvoikko at runtime, same import shape as kaikki.org.
+   (`data/voikko/fi-voikko-forms-<version>.jsonl.gz`), and ships it as a
+   static artifact. The runtime importer reads it like any other JSONL
+   source. No cgo, no libvoikko at runtime, same import shape as
+   kaikki.org.
 2. **Translations and definitions tables land now**, not after Sonaveeb
    integration. The Finnish plan needs them; the Estonian plan benefits
    from them; landing them once avoids two parallel solutions.
@@ -205,8 +206,8 @@ Finnish adapters are populating rows, enrichment is extended to:
 
 Default priority order for FI:
 
-- `voikko` (30) > `kaikki` (20) > `kotus` (10) > `custom_overrides`
-  (1000, always wins)
+- `custom_overrides` (1000, always wins) > `voikko` (30) > `kaikki` (20)
+  > `kotus` (10)
 
 `custom_overrides` is the existing `-custom-glosses` CSV path, promoted
 to a real source.
