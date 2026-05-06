@@ -2163,6 +2163,53 @@ function initAdminFeedbackPage(): void {
     });
 }
 
+// Portal-style tooltip — pseudo-element ::after tooltips get clipped by
+// ancestor overflow (e.g. .word-table { overflow: hidden }), so we render a
+// single body-level element that's positioned via getBoundingClientRect and
+// can escape any ancestor stacking/clipping context.
+function initPortalTooltips(): void {
+    let tip: HTMLElement | null = null;
+    const ensure = (): HTMLElement => {
+        if (tip) return tip;
+        tip = document.createElement('div');
+        tip.className = 'portal-tooltip';
+        tip.setAttribute('role', 'tooltip');
+        document.body.appendChild(tip);
+        return tip;
+    };
+    const show = (target: HTMLElement) => {
+        const text = target.getAttribute('data-tooltip');
+        if (!text) return;
+        const el = ensure();
+        el.textContent = text;
+        const rect = target.getBoundingClientRect();
+        el.style.left = `${rect.left + rect.width / 2}px`;
+        el.style.top = `${rect.top - 6}px`;
+        el.classList.add('visible');
+    };
+    const hide = () => {
+        if (tip) tip.classList.remove('visible');
+    };
+
+    document.addEventListener('mouseover', (e) => {
+        const t = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-tooltip]');
+        if (t) show(t);
+    });
+    document.addEventListener('mouseout', (e) => {
+        const t = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-tooltip]');
+        if (t) hide();
+    });
+    document.addEventListener('focusin', (e) => {
+        const t = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-tooltip]');
+        if (t) show(t);
+    });
+    document.addEventListener('focusout', (e) => {
+        const t = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-tooltip]');
+        if (t) hide();
+    });
+    window.addEventListener('scroll', hide, true);
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -2177,6 +2224,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initReviewPage();
     initResultsSaveForm();
     initAdminFeedbackPage();
+    initPortalTooltips();
 
     document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
 

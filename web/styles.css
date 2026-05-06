@@ -1195,27 +1195,26 @@ body {
     cursor: not-allowed;
 }
 
-/* Tooltip — appears immediately on hover/focus, no delay */
-[data-tooltip] {
-    position: relative;
-}
-[data-tooltip]:hover::after,
-[data-tooltip]:focus-visible::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: calc(100% + 4px);
-    left: 50%;
-    transform: translateX(-50%);
+/* Portal tooltip — appended to <body> by initPortalTooltips so it can escape
+   ancestor overflow:hidden / overflow-x:auto containers. Appears immediately
+   on hover/focus. The trigger element marks itself with [data-tooltip="…"]. */
+.portal-tooltip {
+    position: fixed;
+    transform: translate(-50%, -100%);
     padding: 0.25rem 0.5rem;
     background: var(--text-primary);
     color: var(--card-bg);
     border-radius: 4px;
     font-size: 0.72rem;
-    font-style: normal;
     font-weight: 500;
     white-space: nowrap;
     pointer-events: none;
-    z-index: 20;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.05s linear;
+}
+.portal-tooltip.visible {
+    opacity: 1;
 }
 
 .example-text .highlight-form {
