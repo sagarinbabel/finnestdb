@@ -155,6 +155,19 @@ func main() {
 	}
 	log.Printf("  touched %d lemma rows (inserted or source-upgraded), filled gloss on %d existing rows", lemmaInserted, glossFilled)
 
+	// Pass 2.5: write per-meaning translations. Phase 2 of the lexical
+	// plan: the read path consults the translations table first, so each
+	// EN translation gets its own row with a stable sense_idx. Mirrors
+	// cmd/importdict's PR #85 pattern — wipe-and-rebuild inside the
+	// transaction so a failure here doesn't leave Ekilex translations in
+	// an empty intermediate state.
+	log.Println("Pass 2.5: writing translation rows")
+	translationsWritten, err := writeTranslations(db, lemmaPOS)
+	if err != nil {
+		log.Fatalf("translations: %v", err)
+	}
+	log.Printf("  wrote %d translation rows", translationsWritten)
+
 	// Pass 3: walk forms and write (form, lemma, pos, lang) rows. Tuples
 	// the importer actually emits is the count we care about (an Ekilex
 	// duplicate, e.g. PtsPtIps + PtsPtIpsNeg both yielding "joodud" for
@@ -170,8 +183,8 @@ func main() {
 		log.Printf("warn: dict_metadata: %v", err)
 	}
 
-	fmt.Printf("\nDone. %d unique (lemma, pos) Ekilex entries; %d lemma rows touched (inserted or source-upgraded); %d gloss fills; %d form rows touched (data: %s).\n",
-		countLemmaPOS(lemmaPOS), lemmaInserted, glossFilled, formInserted, *dataDir)
+	fmt.Printf("\nDone. %d unique (lemma, pos) Ekilex entries; %d lemma rows touched; %d gloss fills; %d translation rows; %d form rows touched (data: %s).\n",
+		countLemmaPOS(lemmaPOS), lemmaInserted, glossFilled, translationsWritten, formInserted, *dataDir)
 }
 
 // lemmaPOSMap maps a lemma to a set of POS values, each carrying the
@@ -425,6 +438,62 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	return inserted, glossFilled, nil
 }
 
+// writeTranslations writes per-(lemma, pos) sense-level translation rows.
+// Phase 2 read path (BatchLookupGlosses) prefers the translations table
+// over lemmas.gloss, so each EN translation gets its own row with a
+// deterministic sense_idx (matching the lemmas.gloss `; `-joined order).
+//
+// Mirrors cmd/importdict's PR #85 pattern:
+//   - Wipe this source's existing ET translations BEFORE writing, so
+//     entries whose translation list shrunk upstream don't leave stale
+//     sense_idx rows behind.
+//   - DELETE inside the transaction so a failure preserves the existing
+//     translations rather than leaving the dictionary empty.
+//   - Upsert (ON CONFLICT DO UPDATE SET text = excluded.text) refreshes
+//     text when the same sense_idx is rewritten. Conflicts during a
+//     single import don't happen (we wipe first), but the upsert is
+//     defensive.
+func writeTranslations(db *sql.DB, lemmaPOS lemmaPOSMap) (int, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`DELETE FROM translations WHERE lang = 'ET' AND source = 'ekilex'`); err != nil {
+		return 0, err
+	}
+
+	stmt, err := tx.Prepare(
+		`INSERT INTO translations (lemma, pos, lang, target_lang, text, sense_idx, source)
+		 VALUES (?, ?, 'ET', 'EN', ?, ?, 'ekilex')
+		 ON CONFLICT (lemma, pos, lang, target_lang, sense_idx, source) DO UPDATE SET
+		   text = excluded.text`,
+	)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+
+	written := 0
+	for lemma, byPOS := range lemmaPOS {
+		for pos, data := range byPOS {
+			translations := sortedTranslations(data)
+			for senseIdx, text := range translations {
+				if _, err := stmt.Exec(lemma, pos, text, senseIdx); err != nil {
+					return written, fmt.Errorf("write translation %q %s sense=%d: %w", lemma, pos, senseIdx, err)
+				}
+				written++
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return written, err
+	}
+	return written, nil
+}
+
 // collectTranslations flattens an entry's per-meaning EN translations to a
 // single slice (no dedup yet — dedup happens in lemmaPOSMap.add since
 // aggregation crosses entries).
@@ -436,18 +505,30 @@ func collectTranslations(entry definitionEntry) []string {
 	return out
 }
 
-// joinTranslationData sorts the deduplicated translations and joins with
-// "; " for the gloss column. Sorting on the chosen original-cased value
-// keeps output byte-stable across runs.
-func joinTranslationData(d *lemmaPOSData) string {
+// sortedTranslations returns the deduplicated translations sorted by their
+// original-cased value. Used both for the lemmas.gloss `; `-joined cache
+// and for assigning sense_idx in the translations table — the same sort
+// order in both places keeps `lemmas.gloss[0]` and `translations[sense_idx=0]`
+// referentially consistent for a given (lemma, pos).
+func sortedTranslations(d *lemmaPOSData) []string {
 	if d == nil || len(d.translationsByKey) == 0 {
-		return ""
+		return nil
 	}
 	out := make([]string, 0, len(d.translationsByKey))
 	for _, t := range d.translationsByKey {
 		out = append(out, t)
 	}
 	sort.Strings(out)
+	return out
+}
+
+// joinTranslationData sorts the deduplicated translations and joins with
+// "; " for the gloss column. Sorting keeps output byte-stable across runs.
+func joinTranslationData(d *lemmaPOSData) string {
+	out := sortedTranslations(d)
+	if len(out) == 0 {
+		return ""
+	}
 	return strings.Join(out, "; ")
 }
 
@@ -664,6 +745,13 @@ func ensureSchema(db *sql.DB) error {
 	}
 	if err := store.EnsureDictionarySourceColumns(db); err != nil {
 		return fmt.Errorf("source-priority columns: %w", err)
+	}
+	// Phase 2: writeTranslations writes per-meaning rows into the
+	// translations table. EnsureLexicalEntryTables creates it on a
+	// fresh DB; on an existing DB (post-#76) it's a no-op via the
+	// idempotent CREATE TABLE IF NOT EXISTS pattern.
+	if err := store.EnsureLexicalEntryTables(db); err != nil {
+		return fmt.Errorf("lexical entry tables: %w", err)
 	}
 	return nil
 }
