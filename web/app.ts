@@ -1309,19 +1309,20 @@ function renderResultsTable(data: ParseResponse): void {
         : `Coverage = dictionary-backed tokens. Grammar labels appear when case/morphology inference is available.`;
 
     tbody.innerHTML = sortedWords.map((w, index) => {
-        const forms = w.forms.slice(0, 3).map(escapeHtml).join(', ')
-            + (w.forms.length > 3 ? ` +${w.forms.length - 3}` : '');
-
         const grammarBadge = w.grammar_label
             ? `<span class="grammar-badge">${escapeHtml(w.grammar_label)}</span>`
             : '';
 
         const rowKey = `${index}`;
+        // Example sentence is NOT rendered into the DOM until the user clicks
+        // the toggle. Storing the highlighted HTML in a data-* attribute keeps
+        // the text out of the searchable document, so browser find (Ctrl+F)
+        // can't match against collapsed examples.
         const exampleToggle = w.example_sentence
-            ? `<button type="button" class="example-toggle" data-example-toggle="${rowKey}" aria-expanded="false">▸ example</button>`
+            ? `<button type="button" class="example-toggle" data-example-toggle="${rowKey}" aria-expanded="false" data-example-html="${escapeAttr(highlightFormsInSentence(w.example_sentence, w.forms))}">▸ example</button>`
             : '';
         const exampleBlock = w.example_sentence
-            ? `<div class="example-text hidden" data-example-text="${rowKey}">${highlightFormsInSentence(w.example_sentence, w.forms)}</div>`
+            ? `<div class="example-text hidden" data-example-text="${rowKey}" hidden></div>`
             : '';
 
         const glossHtml = w.gloss
@@ -1382,7 +1383,6 @@ function renderResultsTable(data: ParseResponse): void {
                 ${exampleToggle}
                 ${exampleBlock}
             </td>
-            <td class="col-forms">${forms}</td>
             <td class="col-def">${glossHtml}</td>
             <td class="col-count">${w.count}</td>
             ${actionCell}
@@ -1408,10 +1408,22 @@ function renderResultsTable(data: ParseResponse): void {
             const key = btn.dataset.exampleToggle || '';
             const example = tbody.querySelector<HTMLElement>(`.example-text[data-example-text="${key}"]`);
             if (!example) return;
-            example.classList.toggle('hidden');
-            const isOpen = !example.classList.contains('hidden');
-            btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-            btn.textContent = isOpen ? '▾ example' : '▸ example';
+            const willOpen = example.classList.contains('hidden');
+            if (willOpen) {
+                if (!example.innerHTML) {
+                    example.innerHTML = btn.dataset.exampleHtml || '';
+                }
+                example.classList.remove('hidden');
+                example.removeAttribute('hidden');
+            } else {
+                example.classList.add('hidden');
+                example.setAttribute('hidden', '');
+                // Wipe the rendered HTML so Ctrl+F can't match it while
+                // collapsed (defense in depth alongside display:none).
+                example.innerHTML = '';
+            }
+            btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+            btn.textContent = willOpen ? '▾ example' : '▸ example';
         });
     });
 
@@ -1480,7 +1492,7 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
     state.currentContext = context;
     state.currentParserMode = parserMode;
     state.currentTextPreview = preview;
-    state.currentSort = { key: 'row', dir: 'asc' };
+    state.currentSort = { key: 'tokens', dir: 'desc' };
     state.currentPOSFilter = 'all';
     state.currentLemmaStates.clear();
     state.pendingLemmaStates.clear();
