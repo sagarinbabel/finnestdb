@@ -400,10 +400,15 @@ func resolveSampleTargets(queuePath, wordsFlag, idsFlag string) ([]publicWord, e
 		return nil, fmt.Errorf("read queue %s: %w", queuePath, err)
 	}
 	var out []publicWord
+	foundLemmaCount := map[string]int{}
+	const maxLemmaMatches = 200
 	for _, w := range q {
 		if _, ok := wantLemma[w.Lemma]; ok {
 			out = append(out, w)
-			delete(wantLemma, w.Lemma)
+			foundLemmaCount[w.Lemma]++
+			if foundLemmaCount[w.Lemma] > maxLemmaMatches {
+				return out, fmt.Errorf("lemma %q matched more than %d entries in the queue; use -word-ids for precise targeting", w.Lemma, maxLemmaMatches)
+			}
 			continue
 		}
 		if _, ok := wantID[w.WordID]; ok {
@@ -414,12 +419,16 @@ func resolveSampleTargets(queuePath, wordsFlag, idsFlag string) ([]publicWord, e
 	if len(wantLemma) > 0 || len(wantID) > 0 {
 		var miss []string
 		for l := range wantLemma {
-			miss = append(miss, l)
+			if foundLemmaCount[l] == 0 {
+				miss = append(miss, l)
+			}
 		}
 		for id := range wantID {
 			miss = append(miss, strconv.FormatInt(id, 10))
 		}
-		return out, fmt.Errorf("not found in queue: %s", strings.Join(miss, ","))
+		if len(miss) > 0 {
+			return out, fmt.Errorf("not found in queue: %s", strings.Join(miss, ","))
+		}
 	}
 	return out, nil
 }
