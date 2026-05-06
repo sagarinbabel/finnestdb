@@ -24,7 +24,7 @@
             <!-- Logged-in user nav -->
             <div class="nav-links nav-user" data-role-show="user admin">
                 <a href="#/dashboard" class="nav-link" data-route="/dashboard">Dashboard</a>
-                <a href="#/inspect" class="nav-link" data-route="/inspect">Inspect</a>
+                <a href="#/inspect" class="nav-link" data-route="/inspect">Parse</a>
                 <a href="#/decks" class="nav-link" data-route="/decks">Decks</a>
                 <a href="#/review" class="nav-link" data-route="/review">Review</a>
             </div>
@@ -66,7 +66,7 @@
             </div>
             <div data-role-show="user admin">
                 <a href="#/dashboard" class="nav-mobile-link" data-route="/dashboard">Dashboard</a>
-                <a href="#/inspect" class="nav-mobile-link" data-route="/inspect">Inspect</a>
+                <a href="#/inspect" class="nav-mobile-link" data-route="/inspect">Parse</a>
                 <a href="#/decks" class="nav-mobile-link" data-route="/decks">Decks</a>
                 <a href="#/review" class="nav-mobile-link" data-route="/review">Review</a>
             </div>
@@ -105,7 +105,7 @@
                 </div>
                 <div class="value-card">
                     <div class="value-icon" aria-hidden="true">🔎</div>
-                    <h3>Inspect the vocabulary</h3>
+                    <h3>Parse the vocabulary</h3>
                     <p>See base forms, definitions, examples, token counts, and manually mark rows known or ignored.</p>
                 </div>
                 <div class="value-card">
@@ -219,7 +219,7 @@
             <section class="dashboard-actions">
                 <a href="#/inspect" class="action-card">
                     <h3>Read a new text</h3>
-                    <p>Paste any Finnish or Estonian text and inspect its dictionary-backed vocabulary.</p>
+                    <p>Paste any Finnish or Estonian text and parse its dictionary-backed vocabulary.</p>
                 </a>
                 <a href="#/review" class="action-card">
                     <h3>Review due words</h3>
@@ -234,7 +234,7 @@
             <section class="dashboard-decks">
                 <h2>Recent decks</h2>
                 <div id="dashboard-decks-list" class="dashboard-decks-list">
-                    <p class="empty-state">No decks yet — paste some text under <a href="#/inspect">Inspect</a> to get started.</p>
+                    <p class="empty-state">No decks yet — paste some text under <a href="#/inspect">Parse</a> to get started.</p>
                 </div>
             </section>
         </main>
@@ -244,7 +244,7 @@
     <div id="inspect-page" class="page" data-role-required="user admin">
         <main class="inspect-main">
             <section class="inspect-header">
-                <h1>Inspect a text</h1>
+                <h1>Parse a text</h1>
                 <p class="inspect-lede">Paste Finnish or Estonian text. We'll show unique lemmas, forms, definitions, examples, token counts, and row-level known/ignore actions.</p>
             </section>
 
@@ -277,7 +277,7 @@
                     <input type="file" id="inspect-file" accept=".txt,.md">
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-lg" id="inspect-submit">Inspect text</button>
+                <button type="submit" class="btn btn-primary btn-lg" id="inspect-submit">Parse text</button>
             </form>
         </main>
     </div>
@@ -292,7 +292,7 @@
 
             <section id="decks-empty" class="placeholder-card hidden">
                 <p>You don't have any decks yet.</p>
-                <a href="#/inspect" class="btn btn-primary">Read a text</a>
+                <a href="#/inspect" class="btn btn-primary">Parse a text</a>
             </section>
 
             <section id="decks-list" class="decks-list" aria-live="polite"></section>
@@ -346,7 +346,7 @@
 
             <section id="review-empty" class="placeholder-card hidden">
                 <p>Nothing to review right now.</p>
-                <a href="#/inspect" class="btn btn-primary">Read a text</a>
+                <a href="#/inspect" class="btn btn-primary">Parse a text</a>
             </section>
 
             <section id="review-card" class="review-card hidden" aria-live="polite">
