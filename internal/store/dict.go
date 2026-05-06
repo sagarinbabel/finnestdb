@@ -31,7 +31,7 @@ type FormResolution struct {
 //	Step 1: Direct dictionary lookup (lowercase form in forms table)
 //	Step 2: [FI only] Possessive suffix strip → re-lookup in forms table
 //	Step 3: [FI + ET] Compound split → both halves in forms table
-//	Step 4: [FI + ET] Case suffix strip → stem lookup in lemmas table
+//	Step 4: [FI + ET] Case suffix strip → lemma-candidate lookup in lemmas table
 //	Step 5: Not resolved → absent from map → caller falls back to stub
 //
 // Returns a map from form → FormResolution.
@@ -222,12 +222,67 @@ func tryCaseSuffixStrip(stmtLemmas *sql.Stmt, form, lang string, suffixes []pars
 		if len(stem) < 3 { // min stem length to avoid false positives
 			continue
 		}
-		var lemma, pos string
-		if err := stmtLemmas.QueryRow(stem, lang).Scan(&lemma, &pos); err == nil {
-			return FormResolution{Lemma: lemma, POS: pos, GrammarLabel: cs.Label, Source: "case_suffix"}, true
+		for _, candidate := range caseSuffixLemmaCandidates(stem, lang) {
+			var lemma, pos string
+			if err := stmtLemmas.QueryRow(candidate, lang).Scan(&lemma, &pos); err == nil {
+				return FormResolution{Lemma: lemma, POS: pos, GrammarLabel: cs.Label, Source: "case_suffix"}, true
+			}
 		}
 	}
 	return FormResolution{}, false
+}
+
+func caseSuffixLemmaCandidates(stem, lang string) []string {
+	candidates := []string{stem}
+	if lang == "ET" {
+		candidates = appendEstonianLemmaCandidates(candidates, stem)
+	}
+	return uniqueNonEmptyStrings(candidates)
+}
+
+func appendEstonianLemmaCandidates(candidates []string, stem string) []string {
+	if strings.HasSuffix(stem, "mise") {
+		candidates = append(candidates, strings.TrimSuffix(stem, "mise")+"mine")
+	}
+	if strings.HasSuffix(stem, "mis") {
+		candidates = append(candidates, strings.TrimSuffix(stem, "mis")+"mine")
+	}
+	if strings.HasSuffix(stem, "seme") {
+		candidates = append(candidates, strings.TrimSuffix(stem, "me"))
+	}
+	if strings.HasSuffix(stem, "sem") {
+		candidates = append(candidates, strings.TrimSuffix(stem, "m"))
+	}
+	if strings.HasSuffix(stem, "d") {
+		candidates = append(candidates, strings.TrimSuffix(stem, "d")+"ne")
+	}
+	if strings.HasSuffix(stem, "de") {
+		candidates = append(candidates, strings.TrimSuffix(stem, "de")+"nne")
+	}
+	if strings.HasSuffix(stem, "e") {
+		withoutE := strings.TrimSuffix(stem, "e")
+		candidates = append(candidates, withoutE)
+		if strings.HasSuffix(withoutE, "d") {
+			candidates = append(candidates, strings.TrimSuffix(withoutE, "d")+"ne")
+		}
+	}
+	return candidates
+}
+
+func uniqueNonEmptyStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
+	}
+	return out
 }
 
 // LemmaKey identifies a unique (lemma, pos) pair for use as a map key.

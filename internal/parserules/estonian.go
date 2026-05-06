@@ -10,6 +10,9 @@ package parserules
 var EstonianCaseSuffixes = []CaseSuffix{
 	{"sse", "illative"},
 	{"st", "elative"},
+	{"te", "genitive plural"},
+	{"de", "genitive plural"},
+	{"id", "partitive plural"},
 	{"le", "allative"},
 	{"lt", "ablative"},
 	{"ks", "translative"},
@@ -19,6 +22,7 @@ var EstonianCaseSuffixes = []CaseSuffix{
 	{"na", "essive"},
 	{"s", "inessive"},
 	{"l", "adessive"},
+	{"e", "genitive"},
 	{"d", "nominative plural"},
 	{"t", "partitive"},
 }

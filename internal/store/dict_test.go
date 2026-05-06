@@ -298,6 +298,35 @@ func TestCaseSuffixStrip_LemmaTableOnly(t *testing.T) {
 	}
 }
 
+func TestCaseSuffixStrip_EstonianStemAlternations(t *testing.T) {
+	db := newTestDB(t)
+	seedLemmas(t, db, [][4]string{
+		{"oskus", "NOUN", "skill", "ET"},
+		{"registreerimisavaldus", "NOUN", "registration application", "ET"},
+		{"kirjutamine", "NOUN", "writing", "ET"},
+		{"b1-tase", "NOUN", "B1 level", "ET"},
+		{"ülesanne", "NOUN", "task", "ET"},
+	})
+
+	got := db.BatchLookupForms([]string{
+		"oskuse",
+		"oskuste",
+		"registreerimisavaldusel",
+		"kirjutamise",
+		"b1-taseme",
+		"ülesande",
+		"ülesandeid",
+	}, "ET", "custom")
+
+	assertResolution(t, got, "oskuse", "oskus", "NOUN", "case_suffix")
+	assertResolution(t, got, "oskuste", "oskus", "NOUN", "case_suffix")
+	assertResolution(t, got, "registreerimisavaldusel", "registreerimisavaldus", "NOUN", "case_suffix")
+	assertResolution(t, got, "kirjutamise", "kirjutamine", "NOUN", "case_suffix")
+	assertResolution(t, got, "b1-taseme", "b1-tase", "NOUN", "case_suffix")
+	assertResolution(t, got, "ülesande", "ülesanne", "NOUN", "case_suffix")
+	assertResolution(t, got, "ülesandeid", "ülesanne", "NOUN", "case_suffix")
+}
+
 func TestFallbackChainOrdering(t *testing.T) {
 	db := newTestDB(t)
 	// Test that direct lookup takes priority over compound split and case suffix.
