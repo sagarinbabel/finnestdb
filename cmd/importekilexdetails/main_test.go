@@ -477,3 +477,181 @@ func equalStringSlices(a, b []string) bool {
 	}
 	return true
 }
+
+// TestImporter_TagsRowsWithSourceAndPriority guards against the regression
+// found in PR #83's baseline: cmd/importekilexdetails set source on
+// dict_metadata only, leaving inserted lemmas/forms with source='' and
+// source_priority=0. Without the row-level tag, the lookup ranker has
+// nothing to rank by when distinguishing kaikki from Ekilex candidates.
+func TestImporter_TagsRowsWithSourceAndPriority(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	formsDir := filepath.Join(tmp, "forms")
+	if err := writeAll(defDir, "k.jsonl",
+		`{"word_id":1,"lemma":"koer","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["dog"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write definitions: %v", err)
+	}
+	if err := writeAll(formsDir, "k.tsv",
+		"lemma\tform\tmorph_code\nkoer\tkoerad\tPlN\n",
+	); err != nil {
+		t.Fatalf("write forms: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregateDefinitions: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaPOS); err != nil {
+		t.Fatalf("writeLemmas: %v", err)
+	}
+	if _, err := importForms(db, formsDir, lemmaPOS); err != nil {
+		t.Fatalf("importForms: %v", err)
+	}
+
+	var lemmaSource string
+	var lemmaPriority int
+	if err := db.QueryRow(
+		`SELECT source, source_priority FROM lemmas WHERE lemma='koer' AND pos='NOUN' AND lang='ET'`,
+	).Scan(&lemmaSource, &lemmaPriority); err != nil {
+		t.Fatalf("query lemma: %v", err)
+	}
+	if lemmaSource != "ekilex" || lemmaPriority != 20 {
+		t.Errorf("lemma row: got source=%q priority=%d, want source=\"ekilex\" priority=20",
+			lemmaSource, lemmaPriority)
+	}
+
+	var formSource string
+	var formPriority int
+	if err := db.QueryRow(
+		`SELECT source, source_priority FROM forms WHERE form='koerad' AND lang='ET'`,
+	).Scan(&formSource, &formPriority); err != nil {
+		t.Fatalf("query form: %v", err)
+	}
+	if formSource != "ekilex" || formPriority != 20 {
+		t.Errorf("form row: got source=%q priority=%d, want source=\"ekilex\" priority=20",
+			formSource, formPriority)
+	}
+}
+
+// TestImporter_UpgradesSourceOnConflictWhenAtLeastAsAuthoritative guards
+// the upsert behavior. A pre-existing kaikki-tagged row (priority 10)
+// should get upgraded to ekilex (priority 20) when this importer runs;
+// a pre-existing custom-overrides row (priority 100) should not.
+func TestImporter_UpgradesSourceOnConflictWhenAtLeastAsAuthoritative(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	formsDir := filepath.Join(tmp, "forms")
+	if err := writeAll(defDir, "k.jsonl",
+		`{"word_id":1,"lemma":"koer","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["dog"]}]}`+"\n"+
+			`{"word_id":2,"lemma":"override","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["override-en"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write definitions: %v", err)
+	}
+	if err := writeAll(formsDir, "k.tsv",
+		"lemma\tform\tmorph_code\nkoer\tkoerad\tPlN\noverride\toverrided\tPlN\n",
+	); err != nil {
+		t.Fatalf("write forms: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	// Pre-seed a kaikki-tagged row (priority 10) — should be upgraded.
+	if _, err := db.Exec(
+		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+		 VALUES ('koer', 'NOUN', 'kaikki-gloss', 'ET', 'kaikki', 10)`,
+	); err != nil {
+		t.Fatalf("seed kaikki lemma: %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority)
+		 VALUES ('koerad', 'koer', 'NOUN', 'ET', 'kaikki', 10)`,
+	); err != nil {
+		t.Fatalf("seed kaikki form: %v", err)
+	}
+
+	// Pre-seed a custom-overrides row (priority 100) — must NOT be downgraded.
+	if _, err := db.Exec(
+		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+		 VALUES ('override', 'NOUN', 'custom-gloss', 'ET', 'custom_overrides', 100)`,
+	); err != nil {
+		t.Fatalf("seed custom lemma: %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority)
+		 VALUES ('overrided', 'override', 'NOUN', 'ET', 'custom_overrides', 100)`,
+	); err != nil {
+		t.Fatalf("seed custom form: %v", err)
+	}
+
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregateDefinitions: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaPOS); err != nil {
+		t.Fatalf("writeLemmas: %v", err)
+	}
+	if _, err := importForms(db, formsDir, lemmaPOS); err != nil {
+		t.Fatalf("importForms: %v", err)
+	}
+
+	// Existing kaikki row should be upgraded to ekilex/20.
+	var src string
+	var prio int
+	if err := db.QueryRow(
+		`SELECT source, source_priority FROM lemmas WHERE lemma='koer' AND pos='NOUN' AND lang='ET'`,
+	).Scan(&src, &prio); err != nil {
+		t.Fatalf("query upgraded lemma: %v", err)
+	}
+	if src != "ekilex" || prio != 20 {
+		t.Errorf("kaikki→ekilex lemma upgrade: got source=%q priority=%d, want ekilex/20",
+			src, prio)
+	}
+	if err := db.QueryRow(
+		`SELECT source, source_priority FROM forms WHERE form='koerad' AND lang='ET'`,
+	).Scan(&src, &prio); err != nil {
+		t.Fatalf("query upgraded form: %v", err)
+	}
+	if src != "ekilex" || prio != 20 {
+		t.Errorf("kaikki→ekilex form upgrade: got source=%q priority=%d, want ekilex/20",
+			src, prio)
+	}
+
+	// Existing custom row must NOT be downgraded.
+	if err := db.QueryRow(
+		`SELECT source, source_priority FROM lemmas WHERE lemma='override' AND pos='NOUN' AND lang='ET'`,
+	).Scan(&src, &prio); err != nil {
+		t.Fatalf("query custom lemma: %v", err)
+	}
+	if src != "custom_overrides" || prio != 100 {
+		t.Errorf("custom downgrade leak: got source=%q priority=%d, want custom_overrides/100",
+			src, prio)
+	}
+	if err := db.QueryRow(
+		`SELECT source, source_priority FROM forms WHERE form='overrided' AND lang='ET'`,
+	).Scan(&src, &prio); err != nil {
+		t.Fatalf("query custom form: %v", err)
+	}
+	if src != "custom_overrides" || prio != 100 {
+		t.Errorf("custom form downgrade leak: got source=%q priority=%d, want custom_overrides/100",
+			src, prio)
+	}
+}

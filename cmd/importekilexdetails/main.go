@@ -113,16 +113,6 @@ func main() {
 		log.Fatalf("schema: %v", err)
 	}
 
-	// Lift legacy (form, lang) PK and (deck, sentence, token) UNIQUE to the
-	// multi-lemma equivalents. CREATE TABLE IF NOT EXISTS is a no-op on
-	// existing DBs, so without this an existing finnestdb.db imported via
-	// cmd/importdict would silently keep its single-lemma schema and
-	// INSERT OR IGNORE would collapse ambiguous Ekilex rows like
-	// joon → joon/NOUN + joon → jooma/VERB to whichever was inserted first.
-	if err := store.EnsureMultiLemmaSchema(db); err != nil {
-		log.Fatalf("multi-lemma migration: %v", err)
-	}
-
 	defDir := filepath.Join(*dataDir, "definitions")
 	formsDir := filepath.Join(*dataDir, "forms")
 	if _, err := os.Stat(defDir); err != nil {
@@ -163,7 +153,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("write lemmas: %v", err)
 	}
-	log.Printf("  inserted %d new lemma rows, filled gloss on %d existing rows", lemmaInserted, glossFilled)
+	log.Printf("  touched %d lemma rows (inserted or source-upgraded), filled gloss on %d existing rows", lemmaInserted, glossFilled)
 
 	// Pass 3: walk forms and write (form, lemma, pos, lang) rows. Tuples
 	// the importer actually emits is the count we care about (an Ekilex
@@ -174,13 +164,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("forms: %v", err)
 	}
-	log.Printf("  inserted %d new form rows", formInserted)
+	log.Printf("  touched %d form rows (inserted or source-upgraded)", formInserted)
 
 	if err := upsertDictMetadata(db, *source, countLemmaPOS(lemmaPOS)); err != nil {
 		log.Printf("warn: dict_metadata: %v", err)
 	}
 
-	fmt.Printf("\nDone. %d unique (lemma, pos) Ekilex entries; %d lemma rows newly inserted; %d gloss fills; %d form rows newly inserted (data: %s).\n",
+	fmt.Printf("\nDone. %d unique (lemma, pos) Ekilex entries; %d lemma rows touched (inserted or source-upgraded); %d gloss fills; %d form rows touched (data: %s).\n",
 		countLemmaPOS(lemmaPOS), lemmaInserted, glossFilled, formInserted, *dataDir)
 }
 
@@ -373,8 +363,20 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	}
 	defer tx.Rollback()
 
+	// Upsert: insert a fresh row, or upgrade an existing row's source /
+	// source_priority when this import is *strictly stronger* (higher
+	// priority). `<` instead of `<=` so same-priority self-conflicts during
+	// a single import don't fire no-op updates — keeps RowsAffected
+	// honestly counting "rows whose source actually changed plus rows newly
+	// inserted." Gloss is intentionally not part of the conflict update;
+	// the empty-gloss guard below handles gloss merging.
 	stmtInsert, err := tx.Prepare(
-		`INSERT OR IGNORE INTO lemmas (lemma, pos, gloss, lang) VALUES (?, ?, ?, 'ET')`,
+		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+		 VALUES (?, ?, ?, 'ET', 'ekilex', 20)
+		 ON CONFLICT(lemma, pos, lang) DO UPDATE SET
+		   source = excluded.source,
+		   source_priority = excluded.source_priority
+		 WHERE lemmas.source_priority < excluded.source_priority`,
 	)
 	if err != nil {
 		return 0, 0, err
@@ -519,8 +521,15 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 	}
 	defer tx.Rollback()
 
+	// Upsert: insert fresh, or upgrade source/source_priority on conflict
+	// when strictly stronger. See writeLemmas comment for rationale.
 	stmt, err := tx.Prepare(
-		`INSERT OR IGNORE INTO forms (form, lemma, pos, lang) VALUES (?, ?, ?, 'ET')`,
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority)
+		 VALUES (?, ?, ?, 'ET', 'ekilex', 20)
+		 ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET
+		   source = excluded.source,
+		   source_priority = excluded.source_priority
+		 WHERE forms.source_priority < excluded.source_priority`,
 	)
 	if err != nil {
 		return 0, err
@@ -620,8 +629,13 @@ func ensureDictMetadataTable(db *sql.DB) error {
 }
 
 // ensureSchema creates the lemmas, forms, and dict_metadata tables if they
-// don't exist — same shape used by the server's initSchema. Lets this
-// importer run against a fresh database file without needing the server first.
+// don't exist — same shape used by the server's initSchema. Then runs the
+// shared idempotent migrations so the schema matches what cmd/server uses
+// even when the importer runs against a fresh DB. Order matters:
+//   - EnsureMultiLemmaSchema lifts the legacy (form, lang) PK to
+//     (form, lang, lemma, pos) when an existing DB had the old shape.
+//   - EnsureDictionarySourceColumns adds source / source_priority on
+//     lemmas and forms; insert statements below reference these.
 func ensureSchema(db *sql.DB) error {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS lemmas (
@@ -642,5 +656,14 @@ func ensureSchema(db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	return ensureDictMetadataTable(db)
+	if err := ensureDictMetadataTable(db); err != nil {
+		return err
+	}
+	if err := store.EnsureMultiLemmaSchema(db); err != nil {
+		return fmt.Errorf("multi-lemma migration: %w", err)
+	}
+	if err := store.EnsureDictionarySourceColumns(db); err != nil {
+		return fmt.Errorf("source-priority columns: %w", err)
+	}
+	return nil
 }

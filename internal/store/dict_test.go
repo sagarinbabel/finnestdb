@@ -766,3 +766,152 @@ func TestBatchLookupGlosses_NullGloss(t *testing.T) {
 		t.Errorf("jokin (null gloss): expected absent from result, got %q", got[LemmaKey{"jokin", "PRON"}])
 	}
 }
+
+// seedFormsWithSource inserts (form, lemma, pos, lang, source, source_priority).
+func seedFormsWithSource(t *testing.T, db *DB, rows []struct {
+	form, lemma, pos, lang, source string
+	priority                        int
+}) {
+	t.Helper()
+	for _, r := range rows {
+		_, err := db.db.Exec(
+			`INSERT INTO forms (form, lemma, pos, lang, source, source_priority) VALUES (?, ?, ?, ?, ?, ?)`,
+			r.form, r.lemma, r.pos, r.lang, r.source, r.priority,
+		)
+		if err != nil {
+			t.Fatalf("seedFormsWithSource: %v", err)
+		}
+	}
+}
+
+func TestBatchLookupForms_PrefersLowercaseLemmaOnLowercaseSurface(t *testing.T) {
+	// Regression covered: "linnas" → linn/NOUN ("in the city"), not Linna/PROPN
+	// (place name homonym). Both rows live under the multi-lemma PK; the picker
+	// must prefer the candidate whose lemma matches the surface's case.
+	db := newTestDB(t)
+	seedFormsWithSource(t, db, []struct {
+		form, lemma, pos, lang, source string
+		priority                        int
+	}{
+		{"linnas", "linn", "NOUN", "ET", "kaikki", 10},
+		{"linnas", "Linna", "PROPN", "ET", "ekilex", 20}, // higher source priority but uppercase lemma
+	})
+
+	got := db.BatchLookupForms([]string{"linnas"}, "ET", "basic")
+	r, ok := got["linnas"]
+	if !ok {
+		t.Fatal("linnas: expected resolution")
+	}
+	if r.Lemma != "linn" || r.POS != "NOUN" {
+		t.Errorf("linnas: got %s/%s, want linn/NOUN", r.Lemma, r.POS)
+	}
+}
+
+func TestBatchLookupForms_DemotesPROPNOnLowercaseSurface(t *testing.T) {
+	// Even if both candidates start lowercase (no case-match signal), a
+	// lowercase surface should not pick PROPN over NOUN.
+	db := newTestDB(t)
+	seedFormsWithSource(t, db, []struct {
+		form, lemma, pos, lang, source string
+		priority                        int
+	}{
+		{"koer", "koer", "PROPN", "ET", "ekilex", 20},
+		{"koer", "koer", "NOUN", "ET", "kaikki", 10},
+	})
+
+	got := db.BatchLookupForms([]string{"koer"}, "ET", "basic")
+	r, ok := got["koer"]
+	if !ok {
+		t.Fatal("koer: expected resolution")
+	}
+	if r.POS != "NOUN" {
+		t.Errorf("koer: got POS=%s, want NOUN", r.POS)
+	}
+}
+
+func TestBatchLookupForms_AllowsPROPNOnUppercaseSurface(t *testing.T) {
+	// Sentence-initial or genuinely-capitalized surface — both lemma cases
+	// are plausible, so source priority decides.
+	db := newTestDB(t)
+	seedFormsWithSource(t, db, []struct {
+		form, lemma, pos, lang, source string
+		priority                        int
+	}{
+		{"linnas", "linn", "NOUN", "ET", "kaikki", 10},
+		{"linnas", "Linna", "PROPN", "ET", "ekilex", 20},
+	})
+
+	got := db.BatchLookupForms([]string{"Linnas"}, "ET", "basic")
+	r, ok := got["Linnas"]
+	if !ok {
+		t.Fatal("Linnas: expected resolution")
+	}
+	// Both case-match and POS-pref scores are equal for "Linnas", so
+	// source priority decides — Ekilex (priority 20) wins over kaikki (10).
+	if r.Lemma != "Linna" || r.POS != "PROPN" {
+		t.Errorf("Linnas: got %s/%s, want Linna/PROPN", r.Lemma, r.POS)
+	}
+}
+
+func TestBatchLookupForms_HigherPriorityWinsAmongEqualCandidates(t *testing.T) {
+	// Two NOUN candidates (no case/POS signal), source priority decides.
+	db := newTestDB(t)
+	seedFormsWithSource(t, db, []struct {
+		form, lemma, pos, lang, source string
+		priority                        int
+	}{
+		{"talvel", "tali", "NOUN", "ET", "ekilex", 20},
+		{"talvel", "talv", "NOUN", "ET", "kaikki", 10},
+	})
+
+	got := db.BatchLookupForms([]string{"talvel"}, "ET", "basic")
+	r, ok := got["talvel"]
+	if !ok {
+		t.Fatal("talvel: expected resolution")
+	}
+	if r.Lemma != "tali" {
+		t.Errorf("talvel: got %s, want tali (higher source priority wins)", r.Lemma)
+	}
+}
+
+func TestBatchLookupForms_DeterministicTiebreak(t *testing.T) {
+	// Two candidates equal on every score axis (same case, same POS, same
+	// source priority, same source). Tiebreak by lemma asc.
+	db := newTestDB(t)
+	seedFormsWithSource(t, db, []struct {
+		form, lemma, pos, lang, source string
+		priority                        int
+	}{
+		{"x", "beta", "NOUN", "ET", "kaikki", 10},
+		{"x", "alpha", "NOUN", "ET", "kaikki", 10},
+	})
+
+	got := db.BatchLookupForms([]string{"x"}, "ET", "basic")
+	r, ok := got["x"]
+	if !ok {
+		t.Fatal("x: expected resolution")
+	}
+	if r.Lemma != "alpha" {
+		t.Errorf("x: got %s, want alpha (lemma-asc tiebreak)", r.Lemma)
+	}
+}
+
+func TestBatchLookupForms_LegacyRowsWithEmptySource(t *testing.T) {
+	// Pre-#67 rows have source='' and source_priority=0. Lookup must still
+	// work — the case-match and POS heuristics should fire even without
+	// source metadata.
+	db := newTestDB(t)
+	seedFormsWithSource(t, db, []struct {
+		form, lemma, pos, lang, source string
+		priority                        int
+	}{
+		{"linnas", "linn", "NOUN", "ET", "", 0},
+		{"linnas", "Linna", "PROPN", "ET", "", 0},
+	})
+
+	got := db.BatchLookupForms([]string{"linnas"}, "ET", "basic")
+	if got["linnas"].Lemma != "linn" || got["linnas"].POS != "NOUN" {
+		t.Errorf("linnas with empty source: got %s/%s, want linn/NOUN",
+			got["linnas"].Lemma, got["linnas"].POS)
+	}
+}
