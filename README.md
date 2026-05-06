@@ -179,6 +179,67 @@ pipeline is `cmd/fetchekilex` (resumable scrape) → `cmd/reduceekilex`
 the dictionary tables, multi-lemma aware). The first three stages run
 offline; only the loader step is required at deploy time.
 
+#### Refreshing the Ekilex enrichment data
+
+Most contributors will not need to run this — the reduced output is already
+committed under [`data/ekilex/`](data/ekilex/). Run it only when refreshing
+the upstream snapshot. The full pipeline is four ordered steps:
+
+1. **Fetch the list of words** — `make fetch-ekilex-refresh` re-fetches
+   `/api/public_word/eki` and overwrites the tracked headword queue
+   (`data/ekilex/eki-public-words-2026-et.jsonl`) *only if* the headword
+   set has changed.
+2. **Scrape per-word details** — `make fetch-ekilex` (see below) walks the
+   queue and pulls `/api/word/details` for every `word_id`, writing gzipped
+   raw payloads under `localdata/ekilex/details/raw/` (gitignored).
+3. **Extract / reduce** — `make reduce-ekilex` reduces the raw payloads
+   into sharded committable artifacts under [`data/ekilex/`](data/ekilex/):
+   `definitions/<letter>.jsonl` (lemma + morphology + meanings) and
+   `forms/<letter>.tsv` (one row per inflected form). Golden-tested; see
+   the `reduce-ekilex` notes in [Makefile](Makefile).
+4. **Load into the dictionary** — `make import-ekilex-details-et` bulk-loads
+   the reduced data into the lemma/form/translation tables in
+   `finnestdb.db`. This is the only step required at deploy time.
+
+`make fetch-ekilex-sample` is an optional aid alongside step 2: it fetches a
+small spread of headwords with both the `eki`-filtered and unfiltered dataset
+variants so you can compare payload size/content before committing to a full
+run.
+
+##### `make fetch-ekilex` notes
+
+Prerequisites:
+
+- Export `EKILEX_API_KEY` (create one in your Ekilex user profile; sent as
+  the `ekilex-api-key` header). Without it the command exits immediately.
+- Disk: gzipped raw payloads land under `localdata/ekilex/details/raw/`
+  (gitignored) — budget ~1–2 GB for the full Estonian set.
+
+Behavior:
+
+- **Resumable.** Per-`word_id` progress is tracked in a local SQLite
+  checkpoint, so interrupting and re-running picks up where it left off.
+  Already-fetched words are skipped, not re-downloaded.
+- **Circuit breaker.** After 10 consecutive failures all workers pause and
+  the runner probes a known-good word_id (`183007` / *koer*) every 5 minutes
+  until the API recovers, then resumes automatically. Override with
+  `-circuit-failures` / `-circuit-poll` if invoking the binary directly.
+- **Rate limiting.** `-rps` is a *global* request-rate cap shared across
+  workers, not per-worker. `-workers` should be ~2× rps so request latency
+  doesn't become the bottleneck.
+
+Tune throughput via the make variables (defaults: 16 workers, 16 rps):
+
+```bash
+make fetch-ekilex EKILEX_RPS=16 EKILEX_WORKERS=16
+```
+
+The defaults (16/16) have been run end-to-end against the full Estonian
+headword set without issues. Pushing above ~20 rps / 20 workers tends to
+upset the upstream API — the circuit breaker starts tripping repeatedly and
+overall throughput drops. Treat 20/20 as a soft ceiling unless you've
+verified the API can sustain more.
+
 To force a full refresh (e.g. after a new kaikki.org release):
 
 ```bash
