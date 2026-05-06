@@ -6,6 +6,49 @@ product documentation. Code changes belong in git history, not here.
 Entries are reverse-chronological. Each entry links to the docs it
 introduced or modified so the docs index stays navigable.
 
+## 2026-05-07 — Gutenberg-FI silver corpus scraper (Plan C / PR 3)
+
+First silver-tier corpus source. Scrapes public-domain Finnish books from
+Project Gutenberg (https://www.gutenberg.org/ebooks/search/?query=l.fi),
+strips PG boilerplate, saves cleaned text + a JSONL manifest under
+`data/silver-fi/`.
+
+- Added [`cmd/scrapegutenberg`](../cmd/scrapegutenberg/main.go): polite
+  HTTP scraper (1.5s between requests, transparent User-Agent, single
+  connection). Tries cache-epub UTF-8 → files-0 UTF-8 → files-8
+  ISO-8859-1 in order; decodes ISO-8859-1 via golang.org/x/text/encoding;
+  strips Project Gutenberg "*** START OF" / "*** END OF" boilerplate;
+  rejects non-Finnish leaks (English-authored books with l.fi metadata)
+  via an ä/ö frequency + common-particle heuristic.
+- Added [`data/silver-fi/`](../data/silver-fi/) with 14 books (~511k
+  tokens) on first run: Kalevala, Aleksis Kivi (Seitsemän veljestä),
+  Minna Canth, Aleksis Kivi-era prose, Finnish translations of Jack
+  London / Molière / Drachmann, plus modern works (Pekkarinen,
+  Haanpää, Järnefelt). Manifest at
+  [`data/silver-fi/manifest.jsonl`](../data/silver-fi/manifest.jsonl)
+  records id, title, author, source URL, encoding, fetched_at, token
+  count per book.
+- Added Makefile target `make scrape-gutenberg-fi` (overridable
+  `TARGET_TOKENS=N`).
+- Idempotent — already-fetched books are skipped on re-run.
+
+**Why now:** with ~900k UD gold tokens and ~500k Gutenberg silver
+tokens, we're at the corpus scale where bootstrap CIs from Plan C / PR 2
+are tight (±0.4–0.6pp) and "did our parser regress" is answerable
+with confidence. Next silver sources (runosto.net for poetry, ET
+Wikisource for Estonian, Wikipedia FI/ET for breadth) follow the same
+pattern; this PR establishes the scaffolding.
+
+**Silver tagging deferred:** the actual morphological annotation
+(Voikko + Omorfi agreement filter for FI; Vabamorf + Ekilex for ET)
+ships in Plan C / PR 4. This PR delivers the raw corpus only.
+
+**FST migration link:** the silver tagger in PR 4 will use the FST
+runtime from [PRs #106](https://github.com/sagarinbabel/finnestdb/pull/106)–[#112](https://github.com/sagarinbabel/finnestdb/pull/112)
+as one half of the agreement filter (the Voikko side); Omorfi via the
+Python adapter is the other half. So PR 4 stacks meaningfully on the
+FST series.
+
 ## 2026-05-06 — Lexical pipelines: ET ships, FI plan locks
 
 Locks the dictionary layer as multi-source with row-level provenance and

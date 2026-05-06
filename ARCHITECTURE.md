@@ -427,8 +427,12 @@ Files:
   disagreement-heavy gold candidates
 - `cmd/autoresearch/main.go` — automated rule-ablation loop driven by
   parser-eval; logs accepted/rejected mutations to JSONL
+- `cmd/scrapegutenberg/main.go` — Plan C / PR 3 silver-corpus scraper
+  for Project Gutenberg Finnish books
 - `internal/eval/eval.go`
 - `testdata/parser-eval/...` — Finnish and Estonian gold datasets
+- `data/silver-fi/` — Plan C silver-tier corpus (Gutenberg-FI raw text
+  + JSONL manifest); morphological annotation deferred to PR 4
 - `docs/baselines/` — frozen baseline reports per parser/language
 - `docs/PARSER_EVAL_DATASETS.md`
 - `docs/OMORFI_ADAPTER.md` · `docs/OMORFI_COMPARISON.md`

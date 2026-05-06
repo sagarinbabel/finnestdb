@@ -4,7 +4,8 @@
         fetch-ekilex-refresh fetch-ekilex-sample fetch-ekilex \
         reduce-ekilex \
         reimport-dict-fi reimport-dict-et reimport-dict verify-dict \
-        setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et
+        setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et \
+        scrape-gutenberg-fi
 
 # Default target
 all: build
@@ -292,3 +293,19 @@ eval: parser
 
 # CI-friendly alias for the same eval sweep documented in the alpha checklist.
 eval-check: eval
+
+# ── Silver corpus scraping (Plan C / PR 3) ───────────────────────────────────
+#
+# Fetches Finnish-language books from Project Gutenberg into the silver-tier
+# corpus at data/silver-fi/. Polite scraper (1.5s between requests).
+# Idempotent — re-running skips books already in the manifest.
+#
+# The default target (500k tokens) covers ~14 books from the most popular
+# l.fi search results. Override with TARGET_TOKENS=N to fetch more or less.
+TARGET_TOKENS ?= 500000
+scrape-gutenberg-fi:
+	go run ./cmd/scrapegutenberg \
+	    -lang fi \
+	    -target-tokens $(TARGET_TOKENS) \
+	    -out data/silver-fi/raw \
+	    -manifest data/silver-fi/manifest.jsonl
