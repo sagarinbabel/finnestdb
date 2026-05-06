@@ -1,9 +1,151 @@
 package store
 
 import (
+	"database/sql"
 	"path/filepath"
 	"testing"
+
+	_ "github.com/mattn/go-sqlite3"
 )
+
+// columnExists reports whether the given table has the given column.
+func columnExists(t *testing.T, db *sql.DB, table, column string) bool {
+	t.Helper()
+	rows, err := db.Query(`PRAGMA table_info(` + table + `)`)
+	if err != nil {
+		t.Fatalf("PRAGMA table_info(%s): %v", table, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var (
+			cid       int
+			name      string
+			ctype     string
+			notnull   int
+			dfltValue sql.NullString
+			pk        int
+		)
+		if err := rows.Scan(&cid, &name, &ctype, &notnull, &dfltValue, &pk); err != nil {
+			t.Fatalf("scan table_info row: %v", err)
+		}
+		if name == column {
+			return true
+		}
+	}
+	return false
+}
+
+// tableExists reports whether the given table is present in sqlite_master.
+func tableExists(t *testing.T, db *sql.DB, table string) bool {
+	t.Helper()
+	var name string
+	err := db.QueryRow(
+		`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, table,
+	).Scan(&name)
+	if err == sql.ErrNoRows {
+		return false
+	}
+	if err != nil {
+		t.Fatalf("sqlite_master query: %v", err)
+	}
+	return true
+}
+
+// TestEnsureLexicalEnrichmentColumns_FreshDB verifies a brand-new DB created by
+// NewDB has the paradigm_class column on lemmas, the feats column on forms,
+// and the translations and definitions tables.
+func TestEnsureLexicalEnrichmentColumns_FreshDB(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "fresh.db")
+	d, err := NewDB(dbPath)
+	if err != nil {
+		t.Fatalf("NewDB: %v", err)
+	}
+	defer d.Close()
+
+	if !columnExists(t, d.db, "lemmas", "paradigm_class") {
+		t.Error("lemmas.paradigm_class missing on fresh DB")
+	}
+	if !columnExists(t, d.db, "forms", "feats") {
+		t.Error("forms.feats missing on fresh DB")
+	}
+	if !tableExists(t, d.db, "translations") {
+		t.Error("translations table missing on fresh DB")
+	}
+	if !tableExists(t, d.db, "definitions") {
+		t.Error("definitions table missing on fresh DB")
+	}
+}
+
+// TestEnsureLexicalEnrichmentColumns_BackfillsOldDB constructs a DB at the
+// pre-Finnish-lexical-plan shape (lemmas/forms with source/source_priority but
+// no paradigm_class/feats; no translations/definitions tables) and verifies
+// the backfill helpers bring it up to current shape, idempotently.
+func TestEnsureLexicalEnrichmentColumns_BackfillsOldDB(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "old.db")
+	raw, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	defer raw.Close()
+
+	if _, err := raw.Exec(`
+		CREATE TABLE lemmas (
+			lemma TEXT NOT NULL,
+			pos TEXT NOT NULL,
+			gloss TEXT,
+			lang TEXT NOT NULL,
+			source TEXT NOT NULL DEFAULT '',
+			source_priority INTEGER NOT NULL DEFAULT 0,
+			PRIMARY KEY(lemma, pos, lang)
+		);
+		CREATE TABLE forms (
+			form  TEXT NOT NULL,
+			lemma TEXT NOT NULL,
+			pos   TEXT NOT NULL,
+			lang  TEXT NOT NULL,
+			source TEXT NOT NULL DEFAULT '',
+			source_priority INTEGER NOT NULL DEFAULT 0,
+			PRIMARY KEY (form, lang)
+		);
+	`); err != nil {
+		t.Fatalf("seed old schema: %v", err)
+	}
+
+	if columnExists(t, raw, "lemmas", "paradigm_class") {
+		t.Fatal("paradigm_class unexpectedly present in old-shape seed")
+	}
+	if tableExists(t, raw, "translations") {
+		t.Fatal("translations unexpectedly present in old-shape seed")
+	}
+
+	if err := EnsureLexicalEnrichmentColumns(raw); err != nil {
+		t.Fatalf("EnsureLexicalEnrichmentColumns: %v", err)
+	}
+	if err := EnsureLexicalEntryTables(raw); err != nil {
+		t.Fatalf("EnsureLexicalEntryTables: %v", err)
+	}
+
+	if !columnExists(t, raw, "lemmas", "paradigm_class") {
+		t.Error("paradigm_class not added by backfill")
+	}
+	if !columnExists(t, raw, "forms", "feats") {
+		t.Error("feats not added by backfill")
+	}
+	if !tableExists(t, raw, "translations") {
+		t.Error("translations not created by backfill")
+	}
+	if !tableExists(t, raw, "definitions") {
+		t.Error("definitions not created by backfill")
+	}
+
+	// Idempotent: re-running both helpers must not error.
+	if err := EnsureLexicalEnrichmentColumns(raw); err != nil {
+		t.Errorf("EnsureLexicalEnrichmentColumns rerun: %v", err)
+	}
+	if err := EnsureLexicalEntryTables(raw); err != nil {
+		t.Errorf("EnsureLexicalEntryTables rerun: %v", err)
+	}
+}
 
 func TestGetNextReviewCardRespectsDailyNewCardLimit(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "test.db")
