@@ -125,18 +125,18 @@ The server will start on `http://localhost:8080` by default.
 1. Open your browser and navigate to: `http://localhost:8080`
 
 2. The app opens to the public landing page.
-   - Sign in with an email address to use Dashboard, Inspect, Decks, and Review.
+   - Sign in with an email address and password (8+ chars) to use Dashboard, Parse, Decks, and Review.
    - The alpha sign-in flow is a stub and is not go-live safe.
    - Admin users can open the internal parser workbench.
 
 ## Using the Application
 
-### Inspecting Text
+### Parsing Text
 
-1. Sign in and open **Inspect**.
+1. Sign in and open **Parse**.
 2. Paste text into the textarea or load a `.txt` / `.md` file.
 3. Keep the input under **300,000 Unicode characters**.
-4. Click **Inspect text**.
+4. Click **Parse text**.
 5. Review the results page:
    - dictionary coverage
    - sortable word list with lemmas, forms, definitions, grammar labels, and token counts
@@ -226,7 +226,7 @@ This is an alpha implementation with the following limitations:
 - **Parser core**: Rust tokenization and heuristic POS guessing, not real morphology
 - **Admin parser modes**: Basic is direct dictionary lookup; Custom adds
   rule-based enrichment, still not Omorfi/Vabamorf
-- **Retention controls**: signed-in Inspect parses are stored, but parse history
+- **Retention controls**: signed-in Parse submissions are stored, but parse history
   deletion is not yet exposed
 
 ### Next Steps
