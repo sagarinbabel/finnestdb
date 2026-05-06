@@ -407,13 +407,15 @@ Golden dataset guidance:
 
 ### Language Validation
 
-The app checks whether your pasted text matches the selected language:
+The app checks whether pasted or file-loaded text matches the selected language:
 
 - **Estonian detection:** the character `õ` is unique to Estonian — its presence is a strong signal
 - **Finnish detection:** `ä` and `ö` appear in >1.5% of letters in typical Finnish text
-- If neither signal is found, you'll see a warning (English text, for example, will trigger this)
+- **Fast path:** high-confidence pasted or file-loaded text auto-switches the selected language
+- **Guardrail:** if the selected language still conflicts with detected Finnish or Estonian, parse is blocked until you switch languages
+- If neither signal is found, you'll see an advisory warning (English text, for example, will trigger this)
 
-The warning is advisory only — you can still parse the text.
+Unknown-language warnings are advisory only, so you can still parse. Detected Finnish/Estonian mismatch warnings are blocking because parsing under the wrong language produces lower-quality results.
 
 ### Known Limitations
 

@@ -143,6 +143,12 @@ The server will start on `http://localhost:8080` by default.
    - correction buttons for logged-in users
    - save-as-deck flow
 
+Language handling policy:
+
+- high-confidence pasted or file-loaded text auto-switches to the detected language
+- if the selected language still conflicts with detected Finnish or Estonian, parse is blocked until you switch
+- unknown-language warnings are advisory and do not block parse
+
 Admins can use **Admin → Workbench** to compare the Basic and Custom parser
 modes and inspect parser timing details.
 
