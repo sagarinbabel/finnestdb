@@ -29,8 +29,8 @@ func TestEkilexMorphToFeats_Verbal(t *testing.T) {
 		"IndIpfPl3": "Mood=Ind|Number=Plur|Person=3|Tense=Past|VerbForm=Fin|Voice=Act",
 		"KndPrSg1":  "Mood=Cnd|Number=Sing|Person=1|Tense=Pres|VerbForm=Fin|Voice=Act",
 		"ImpPrSg2":  "Mood=Imp|Number=Sing|Person=2|Tense=Pres|VerbForm=Fin|Voice=Act",
-		"Inf":       "VerbForm=Inf",
-		"Sup":       "VerbForm=Sup",
+		"Inf":       "VerbForm=Sup",
+		"Sup":       "VerbForm=Inf",
 		"PtsPtIps":  "Tense=Past|VerbForm=Part|Voice=Pass",
 	}
 	for code, want := range cases {
@@ -45,12 +45,12 @@ func TestEkilexMorphToFeats_Verbal(t *testing.T) {
 // Polarity=Neg appended in alphabetical order.
 func TestEkilexMorphToFeats_Negative(t *testing.T) {
 	cases := map[string]string{
-		"IndPrPsN":     "Mood=Ind|Polarity=Neg|Tense=Pres|VerbForm=Fin|Voice=Act",
-		"IndPrIpsN":    "Mood=Ind|Polarity=Neg|Tense=Pres|VerbForm=Fin|Voice=Pass",
-		"IndIpfPsN":    "Mood=Ind|Polarity=Neg|Tense=Past|VerbForm=Fin|Voice=Act",
-		"PtsPtIpsNeg":  "Polarity=Neg|Tense=Past|VerbForm=Part|Voice=Pass",
-		"PtsPtPsNeg":   "Polarity=Neg|Tense=Past|VerbForm=Part|Voice=Act",
-		"InfN":         "Polarity=Neg|VerbForm=Inf",
+		"IndPrPsN":    "Mood=Ind|Polarity=Neg|Tense=Pres|VerbForm=Fin|Voice=Act",
+		"IndPrIpsN":   "Mood=Ind|Polarity=Neg|Tense=Pres|VerbForm=Fin|Voice=Pass",
+		"IndIpfPsN":   "Mood=Ind|Polarity=Neg|Tense=Past|VerbForm=Fin|Voice=Act",
+		"PtsPtIpsNeg": "Polarity=Neg|Tense=Past|VerbForm=Part|Voice=Pass",
+		"PtsPtPsNeg":  "Polarity=Neg|Tense=Past|VerbForm=Part|Voice=Act",
+		"InfN":        "Polarity=Neg|VerbForm=Sup",
 	}
 	for code, want := range cases {
 		got := ekilexMorphToFeats(code)

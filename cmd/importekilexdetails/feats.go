@@ -179,8 +179,8 @@ var ekilexBaseFeats = map[string]string{
 	"ImpPrIps": "Mood=Imp|Tense=Pres|VerbForm=Fin|Voice=Pass",
 
 	// ── Non-finite ──────────────────────────────────────────────────────
-	"Inf": "VerbForm=Inf", // -ma supine (UD treats as VerbForm=Sup but Ekilex calls it Inf)
-	"Sup": "VerbForm=Sup", // -da infinitive
+	"Inf": "VerbForm=Sup", // -ma supine (Ekilex calls it Inf)
+	"Sup": "VerbForm=Inf", // -da infinitive
 
 	// ── Participles ─────────────────────────────────────────────────────
 	"PtsPrPs":  "Tense=Pres|VerbForm=Part|Voice=Act",
