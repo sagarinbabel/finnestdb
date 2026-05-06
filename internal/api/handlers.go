@@ -659,6 +659,14 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 		return
 	}
 
+	// Create a parse session so deck-detail feedback can be attributed to the
+	// parser run that produced this deck.
+	parseID, err := a.store.CreateParseSession(&auth.UserID, parsed.Lang, parsed.Parser, req.Text, parsed.TotalTokens, len(parsed.Words))
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
 	// Multi-lemma expansion: when the dictionary has multiple (lemma, pos)
 	// candidates for a surface form (e.g. ET "joon" = noun "line" or 1Sg of
 	// "jooma"), emit one DeckTokenInput per candidate so each homonym becomes
@@ -675,6 +683,7 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 			for _, exp := range expandTokenLemmas(token, dictCandidates) {
 				sentence.Tokens = append(sentence.Tokens, store.DeckTokenInput{
 					TokenIx: tokenIx,
+					Form:    token.Form,
 					Lemma:   exp.Lemma,
 					POS:     exp.POS,
 				})
@@ -688,6 +697,11 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 
 	deckID, err := a.store.CreateDeckWithSentences(auth.UserID, strings.TrimSpace(req.Title), req.Lang, sentences)
 	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	if err := a.store.SetDeckParseSession(auth.UserID, deckID, parseID); err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
@@ -755,6 +769,8 @@ type DeckDetailResponse struct {
 	ID          int64       `json:"id"`
 	Title       string      `json:"title"`
 	Lang        string      `json:"lang"`
+	Parser      string      `json:"parser"`
+	ParseID     *int64      `json:"parse_id,omitempty"`
 	CreatedAt   time.Time   `json:"created_at"`
 	TotalTokens int         `json:"total_tokens"`
 	Words       []WordEntry `json:"words"`
@@ -786,10 +802,13 @@ func (a *API) handleGetDeck(w http.ResponseWriter, auth *AuthContext, deckID int
 		entry := WordEntry{
 			Lemma:           item.Lemma,
 			POS:             item.POS,
-			Forms:           []string{item.Lemma},
+			Forms:           item.Forms,
 			Count:           item.Count,
 			Gloss:           item.Gloss,
 			ExampleSentence: item.ExampleSentence,
+		}
+		if len(entry.Forms) == 0 {
+			entry.Forms = []string{item.Lemma}
 		}
 		if status := states[store.LemmaKey{Lemma: item.Lemma, POS: item.POS}]; status != "" {
 			entry.LearningState = status
@@ -801,6 +820,8 @@ func (a *API) handleGetDeck(w http.ResponseWriter, auth *AuthContext, deckID int
 		ID:          details.ID,
 		Title:       details.Title,
 		Lang:        details.Lang,
+		Parser:      "custom",
+		ParseID:     details.ParseSessionID,
 		CreatedAt:   details.CreatedAt,
 		TotalTokens: details.TotalTokens,
 		Words:       words,

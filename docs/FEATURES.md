@@ -137,7 +137,7 @@ FinEstDB is positioned around four technical bets:
   external reference — Omorfi for Finnish, EstNLTK / Vabamorf for
   Estonian — and against frozen gold datasets in `docs/baselines/`.
 - **User correction loop**: real users submit parser corrections from
-  the inspection view; admins triage them; accepted corrections feed
+  inspect and deck-detail result rows; admins triage them; accepted corrections feed
   live quality metrics and future parser improvements.
 - **Future autoresearch**: the dictionary/lemma layer is designed so
   that new sources of evidence can be merged into a single canonical

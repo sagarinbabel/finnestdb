@@ -1330,6 +1330,12 @@ func TestGetDeckDetail(t *testing.T) {
 	if detail.Lang != "FI" {
 		t.Errorf("Lang=%q want FI", detail.Lang)
 	}
+	if detail.Parser != "custom" {
+		t.Errorf("Parser=%q want custom", detail.Parser)
+	}
+	if detail.ParseID == nil || *detail.ParseID <= 0 {
+		t.Errorf("ParseID=%v want non-nil positive", detail.ParseID)
+	}
 	if detail.TotalTokens != 4 {
 		t.Errorf("TotalTokens=%d want 4 (2 sentences × 2 tokens)", detail.TotalTokens)
 	}
@@ -1347,11 +1353,17 @@ func TestGetDeckDetail(t *testing.T) {
 	if kissa.Gloss != "cat" {
 		t.Errorf("kissa gloss=%q want cat", kissa.Gloss)
 	}
+	if got := strings.Join(kissa.Forms, ","); got != "Kissa" {
+		t.Errorf("kissa forms=%v want [Kissa]", kissa.Forms)
+	}
 	if kissa.ExampleSentence == "" {
 		t.Errorf("kissa example sentence empty")
 	}
-	if _, ok := wordsByLemma["juosta"]; !ok {
+	juosta, ok := wordsByLemma["juosta"]
+	if !ok {
 		t.Errorf("juosta missing from words: %+v", detail.Words)
+	} else if got := strings.Join(juosta.Forms, ","); got != "juoksee" {
+		t.Errorf("juosta forms=%v want [juoksee]", juosta.Forms)
 	}
 
 	// 404 for someone else's deck.

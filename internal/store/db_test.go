@@ -68,6 +68,9 @@ func TestEnsureLexicalEnrichmentColumns_FreshDB(t *testing.T) {
 	if !columnExists(t, d.db, "forms", "feats") {
 		t.Error("forms.feats missing on fresh DB")
 	}
+	if !columnExists(t, d.db, "occurrence", "surface") {
+		t.Error("occurrence.surface missing on fresh DB")
+	}
 	if !tableExists(t, d.db, "translations") {
 		t.Error("translations table missing on fresh DB")
 	}
@@ -144,6 +147,41 @@ func TestEnsureLexicalEnrichmentColumns_BackfillsOldDB(t *testing.T) {
 	}
 	if err := EnsureLexicalEntryTables(raw); err != nil {
 		t.Errorf("EnsureLexicalEntryTables rerun: %v", err)
+	}
+}
+
+func TestEnsureOccurrenceSurfaceColumn_BackfillsOldDB(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "old-occurrence.db")
+	raw, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	defer raw.Close()
+
+	if _, err := raw.Exec(`
+		CREATE TABLE occurrence (
+			deck_id INTEGER NOT NULL,
+			sentence_id INTEGER NOT NULL,
+			token_ix INTEGER NOT NULL,
+			lemma TEXT NOT NULL,
+			pos TEXT NOT NULL,
+			UNIQUE(deck_id, sentence_id, token_ix, lemma, pos)
+		);
+	`); err != nil {
+		t.Fatalf("seed old occurrence schema: %v", err)
+	}
+	if columnExists(t, raw, "occurrence", "surface") {
+		t.Fatal("surface unexpectedly present in old occurrence schema")
+	}
+
+	if err := EnsureOccurrenceSurfaceColumn(raw); err != nil {
+		t.Fatalf("EnsureOccurrenceSurfaceColumn: %v", err)
+	}
+	if !columnExists(t, raw, "occurrence", "surface") {
+		t.Fatal("surface not added by backfill")
+	}
+	if err := EnsureOccurrenceSurfaceColumn(raw); err != nil {
+		t.Fatalf("EnsureOccurrenceSurfaceColumn rerun: %v", err)
 	}
 }
 

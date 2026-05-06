@@ -1201,11 +1201,12 @@ async function loadDeckDetail(deckID) {
         state.currentSourceText = '';
         const parseResponse = {
             lang: data.lang,
+            parse_id: data.parse_id,
             total_tokens: data.total_tokens,
             parse_duration_ms: 0,
             words: data.words,
         };
-        showResults(parseResponse, data.title, 'basic', 'deck');
+        showResults(parseResponse, data.title, data.parser || 'custom', 'deck');
     }
     catch (err) {
         showToast(err.message || 'Failed to load deck.', 'error');

@@ -95,6 +95,8 @@ interface DeckDetailResponse {
     id:           number;
     title:        string;
     lang:         string;
+    parser:       string;
+    parse_id?:    number;
     created_at:   string;
     total_tokens: number;
     words:        WordEntry[];
@@ -1435,11 +1437,12 @@ async function loadDeckDetail(deckID: number): Promise<void> {
         state.currentSourceText = '';
         const parseResponse: ParseResponse = {
             lang:              data.lang,
+            parse_id:          data.parse_id,
             total_tokens:      data.total_tokens,
             parse_duration_ms: 0,
             words:             data.words,
         };
-        showResults(parseResponse, data.title, 'basic', 'deck');
+        showResults(parseResponse, data.title, (data.parser as ParserMode) || 'custom', 'deck');
     } catch (err: any) {
         showToast(err.message || 'Failed to load deck.', 'error');
         navigate('/decks');
