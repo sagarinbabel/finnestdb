@@ -915,3 +915,172 @@ func TestBatchLookupForms_LegacyRowsWithEmptySource(t *testing.T) {
 			got["linnas"].Lemma, got["linnas"].POS)
 	}
 }
+
+// seedLemmasFull and seedTranslations are minimal helpers that write into
+// the post-Phase-1 / post-#67 schema (with source / source_priority).
+func seedLemmasFull(t *testing.T, db *DB, rows []struct {
+	lemma, pos, gloss, lang, source string
+	priority                         int
+}) {
+	t.Helper()
+	for _, r := range rows {
+		if _, err := db.db.Exec(
+			`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+			 VALUES (?, ?, ?, ?, ?, ?)`,
+			r.lemma, r.pos, r.gloss, r.lang, r.source, r.priority,
+		); err != nil {
+			t.Fatalf("seedLemmasFull: %v", err)
+		}
+	}
+}
+
+func seedTranslations(t *testing.T, db *DB, rows []struct {
+	lemma, pos, lang, target, text, source string
+	senseIdx                                int
+}) {
+	t.Helper()
+	for _, r := range rows {
+		if _, err := db.db.Exec(
+			`INSERT INTO translations (lemma, pos, lang, target_lang, text, sense_idx, source)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			r.lemma, r.pos, r.lang, r.target, r.text, r.senseIdx, r.source,
+		); err != nil {
+			t.Fatalf("seedTranslations: %v", err)
+		}
+	}
+}
+
+func TestBatchLookupGlosses_PrefersTranslationsOverLemmasGloss(t *testing.T) {
+	// When the translations table has a row whose source matches the
+	// lemma's source (the kaikki-imported case), prefer translations.text
+	// over lemmas.gloss. Today the two are identical for sense_idx=0 in
+	// typical entries; the test guards the precedence regardless.
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                         int
+	}{
+		{"talo", "NOUN", "stale-cache", "FI", "kaikki", 10},
+	})
+	seedTranslations(t, db, []struct {
+		lemma, pos, lang, target, text, source string
+		senseIdx                                int
+	}{
+		{"talo", "NOUN", "FI", "EN", "house", "kaikki", 0},
+	})
+
+	got := db.BatchLookupGlosses([]LemmaKey{{"talo", "NOUN"}}, "FI")
+	if got[LemmaKey{"talo", "NOUN"}] != "house" {
+		t.Errorf("translations should win: got %q, want %q", got[LemmaKey{"talo", "NOUN"}], "house")
+	}
+}
+
+func TestBatchLookupGlosses_FallsBackToLemmasGlossWhenNoTranslations(t *testing.T) {
+	// Legacy DBs imported before PR #85 have no translations rows. The
+	// read path must fall back to lemmas.gloss.
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                         int
+	}{
+		{"talo", "NOUN", "house-from-cache", "FI", "kaikki", 10},
+	})
+	// no translations rows seeded
+
+	got := db.BatchLookupGlosses([]LemmaKey{{"talo", "NOUN"}}, "FI")
+	if got[LemmaKey{"talo", "NOUN"}] != "house-from-cache" {
+		t.Errorf("fallback to lemmas.gloss: got %q, want %q",
+			got[LemmaKey{"talo", "NOUN"}], "house-from-cache")
+	}
+}
+
+func TestBatchLookupGlosses_CustomOverrideViaLemmasGlossWins(t *testing.T) {
+	// applyCustomGlosses (cmd/importdict's -custom-glosses CSV path)
+	// upserts lemmas with source='custom', priority=100, replacing the
+	// kaikki-tagged row. It does NOT currently write to translations.
+	// The read path must surface the custom override even though older
+	// kaikki translation rows still exist for this (lemma, pos).
+	//
+	// Without the JOIN-on-source design, a naive translations-first
+	// query would silently return the stale kaikki gloss.
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                         int
+	}{
+		{"talo", "NOUN", "domain-specific override", "FI", "custom", 100},
+	})
+	// Old kaikki translation rows still exist (the user ran kaikki import
+	// first, then -custom-glosses; the kaikki rows weren't cleared).
+	seedTranslations(t, db, []struct {
+		lemma, pos, lang, target, text, source string
+		senseIdx                                int
+	}{
+		{"talo", "NOUN", "FI", "EN", "stale kaikki text", "kaikki", 0},
+	})
+
+	got := db.BatchLookupGlosses([]LemmaKey{{"talo", "NOUN"}}, "FI")
+	if got[LemmaKey{"talo", "NOUN"}] != "domain-specific override" {
+		t.Errorf("custom-override fallthrough: got %q, want %q",
+			got[LemmaKey{"talo", "NOUN"}], "domain-specific override")
+	}
+}
+
+func TestBatchLookupGlosses_HigherPriorityTranslationWins(t *testing.T) {
+	// Forward-looking guard for when multiple sources write translations
+	// for the same (lemma, pos) (Ekilex translations via the upcoming
+	// PR 4). The JOIN ranks by lemmas.source_priority DESC.
+	//
+	// Note: this only fires when the lemma's row is at the higher-priority
+	// source. The current upsert pattern in cmd/importdict already
+	// promotes the higher-priority source on conflict, so this state is
+	// reachable when ekilex (priority 20) follows kaikki (priority 10).
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                         int
+	}{
+		// Lemma row was last written by ekilex, which won the upsert.
+		{"talo", "NOUN", "ekilex-cache", "ET", "ekilex", 20},
+	})
+	seedTranslations(t, db, []struct {
+		lemma, pos, lang, target, text, source string
+		senseIdx                                int
+	}{
+		// Both sources have translations rows for the same headword.
+		{"talo", "NOUN", "ET", "EN", "kaikki text", "kaikki", 0},
+		{"talo", "NOUN", "ET", "EN", "ekilex text", "ekilex", 0},
+	})
+
+	got := db.BatchLookupGlosses([]LemmaKey{{"talo", "NOUN"}}, "ET")
+	if got[LemmaKey{"talo", "NOUN"}] != "ekilex text" {
+		t.Errorf("higher-priority source wins: got %q, want %q",
+			got[LemmaKey{"talo", "NOUN"}], "ekilex text")
+	}
+}
+
+func TestBatchLookupGlosses_LowerSenseIdxWinsWithinSameSource(t *testing.T) {
+	// Within a single source, the "primary" sense (lowest sense_idx)
+	// should win for the gloss cache.
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                         int
+	}{
+		{"pankki", "NOUN", "stale", "FI", "kaikki", 10},
+	})
+	seedTranslations(t, db, []struct {
+		lemma, pos, lang, target, text, source string
+		senseIdx                                int
+	}{
+		{"pankki", "NOUN", "FI", "EN", "embankment", "kaikki", 5},
+		{"pankki", "NOUN", "FI", "EN", "bank (financial)", "kaikki", 0},
+		{"pankki", "NOUN", "FI", "EN", "bank (storage)", "kaikki", 2},
+	})
+
+	got := db.BatchLookupGlosses([]LemmaKey{{"pankki", "NOUN"}}, "FI")
+	if got[LemmaKey{"pankki", "NOUN"}] != "bank (financial)" {
+		t.Errorf("lowest sense_idx should win: got %q, want %q",
+			got[LemmaKey{"pankki", "NOUN"}], "bank (financial)")
+	}
+}
