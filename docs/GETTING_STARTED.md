@@ -136,7 +136,7 @@ The server will start on `http://localhost:8080` by default.
 1. Sign in and open **Inspect**.
 2. Paste text into the textarea or load a `.txt` / `.md` file.
 3. Keep the input under **300,000 Unicode characters**.
-4. Click **Inspect text**.
+4. Click **Parse text**.
 5. Review the results page:
    - dictionary coverage
    - sortable word list with lemmas, forms, definitions, grammar labels, and token counts

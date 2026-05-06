@@ -24,7 +24,7 @@
             <!-- Logged-in user nav -->
             <div class="nav-links nav-user" data-role-show="user admin">
                 <a href="#/dashboard" class="nav-link" data-route="/dashboard">Dashboard</a>
-                <a href="#/inspect" class="nav-link" data-route="/inspect">Inspect</a>
+                <a href="#/inspect" class="nav-link" data-route="/inspect">Parse</a>
                 <a href="#/decks" class="nav-link" data-route="/decks">Decks</a>
                 <a href="#/review" class="nav-link" data-route="/review">Review</a>
             </div>
@@ -66,7 +66,7 @@
             </div>
             <div data-role-show="user admin">
                 <a href="#/dashboard" class="nav-mobile-link" data-route="/dashboard">Dashboard</a>
-                <a href="#/inspect" class="nav-mobile-link" data-route="/inspect">Inspect</a>
+                <a href="#/inspect" class="nav-mobile-link" data-route="/inspect">Parse</a>
                 <a href="#/decks" class="nav-mobile-link" data-route="/decks">Decks</a>
                 <a href="#/review" class="nav-mobile-link" data-route="/review">Review</a>
             </div>
@@ -234,7 +234,7 @@
             <section class="dashboard-decks">
                 <h2>Recent decks</h2>
                 <div id="dashboard-decks-list" class="dashboard-decks-list">
-                    <p class="empty-state">No decks yet — paste some text under <a href="#/inspect">Inspect</a> to get started.</p>
+                    <p class="empty-state">No decks yet — paste some text under <a href="#/inspect">Parse</a> to get started.</p>
                 </div>
             </section>
         </main>
@@ -244,7 +244,7 @@
     <div id="inspect-page" class="page" data-role-required="user admin">
         <main class="inspect-main">
             <section class="inspect-header">
-                <h1>Inspect a text</h1>
+                <h1>Parse a text</h1>
                 <p class="inspect-lede">Paste Finnish or Estonian text. We'll show unique lemmas, forms, definitions, examples, token counts, and row-level known/ignore actions.</p>
             </section>
 
@@ -277,7 +277,7 @@
                     <input type="file" id="inspect-file" accept=".txt,.md">
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-lg" id="inspect-submit">Inspect text</button>
+                <button type="submit" class="btn btn-primary btn-lg" id="inspect-submit">Parse text</button>
             </form>
         </main>
     </div>

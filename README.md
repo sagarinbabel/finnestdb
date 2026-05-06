@@ -287,7 +287,7 @@ go run ./cmd/importdict -lang fi -db finnestdb.db -custom-glosses ./my-overrides
 3. Open **Inspect**.
 4. Select a language: **Finnish (FI)** or **Estonian (ET)**.
 5. Paste text into the textarea (up to 300,000 Unicode characters).
-6. Click **Inspect text**.
+6. Click **Parse text**.
 7. You'll see a word list table:
 
 | Column | What it shows |
