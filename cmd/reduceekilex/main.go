@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // Subset of the Ekilex /api/word/details response that the reducer consumes.
@@ -321,18 +322,25 @@ func isEmptyMeaning(m compactMeaning) bool {
 
 func main() {
 	rawDir := flag.String("raw-dir", "localdata/ekilex/details/raw", "directory of bucketed *.json.gz files")
-	outCompact := flag.String("out-compact", "localdata/ekilex/details/details-compact.jsonl", "JSONL output path")
-	outForms := flag.String("out-forms", "localdata/ekilex/details/forms.tsv", "TSV output path")
+	outCompact := flag.String("out-compact", "", "single-file JSONL output path (mutually exclusive with -out-compact-dir)")
+	outForms := flag.String("out-forms", "", "single-file TSV output path (mutually exclusive with -out-forms-dir)")
+	outCompactDir := flag.String("out-compact-dir", "data/ekilex/definitions", "shard-per-letter JSONL output directory")
+	outFormsDir := flag.String("out-forms-dir", "data/ekilex/forms", "shard-per-letter TSV output directory")
 	limit := flag.Int("limit", 0, "stop after N words (0 = unlimited)")
 	progressEvery := flag.Int("progress-every", 10000, "print a progress line every N words processed")
 	flag.Parse()
 
-	if err := run(*rawDir, *outCompact, *outForms, *limit, *progressEvery); err != nil {
+	// If -out-compact / -out-forms are set, write a single combined file for
+	// that stream. Otherwise shard per first-letter into the corresponding -dir.
+	useCompactDir := *outCompact == ""
+	useFormsDir := *outForms == ""
+
+	if err := run(*rawDir, *outCompact, *outCompactDir, useCompactDir, *outForms, *outFormsDir, useFormsDir, *limit, *progressEvery); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(rawDir, outCompact, outForms string, limit, progressEvery int) error {
+func run(rawDir, outCompactFile, outCompactDir string, useCompactDir bool, outFormsFile, outFormsDir string, useFormsDir bool, limit, progressEvery int) error {
 	paths, err := listRawFiles(rawDir)
 	if err != nil {
 		return err
@@ -345,35 +353,17 @@ func run(rawDir, outCompact, outForms string, limit, progressEvery int) error {
 		paths = paths[:limit]
 	}
 
-	if err := os.MkdirAll(filepath.Dir(outCompact), 0o755); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Dir(outForms), 0o755); err != nil {
-		return err
-	}
-
-	cf, err := os.Create(outCompact)
+	compactSink, err := newCompactSink(outCompactFile, outCompactDir, useCompactDir)
 	if err != nil {
 		return err
 	}
-	defer cf.Close()
-	cw := bufio.NewWriterSize(cf, 1<<20)
-	defer cw.Flush()
-	enc := json.NewEncoder(cw)
-	enc.SetEscapeHTML(false)
+	defer compactSink.Close()
 
-	ff, err := os.Create(outForms)
+	formsSink, err := newFormsSink(outFormsFile, outFormsDir, useFormsDir)
 	if err != nil {
 		return err
 	}
-	defer ff.Close()
-	fw := bufio.NewWriterSize(ff, 1<<20)
-	defer fw.Flush()
-	tsv := csv.NewWriter(fw)
-	tsv.Comma = '\t'
-	if err := tsv.Write([]string{"lemma", "form", "morph_code"}); err != nil {
-		return err
-	}
+	defer formsSink.Close()
 
 	start := time.Now()
 	var (
@@ -391,11 +381,11 @@ func run(rawDir, outCompact, outForms string, limit, progressEvery int) error {
 			nSkipped++
 			continue
 		}
-		if err := enc.Encode(compact); err != nil {
+		if err := compactSink.Write(compact); err != nil {
 			return err
 		}
 		for _, r := range rows {
-			if err := tsv.Write([]string{r.Lemma, r.Form, r.MorphCode}); err != nil {
+			if err := formsSink.Write(compact.Lemma, r); err != nil {
 				return err
 			}
 		}
@@ -407,13 +397,228 @@ func run(rawDir, outCompact, outForms string, limit, progressEvery int) error {
 				time.Now().Format("15:04:05"), nWords, nMeanings, nForms, nSkipped)
 		}
 	}
-	tsv.Flush()
-	if err := tsv.Error(); err != nil {
+	if err := compactSink.Close(); err != nil {
+		return err
+	}
+	if err := formsSink.Close(); err != nil {
 		return err
 	}
 	fmt.Printf("[%s] done in %s: %d words, %d meanings, %d forms (%d skipped)\n",
 		time.Now().Format("15:04:05"), time.Since(start).Round(time.Second),
 		nWords, nMeanings, nForms, nSkipped)
+	return nil
+}
+
+// shardKey returns the per-letter shard name for a given lemma. Latin a-z and
+// Estonian-specific letters (ä, ö, ü, õ, š, ž) each get their own shard;
+// everything else (digits, symbols, foreign scripts) goes into "_other".
+func shardKey(lemma string) string {
+	for _, r := range lemma {
+		r = unicode.ToLower(r)
+		switch {
+		case r >= 'a' && r <= 'z':
+			return string(r)
+		case r == 'ä' || r == 'ö' || r == 'ü' || r == 'õ' || r == 'š' || r == 'ž':
+			return string(r)
+		}
+		return "_other"
+	}
+	return "_other"
+}
+
+// compactSink writes compactWord JSON either to a single file or to one
+// JSONL file per shard letter inside a directory.
+type compactSink struct {
+	single  *bufio.Writer
+	singleF *os.File
+	dir     string
+	files   map[string]*bufio.Writer
+	rawFs   map[string]*os.File
+}
+
+func newCompactSink(file, dir string, useDir bool) (*compactSink, error) {
+	s := &compactSink{}
+	if useDir {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return nil, err
+		}
+		s.dir = dir
+		s.files = map[string]*bufio.Writer{}
+		s.rawFs = map[string]*os.File{}
+		return s, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+		return nil, err
+	}
+	f, err := os.Create(file)
+	if err != nil {
+		return nil, err
+	}
+	s.singleF = f
+	s.single = bufio.NewWriterSize(f, 1<<20)
+	return s, nil
+}
+
+func (s *compactSink) writerFor(key string) (*bufio.Writer, error) {
+	if s.single != nil {
+		return s.single, nil
+	}
+	if w, ok := s.files[key]; ok {
+		return w, nil
+	}
+	path := filepath.Join(s.dir, key+".jsonl")
+	f, err := os.Create(path)
+	if err != nil {
+		return nil, err
+	}
+	w := bufio.NewWriterSize(f, 1<<20)
+	s.rawFs[key] = f
+	s.files[key] = w
+	return w, nil
+}
+
+func (s *compactSink) Write(c compactWord) error {
+	key := shardKey(c.Lemma)
+	w, err := s.writerFor(key)
+	if err != nil {
+		return err
+	}
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	return enc.Encode(c)
+}
+
+func (s *compactSink) Close() error {
+	if s.single != nil {
+		if err := s.single.Flush(); err != nil {
+			return err
+		}
+		err := s.singleF.Close()
+		s.single = nil
+		s.singleF = nil
+		return err
+	}
+	for k, w := range s.files {
+		if err := w.Flush(); err != nil {
+			return err
+		}
+		if err := s.rawFs[k].Close(); err != nil {
+			return err
+		}
+	}
+	s.files = nil
+	s.rawFs = nil
+	return nil
+}
+
+// formsSink mirrors compactSink for the TSV output. Each shard file gets its
+// own header row.
+type formsSink struct {
+	single  *csv.Writer
+	singleF *os.File
+	singleW *bufio.Writer
+	dir     string
+	writers map[string]*csv.Writer
+	bws     map[string]*bufio.Writer
+	files   map[string]*os.File
+}
+
+func newFormsSink(file, dir string, useDir bool) (*formsSink, error) {
+	s := &formsSink{}
+	if useDir {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return nil, err
+		}
+		s.dir = dir
+		s.writers = map[string]*csv.Writer{}
+		s.bws = map[string]*bufio.Writer{}
+		s.files = map[string]*os.File{}
+		return s, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
+		return nil, err
+	}
+	f, err := os.Create(file)
+	if err != nil {
+		return nil, err
+	}
+	bw := bufio.NewWriterSize(f, 1<<20)
+	tsv := csv.NewWriter(bw)
+	tsv.Comma = '\t'
+	if err := tsv.Write([]string{"lemma", "form", "morph_code"}); err != nil {
+		f.Close()
+		return nil, err
+	}
+	s.singleF = f
+	s.singleW = bw
+	s.single = tsv
+	return s, nil
+}
+
+func (s *formsSink) writerFor(key string) (*csv.Writer, error) {
+	if s.single != nil {
+		return s.single, nil
+	}
+	if w, ok := s.writers[key]; ok {
+		return w, nil
+	}
+	path := filepath.Join(s.dir, key+".tsv")
+	f, err := os.Create(path)
+	if err != nil {
+		return nil, err
+	}
+	bw := bufio.NewWriterSize(f, 1<<20)
+	tsv := csv.NewWriter(bw)
+	tsv.Comma = '\t'
+	if err := tsv.Write([]string{"lemma", "form", "morph_code"}); err != nil {
+		f.Close()
+		return nil, err
+	}
+	s.files[key] = f
+	s.bws[key] = bw
+	s.writers[key] = tsv
+	return tsv, nil
+}
+
+func (s *formsSink) Write(lemma string, r formRow) error {
+	key := shardKey(lemma)
+	w, err := s.writerFor(key)
+	if err != nil {
+		return err
+	}
+	return w.Write([]string{r.Lemma, r.Form, r.MorphCode})
+}
+
+func (s *formsSink) Close() error {
+	if s.single != nil {
+		s.single.Flush()
+		if err := s.single.Error(); err != nil {
+			return err
+		}
+		if err := s.singleW.Flush(); err != nil {
+			return err
+		}
+		err := s.singleF.Close()
+		s.single = nil
+		s.singleF = nil
+		s.singleW = nil
+		return err
+	}
+	for k, w := range s.writers {
+		w.Flush()
+		if err := w.Error(); err != nil {
+			return err
+		}
+		if err := s.bws[k].Flush(); err != nil {
+			return err
+		}
+		if err := s.files[k].Close(); err != nil {
+			return err
+		}
+	}
+	s.writers = nil
+	s.bws = nil
+	s.files = nil
 	return nil
 }
 
