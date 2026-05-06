@@ -6,6 +6,44 @@ product documentation. Code changes belong in git history, not here.
 Entries are reverse-chronological. Each entry links to the docs it
 introduced or modified so the docs index stays navigable.
 
+## 2026-05-07 — Silver tagger (Plan C / PR 6)
+
+Turns the raw Gutenberg-FI corpus from PR #115 into ~508k tagged silver
+tokens by running [`pkg/lemmatizer-fi-et`](../pkg/lemmatizer-fi-et/)
+over each book. Output is parser-eval gold-format JSON; gitignored
+because the file is ~88 MB per ~500k-token source and fully
+regenerable.
+
+- Added [`cmd/silvertag`](../cmd/silvertag/main.go): per-token tagger.
+  Tokenizes raw text on word boundaries (preserves intra-word hyphens
+  like `B1-tase` and `1990-luvulla`; strips ASCII/Unicode quotes and
+  punctuation); splits sentences on `. ! ?` followed by whitespace
+  plus paragraph breaks. Runs `lemmatizer.Lemmatize(lang, lower)` per
+  token and emits `{surface, lemma, pos, grammar_label, feats}`. The
+  FST package internally merges Voikko VFST + Giellalt HFSTOL with
+  VFST-priority for FI; ET goes through Giellalt only.
+- First-run output: 50,798 sentence cases / **508,418 tokens / 94.4%
+  tagged** (the remaining 5.6% are OOV — names, foreign words,
+  archaic forms, typos).
+- Added Makefile target `make silvertag-fi`. Idempotent on the input;
+  output overwritten.
+- Output gitignored at `testdata/parser-eval/{fi,et}/silver/` (88 MB
+  is too big to commit; regenerable in ~30s on a fresh checkout).
+
+**FEATS coverage:** every tagged token carries a UD FEATS string built
+from the FST analysis (Case + Number + Person + Tense + Mood). Voice,
+VerbForm, Polarity, Degree etc. are not yet propagated through the
+FST `Analysis` struct — same gap surfaced in the FEATS migration
+LEARNINGS doc.
+
+**Why now:** the FEATS migration ([PR #118](https://github.com/sagarinbabel/finnestdb/pull/118))
+made silver tokens evaluable per-attribute. Combined with the FST
+step promotion ([PR #117](https://github.com/sagarinbabel/finnestdb/pull/117))
+which tags every token in custom mode, we can now compare custom vs
+omorfi vs the silver gold across the same 500k tokens. That's the
+first time we've had silver+gold at scale with the same metric
+definitions.
+
 ## 2026-05-07 — 3-column comparison reports + bootstrap CIs (Plan C / PR 2)
 
 Restructures `cmd/parser-compare` so committed comparison reports answer the

@@ -14,6 +14,7 @@ corpusmine
 autoresearch
 server
 /scrapegutenberg
+/silvertag
 *.db
 *.db-shm
 *.db-wal
@@ -72,6 +73,12 @@ testdata/parser-eval/et/gold-train/
 # stays local — the public repo only hosts FI UD gold (CC BY / CC BY-SA).
 # See cmd/importud/main.go for source attribution.
 testdata/parser-eval/et/gold/ud-et-*.json
+
+# Silver gold (auto-tagged, ~88 MB per FI source). Regenerable from the
+# raw corpus under data/silver-{fi,et}/raw/ via `make silvertag-fi`.
+# Don't commit the bulky output; commit the raw text + the manifest.
+testdata/parser-eval/fi/silver/
+testdata/parser-eval/et/silver/
 
 # Claude Code
 .claude/

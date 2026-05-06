@@ -330,3 +330,20 @@ scrape-gutenberg-fi:
 	    -target-tokens $(TARGET_TOKENS) \
 	    -out data/silver-fi/raw \
 	    -manifest data/silver-fi/manifest.jsonl
+
+# ── Silver tagger (Plan C / PR 6) ────────────────────────────────────────────
+#
+# Tags raw text under data/silver-fi/raw/ with morphological analyses from
+# pkg/lemmatizer-fi-et (Voikko VFST + Giellalt HFSTOL merged for FI; Giellalt
+# only for ET). Output is parser-eval gold-format JSON; gitignored because
+# the file is large (~88 MB per ~500k-token source) and fully regenerable.
+#
+# Re-runs are idempotent on the input; output is overwritten.
+silvertag-fi: parser
+	@export DYLD_LIBRARY_PATH="$$(pwd)/parser/target/release:$${DYLD_LIBRARY_PATH:-}"; \
+	go run ./cmd/silvertag \
+	    -lang FI \
+	    -input data/silver-fi/raw \
+	    -output testdata/parser-eval/fi/silver/gutenberg-fi-silver-v1.json \
+	    -name gutenberg-fi-silver-v1 \
+	    -version v1
