@@ -1457,7 +1457,11 @@ func (d *DB) MarkLemmaIgnored(userID int64, lang, lemma, pos string) error {
 }
 
 // ClearLemmaState removes the given (lemma, pos) from both the known and
-// ignored lists for a user, returning the lemma to the neutral / unknown state.
+// ignored lists for a user, returning the lemma to the neutral / unknown
+// state. If a deck containing this lemma was created while the lemma was
+// known/ignored, CreateDeckWithSentences would have skipped seeding a card
+// row — so we ensure one here so the lemma is reachable from the review
+// queue once the user has marked it unknown again.
 func (d *DB) ClearLemmaState(userID int64, lang, lemma, pos string) error {
 	tx, err := d.db.Begin()
 	if err != nil {
@@ -1475,6 +1479,9 @@ func (d *DB) ClearLemmaState(userID int64, lang, lemma, pos string) error {
 		`DELETE FROM user_ignored_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
 		userID, lang, lemma, pos,
 	); err != nil {
+		return err
+	}
+	if _, err := ensureCard(tx, userID, lang, lemma, pos); err != nil {
 		return err
 	}
 	return tx.Commit()
