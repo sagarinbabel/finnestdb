@@ -31,6 +31,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"finnestdb/internal/store"
 
@@ -210,6 +211,8 @@ func main() {
 	ekilexDatasets := flag.String("ekilex-datasets", "eki", "Comma-delimited Ekilex dataset codes to import")
 	ekilexWords := flag.String("ekilex-words", "", "Comma-delimited word list for a small Ekilex smoke import")
 	ekilexLimit := flag.Int("ekilex-limit", 0, "Maximum number of Ekilex words to import; 0 means no limit")
+	ekilexTimeout := flag.Duration("ekilex-timeout", 45*time.Second, "Ekilex HTTP client timeout (e.g. 45s, 2m)")
+	ekilexRetries := flag.Int("ekilex-retries", 0, "Retries per Ekilex HTTP request on network/HTTP/JSON error")
 	flag.Parse()
 
 	langCode := strings.ToLower(*lang)
@@ -274,7 +277,7 @@ func main() {
 		if *sourceAttribution == "kaikki.org dictionary data derived from Wiktionary" {
 			*sourceAttribution = "Eesti Keele Instituut; EKI sõnastiku- ja terminibaasisüsteem Ekilex; Sõnaveeb"
 		}
-		client, err := newEkilexClient(*ekilexBaseURL, os.Getenv("EKILEX_API_KEY"))
+		client, err := newEkilexClient(*ekilexBaseURL, os.Getenv("EKILEX_API_KEY"), *ekilexTimeout, *ekilexRetries)
 		if err != nil {
 			log.Fatalf("ekilex client: %v", err)
 		}

@@ -129,6 +129,13 @@ make run
 
 Then open **http://localhost:8080** in your browser.
 
+If you want a one-command **first local run** that also imports the required
+dictionaries (takes a while; downloads a lot of data), use:
+
+```bash
+make run-local
+```
+
 The app opens to the public landing page. Sign in with an email address to use
 Inspect, Decks, and Review. The current auth flow is an alpha stub; see
 [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md) before exposing the app
@@ -158,7 +165,13 @@ make import-dict-fi             # Finnish  (~12-20M forms, downloads ~200MB)
 make import-dict-et             # Estonian (optional)
 make import-ekilex-et           # Estonian EKI 2026 public headwords (tracked snapshot)
 make import-ekilex-details-et   # Estonian Ekilex full reduced drop (~178k lemmas, ~6.2M forms)
-make import-dict-et-ekilex      # Estonian Ekilex API (on-demand, requires EKILEX_API_KEY)
+make import-dict-et-ekilex      # (optional) Estonian Ekilex API smoke import (requires EKILEX_API_KEY; not recommended for full runs)
+```
+
+Recommended Estonian import (reliable, offline, fast at import time):
+
+```bash
+make import-dict-et-recommended
 ```
 
 `make run` does **not** auto-import — import once manually, then `make run`
@@ -183,14 +196,15 @@ offline; only the loader step is required at deploy time.
 #### Refreshing Ekilex Data
 
 **Most contributors will not need to run this — the reduced output is already
-committed under [`data/ekilex/`](data/ekilex/).** You only need to run it only refreshing
-the latest Ekilex data. The full pipeline is four ordered steps, most users will only need step 4:
+committed under [`data/ekilex/`](data/ekilex/).** You only need to run it when
+refreshing the latest Ekilex data. The full pipeline is four ordered steps;
+most users will only need step 4:
 
-1. **Fetch the list of words** — `make fetch-ekilex-refresh` 
+1. **Fetch the list of words** — `make fetch-ekilex-refresh`
    - re-fetches `/api/public_word/eki` and overwrites the tracked headword list
-      (`data/ekilex/eki-public-words-2026-et.jsonl`) 
+     (`data/ekilex/eki-public-words-2026-et.jsonl`)
    - only updates if the headword set has changed
-2. **Scrape per-word details** — `make fetch-ekilex` 
+2. **Scrape per-word details** — `make fetch-ekilex`
    - see setup instructions below
    - goes through the wordlist from step 1 and pulls `/api/word/details` for every `word_id`
    - writes gzipped raw payloads under `localdata/ekilex/details/raw/` (gitignored)
@@ -198,10 +212,10 @@ the latest Ekilex data. The full pipeline is four ordered steps, most users will
    - reduces the raw payloads into sharded committable artifacts under [`data/ekilex/`](data/ekilex/):
      - `definitions/<letter>.jsonl`: extracts lemma + morphology + meanings
      - `forms/<letter>.tsv`: a list of inflected forms, one row per inflected form with the corresponding lemma
-   - Golden-tested; see the `reduce-ekilex` notes in [Makefile](Makefile).
-4. **Load into the dictionary** — `make import-ekilex-details-et` 
+   - golden-tested; see the `reduce-ekilex` notes in [Makefile](Makefile).
+4. **Load into the dictionary** — `make import-ekilex-details-et`
    - bulk-loads the reduced data into the lemma/form/translation tables in
-      `finnestdb.db`
+     `finnestdb.db`
    - this is the only step required at deploy time
 
 `make fetch-ekilex-sample` is an optional aid alongside step 2: it fetches a
@@ -243,6 +257,16 @@ upset the upstream API — the circuit breaker starts tripping repeatedly and
 overall throughput drops. Treat 20/20 as a soft ceiling unless you've
 verified the API can sustain more.
 
+**Important:** `make import-dict-et-ekilex` uses the live Ekilex API and does
+per-word network calls. It is intentionally configured as a **small smoke
+import** (see `EKILEX_LIMIT` in the Makefile) and may time out on slow or
+rate-limited connections. For a reliable local setup, prefer:
+
+```bash
+make import-dict-et
+make import-ekilex-et
+make import-ekilex-details-et
+```
 To force a full refresh (e.g. after a new kaikki.org release):
 
 ```bash
