@@ -84,6 +84,45 @@ type importMetadata struct {
 	ChangesNote   string
 }
 
+type importSourceConfig struct {
+	Name     string
+	Priority int
+}
+
+// Source priority convention (ascending). Higher priority overwrites lower on
+// overlapping (lemma, pos, lang) or (form, lang) primary keys; lower-priority
+// imports do not overwrite higher-priority rows.
+//
+//	  0  legacy / pre-priority rows (migration backfill default)
+//	 10  kaikki / Wiktionary-derived dump (default for `-source-key kaikki`)
+//	 20  sanctioned licensed corpora (EKI/Ekilex etc.)
+//	100  user-supplied custom glosses (`-custom-glosses`)
+//
+// Operators can pick any integer between sources; these are the recommended
+// canonical values so re-imports compose deterministically.
+const customGlossPriority = 100
+
+// Upsert SQL for the lemmas and forms tables. Defined once so all six
+// call sites (initial Prepare, batch-restart Prepare, applyCustomGlosses)
+// share the same conflict policy: incoming row wins iff its priority is
+// at least as high as the existing row's.
+const upsertLemmaSQL = `INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+	VALUES (?, ?, ?, ?, ?, ?)
+	ON CONFLICT(lemma, pos, lang) DO UPDATE SET
+		gloss = excluded.gloss,
+		source = excluded.source,
+		source_priority = excluded.source_priority
+	WHERE lemmas.source_priority <= excluded.source_priority`
+
+const upsertFormSQL = `INSERT INTO forms (form, lemma, pos, lang, source, source_priority)
+	VALUES (?, ?, ?, ?, ?, ?)
+	ON CONFLICT(form, lang) DO UPDATE SET
+		lemma = excluded.lemma,
+		pos = excluded.pos,
+		source = excluded.source,
+		source_priority = excluded.source_priority
+	WHERE forms.source_priority <= excluded.source_priority`
+
 func normalizePos(raw string) string {
 	if mapped, ok := posMap[strings.ToLower(strings.TrimSpace(raw))]; ok {
 		return mapped
@@ -138,6 +177,8 @@ func hasPossessiveTag(tags []string) bool {
 func main() {
 	lang := flag.String("lang", "fi", "Language to import: fi or et")
 	dbPath := flag.String("db", "finnestdb.db", "Path to SQLite database")
+	sourceKey := flag.String("source-key", "kaikki", "Stable source key stored on each imported row (kaikki|ekilex|...; non-kaikki keys require -file or -source-url)")
+	sourcePriority := flag.Int("source-priority", 10, "Source priority for conflict resolution; higher overwrites lower (kaikki=10, EKI~20, custom=100)")
 	filePath := flag.String("file", "", "Path to local .jsonl, .jsonl.gz, or .jsonl.bz2 file (skips download)")
 	customGlosses := flag.String("custom-glosses", "", "Path to CSV file of custom gloss overrides (word,pos,lang,gloss)")
 	reimport := flag.Bool("reimport", false, "Drop existing entries for this lang before importing")
@@ -154,8 +195,15 @@ func main() {
 		log.Fatalf("Unsupported language %q. Supported: fi, et", *lang)
 	}
 	dbLang := strings.ToUpper(langCode) // "fi" → "FI", "et" → "ET"
+	sourceConfig := importSourceConfig{
+		Name:     strings.ToLower(strings.TrimSpace(*sourceKey)),
+		Priority: *sourcePriority,
+	}
+	if sourceConfig.Name == "" {
+		log.Fatal("source-key is required")
+	}
 
-	if err := resolveProvenance(*filePath, sourceName, sourceURL, sourceLicense, sourceAttribution); err != nil {
+	if err := resolveProvenance(*filePath, sourceConfig.Name, sourceName, sourceURL, sourceLicense, sourceAttribution); err != nil {
 		log.Fatalf("%v", err)
 	}
 
@@ -184,7 +232,6 @@ func main() {
 		}
 	}
 
-	// Open the JSONL source.
 	var reader io.Reader
 	if *filePath != "" {
 		f, err := os.Open(*filePath)
@@ -214,7 +261,7 @@ func main() {
 		}
 	}
 
-	count, skipped, err := importJSONL(db, reader, dbLang)
+	count, skipped, err := importJSONL(db, reader, dbLang, sourceConfig)
 	if err != nil {
 		log.Fatalf("import: %v", err)
 	}
@@ -251,16 +298,25 @@ func main() {
 		log.Printf("warn: could not update dict_metadata: %v", err)
 	}
 
-	fmt.Printf("\nDone. Imported %d entries for %s.\n", count, dbLang)
+	fmt.Printf("\nDone. Imported %d entries for %s from %s.\n", count, dbLang, sourceConfig.Name)
 	fmt.Printf("Run './finnestdb' to start the server.\n")
 }
 
 // resolveProvenance applies kaikki defaults when we are importing the built-in
 // kaikki dump, and otherwise requires the operator to spell out source name,
-// license, and attribution. It mutates the flag pointers in place.
-func resolveProvenance(filePath string, sourceName, sourceURL, sourceLicense, sourceAttribution *string) error {
-	usingKaikki := filePath == "" && strings.TrimSpace(*sourceURL) == ""
-	if usingKaikki {
+// license, and attribution. It also rejects the dangerous combination of a
+// non-kaikki -source-key with the kaikki URL fallback (no -file, no
+// -source-url), which would silently mislabel kaikki rows under a different
+// source identity. It mutates the flag pointers in place.
+func resolveProvenance(filePath, sourceKey string, sourceName, sourceURL, sourceLicense, sourceAttribution *string) error {
+	usingKaikkiData := filePath == "" && strings.TrimSpace(*sourceURL) == ""
+	usingKaikkiKey := strings.ToLower(strings.TrimSpace(sourceKey)) == "kaikki"
+
+	if usingKaikkiData && !usingKaikkiKey {
+		return fmt.Errorf("-source-key=%q requires -file or -source-url; otherwise data would be downloaded from kaikki and silently mislabeled as %q", sourceKey, sourceKey)
+	}
+
+	if usingKaikkiData && usingKaikkiKey {
 		if strings.TrimSpace(*sourceName) == "" {
 			*sourceName = kaikkiSourceName
 		}
@@ -309,7 +365,7 @@ func recordImportMetadata(db *sql.DB, dbLang string, metadata importMetadata, ro
 
 // importJSONL streams the JSONL reader and inserts lemmas + forms into the DB.
 // Returns (entriesProcessed, possessiveFormsSkipped, error).
-func importJSONL(db *sql.DB, r io.Reader, dbLang string) (int, int, error) {
+func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConfig) (int, int, error) {
 	scanner := bufio.NewScanner(r)
 	scanner.Buffer(make([]byte, 4*1024*1024), 4*1024*1024) // 4MB line buffer
 
@@ -319,16 +375,12 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string) (int, int, error) {
 		return 0, 0, err
 	}
 
-	stmtLemma, err := tx.Prepare(
-		`INSERT OR REPLACE INTO lemmas (lemma, pos, gloss, lang) VALUES (?, ?, ?, ?)`,
-	)
+	stmtLemma, err := tx.Prepare(upsertLemmaSQL)
 	if err != nil {
 		tx.Rollback()
 		return 0, 0, err
 	}
-	stmtForm, err := tx.Prepare(
-		`INSERT OR IGNORE INTO forms (form, lemma, pos, lang) VALUES (?, ?, ?, ?)`,
-	)
+	stmtForm, err := tx.Prepare(upsertFormSQL)
 	if err != nil {
 		tx.Rollback()
 		return 0, 0, err
@@ -347,15 +399,11 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string) (int, int, error) {
 		if err != nil {
 			return err
 		}
-		stmtLemma, err = tx.Prepare(
-			`INSERT OR REPLACE INTO lemmas (lemma, pos, gloss, lang) VALUES (?, ?, ?, ?)`,
-		)
+		stmtLemma, err = tx.Prepare(upsertLemmaSQL)
 		if err != nil {
 			return err
 		}
-		stmtForm, err = tx.Prepare(
-			`INSERT OR IGNORE INTO forms (form, lemma, pos, lang) VALUES (?, ?, ?, ?)`,
-		)
+		stmtForm, err = tx.Prepare(upsertFormSQL)
 		return err
 	}
 
@@ -384,12 +432,12 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string) (int, int, error) {
 		}
 
 		// Insert lemma (the canonical headword form).
-		if _, err := stmtLemma.Exec(entry.Word, pos, gloss, dbLang); err != nil {
+		if _, err := stmtLemma.Exec(entry.Word, pos, gloss, dbLang, source.Name, source.Priority); err != nil {
 			log.Printf("warn: lemma insert %q: %v", entry.Word, err)
 		}
 
 		// Insert the canonical form → lemma mapping (lemma maps to itself).
-		stmtForm.Exec(entry.Word, entry.Word, pos, dbLang)
+		stmtForm.Exec(entry.Word, entry.Word, pos, dbLang, source.Name, source.Priority)
 
 		// Insert inflected forms, skipping possessive-tagged forms.
 		for _, f := range entry.Forms {
@@ -400,7 +448,7 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string) (int, int, error) {
 				skipped++
 				continue
 			}
-			stmtForm.Exec(f.Form, entry.Word, pos, dbLang)
+			stmtForm.Exec(f.Form, entry.Word, pos, dbLang, source.Name, source.Priority)
 		}
 
 		count++
@@ -461,8 +509,8 @@ func applyCustomGlosses(db *sql.DB, filePath, dbLang string) (int, error) {
 		// Not a header — process this row as data.
 		if len(header) >= 4 {
 			pos := normalizePos(header[1])
-			db.Exec(`INSERT OR REPLACE INTO lemmas (lemma, pos, gloss, lang) VALUES (?, ?, ?, ?)`,
-				header[0], pos, header[3], dbLang)
+			db.Exec(upsertLemmaSQL,
+				header[0], pos, header[3], dbLang, "custom", customGlossPriority)
 		}
 	}
 
@@ -479,9 +527,8 @@ func applyCustomGlosses(db *sql.DB, filePath, dbLang string) (int, error) {
 			continue
 		}
 		word, pos, gloss := row[0], normalizePos(row[1]), row[3]
-		if _, err := db.Exec(
-			`INSERT OR REPLACE INTO lemmas (lemma, pos, gloss, lang) VALUES (?, ?, ?, ?)`,
-			word, pos, gloss, dbLang,
+		if _, err := db.Exec(upsertLemmaSQL,
+			word, pos, gloss, dbLang, "custom", customGlossPriority,
 		); err != nil {
 			log.Printf("warn: custom gloss insert %q: %v", word, err)
 			continue
@@ -502,6 +549,8 @@ func ensureSchema(db *sql.DB) error {
 			pos   TEXT NOT NULL,
 			gloss TEXT,
 			lang  TEXT NOT NULL,
+			source TEXT NOT NULL DEFAULT '',
+			source_priority INTEGER NOT NULL DEFAULT 0,
 			PRIMARY KEY(lemma, pos, lang)
 		);
 		CREATE TABLE IF NOT EXISTS forms (
@@ -509,10 +558,15 @@ func ensureSchema(db *sql.DB) error {
 			lemma TEXT NOT NULL,
 			pos   TEXT NOT NULL,
 			lang  TEXT NOT NULL,
+			source TEXT NOT NULL DEFAULT '',
+			source_priority INTEGER NOT NULL DEFAULT 0,
 			PRIMARY KEY (form, lang)
 		);
 	`); err != nil {
 		return err
 	}
-	return store.EnsureDictMetadataSchema(db)
+	if err := store.EnsureDictMetadataSchema(db); err != nil {
+		return err
+	}
+	return store.EnsureDictionarySourceColumns(db)
 }

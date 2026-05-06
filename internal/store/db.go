@@ -182,6 +182,8 @@ func (d *DB) initSchema() error {
 		pos TEXT NOT NULL,
 		gloss TEXT,
 		lang TEXT NOT NULL,
+		source TEXT NOT NULL DEFAULT '',
+		source_priority INTEGER NOT NULL DEFAULT 0,
 		PRIMARY KEY(lemma, pos, lang)
 	);
 
@@ -243,6 +245,8 @@ func (d *DB) initSchema() error {
 		lemma TEXT NOT NULL,
 		pos   TEXT NOT NULL,
 		lang  TEXT NOT NULL,
+		source TEXT NOT NULL DEFAULT '',
+		source_priority INTEGER NOT NULL DEFAULT 0,
 		PRIMARY KEY (form, lang)
 	);
 
@@ -339,6 +343,9 @@ func (d *DB) initSchema() error {
 	if err := EnsureDictMetadataSchema(d.db); err != nil {
 		return err
 	}
+	if err := EnsureDictionarySourceColumns(d.db); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -376,6 +383,31 @@ func EnsureDictMetadataSchema(db *sql.DB) error {
 	for _, column := range columns {
 		if _, err := db.Exec(`ALTER TABLE dict_metadata ADD COLUMN ` + column); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 			return err
+		}
+	}
+	return nil
+}
+
+// EnsureDictionarySourceColumns backfills row-level source-tracking columns on
+// existing DBs. Fresh DBs already get these columns via the lemmas/forms
+// CREATE TABLE statements above; this exists for upgrade compatibility. Both
+// the server (internal/store) and the standalone importer (cmd/importdict)
+// call it so the column set stays in one place.
+func EnsureDictionarySourceColumns(db *sql.DB) error {
+	for table, columns := range map[string][]string{
+		"lemmas": {
+			"source TEXT NOT NULL DEFAULT ''",
+			"source_priority INTEGER NOT NULL DEFAULT 0",
+		},
+		"forms": {
+			"source TEXT NOT NULL DEFAULT ''",
+			"source_priority INTEGER NOT NULL DEFAULT 0",
+		},
+	} {
+		for _, column := range columns {
+			if _, err := db.Exec(`ALTER TABLE ` + table + ` ADD COLUMN ` + column); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+				return err
+			}
 		}
 	}
 	return nil
