@@ -285,6 +285,52 @@ func uniqueNonEmptyStrings(values []string) []string {
 	return out
 }
 
+// BatchLookupAllForms returns every (lemma, pos) candidate the dictionary has
+// for each surface form — used at deck-ingest time to expand homonyms into one
+// occurrence row per candidate (e.g. ET "joon" → both joon/NOUN and
+// jooma/VERB). Unlike BatchLookupForms this is a direct dictionary lookup
+// only; it does not run the possessive / compound / case-suffix fallback
+// chain, because those heuristics are designed to commit to a single
+// resolution and aren't authoritative for ambiguity.
+//
+// Forms with no direct dict hit are absent from the result map. Each form's
+// slice is non-empty when present.
+func (d *DB) BatchLookupAllForms(forms []string, lang string) map[string][]FormResolution {
+	result := make(map[string][]FormResolution, len(forms))
+	if len(forms) == 0 {
+		return result
+	}
+
+	stmt, err := d.db.Prepare(`SELECT lemma, pos FROM forms WHERE form = ? AND lang = ?`)
+	if err != nil {
+		return result
+	}
+	defer stmt.Close()
+
+	for _, form := range forms {
+		lower := strings.ToLower(form)
+		rows, err := stmt.Query(lower, lang)
+		if err != nil {
+			continue
+		}
+		var candidates []FormResolution
+		for rows.Next() {
+			var lemma, pos string
+			if err := rows.Scan(&lemma, &pos); err != nil {
+				rows.Close()
+				candidates = nil
+				break
+			}
+			candidates = append(candidates, FormResolution{Lemma: lemma, POS: pos, Source: "dict"})
+		}
+		rows.Close()
+		if len(candidates) > 0 {
+			result[form] = candidates
+		}
+	}
+	return result
+}
+
 // LemmaKey identifies a unique (lemma, pos) pair for use as a map key.
 type LemmaKey struct {
 	Lemma string

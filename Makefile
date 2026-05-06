@@ -1,5 +1,6 @@
 .PHONY: all build clean parser server frontend run \
         import-dict-fi import-dict-et import-dict import-dict-et-ekilex import-ekilex-et \
+        import-ekilex-details-et \
         fetch-ekilex-refresh fetch-ekilex-sample fetch-ekilex \
         reduce-ekilex \
         reimport-dict-fi reimport-dict-et reimport-dict \
@@ -81,6 +82,15 @@ import-dict: import-dict-fi import-dict-et
 # tracked compact Ekilex snapshot. Existing Kaikki rows are preserved.
 import-ekilex-et:
 	go run ./cmd/importekilex -db finnestdb.db -file data/ekilex/eki-public-words-2026-et.jsonl
+
+# Imports the rich Ekilex data drop (definitions/*.jsonl + forms/*.tsv,
+# produced by `make reduce-ekilex`) into lemmas + forms. Loads ~178k lemma
+# rows and ~6.2M form rows; runtime ~15s on a fast SSD. Empty-gloss guard
+# preserves any pre-existing kaikki English glosses. POS attribution uses
+# the form's morph_code to disambiguate homonyms — see
+# cmd/importekilexdetails for the table.
+import-ekilex-details-et:
+	go run ./cmd/importekilexdetails -db finnestdb.db -data data/ekilex
 
 # ── Ekilex /api/word/details enrichment scrape ────────────────────────────────
 # Requires EKILEX_API_KEY in the environment. Raw responses land under

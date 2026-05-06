@@ -65,6 +65,193 @@ func assertResolution(t *testing.T, got map[string]FormResolution, form, wantLem
 	}
 }
 
+// --- BatchLookupAllForms tests ---
+
+func TestBatchLookupAllForms_HomonymExpansion(t *testing.T) {
+	db := newTestDB(t)
+	// "joon" maps to two lemmas: noun "joon" (line) and verb "jooma" (drink),
+	// where "joon" is 1Sg of jooma. Both rows must coexist under the new PK.
+	seedForms(t, db, [][4]string{
+		{"joon", "joon", "NOUN", "ET"},
+		{"joon", "jooma", "VERB", "ET"},
+		{"vesi", "vesi", "NOUN", "ET"},
+	})
+
+	got := db.BatchLookupAllForms([]string{"joon", "vesi", "missing"}, "ET")
+
+	cands, ok := got["joon"]
+	if !ok {
+		t.Fatal("joon: expected in result map")
+	}
+	if len(cands) != 2 {
+		t.Fatalf("joon: got %d candidates, want 2: %+v", len(cands), cands)
+	}
+	wantPairs := map[[2]string]bool{{"joon", "NOUN"}: false, {"jooma", "VERB"}: false}
+	for _, c := range cands {
+		key := [2]string{c.Lemma, c.POS}
+		if _, expected := wantPairs[key]; !expected {
+			t.Errorf("joon: unexpected candidate %+v", c)
+			continue
+		}
+		wantPairs[key] = true
+		if c.Source != "dict" {
+			t.Errorf("joon candidate %+v: source got %q, want \"dict\"", c, c.Source)
+		}
+	}
+	for pair, seen := range wantPairs {
+		if !seen {
+			t.Errorf("joon: missing expected candidate %v", pair)
+		}
+	}
+
+	if len(got["vesi"]) != 1 {
+		t.Errorf("vesi: got %d candidates, want 1", len(got["vesi"]))
+	}
+	if _, present := got["missing"]; present {
+		t.Errorf("missing: expected absent from result map")
+	}
+}
+
+func TestBatchLookupAllForms_CaseFolding(t *testing.T) {
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"joon", "joon", "NOUN", "ET"},
+		{"joon", "jooma", "VERB", "ET"},
+	})
+
+	got := db.BatchLookupAllForms([]string{"Joon"}, "ET")
+	if len(got["Joon"]) != 2 {
+		t.Errorf("sentence-initial Joon: got %d candidates, want 2", len(got["Joon"]))
+	}
+}
+
+// --- multi-lemma schema migration ---
+
+func TestEnsureMultiLemmaSchema_PreservesRowsAndAddsMultiLemmaSupport(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "legacy.db")
+	raw, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open raw: %v", err)
+	}
+
+	// Create the LEGACY shape (PK before this migration). Use the same
+	// CREATE-time columns the merge-base of this branch had.
+	if _, err := raw.Exec(`
+		CREATE TABLE forms (
+			form  TEXT NOT NULL,
+			lemma TEXT NOT NULL,
+			pos   TEXT NOT NULL,
+			lang  TEXT NOT NULL,
+			PRIMARY KEY (form, lang)
+		);
+		CREATE TABLE occurrence (
+			deck_id INTEGER NOT NULL,
+			sentence_id INTEGER NOT NULL,
+			token_ix INTEGER NOT NULL,
+			lemma TEXT NOT NULL,
+			pos TEXT NOT NULL,
+			UNIQUE(deck_id, sentence_id, token_ix)
+		);
+	`); err != nil {
+		t.Fatalf("legacy schema: %v", err)
+	}
+	if _, err := raw.Exec(`INSERT INTO forms (form, lemma, pos, lang) VALUES ('joon', 'joon', 'NOUN', 'ET')`); err != nil {
+		t.Fatalf("seed forms: %v", err)
+	}
+	if _, err := raw.Exec(`INSERT INTO occurrence (deck_id, sentence_id, token_ix, lemma, pos) VALUES (1, 1, 0, 'joon', 'NOUN')`); err != nil {
+		t.Fatalf("seed occurrence: %v", err)
+	}
+
+	if err := EnsureMultiLemmaSchema(raw); err != nil {
+		t.Fatalf("EnsureMultiLemmaSchema: %v", err)
+	}
+
+	// Existing rows preserved.
+	var count int
+	if err := raw.QueryRow(`SELECT COUNT(*) FROM forms WHERE form='joon' AND lemma='joon' AND pos='NOUN' AND lang='ET'`).Scan(&count); err != nil {
+		t.Fatalf("count forms: %v", err)
+	}
+	if count != 1 {
+		t.Errorf("forms after migration: count=%d want 1", count)
+	}
+
+	// New PK admits a second (lemma, pos) row for the same (form, lang).
+	if _, err := raw.Exec(`INSERT INTO forms (form, lemma, pos, lang) VALUES ('joon', 'jooma', 'VERB', 'ET')`); err != nil {
+		t.Errorf("insert second homonym row: %v", err)
+	}
+
+	// New occurrence UNIQUE admits two rows at the same (deck, sentence, token).
+	if _, err := raw.Exec(`INSERT INTO occurrence (deck_id, sentence_id, token_ix, lemma, pos) VALUES (1, 1, 0, 'jooma', 'VERB')`); err != nil {
+		t.Errorf("insert second occurrence row: %v", err)
+	}
+
+	// Migration is idempotent — re-running is a no-op.
+	if err := EnsureMultiLemmaSchema(raw); err != nil {
+		t.Fatalf("EnsureMultiLemmaSchema (re-run): %v", err)
+	}
+
+	// And the previous duplicate-occurrence guard still holds for the
+	// fully-keyed tuple.
+	_, err = raw.Exec(`INSERT INTO occurrence (deck_id, sentence_id, token_ix, lemma, pos) VALUES (1, 1, 0, 'jooma', 'VERB')`)
+	if err == nil {
+		t.Error("expected UNIQUE violation on duplicate (deck, sentence, token, lemma, pos), got nil")
+	}
+
+	if err := raw.Close(); err != nil {
+		t.Fatalf("close raw: %v", err)
+	}
+}
+
+func TestEnsureMultiLemmaSchema_PreservesAddedColumns(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "with-source.db")
+	raw, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open raw: %v", err)
+	}
+	defer raw.Close()
+
+	// Simulate the post-EnsureDictionarySourceColumns state on main: forms
+	// has source / source_priority added via ALTER TABLE before this
+	// migration runs.
+	if _, err := raw.Exec(`
+		CREATE TABLE forms (
+			form  TEXT NOT NULL,
+			lemma TEXT NOT NULL,
+			pos   TEXT NOT NULL,
+			lang  TEXT NOT NULL,
+			PRIMARY KEY (form, lang)
+		);
+		CREATE TABLE occurrence (
+			deck_id INTEGER NOT NULL,
+			sentence_id INTEGER NOT NULL,
+			token_ix INTEGER NOT NULL,
+			lemma TEXT NOT NULL,
+			pos TEXT NOT NULL,
+			UNIQUE(deck_id, sentence_id, token_ix)
+		);
+		ALTER TABLE forms ADD COLUMN source TEXT NOT NULL DEFAULT '';
+		ALTER TABLE forms ADD COLUMN source_priority INTEGER NOT NULL DEFAULT 0;
+	`); err != nil {
+		t.Fatalf("legacy schema with source cols: %v", err)
+	}
+	if _, err := raw.Exec(`INSERT INTO forms (form, lemma, pos, lang, source, source_priority) VALUES ('joon', 'joon', 'NOUN', 'ET', 'kaikki', 10)`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	if err := EnsureMultiLemmaSchema(raw); err != nil {
+		t.Fatalf("migration: %v", err)
+	}
+
+	var src string
+	var prio int
+	if err := raw.QueryRow(`SELECT source, source_priority FROM forms WHERE form='joon' AND lemma='joon' AND pos='NOUN' AND lang='ET'`).Scan(&src, &prio); err != nil {
+		t.Fatalf("query post-migration: %v", err)
+	}
+	if src != "kaikki" || prio != 10 {
+		t.Errorf("source columns lost: got source=%q priority=%d, want kaikki/10", src, prio)
+	}
+}
+
 // --- BatchLookupForms tests ---
 
 func TestBatchLookupForms_Found(t *testing.T) {
