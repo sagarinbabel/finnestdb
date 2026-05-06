@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 #
-# Run a side-by-side comparison of basic, custom, and (optionally) omorfi
-# parsers across the Finnish gold datasets, then assemble the results into
-# a markdown comparison report.
+# Run a side-by-side comparison of basic, custom, and omorfi parsers across
+# the Finnish gold datasets, then assemble the results into a markdown
+# comparison report.
 #
-# Omorfi is included automatically iff $FINNESTDB_OMORFI_CMD is set (see
-# docs/OMORFI_COMPARISON.md for setup). Without it the comparison runs
-# basic vs custom only.
+# Omorfi is **required by default** — every Finnish baseline report must show
+# the analyzer column so dict-only numbers are never read in isolation. Run
+# `make setup-omorfi` once on a fresh machine to install it. To bypass on a
+# machine where omorfi cannot be installed, pass --allow-missing-baseline
+# (intended for ad-hoc local experiments only — never for committed reports).
 #
 # Usage:
-#   scripts/parser-comparison.sh                          # default datasets, stdout
-#   scripts/parser-comparison.sh -o report.md             # write to file
-#   scripts/parser-comparison.sh DS1.json DS2.json ...    # custom datasets
+#   scripts/parser-comparison.sh                                       # default datasets, stdout
+#   scripts/parser-comparison.sh -o report.md                          # write to file
+#   scripts/parser-comparison.sh DS1.json DS2.json ...                 # custom datasets
+#   scripts/parser-comparison.sh --allow-missing-baseline ...          # skip omorfi (escape hatch)
 #
 set -euo pipefail
 
@@ -20,12 +23,14 @@ cd "$ROOT"
 
 OUT=""
 DATASETS=()
+ALLOW_MISSING=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -o|--output) OUT="$2"; shift 2 ;;
+        --allow-missing-baseline) ALLOW_MISSING=true; shift ;;
         -h|--help)
-            sed -n '2,15p' "$0"
+            sed -n '2,18p' "$0"
             exit 0 ;;
         *) DATASETS+=("$1"); shift ;;
     esac
@@ -65,8 +70,29 @@ fi
 if $omorfi_available; then
     PARSERS="basic,custom,omorfi"
     echo ">> Including omorfi (model auto-detected)" >&2
+elif $ALLOW_MISSING; then
+    echo ">> WARNING: omorfi missing, --allow-missing-baseline set — running dict-only" >&2
+    echo ">>          Do NOT commit reports produced this way; analyzer parity is required." >&2
 else
-    echo ">> Skipping omorfi (run 'make setup-omorfi' to enable)" >&2
+    cat >&2 <<'EOF'
+ERROR: omorfi is required for Finnish parser comparison but is not available.
+
+Every committed FI baseline must include the omorfi column so dict-only
+numbers (basic/custom) are never read without the analyzer upper bound.
+
+To install:
+    make setup-omorfi
+
+If you genuinely need a dict-only run for local experimentation, pass:
+    --allow-missing-baseline
+
+Other override paths (any one is enough):
+    export FINNESTDB_OMORFI_CMD="..."
+    export OMORFI_ANALYSE_HFST=/abs/path/to/omorfi.analyse.hfst
+    place the file at ./.cache/omorfi/omorfi.analyse.hfst
+    place the file at $HOME/.cache/omorfi/omorfi.analyse.hfst
+EOF
+    exit 2
 fi
 
 export LD_LIBRARY_PATH="$ROOT/parser/target/release:${LD_LIBRARY_PATH:-}"

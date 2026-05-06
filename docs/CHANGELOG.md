@@ -6,6 +6,42 @@ product documentation. Code changes belong in git history, not here.
 Entries are reverse-chronological. Each entry links to the docs it
 introduced or modified so the docs index stays navigable.
 
+## 2026-05-06b — Eval harness parity + grammar-label stopgap
+
+Two changes to the parser-evaluation pipeline, plus a recorded decision on
+how *not* to fix grammar accuracy.
+
+- **Always benchmark against the analyzer baseline.**
+  [`scripts/parser-comparison.sh`](../scripts/parser-comparison.sh) now
+  *requires* omorfi for Finnish; [`scripts/parser-comparison-et.sh`](../scripts/parser-comparison-et.sh)
+  requires estnltk/Vabamorf for Estonian. Both fail with `exit 2` and a
+  setup hint when the analyzer is missing. A `--allow-missing-baseline`
+  flag remains for ad-hoc local experiments — committed reports must
+  include the analyzer column.
+  - Why: dict-only basic/custom numbers were being read in isolation,
+    masking that grammar accuracy was 0% across all FI and ET datasets in
+    [`docs/baselines/2026-05-06b-summary.md`](baselines/2026-05-06b-summary.md).
+    The analyzer column is the upper bound; without it there is no way to
+    tell whether 88% lemma is "good enough" or a regression. Locking it in
+    by default closes the eval-harness gap.
+- **Stopgap grammar-label attachment on dict hits.**
+  [`internal/store/dict.go`](../internal/store/dict.go) `BatchLookupForms`
+  now runs the case-suffix matcher additively when a direct dict hit
+  succeeds (custom mode only), attaching a case label when the
+  suffix-strip lemma matches the dict lemma exactly. Previously
+  `grammar_label` was empty on every direct hit, which is why grammar
+  accuracy was structurally 0%. Stopgap; will be removed once the FST
+  runtime in [`pkg/lemmatizer-fi-et/`](../pkg/lemmatizer-fi-et/) emits
+  FEATS for direct hits — see PRs
+  [#106](https://github.com/sagarinbabel/finnestdb/pull/106) /
+  [#107](https://github.com/sagarinbabel/finnestdb/pull/107).
+- **Recorded the decision not to extend the suffix table.**
+  [`docs/DECISIONS.md`](DECISIONS.md) Decision 5 explains why suffix-table
+  extension is the wrong investment direction (stem alternation,
+  suffix-shaped lemmas, ambiguity, compound interaction) and why the FST
+  runtime is. TODO items #15 (ternary compounds) and #16 (consonant
+  gradation) are gated behind the FST migration as a result.
+
 ## 2026-05-06 — Lexical pipelines: ET ships, FI plan locks
 
 Locks the dictionary layer as multi-source with row-level provenance and
