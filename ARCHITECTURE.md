@@ -433,11 +433,15 @@ Files:
 - `scripts/parser-comparison.sh` · `scripts/parser-comparison-et.sh` —
   always include the analyzer baseline (omorfi/estnltk); fail fast when
   missing
+- `cmd/scrapegutenberg/main.go` — Plan C / PR 3 silver-corpus scraper
+  for Project Gutenberg Finnish books
 - `internal/eval/eval.go`
 - `testdata/parser-eval/{fi,et}/gold/` — committed gold (FI UD CC BY,
   manual sets, fi-grammar-v1)
 - `testdata/parser-eval/{fi,et}/gold-train/` — gitignored UD train
   splits, used for OOV/coverage only
+- `data/silver-fi/` — Plan C silver-tier corpus (Gutenberg-FI raw text
+  + JSONL manifest); morphological annotation deferred to PR 4
 - `docs/baselines/` — frozen baseline reports per parser/language
 - `docs/PARSER_EVAL_DATASETS.md`
 - `docs/OMORFI_ADAPTER.md` · `docs/OMORFI_COMPARISON.md`
