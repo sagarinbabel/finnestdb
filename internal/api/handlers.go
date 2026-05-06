@@ -567,6 +567,70 @@ func (a *API) handleDecksList(w http.ResponseWriter, auth *AuthContext) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// tokenLemma is one (lemma, pos) candidate for a surface token.
+type tokenLemma struct {
+	Lemma string
+	POS   string
+}
+
+// collectSurfaceForms returns the deduplicated set of non-empty surface forms
+// across all tokens, used to batch-look-up homonym candidates from the dict.
+func collectSurfaceForms(sentences []parsecore.SentenceResult) []string {
+	seen := make(map[string]struct{})
+	out := make([]string, 0)
+	for _, sent := range sentences {
+		for _, token := range sent.Tokens {
+			if token.POS == "PUNCT" || token.Form == "" {
+				continue
+			}
+			lower := strings.ToLower(token.Form)
+			if _, ok := seen[lower]; ok {
+				continue
+			}
+			seen[lower] = struct{}{}
+			out = append(out, token.Form)
+		}
+	}
+	return out
+}
+
+// expandTokenLemmas resolves a single parsed token to one or more (lemma, pos)
+// pairs. When the dictionary has any candidates for the surface form, those
+// are returned (deduplicated, dict-authoritative). When the dict is silent,
+// the parser's single pick is used. PUNCT tokens and empty lemmas are
+// dropped — callers should not write occurrence rows for them.
+func expandTokenLemmas(token parsecore.TokenResult, dict map[string][]store.FormResolution) []tokenLemma {
+	if token.POS == "PUNCT" {
+		return nil
+	}
+	if cands, ok := dict[token.Form]; ok && len(cands) > 0 {
+		out := make([]tokenLemma, 0, len(cands))
+		seen := make(map[tokenLemma]struct{}, len(cands))
+		for _, c := range cands {
+			if c.Lemma == "" || c.POS == "" {
+				continue
+			}
+			tl := tokenLemma{Lemma: c.Lemma, POS: c.POS}
+			if _, dup := seen[tl]; dup {
+				continue
+			}
+			seen[tl] = struct{}{}
+			out = append(out, tl)
+		}
+		if len(out) > 0 {
+			return out
+		}
+	}
+	lemma := token.Lemma
+	if lemma == "" {
+		lemma = strings.ToLower(token.Form)
+	}
+	if lemma == "" || token.POS == "" {
+		return nil
+	}
+	return []tokenLemma{{Lemma: lemma, POS: token.POS}}
+}
+
 func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
 	var req CreateDeckRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -595,26 +659,26 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 		return
 	}
 
+	// Multi-lemma expansion: when the dictionary has multiple (lemma, pos)
+	// candidates for a surface form (e.g. ET "joon" = noun "line" or 1Sg of
+	// "jooma"), emit one DeckTokenInput per candidate so each homonym becomes
+	// its own card and contributes to the deck's word count. The dict, when
+	// it has any candidates for a form, is treated as authoritative — the
+	// parser's pick is only used when the dict is silent.
+	uniqueForms := collectSurfaceForms(parsed.Sentences)
+	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang)
+
 	sentences := make([]store.DeckSentenceInput, 0, len(parsed.Sentences))
 	for _, sent := range parsed.Sentences {
 		sentence := store.DeckSentenceInput{Text: sent.Text}
 		for tokenIx, token := range sent.Tokens {
-			if token.POS == "PUNCT" {
-				continue
+			for _, exp := range expandTokenLemmas(token, dictCandidates) {
+				sentence.Tokens = append(sentence.Tokens, store.DeckTokenInput{
+					TokenIx: tokenIx,
+					Lemma:   exp.Lemma,
+					POS:     exp.POS,
+				})
 			}
-			lemma := token.Lemma
-			if lemma == "" {
-				lemma = strings.ToLower(token.Form)
-			}
-			pos := token.POS
-			if lemma == "" || pos == "" {
-				continue
-			}
-			sentence.Tokens = append(sentence.Tokens, store.DeckTokenInput{
-				TokenIx: tokenIx,
-				Lemma:   lemma,
-				POS:     pos,
-			})
 		}
 		if len(sentence.Tokens) == 0 && sentence.Text == "" {
 			continue

@@ -60,6 +60,25 @@ Automatic known/new labelling, comprehension estimates, and leverage-based
 ordering are planned product work, but are not part of the current Inspect
 result.
 
+## Words With Multiple Senses
+
+Some words in Estonian and Finnish look identical but represent more than
+one dictionary lemma. The clearest Estonian example is **joon**: it is the
+noun "line" (`joon` SgN) *and* the 1st-person-singular form of the verb
+**jooma** ("to drink") — Estonian morphology alone can't tell which sense
+the writer meant.
+
+When you save a text containing one of these ambiguous words to a deck,
+FinEstDB creates a card for each candidate sense. A single occurrence of
+"joon" produces two cards — `joon` (noun) and `jooma` (verb) — and the
+deck's word count reflects both. You review them independently; if you
+only ever encounter "joon" in drink-context the noun card simply waits
+quietly until you mark it known or ignored.
+
+If the dictionary has no entry for a word, the parser's single best guess
+is used and only one card is created. The dictionary is only authoritative
+about ambiguity when it actually knows the word.
+
 ## Progress Tracking
 
 You can see, across the whole app:
