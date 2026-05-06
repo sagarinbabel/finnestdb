@@ -1,0 +1,28 @@
+{
+  "word_id": 162948,
+  "lemma": "ei tea mis",
+  "homonym_nr": 1,
+  "inflection_type": "0",
+  "inflection_type_nr": "0",
+  "word_class": "noomen",
+  "datasets": [
+    "eki"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 19553,
+      "dataset": "eki",
+      "definitions_et": [
+        "väljendab teadmatust, ebaselgust"
+      ],
+      "usages_et": [
+        "Kui öeldakse folkloor, siis mõeldakse ei tea mida.",
+        "Oleksin nagu ei tea millega hakkama saanud."
+      ],
+      "translations_en": [
+        "particularly",
+        "very"
+      ]
+    }
+  ]
+}

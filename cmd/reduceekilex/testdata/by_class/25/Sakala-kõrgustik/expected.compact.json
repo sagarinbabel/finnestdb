@@ -1,0 +1,24 @@
+{
+  "word_id": 230549,
+  "lemma": "Sakala kõrgustik",
+  "homonym_nr": 1,
+  "inflection_type": "25",
+  "inflection_type_nr": "25",
+  "word_class": "noomen",
+  "datasets": [
+    "eki",
+    "les"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 93714,
+      "dataset": "eki",
+      "pos": [
+        "prop"
+      ],
+      "definitions_et": [
+        "kõrgustik Eesti lõunaosas"
+      ]
+    }
+  ]
+}

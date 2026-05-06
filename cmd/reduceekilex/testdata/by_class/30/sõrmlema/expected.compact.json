@@ -1,0 +1,27 @@
+{
+  "word_id": 949296,
+  "lemma": "sõrmlema",
+  "homonym_nr": 1,
+  "morphophono_form": "s`õrmlema",
+  "inflection_type": "30",
+  "inflection_type_nr": "30",
+  "word_class": "verb",
+  "datasets": [
+    "eki"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 508988,
+      "dataset": "eki",
+      "pos": [
+        "v"
+      ],
+      "definitions_et": [
+        "sõrmede abil midagi tegema, näitama vms"
+      ],
+      "usages_et": [
+        "Kassapidaja sõrmleb jõuluostu kahetuhandesele arvele rahumeeli juurde paar sigaretipakki."
+      ]
+    }
+  ]
+}
