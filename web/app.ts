@@ -649,7 +649,7 @@ function renderDashboard(): void {
 
     const decks = state.dashboard?.decks || [];
     if (decks.length === 0) {
-        decksList.innerHTML = `<p class="empty-state">No decks yet — paste some text under <a href="#/inspect">Inspect</a> to get started.</p>`;
+        decksList.innerHTML = `<p class="empty-state">No decks yet — paste some text under <a href="#/inspect">Parse</a> to get started.</p>`;
         return;
     }
 
@@ -1129,7 +1129,7 @@ async function runParse(
     if (context === 'workbench') setParseButtonsDisabled(true);
     if (activeBtn) {
         activeBtn.disabled = true;
-        activeBtn.textContent = context === 'inspect' ? 'Inspecting…' : 'Parsing…';
+        activeBtn.textContent = 'Parsing…';
     }
 
     try {
