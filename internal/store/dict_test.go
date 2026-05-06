@@ -120,8 +120,11 @@ func TestBatchLookupAllForms_CaseFolding(t *testing.T) {
 	})
 
 	got := db.BatchLookupAllForms([]string{"Joon"}, "ET")
-	if len(got["Joon"]) != 2 {
-		t.Errorf("sentence-initial Joon: got %d candidates, want 2", len(got["Joon"]))
+	if len(got["joon"]) != 2 {
+		t.Errorf("sentence-initial Joon: got %d candidates under lowercase key, want 2", len(got["joon"]))
+	}
+	if _, present := got["Joon"]; present {
+		t.Errorf("sentence-initial Joon: unexpected original-case result key")
 	}
 }
 

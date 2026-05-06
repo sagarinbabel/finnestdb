@@ -575,6 +575,8 @@ type tokenLemma struct {
 
 // collectSurfaceForms returns the deduplicated set of non-empty surface forms
 // across all tokens, used to batch-look-up homonym candidates from the dict.
+// Keys are lowercased so sentence-initial forms share one dict candidate set
+// with the same word elsewhere in the deck.
 func collectSurfaceForms(sentences []parsecore.SentenceResult) []string {
 	seen := make(map[string]struct{})
 	out := make([]string, 0)
@@ -588,7 +590,7 @@ func collectSurfaceForms(sentences []parsecore.SentenceResult) []string {
 				continue
 			}
 			seen[lower] = struct{}{}
-			out = append(out, token.Form)
+			out = append(out, lower)
 		}
 	}
 	return out
@@ -603,7 +605,9 @@ func expandTokenLemmas(token parsecore.TokenResult, dict map[string][]store.Form
 	if token.POS == "PUNCT" {
 		return nil
 	}
-	if cands, ok := dict[token.Form]; ok && len(cands) > 0 {
+	// BatchLookupAllForms returns candidates keyed by lowercased surface form.
+	key := strings.ToLower(token.Form)
+	if cands, ok := dict[key]; ok && len(cands) > 0 {
 		out := make([]tokenLemma, 0, len(cands))
 		seen := make(map[tokenLemma]struct{}, len(cands))
 		for _, c := range cands {

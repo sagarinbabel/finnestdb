@@ -239,7 +239,8 @@ func tryCaseSuffixStrip(stmtLemmas *sql.Stmt, form, lang string, suffixes []pars
 // resolution and aren't authoritative for ambiguity.
 //
 // Forms with no direct dict hit are absent from the result map. Each form's
-// slice is non-empty when present.
+// slice is non-empty when present. Result keys are lowercased surface forms,
+// matching the query normalization and deck-ingest lookup path.
 func (d *DB) BatchLookupAllForms(forms []string, lang string) map[string][]FormResolution {
 	result := make(map[string][]FormResolution, len(forms))
 	if len(forms) == 0 {
@@ -270,7 +271,7 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string) map[string][]FormR
 		}
 		rows.Close()
 		if len(candidates) > 0 {
-			result[form] = candidates
+			result[lower] = candidates
 		}
 	}
 	return result

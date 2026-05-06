@@ -1075,6 +1075,68 @@ func TestCreateDeckExpandsAmbiguousTokenIntoMultipleCards(t *testing.T) {
 	}
 }
 
+func TestCreateDeckExpandsAmbiguousTokenAcrossMixedCaseForms(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("joon", "NOUN", "line", "ET"); err != nil {
+		t.Fatalf("UpsertLemma joon: %v", err)
+	}
+	if err := api.store.UpsertLemma("jooma", "VERB", "drink", "ET"); err != nil {
+		t.Fatalf("UpsertLemma jooma: %v", err)
+	}
+	for _, r := range [][4]string{
+		{"joon", "joon", "NOUN", "ET"},
+		{"joon", "jooma", "VERB", "ET"},
+	} {
+		if err := api.store.UpsertForm(r[0], r[1], r[2], r[3]); err != nil {
+			t.Fatalf("UpsertForm %v: %v", r, err)
+		}
+	}
+
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "joon. Joon.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "joon", Lemma: "jooma", POS: "VERB"},
+						{Form: ".", POS: "PUNCT"},
+						// The parser pick is deliberately different: this catches
+						// regressions where original-case dict lookup misses "Joon".
+						{Form: "Joon", Lemma: "parser-only", POS: "X"},
+						{Form: ".", POS: "PUNCT"},
+					},
+				},
+			},
+		}, nil
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "mixed-case@example.com")
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Mixed case","lang":"ET","text":"joon. Joon."}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create deck status=%d body=%q", createRec.Code, createRec.Body.String())
+	}
+
+	auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
+	if err != nil || auth == nil {
+		t.Fatal("expected authenticated user")
+	}
+	cardCount, err := api.store.CountCards(auth.UserID, "ET")
+	if err != nil {
+		t.Fatalf("CountCards: %v", err)
+	}
+	if cardCount != 2 {
+		t.Fatalf("card_count=%d want 2 (joon-noun and jooma-verb only)", cardCount)
+	}
+}
+
 // TestCreateDeckSilentDictKeepsParserPick verifies that when the dict has no
 // candidates for a surface form, the parser's lemma is used (no expansion).
 func TestCreateDeckSilentDictKeepsParserPick(t *testing.T) {
