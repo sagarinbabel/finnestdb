@@ -141,6 +141,7 @@ Example generation relies on "FST synthesizer + reparse to validate features" (Â
 
 6. **Custom dictionary knowledge graph spike**
    - [ ] Spike a separate custom lexicon for Finnish and Estonian that can accumulate data from multiple upstream dictionaries plus manual edits
+   - [ ] Michael: run the full Ekilex `word/details` enrichment scrape when you have time and enough disk space. Sagar does not currently have space for this locally. The lightweight Ekilex import in `data/ekilex/eki-public-words-2026-et.jsonl` only uses `/api/public_word/eki`; the richer endpoint has POS, definitions, usage examples, and paradigms, but sample payloads were about 492 KB for `koer` and 770 KB for `maja`. Fetching details for all 174,229 public Estonian headwords would be roughly 87+ GB of raw JSON and 174k HTTP requests, likely many hours before retries or rate limits. Please run it as a resumable batch job with checkpointing by `word_id`, conservative rate limiting, retry/backoff, raw responses in ignored `localdata/`, and a compact reduced JSONL artifact for review/commit after validation.
    - [ ] Design provenance tables so accepted fields (definition, examples, morphology, register) retain source attribution and fetch/import metadata
    - [ ] Design a compiled read model so hot-path lookups remain indexed and near direct-lookup cost, with no live provenance merge in request handling
    - [ ] Define a slower live-merge/admin view for curation, debugging, and experimenting with merge rules outside the request path

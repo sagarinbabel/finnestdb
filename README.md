@@ -155,10 +155,16 @@ This is a one-time operation (~5 minutes per language):
 ```bash
 make import-dict-fi    # Finnish  (~12-20M forms, downloads ~200MB)
 make import-dict-et    # Estonian (optional)
+make import-ekilex-et  # Estonian EKI 2026 public headwords (tracked snapshot)
 ```
 
 `make run` does **not** auto-import — import once manually, then `make run`
 every subsequent time. The data persists in `finnestdb.db`.
+
+The Ekilex snapshot is a compact export from EKI ühendsõnastik 2026 public
+headwords. It adds missing Estonian direct headword lookups without overwriting
+richer Kaikki-derived lemma/POS/gloss rows. The API key used to refresh that
+snapshot must stay local and is not needed to import the tracked snapshot.
 
 To force a full refresh (e.g. after a new kaikki.org release):
 
