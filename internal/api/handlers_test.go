@@ -990,88 +990,109 @@ func TestCreateDeckSkipsKnownWordsWhenSeedingCards(t *testing.T) {
 	}
 }
 
-// TestClearLemmaStateEnsuresCardForKnownAtDeckCreate verifies that clearing
-// a lemma's known/ignored state seeds a card row, even when the lemma was
-// already known when the deck was created (in which case CreateDeckWithSentences
-// would have skipped ensureCard, leaving the lemma unreviewable until cleared).
-func TestClearLemmaStateEnsuresCardForKnownAtDeckCreate(t *testing.T) {
-	api := newTestAPI(t)
-	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
-		t.Fatalf("UpsertLemma: %v", err)
-	}
-	if err := api.store.UpsertForm("kissa", "kissa", "NOUN", "FI"); err != nil {
-		t.Fatalf("UpsertForm: %v", err)
+// TestClearLemmaStateEnsuresCardWhenDeckSkippedSeeding covers both ways a
+// deck-create can skip ensureCard for a lemma — the lemma was already known,
+// or already ignored — and verifies that clearing the state via /api/lemma-state
+// seeds a card so the lemma becomes reviewable. Both paths share the same
+// ClearLemmaState body, but parallel coverage guards against a future
+// regression that would split them.
+func TestClearLemmaStateEnsuresCardWhenDeckSkippedSeeding(t *testing.T) {
+	cases := []struct {
+		name        string
+		preState    string // "known" or "ignored" — applied before deck create
+		emailSuffix string
+	}{
+		{name: "known", preState: "known", emailSuffix: "known"},
+		{name: "ignored", preState: "ignored", emailSuffix: "ignored"},
 	}
 
-	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
-		return &parsecore.ParseResult{
-			Lang: lang,
-			Sentences: []parsecore.SentenceResult{
-				{
-					Text: "Kissa juoksee.",
-					Tokens: []parsecore.TokenResult{
-						{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
-						{Form: "juoksee", Lemma: "juosta", POS: "VERB"},
-						{Form: ".", POS: "PUNCT"},
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			api := newTestAPI(t)
+			if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+				t.Fatalf("UpsertLemma: %v", err)
+			}
+			if err := api.store.UpsertForm("kissa", "kissa", "NOUN", "FI"); err != nil {
+				t.Fatalf("UpsertForm: %v", err)
+			}
+
+			api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+				return &parsecore.ParseResult{
+					Lang: lang,
+					Sentences: []parsecore.SentenceResult{
+						{
+							Text: "Kissa juoksee.",
+							Tokens: []parsecore.TokenResult{
+								{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+								{Form: "juoksee", Lemma: "juosta", POS: "VERB"},
+								{Form: ".", POS: "PUNCT"},
+							},
+						},
 					},
-				},
-			},
-		}, nil
-	}
+				}, nil
+			}
 
-	mux := newTestMux(t, api)
-	cookies := loginAndReturnCookies(t, mux, "clear-card@example.com")
+			mux := newTestMux(t, api)
+			cookies := loginAndReturnCookies(t, mux, "clear-card-"+tc.emailSuffix+"@example.com")
 
-	importReq := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa"]}`))
-	for _, cookie := range cookies {
-		importReq.AddCookie(cookie)
-	}
-	importRec := httptest.NewRecorder()
-	mux.ServeHTTP(importRec, importReq)
-	if importRec.Code != http.StatusOK {
-		t.Fatalf("known-word import status=%d body=%q", importRec.Code, importRec.Body.String())
-	}
+			// Mark kissa with the pre-state via /api/lemma-state, mirroring the
+			// existing real-user flows (known-word import for "known", trash-
+			// icon button on a parse result for "ignored").
+			preReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state",
+				strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"`+tc.preState+`"}`))
+			for _, cookie := range cookies {
+				preReq.AddCookie(cookie)
+			}
+			preRec := httptest.NewRecorder()
+			mux.ServeHTTP(preRec, preReq)
+			if preRec.Code != http.StatusOK {
+				t.Fatalf("pre-state mark status=%d body=%q", preRec.Code, preRec.Body.String())
+			}
 
-	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Test deck","lang":"FI","text":"Kissa juoksee."}`))
-	for _, cookie := range cookies {
-		createReq.AddCookie(cookie)
-	}
-	createRec := httptest.NewRecorder()
-	mux.ServeHTTP(createRec, createReq)
-	if createRec.Code != http.StatusOK {
-		t.Fatalf("create deck status=%d body=%q", createRec.Code, createRec.Body.String())
-	}
+			createReq := httptest.NewRequest(http.MethodPost, "/api/decks",
+				strings.NewReader(`{"title":"Test deck","lang":"FI","text":"Kissa juoksee."}`))
+			for _, cookie := range cookies {
+				createReq.AddCookie(cookie)
+			}
+			createRec := httptest.NewRecorder()
+			mux.ServeHTTP(createRec, createReq)
+			if createRec.Code != http.StatusOK {
+				t.Fatalf("create deck status=%d body=%q", createRec.Code, createRec.Body.String())
+			}
 
-	auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
-	if err != nil || auth == nil {
-		t.Fatal("expected authenticated user")
-	}
+			auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
+			if err != nil || auth == nil {
+				t.Fatal("expected authenticated user")
+			}
 
-	// Pre-condition: only juosta has a card; kissa was skipped.
-	if cardCount, _ := api.store.CountCards(auth.UserID, "FI"); cardCount != 1 {
-		t.Fatalf("pre-clear card_count=%d want 1", cardCount)
-	}
+			// Pre-condition: only juosta has a card; kissa was skipped because
+			// it was already known/ignored at deck-create time.
+			if cardCount, _ := api.store.CountCards(auth.UserID, "FI"); cardCount != 1 {
+				t.Fatalf("pre-clear card_count=%d want 1", cardCount)
+			}
 
-	// Now clear kissa via the API — the user "marks as unknown" on the deck
-	// detail page.
-	clearReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":""}`))
-	for _, cookie := range cookies {
-		clearReq.AddCookie(cookie)
-	}
-	clearRec := httptest.NewRecorder()
-	mux.ServeHTTP(clearRec, clearReq)
-	if clearRec.Code != http.StatusOK {
-		t.Fatalf("clear status=%d body=%q", clearRec.Code, clearRec.Body.String())
-	}
+			// Clear via the API — the user "marks as unknown" / "stops ignoring".
+			clearReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state",
+				strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":""}`))
+			for _, cookie := range cookies {
+				clearReq.AddCookie(cookie)
+			}
+			clearRec := httptest.NewRecorder()
+			mux.ServeHTTP(clearRec, clearReq)
+			if clearRec.Code != http.StatusOK {
+				t.Fatalf("clear status=%d body=%q", clearRec.Code, clearRec.Body.String())
+			}
 
-	// Post-condition: kissa now has a card row, so it's reachable from the
-	// review queue.
-	cardCount, err := api.store.CountCards(auth.UserID, "FI")
-	if err != nil {
-		t.Fatalf("CountCards: %v", err)
-	}
-	if cardCount != 2 {
-		t.Fatalf("post-clear card_count=%d want 2 (juosta + kissa now seeded)", cardCount)
+			// Post-condition: kissa now has a card row, so it's reachable from
+			// the review queue.
+			cardCount, err := api.store.CountCards(auth.UserID, "FI")
+			if err != nil {
+				t.Fatalf("CountCards: %v", err)
+			}
+			if cardCount != 2 {
+				t.Fatalf("post-clear card_count=%d want 2 (juosta + kissa now seeded)", cardCount)
+			}
+		})
 	}
 }
 
