@@ -1,9 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"math"
 	"math/rand"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"finnestdb/internal/eval"
 )
@@ -158,4 +162,73 @@ func TestAnalyzerParserFor(t *testing.T) {
 			t.Errorf("analyzerParserFor(%v): got %q, want %q", tc.parsers, got, tc.want)
 		}
 	}
+}
+
+// TestLoadBaselineDir_LatestMtimeWins verifies that when a directory has
+// multiple timestamped reports for the same dataset, the one with the most
+// recent mtime is returned — not whichever happens to be returned last by
+// os.ReadDir's filename ordering. This regression-tests the case where
+// loadBaselineDir was comparing against a fabricated `<dataset>.json` path
+// instead of the actual file path of the existing entry.
+func TestLoadBaselineDir_LatestMtimeWins(t *testing.T) {
+	dir := t.TempDir()
+
+	// Two reports for the same dataset with different timestamps in the
+	// filename. Lexicographically, "old" sorts after "new", so without the
+	// fix the lex-last entry overwrites the lex-first regardless of mtime.
+	mk := func(name string) string {
+		path := filepath.Join(dir, name)
+		body, err := json.Marshal(&eval.Report{
+			Dataset: eval.ReportDataset{Name: "fi-manual", CaseCount: 4},
+			Parsers: []string{"custom"},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, body, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	newPath := mk("2026-05-06-new-fi-manual.json")
+	oldPath := mk("2026-05-06-old-fi-manual.json")
+
+	// Make `new` the more recent mtime, `old` the older one. Because "old"
+	// sorts after "new" in lex order, the buggy code would pick `old`.
+	now := time.Now()
+	if err := os.Chtimes(newPath, now, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chtimes(oldPath, now.Add(-time.Hour), now.Add(-time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+
+	// Also drop a non-report JSON file in the same dir to confirm it's
+	// tolerated (raw datasets often live alongside reports).
+	if err := os.WriteFile(filepath.Join(dir, "raw-fi-manual.json"), []byte(`{"not":"a report"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := loadBaselineDir(dir)
+	if err != nil {
+		t.Fatalf("loadBaselineDir: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d entries, want 1", len(got))
+	}
+	r, ok := got["fi-manual"]
+	if !ok {
+		t.Fatalf("missing fi-manual entry: keys=%v", keysOf(got))
+	}
+	if r == nil {
+		t.Fatal("fi-manual entry is nil")
+	}
+}
+
+func keysOf(m map[string]*eval.Report) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	return out
 }
