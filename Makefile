@@ -1,5 +1,6 @@
 .PHONY: all build clean parser server frontend run \
         import-dict-fi import-dict-et import-dict import-dict-et-ekilex import-ekilex-et \
+        fetch-ekilex-refresh fetch-ekilex-sample fetch-ekilex \
         reimport-dict-fi reimport-dict-et reimport-dict \
         setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et
 
@@ -79,6 +80,32 @@ import-dict: import-dict-fi import-dict-et
 # tracked compact Ekilex snapshot. Existing Kaikki rows are preserved.
 import-ekilex-et:
 	go run ./cmd/importekilex -db finnestdb.db -file data/ekilex/eki-public-words-2026-et.jsonl
+
+# ── Ekilex /api/word/details enrichment scrape ────────────────────────────────
+# Requires EKILEX_API_KEY in the environment. Raw responses land under
+# localdata/ekilex/details/ (gitignored). See cmd/fetchekilex.
+
+# Refreshes data/ekilex/eki-public-words-2026-et.jsonl from /api/public_word/eki
+# only if the headword set has changed.
+fetch-ekilex-refresh:
+	go run ./cmd/fetchekilex refresh-queue
+
+# Fetches a small spread of headwords with both /eki and the unfiltered
+# variant so we can compare payload size/content before committing the full run.
+fetch-ekilex-sample:
+	go run ./cmd/fetchekilex sample
+
+# Full resumable scrape. -rps is a *global* request rate cap shared across
+# workers; -workers should be ~2x rps to keep request latency from becoming
+# the bottleneck. Circuit breaker pauses workers after 10 consecutive failures
+# and probes word_id=183007 (koer) every 5 minutes until the API recovers.
+# Override any flag per invocation, e.g.:
+#   make fetch-ekilex EKILEX_RPS=24 EKILEX_WORKERS=24
+EKILEX_WORKERS ?= 16
+EKILEX_RPS ?= 16
+fetch-ekilex:
+	go run ./cmd/fetchekilex fetch \
+	  -workers=$(EKILEX_WORKERS) -rps=$(EKILEX_RPS) -max-attempts=3
 
 # Full refresh: drops existing entries then re-imports.
 reimport-dict-fi:
