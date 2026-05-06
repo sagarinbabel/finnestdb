@@ -31,7 +31,7 @@ same day:
 | Lang | Dataset | lemma | grammar | full | coverage |
 |---|---|---:|---:|---:|---:|
 | FI | fi-grammar | +0.6 | **+1.4** | +0.6 | +0.3 |
-| FI | fi-manual-v1 | **+1.5** | **+13.3** | **+22.9** | **+5.7** |
+| FI | fi-manual-v1 | **+1.5** | **+13.3** | **+21.5** | **+5.7** |
 | FI | fi-core | +0.0 | +0.0 | +0.0 | **+4.3** |
 | ET | et-grammar | +0.0 | **+2.0** | +0.0 | **+1.1** |
 | ET | et-manual | **+11.1** | **+16.7** | **+11.1** | **+8.3** |
@@ -226,7 +226,7 @@ All numbers are the **custom** parser mode against the
 | fi-manual-v1 | 22 | lemma | 81.4% | **82.9%** | **+1.5** |
 |  |  | pos | 85.7% | **87.1%** | **+1.4** |
 |  |  | grammar | 0.0% | **13.3%** | **+13.3** |
-|  |  | full | 41.4% | **64.3%** | **+22.9** |
+|  |  | full | 41.4% | **62.9%** | **+21.5** |
 |  |  | coverage | 91.2% | **96.9%** | **+5.7** |
 | fi-manual-v2 | 4 | (unchanged — already at 100% coverage pre-FST) |  |  |  |
 
@@ -246,7 +246,7 @@ All numbers are the **custom** parser mode against the
 |  |  | coverage | 91.7% | **100.0%** | **+8.3** |
 
 The biggest gains are on the manual datasets (fi-manual-v1 lemma +1.5,
-full +22.9; et-manual lemma +11.1, full +11.1). Those are the
+full +21.5; et-manual lemma +11.1, full +11.1). Those are the
 hand-curated harder cases where the rule-based SQLite path was
 under-resolving — exactly the cases the FST path was supposed to help
 with.
