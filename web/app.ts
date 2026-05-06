@@ -381,6 +381,7 @@ async function handleSignout(): Promise<void> {
     state.currentLemmaStates.clear();
     state.currentReviewCard = null;
     state.reviewDeckFilter = '';
+    try { sessionStorage.removeItem(LAST_PARSE_KEY); } catch {}
     clearResultsDom();
     applyRoleVisibility();
     showToast('Signed out', 'info');
@@ -515,6 +516,14 @@ function renderRoute(): void {
     }
     if (route === '/admin/users') {
         void loadAdminUsers();
+    }
+    if (route === '/results' && !state.currentResults) {
+        // Hard refresh / direct navigation: re-hydrate from sessionStorage so
+        // the user doesn't land on an empty page. If nothing is cached, send
+        // them back to /inspect rather than leaving the shell empty.
+        if (!restoreLastParse()) {
+            window.location.hash = '#/inspect';
+        }
     }
 }
 
@@ -1507,7 +1516,53 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
     // Re-apply role visibility so admin-only pills/cells show correctly.
     applyRoleVisibility();
 
-    if (context !== 'deck') navigate('/results');
+    if (context !== 'deck') {
+        // Persist the parse so a hard refresh on /results doesn't drop the user
+        // onto an empty page. Deck detail handles its own refresh by re-fetching
+        // from /api/decks/:id, so we skip that context here.
+        persistLastParse(data, preview, parserMode, context);
+        navigate('/results');
+    }
+}
+
+interface PersistedParse {
+    data:           ParseResponse;
+    textPreview:    string;
+    parserMode:     ParserMode;
+    context:        ResultsContext;
+    sourceText:     string;
+}
+
+const LAST_PARSE_KEY = 'finnestdb:lastParse:v1';
+
+function persistLastParse(data: ParseResponse, textPreview: string, parserMode: ParserMode, context: ResultsContext): void {
+    try {
+        const payload: PersistedParse = {
+            data,
+            textPreview,
+            parserMode,
+            context,
+            sourceText: state.currentSourceText,
+        };
+        sessionStorage.setItem(LAST_PARSE_KEY, JSON.stringify(payload));
+    } catch {
+        // Quota exceeded or sessionStorage unavailable — silently skip; the
+        // page will just be empty after refresh, same as before.
+    }
+}
+
+function restoreLastParse(): boolean {
+    try {
+        const raw = sessionStorage.getItem(LAST_PARSE_KEY);
+        if (!raw) return false;
+        const payload = JSON.parse(raw) as PersistedParse;
+        if (!payload?.data || !payload.context) return false;
+        state.currentSourceText = payload.sourceText || '';
+        showResults(payload.data, payload.textPreview, payload.parserMode, payload.context);
+        return true;
+    } catch {
+        return false;
+    }
 }
 
 async function loadDeckDetail(deckID: number): Promise<void> {
