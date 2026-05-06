@@ -97,13 +97,13 @@ fetch-ekilex:
 	  -workers=$(EKILEX_WORKERS) -rps=$(EKILEX_RPS) -max-attempts=3
 
 # Reduces the gzipped raw payloads under localdata/ekilex/details/raw/ into
-# two committable artifacts under localdata/ekilex/details/:
-#   - details-compact.jsonl: per-word lemma + morphology + meanings
-#   - forms.tsv:             one row per inflected form (lemma, form, morph_code)
-# Outputs stay in localdata/ until reviewed; tests cover one fixture per
-# inflection class encountered so far. Run `go test ./cmd/reduceekilex/` to
-# verify the reducer or `go test ./cmd/reduceekilex/ -update-golden` to refresh
-# fixtures after intentional reducer changes.
+# two sharded committable artifacts under data/ekilex/:
+#   - definitions/<letter>.jsonl: per-word lemma + morphology + meanings
+#   - forms/<letter>.tsv:         one row per inflected form (lemma, form, morph_code)
+# Sharding is by first lowercase letter of the lemma (Estonian alphabet plus
+# "_other"). Tests cover one fixture per inflection class encountered so far —
+# run `go test ./cmd/reduceekilex/` to verify, or `go test ./cmd/reduceekilex/
+# -update-golden` to refresh fixtures after intentional reducer changes.
 reduce-ekilex:
 	go run ./cmd/reduceekilex
 
