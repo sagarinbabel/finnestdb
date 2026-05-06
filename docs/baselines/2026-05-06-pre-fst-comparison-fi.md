@@ -1,0 +1,21 @@
+# Parser comparison (20260506T195149Z, parsers: basic,custom)
+
+| Dataset | Cases | Parser | Lemma | POS | Grammar | Full | Coverage | Avg ms |
+|---|---:|---|---:|---:|---:|---:|---:|---:|
+| fi-core | 6 | basic | 85.0% | 90.0% | 0.0% | 35.0% | 91.3% | 0.0 |
+| fi-core | 6 | custom | 85.0% | 90.0% | 0.0% | 35.0% | 95.7% | 0.0 |
+| fi-grammar | 80 | basic | 96.8% | 98.1% | 0.0% | 51.3% | 99.7% | 0.0 |
+| fi-grammar | 80 | custom | 96.8% | 98.1% | 0.0% | 51.3% | 99.7% | 0.0 |
+| fi-manual-v1 | 22 | basic | 55.7% | 78.6% | 0.0% | 41.4% | 75.3% | 0.0 |
+| fi-manual-v1 | 22 | custom | 81.4% | 85.7% | 0.0% | 62.9% | 91.2% | 0.0 |
+| fi-manual-v2 | 4 | basic | 88.9% | 100.0% | 0.0% | 55.6% | 91.7% | 0.0 |
+| fi-manual-v2 | 4 | custom | 88.9% | 100.0% | 0.0% | 55.6% | 100.0% | 0.0 |
+
+## Head-to-head deltas (parser - first parser, in pts)
+
+| Dataset | Parser | Δ Lemma | Δ POS | Δ Coverage |
+|---|---|---:|---:|---:|
+| fi-core | custom vs basic | +0.0 | +0.0 | +4.3 |
+| fi-grammar | custom vs basic | +0.0 | +0.0 | +0.0 |
+| fi-manual-v1 | custom vs basic | +25.7 | +7.1 | +16.0 |
+| fi-manual-v2 | custom vs basic | +0.0 | +0.0 | +8.3 |
