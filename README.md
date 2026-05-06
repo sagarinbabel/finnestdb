@@ -12,6 +12,7 @@ workbench.
   - [Build & Start](#build--start)
   - [Frontend Build](#frontend-build)
   - [Dictionary import](#dictionary-import)
+    - [Refreshing the Ekilex enrichment data](#refreshing-the-ekilex-enrichment-data)
   - [Testing the Parse Feature](#testing-the-parse-feature)
   - [Language Validation](#language-validation)
   - [Known Limitations](#known-limitations)
