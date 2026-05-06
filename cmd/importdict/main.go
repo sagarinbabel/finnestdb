@@ -106,6 +106,7 @@ const customGlossPriority = 100
 // call sites (initial Prepare, batch-restart Prepare, applyCustomGlosses)
 // share the same conflict policy: incoming row wins iff its priority is
 // at least as high as the existing row's.
+
 const upsertLemmaSQL = `INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
 	VALUES (?, ?, ?, ?, ?, ?)
 	ON CONFLICT(lemma, pos, lang) DO UPDATE SET
@@ -122,6 +123,23 @@ const upsertFormSQL = `INSERT INTO forms (form, lemma, pos, lang, source, source
 		source = excluded.source,
 		source_priority = excluded.source_priority
 	WHERE forms.source_priority <= excluded.source_priority`
+
+// upsertTranslationSQL writes one row per (sense, gloss) pair into the
+// translations table. PK (lemma, pos, lang, target_lang, sense_idx, source)
+// lets multiple sources coexist (kaikki + Ekilex translations for the same
+// headword don't overwrite each other). On conflict within the SAME source
+// — i.e. re-running an import after upstream gloss text changed — the
+// `text` column is refreshed; without this, kaikki dumps with edited
+// glosses would silently keep the old text. target_lang is hard-coded to
+// 'EN' because both FI and ET dumps from kaikki.org are en.wiktionary
+// extractions whose senses[].glosses[] arrays are English. fi.wiktionary's
+// Finnish-language definitions will land under target_lang='FI' via a
+// future import path; not in scope for this PR.
+const upsertTranslationSQL = `INSERT INTO translations
+	(lemma, pos, lang, target_lang, text, sense_idx, source)
+	VALUES (?, ?, ?, 'EN', ?, ?, ?)
+	ON CONFLICT (lemma, pos, lang, target_lang, sense_idx, source) DO UPDATE SET
+	  text = excluded.text`
 
 func normalizePos(raw string) string {
 	if mapped, ok := posMap[strings.ToLower(strings.TrimSpace(raw))]; ok {
@@ -227,12 +245,18 @@ func main() {
 	db.Exec(`PRAGMA synchronous=NORMAL`)
 
 	if *reimport {
-		log.Printf("--reimport: dropping existing %s entries from forms and lemmas tables...", dbLang)
+		log.Printf("--reimport: dropping existing %s entries from forms, lemmas, and translations tables...", dbLang)
 		if _, err := db.Exec(`DELETE FROM forms WHERE lang = ?`, dbLang); err != nil {
 			log.Fatalf("drop forms: %v", err)
 		}
 		if _, err := db.Exec(`DELETE FROM lemmas WHERE lang = ?`, dbLang); err != nil {
 			log.Fatalf("drop lemmas: %v", err)
+		}
+		// Translations table joined the cleanup in Phase 2 (this PR). Without
+		// this, removed or renumbered senses from a refreshed kaikki dump
+		// leave stale rows behind that the future read path would surface.
+		if _, err := db.Exec(`DELETE FROM translations WHERE lang = ?`, dbLang); err != nil {
+			log.Fatalf("drop translations: %v", err)
 		}
 	}
 
@@ -407,12 +431,38 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 		return 0, 0, err
 	}
 
+	// Wipe this source's existing translations for this language before
+	// importing. Without this, an entry whose senses[] shrunk upstream
+	// would leave its old sense_idx rows stranded — the upsert below
+	// refreshes rows that still exist but never deletes ones that
+	// disappeared. Scoped by (lang, source) so other sources' rows
+	// (e.g. ekilex translations once PR 4 ships) are preserved across
+	// a kaikki rerun. Lemmas/forms don't need analogous cleanup because
+	// their PKs are stable — kaikki always emits the same canonical
+	// headword + form rows for an entry, only sense lists drift.
+	//
+	// Inside the first batch's transaction so a failure before the first
+	// commit (e.g. truncated stream, reader error before any entry is
+	// processed) rolls the delete back along with any partial inserts.
+	// Without this, a stream failure would leave the dictionary with no
+	// translations for this source — strictly worse than the pre-import
+	// state the import was supposed to refresh.
+	if _, err := tx.Exec(`DELETE FROM translations WHERE lang = ? AND source = ?`, dbLang, source.Name); err != nil {
+		tx.Rollback()
+		return 0, 0, err
+	}
+
 	stmtLemma, err := tx.Prepare(upsertLemmaSQL)
 	if err != nil {
 		tx.Rollback()
 		return 0, 0, err
 	}
 	stmtForm, err := tx.Prepare(upsertFormSQL)
+	if err != nil {
+		tx.Rollback()
+		return 0, 0, err
+	}
+	stmtTranslation, err := tx.Prepare(upsertTranslationSQL)
 	if err != nil {
 		tx.Rollback()
 		return 0, 0, err
@@ -424,6 +474,7 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 	commit := func() error {
 		stmtLemma.Close()
 		stmtForm.Close()
+		stmtTranslation.Close()
 		if err := tx.Commit(); err != nil {
 			return err
 		}
@@ -436,6 +487,10 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 			return err
 		}
 		stmtForm, err = tx.Prepare(upsertFormSQL)
+		if err != nil {
+			return err
+		}
+		stmtTranslation, err = tx.Prepare(upsertTranslationSQL)
 		return err
 	}
 
@@ -457,7 +512,10 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 
 		pos := normalizePos(entry.POS)
 
-		// Extract first gloss from first sense.
+		// Extract first gloss from first sense for the lemmas.gloss cache.
+		// The full senses[].glosses[] data is also written to the
+		// translations table below — lemmas.gloss is the denormalized
+		// "primary translation" cache for the existing UI's fast paths.
 		gloss := ""
 		if len(entry.Senses) > 0 && len(entry.Senses[0].Glosses) > 0 {
 			gloss = entry.Senses[0].Glosses[0]
@@ -466,6 +524,27 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 		// Insert lemma (the canonical headword form).
 		if _, err := stmtLemma.Exec(entry.Word, pos, gloss, dbLang, source.Name, source.Priority); err != nil {
 			log.Printf("warn: lemma insert %q: %v", entry.Word, err)
+		}
+
+		// Insert each gloss as a translation row. sense_idx is a flat
+		// counter across (sense, gloss) pairs — preserves order, gives
+		// each row a unique sense_idx so the PK doesn't conflict within
+		// the same source. We deliberately don't preserve "which glosses
+		// belong to the same sense" structure; if that becomes useful
+		// later we can add a sense_group_idx column without breaking the
+		// existing schema.
+		senseIdx := 0
+		for _, s := range entry.Senses {
+			for _, g := range s.Glosses {
+				g = strings.TrimSpace(g)
+				if g == "" {
+					continue
+				}
+				if _, err := stmtTranslation.Exec(entry.Word, pos, dbLang, g, senseIdx, source.Name); err != nil {
+					log.Printf("warn: translation insert %q sense=%d: %v", entry.Word, senseIdx, err)
+				}
+				senseIdx++
+			}
 		}
 
 		// Insert the canonical form → lemma mapping (lemma maps to itself).
@@ -494,6 +573,7 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 
 	stmtLemma.Close()
 	stmtForm.Close()
+	stmtTranslation.Close()
 
 	// Roll back the pending transaction if the stream ended with an error
 	// (IO error, truncated download, line exceeding 4MB buffer, etc.).
