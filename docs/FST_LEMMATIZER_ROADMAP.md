@@ -1,6 +1,10 @@
 # FST lemmatizer migration — roadmap
 
-Status: planning + pre-change baselines locked
+Status: **all four PRs merged 2026-05-06.** See
+[docs/FST_LEMMATIZER.md](FST_LEMMATIZER.md) for the as-built
+architecture, attribution, performance, and final eval delta.
+This roadmap remains as the historical planning record.
+
 Date: 2026-05-06
 Driver: Phase 3.5 spike, recorded in
 [experiments/2026-05-06-phase3.5-voikko-generator-spike.md](../experiments/2026-05-06-phase3.5-voikko-generator-spike.md)

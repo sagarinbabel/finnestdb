@@ -1,0 +1,1547 @@
+{
+  "run_id": "20260506T205305Z-fi-core",
+  "generated_at": "2026-05-06T20:53:05Z",
+  "dataset": {
+    "name": "fi-core",
+    "version": "v1",
+    "language": "FI",
+    "case_count": 6
+  },
+  "parsers": [
+    "basic",
+    "custom"
+  ],
+  "git_commit": "011325a",
+  "benchmark": {
+    "warmup_runs": 2,
+    "repeat_runs": 5
+  },
+  "summary": {
+    "basic": {
+      "expected_tokens": 20,
+      "lemma_accuracy": 0.85,
+      "pos_accuracy": 0.9,
+      "grammar_accuracy": 0,
+      "full_accuracy": 0.35,
+      "resolved_coverage": 0.9130434782608695,
+      "avg_case_duration_ms": 0,
+      "p50_case_duration_ms": 0,
+      "p95_case_duration_ms": 0,
+      "avg_unique_forms": 3.8333333333333335,
+      "avg_resolved_tokens": 3.5,
+      "avg_unresolved_tokens": 0.3333333333333333,
+      "avg_analyze_ms": 0,
+      "avg_lookup_forms_ms": 0,
+      "avg_lookup_glosses_ms": 0,
+      "avg_resolve_sentences_ms": 0,
+      "avg_enrich_words_ms": 0
+    },
+    "custom": {
+      "expected_tokens": 20,
+      "lemma_accuracy": 0.85,
+      "pos_accuracy": 0.9,
+      "grammar_accuracy": 0,
+      "full_accuracy": 0.35,
+      "resolved_coverage": 1,
+      "avg_case_duration_ms": 0,
+      "p50_case_duration_ms": 0,
+      "p95_case_duration_ms": 0,
+      "avg_unique_forms": 3.8333333333333335,
+      "avg_resolved_tokens": 3.8333333333333335,
+      "avg_unresolved_tokens": 0,
+      "avg_analyze_ms": 0,
+      "avg_lookup_forms_ms": 0,
+      "avg_lookup_glosses_ms": 0,
+      "avg_resolve_sentences_ms": 0,
+      "avg_enrich_words_ms": 0
+    }
+  },
+  "cases": [
+    {
+      "case_id": "fi-1001",
+      "text": "Pankkiin menin aamulla.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "avg_ms": 0,
+          "p50_ms": 0,
+          "p95_ms": 0
+        },
+        "custom": {
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "avg_ms": 0,
+          "p50_ms": 0,
+          "p95_ms": 0
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ms": 0,
+            "lookup_forms_ms": 0,
+            "lookup_glosses_ms": 0,
+            "resolve_sentences_ms": 0,
+            "enrich_words_ms": 0,
+            "total_ms": 0
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ms": 0,
+            "lookup_forms_ms": 0,
+            "lookup_glosses_ms": 0,
+            "resolve_sentences_ms": 0,
+            "enrich_words_ms": 0,
+            "total_ms": 0
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Pankkiin",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pankki",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pankki",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=pankkiin pos=VERB",
+                "resolution:dict lemma=pankki pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "menin",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "mennä",
+              "pos": "VERB"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "mennä",
+              "pos": "VERB",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=menin pos=VERB",
+                "resolution:dict lemma=mennä pos=VERB"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "aamulla",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "aamu",
+              "pos": "NOUN",
+              "grammar_label": "adessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "aamu",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=aamulla pos=NOUN",
+                "resolution:dict lemma=aamu pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Pankkiin",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pankki",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pankki",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=pankkiin pos=VERB",
+                "resolution:dict lemma=pankki pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "menin",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "mennä",
+              "pos": "VERB"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "mennä",
+              "pos": "VERB",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=menin pos=VERB",
+                "resolution:dict lemma=mennä pos=VERB"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "aamulla",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "aamu",
+              "pos": "NOUN",
+              "grammar_label": "adessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "aamu",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=aamulla pos=NOUN",
+                "resolution:dict lemma=aamu pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "fi-1002",
+      "text": "Minä luin kirjassani uudesta pankkiautomaatista.",
+      "token_count": 5,
+      "duration_ms": {
+        "basic": {
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "avg_ms": 0,
+          "p50_ms": 0,
+          "p95_ms": 0
+        },
+        "custom": {
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "avg_ms": 0,
+          "p50_ms": 0,
+          "p95_ms": 0
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 5,
+          "total_sentences": 1,
+          "resolved_tokens": 5,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 5,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ms": 0,
+            "lookup_forms_ms": 0,
+            "lookup_glosses_ms": 0,
+            "resolve_sentences_ms": 0,
+            "enrich_words_ms": 0,
+            "total_ms": 0
+          }
+        },
+        "custom": {
+          "unique_forms": 5,
+          "total_sentences": 1,
+          "resolved_tokens": 5,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 5,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ms": 0,
+            "lookup_forms_ms": 0,
+            "lookup_glosses_ms": 0,
+            "resolve_sentences_ms": 0,
+            "enrich_words_ms": 0,
+            "total_ms": 0
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Minä",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "minä",
+              "pos": "PRON"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "mi",
+              "pos": "PRON",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=minä pos=NOUN",
+                "resolution:dict lemma=mi pos=PRON"
+              ]
+            },
+            "match": {
+              "lemma": false,
+              "pos": true,
+              "grammar": true,
+              "full": false
+            }
+          },
+          {
+            "surface": "luin",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "lukea",
+              "pos": "VERB"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "luu",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=luin pos=VERB",
+                "resolution:dict lemma=luu pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": false,
+              "pos": false,
+              "grammar": true,
+              "full": false
+            }
+          },
+          {
+            "surface": "kirjassani",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kirja",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kirja",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=kirjassani pos=NOUN",
+                "resolution:dict lemma=kirja pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "uudesta",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "uusi",
+              "pos": "ADJ",
+              "grammar_label": "elative"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "uusi",
+              "pos": "ADJ",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=uudesta pos=NOUN",
+                "resolution:dict lemma=uusi pos=ADJ"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "pankkiautomaatista",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pankkiautomaatti",
+              "pos": "NOUN",
+              "grammar_label": "elative"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pankkiautomaatti",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=pankkiautomaatista pos=NOUN",
+                "resolution:dict lemma=pankkiautomaatti pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Minä",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "minä",
+              "pos": "PRON"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "mi",
+              "pos": "PRON",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=minä pos=NOUN",
+                "resolution:dict lemma=mi pos=PRON"
+              ]
+            },
+            "match": {
+              "lemma": false,
+              "pos": true,
+              "grammar": true,
+              "full": false
+            }
+          },
+          {
+            "surface": "luin",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "lukea",
+              "pos": "VERB"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "luu",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=luin pos=VERB",
+                "resolution:dict lemma=luu pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": false,
+              "pos": false,
+              "grammar": true,
+              "full": false
+            }
+          },
+          {
+            "surface": "kirjassani",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kirja",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kirja",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=kirjassani pos=NOUN",
+                "resolution:dict lemma=kirja pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "uudesta",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "uusi",
+              "pos": "ADJ",
+              "grammar_label": "elative"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "uusi",
+              "pos": "ADJ",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=uudesta pos=NOUN",
+                "resolution:dict lemma=uusi pos=ADJ"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "pankkiautomaatista",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pankkiautomaatti",
+              "pos": "NOUN",
+              "grammar_label": "elative"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pankkiautomaatti",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=pankkiautomaatista pos=NOUN",
+                "resolution:dict lemma=pankkiautomaatti pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "fi-1003",
+      "text": "Kuopion kaupunkiin vuoden 2017 alussa.",
+      "token_count": 5,
+      "duration_ms": {
+        "basic": {
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "avg_ms": 0,
+          "p50_ms": 0,
+          "p95_ms": 0
+        },
+        "custom": {
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "avg_ms": 0,
+          "p50_ms": 0,
+          "p95_ms": 0
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 5,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 2,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1,
+            "stub": 2
+          },
+          "timings": {
+            "analyze_ms": 0,
+            "lookup_forms_ms": 0,
+            "lookup_glosses_ms": 0,
+            "resolve_sentences_ms": 0,
+            "enrich_words_ms": 0,
+            "total_ms": 0
+          }
+        },
+        "custom": {
+          "unique_forms": 5,
+          "total_sentences": 1,
+          "resolved_tokens": 5,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "case_suffix": 1,
+            "dict": 3,
+            "fst": 1,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ms": 0,
+            "lookup_forms_ms": 0,
+            "lookup_glosses_ms": 0,
+            "resolve_sentences_ms": 0,
+            "enrich_words_ms": 0,
+            "total_ms": 0
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Kuopion",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "Kuopio",
+              "pos": "PROPN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kuopion",
+              "pos": "NOUN",
+              "source": "stub",
+              "resolved": false,
+              "trace": [
+                "analyzer:rust lemma=kuopion pos=NOUN",
+                "fallback:stub lemma=kuopion pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": false,
+              "pos": false,
+              "grammar": true,
+              "full": false
+            }
+          },
+          {
+            "surface": "kaupunkiin",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kaupunki",
+              "pos": "NOUN",
+              "grammar_label": "illative"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kaupunki",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=kaupunkiin pos=VERB",
+                "resolution:dict lemma=kaupunki pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "vuoden",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "vuosi",
+              "pos": "NOUN",
+              "grammar_label": "genitive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "vuosi",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=vuoden pos=VERB",
+                "resolution:dict lemma=vuosi pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "alussa",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "alku",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "alku",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=alussa pos=NOUN",
+                "resolution:dict lemma=alku pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Kuopion",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "Kuopio",
+              "pos": "PROPN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kuopi",
+              "pos": "VERB",
+              "grammar_label": "illative",
+              "source": "case_suffix",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=kuopion pos=NOUN",
+                "resolution:case_suffix lemma=kuopi pos=VERB"
+              ]
+            },
+            "match": {
+              "lemma": false,
+              "pos": false,
+              "grammar": true,
+              "full": false
+            }
+          },
+          {
+            "surface": "kaupunkiin",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kaupunki",
+              "pos": "NOUN",
+              "grammar_label": "illative"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kaupunki",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=kaupunkiin pos=VERB",
+                "resolution:dict lemma=kaupunki pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "vuoden",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "vuosi",
+              "pos": "NOUN",
+              "grammar_label": "genitive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "vuosi",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=vuoden pos=VERB",
+                "resolution:dict lemma=vuosi pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "alussa",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "alku",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "alku",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=alussa pos=NOUN",
+                "resolution:dict lemma=alku pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "fi-1004",
+      "text": "Kirjassa oli uusi sana.",
+      "token_count": 4,
+      "duration_ms": {
+        "basic": {
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "avg_ms": 0,
+          "p50_ms": 0,
+          "p95_ms": 0
+        },
+        "custom": {
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "avg_ms": 0,
+          "p50_ms": 0,
+          "p95_ms": 0
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 4,
+          "total_sentences": 1,
+          "resolved_tokens": 4,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 4,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ms": 0,
+            "lookup_forms_ms": 0,
+            "lookup_glosses_ms": 0,
+            "resolve_sentences_ms": 0,
+            "enrich_words_ms": 0,
+            "total_ms": 0
+          }
+        },
+        "custom": {
+          "unique_forms": 4,
+          "total_sentences": 1,
+          "resolved_tokens": 4,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 4,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ms": 0,
+            "lookup_forms_ms": 0,
+            "lookup_glosses_ms": 0,
+            "resolve_sentences_ms": 0,
+            "enrich_words_ms": 0,
+            "total_ms": 0
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Kirjassa",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kirja",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kirja",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=kirjassa pos=NOUN",
+                "resolution:dict lemma=kirja pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "uusi",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "uusi",
+              "pos": "ADJ"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "uusi",
+              "pos": "ADJ",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=uusi pos=NOUN",
+                "resolution:dict lemma=uusi pos=ADJ"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "sana",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sana",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sana",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=sana pos=NOUN",
+                "resolution:dict lemma=sana pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Kirjassa",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kirja",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kirja",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=kirjassa pos=NOUN",
+                "resolution:dict lemma=kirja pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "uusi",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "uusi",
+              "pos": "ADJ"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "uusi",
+              "pos": "ADJ",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=uusi pos=NOUN",
+                "resolution:dict lemma=uusi pos=ADJ"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "sana",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sana",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sana",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=sana pos=NOUN",
+                "resolution:dict lemma=sana pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "fi-1005",
+      "text": "Talossa oli valo.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "avg_ms": 0,
+          "p50_ms": 0,
+          "p95_ms": 0
+        },
+        "custom": {
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "avg_ms": 0,
+          "p50_ms": 0,
+          "p95_ms": 0
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ms": 0,
+            "lookup_forms_ms": 0,
+            "lookup_glosses_ms": 0,
+            "resolve_sentences_ms": 0,
+            "enrich_words_ms": 0,
+            "total_ms": 0
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ms": 0,
+            "lookup_forms_ms": 0,
+            "lookup_glosses_ms": 0,
+            "resolve_sentences_ms": 0,
+            "enrich_words_ms": 0,
+            "total_ms": 0
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Talossa",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "talo",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "talo",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=talossa pos=NOUN",
+                "resolution:dict lemma=talo pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "valo",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "valo",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "valo",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=valo pos=NOUN",
+                "resolution:dict lemma=valo pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Talossa",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "talo",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "talo",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=talossa pos=NOUN",
+                "resolution:dict lemma=talo pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "valo",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "valo",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "valo",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=valo pos=NOUN",
+                "resolution:dict lemma=valo pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "fi-1006",
+      "text": "Pankkiautomaatista löytyi kuitti.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "avg_ms": 0,
+          "p50_ms": 0,
+          "p95_ms": 0
+        },
+        "custom": {
+          "samples": [
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "avg_ms": 0,
+          "p50_ms": 0,
+          "p95_ms": 0
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ms": 0,
+            "lookup_forms_ms": 0,
+            "lookup_glosses_ms": 0,
+            "resolve_sentences_ms": 0,
+            "enrich_words_ms": 0,
+            "total_ms": 0
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ms": 0,
+            "lookup_forms_ms": 0,
+            "lookup_glosses_ms": 0,
+            "resolve_sentences_ms": 0,
+            "enrich_words_ms": 0,
+            "total_ms": 0
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Pankkiautomaatista",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pankkiautomaatti",
+              "pos": "NOUN",
+              "grammar_label": "elative"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pankkiautomaatti",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=pankkiautomaatista pos=NOUN",
+                "resolution:dict lemma=pankkiautomaatti pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "löytyi",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "löytyä",
+              "pos": "VERB"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "löytyä",
+              "pos": "VERB",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=löytyi pos=NOUN",
+                "resolution:dict lemma=löytyä pos=VERB"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "kuitti",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kuitti",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kuitti",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=kuitti pos=NOUN",
+                "resolution:dict lemma=kuitti pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Pankkiautomaatista",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pankkiautomaatti",
+              "pos": "NOUN",
+              "grammar_label": "elative"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pankkiautomaatti",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=pankkiautomaatista pos=NOUN",
+                "resolution:dict lemma=pankkiautomaatti pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "löytyi",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "löytyä",
+              "pos": "VERB"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "löytyä",
+              "pos": "VERB",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=löytyi pos=NOUN",
+                "resolution:dict lemma=löytyä pos=VERB"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "kuitti",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kuitti",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kuitti",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=kuitti pos=NOUN",
+                "resolution:dict lemma=kuitti pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

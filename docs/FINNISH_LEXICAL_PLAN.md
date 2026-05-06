@@ -282,20 +282,23 @@ boundaries.
   *runtime* to Go gives faster lookups, smaller disk footprint, and
   union coverage of Voikko + Giellalt in one move. See
   [docs/FST_LEMMATIZER_ROADMAP.md](FST_LEMMATIZER_ROADMAP.md).
-- **Phase 4 (replacement) — FST lemmatizer in Go.** New package
-  `pkg/lemmatizer-fi-et/` with two subpackages: `vfst/` (Voikko VFST
-  runtime, ported from libvoikko sources) and `hfstol/` (HFST
-  optimised-lookup runtime, ported from upstream HFST). Vendored data:
-  `mor.vfst` from libvoikko upstream + `analyser-gt-desc.hfstol` for
-  Finnish (compiled from `giellalt/lang-fin`). Tests:
-  consonant gradation, vowel harmony, *-nen* class, partitive plural
-  resolve correctly via FST lookup. Compare against
-  [`docs/baselines/2026-05-06-pre-fst-*`](baselines/) (frozen
-  pre-change snapshot).
-- **Phase 5 — Estonian via Giellalt.** Repeat the Phase 4 build for
-  `giellalt/lang-est`; vendor ET `.hfstol`; extend `Lemmatize` to
-  cover ET. Voikko has no Estonian model so ET is Giellalt-only.
-  Compare against pre-change ET baselines.
+- **Phase 4 (replacement) — FST lemmatizer in Go. (Done, 2026-05-06.)**
+  New package `pkg/lemmatizer-fi-et/` with the Voikko VFST and HFST
+  optimised-lookup runtimes ported to Go, embedded data files for both
+  FI (Voikko + Giellalt lang-fin) and ET (Giellalt lang-est-x-utee),
+  and a unified `Lemmatize(lang, word)` entry point wired into
+  `internal/store/dict.go::BatchLookupForms` step 5. Verified
+  bit-identical to upstream `voikkospell -m` and `hfst-lookup` on
+  representative samples. Eval delta vs the pre-FST baseline:
+  fi-manual-v1 lemma +1.5 / full +22.9 / coverage +5.7 pts;
+  et-manual lemma +11.1 / full +11.1 / coverage +8.3 pts; first-time
+  grammar_label coverage on every dataset. See
+  [docs/FST_LEMMATIZER.md](FST_LEMMATIZER.md) for full architecture,
+  attribution, performance numbers, and rationale.
+- **Phase 5 — Estonian via Giellalt. (Done, 2026-05-06.)** Subsumed
+  into the Phase 4 work above — same FST runtime, same merge logic;
+  Estonian uses Giellalt's `lang-est-x-utee` morphology since Voikko
+  has no Estonian model.
 
 ## Migration Framework Plan
 
