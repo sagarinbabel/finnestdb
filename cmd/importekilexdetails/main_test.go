@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"finnestdb/internal/store"
@@ -78,9 +79,52 @@ func TestJoinTranslations_DedupesCaseInsensitive(t *testing.T) {
 		{TranslationsEN: []string{"Line", "feature", "shape"}},
 	}}
 	got := joinTranslations(entry)
-	want := "feature; line; shape; stripe"
+	// "Line" wins the dedup tiebreak over "line" (chooseCasing prefers
+	// the uppercase-leading variant). Lexicographic sort places "Line"
+	// before "feature" because uppercase ASCII sorts before lowercase.
+	want := "Line; feature; shape; stripe"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestChooseCasing(t *testing.T) {
+	cases := []struct {
+		a, b, want string
+	}{
+		// Real samples from k.jsonl: proper-noun cased version wins.
+		{"Calvinism", "calvinism", "Calvinism"},
+		{"calvinism", "Calvinism", "Calvinism"},
+		{"Turbot", "turbot", "Turbot"},
+		// Two title-case forms — lexicographic tiebreak.
+		{"Calvinism", "CALVINISM", "CALVINISM"},
+		// Two lowercase forms — lexicographic tiebreak.
+		{"line", "Line", "Line"},
+		{"line", "lyne", "line"},
+		// Empty edge case: "" never has uppercase, the other wins.
+		{"", "Calvinism", "Calvinism"},
+		{"calvinism", "", "calvinism"},
+	}
+	for _, tc := range cases {
+		if got := chooseCasing(tc.a, tc.b); got != tc.want {
+			t.Errorf("chooseCasing(%q, %q) = %q, want %q", tc.a, tc.b, got, tc.want)
+		}
+	}
+}
+
+func TestLemmaPOSMap_CaseTiebreakDeterministic(t *testing.T) {
+	// Same dedup result regardless of input order — guards against
+	// last-write-wins regressions.
+	a := lemmaPOSMap{}
+	a.add("kalvados", "NOUN", []string{"calvados", "Calvados"})
+	b := lemmaPOSMap{}
+	b.add("kalvados", "NOUN", []string{"Calvados", "calvados"})
+
+	if joinTranslationData(a["kalvados"]["NOUN"]) != "Calvados" {
+		t.Errorf("a: got %q, want \"Calvados\"", joinTranslationData(a["kalvados"]["NOUN"]))
+	}
+	if joinTranslationData(b["kalvados"]["NOUN"]) != "Calvados" {
+		t.Errorf("b: got %q, want \"Calvados\"", joinTranslationData(b["kalvados"]["NOUN"]))
 	}
 }
 
@@ -137,7 +181,7 @@ func TestImporter_EndToEnd_HandlesHomonymsAndEmptyGlossGuard(t *testing.T) {
 		t.Fatalf("seed kaikki: %v", err)
 	}
 
-	lemmaPOS, err := aggregateDefinitions(defDir)
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
 	if err != nil {
 		t.Fatalf("aggregateDefinitions: %v", err)
 	}
@@ -242,7 +286,7 @@ func TestImporter_MergesGlossesAcrossHomonyms(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 
-	lemmaPOS, err := aggregateDefinitions(defDir)
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
 	if err != nil {
 		t.Fatalf("aggregate: %v", err)
 	}
@@ -352,7 +396,7 @@ func TestImporter_ReportsActualRowsInserted(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 
-	lemmaPOS, err := aggregateDefinitions(defDir)
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
 	if err != nil {
 		t.Fatalf("aggregate: %v", err)
 	}
@@ -372,6 +416,46 @@ func TestImporter_ReportsActualRowsInserted(t *testing.T) {
 	// kassi/SgP both yield (kassi, kass, NOUN); kass/SgN yields (kass, kass, NOUN).
 	if formInserted != 2 {
 		t.Errorf("form rows inserted = %d, want 2 (one duplicate ignored)", formInserted)
+	}
+}
+
+// TestAggregateDefinitions_TracksBadLines guards against silently swallowing
+// JSONL parse errors — a counter and capped sample collection surface
+// upstream schema drift in the run summary instead of failing quietly.
+func TestAggregateDefinitions_TracksBadLines(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	if err := writeAll(defDir, "x.jsonl",
+		`{"word_id":1,"lemma":"good","word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["good"]}]}`+"\n"+
+			`{this is not valid json`+"\n"+
+			`{"word_id":2,"lemma":"","word_class":"noomen","meanings":[{"pos":["s"]}]}`+"\n"+
+			// Valid JSON, lemma present, but every meaning's POS is unmappable.
+			`{"word_id":3,"lemma":"weirdpos","word_class":"","meanings":[{"pos":["WEIRD"]}]}`+"\n"+
+			`{another bad line`+"\n",
+	); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	_, stats, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+	if stats.badLines != 2 {
+		t.Errorf("badLines = %d, want 2", stats.badLines)
+	}
+	if stats.emptyLemma != 1 {
+		t.Errorf("emptyLemma = %d, want 1", stats.emptyLemma)
+	}
+	if stats.noPOS != 1 {
+		t.Errorf("noPOS = %d, want 1", stats.noPOS)
+	}
+	if len(stats.badSamples) != 2 {
+		t.Errorf("badSamples = %d, want 2 (under maxBadLineSamples cap)", len(stats.badSamples))
+	}
+	for _, s := range stats.badSamples {
+		if !strings.Contains(s, "x.jsonl:") {
+			t.Errorf("sample %q missing file:line prefix", s)
+		}
 	}
 }
 

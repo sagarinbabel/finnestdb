@@ -34,11 +34,17 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode"
 
 	"finnestdb/internal/store"
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+// maxBadLineSamples caps how many JSONL parse errors we capture verbatim
+// (with file:line) for the post-run summary. Beyond this we still count
+// them but stop logging detail.
+const maxBadLineSamples = 10
 
 // posMap converts an Ekilex meaning-level POS code to UPOS. The table is
 // documented in ARCHITECTURE.md (Dictionary section).
@@ -132,11 +138,22 @@ func main() {
 	// glosses — e.g. aste#1 "step" vs aste#2 "degree" both collapse to
 	// aste/NOUN, and one would shadow the other.)
 	log.Println("Pass 1: aggregating definitions → lemmas")
-	lemmaPOS, err := aggregateDefinitions(defDir)
+	lemmaPOS, aggStats, err := aggregateDefinitions(defDir)
 	if err != nil {
 		log.Fatalf("definitions: %v", err)
 	}
 	log.Printf("  aggregated %d unique (lemma, pos) entries", countLemmaPOS(lemmaPOS))
+	if aggStats.badLines > 0 || aggStats.emptyLemma > 0 || aggStats.noPOS > 0 {
+		log.Printf("  soft-skipped: %d JSONL parse errors, %d entries with no lemma, %d entries with no resolvable POS",
+			aggStats.badLines, aggStats.emptyLemma, aggStats.noPOS)
+		for _, s := range aggStats.badSamples {
+			log.Printf("    bad-line: %s", s)
+		}
+		if aggStats.badLines > len(aggStats.badSamples) {
+			log.Printf("    ... and %d more JSONL parse errors not shown",
+				aggStats.badLines-len(aggStats.badSamples))
+		}
+	}
 
 	// Pass 2: write the aggregated lemmas. Reports rows actually inserted
 	// (vs ignored because they collide with kaikki) and rows whose gloss
@@ -176,10 +193,14 @@ func main() {
 type lemmaPOSMap map[string]map[string]*lemmaPOSData
 
 type lemmaPOSData struct {
-	// translations preserves insertion order; dedup happens at write time.
-	translations []string
-	// translationsSeen lowercases the dedup key so "Line" and "line" merge.
-	translationsSeen map[string]struct{}
+	// translationsByKey maps the lowercase form of an EN translation to
+	// the chosen original-cased version. Dedup is case-insensitive — when
+	// the same lowercase key arrives with different casings (e.g. real
+	// data has "Calvinism" and "calvinism", "Turbot" and "turbot") the
+	// uppercase-leading variant wins, see chooseCasing. This biases
+	// toward the proper-noun / acronym reading, which is the common
+	// reason the same word appears with different cases in Ekilex.
+	translationsByKey map[string]string
 }
 
 func (m lemmaPOSMap) add(lemma, upos string, translations []string) {
@@ -190,7 +211,7 @@ func (m lemmaPOSMap) add(lemma, upos string, translations []string) {
 	}
 	d, ok := posMap[upos]
 	if !ok {
-		d = &lemmaPOSData{translationsSeen: make(map[string]struct{})}
+		d = &lemmaPOSData{translationsByKey: make(map[string]string)}
 		posMap[upos] = d
 	}
 	for _, t := range translations {
@@ -199,12 +220,49 @@ func (m lemmaPOSMap) add(lemma, upos string, translations []string) {
 			continue
 		}
 		key := strings.ToLower(t)
-		if _, dup := d.translationsSeen[key]; dup {
+		existing, dup := d.translationsByKey[key]
+		if !dup {
+			d.translationsByKey[key] = t
 			continue
 		}
-		d.translationsSeen[key] = struct{}{}
-		d.translations = append(d.translations, t)
+		d.translationsByKey[key] = chooseCasing(existing, t)
 	}
+}
+
+// chooseCasing breaks ties between two translations that share a lowercase
+// form. A translation that begins with an uppercase letter wins over its
+// all-lowercase variant — proper nouns and acronyms are the dominant cause
+// of case collisions in real Ekilex data ("Calvinism" / "calvinism",
+// "Turbot" / "turbot"). When neither or both have an uppercase first
+// letter, we fall back to lexicographic order for determinism so re-runs
+// produce byte-stable output.
+func chooseCasing(a, b string) string {
+	switch {
+	case a == "" && b != "":
+		return b
+	case b == "" && a != "":
+		return a
+	}
+	upperA := startsUpper(a)
+	upperB := startsUpper(b)
+	switch {
+	case upperA && !upperB:
+		return a
+	case upperB && !upperA:
+		return b
+	case a < b:
+		return a
+	default:
+		return b
+	}
+}
+
+func startsUpper(s string) bool {
+	if s == "" {
+		return false
+	}
+	r := []rune(s)[0]
+	return unicode.IsUpper(r)
 }
 
 func countLemmaPOS(m lemmaPOSMap) int {
@@ -215,11 +273,24 @@ func countLemmaPOS(m lemmaPOSMap) int {
 	return n
 }
 
+// aggregateStats records soft failures encountered while walking the
+// definitions JSONL — silent skips would let upstream schema drift go
+// unnoticed.
+type aggregateStats struct {
+	badLines    int
+	badSamples  []string // up to maxBadLineSamples, "<file>:<line>: <error>"
+	emptyLemma  int      // valid JSON but missing Lemma
+	noPOS       int      // entry had no POS we could resolve
+}
+
 // aggregateDefinitions walks definitions/*.jsonl and builds the lemmaPOSMap.
 // No DB writes happen here — the returned aggregator is consumed by
-// writeLemmas and importForms.
-func aggregateDefinitions(dir string) (lemmaPOSMap, error) {
+// writeLemmas and importForms. The stats struct surfaces soft failures
+// (JSON parse errors, lemma-less entries, entries with no resolvable POS)
+// so we can log a summary instead of skipping silently.
+func aggregateDefinitions(dir string) (lemmaPOSMap, *aggregateStats, error) {
 	lemmaPOS := make(lemmaPOSMap)
+	stats := &aggregateStats{}
 
 	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -235,17 +306,25 @@ func aggregateDefinitions(dir string) (lemmaPOSMap, error) {
 		defer f.Close()
 		scanner := bufio.NewScanner(f)
 		scanner.Buffer(make([]byte, 4*1024*1024), 4*1024*1024)
+		lineNo := 0
 		for scanner.Scan() {
+			lineNo++
 			line := scanner.Bytes()
 			if len(line) == 0 {
 				continue
 			}
 			var entry definitionEntry
 			if err := json.Unmarshal(line, &entry); err != nil {
+				stats.badLines++
+				if len(stats.badSamples) < maxBadLineSamples {
+					stats.badSamples = append(stats.badSamples,
+						fmt.Sprintf("%s:%d: %v", path, lineNo, err))
+				}
 				continue
 			}
 			lemma := strings.TrimSpace(entry.Lemma)
 			if lemma == "" {
+				stats.emptyLemma++
 				continue
 			}
 
@@ -266,6 +345,7 @@ func aggregateDefinitions(dir string) (lemmaPOSMap, error) {
 				}
 			}
 			if len(posSet) == 0 {
+				stats.noPOS++
 				continue
 			}
 
@@ -277,9 +357,9 @@ func aggregateDefinitions(dir string) (lemmaPOSMap, error) {
 		return scanner.Err()
 	})
 	if walkErr != nil {
-		return nil, walkErr
+		return nil, stats, walkErr
 	}
-	return lemmaPOS, nil
+	return lemmaPOS, stats, nil
 }
 
 // writeLemmas issues one INSERT OR IGNORE + one conditional UPDATE per
@@ -355,28 +435,28 @@ func collectTranslations(entry definitionEntry) []string {
 }
 
 // joinTranslationData sorts the deduplicated translations and joins with
-// "; " for the gloss column.
+// "; " for the gloss column. Sorting on the chosen original-cased value
+// keeps output byte-stable across runs.
 func joinTranslationData(d *lemmaPOSData) string {
-	if d == nil || len(d.translations) == 0 {
+	if d == nil || len(d.translationsByKey) == 0 {
 		return ""
 	}
-	out := make([]string, len(d.translations))
-	copy(out, d.translations)
+	out := make([]string, 0, len(d.translationsByKey))
+	for _, t := range d.translationsByKey {
+		out = append(out, t)
+	}
 	sort.Strings(out)
 	return strings.Join(out, "; ")
 }
 
 // joinTranslations is kept for tests that exercise the per-entry path.
 func joinTranslations(entry definitionEntry) string {
-	d := &lemmaPOSData{translationsSeen: make(map[string]struct{})}
 	tmp := lemmaPOSMap{}
-	for _, t := range collectTranslations(entry) {
-		tmp.add("_", "_", []string{t})
+	tmp.add("_", "_", collectTranslations(entry))
+	if d, ok := tmp["_"]["_"]; ok {
+		return joinTranslationData(d)
 	}
-	if got, ok := tmp["_"]["_"]; ok {
-		d = got
-	}
-	return joinTranslationData(d)
+	return ""
 }
 
 // morphFormClass categorises an Ekilex morph_code as verbal, nominal, or
