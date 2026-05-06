@@ -81,19 +81,44 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		// and proper nouns resolve correctly.
 		lower := strings.ToLower(form)
 
+		// FST step promotion (2026-05-07): run the FST in parallel with
+		// the dict so direct hits can carry grammar_label too. Without
+		// this, the FST only fires on dict misses (~5% of tokens) and
+		// the post-FST baseline reported 1.4% / 2.0% grammar accuracy
+		// because most tokens hit dict step 1 and never see the analyzer.
+		// See docs/LEARNINGS.md "FST and stopgap cover different paths".
+		var fstLabel, fstLemma string
+		if parserMode == "custom" && (lang == "FI" || lang == "ET") {
+			if lem := d.fstLemmatizer(); lem != nil {
+				if a, ok := pickFirstFSTAnalysis(lem.Lemmatize(lang, lower)); ok {
+					fstLabel = a.GrammarLabel
+					fstLemma = a.Lemma
+				}
+			}
+		}
+
 		// Step 1: Direct dictionary lookup. Multi-lemma rows mean a single
 		// surface form can have multiple (lemma, pos) candidates; rank them
 		// against the original-case surface so PROPN homonyms don't beat
 		// common-noun lemmas on lowercase surfaces.
 		if best, ok := lookupBestForm(stmtFormsAll, form, lower, lang); ok {
-			// Stopgap (custom mode): the dict knows lemma+POS but not the
-			// inflectional case. Run the case-suffix matcher additively to
-			// attach a label, only when the suffix-strip points to the same
-			// lemma we just resolved (otherwise the label would belong to a
-			// different word). This will be removed once the FST runtime in
-			// pkg/lemmatizer-fi-et/ produces FEATS for direct hits.
+			// Attach grammar_label, in priority order:
+			//   1. FST analysis (when lemma agrees with dict's lemma —
+			//      lemma-equality guard prevents attaching a label that
+			//      belongs to a different word).
+			//   2. Case-suffix stopgap (only when FST didn't fire or
+			//      didn't agree on the lemma).
+			// The stopgap can be removed once the FEATS migration lands
+			// and we measure full-FEATS accuracy; today, since gold only
+			// has Case=, both paths produce equivalent grammar_label
+			// values for non-stem-alternating cases.
 			if parserMode == "custom" && best.GrammarLabel == "" {
-				best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
+				if fstLabel != "" && fstLemma == best.Lemma {
+					best.GrammarLabel = fstLabel
+					best.Source = best.Source + "+fst_label"
+				} else {
+					best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
+				}
 			}
 			result[form] = best
 			continue
@@ -154,21 +179,30 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 // this helper just picks the first valid analysis it returns.
 func tryFSTAnalyze(lem *lemmatizer.Lemmatizer, lang, lower string) (FormResolution, bool) {
 	analyses := lem.Lemmatize(lang, lower)
-	if len(analyses) == 0 {
+	a, ok := pickFirstFSTAnalysis(analyses)
+	if !ok {
 		return FormResolution{}, false
 	}
+	return FormResolution{
+		Lemma:        a.Lemma,
+		POS:          a.UPOS,
+		GrammarLabel: a.GrammarLabel,
+		Source:       "fst",
+	}, true
+}
+
+// pickFirstFSTAnalysis returns the first analysis with non-empty
+// (Lemma, UPOS) — used both by tryFSTAnalyze (when dict missed) and by
+// the FST-step-promotion path (when dict hit and we want to attach a
+// grammar_label). Lifted out so both paths share the same selection rule.
+func pickFirstFSTAnalysis(analyses []lemmatizer.Analysis) (lemmatizer.Analysis, bool) {
 	for _, a := range analyses {
 		if a.Lemma == "" || a.UPOS == "" {
 			continue
 		}
-		return FormResolution{
-			Lemma:        a.Lemma,
-			POS:          a.UPOS,
-			GrammarLabel: a.GrammarLabel,
-			Source:       "fst",
-		}, true
+		return a, true
 	}
-	return FormResolution{}, false
+	return lemmatizer.Analysis{}, false
 }
 
 // formCandidate is the internal shape used while ranking multi-lemma matches.
