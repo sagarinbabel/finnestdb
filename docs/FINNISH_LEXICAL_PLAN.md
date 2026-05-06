@@ -160,9 +160,16 @@ The bit that makes Finnish actually nicer than Estonian: rule-based
 paradigm computation rather than scraped tables.
 
 - **Offline build step** (run once per Voikko/sanalista version):
-  for every Kotus lemma, call `voikkospell --paradigm` (or libvoikko's
-  generator API via the bundled adapter script under `scripts/`),
-  produce every surface form with morph features, write a JSONL file.
+  for every Kotus lemma, call into Voikko to enumerate the inflected
+  forms. The exact entry point is the open question Phase 3.5 (the
+  Voikko generator spike) closes — the installed `voikkospell` ships
+  morphological *analysis* (`-m` / `-M`), not a `--paradigm`
+  *generator* despite some older docs implying otherwise. Likely
+  candidates: libvoikko's C API via Python (`pyvoikko` /
+  `python3-libvoikko`), the standalone `voikkogen` tool when
+  available, or driving `vislcg3` / Giellatekno-style FSTs over the
+  same morphological data Voikko is built from. The spike commits
+  the chosen path before this phase produces the full seed.
 - Ship the JSONL under `data/voikko/` (mirroring `data/ekilex/`),
   e.g. `data/voikko/fi-voikko-forms-<version>.jsonl.gz`.
 - `cmd/importvoikko/` reads it and writes rows to `forms` with
@@ -228,9 +235,27 @@ boundaries.
 - **Phase 3 — Kotus adapter.** Pull sanalista, populate
   `paradigm_class` on existing FI lemmas, insert any Kotus lemmas not
   yet present. Tests: lemma count grows; eval baseline unchanged.
+- **Phase 3.5 — Voikko generator spike.** Before committing to a 6M-row
+  seed artifact, prove the paradigm-generation path on a handful of
+  Kotus lemmas covering the major inflection classes. The installed
+  `voikkospell` ships morphological *analysis* (`-m` / `-M`), not a
+  built-in `--paradigm` *generator*. Confirm the actual generation
+  path (libvoikko C API, `voikkogen`, or a Python `libvoikko` script
+  under `scripts/`), the per-class form coverage, and the
+  Voikko-tag-to-UD-features mapping (e.g. `n_t` → `Case=Nom|Number=Plur`).
+  Output: a spike report under
+  [`experiments/`](../experiments/) plus a small fixture
+  `data/voikko/fi-voikko-spike.jsonl` covering ~50 lemmas. Tests: the
+  fixture round-trips through the eventual `cmd/importvoikko` shape.
+  This phase exists because the original Phase 4 plan assumed
+  `voikkospell --paradigm` works as documented; verifying the actual
+  generator and feature-mapping path is the riskiest implementation
+  detail in the whole Finnish track and worth de-risking before the
+  full seed.
 - **Phase 4 — Voikko seed.** Offline-generate
   `data/voikko/fi-voikko-forms-<version>.jsonl.gz`, commit it, import
-  via the new `cmd/importvoikko/` binary. Tests:
+  via the new `cmd/importvoikko/` binary. Reuses the generator and
+  feature mapping locked in Phase 3.5. Tests:
   consonant gradation, vowel harmony, *-nen* class, partitive plural
   resolve correctly via Voikko-priority rows. Compare against frozen
   baseline in `docs/baselines/`.
@@ -275,11 +300,16 @@ When that happens, the framework should:
 All major decisions are locked above. Remaining items to confirm during
 implementation:
 
+- **Voikko paradigm-generation entry point.** The installed
+  `voikkospell` ships `-m` / `-M` for morphological analysis, not a
+  `--paradigm` generator. Phase 3.5 spike resolves the actual
+  generation path (libvoikko via Python, `voikkogen`, or FST-based
+  alternative) before Phase 4 commits to the full seed.
 - **Exact morph-feature schema for `feats`.** UD features are the
   obvious target, but Voikko's native output uses its own tag set.
   The adapter script will normalize; mapping table goes in
-  [`scripts/`](../scripts/) and gets reviewed alongside the Voikko
-  seed PR.
+  [`scripts/`](../scripts/) and is locked alongside the Phase 3.5
+  spike (so Phase 4 only writes; it doesn't decide).
 - **kaikki.org extraction of fi.wiktionary defs vs en.wiktionary
   glosses.** Need to confirm kaikki.org's Finnish dump exposes both
   cleanly via `senses[*].glosses` plus a language-of-edition flag.

@@ -23,7 +23,8 @@ once Voikko-equivalent enrichment lands for FI.
 
 | Date | Commit | FI fi-manual-v1 lemma | ET et-grammar-v1 lemma | FI grammar | ET grammar | ET coverage |
 |---|---|---:|---:|---:|---:|---:|
-| 2026-05-06 | [`46d8b77`][c-2026-05-06] | **81.4** | **80.0** | 0.0 | 0.0 | **100.0** |
+| 2026-05-06b (post-priority-fix) | (PR 0.5 head) | **81.4** | **88.6** | 0.0 | 0.0 | **100.0** |
+| 2026-05-06 | [`46d8b77`][c-2026-05-06] | 81.4 | 80.0 | 0.0 | 0.0 | 100.0 |
 | 2026-05-05 | [`af111c2`][c-2026-05-05] | — | 88.6 | — | 2.0 | 94.6 |
 | 2026-05-05 (estnltk ceiling) | [`af111c2`][c-2026-05-05] | — | **98.1** | — | **92.2** | 100.0 |
 | 2026-04-28 | [`bb744ba`][c-2026-04-28] | 72.9 | 87.6 | 0.0 | 2.0 | 94.6 |
@@ -33,6 +34,49 @@ once Voikko-equivalent enrichment lands for FI.
 [c-2026-04-28]: https://github.com/sagarinbabel/finnestdb/commit/bb744ba
 
 ## Entries
+
+### 2026-05-06b — Source-aware lookup recovery
+
+**Commit**: TBD (PR 0.5 head)
+**Detail**: [`baselines/2026-05-06b-summary.md`](baselines/2026-05-06b-summary.md)
+
+Same dictionary state as 2026-05-06; the only thing that changed is
+parser code. This entry captures the fix for the regression that the
+previous entry surfaced.
+
+**Headline numbers** (custom parser):
+
+| Dataset (cases) | Lemma | POS | Grammar | Full | Coverage |
+|---|---:|---:|---:|---:|---:|
+| et-grammar-v1 (50) | **88.6** | **94.3** | 0.0 | 42.9 | 100.0 |
+| et-manual-v1 (4) | 88.9 | 88.9 | 0.0 | 22.2 | 100.0 |
+| fi-manual-v1 (22) | 81.4 | 85.7 | 0.0 | 62.9 | 91.2 |
+| fi-grammar-v1 (80) | 96.8 | 98.1 | 0.0 | 51.3 | 99.7 |
+| fi-core-v1 (6) | 85.0 | 90.0 | 0.0 | 35.0 | 95.7 |
+| fi-manual-v2 (4) | 88.9 | 100.0 | 0.0 | 55.6 | 100.0 |
+
+**Changes since 2026-05-06**:
+
+- [`internal/store/dict.go`](../internal/store/dict.go) `BatchLookupForms` step 1 now ranks multi-lemma candidates instead of arbitrarily picking the first row. Ranking, higher-to-lower priority:
+  1. Case-match: lowercase surface prefers lowercase lemma (place names lose to common nouns when surface is lowercase).
+  2. POS sanity: lowercase surface demotes PROPN.
+  3. Source priority (higher wins).
+  4. Deterministic tiebreak: source asc, lemma asc, POS asc.
+- [`cmd/importekilexdetails`](../cmd/importekilexdetails/main.go): inserts now tag rows with `source='ekilex'`, `source_priority=20`. `ensureSchema` now runs `EnsureMultiLemmaSchema` and `EnsureDictionarySourceColumns` so a fresh DB matches the server's shape.
+
+**Net effect**:
+
+- **ET regression closes.** et-grammar-v1 lemma recovered 80.0 → **88.6** (matches April baseline). POS recovered 83.8 → **94.3** (April was 97.1; the residual 2.8pp gap is on genuinely-ambiguous cases like `naeris` NOUN-vs-VERB, `keelt` different-lemma-form — not fixable by case/POS heuristics alone).
+- **No FI regression.** All four FI datasets unchanged. The ranker fires equally on FI but FI doesn't currently have many multi-lemma rows. When Voikko (Phase 4) introduces them, the same heuristic prevents the same accuracy collapse ET would have seen.
+- **Coverage stays at 100%.** The fix didn't trade coverage for accuracy.
+
+**Open issues this surfaced**:
+
+- Residual 2.8pp POS gap on et-grammar-v1 vs. April. The remaining cases need contextual disambiguation (POS tagging from a trigram model or a real morphological analyzer like Vabamorf). Out of scope for PR 0.5 — would be a follow-up if it becomes the largest blocker.
+- Same heuristic should apply at deck-ingest time too (`BatchLookupAllForms` returns unranked candidates; deck creates one card per candidate — that's intentional, but the *order* of cards may matter for which becomes "primary"). Worth reviewing during the kaikki refactor (Phase 2).
+- This is also the first measurement that demonstrates the convention working: PR #83 surfaced an issue → PR 0.5 fixed it → an entry here proves the recovery. Going forward, every parser-affecting PR should produce an entry of this shape.
+
+---
 
 ### 2026-05-06 — Post-Ekilex baseline
 

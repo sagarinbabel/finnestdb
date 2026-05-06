@@ -2,7 +2,9 @@ package store
 
 import (
 	"database/sql"
+	"sort"
 	"strings"
+	"unicode"
 
 	"finnestdb/internal/parserules"
 )
@@ -42,7 +44,15 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		return result
 	}
 
-	// Pre-prepare both statements once — passed to all callees.
+	// Step 1 query fetches all candidates with source metadata so the picker
+	// can rank them. Steps 2–4 remain single-row lookups because their
+	// fallback paths commit to one resolution by construction.
+	stmtFormsAll, err := d.db.Prepare(`SELECT lemma, pos, source, source_priority FROM forms WHERE form = ? AND lang = ?`)
+	if err != nil {
+		return result
+	}
+	defer stmtFormsAll.Close()
+
 	stmtForms, err := d.db.Prepare(`SELECT lemma, pos FROM forms WHERE form = ? AND lang = ?`)
 	if err != nil {
 		return result
@@ -61,10 +71,12 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		// and proper nouns resolve correctly.
 		lower := strings.ToLower(form)
 
-		// Step 1: Direct dictionary lookup.
-		var lemma, pos string
-		if err := stmtForms.QueryRow(lower, lang).Scan(&lemma, &pos); err == nil {
-			result[form] = FormResolution{Lemma: lemma, POS: pos, Source: "dict"}
+		// Step 1: Direct dictionary lookup. Multi-lemma rows mean a single
+		// surface form can have multiple (lemma, pos) candidates; rank them
+		// against the original-case surface so PROPN homonyms don't beat
+		// common-noun lemmas on lowercase surfaces.
+		if best, ok := lookupBestForm(stmtFormsAll, form, lower, lang); ok {
+			result[form] = best
 			continue
 		}
 
@@ -98,6 +110,120 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		}
 	}
 	return result
+}
+
+// formCandidate is the internal shape used while ranking multi-lemma matches.
+// Source / SourcePriority come from the row-level dictionary metadata; older
+// rows that pre-date the source-priority work have empty strings and zero
+// priority, which is fine — the case-match and POS heuristics still rank them.
+type formCandidate struct {
+	Lemma          string
+	POS            string
+	Source         string
+	SourcePriority int
+}
+
+// lookupBestForm runs the multi-row form lookup and ranks the candidates.
+// Returns the best FormResolution and true if any candidate exists, else
+// false. The original (uncased) surface is needed for case-match scoring.
+func lookupBestForm(stmt *sql.Stmt, surface, lowerSurface, lang string) (FormResolution, bool) {
+	rows, err := stmt.Query(lowerSurface, lang)
+	if err != nil {
+		return FormResolution{}, false
+	}
+	defer rows.Close()
+
+	var candidates []formCandidate
+	for rows.Next() {
+		var c formCandidate
+		if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority); err != nil {
+			return FormResolution{}, false
+		}
+		candidates = append(candidates, c)
+	}
+	if len(candidates) == 0 {
+		return FormResolution{}, false
+	}
+
+	best := pickBestFormCandidate(surface, candidates)
+	return FormResolution{Lemma: best.Lemma, POS: best.POS, Source: "dict"}, true
+}
+
+// pickBestFormCandidate ranks candidates for a surface form. Ranking, higher
+// to lower priority:
+//
+//  1. Case-match: a lowercase surface prefers a candidate whose lemma starts
+//     lowercase. (Place names that share an inflected form with a common noun
+//     should not win when the surface gives no capitalization signal.)
+//  2. POS sanity: a lowercase surface demotes PROPN. Same motivation.
+//  3. Source priority: higher dictionary `source_priority` wins among
+//     candidates that pass the case/POS filters equally.
+//  4. Deterministic tiebreak: source name asc, lemma asc, POS asc — same
+//     candidate set always returns the same pick.
+//
+// The heuristic deliberately under-claims: it will not turn `naeris`/NOUN
+// (turnip) vs `naerma`/VERB (laughed) into the right choice without context,
+// because that's genuinely ambiguous. It does fix the dominant homonym
+// regression (lowercase surface → PROPN homonym arbitrarily wins).
+func pickBestFormCandidate(surface string, candidates []formCandidate) formCandidate {
+	if len(candidates) == 1 {
+		return candidates[0]
+	}
+	scored := make([]formCandidate, len(candidates))
+	copy(scored, candidates)
+	sort.SliceStable(scored, func(i, j int) bool {
+		ci, cj := scored[i], scored[j]
+		ciCase, ciPOS := caseMatchScore(surface, ci.Lemma), posSanityScore(surface, ci.POS)
+		cjCase, cjPOS := caseMatchScore(surface, cj.Lemma), posSanityScore(surface, cj.POS)
+		if ciCase != cjCase {
+			return ciCase > cjCase
+		}
+		if ciPOS != cjPOS {
+			return ciPOS > cjPOS
+		}
+		if ci.SourcePriority != cj.SourcePriority {
+			return ci.SourcePriority > cj.SourcePriority
+		}
+		if ci.Source != cj.Source {
+			return ci.Source < cj.Source
+		}
+		if ci.Lemma != cj.Lemma {
+			return ci.Lemma < cj.Lemma
+		}
+		return ci.POS < cj.POS
+	})
+	return scored[0]
+}
+
+// caseMatchScore returns 1 when the surface and lemma share an uppercase /
+// lowercase initial, else 0. Both empty strings count as a match.
+func caseMatchScore(surface, lemma string) int {
+	if startsUpper(surface) == startsUpper(lemma) {
+		return 1
+	}
+	// Asymmetry: lowercase surface + uppercase lemma is the bad case
+	// (PROPN-style homonym beating a common noun). Uppercase surface +
+	// lowercase lemma is fine — sentence-initial capitalization is common.
+	if !startsUpper(surface) && startsUpper(lemma) {
+		return 0
+	}
+	return 1
+}
+
+// posSanityScore demotes PROPN when the surface starts lowercase.
+func posSanityScore(surface, pos string) int {
+	if !startsUpper(surface) && pos == "PROPN" {
+		return 0
+	}
+	return 1
+}
+
+// startsUpper reports whether the first rune of s is uppercase.
+func startsUpper(s string) bool {
+	for _, r := range s {
+		return unicode.IsUpper(r)
+	}
+	return false
 }
 
 // tryStripPossessive attempts to resolve a Finnish surface form by stripping
