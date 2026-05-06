@@ -1,0 +1,23 @@
+{
+  "word_id": 208800,
+  "lemma": "Nool",
+  "homonym_nr": 1,
+  "inflection_type": "13",
+  "inflection_type_nr": "13",
+  "word_class": "noomen",
+  "datasets": [
+    "eki"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 70250,
+      "dataset": "eki",
+      "pos": [
+        "prop"
+      ],
+      "definitions_et": [
+        "tähtkuju põhjataevas"
+      ]
+    }
+  ]
+}

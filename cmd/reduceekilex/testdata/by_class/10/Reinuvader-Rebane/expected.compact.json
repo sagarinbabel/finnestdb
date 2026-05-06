@@ -1,0 +1,23 @@
+{
+  "word_id": 226778,
+  "lemma": "Reinuvader Rebane",
+  "homonym_nr": 1,
+  "inflection_type": "10",
+  "inflection_type_nr": "10",
+  "word_class": "noomen",
+  "datasets": [
+    "eki"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 89770,
+      "dataset": "eki",
+      "pos": [
+        "prop"
+      ],
+      "definitions_et": [
+        "kurikaval rebane, loomamuinasjuttude tegelane"
+      ]
+    }
+  ]
+}

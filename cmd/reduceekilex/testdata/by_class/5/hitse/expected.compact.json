@@ -1,0 +1,27 @@
+{
+  "word_id": 1414564,
+  "lemma": "hitse",
+  "homonym_nr": 1,
+  "morphophono_form": "hitse",
+  "inflection_type": "5",
+  "inflection_type_nr": "5",
+  "word_class": "noomen",
+  "datasets": [
+    "eki"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 658676,
+      "dataset": "eki",
+      "pos": [
+        "s"
+      ],
+      "definitions_et": [
+        "külvaja või külvimasina ees oleva töörinde äärjoon"
+      ],
+      "usages_et": [
+        "Külvajale olid hitsmed juba eelmisel päeval ette tõmmatud."
+      ]
+    }
+  ]
+}

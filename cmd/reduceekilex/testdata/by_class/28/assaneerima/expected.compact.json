@@ -1,0 +1,24 @@
+{
+  "word_id": 1380381,
+  "lemma": "assaneerima",
+  "homonym_nr": 1,
+  "morphophono_form": "assan`eerima",
+  "inflection_type": "28",
+  "inflection_type_nr": "28",
+  "word_class": "verb",
+  "datasets": [
+    "eki"
+  ],
+  "meanings": [
+    {
+      "meaning_id": 644930,
+      "dataset": "eki",
+      "pos": [
+        "v"
+      ],
+      "definitions_et": [
+        "sanitaarolusid parandama, tervishoiunõuete kohaselt korraldama"
+      ]
+    }
+  ]
+}
