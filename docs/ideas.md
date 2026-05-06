@@ -120,3 +120,90 @@ Dashboard should show:
 - Cards in review vs mature vs new
 - Comprehension trend per deck ("you went from 60% to 78% on this book")
 - Daily review count and streak
+
+## Making it AI native
+
+Today FinEstDB is not AI-native: parsing is rule-based (`parser/src/lib.rs`,
+`internal/parsecore/`), the dictionary is a static kaikki.org import, review
+scheduling is FSRS, and the API is plain CRUD with no generative endpoints,
+streaming, or tool-calling. "AI-native" here means making an LLM a
+load-bearing part of the product rather than a bolt-on. The highest-leverage
+move is a Claude-powered tutor grounded in the learner's own deck state, then
+growing outward.
+
+### Phase 1 — LLM-grounded explanations (small surface, high value)
+
+- New Go handler `POST /api/explain` taking `{lemma, surface, sentence}`,
+  returning a streamed natural-language explanation: morphology breakdown,
+  register/usage notes, fresh examples at the learner's level.
+- Wire to Claude via the Anthropic Go SDK. Default to Sonnet 4.6
+  (`claude-sonnet-4-6`) for quality/latency, Haiku 4.5
+  (`claude-haiku-4-5-20251001`) for a cheap fast path.
+- Ground the prompt with the existing dictionary entry pulled from
+  `internal/store` (we already have structured lookups — no embeddings needed
+  yet).
+- Use **prompt caching** on the system prompt + per-lemma dictionary chunk.
+  The dictionary context is large and stable per lemma → ideal cache target,
+  big cost win on repeat lookups.
+- Stream tokens via SSE to the SPA.
+- Critical files: new `internal/ai/claude.go`, new handler appended to
+  `internal/api/handlers.go`, new `web/explain.ts` UI module, route
+  registration in `cmd/server/main.go`.
+
+### Phase 2 — Conversational practice partner
+
+- New `/api/chat` endpoint with multi-turn history persisted to SQLite (add a
+  `chats` table to `internal/store`).
+- System prompt enforces target language (FI or ET), CEFR level inferred from
+  deck mastery, corrections in the learner's L1.
+- **Tool use**: expose `lookup_lemma`, `add_to_deck`, `mark_card_due`,
+  `list_due_cards` as Claude tools. This is the agentic piece — the AI takes
+  real actions against the DB on the user's behalf.
+- Critical files: `internal/ai/tools.go` (tool schemas + dispatch),
+  `internal/api/chat.go`, store extension in `internal/store/chats.go`.
+
+### Phase 3 — Hybrid parser fallback
+
+- When `internal/parsecore` returns "unknown" for a token (rare lemma,
+  code-switching, typo), fall back to an LLM call that returns a structured
+  `MorphAnalysis` JSON. Deterministic parsers stay primary — LLM is the long
+  tail.
+- Cache results in a new SQLite table keyed on `(surface, lang)` so each
+  unknown is paid for once across all users.
+- Critical files: extend `internal/parsecore/registry.go` with a `claude`
+  adapter; new `internal/store/parse_cache.go`.
+
+### Phase 4 — Embeddings for semantic features
+
+- Add an embedding column (BLOB + cosine in Go is fine at SQLite scale;
+  pgvector if we outgrow it) to `dictionary_glosses` and `sentences`.
+- Use Voyage or OpenAI embeddings, or `nomic-embed-text` locally to preserve
+  the "all local" ethos.
+- Unlocks: "sentences using X in a similar sense", "recommend next reading at
+  my level", deduping near-identical cards in `internal/store/cards.go`.
+
+### Phase 5 — Speech (optional, transformative)
+
+- Whisper for ASR on user-recorded pronunciation; LLM judges fluency and
+  gives feedback. Out of scope for a first cut.
+
+### Recommended starting point
+
+**Phase 1 only.** Roughly 300 lines of Go plus a small UI change, gives users
+an obvious AI moment ("explain this word in context, in my language, with new
+examples"), and proves the integration pattern (streaming, caching,
+grounding) before committing to bigger changes.
+
+### Verification
+
+- Unit test the Claude client against a recorded fixture
+  (`internal/ai/claude_test.go`).
+- Integration test behind a build tag (`-tags=live`) that hits `/api/explain`
+  with a real `ANTHROPIC_API_KEY`, asserts the response streams and
+  references the supplied dictionary entry.
+- Manual: paste a Finnish sentence in the SPA, click a token, watch the
+  explanation stream in. Compare Sonnet 4.6 vs Haiku 4.5 on quality and
+  latency.
+- Cost check: log `cache_read_input_tokens` vs `input_tokens` from the API
+  response — cache hit rate should be >80% on repeated lookups for the same
+  lemma.
