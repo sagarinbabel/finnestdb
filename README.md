@@ -207,6 +207,28 @@ npm run build
 
 `npm install` is only needed the first time or after dependency changes.
 
+### Browser regression tests (Playwright)
+
+There is a Playwright browser suite for the role-aware app:
+
+```bash
+cd web
+npx playwright test
+```
+
+The test boots the Go server on `:8081` via [`web/playwright.config.ts`](web/playwright.config.ts) and checks:
+
+- anonymous / user / admin route guards
+- parse / results rendering
+- deck creation and review flow
+- parser-feedback (correction) submission
+- POS filter behavior
+- hybrid language detection (auto-switch on high-confidence paste, blocking mismatch warning)
+- file upload flow
+- mobile nav behavior at 375 px
+
+Run from a fresh checkout: `make parser && cd web && npm install && npx playwright test`.
+
 ### Refreshing dictionary data
 
 > **Most contributors don't need this section.** `scripts/setup-local.sh`
@@ -487,19 +509,51 @@ The two parser modes differ only in how much enrichment happens after that:
 - **Custom parser** adds possessive, compound, and case-suffix fallback rules
 
 What still does **not** exist yet in the browser-facing parser flow:
-- bundled full morphological analysis from Omorfi/Vabamorf
-- statistical disambiguation
-- MWE detection
+- bundled full morphological analysis from Omorfi/Vabamorf (they're external
+  evaluation adapters, not in-process parsers)
+- statistical disambiguation (CRF tagger planned in
+  [`docs/ML_IDEAS.md` §1a](docs/ML_IDEAS.md))
+- MWE detection (schema not yet defined; see [`TODO.md`](TODO.md)
+  "Sentence-level features")
+- production FI lemmatizer tables (current `pkg/lemmatizer-fi-et/`
+  ships smoke fixtures only — production tables generated locally with
+  `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst`; see
+  [`docs/ARTIFACT_POLICY.md`](docs/ARTIFACT_POLICY.md))
+- ET lemmatizer table generator (FI generator exists; ET generator
+  is the remaining work tracked in [`TODO.md`](TODO.md) "Parser quality")
 
 What **does** exist now for parser research:
-- gold-set evaluation datasets
-- a parser evaluation CLI
+- FST candidate scoring in parallel with dict step 1 (post-PR #127)
+  with candidate-merge FEATS enrichment (post-PR #129)
+- per-attribute FEATS eval (Case, Number, Tense, Mood, Voice, Person —
+  post-PR #130)
+- ~9.8k FI committed gold cases + ~37.9k ET local-only (CC BY-NC-SA);
+  ~37k FI train (local). See [`docs/data_enhancement.md`](docs/data_enhancement.md)
+- a parser evaluation CLI with bootstrap CIs (post-PR #114)
 - external adapter slots for the Omorfi (FI) and EstNLTK (ET) baselines
 - an Ekilex (ET) extraction pipeline (`fetchekilex` → `reduceekilex`)
   with golden-tested reductions written to `localdata/ekilex/` (gitignored)
 
+Product-surface limitations (alpha):
+
+- alpha auth is real (Argon2id + DB-backed sessions) but the wider
+  go-live posture (rate limiting, CSRF, audit logging) needs the
+  hardening pass tracked in
+  [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md). Don't expose
+  the alpha to the public internet without it.
+- no signed-in parse-history / delete-my-parse-history UI yet
+- known-word import / manage UI is still maturing
+- admin parse-feedback triage UI is functional but minimal
+- review scheduling is a hand-rolled step scheduler, **not FSRS** —
+  see [`docs/srs-deck-spec.md`](docs/srs-deck-spec.md) and
+  [`TODO.md`](TODO.md) "Migrate alpha scheduler to real FSRS"
+- accepted parse corrections are recorded but do not yet update lexical
+  rows — see [`TODO.md`](TODO.md) "Self-improving feedback loop"
+
 So the custom mode is stronger than the basic mode for many dictionary-backed
-cases, but it is still not a full morphology parser.
+cases, but it is still not a full morphology parser. Production FST tables
+will close most of the morphology gap; the disambiguator and feedback loop
+will close most of the long tail.
 
 ## Project Structure
 
@@ -551,11 +605,18 @@ finnestdb-prd-alpha.md    Full product requirements document (historical)
 
 ## Documentation
 
+**Doc index:** [`docs/INDEX.md`](docs/INDEX.md) — single map of every doc
+in this repo, organized by purpose. Read this first if you're not sure
+where to look.
+
 Architecture and ops:
 - [Architecture](ARCHITECTURE.md) and [docs/SYSTEM_VERSIONING.md](docs/SYSTEM_VERSIONING.md)
-- [Implementation Analysis](IMPLEMENTATION_ANALYSIS.md) · [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md)
+- [docs/ARTIFACT_POLICY.md](docs/ARTIFACT_POLICY.md) — what's allowed in git, what lives under `localdata/`
+- [docs/data_enhancement.md](docs/data_enhancement.md) — ledger of every external corpus pulled in
 - [Documentation Changelog](docs/CHANGELOG.md) · [Decisions Log](docs/DECISIONS.md)
 - [Go-Live Checklist](docs/GO_LIVE_CHECKLIST.md)
+- [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) — redirect stub (split across README, PARSER_FEEDBACK_LOOP, ARCHITECTURE)
+- [Implementation Analysis](IMPLEMENTATION_ANALYSIS.md) — historical pre-implementation notes (banner)
 
 Product and strategy:
 - [PRD (Alpha)](finnestdb-prd-alpha.md) · [docs/FEATURES.md](docs/FEATURES.md)
