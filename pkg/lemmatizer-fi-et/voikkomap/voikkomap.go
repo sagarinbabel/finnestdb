@@ -40,6 +40,16 @@ type Analysis struct {
 	Person       string // "1" / "2" / "3" / "4" or empty
 	Voice        string // "Act" / "Pass" or empty
 	VerbForm     string // "Fin" / "Inf" / "Part" or empty
+	Degree       string // "Pos" / "Cmp" / "Sup" or empty
+	PronType     string // "Dem" / "Int" / "Rel" / "Ind" / "Prs" / "Rfl" / "Rcp" or empty
+	PartForm     string // "Pres" / "Past" / "Agt" / "Neg" or empty (Finnish-specific)
+	InfForm      string // "1" / "2" / "3" / "5" or empty (Finnish-specific)
+	PersonPsor   string // "1" / "2" / "3" or empty — Person[psor]
+	NumberPsor   string // "Sing" / "Plur" or empty — Number[psor]
+	Clitic       string // "Ko" / "Han" / "Pa" / "Kaan" / "Ka" / "Kin" / "S" or empty
+	NumType      string // "Card" / "Ord" or empty
+	Connegative  string // "Yes" or empty
+	AdpType      string // "Post" / "Prep" or empty
 	Feats        string // composed UD FEATS string, e.g. "Case=Ine|Number=Sing"; alphabetically sorted
 	Raw          string // the original FSTOUTPUT, for debugging / source provenance
 }
@@ -122,8 +132,32 @@ func Parse(fstOutput string) Analysis {
 	}
 
 	a.Lemma = lemmaBuilder.String()
-	a.Feats = udfeats.Compose(a.GrammarLabel, a.Number, a.Tense, a.Mood, a.Person, a.Voice, a.VerbForm)
+	a.Feats = composeFeats(&a)
 	return a
+}
+
+func composeFeats(a *Analysis) string {
+	pairs := make(map[string]string, 16)
+	if udCase, ok := udfeats.LegacyLabelToUDCase[a.GrammarLabel]; ok && udCase != "Nom" {
+		pairs["Case"] = udCase
+	}
+	pairs["Number"] = a.Number
+	pairs["Tense"] = a.Tense
+	pairs["Mood"] = a.Mood
+	pairs["Person"] = a.Person
+	pairs["Voice"] = a.Voice
+	pairs["VerbForm"] = a.VerbForm
+	pairs["Degree"] = a.Degree
+	pairs["PronType"] = a.PronType
+	pairs["PartForm"] = a.PartForm
+	pairs["InfForm"] = a.InfForm
+	pairs["Person[psor]"] = a.PersonPsor
+	pairs["Number[psor]"] = a.NumberPsor
+	pairs["Clitic"] = a.Clitic
+	pairs["NumType"] = a.NumType
+	pairs["Connegative"] = a.Connegative
+	pairs["AdpType"] = a.AdpType
+	return udfeats.ComposeMap(pairs)
 }
 
 // classToUPOS maps the body of a [L*] tag (e.g. "n", "t", "ee") to a
