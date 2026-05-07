@@ -1,6 +1,8 @@
 package lemmatizer
 
 import (
+	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -118,8 +120,39 @@ func TestLemmatize_UnknownWord(t *testing.T) {
 }
 
 func TestNewFromDir_MissingFiles(t *testing.T) {
-	if _, err := NewFromDir(t.TempDir()); err == nil {
+	_, err := NewFromDir(t.TempDir())
+	if err == nil {
 		t.Fatal("NewFromDir on empty dir: expected error, got nil")
+	}
+	if !errors.Is(err, ErrNoTables) {
+		t.Errorf("expected error to wrap ErrNoTables, got %v", err)
+	}
+}
+
+// TestNewFromDir_PartialCoverage covers the per-language-independent
+// loader behaviour: if only fi_min.json exists, FI works and ET
+// returns no analyses (no error).
+func TestNewFromDir_PartialCoverage(t *testing.T) {
+	dir := t.TempDir()
+	src := filepath.Join(fixturesDir(), "fi_min.json")
+	dst := filepath.Join(dir, "fi_min.json")
+	b, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	if err := os.WriteFile(dst, b, 0o644); err != nil {
+		t.Fatalf("write fi_min.json: %v", err)
+	}
+	l, err := NewFromDir(dir)
+	if err != nil {
+		t.Fatalf("NewFromDir: %v", err)
+	}
+	t.Cleanup(func() { _ = l.Close() })
+	if got := l.Lemmatize("FI", "talo"); len(got) == 0 {
+		t.Errorf("FI partial: expected analyses for 'talo', got none")
+	}
+	if got := l.Lemmatize("ET", "maja"); len(got) != 0 {
+		t.Errorf("ET partial: expected no analyses (no et_min.json), got %d", len(got))
 	}
 }
 

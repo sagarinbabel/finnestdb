@@ -27,6 +27,14 @@ type Analysis = voikkomap.Analysis
 // NewFromDir directly with a path under testdata/lemmatizer/.
 const DefaultTablesDir = "localdata/lemmatizer-fi-et/tables"
 
+// ErrNoTables is returned (wrapped) by New / NewFromDir when neither
+// fi_min.json nor et_min.json is present in the resolved directory.
+// Callers can use errors.Is(err, ErrNoTables) to distinguish "tables
+// have not been generated / setup-local.sh not run" from "table file
+// is malformed", since the former is a degraded-but-acceptable state
+// and the latter is a misconfiguration.
+var ErrNoTables = errors.New("lemmatizer: no tables found")
+
 // Lemmatizer holds the loaded analysis tables and dispatches Lemmatize
 // calls per language. Safe for concurrent use after construction.
 type Lemmatizer struct {
@@ -36,8 +44,8 @@ type Lemmatizer struct {
 
 // New constructs a Lemmatizer reading FI/ET tables from the directory
 // resolved by LEMMATIZER_TABLES_DIR (falling back to DefaultTablesDir).
-// Returns an error wrapping fs.ErrNotExist when tables are missing —
-// callers in production paths (e.g. internal/store) treat that as
+// Returns an error wrapping ErrNoTables when neither table is present
+// — callers in production paths (e.g. internal/store) treat that as
 // "FST disabled" rather than fatal so a fresh clone without
 // scripts/setup-local.sh still serves the dict-only path.
 func New() (*Lemmatizer, error) {
@@ -64,7 +72,7 @@ func NewFromDir(dir string) (*Lemmatizer, error) {
 		return nil, fmt.Errorf("lemmatizer: load ET table: %w", err)
 	}
 	if fi == nil && et == nil {
-		return nil, fmt.Errorf("lemmatizer: no tables found under %s (looked for fi_min.json, et_min.json)", dir)
+		return nil, fmt.Errorf("%w under %s (looked for fi_min.json, et_min.json)", ErrNoTables, dir)
 	}
 	return &Lemmatizer{fi: fi, et: et}, nil
 }
