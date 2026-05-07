@@ -60,6 +60,64 @@ committed run.
 
 ## Entries
 
+### 2026-05-07 — Voikko `[P4]` Voice + participle field cleanup (PR #158)
+
+**PR**: [#158](https://github.com/sagarinbabel/finnestdb/pull/158)
+**Scope**: `pkg/lemmatizer-fi-et/voikkomap` only
+
+Two surgical fixes on top of the rich FEATS extraction shipped in PRs
+[#154](https://github.com/sagarinbabel/finnestdb/pull/154) and
+[#155](https://github.com/sagarinbabel/finnestdb/pull/155). Closes the
+Voice accuracy gap flagged in the parser audit (FI custom 5.3% vs
+omorfi 89.7% on fi-ftb).
+
+**What changed:**
+
+1. **`[P4]` → `Voice=Pass` (no `Person=4` leak).** Finnish passive is
+   grammatically "4th person" in Voikko's FST, but UD `Person` is
+   1/2/3. `[P4]` now sets `Voice=Pass` only; `[P1-P3]` set `Voice=Act`
+   alongside `Person`, so active finite verbs stop composing FEATS
+   without Voice.
+2. **`applyParticiple` clears finite-only fields.** When `[R*]` wins,
+   `Mood`, `Tense`, and `Person` are reset so a participle never
+   composes contradictory FEATS like `Tense=Past|VerbForm=Part` —
+   Finnish UD encodes the past/present participle distinction in
+   `PartForm=`, not `Tense=`.
+
+**What did NOT change** (already on main before this PR):
+
+- The 7-param `udfeats.Compose` and `udfeats.ComposeMap` signatures
+  shipped in PR #155 / #154.
+- The `Voice`, `VerbForm`, `PartForm`, `InfForm`, `Degree`, `PronType`,
+  `PersonPsor`, `NumberPsor`, `Clitic`, `NumType`, `Connegative`,
+  `AdpType` fields on `voikkomap.Analysis` — added in PR #154.
+- `applyParticiple` itself, including `Voice=Pass` on TU/TAVA
+  passive participles — added in PR #154.
+- Giellalt's `Act`/`Pass`/`Inf*`/`PrsPrc`/`PrfPrc` extraction —
+  added in PR #155.
+
+**`[E*]` finding (no code change):** Investigated as a possible voice
+signal and found to encode connegative status (`Ef`=false, `Et`=true,
+`Eb`=both), confirmed from libvoikko's
+`FinnishVfstAnalyzer.cpp::parseBasicAttributes`. Not projected to UD —
+the runtime gets `Connegative=Yes` from the orthogonal `[Cn]` tag
+(handled in `applyComparison`).
+
+**Expected eval impact** (pending table regen + re-measurement):
+
+- Voice accuracy on fi-ftb should jump from 5.3% toward omorfi's 89.7%.
+  Every active finite verb in the regenerated FI table will carry
+  `Voice=Act`; passive forms will carry `Voice=Pass` without spurious
+  `Person=4`.
+- No lemma/POS/grammar regressions expected — those fields are
+  untouched.
+
+**Measurement deferred**: exact numbers will be added as a dated
+sub-entry once production tables are regenerated and
+`make compare-parsers` is re-run.
+
+---
+
 ### 2026-05-07k-T1118Z — FEATS migration measured end-to-end (first DB-with-FEATS run)
 
 **Commit measured**: [`ffd7584`][c-2026-05-07k-T1118Z] (= `main` head; merge of PR [#139](https://github.com/sagarinbabel/finnestdb/pull/139))

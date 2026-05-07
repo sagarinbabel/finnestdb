@@ -96,6 +96,51 @@ func TestParse_Infinitive(t *testing.T) {
 	}
 }
 
+func TestParse_PassiveP4(t *testing.T) {
+	// puhutaan = puhua, passive present indicative.
+	// [P4] is the Finnish passive — voice signal, NOT a UD Person value.
+	a := Parse("[Lt][Xp]puhua[X]puhu[Tt][Ap][P4][Ef]taan")
+	if a.Voice != "Pass" {
+		t.Errorf("voice=%q want Pass", a.Voice)
+	}
+	if a.Person != "" {
+		t.Errorf("person=%q want empty (P4 is passive, not UD Person 4)", a.Person)
+	}
+	if a.VerbForm != "Fin" {
+		t.Errorf("verbform=%q want Fin", a.VerbForm)
+	}
+}
+
+func TestParse_ActiveP1ImpliesVoice(t *testing.T) {
+	// [P1-P3] imply active voice; without this, Voice would stay empty
+	// on every active finite verb (the gap the audit measured at 5.3%).
+	a := Parse("[Lt][Xp]olla[X]o[Tt][Ap][P1][Ny][Ef]len")
+	if a.Voice != "Act" {
+		t.Errorf("voice=%q want Act", a.Voice)
+	}
+}
+
+func TestParse_ParticipleClearsFiniteFields(t *testing.T) {
+	// Defense-in-depth: if a contaminated reading ever co-emits T*/A*/P*
+	// with R*, applyParticiple must clear the finite-only fields so the
+	// composed FEATS doesn't carry e.g. Tense=Past|VerbForm=Part — UD
+	// uses PartForm for the past/present participle distinction, not
+	// Tense.
+	a := Parse("[Lt][Tt][Ai][P1][Rv][Xp]puhua[X]puhu[Sn][Ny]va")
+	if a.VerbForm != "Part" || a.PartForm != "Pres" {
+		t.Errorf("verbform=%q partform=%q want Part/Pres", a.VerbForm, a.PartForm)
+	}
+	if a.Mood != "" {
+		t.Errorf("mood=%q want empty (participle cleared finite Mood)", a.Mood)
+	}
+	if a.Tense != "" {
+		t.Errorf("tense=%q want empty (participle uses PartForm, not Tense)", a.Tense)
+	}
+	if a.Person != "" {
+		t.Errorf("person=%q want empty (participle cleared finite Person)", a.Person)
+	}
+}
+
 func TestParse_Empty(t *testing.T) {
 	if a := Parse(""); a.Lemma != "" || a.UPOS != "" {
 		t.Errorf("empty input should give empty Analysis, got %+v", a)
@@ -290,7 +335,12 @@ func TestParse_FeatsComposition(t *testing.T) {
 		{
 			"verb with clitic",
 			"[Lt][Xp]olla[X]o[Tt][Ap][P3][Ny][Fko]nko",
-			"Clitic=Ko|Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin",
+			"Clitic=Ko|Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act",
+		},
+		{
+			"passive present indicative (P4 → Voice=Pass, no Person)",
+			"[Lt][Xp]puhua[X]puhu[Tt][Ap][P4][Ef]taan",
+			"Mood=Ind|Tense=Pres|VerbForm=Fin|Voice=Pass",
 		},
 		{
 			"connegative verb",

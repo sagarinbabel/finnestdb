@@ -130,16 +130,44 @@ The direct-hit merge is deliberately conservative:
 FST morphology is projected into UD-style FEATS before it leaves the
 store. For example, `GrammarLabel=inessive` plus `Number=Sing` becomes
 `Case=Ine|Number=Sing`; verb analyses can carry
-`Number=Sing|Mood=Ind|Tense=Pres|Person=1`. The legacy
-`GrammarLabel` field remains for older grammar-label metrics, and is
-back-projected from `Case=` when possible.
+`Mood=Ind|Number=Sing|Person=1|Tense=Pres|VerbForm=Fin|Voice=Act`. The
+legacy `GrammarLabel` field remains for older grammar-label metrics,
+and is back-projected from `Case=` when possible.
+
+### Voikko Voice extraction
+
+Voice on Voikko verbs comes from the `[P*]` (person) tag, not from a
+dedicated voice tag — Finnish passive is grammatically the "4th
+person":
+
+| Voikko `[P*]` | UD Person | UD Voice |
+|---|---|---|
+| `[P1]`, `[P2]`, `[P3]` | 1 / 2 / 3 | Act |
+| `[P4]` | (empty — P4 is not a UD Person) | Pass |
+
+Passive participles set Voice independently: `[Rt]` (TU-participle,
+passive past) and `[Ra]` (TAVA-participle, passive present) emit
+`Voice=Pass` via `applyParticiple`. Active participles (`[Rv]`,
+`[Ru]`, `[Rm]`, `[Re]`) leave Voice unset; `[R*]` always clears
+finite-only fields (Mood, Tense, Person) so a participle never
+composes contradictory FEATS like `Tense=Past|VerbForm=Part` — UD
+encodes the past/present participle distinction in `PartForm=`, not
+`Tense=`.
+
+The `[E*]` tags (connegative: `[Ef]`=false, `[Et]`=true, `[Eb]`=both)
+are documented in the Voikko source but not projected to UD here.
+The runtime gets `Connegative=Yes` from the orthogonal `[Cn]` signal
+in `applyComparison` instead.
 
 The composition logic is centralised in
 [`pkg/lemmatizer-fi-et/udfeats`](../pkg/lemmatizer-fi-et/udfeats/udfeats.go),
 which owns the `LegacyLabelToUDCase` / `UDCaseToLegacyLabel` maps and the
-`Compose(grammarLabel, number, tense, mood, person)` function. Both
-`voikkomap.Parse` and `giellaltmap.Parse` call `udfeats.Compose` at
-parse time and persist the result on `Analysis.Feats`. As of `2026.05.07k`
+`Compose(...)` / `ComposeMap(...)` functions. Both `voikkomap.Parse`
+and `giellaltmap.Parse` build a UD FEATS string from their structured
+fields at parse time and persist the result on `Analysis.Feats` —
+voikkomap uses its local `composeFeats` (which delegates to
+`udfeats.ComposeMap` for the canonical alphabetical ordering),
+giellaltmap calls `udfeats.Compose` directly. As of `2026.05.07k`
 the smoke FST tables under `testdata/lemmatizer/{fi,et}_min.json`
 include this `Feats` field on every analysis; the runtime composer in
 `internal/store::featsFromFSTAnalysis` prefers the persisted value and
