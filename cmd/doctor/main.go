@@ -5,7 +5,7 @@
 //
 // Exit code:
 //   - 0   the dictionary is present and provenance-tagged; everything else
-//         is informational
+//     is informational
 //   - 1   a critical piece is missing (no DB, no FI/ET dictionary)
 //
 // The intent is to surface degraded modes, not to fail the build. A run
@@ -22,7 +22,9 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -72,6 +74,8 @@ func main() {
 	}
 
 	checks = append(checks, checkFSTTables())
+	checks = append(checks, checkFIAnalyser()...)
+	checks = append(checks, checkETAnalyser()...)
 	checks = append(checks, checkOmorfi())
 	checks = append(checks, checkEstNLTK())
 	checks = append(checks, checkEkilexShards())
@@ -236,10 +240,10 @@ func checkFSTTables() check {
 		}
 	case hasET:
 		return check{
-			name:  "FST lemmatizer tables",
-			level: levelWarn,
+			name:   "FST lemmatizer tables",
+			level:  levelWarn,
 			detail: fmt.Sprintf("FI: missing\nET: %s", humanSize(et)),
-			hint:  "regenerate FI: `make gen-lemmatizer-tables-fi VFST_PATH=...`",
+			hint:   "regenerate FI: `make gen-lemmatizer-tables-fi VFST_PATH=...`",
 		}
 	default:
 		return check{
@@ -249,6 +253,106 @@ func checkFSTTables() check {
 			hint:   "FST step 5 disabled; runtime degrades to dict-only. To enable FI: install libvoikko, then `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst`",
 		}
 	}
+}
+
+// checkFIAnalyser reports whether libvoikko and its mor.vfst transducer
+// are available locally — the prerequisites for `make gen-lemmatizer-tables-fi`.
+// Only emits a check when the FI table is missing (otherwise the analyser
+// presence is moot).
+func checkFIAnalyser() []check {
+	if fileExists(filepath.Join("localdata/lemmatizer-fi-et/tables", "fi_min.json")) {
+		return nil
+	}
+
+	voikko, _ := exec.LookPath("voikkospell")
+	if voikko == "" {
+		hint := "`brew install libvoikko` (macOS)"
+		if runtime.GOOS == "linux" {
+			hint = "`apt install libvoikko-dev voikko-fi` or equivalent"
+		}
+		return []check{{
+			name:   "FI morphological analyser (libvoikko)",
+			level:  levelWarn,
+			detail: "voikkospell not found on PATH — libvoikko is not installed",
+			hint:   hint + ", then `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst`",
+		}}
+	}
+
+	vfstPath := findVFST()
+	if vfstPath == "" {
+		return []check{{
+			name:   "FI morphological analyser (libvoikko)",
+			level:  levelWarn,
+			detail: "libvoikko installed (voikkospell on PATH) but mor.vfst not found in standard locations",
+			hint:   "locate mor.vfst manually, then `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst`",
+		}}
+	}
+
+	return []check{{
+		name:   "FI morphological analyser (libvoikko)",
+		level:  levelOK,
+		detail: "voikkospell on PATH; mor.vfst at " + vfstPath,
+		hint:   "`make gen-lemmatizer-tables-fi VFST_PATH=" + vfstPath + "`",
+	}}
+}
+
+// findVFST searches standard locations for Voikko's mor.vfst.
+func findVFST() string {
+	candidates := []string{
+		"/opt/homebrew/lib/voikko/5/mor-standard/mor.vfst",
+		"/usr/local/lib/voikko/5/mor-standard/mor.vfst",
+		"/usr/lib/voikko/5/mor-standard/mor.vfst",
+		"/usr/share/voikko/5/mor-standard/mor.vfst",
+	}
+	// Also check the brew cellar dynamically.
+	if brewPrefix, err := exec.Command("brew", "--prefix", "libvoikko").Output(); err == nil {
+		p := filepath.Join(strings.TrimSpace(string(brewPrefix)), "lib/voikko/5/mor-standard/mor.vfst")
+		candidates = append([]string{p}, candidates...)
+	}
+	for _, p := range candidates {
+		if fileExists(p) {
+			return p
+		}
+	}
+	return ""
+}
+
+// checkETAnalyser reports whether the Giellalt hfstol transducer is
+// present locally — the prerequisite for `make gen-lemmatizer-tables-et`.
+func checkETAnalyser() []check {
+	if fileExists(filepath.Join("localdata/lemmatizer-fi-et/tables", "et_min.json")) {
+		return nil
+	}
+
+	hfstolPath := findHFSTOL()
+	if hfstolPath == "" {
+		return []check{{
+			name:   "ET morphological analyser (Giellalt hfstol)",
+			level:  levelWarn,
+			detail: "analyser-gt-desc.hfstol not found under localdata/lemmatizer-fi-et/",
+			hint:   "download from Giellalt lang-est nightly, place at localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol, then `make gen-lemmatizer-tables-et HFSTOL_PATH=localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol`",
+		}}
+	}
+
+	return []check{{
+		name:   "ET morphological analyser (Giellalt hfstol)",
+		level:  levelOK,
+		detail: "analyser-gt-desc.hfstol at " + hfstolPath,
+		hint:   "`make gen-lemmatizer-tables-et HFSTOL_PATH=" + hfstolPath + "`",
+	}}
+}
+
+// findHFSTOL searches the expected localdata location for the ET hfstol transducer.
+func findHFSTOL() string {
+	candidates := []string{
+		"localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol",
+	}
+	for _, p := range candidates {
+		if fileExists(p) {
+			return p
+		}
+	}
+	return ""
 }
 
 func checkOmorfi() check {
@@ -404,10 +508,10 @@ func checkRustParser() check {
 		}
 	}
 	return check{
-		name:  "Rust parser shared library",
-		level: levelWarn,
+		name:   "Rust parser shared library",
+		level:  levelWarn,
 		detail: "release build not found under parser/target/release/",
-		hint:  "`make parser` (cargo build --release)",
+		hint:   "`make parser` (cargo build --release)",
 	}
 }
 
@@ -450,6 +554,7 @@ func decideQualityMode(cs []check) string {
 	hasOmorfi := false
 	hasEstNLTK := false
 	hasFSTFI := false
+	hasFSTET := false
 	hasEkilex := false
 
 	for _, c := range cs {
@@ -460,8 +565,12 @@ func decideQualityMode(cs []check) string {
 				hasET = !strings.Contains(c.detail, "ET: 0")
 			}
 		case "FST lemmatizer tables":
-			if c.level == levelOK || strings.Contains(c.detail, "FI: ") && !strings.Contains(c.detail, "FI: missing") {
+			if c.level == levelOK {
 				hasFSTFI = true
+				hasFSTET = true
+			} else {
+				hasFSTFI = strings.Contains(c.detail, "FI: ") && !strings.Contains(c.detail, "FI: missing")
+				hasFSTET = strings.Contains(c.detail, "ET: ") && !strings.Contains(c.detail, "ET: missing")
 			}
 		case "Omorfi analyzer (FI baseline)":
 			hasOmorfi = c.level == levelOK
@@ -485,8 +594,12 @@ func decideQualityMode(cs []check) string {
 	}
 	if hasET {
 		et := "ET dict-only"
-		if hasEkilex {
+		if hasEkilex && hasFSTET {
+			et = "ET dict + Ekilex + FST"
+		} else if hasEkilex {
 			et = "ET dict + Ekilex enrichment"
+		} else if hasFSTET {
+			et = "ET dict + FST"
 		}
 		if hasEstNLTK {
 			et += " (+ estnltk baseline available)"
