@@ -180,17 +180,29 @@ them.
 ### 5. Freeze a baseline
 
 ```
-DATE=$(date +%Y-%m-%d)
-TAG=post-fst       # or whatever you're naming this iteration
-for f in reports/parser-eval/${RUN_TS}-fi-*.json reports/parser-eval/${RUN_TS}-et-*.json; do
-    cp "$f" docs/baselines/${DATE}-${TAG}-$(basename "$f" | sed "s/^${RUN_TS}-//")
-done
-cp reports/parser-eval/${DATE}-fi.md docs/baselines/${DATE}-${TAG}-fi.md
-cp reports/parser-eval/${DATE}-et.md docs/baselines/${DATE}-${TAG}-et.md
+# RUN_TS is the YYYYMMDDTHHMMSSZ stamp printed by the comparison scripts
+# (and visible as the prefix in reports/parser-eval/${RUN_TS}-*.json).
+scripts/freeze-baseline.sh "$RUN_TS"
 ```
 
+The script reads the parser-version letter from `parsecore.ParserVersion`,
+derives the date + UTC HHMM from `RUN_TS`, and writes per-dataset JSONs
+and cross-language summaries to `docs/baselines/` under the canonical
+filename:
+
+```
+docs/baselines/YYYY-MM-DD<rev>-T<HHMM>Z-<dataset>.<ext>
+```
+
+— for example `docs/baselines/2026-05-07k-T1118Z-fi-core.json`. **Append-only**:
+the script refuses to overwrite existing targets, so older baselines stay
+referenceable forever (cross-references like "see `2026-05-06-final-fi-core`"
+in old PR descriptions remain valid). Filename spec, examples, and rationale:
+[`baselines/README.md` §Filename convention](baselines/README.md).
+
 Then add a row to [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md)'s trend table
-and an `### YYYY-MM-DDx` entry per the convention there.
+and a `### YYYY-MM-DD<rev>-T<HHMM>Z` entry per the convention there, plus
+a row in [`SYSTEM_VERSIONING.md` § Parser evaluation baseline history](SYSTEM_VERSIONING.md).
 
 ## Reading the JSON reports
 
