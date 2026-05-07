@@ -7,6 +7,33 @@ import (
 	"finnestdb/internal/parsecore"
 )
 
+func TestResolveRunIDSlug_OptionWinsAndDistinguishesSameNameFiles(t *testing.T) {
+	// Both gold files carry name="fi-manual" by historical accident — they
+	// must not collide in the default report path.
+	ds := &Dataset{Name: "fi-manual"}
+
+	v1 := resolveRunIDSlug(EvaluateOptions{RunIDSlug: "fi-manual-v1"}, ds)
+	v2 := resolveRunIDSlug(EvaluateOptions{RunIDSlug: "fi-manual-v2"}, ds)
+	if v1 == v2 || v1 != "fi-manual-v1" || v2 != "fi-manual-v2" {
+		t.Fatalf("RunIDSlug must override dataset.Name: v1=%q v2=%q", v1, v2)
+	}
+
+	// When the option is empty, fall back to slugify(dataset.Name) so legacy
+	// callers that don't know the input file path still work.
+	fallback := resolveRunIDSlug(EvaluateOptions{}, ds)
+	if fallback != "fi-manual" {
+		t.Fatalf("empty RunIDSlug must fall back to slugify(dataset.Name); got %q", fallback)
+	}
+
+	// All-whitespace RunIDSlug falls back rather than producing a degenerate
+	// slug; slugify() itself never returns empty so the override branch only
+	// fires when the caller explicitly provided something.
+	dirty := resolveRunIDSlug(EvaluateOptions{RunIDSlug: "   "}, &Dataset{Name: "core"})
+	if dirty != "core" {
+		t.Fatalf("whitespace RunIDSlug should fall back to dataset.Name; got %q", dirty)
+	}
+}
+
 func TestCompareCase_MatchesOccurrenceAndGrammar(t *testing.T) {
 	c := DatasetCase{
 		ID:   "fi-1",
