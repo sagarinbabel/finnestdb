@@ -2,8 +2,11 @@
 
 This document describes the Finnish + Estonian lemmatizer package after
 the artifact-policy cleanup. The runtime does **not** ship upstream
-transducer blobs. It embeds generated factual tables under
-`pkg/lemmatizer-fi-et/tables/`.
+transducer blobs, and as of the
+`pkg/lemmatizer-fi-et/tables/*` → `localdata/` migration it does not
+ship the derived JSON tables either. Tables live under
+`localdata/lemmatizer-fi-et/tables/` (gitignored) and are loaded from
+disk on `New()`.
 
 See also:
 
@@ -15,11 +18,16 @@ See also:
 
 ## Current status
 
-`pkg/lemmatizer-fi-et/` provides:
+[`pkg/lemmatizer-fi-et/`](../pkg/lemmatizer-fi-et/) provides:
 
-- Runtime loading of generated JSON analysis tables:
-  - `tables/fi_min.json`
-  - `tables/et_min.json`
+- Disk-based loading of generated JSON analysis tables. `New()` resolves
+  the directory from `LEMMATIZER_TABLES_DIR` (env), falling back to
+  `localdata/lemmatizer-fi-et/tables/`. Per-language coverage is
+  independent: a deployment that has only `fi_min.json` works for FI
+  and returns no analyses for ET.
+- `NewFromDir(dir string)` — explicit-path constructor used by tests
+  (against [`testdata/lemmatizer/`](../testdata/lemmatizer/)) and by
+  callers that don't want to touch env.
 - Offline reader/parser packages for upstream analyser formats:
   - `vfst/` for local `mor.vfst` files.
   - `hfstol/` for local HFST optimised-lookup files.
@@ -27,35 +35,40 @@ See also:
   `Analysis` shape:
   - `voikkomap/`
   - `giellaltmap/`
-- `cmd/genlemmatizertables`, currently a Finnish VFST table generator
-  that reads a local `mor.vfst` plus `tables/fi_wordlist.txt` and writes
-  generated JSON.
+- [`cmd/genlemmatizertables`](../cmd/genlemmatizertables/), currently a
+  Finnish VFST table generator that reads a local `mor.vfst` plus a
+  seed wordlist and writes generated JSON to
+  `localdata/lemmatizer-fi-et/tables/`.
 
-The checked-in FI and ET tables are intentionally small smoke fixtures.
-They prove the runtime, parser integration, and generated-table policy,
-but they are **not** production replacements for full Voikko or Giellalt
-coverage.
+Test fixtures under [`testdata/lemmatizer/`](../testdata/lemmatizer/)
+are hand-authored and intentionally tiny — they cover the words used
+by `pkg/lemmatizer-fi-et/lemmatizer_test.go` and nothing else. They
+are **not** production tables; they are the unit-test ground truth.
 
 ## Artifact policy
 
 Allowed in git:
 
-- Generated factual tables such as JSON, TSV, or SQLite dumps containing
-  derived analyses.
-- Word lists or manifests used to regenerate those tables.
 - Generator code and tests.
-- Upstream license and attribution text.
+- Hand-authored seed wordlists for the generator (e.g.
+  [`cmd/genlemmatizertables/wordlists/fi_smoke.txt`](../cmd/genlemmatizertables/wordlists/fi_smoke.txt)).
+- Hand-authored unit-test fixtures under
+  [`testdata/lemmatizer/`](../testdata/lemmatizer/).
+- Upstream license and attribution text under
+  `pkg/lemmatizer-fi-et/data/{fi,et}/` (no transducer blobs).
 
 Not allowed in git:
 
-- `mor.vfst`
-- `analyser-gt-desc.hfstol`
-- `.hfst` files
-- Any other upstream analyser blob that directly ships the transducer.
+- `mor.vfst`, `analyser-gt-desc.hfstol`, `.hfst` files, or any other
+  upstream analyser blob that directly ships the transducer.
+- The factual JSON tables generated from those analysers
+  (`{fi,et}_min.json` and any future production tables) — these belong
+  under `localdata/lemmatizer-fi-et/tables/`, gitignored.
 
 Maintainers may keep upstream analysers locally, for example under
 `localdata/` or via an absolute path passed to a generator command. The
-generated table is the reviewable artifact that may be committed.
+generated table is a runtime asset that is regenerated rather than
+reviewed.
 
 ## Runtime architecture
 
@@ -69,24 +82,28 @@ internal/store.BatchLookupForms()
   |
   `-- pkg/lemmatizer-fi-et
         |
-        |-- embed tables/fi_min.json
-        |-- embed tables/et_min.json
+        |-- New() reads localdata/lemmatizer-fi-et/tables/fi_min.json
+        |-- New() reads localdata/lemmatizer-fi-et/tables/et_min.json
         `-- return []Analysis for exact surface-form matches
 ```
 
 The runtime path is deliberately simple:
 
-1. `lemmatizer.New()` unmarshals the embedded JSON tables into maps.
+1. `lemmatizer.New()` (or `NewFromDir`) reads each language's table from
+   disk. Missing files degrade the language to "no analyses"; both
+   files missing is a hard error.
 2. `Lemmatize("FI", word)` returns entries from the FI table.
 3. `Lemmatize("ET", word)` returns entries from the ET table.
 4. Unknown languages or unknown words return no analyses.
 
-No transducer file is opened at runtime, and no binary analyser data is
-embedded in the Go binary.
+If `New()` fails (for example, on a fresh clone where setup-local.sh
+hasn't generated tables yet), `internal/store` logs a single warning
+and falls back to the dict + case-suffix path. No transducer blob is
+opened at runtime.
 
 ## Offline generation
 
-The current Finnish generator is:
+The Finnish generator:
 
 ```sh
 make gen-lemmatizer-tables-fi VFST_PATH=/absolute/path/to/mor.vfst
@@ -95,33 +112,42 @@ make gen-lemmatizer-tables-fi VFST_PATH=/absolute/path/to/mor.vfst
 That target runs:
 
 ```sh
+mkdir -p localdata/lemmatizer-fi-et/tables
 go run ./cmd/genlemmatizertables \
   -lang fi \
   -vfst "$VFST_PATH" \
-  -wordlist pkg/lemmatizer-fi-et/tables/fi_wordlist.txt \
-  -out pkg/lemmatizer-fi-et/tables/fi_min.json
+  -wordlist cmd/genlemmatizertables/wordlists/fi_smoke.txt \
+  -out localdata/lemmatizer-fi-et/tables/fi_min.json
 ```
 
-`VFST_PATH` must point to a local Voikko `mor.vfst`. The file itself must
-not be committed.
+`VFST_PATH` must point to a local Voikko `mor.vfst`. The file itself
+must not be committed.
+
+`scripts/setup-local.sh` invokes the FI generator best-effort — if
+`VFST_PATH` is set, it generates; otherwise it skips with a warning
+and the FST step in custom-mode parsing is disabled until tables exist.
 
 The ET production path still needs a matching generated-table command
 for a local Giellalt/HFST analyser. Until that exists and a production
-word list is selected, `tables/et_min.json` remains a smoke fixture.
+word list is selected, the ET FST is disabled at runtime (no
+`et_min.json` under `localdata/`).
 
-## What the current tables prove
+## What the test fixtures prove
 
-The checked-in tables prove that:
+The fixtures under [`testdata/lemmatizer/`](../testdata/lemmatizer/)
+prove that:
 
-- The parser can consume generated factual analyses without shipped
+- The runtime can consume generated factual analyses without shipped
   transducer blobs.
 - FI and ET can share one runtime package and `Analysis` shape.
-- The runtime stays deterministic and testable.
+- The runtime stays deterministic and testable on a hermetic file set.
 - Future production tables can be reviewed as plain generated data.
 
 They do **not** prove broad runtime coverage, grammar-label gains, or
-final eval deltas. Any accuracy or coverage claim must be generated from
-the exact production tables committed on the branch making the claim.
+final eval deltas. Any accuracy or coverage claim must be generated
+from the exact production tables under `localdata/` on the branch
+making the claim, with the generator command and upstream version
+recorded alongside.
 
 ## Production-table promotion checklist
 
@@ -129,14 +155,13 @@ Before promoting this package as a production replacement for the older
 dictionary/rule path:
 
 1. Choose the production input word list for each language.
-2. Generate FI and ET factual tables from local upstream analysers.
-3. Commit the generated tables and provenance notes, but no analyser
-   blobs.
-4. Record the generator command, upstream source/version, and table row
-   counts.
-5. Re-run parser eval on the exact committed tables.
-6. Update `docs/baselines/` and `docs/PARSER_EVOLUTION.md` only with
-   those new results.
+2. Generate FI and ET factual tables from local upstream analysers
+   into `localdata/lemmatizer-fi-et/tables/`.
+3. Record the generator command, upstream source/version, and table
+   row counts in `docs/PARSER_EVOLUTION.md`.
+4. Re-run parser eval against those local tables.
+5. Update `docs/baselines/` only with results from runs that loaded
+   production tables.
 
 Until then, the package should be described as a generated-table
 scaffold with smoke fixtures and offline analyser-reader support.
@@ -157,8 +182,9 @@ generation, even though their transducer blobs are not committed.
 
 ## Follow-up work
 
-- Add a production-sized FI word list and regenerate `fi_min.json` into
-  a properly named production table.
+- Add a production-sized FI word list and regenerate
+  `localdata/lemmatizer-fi-et/tables/fi_min.json` into a properly named
+  production table.
 - Add an ET generator path from a local Giellalt/HFST analyser.
 - Store table provenance in machine-readable metadata next to the JSON
   tables.

@@ -75,7 +75,7 @@ PR 4 of the four-PR FST stack ([#107](https://github.com/sagarinbabel/finnestdb/
 **Open issues this surfaced**:
 
 - Grammar accuracy still low across all sets (1.4–16.7%). The FST analysers produce UD FEATS but `internal/store/dict.go` doesn't yet consume Number/Tense/Mood/Person from FST output beyond the Voikko grammar-label heuristic. Tracked as the FEATS-migration follow-up (was [#118](https://github.com/sagarinbabel/finnestdb/pull/118), to be cherry-picked onto the cleaned base).
-- Tracked tables `pkg/lemmatizer-fi-et/tables/{fi_min.json,fi_wordlist.txt,et_min.json}` are derived data and should move under `localdata/` per the new artifact policy. Pending the artifact-policy cleanup PR.
+- Tracked tables `pkg/lemmatizer-fi-et/tables/{fi_min.json,fi_wordlist.txt,et_min.json}` are derived data and should move under `localdata/` per the new artifact policy. Pending the artifact-policy cleanup PR. _(Resolved: tables migrated to `localdata/lemmatizer-fi-et/tables/` (gitignored); test fixtures relocated to `testdata/lemmatizer/`; seed wordlist moved to `cmd/genlemmatizertables/wordlists/fi_smoke.txt`. Runtime now disk-loads via `lemmatizer.New()` / `NewFromDir`.)_
 
 ---
 

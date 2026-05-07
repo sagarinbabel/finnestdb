@@ -33,7 +33,7 @@ The parser and deck flow query one multi-source dictionary API where:
 | `translations` | per-meaning translations into `target_lang` | `source` |
 | `definitions` | monolingual definitions in `lang` | `source` |
 | `dict_metadata` | per-source attribution, version, license, import notes | one row per source |
-| `pkg/lemmatizer-fi-et/tables/` | generated factual morphology analyses | table provenance, generator command, upstream source |
+| `localdata/lemmatizer-fi-et/tables/` (gitignored) | generated factual morphology analyses | table provenance, generator command, upstream source |
 
 The `forms` primary key allows one surface form to map to multiple
 lemma/POS candidates. That matters for homonyms such as ET `joon` and FI
@@ -118,10 +118,11 @@ Reference pages:
 These were decided before implementation began.
 
 1. **Generated-table deployment.** The build/generation pipeline may run
-   local upstream analysers, but the repository ships only generated
-   factual tables under `pkg/lemmatizer-fi-et/tables/`. Upstream analyser
-   blobs such as `.vfst`, `.hfstol`, and `.hfst` are local-only and must
-   not be committed.
+   local upstream analysers, but the repository ships neither analyser
+   blobs nor the derived factual tables. Upstream analyser blobs such as
+   `.vfst`, `.hfstol`, and `.hfst` and the JSON tables generated from
+   them all live under `localdata/lemmatizer-fi-et/`, which is
+   gitignored. The runtime loads tables from disk on `New()`.
 2. **Translations and definitions tables land now**, not after Sonaveeb
    integration. The Finnish plan needs them; the Estonian plan benefits
    from them; landing them once avoids two parallel solutions.
@@ -221,11 +222,12 @@ original Voikko seed plan.
 
 - The generator may read local upstream analysers such as Voikko
   `mor.vfst`, but those analyser files stay outside git.
-- The committed output is a factual JSON table under
-  `pkg/lemmatizer-fi-et/tables/`.
+- The output is a factual JSON table under
+  `localdata/lemmatizer-fi-et/tables/` (gitignored); the runtime loads
+  it from disk on `New()`.
 - `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst`
   regenerates the current FI smoke table from
-  `pkg/lemmatizer-fi-et/tables/fi_wordlist.txt`.
+  `cmd/genlemmatizertables/wordlists/fi_smoke.txt`.
 - A production FI/ET table PR must add a production word list,
   provenance, generator command, row counts, and fresh eval.
 
@@ -336,12 +338,13 @@ boundaries.
   `data/voikko/fi-voikko-forms-<version>.jsonl.gz` seed is not the
   shipping path.
 - **Phase 4 (replacement) — generated-table lemmatizer scaffold.**
-  New package `pkg/lemmatizer-fi-et/` embeds generated factual tables
-  from `pkg/lemmatizer-fi-et/tables/` and exposes
-  `Lemmatize(lang, word)`. The package also contains VFST/HFST reader
-  support for local generation, but no transducer blobs are committed.
-  Current FI/ET tables are smoke fixtures, so old final eval deltas are
-  removed/deferred. See [docs/FST_LEMMATIZER.md](FST_LEMMATIZER.md).
+  New package `pkg/lemmatizer-fi-et/` reads generated factual tables
+  from `localdata/lemmatizer-fi-et/tables/` (gitignored) on `New()` and
+  exposes `Lemmatize(lang, word)`. The package also contains VFST/HFST
+  reader support for local generation, but no transducer blobs and no
+  derived tables are committed. Hand-authored unit-test fixtures live
+  under `testdata/lemmatizer/`. See
+  [docs/FST_LEMMATIZER.md](FST_LEMMATIZER.md).
 - **Phase 5 — Estonian via generated tables.** ET uses the same table
   runtime. A production ET PR still needs a generated table from a local
   Giellalt/HFST source plus provenance and fresh eval.

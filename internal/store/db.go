@@ -20,16 +20,18 @@ type DB struct {
 	db *sql.DB
 
 	// FST lemmatizer is loaded lazily on first FI BatchLookupForms call.
-	// Tests that don't touch FI form lookups don't pay the embed-decode cost.
+	// Tests that don't touch FI form lookups don't pay the disk-read +
+	// JSON-parse cost.
 	lemOnce sync.Once
 	lem     *lemmatizer.Lemmatizer
 }
 
 // fstLemmatizer returns the (lazy-loaded) FST lemmatizer, or nil if
-// loading failed. Callers must tolerate a nil result and fall back to
-// the SQLite-only resolution chain. Both FI and ET share one loaded
-// instance — the embedded data files are inert until Lemmatize is
-// called for that language.
+// loading failed (e.g. no tables under localdata/lemmatizer-fi-et/tables/
+// on a fresh clone without scripts/setup-local.sh). Callers must
+// tolerate a nil result and fall back to the SQLite-only resolution
+// chain. Both FI and ET share one loaded instance — the per-language
+// analysis maps are read-only after lemmatizer.New() returns.
 func (d *DB) fstLemmatizer() *lemmatizer.Lemmatizer {
 	d.lemOnce.Do(func() {
 		l, err := lemmatizer.New()

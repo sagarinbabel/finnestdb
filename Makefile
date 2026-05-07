@@ -44,11 +44,12 @@ deps:
 	go mod download
 	cd parser && cargo fetch
 
-# ── FST-derived tables (no blobs in git) ───────────────────────────────────────
+# ── FST-derived tables (no blobs in git, no derived tables in git) ────────────
 #
-# Policy: upstream transducer blobs are not committed. Maintainers may keep
-# local analysers under localdata/ and regenerate factual tables that *are*
-# committed and embedded by the runtime.
+# Policy: per docs/ARTIFACT_POLICY.md, neither upstream transducer blobs
+# nor the factual tables generated from them are tracked. The runtime
+# loads tables from localdata/lemmatizer-fi-et/tables/ on New(); this
+# target generates them from a local mor.vfst.
 #
 # Example:
 #   make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst
@@ -58,9 +59,10 @@ gen-lemmatizer-tables-fi:
 		echo "VFST_PATH is required (local path to mor.vfst; do not commit)."; \
 		exit 1; \
 	fi
+	@mkdir -p localdata/lemmatizer-fi-et/tables
 	go run ./cmd/genlemmatizertables -lang fi -vfst "$(VFST_PATH)" \
-	  -wordlist pkg/lemmatizer-fi-et/tables/fi_wordlist.txt \
-	  -out pkg/lemmatizer-fi-et/tables/fi_min.json
+	  -wordlist cmd/genlemmatizertables/wordlists/fi_smoke.txt \
+	  -out localdata/lemmatizer-fi-et/tables/fi_min.json
 
 # ── Dictionary import targets ──────────────────────────────────────────────────
 # First-time import: skips if the table already has rows for that lang.
