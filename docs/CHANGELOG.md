@@ -10,6 +10,43 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-05-07 — Voikko `[P4]` Voice + participle field cleanup (PR #158)
+
+Closes the Voice accuracy gap flagged in the parser audit (FI custom
+5.3% vs omorfi 89.7% on fi-ftb) by fixing two specific bugs in
+`voikkomap` on top of the rich Voice/VerbForm/PartForm extraction that
+already landed in PRs [#154](https://github.com/sagarinbabel/finnestdb/pull/154)
+and [#155](https://github.com/sagarinbabel/finnestdb/pull/155):
+
+1. **`[P4]` no longer leaks as `Person=4`.** Finnish passive is
+   grammatically the "4th person" in Voikko's tag set, but UD `Person`
+   is 1/2/3. `[P4]` now sets `Voice=Pass` and leaves `Person` empty;
+   `[P1-P3]` set `Voice=Act` alongside the UD `Person` value, so
+   active finite verbs no longer compose FEATS without Voice.
+2. **`applyParticiple` clears finite-only fields.** Defense-in-depth:
+   when `[R*]` wins, Mood/Tense/Person are reset so a participle
+   never composes contradictory FEATS like `Tense=Past|VerbForm=Part`
+   — UD encodes the past/present distinction in `PartForm=`, not
+   `Tense=`.
+
+The shared Voice/VerbForm plumbing (Analysis fields, `applyParticiple`
+per-tag mapping, `[Tn1-n5]` → `VerbForm=Inf`, Giellalt Act/Pass/Inf
+extraction) all landed in PRs #154 and #155; PR #158 fills in the two
+Voikko-specific gaps those PRs left open.
+
+The `[E*]` tags were investigated as a possible voice signal and found
+to encode connegative status (Ef=false, Et=true, Eb=both) — confirmed
+from libvoikko's `FinnishVfstAnalyzer.cpp::parseBasicAttributes`.
+Documented in the voikkomap header. Not projected to UD because the
+runtime already gets `Connegative=Yes` from the orthogonal `[Cn]` tag.
+
+- Modified: [`docs/FST_LEMMATIZER.md`](FST_LEMMATIZER.md) — new
+  "Voikko Voice extraction" subsection covering the `[P*]` Voice
+  derivation and participle field cleanup; updated stale 5-param
+  `Compose` reference.
+- Modified: [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) — new
+  entry for PR #158.
+
 ## 2026-05-07 — Baseline filename convention + freeze-baseline script
 
 Standardizes the baseline filename convention so every baseline has a

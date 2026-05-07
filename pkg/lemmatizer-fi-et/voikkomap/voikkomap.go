@@ -18,9 +18,16 @@
 //   - [N*]              number
 //   - [T*]              mood (Tt = indicative, Te = conditional, ...)
 //   - [A*]              tense (Ap = present, Ai = past)
-//   - [P*]              person (P1/P2/P3)
+//   - [P*]              person (P1/P2/P3) → UD Person; [P4] → Voice=Pass
+//                       (Finnish passive is grammatically "4th person",
+//                       not a UD Person value); P1-P3 imply Voice=Act
+//   - [R*]              participle/derivation → VerbForm=Part + PartForm,
+//                       and Voice=Pass for TU/TAVA passive participles;
+//                       see applyParticiple for the per-tag mapping
+//   - [E*]              connegative (Ef=false, Et=true, Eb=both) — parsed
+//                       but not projected to UD; the runtime gets
+//                       Connegative=Yes from [Cn] instead
 //   - [B*]              compound boundary (ignored)
-//   - everything else   ignored for now
 package voikkomap
 
 import (
@@ -37,8 +44,8 @@ type Analysis struct {
 	Number       string // "Sing" / "Plur" (UD), or empty
 	Tense        string // "Pres" / "Past" or empty
 	Mood         string // "Ind" / "Cnd" / "Imp" / "Pot" or empty
-	Person       string // "1" / "2" / "3" / "4" or empty
-	Voice        string // "Act" / "Pass" or empty
+	Person       string // "1" / "2" / "3" or empty; [P4] is not a UD Person value (it maps to Voice=Pass)
+	Voice        string // "Act" / "Pass" or empty; derived from [P*] (P1-3 = Act, P4 = Pass) and from [Rt]/[Ra] passive participles
 	VerbForm     string // "Fin" / "Inf" / "Part" or empty
 	Degree       string // "Pos" / "Cmp" / "Sup" or empty
 	PronType     string // "Dem" / "Int" / "Rel" / "Ind" / "Prs" / "Rfl" / "Rcp" or empty
@@ -122,8 +129,17 @@ func Parse(fstOutput string) Analysis {
 					a.Tense = tense
 				}
 			case strings.HasPrefix(tag, "P"):
+				// Voikko's [P4] is the Finnish "passive" / 4th person —
+				// it's a voice signal, not a UD Person value (UD Person
+				// is 1/2/3). Map P4 to Voice=Pass and leave Person empty.
+				// P1-P3 are normal UD persons and imply Voice=Act.
 				if person := tag[1:]; len(person) == 1 && person[0] >= '1' && person[0] <= '4' {
-					a.Person = person
+					if person == "4" {
+						a.Voice = "Pass"
+					} else {
+						a.Person = person
+						a.Voice = "Act"
+					}
 				}
 			case strings.HasPrefix(tag, "R"):
 				applyParticiple(&a, tag[1:])
@@ -309,8 +325,24 @@ func infFormFromMood(body string) string {
 
 // applyParticiple handles [R*] tags — Voikko's participle/derivation
 // family. Sets VerbForm, PartForm, and Voice where the tag implies
-// active vs. passive.
+// active vs. passive. Clears finite-only fields (Mood, Tense, Person)
+// because participles take VerbForm=Part and the past/present
+// distinction is carried by PartForm, not Tense — see UD-Finnish.
+// Real Voikko readings don't normally co-emit T*/A*/P* with R*, so this
+// is defense-in-depth against contradictory FEATS like
+// Mood=Ind|VerbForm=Part or Tense=Past|VerbForm=Part.
 func applyParticiple(a *Analysis, body string) {
+	if body == "" {
+		return
+	}
+	switch body {
+	case "v", "u", "t", "a", "m", "e":
+		a.Mood = ""
+		a.Tense = ""
+		a.Person = ""
+	default:
+		return
+	}
 	switch body {
 	case "v": // VA-participle (active present)
 		a.VerbForm = "Part"
