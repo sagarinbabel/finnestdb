@@ -63,6 +63,9 @@ func TestParse_Verb(t *testing.T) {
 	if a.Mood != "Ind" {
 		t.Errorf("mood=%q want Ind", a.Mood)
 	}
+	if a.VerbForm != "Fin" {
+		t.Errorf("verbform=%q want Fin", a.VerbForm)
+	}
 }
 
 func TestParse_VerbPast(t *testing.T) {
@@ -76,6 +79,20 @@ func TestParse_VerbPast(t *testing.T) {
 	}
 	if a.Person != "2" {
 		t.Errorf("person=%q want 2", a.Person)
+	}
+	if a.VerbForm != "Fin" {
+		t.Errorf("verbform=%q want Fin", a.VerbForm)
+	}
+}
+
+func TestParse_Infinitive(t *testing.T) {
+	// First infinitive: [Tn1] should set VerbForm=Inf, not Mood=Inf
+	a := Parse("[Lt][Xp]olla[X]ol[Tn1]la")
+	if a.VerbForm != "Inf" {
+		t.Errorf("verbform=%q want Inf", a.VerbForm)
+	}
+	if a.Mood != "" {
+		t.Errorf("mood=%q want empty (infinitives have no mood)", a.Mood)
 	}
 }
 

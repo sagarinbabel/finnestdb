@@ -5,7 +5,7 @@
 // Two callers, one source of truth:
 //
 //   - voikkomap.Analysis and giellaltmap.Analysis fill their morphological
-//     fields (Number, Tense, Mood, Person, GrammarLabel) and call
+//     fields (Number, Tense, Mood, Person, Voice, VerbForm, GrammarLabel) and call
 //     udfeats.Compose(...) once at Parse() time, persisting the FEATS
 //     string in their Feats field. Generated table JSONs are then
 //     self-describing.
@@ -77,8 +77,8 @@ var UDCaseToLegacyLabel = map[string]string{
 // The signature is deliberately positional rather than struct-based so
 // both voikkomap and giellaltmap can call it without taking a dependency
 // on each other or on a shared Analysis type.
-func Compose(grammarLabel, number, tense, mood, person string) string {
-	pairs := make(map[string]string, 5)
+func Compose(grammarLabel, number, tense, mood, person, voice, verbForm string) string {
+	pairs := make(map[string]string, 7)
 	if udCase, ok := LegacyLabelToUDCase[grammarLabel]; ok && udCase != "Nom" {
 		pairs["Case"] = udCase
 	}
@@ -93,6 +93,12 @@ func Compose(grammarLabel, number, tense, mood, person string) string {
 	}
 	if person != "" {
 		pairs["Person"] = person
+	}
+	if voice != "" {
+		pairs["Voice"] = voice
+	}
+	if verbForm != "" {
+		pairs["VerbForm"] = verbForm
 	}
 	if len(pairs) == 0 {
 		return ""

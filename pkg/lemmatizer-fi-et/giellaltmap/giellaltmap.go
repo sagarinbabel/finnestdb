@@ -32,6 +32,8 @@ type Analysis struct {
 	Tense        string
 	Mood         string
 	Person       string
+	Voice        string
+	VerbForm     string
 	Feats        string // composed UD FEATS string, e.g. "Case=Ine|Number=Sing"; alphabetically sorted
 	IsCompound   bool   // contains '#'; used by the unified merger to deprioritise
 	Raw          string
@@ -70,7 +72,7 @@ func Parse(out string) Analysis {
 	if len(tags) > 1 {
 		applyTags(&a, tags[1:])
 	}
-	a.Feats = udfeats.Compose(a.GrammarLabel, a.Number, a.Tense, a.Mood, a.Person)
+	a.Feats = udfeats.Compose(a.GrammarLabel, a.Number, a.Tense, a.Mood, a.Person, a.Voice, a.VerbForm)
 	return a
 }
 
@@ -149,15 +151,31 @@ func applyTags(a *Analysis, tags []string) {
 		case "Prt":
 			a.Tense = "Past"
 
-		// Mood
+		// Voice
+		case "Act":
+			a.Voice = "Act"
+		case "Pass":
+			a.Voice = "Pass"
+
+		// Mood (sets VerbForm=Fin as a side-effect)
 		case "Ind":
 			a.Mood = "Ind"
+			a.VerbForm = "Fin"
 		case "Cnd":
 			a.Mood = "Cnd"
+			a.VerbForm = "Fin"
 		case "Imprt", "Imp":
 			a.Mood = "Imp"
+			a.VerbForm = "Fin"
 		case "Pot":
 			a.Mood = "Pot"
+			a.VerbForm = "Fin"
+
+		// VerbForm: infinitives and participles
+		case "Inf", "InfA", "InfE", "InfMA", "InfMIST":
+			a.VerbForm = "Inf"
+		case "PrsPrc", "PrfPrc":
+			a.VerbForm = "Part"
 
 		// Person+Number combinations: Sg1, Sg2, Sg3, Pl1, Pl2, Pl3
 		case "Sg1":
