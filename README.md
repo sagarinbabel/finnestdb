@@ -205,10 +205,10 @@ rather than discovering them from surprise eval numbers.
 ---
 
 The app opens to the public landing page. Sign in with an email address and
-password (8+ chars) to use Parse, Decks, and Review. The current auth flow is
-an alpha stub; see
-[`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md) before exposing the app
-to real users.
+password (8+ chars) to use Parse, Decks, and Review. Auth is password-based
+with Argon2id hashes and DB-backed `session_token` sessions; see
+[`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md) for the remaining
+go-live controls before exposing the app to real users.
 
 ### Frontend Build
 
@@ -306,7 +306,7 @@ most users will only need step 4:
    - goes through the wordlist from step 1 and pulls `/api/word/details` for every `word_id`
    - writes gzipped raw payloads under `localdata/ekilex/details/raw/` (gitignored)
 3. **Extract / reduce** — `make reduce-ekilex`
-   - reduces the raw payloads into sharded committable artifacts under `localdata/ekilex/`:
+   - reduces the raw payloads into sharded local artifacts under `localdata/ekilex/`:
      - `definitions/<letter>.jsonl`: extracts lemma + morphology + meanings
      - `forms/<letter>.tsv`: a list of inflected forms, one row per inflected form with the corresponding lemma
    - golden-tested; see the `reduce-ekilex` notes in [Makefile](Makefile).
@@ -541,12 +541,11 @@ What still does **not** exist yet in the browser-facing parser flow:
   [`docs/ML_IDEAS.md` §1a](docs/ML_IDEAS.md))
 - MWE detection (schema not yet defined; see [`TODO.md`](TODO.md)
   "Sentence-level features")
-- production FI lemmatizer tables (current `pkg/lemmatizer-fi-et/`
-  ships smoke fixtures only — production tables generated locally with
-  `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst`; see
-  [`docs/ARTIFACT_POLICY.md`](docs/ARTIFACT_POLICY.md))
-- ET lemmatizer table generator (FI generator exists; ET generator
-  is the remaining work tracked in [`TODO.md`](TODO.md) "Parser quality")
+- production FI/ET lemmatizer tables (current `pkg/lemmatizer-fi-et/`
+  ships smoke fixtures only — production tables are generated locally with
+  `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst` and
+  `make gen-lemmatizer-tables-et HFSTOL_PATH=/path/to/analyser-gt-desc.hfstol`;
+  see [`docs/ARTIFACT_POLICY.md`](docs/ARTIFACT_POLICY.md))
 
 What **does** exist now for parser research:
 - FST candidate scoring in parallel with dict step 1 (post-PR #127)
@@ -598,7 +597,7 @@ will close most of the long tail.
 /cmd/reduceekilex         Reduce raw Ekilex payloads to sharded JSONL/TSV artifacts
 /cmd/scrapegutenberg      Public-domain FI book scraper for silver-tier corpus
 /cmd/fetchfrequency       Public FI/ET frequency baselines (OpenSubtitles + UD)
-/cmd/genlemmatizertables  Generate FI lemmatizer JSON tables from a local libvoikko
+/cmd/genlemmatizertables  Generate FI/ET lemmatizer JSON tables from local analysers
 /internal/api             API handlers (POST /api/parse, auth, decks, feedback)
 /internal/auth            Argon2id passwords + DB-backed sliding sessions
 /internal/eval            Dataset-based parser evaluation engine

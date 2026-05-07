@@ -1,8 +1,10 @@
 # Generated-table lemmatizer roadmap
 
-Status: policy-adjusted after PRs #107, #108, #110, and #112. The repo
-now follows [docs/ARTIFACT_POLICY.md](ARTIFACT_POLICY.md): generated
-factual tables may be committed; upstream transducer blobs may not.
+Status: historical roadmap, policy-adjusted after PRs #107, #108, #110,
+and #112. The repo now follows [docs/ARTIFACT_POLICY.md](ARTIFACT_POLICY.md):
+neither upstream transducer blobs nor generated factual tables are tracked in
+git. Runtime tables are regenerated locally under
+`localdata/lemmatizer-fi-et/tables/`.
 
 Date: 2026-05-06 to 2026-05-07
 Driver: Phase 3.5 spike, recorded in
@@ -27,8 +29,10 @@ The accepted architecture is therefore:
 1. Keep analyser readers and tag mappers as generator support.
 2. Generate factual analysis tables offline from locally available
    upstream analysers.
-3. Commit only those factual tables and their provenance.
-4. Embed generated tables in the runtime.
+3. Keep generated factual tables out of git under
+   `localdata/lemmatizer-fi-et/tables/`.
+4. Load generated tables from disk at runtime, with tiny hand-authored
+   fixtures under `testdata/` for unit tests.
 
 ## Current architecture
 

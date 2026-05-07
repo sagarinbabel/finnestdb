@@ -23,7 +23,7 @@ app locally.
   - [Runtime Errors](#runtime-errors)
   - [Browser Issues](#browser-issues)
 - [Development Notes](#development-notes)
-  - [Stub Limitations](#stub-limitations)
+  - [Alpha Limitations](#alpha-limitations)
   - [Next Steps](#next-steps)
 - [Support](#support)
 - [License](#license)
@@ -126,7 +126,7 @@ The server will start on `http://localhost:8080` by default.
 
 2. The app opens to the public landing page.
    - Sign in with an email address and password (8+ chars) to use Dashboard, Parse, Decks, and Review.
-   - The alpha sign-in flow is a stub and is not go-live safe.
+   - Auth uses Argon2id password hashes and DB-backed `session_token` sessions.
    - Admin users can open the internal parser workbench.
 
 ## Using the Application
@@ -223,12 +223,13 @@ finnestdb/
 
 ## Development Notes
 
-### Stub Limitations
+### Alpha Limitations
 
 This is an alpha implementation with the following limitations:
 
-- **Auth**: sign-in is a development stub; do not expose it publicly before
-  completing `docs/GO_LIVE_CHECKLIST.md`
+- **Auth**: password auth and server-side sessions are implemented, but public
+  go-live still needs the remaining abuse, CSRF/Origin, retention, and
+  operational controls in `docs/GO_LIVE_CHECKLIST.md`
 - **Parser core**: Rust tokenization and heuristic POS guessing, not real morphology
 - **Admin parser modes**: Basic is direct dictionary lookup; Custom adds
   rule-based enrichment, still not Omorfi/Vabamorf

@@ -79,13 +79,14 @@ disambiguator (see [`docs/ML_IDEAS.md` §1a](ML_IDEAS.md)).
 ### Generated tables and dictionary boundary
 
 The lemmatizer package now follows
-[docs/ARTIFACT_POLICY.md](ARTIFACT_POLICY.md): runtime code embeds
-generated factual tables, not upstream transducer blobs.
+[docs/ARTIFACT_POLICY.md](ARTIFACT_POLICY.md): runtime code loads generated
+factual tables from local disk, and neither those tables nor upstream
+transducer blobs are tracked in git.
 
 Resolution order is:
 
 1. **Generated table lookup** (`pkg/lemmatizer-fi-et/`): exact
-   surface-form analyses from committed JSON tables. Post PRs
+   surface-form analyses from local JSON tables. Post PRs
    [#127](https://github.com/sagarinbabel/finnestdb/pull/127) and
    [#129](https://github.com/sagarinbabel/finnestdb/pull/129), the
    FST contributes candidates in parallel with dict step 1, not as a
@@ -109,8 +110,8 @@ The current FI/ET generated tables are smoke fixtures (9 FI keys, 7 ET
 keys; see [`testdata/lemmatizer/`](../testdata/lemmatizer/)). They
 prove the integration and policy, not production morphology coverage.
 Production coverage requires running `make gen-lemmatizer-tables-fi`
-locally to write the full table to `localdata/lemmatizer-fi-et/tables/`.
-The ET generator is not yet implemented.
+and/or `make gen-lemmatizer-tables-et` locally to write full tables to
+`localdata/lemmatizer-fi-et/tables/`.
 
 ### Importer pattern
 
@@ -270,7 +271,7 @@ original Voikko seed plan.
 - A production FI/ET table PR must add a production word list,
   provenance, generator command, row counts, and fresh eval.
 
-### `cmd/importdict/` — kaikki.org (source key `kaikki`, default priority 20)
+### `cmd/importdict/` — kaikki.org (source key `kaikki`, default priority 10)
 
 Today's `cmd/importdict/main.go` is this adapter, untagged. Changes
 needed:
@@ -387,21 +388,20 @@ ET corrections follow the same shared correction path as Finnish — see
 ## Resolution Layer
 
 The parser's enrichment chain in
-[`internal/store/dict.go`](../internal/store/dict.go) currently does
-form-to-lemma lookup with no source awareness. Once [#67] lands and the
-Finnish adapters are populating rows, enrichment is extended to:
+[`internal/store/dict.go`](../internal/store/dict.go) performs source-aware
+form-to-lemma lookup:
 
 1. Query all matching `forms` rows for a surface form, joined to
-   `dict_metadata.priority` via `(lang, source)`.
-2. Pick the highest-priority row. Ties broken deterministically by
-   source name.
+   row-level `source_priority`.
+2. Pick the highest-priority row. Ties are broken deterministically by
+   source name and surface plausibility.
 3. For glosses, query `translations` and `definitions` ordered by
    priority; return the top N to the caller.
 
-Default priority order for FI:
+Default priority order for current sources:
 
-- `custom_overrides` (1000, always wins) > `voikko` (30) > `kaikki` (20)
-  > `kotus` (10)
+- `custom_overrides` (1000, planned) > `ekilex` (20, ET) > `kaikki` (10)
+  / `kotus` (10, FI)
 
 `custom_overrides` is the existing `-custom-glosses` CSV path, promoted
 to a real source.
