@@ -188,7 +188,8 @@
   .legend .anon  .swatch { background: oklch(from var(--learning) l c h / 0.35); border: 1px solid var(--learning); }
   .legend .hub   .swatch { background: oklch(from var(--fi) l c h / 0.25); border: 1px solid var(--fi); }
   .legend .gated .swatch { background: var(--bg-raise); border: 1px dashed var(--ink-mute); }
-  .legend .new   .swatch { background: oklch(from var(--accent) l c h / 0.25); border: 1px solid var(--accent); }
+  .legend .new      .swatch { background: oklch(from var(--accent) l c h / 0.25); border: 1px solid var(--accent); }
+  .legend .leverage .swatch { background: oklch(from var(--learning) l c h / 0.25); border: 1px solid oklch(0.65 0.16 50); }
 
   /* Mermaid container styling — we let Mermaid render SVG, then apply font tweaks */
   .mermaid {
@@ -235,10 +236,11 @@
   <div class="page-head">
     <h1>User flow — consumer alpha</h1>
     <p class="lede">
-      Two diagrams from <a href="https://github.com/sagarinbabel/finnestdb/pull/152">PR #152</a> /
-      <code>docs/USER_FLOWS.md</code>. The macro flow shows every path
-      through the product; the correction flow shows the cross-cutting
-      "Wrong?" path. Toggle INK / PAPER above.
+      Four diagrams covering the full consumer alpha. The macro flow shows
+      every path through the product; the leverage flow details the
+      comprehension-projection → word-list → study-deck loop; the
+      correction flow shows the cross-cutting "Wrong?" round-trip
+      including signed-in user submissions. Toggle INK / PAPER above.
     </p>
   </div>
 
@@ -251,8 +253,9 @@
       Anonymous parse drops the user into a results table with a
       sign-up ribbon. After auth, the dashboard is the hub; the parse
       → results → save → deck → review inner loop carries most of the
-      session time. Cold-start branches off the dashboard for
-      brand-new accounts.
+      session time. The leverage page feeds back into the deck loop
+      via study-deck creation. Cold-start branches off the dashboard
+      for brand-new accounts.
     </p>
 
     <div class="panel">
@@ -276,13 +279,17 @@ flowchart TD
     R["Results table<br/>+ POS filter · CSV"]
     SP{"Save as…"}
     DL["Decks list<br/>+ known-words panel"]
-    DD["Deck detail<br/>+ comprehension"]
+    DD["Deck detail<br/>+ comprehension projection"]
     REV["Review session<br/>FSRS scoring"]
     REVALL["Review all due<br/>cross-deck"]
+    LEV["Leverage<br/>deck filter · target %"]
+    WL["Word list<br/>ranked by leverage"]
+    SLD{"Create study deck"}
 
     D --> P
     D --> DL
     D --> REVALL
+    D --> LEV
 
     P -->|"parse"| R
     P -.->|"opt-out"| EPH
@@ -295,8 +302,14 @@ flowchart TD
     DL -->|"+ New from text"| P
     DL -->|"Review all"| REVALL
     DD -->|"Review this deck"| REV
+    DD -->|"view leverage words"| WL
     REVALL --> REV
     REV -->|"done"| D
+
+    LEV -->|"select deck · set target %"| WL
+    WL -->|"Create study deck"| SLD
+    SLD -->|"new ⚡ deck"| DD
+    DD -.->|"words learned · coverage updates"| LEV
 
     D -.->|"first time<br/>0 decks"| CS["Cold start"]
     CS -->|"Paste a text"| P
@@ -308,15 +321,18 @@ flowchart TD
     classDef anon fill:#fef3c7,stroke:#92400e,color:#1a1a1a
     classDef gated fill:transparent,stroke:#9ca3af,stroke-dasharray:5 5,color:#9ca3af
     classDef hub fill:#dbeafe,stroke:#1e40af,color:#1a1a1a
+    classDef leverage fill:#fef3c7,stroke:#c2410c,color:#1a1a1a
     class L,AR,SU,SI anon
     class TOP,EPH gated
     class D,DD hub
+    class LEV,WL,SLD leverage
       </pre>
     </div>
 
     <div class="legend">
       <span class="anon"><span class="swatch"></span>anonymous-only</span>
       <span class="hub"><span class="swatch"></span>high-traffic hub</span>
+      <span class="leverage"><span class="swatch"></span>leverage loop (new)</span>
       <span class="gated"><span class="swatch"></span>not yet built</span>
     </div>
   </section>
@@ -328,9 +344,9 @@ flowchart TD
     </div>
     <p class="section-sub">
       Triggerable from any results row, deck-detail row, or review
-      card. The new <em>flag-only</em> path captures users who notice
-      a wrong parse but can't articulate the fix — signal we lose
-      today.
+      card. Two submission paths: flag-only (low effort) and propose-answer
+      (expert). Signed-in users get a round-trip: submit → admin triage →
+      accept/reject → notification → "My submissions" history.
     </p>
 
     <div class="panel">
@@ -342,6 +358,10 @@ flowchart LR
     FX["parse_feedback row<br/>+ proposed_lemma · pos<br/>+ optional grammar · notes"]
     T["Submitted ✓ toast"]
     Q["Admin triage<br/>/admin/feedback"]
+    ACC["Accept correction<br/>update parse data"]
+    REJ["Reject correction<br/>+ reason"]
+    N["Notify user<br/>accepted / rejected"]
+    MS["My submissions<br/>(user profile)"]
 
     A -->|"✎ Wrong?<br/>(hover · focus)"| M
     M -->|"◉ I don't know<br/>the right answer"| F
@@ -351,14 +371,126 @@ flowchart LR
     T -->|"return to source row"| A
     F -.->|"flag-only filter"| Q
     FX -.->|"default queue"| Q
+    Q -->|"approve"| ACC
+    Q -->|"decline"| REJ
+    ACC --> N
+    REJ --> N
+    N -->|"badge update"| MS
+    MS -.->|"pending · accepted<br/>· rejected"| A
 
     classDef new fill:#fef3c7,stroke:#92400e,color:#1a1a1a
+    classDef admin fill:transparent,stroke:#9ca3af,stroke-dasharray:5 5,color:#9ca3af
     class F new
+    class Q,ACC,REJ,N,MS admin
       </pre>
     </div>
 
     <div class="legend">
       <span class="new"><span class="swatch"></span>new path (flag-only)</span>
+      <span class="gated"><span class="swatch"></span>admin / backend (not yet built)</span>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <span class="section-num">03 / Leverage → Study deck</span>
+      <span class="section-title">Comprehension projection · word list · review loop</span>
+    </div>
+    <p class="section-sub">
+      The comprehension projection ("learn 20 words → 81%") is only useful
+      if the user can see <em>which</em> 20 words, review them as a focused
+      deck, and watch coverage climb as they learn. This is the full
+      end-to-end flow — the core motivation loop.
+    </p>
+
+    <div class="panel">
+      <pre class="mermaid">
+flowchart TD
+    DD["Deck detail<br/>62% comprehension"]
+    PROJ["Comprehension projection<br/>Learn 20 → 81% · 50 → 89% · 100 → 94%"]
+    CLICK["Click tier row<br/>(e.g. '20 words → 81%')"]
+    WL["Ranked word list<br/>20 lemmas · gloss · POS · freq bar<br/>☑ checkboxes (all on by default)"]
+    ADJ["Adjust target %<br/>slider: 75 → 85 → 90 → 95<br/>list grows/shrinks live"]
+    UNCHECK["Uncheck words<br/>user doesn't want"]
+    CTA["'Create study deck'<br/>button at bottom"]
+    SAM{"SaveAsModal<br/>words pre-populated<br/>name: 'Kalevala — top 20'"}
+    NEWDD["New deck detail<br/>⚡ leverage badge"]
+    REV["Review session<br/>scoped to leverage deck"]
+    UPDATE["Coverage updates<br/>62% → 68% → 74% → 81%"]
+    NEXT["Next tier surfaces<br/>Learn 30 more → 89%"]
+
+    DD --> PROJ
+    PROJ --> CLICK
+    CLICK --> WL
+    WL --> ADJ
+    WL --> UNCHECK
+    ADJ --> WL
+    UNCHECK --> WL
+    WL --> CTA
+    CTA --> SAM
+    SAM -->|"create"| NEWDD
+    NEWDD -->|"Start review"| REV
+    REV -->|"words learned"| UPDATE
+    UPDATE -->|"source deck projection<br/>refreshes"| DD
+    UPDATE -->|"all tier words learned"| NEXT
+    NEXT --> PROJ
+
+    classDef hub fill:#dbeafe,stroke:#1e40af,color:#1a1a1a
+    classDef leverage fill:#fef3c7,stroke:#c2410c,color:#1a1a1a
+    classDef interactive fill:#d1fae5,stroke:#065f46,color:#1a1a1a
+    class DD hub
+    class PROJ,CLICK,WL,ADJ,UNCHECK,CTA,SAM,NEWDD leverage
+    class REV,UPDATE,NEXT interactive
+      </pre>
+    </div>
+
+    <div class="legend">
+      <span class="hub"><span class="swatch"></span>entry point (deck detail)</span>
+      <span class="leverage"><span class="swatch"></span>leverage loop (new)</span>
+      <span class="new"><span class="swatch"></span>feedback loop (review → coverage update)</span>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <span class="section-num">04 / Leverage page (alternate entry)</span>
+      <span class="section-title">Cross-deck leverage · filter by deck</span>
+    </div>
+    <p class="section-sub">
+      The leverage page is the other entry into the study-deck flow.
+      User picks a deck scope, sees aggregate comprehension, and
+      creates a study deck from the top N words — same SaveAsModal
+      endpoint as deck-detail.
+    </p>
+
+    <div class="panel">
+      <pre class="mermaid">
+flowchart LR
+    LEV["Leverage page<br/>all decks ranked"]
+    FIL{"Deck filter<br/>All · Active · FI · ET<br/>or specific deck"}
+    SCOPED["Scoped leverage<br/>Now 62% of Kalevala ch.1"]
+    TARGET["Set target %<br/>slider (default 85%)"]
+    GAP["Gap calculation<br/>'23 words to reach 85%'"]
+    WL2["Ranked word list<br/>☑ selectable rows"]
+    CTA2["'Create study deck<br/>for these 23 words'"]
+    SAM2{"SaveAsModal"}
+    DD2["Deck detail<br/>⚡ leverage badge"]
+
+    LEV --> FIL
+    FIL -->|"pick deck"| SCOPED
+    SCOPED --> TARGET
+    TARGET --> GAP
+    GAP --> WL2
+    WL2 --> CTA2
+    CTA2 --> SAM2
+    SAM2 --> DD2
+    DD2 -.->|"review + learn<br/>→ projection updates"| SCOPED
+
+    classDef hub fill:#dbeafe,stroke:#1e40af,color:#1a1a1a
+    classDef leverage fill:#fef3c7,stroke:#c2410c,color:#1a1a1a
+    class LEV,FIL hub
+    class SCOPED,TARGET,GAP,WL2,CTA2,SAM2,DD2 leverage
+      </pre>
     </div>
   </section>
 
