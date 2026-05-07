@@ -155,7 +155,7 @@ Statistikaameti analüütiku Johanna Linda Pihlaku sõnul suurenes vaatamata k�
 Tööstuskaupade kaupluste müügimaht suurenes 2025. aasta märtsiga võrreldes 10 protsenti.
 
 Samas toidukaupade kaupluste müügimahu vähenemine märtsis jätkus ning kahanes eelmise aasta sama kuuga võrreldes kaks protsenti. "Nende ettevõtete müügimahu vähenemisele avaldas mõju toidukaupade hinnatõus," selgitas Pihlak.</textarea>
-        
+
         <div className="paste-foot">
           <span className={`lang-badge ${detect.lang ? detect.lang.toLowerCase() : "un"}`}>
             <span className="glyph">{detect.lang === "FI" ? "Aa" : detect.lang === "ET" ? "Õõ" : "??"}</span>
@@ -166,7 +166,7 @@ Samas toidukaupade kaupluste müügimahu vähenemine märtsis jätkus ning kahan
           </span>
           <div style={{ flex: 1 }} />
           <button className="btn btn-primary btn-lg" disabled={!text.trim() || !detect.lang || parsing} style={{ opacity: !text.trim() || !detect.lang || parsing ? 0.4 : 1, cursor: !text.trim() || !detect.lang ? "not-allowed" : "pointer" }} onClick={handleParse}>
-            
+
             {parsing ? "Parsing…" : "Parse"} <span className="kbd">⌘↵</span>
           </button>
         </div>

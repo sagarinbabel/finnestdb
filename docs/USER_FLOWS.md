@@ -226,7 +226,7 @@ Google for Android) is a later wrapper concern.
   (NULL for password, Google `sub` for Google).
 - Anonymous parses from the same browser session can be **carried
   forward**: after sign-up, last-N anonymous parses (held in
-  `sessionStorage`, scoped to the tab — *not* `localStorage*`, which
+  `sessionStorage`, scoped to the tab — *not* `localStorage`, which
   would survive browser restarts and contradict the
   anonymous-is-ephemeral promise) are POSTed to
   `/api/parse/import-anonymous`, re-parsed server-side, and saved as
@@ -297,16 +297,16 @@ Same table; the deltas are below the table:
 
 ```
   ────────────────────────────────────────────────────────────
-  Save these 287 words as…                                    
-                                                              
-  ◉ A new deck                                                
-    Title: [The Hobbit, Chapter 1______________]              
-    □ Mark words I checked as already known (12 selected)     
-                                                              
-  ○ Add to an existing deck                                   
-    Deck: [▾ Finnish stories (842 words)         ]            
-                                                              
-                                       [ Cancel ] [ Save ► ]  
+  Save these 287 words as…
+
+  ◉ A new deck
+    Title: [The Hobbit, Chapter 1______________]
+    □ Mark words I checked as already known (12 selected)
+
+  ○ Add to an existing deck
+    Deck: [▾ Finnish stories (842 words)         ]
+
+                                       [ Cancel ] [ Save ► ]
 ```
 
 **Behavior**
@@ -357,13 +357,13 @@ a header band showing **comprehension prediction**:
 
 ```
   Finnish stories                                         FI  ⋯
-  842 unique words  ·  68% token-weighted coverage             
-                                                               
-  ▰▰▰▰▰▰▰▱▱▱  68% covered now                                 
-  Learn the next 20 words → 81%                                
-  Learn the next 50 words → 89%                                
-                                                               
-  [Review this deck]  [Add 20 to today's queue]                
+  842 unique words  ·  68% token-weighted coverage
+
+  ▰▰▰▰▰▰▰▱▱▱  68% covered now
+  Learn the next 20 words → 81%
+  Learn the next 50 words → 89%
+
+  [Review this deck]  [Add 20 to today's queue]
 ```
 
 The "Add N to today's queue" button bumps `new_per_day` for this deck
@@ -422,29 +422,29 @@ notice a wrong parse but can't articulate the fix — signal we're
 losing today.
 
 ```
-   Row in results table:                                          
-   ┌───────────────────────────────────────────────────────────┐  
-   │ 17 koira  · NOUN ·  dog                  18  [ Known ▾ ]  │  
-   │           ↳ ✎ Wrong?                                      │  
-   └───────────────────────────────────────────────────────────┘  
-                                                                  
-   Hover/focus reveals the ✎ link. Click opens:                   
-                                                                  
-   ┌───────────────────────────────────────────────────────────┐  
-   │  Suggest a correction                              [×]    │  
-   │                                                           │  
-   │  Surface form:    koirat                                  │  
-   │  We parsed it as: koira · NOUN · partitive plural         │  
-   │                                                           │  
-   │  ◉ This is wrong (I don't know the right answer)          │  
-   │  ○ This is wrong, and the right answer is:                │  
-   │      Base form  [_______________]                         │  
-   │      POS        [▾ Noun]                                  │  
-   │      Grammar    [_______________] (optional)              │  
-   │      Notes      [_______________________]                 │  
-   │                                                           │  
-   │                                  [ Cancel ] [ Send ]      │  
-   └───────────────────────────────────────────────────────────┘  
+   Row in results table:
+   ┌───────────────────────────────────────────────────────────┐
+   │ 17 koira  · NOUN ·  dog                  18  [ Known ▾ ]  │
+   │           ↳ ✎ Wrong?                                      │
+   └───────────────────────────────────────────────────────────┘
+
+   Hover/focus reveals the ✎ link. Click opens:
+
+   ┌───────────────────────────────────────────────────────────┐
+   │  Suggest a correction                              [×]    │
+   │                                                           │
+   │  Surface form:    koirat                                  │
+   │  We parsed it as: koira · NOUN · partitive plural         │
+   │                                                           │
+   │  ◉ This is wrong (I don't know the right answer)          │
+   │  ○ This is wrong, and the right answer is:                │
+   │      Base form  [_______________]                         │
+   │      POS        [▾ Noun]                                  │
+   │      Grammar    [_______________] (optional)              │
+   │      Notes      [_______________________]                 │
+   │                                                           │
+   │                                  [ Cancel ] [ Send ]      │
+   └───────────────────────────────────────────────────────────┘
 ```
 
 **Why this shape**
@@ -530,15 +530,22 @@ Open question from the dictation. Three options:
 - **LLM at request time**: per `docs/ideas.md` "Making it AI native",
   add a `/api/translate-sentence` endpoint backed by Sonnet 4.6 with
   prompt caching on the per-language system prompt. Stream tokens.
-  Cache results in a `sentence_translations` SQLite table keyed on
-  `hash(sentence_text)` so each sentence is paid for once across all
-  users. Show a small `[Translate]` link below the sentence on the
-  card back; on click, replaces with the streamed translation.
+  Cache results in a `sentence_translations` SQLite table only for
+  persisted parse/deck content whose retention semantics allow derived
+  text to survive the request. Skip the shared persistent cache for
+  anonymous parses and signed-in parses marked "Don't save this one";
+  use only request-local/session-local state for those flows. The cache
+  key should include source language, target language, prompt version,
+  and `hash(sentence_text)`, and deleted source content must either
+  delete or orphan-expire derived translations according to the same
+  retention policy. Show a small `[Translate]` link below the sentence
+  on the card back; on click, replaces with the streamed translation.
 
-**Recommendation**: LLM at request time, cached. It scales to any text
-the user pastes, doesn't require corpus alignment work, and the cache
-keeps cost bounded. The UX cost is the latency: pre-fetch on card
-front so it's already there when the user flips to the back.
+**Recommendation**: LLM at request time, with persistent caching only
+where the source content is itself persisted and deletable. It scales to
+any text the user pastes without corpus alignment work, while preserving
+anonymous/opt-out semantics. The UX cost is the latency: pre-fetch on
+card front so it's already there when the user flips to the back.
 
 ## Account model
 
@@ -549,7 +556,7 @@ the `password_hash` column added by `ALTER`):
 |---|---|---|
 | `id` | exists | `INTEGER PRIMARY KEY AUTOINCREMENT` |
 | `email` | exists | `TEXT UNIQUE` |
-| `email_verified` | exists | `INTEGER DEFAULT 0`. Bumped to `1` after Google OAuth (Google guarantees verified) |
+| `email_verified` | exists | `INTEGER DEFAULT 0`. For Google OAuth, verify the ID token and copy the OIDC `email_verified` claim; require `true` before treating the account as verified |
 | `is_admin` | exists | `INTEGER DEFAULT 0` |
 | `settings_json` | exists | `TEXT` JSON blob with `new_per_day`, `retention`, `theme`. The first-run register picker can store its choice here under a new key |
 | `password_hash` | exists | `TEXT NOT NULL DEFAULT ''` (added by ALTER). For OAuth-only accounts the empty string already works as a placeholder; we'll relax/clarify the `NOT NULL` on the OAuth migration |
@@ -566,8 +573,9 @@ Migration deltas needed for the user flows in this doc:
 | `last_login_at` | yes | not currently on the table. Add nullable; updated on each session start |
 
 `email_verified` already exists, so we should not add a separate
-"verified" flag for Google sign-ins — Google OAuth flips the existing
-column.
+"verified" flag for Google sign-ins. The OAuth handler must verify the
+ID token and copy the provider's `email_verified` claim; do not blindly
+set the column to `1` for every Google response.
 
 Profile page (out of scope for first version, but flagged): change
 display name, change password (password accounts only), connected
