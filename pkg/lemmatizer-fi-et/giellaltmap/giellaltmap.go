@@ -293,21 +293,21 @@ func applyTags(a *Analysis, tags []string) {
 		case "Px3":
 			a.PersonPsor = "3"
 
-		// ── Clitic ───────────────────────────────────────────
+		// ── Clitic (stacked: -kohan → Ko,Han) ────────────────
 		case "Qst":
-			a.Clitic = "Ko"
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "Ko")
 		case "Foc/han":
-			a.Clitic = "Han"
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "Han")
 		case "Foc/pa":
-			a.Clitic = "Pa"
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "Pa")
 		case "Foc/kaan":
-			a.Clitic = "Kaan"
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "Kaan")
 		case "Foc/ka":
-			a.Clitic = "Ka"
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "Ka")
 		case "Foc/kin":
-			a.Clitic = "Kin"
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "Kin")
 		case "Foc/s":
-			a.Clitic = "S"
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "S")
 
 		// ── Connegative ──────────────────────────────────────
 		case "ConNeg":

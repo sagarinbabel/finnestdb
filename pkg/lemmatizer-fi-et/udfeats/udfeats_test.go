@@ -84,6 +84,25 @@ func TestComposeMap(t *testing.T) {
 	}
 }
 
+func TestAppendSortedValue(t *testing.T) {
+	cases := []struct {
+		name, existing, value, want string
+	}{
+		{"empty + value", "", "Ko", "Ko"},
+		{"single + later", "Han", "Ko", "Han,Ko"},
+		{"single + earlier", "Ko", "Han", "Han,Ko"},
+		{"two + middle", "Han,Pa", "Ko", "Han,Ko,Pa"},
+		{"duplicate", "Han,Ko", "Ko", "Han,Ko"},
+		{"three stacked", AppendSortedValue(AppendSortedValue("", "Ko"), "Han"), "S", "Han,Ko,S"},
+	}
+	for _, tc := range cases {
+		got := AppendSortedValue(tc.existing, tc.value)
+		if got != tc.want {
+			t.Errorf("%s: AppendSortedValue(%q, %q) = %q, want %q", tc.name, tc.existing, tc.value, got, tc.want)
+		}
+	}
+}
+
 func TestRoundTrip(t *testing.T) {
 	// Compose then CaseFromFeats should round-trip the case label.
 	for label := range LegacyLabelToUDCase {

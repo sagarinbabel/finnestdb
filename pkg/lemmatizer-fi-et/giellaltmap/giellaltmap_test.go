@@ -287,6 +287,20 @@ func TestParse_AdpTypePrep(t *testing.T) {
 	}
 }
 
+func TestParse_StackedClitics(t *testing.T) {
+	a := Parse("olla+V+Act+Ind+Prs+Sg3+Qst+Foc/han")
+	if a.Clitic != "Han,Ko" {
+		t.Errorf("clitic=%q want Han,Ko (stacked, sorted)", a.Clitic)
+	}
+}
+
+func TestParse_StackedCliticsKoS(t *testing.T) {
+	a := Parse("olla+V+Act+Ind+Prs+Sg3+Qst+Foc/s")
+	if a.Clitic != "Ko,S" {
+		t.Errorf("clitic=%q want Ko,S (stacked, sorted)", a.Clitic)
+	}
+}
+
 func TestParse_FeatsComposition(t *testing.T) {
 	cases := []struct {
 		name, input, wantFeats string

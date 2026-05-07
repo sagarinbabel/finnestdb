@@ -91,8 +91,12 @@ func Parse(fstOutput string) Analysis {
 			case tag == "X":
 				// Already handled above by the insideXp close. Nothing to do.
 			case strings.HasPrefix(tag, "L"):
-				if pos := classToUPOS(tag[1:]); pos != "" {
+				body := tag[1:]
+				if pos := classToUPOS(body); pos != "" {
 					a.UPOS = pos
+				}
+				if nt := numTypeFromClass(body); nt != "" {
+					a.NumType = nt
 				}
 			case strings.HasPrefix(tag, "S"):
 				if grammar := sijamuotoToLabel(tag[1:]); grammar != "" {
@@ -103,13 +107,19 @@ func Parse(fstOutput string) Analysis {
 					a.Number = num
 				}
 			case strings.HasPrefix(tag, "T"):
-				if mood := moodToUD(tag[1:]); mood != "" {
+				body := tag[1:]
+				if mood := moodToUD(body); mood != "" {
 					if mood == "Inf" {
 						a.VerbForm = "Inf"
+						a.InfForm = infFormFromMood(body)
 					} else {
 						a.Mood = mood
 						a.VerbForm = "Fin"
 					}
+				}
+				if pf := partFormFromMood(body); pf != "" {
+					a.VerbForm = "Part"
+					a.PartForm = pf
 				}
 			case strings.HasPrefix(tag, "A"):
 				if tense := tenseToUD(tag[1:]); tense != "" {
@@ -118,6 +128,20 @@ func Parse(fstOutput string) Analysis {
 			case strings.HasPrefix(tag, "P"):
 				if person := tag[1:]; len(person) == 1 && person[0] >= '1' && person[0] <= '4' {
 					a.Person = person
+				}
+			case strings.HasPrefix(tag, "D"):
+				if deg := degreeToUD(tag[1:]); deg != "" {
+					a.Degree = deg
+				}
+			case strings.HasPrefix(tag, "O"):
+				applyPossessive(&a, tag[1:])
+			case strings.HasPrefix(tag, "F"):
+				if cl := cliticToUD(tag[1:]); cl != "" {
+					a.Clitic = udfeats.AppendSortedValue(a.Clitic, cl)
+				}
+			case strings.HasPrefix(tag, "C"):
+				if tag[1:] == "n" {
+					a.Connegative = "Yes"
 				}
 			}
 
@@ -268,6 +292,97 @@ func tenseToUD(body string) string {
 		return "Pres"
 	case "i":
 		return "Past"
+	}
+	return ""
+}
+
+func degreeToUD(body string) string {
+	switch body {
+	case "p":
+		return "Pos"
+	case "c":
+		return "Cmp"
+	case "s":
+		return "Sup"
+	}
+	return ""
+}
+
+func infFormFromMood(body string) string {
+	switch body {
+	case "n1":
+		return "1"
+	case "n2":
+		return "2"
+	case "n3":
+		return "3"
+	case "n4":
+		return "4"
+	case "n5":
+		return "5"
+	}
+	return ""
+}
+
+func partFormFromMood(body string) string {
+	switch body {
+	case "v":
+		return "Pres" // VA-participle (present participle)
+	case "u":
+		return "Past" // NUT-participle (past participle)
+	case "g":
+		return "Agt" // agent participle (MA-participle)
+	case "w":
+		return "Neg" // negative participle (MATON-participle)
+	}
+	return ""
+}
+
+func numTypeFromClass(body string) string {
+	switch body {
+	case "u":
+		return "Card"
+	case "ur":
+		return "Ord"
+	}
+	return ""
+}
+
+func applyPossessive(a *Analysis, body string) {
+	switch body {
+	case "1y":
+		a.PersonPsor = "1"
+		a.NumberPsor = "Sing"
+	case "2y":
+		a.PersonPsor = "2"
+		a.NumberPsor = "Sing"
+	case "1m":
+		a.PersonPsor = "1"
+		a.NumberPsor = "Plur"
+	case "2m":
+		a.PersonPsor = "2"
+		a.NumberPsor = "Plur"
+	case "3":
+		a.PersonPsor = "3"
+	}
+}
+
+func cliticToUD(body string) string {
+	switch body {
+	case "ko":
+		return "Ko"
+	case "han":
+		return "Han"
+	case "pa":
+		return "Pa"
+	case "kaan":
+		return "Kaan"
+	case "ka":
+		return "Ka"
+	case "kin":
+		return "Kin"
+	case "s":
+		return "S"
 	}
 	return ""
 }

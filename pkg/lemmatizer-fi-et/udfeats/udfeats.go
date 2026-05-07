@@ -123,6 +123,62 @@ func ComposeMap(pairs map[string]string) string {
 	return string(out)
 }
 
+// AppendSortedValue inserts value into a comma-separated sorted string
+// (UD convention for multi-valued features like Clitic=Han,Kin). Returns
+// value unchanged if existing is empty. Deduplicates.
+func AppendSortedValue(existing, value string) string {
+	if existing == "" {
+		return value
+	}
+	vals := splitComma(existing)
+	pos := len(vals)
+	for i, v := range vals {
+		if value == v {
+			return existing
+		}
+		if value < v {
+			pos = i
+			break
+		}
+	}
+	vals = append(vals, "")
+	copy(vals[pos+1:], vals[pos:])
+	vals[pos] = value
+	n := 0
+	for _, v := range vals {
+		if n > 0 {
+			n++ // comma
+		}
+		n += len(v)
+	}
+	out := make([]byte, 0, n)
+	for i, v := range vals {
+		if i > 0 {
+			out = append(out, ',')
+		}
+		out = append(out, v...)
+	}
+	return string(out)
+}
+
+func splitComma(s string) []string {
+	n := 1
+	for i := 0; i < len(s); i++ {
+		if s[i] == ',' {
+			n++
+		}
+	}
+	out := make([]string, 0, n)
+	start := 0
+	for i := 0; i <= len(s); i++ {
+		if i == len(s) || s[i] == ',' {
+			out = append(out, s[start:i])
+			start = i + 1
+		}
+	}
+	return out
+}
+
 // CaseFromFeats returns the lowercase English case label for the
 // Case= attribute in feats, or "" if FEATS has no Case= or the value
 // is Nom. Mirrors the dict-layer caseFromFeats; centralised here so
