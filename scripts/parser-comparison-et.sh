@@ -95,14 +95,17 @@ THIS_RUN_REPORTS=()
 RUN_TS="$(date -u +%Y%m%dT%H%M%SZ)"
 
 for ds in "${DATASETS[@]}"; do
-    name="$(python3 -c "
-import json, re, sys
-raw = json.load(open(sys.argv[1])).get('name', 'unnamed')
-slug = re.sub(r'[^A-Za-z0-9._-]+', '-', str(raw)).strip('-') or 'unnamed'
+    # Slug from the dataset *filename* (not the JSON `name` field) —
+    # see scripts/parser-comparison.sh for the rationale.
+    base="$(basename "$ds" .json)"
+    slug="$(printf '%s' "$base" | python3 -c "
+import re, sys
+raw = sys.stdin.read().strip()
+slug = re.sub(r'[^A-Za-z0-9._-]+', '-', raw).strip('-') or 'unnamed'
 print(slug[:80])
-" "$ds")"
-    out="$REPORTS_DIR/${RUN_TS}-${name}.json"
-    echo ">> $ds -> $name" >&2
+")"
+    out="$REPORTS_DIR/${RUN_TS}-${slug}.json"
+    echo ">> $ds -> $slug" >&2
     go run ./cmd/parsertest -dataset "$ds" -parsers "$PARSERS" -warmup 1 -repeat 3 -out "$out" >&2
     THIS_RUN_REPORTS+=("$out")
 done

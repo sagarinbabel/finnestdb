@@ -17,6 +17,7 @@
 /server
 /scrapegutenberg
 /fetchfrequency
+/doctor
 *.db
 *.db-shm
 *.db-wal

@@ -15,6 +15,7 @@ doc in 30 seconds; use ["By purpose"](#by-purpose) below for the longer
 descriptions when two docs sound similar.
 
 - **Entry point:** [`../README.md`](../README.md) (what the project is, how to run, project structure, doc index)
+- **Setup verifier:** [`make doctor`](../cmd/doctor/main.go) — single-screen report on DB sources, FST tables, analyzer venvs, Ekilex shards, UD cache, frequency baselines
 - **System architecture:** [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (current), [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) (lexical-layer detail)
 - **Product framing:** [`docs/FEATURES.md`](FEATURES.md) (user-facing)
 - **What's done / what's next:** [`../TODO.md`](../TODO.md) (the only doc you need for status)

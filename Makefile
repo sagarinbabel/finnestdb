@@ -8,7 +8,8 @@
         setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et \
         import-ud-gold import-ud-gold-fi import-ud-gold-et \
         scrape-gutenberg-fi \
-        fetch-frequency-baselines
+        fetch-frequency-baselines \
+        doctor
 
 # Default target
 all: build
@@ -44,6 +45,17 @@ clean:
 deps:
 	go mod download
 	cd parser && cargo fetch
+
+# ── doctor: one-shot health report for a working copy ────────────────────────
+#
+# Reports DB presence + per-source row counts, FST table presence, analyzer
+# venv presence (omorfi / estnltk), Ekilex shard presence, UD cache,
+# frequency baselines, and the Rust parser shared library. Returns 0 unless
+# the DB or the FI/ET dictionary is missing entirely. Everything else is
+# informational so the user understands the *degraded modes* their setup
+# implies, rather than discovering them from surprise eval numbers.
+doctor:
+	@go run ./cmd/doctor
 
 # ── FST-derived tables (no blobs in git, no derived tables in git) ────────────
 #
@@ -260,27 +272,35 @@ verify-dict:
 
 # ── Omorfi comparison setup ────────────────────────────────────────────────────
 #
-# Installs the Helsinki Finite-State Transducer toolkit, the omorfi Python
-# package, and downloads the analyser model into ~/.cache/omorfi/. After
-# this target completes, the omorfi parser is available end-to-end:
+# Installs the Helsinki Finite-State Transducer toolkit and the omorfi
+# Python package into a dedicated `.venv-omorfi/` (parallel to the
+# `.venv-estnltk/` setup-estnltk creates), and downloads the analyser
+# model into ~/.cache/omorfi/. After this target completes, omorfi is
+# available end-to-end:
 #
 #     go run ./cmd/parsertest -dataset DS.json -parsers basic,custom,omorfi
 #
-# No environment variables need to be exported — the bundled adapter at
-# scripts/omorfi_adapter_example.py auto-discovers the model, and parsecore
-# auto-defaults FINNESTDB_OMORFI_CMD when the script is present.
+# parser-comparison.sh and the `enrich-gold-feats` target both auto-detect
+# the venv at .venv-omorfi/ and construct FINNESTDB_OMORFI_CMD from it,
+# so no env vars need to be exported when the venv is in place.
 
 OMORFI_VERSION := 0.9.12
 OMORFI_CACHE   := $(HOME)/.cache/omorfi
 OMORFI_MODEL   := $(OMORFI_CACHE)/omorfi.analyse.hfst
+OMORFI_VENV    := .venv-omorfi
 
 setup-omorfi: $(OMORFI_MODEL)
-	@python3 -c "from omorfi import Omorfi; o = Omorfi(); o.load_analyser('$(OMORFI_MODEL)'); print('omorfi: OK')"
+	@if [ ! -x $(OMORFI_VENV)/bin/python ]; then \
+		echo "Creating $(OMORFI_VENV)/ …"; \
+		python3 -m venv $(OMORFI_VENV); \
+		$(OMORFI_VENV)/bin/python -m pip install --quiet --upgrade pip; \
+	fi
+	@$(OMORFI_VENV)/bin/python -m pip install --quiet omorfi
+	@$(OMORFI_VENV)/bin/python -c "from omorfi import Omorfi; o = Omorfi(); o.load_analyser('$(OMORFI_MODEL)'); print('omorfi: OK')"
 
 $(OMORFI_MODEL):
-	@echo "Installing HFST + omorfi…"
+	@echo "Installing HFST + omorfi model cache…"
 	@command -v apt-get >/dev/null && apt-get install -y python3-hfst hfst >/dev/null || true
-	@pip3 install --quiet omorfi
 	@mkdir -p $(OMORFI_CACHE)
 	@if [ ! -f $(OMORFI_CACHE)/models.tar.xz ]; then \
 		echo "Downloading omorfi $(OMORFI_VERSION) HFST models…"; \

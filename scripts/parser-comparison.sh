@@ -60,14 +60,19 @@ fi
 PARSERS="basic,custom"
 
 # Auto-detect omorfi. Run modes the user might have configured:
-#   - $FINNESTDB_OMORFI_CMD set (explicit adapter override)
+#   - $FINNESTDB_OMORFI_CMD set (explicit adapter override) — wins over everything
+#   - .venv-omorfi/bin/python + scripts/omorfi_adapter_example.py (the
+#     setup that `make setup-omorfi` produces; mirrors how
+#     scripts/parser-comparison-et.sh detects .venv-estnltk)
 #   - $OMORFI_ANALYSE_HFST set and pointing at a real file (custom model
 #     location — the adapter itself looks here first)
 #   - Repo-local cache:   ./.cache/omorfi/omorfi.analyse.hfst
-#   - User-level cache:   ~/.cache/omorfi/omorfi.analyse.hfst (populated
-#     by `make setup-omorfi`)
+#   - User-level cache:   ~/.cache/omorfi/omorfi.analyse.hfst
 omorfi_available=false
 if [[ -n "${FINNESTDB_OMORFI_CMD:-}" ]]; then
+    omorfi_available=true
+elif [[ -x .venv-omorfi/bin/python && -f scripts/omorfi_adapter_example.py ]]; then
+    export FINNESTDB_OMORFI_CMD="$ROOT/.venv-omorfi/bin/python $ROOT/scripts/omorfi_adapter_example.py"
     omorfi_available=true
 elif [[ -n "${OMORFI_ANALYSE_HFST:-}" && -f "${OMORFI_ANALYSE_HFST}" ]]; then
     omorfi_available=true
@@ -116,17 +121,22 @@ THIS_RUN_REPORTS=()
 RUN_TS="$(date -u +%Y%m%dT%H%M%SZ)"
 
 for ds in "${DATASETS[@]}"; do
-    # Read name and slugify it: only [A-Za-z0-9._-] allowed in the report
-    # filename, so a maliciously-crafted dataset name (e.g. with path
-    # separators or shell metacharacters) can't escape REPORTS_DIR.
-    name="$(python3 -c "
-import json, re, sys
-raw = json.load(open(sys.argv[1])).get('name', 'unnamed')
-slug = re.sub(r'[^A-Za-z0-9._-]+', '-', str(raw)).strip('-') or 'unnamed'
+    # Slug from the dataset *filename* (not the JSON `name` field).
+    # Multiple gold files can share the same internal `name` (e.g.
+    # fi-manual-v1.json and fi-manual-v2.json both declare
+    # name="fi-manual"); using the field as the slug would silently
+    # overwrite the first report with the second. Filenames are unique
+    # by definition. Slugify so a path with spaces or weird chars can't
+    # escape REPORTS_DIR.
+    base="$(basename "$ds" .json)"
+    slug="$(printf '%s' "$base" | python3 -c "
+import re, sys
+raw = sys.stdin.read().strip()
+slug = re.sub(r'[^A-Za-z0-9._-]+', '-', raw).strip('-') or 'unnamed'
 print(slug[:80])
-" "$ds")"
-    out="$REPORTS_DIR/${RUN_TS}-${name}.json"
-    echo ">> $ds → $name" >&2
+")"
+    out="$REPORTS_DIR/${RUN_TS}-${slug}.json"
+    echo ">> $ds → $slug" >&2
     go run ./cmd/parsertest -dataset "$ds" -parsers "$PARSERS" -warmup 2 -repeat 5 -out "$out" >&2
     THIS_RUN_REPORTS+=("$out")
 done

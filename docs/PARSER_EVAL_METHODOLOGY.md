@@ -145,19 +145,15 @@ records the dict state it was measured against.
 **Finnish (omorfi 0.9.12, pure-Python via `pyhfst` since 2026-05):**
 
 ```
-python3 -m venv .venv-omorfi
-.venv-omorfi/bin/pip install omorfi
-mkdir -p ~/.cache/omorfi
-curl -sL -o ~/.cache/omorfi/models.tar.xz \
-  https://github.com/flammie/omorfi/releases/download/v0.9.12/omorfi-hfst-models-0.9.12.tar.xz
-( cd ~/.cache/omorfi && tar xf models.tar.xz )
-export FINNESTDB_OMORFI_CMD="$(pwd)/.venv-omorfi/bin/python $(pwd)/scripts/omorfi_adapter_example.py"
+make setup-omorfi
 ```
 
-The `make setup-omorfi` target does this on Linux but its apt-based step is a
-no-op on macOS; the per-tool venv path above works cross-platform. omorfi
-0.9.12 dropped the `hfst` C library in favour of `pyhfst` (pure Python) so
-this no longer requires HFST C builds on macOS arm64.
+Creates `.venv-omorfi/` and downloads the HFST models to `~/.cache/omorfi/`.
+`scripts/parser-comparison.sh` auto-detects the venv + adapter and
+constructs `FINNESTDB_OMORFI_CMD` for itself, so no env vars need to be
+exported. omorfi 0.9.12 dropped the `hfst` C library in favour of
+`pyhfst` (pure Python) so this no longer requires HFST C builds on
+macOS arm64.
 
 **Estonian (estnltk via EstNLTK):**
 
@@ -248,19 +244,19 @@ Open follow-ups (not blockers):
 
 ## Common pitfalls
 
-**Filename collision on `fi-manual` v1/v2.** Both gold sets have
-`dataset.name == "fi-manual"`, so the comparison script's slugified filename
-(`${RUN_TS}-fi-manual.json`) is the same for both — v2 overwrites v1 silently.
-Workaround: pass datasets one at a time with `-out` set explicitly. Real fix:
-have the script prefix the input file basename. Tracked in
-[`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) §2026-05-07j open issues.
+**Filename collision on `fi-manual` v1/v2 — fixed 2026-05-07.** Both gold sets
+have `dataset.name == "fi-manual"`. Pre-fix, the comparison script slugified
+the JSON `name` field, so two datasets collapsed to one report path and v2
+overwrote v1 silently. Now `scripts/parser-comparison{,-et}.sh` slug from the
+input *file basename* (which is unique by definition), so `fi-manual-v1.json`
+and `fi-manual-v2.json` produce distinct report files.
 
-**`omorfi` adapter dispatch on macOS arm64.** `internal/parsecore/parsecore.go`
-auto-discovers `.venv-estnltk/bin/python` for estnltk but does NOT
-auto-discover `.venv-omorfi/bin/python`. With omorfi 0.9.12's `pyhfst` backend,
-`.venv-omorfi/` is the natural install path on macOS. Workaround: export
-`FINNESTDB_OMORFI_CMD` (see step 3 above). Real fix: symmetric venv discovery.
-Tracked in PARSER_EVOLUTION.md §2026-05-07j.
+**`omorfi` adapter dispatch on macOS arm64 — fixed 2026-05-07.**
+`scripts/parser-comparison.sh` now mirrors the EstNLTK side: when
+`.venv-omorfi/bin/python` and `scripts/omorfi_adapter_example.py` both
+exist, `FINNESTDB_OMORFI_CMD` is auto-constructed. `make setup-omorfi`
+also creates `.venv-omorfi/` symmetrically with `make setup-estnltk`'s
+`.venv-estnltk/`, instead of pip-installing into the active interpreter.
 
 **FST table size mismatch with FINAL baselines.** The 2026-05-06i FINAL
 baselines were measured with locally-regenerated `fi_min.json` / `et_min.json`
