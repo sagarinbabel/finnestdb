@@ -96,6 +96,7 @@ func main() {
 		fmt.Println()
 	}
 	emitLegacyTable(now)
+	emitFeatsAttributeTable(now)
 }
 
 // loadReports reads each JSON path into an eval.Report.
@@ -263,6 +264,68 @@ func emitLegacyTable(reports []*eval.Report) {
 				(s.ResolvedCoverage-base.ResolvedCoverage)*100,
 			)
 		}
+	}
+}
+
+// emitFeatsAttributeTable prints per-UD-FEATS-attribute accuracy for each
+// (dataset, parser) pair. Only datasets with at least one parser reporting
+// per-attribute data are emitted — older gold sets that only carry
+// GrammarLabel produce no rows. Each row covers one attribute (Case,
+// Number, Tense, …); the accuracy is computed against the gold tokens
+// whose FEATS contained that attribute.
+func emitFeatsAttributeTable(reports []*eval.Report) {
+	type row struct {
+		dataset  string
+		parser   string
+		attr     string
+		eligible int
+		correct  int
+		accuracy float64
+	}
+	var rows []row
+	for _, r := range reports {
+		for _, parser := range r.Parsers {
+			s, ok := r.Summary[parser]
+			if !ok {
+				continue
+			}
+			for _, m := range s.FeatsAttributes {
+				rows = append(rows, row{
+					dataset:  r.Dataset.Name,
+					parser:   parser,
+					attr:     m.Attribute,
+					eligible: m.Eligible,
+					correct:  m.Correct,
+					accuracy: m.Accuracy,
+				})
+			}
+		}
+	}
+	if len(rows) == 0 {
+		return
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].dataset != rows[j].dataset {
+			return rows[i].dataset < rows[j].dataset
+		}
+		if rows[i].attr != rows[j].attr {
+			return rows[i].attr < rows[j].attr
+		}
+		return rows[i].parser < rows[j].parser
+	})
+	fmt.Println()
+	fmt.Println("## Per-FEATS-attribute accuracy")
+	fmt.Println()
+	fmt.Println("Each row scores one UD FEATS attribute (Case, Number, Tense, ...) on the")
+	fmt.Println("subset of gold tokens whose FEATS contained that attribute. Useful for")
+	fmt.Println("seeing where the parser is silent vs. wrong on richer morphology than the")
+	fmt.Println("single-attribute Grammar metric covers.")
+	fmt.Println()
+	fmt.Println("| Dataset | Attribute | Parser | Eligible | Correct | Accuracy |")
+	fmt.Println("|---|---|---|---:|---:|---:|")
+	for _, r := range rows {
+		fmt.Printf("| %s | %s | %s | %d | %d | %.1f%% |\n",
+			r.dataset, r.attr, r.parser, r.eligible, r.correct, r.accuracy*100)
 	}
 }
 

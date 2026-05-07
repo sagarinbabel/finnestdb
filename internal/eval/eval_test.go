@@ -150,6 +150,109 @@ func TestSummaryAccumulator_FullAndCoverage(t *testing.T) {
 	}
 }
 
+func TestCompareCase_PerAttributeFeats(t *testing.T) {
+	c := DatasetCase{
+		ID:   "et-1",
+		Text: "Raamatus.",
+		Tokens: []ExpectedTokenRef{
+			{Surface: "Raamatus", Lemma: "raamat", POS: "NOUN", Feats: "Case=Ine|Number=Sing"},
+		},
+	}
+	parsed := &parsecore.ParseResult{
+		Sentences: []parsecore.SentenceResult{
+			{
+				Text: "Raamatus.",
+				Tokens: []parsecore.TokenResult{
+					{Form: "Raamatus", Lemma: "raamat", POS: "NOUN", Feats: "Case=Ine|Number=Plur", Resolved: true},
+					{Form: ".", Lemma: ".", POS: "PUNCT"},
+				},
+			},
+		},
+	}
+
+	got := compareCase(c, parsed)
+	if len(got) != 1 {
+		t.Fatalf("expected 1 comparison, got %d", len(got))
+	}
+	cmp := got[0]
+	if cmp.Match.Feats == nil {
+		t.Fatal("expected Match.Feats to be populated")
+	}
+	if !cmp.Match.Feats["Case"] {
+		t.Errorf("Case attribute should match: %+v", cmp.Match.Feats)
+	}
+	if cmp.Match.Feats["Number"] {
+		t.Errorf("Number attribute should NOT match (gold=Sing actual=Plur)")
+	}
+	if cmp.Actual.Feats != "Case=Ine|Number=Plur" {
+		t.Errorf("actual.Feats=%q want Case=Ine|Number=Plur", cmp.Actual.Feats)
+	}
+}
+
+func TestSummaryAccumulator_FeatsAttributeBreakdown(t *testing.T) {
+	acc := &summaryAccumulator{}
+	parsed := &parsecore.ParseResult{
+		TotalTokens: 2,
+		Sentences: []parsecore.SentenceResult{
+			{Tokens: []parsecore.TokenResult{
+				{Form: "a", Lemma: "a", POS: "NOUN", Resolved: true},
+				{Form: "b", Lemma: "b", POS: "NOUN", Resolved: true},
+			}},
+		},
+	}
+	comparisons := []TokenCompare{
+		{
+			Expected: TokenExpected{Lemma: "a", POS: "NOUN", Feats: "Case=Ine|Number=Sing"},
+			Match:    TokenMatch{Lemma: true, POS: true, Grammar: true, Feats: map[string]bool{"Case": true, "Number": true}, Full: true},
+		},
+		{
+			Expected: TokenExpected{Lemma: "b", POS: "NOUN", Feats: "Case=Ine|Number=Plur"},
+			Match:    TokenMatch{Lemma: true, POS: true, Grammar: true, Feats: map[string]bool{"Case": false, "Number": true}, Full: false},
+		},
+	}
+	acc.consume(parsed, comparisons, []int64{1_000_000}, 2)
+	got := acc.finish()
+
+	if len(got.FeatsAttributes) != 2 {
+		t.Fatalf("FeatsAttributes len=%d want 2: %+v", len(got.FeatsAttributes), got.FeatsAttributes)
+	}
+	if got.FeatsAttributes[0].Attribute != "Case" || got.FeatsAttributes[1].Attribute != "Number" {
+		t.Fatalf("expected sorted [Case, Number], got %+v", got.FeatsAttributes)
+	}
+	caseMetric := got.FeatsAttributes[0]
+	if caseMetric.Eligible != 2 || caseMetric.Correct != 1 || caseMetric.Accuracy != 0.5 {
+		t.Errorf("Case metric=%+v want eligible=2 correct=1 accuracy=0.5", caseMetric)
+	}
+	numberMetric := got.FeatsAttributes[1]
+	if numberMetric.Eligible != 2 || numberMetric.Correct != 2 || numberMetric.Accuracy != 1.0 {
+		t.Errorf("Number metric=%+v want eligible=2 correct=2 accuracy=1.0", numberMetric)
+	}
+}
+
+func TestParseFeats(t *testing.T) {
+	cases := []struct {
+		in   string
+		want map[string]string
+	}{
+		{"", map[string]string{}},
+		{"Case=Ine", map[string]string{"Case": "Ine"}},
+		{"Case=Ine|Number=Sing", map[string]string{"Case": "Ine", "Number": "Sing"}},
+		{"Case=Ine|garbage|Number=Sing", map[string]string{"Case": "Ine", "Number": "Sing"}},
+		{"=Ine|Case=", map[string]string{}},
+	}
+	for _, tc := range cases {
+		got := parseFeats(tc.in)
+		if len(got) != len(tc.want) {
+			t.Fatalf("parseFeats(%q)=%v want %v", tc.in, got, tc.want)
+		}
+		for k, v := range tc.want {
+			if got[k] != v {
+				t.Errorf("parseFeats(%q)[%q]=%q want %q", tc.in, k, got[k], v)
+			}
+		}
+	}
+}
+
 func TestComputePriorityRegressions_FocusParserLoses(t *testing.T) {
 	report := &Report{
 		Parsers: []string{"basic", "custom", "omorfi"},

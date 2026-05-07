@@ -99,6 +99,29 @@ func TestOmorfiRulesPreferCustomFallbackAndTraceIt(t *testing.T) {
 	}
 }
 
+func TestFeatsFromJSON(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"empty bytes", "", ""},
+		{"empty object", `{}`, ""},
+		{"null", `null`, ""},
+		{"single attr", `{"Case":"Ine"}`, "Case=Ine"},
+		{"sorted keys", `{"Number":"Sing","Case":"Ine"}`, "Case=Ine|Number=Sing"},
+		{"array value joined", `{"Case":["Ine","Ade"]}`, "Case=Ine,Ade"},
+		{"non-string skipped", `{"Case":42}`, ""},
+		{"invalid json", `not-json`, ""},
+	}
+	for _, tc := range cases {
+		got := featsFromJSON([]byte(tc.in))
+		if got != tc.want {
+			t.Errorf("%s: featsFromJSON(%q)=%q want %q", tc.name, tc.in, got, tc.want)
+		}
+	}
+}
+
 func TestExternalAnalyzerParserUsesConfiguredSource(t *testing.T) {
 	db, err := store.NewDB(":memory:")
 	if err != nil {

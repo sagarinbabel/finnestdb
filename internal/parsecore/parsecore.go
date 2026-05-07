@@ -50,6 +50,7 @@ type TokenResult struct {
 	Lemma        string   `json:"lemma"`
 	POS          string   `json:"pos"`
 	GrammarLabel string   `json:"grammar_label,omitempty"`
+	Feats        string   `json:"feats,omitempty"`
 	Source       string   `json:"source"`
 	Resolved     bool     `json:"resolved"`
 	Trace        []string `json:"trace,omitempty"`
@@ -68,6 +69,7 @@ type WordEntry struct {
 	Count           int      `json:"count"`
 	Gloss           string   `json:"gloss,omitempty"`
 	GrammarLabel    string   `json:"grammar_label,omitempty"`
+	Feats           string   `json:"feats,omitempty"`
 	ExampleSentence string   `json:"example_sentence,omitempty"`
 	LearningState   string   `json:"learning_state,omitempty"`
 }
@@ -117,6 +119,7 @@ type parsedToken struct {
 	StubLemma    string
 	StubPOS      string
 	GrammarLabel string
+	Feats        string
 }
 
 type parsedSentence struct {
@@ -291,6 +294,7 @@ func (p externalAnalyzerParser) Parse(db *store.DB, lang, text string) (*ParseRe
 				Lemma:        strings.ToLower(token.StubLemma),
 				POS:          token.StubPOS,
 				GrammarLabel: token.GrammarLabel,
+				Feats:        token.Feats,
 				Source:       p.source,
 				Resolved:     token.StubLemma != "" && token.StubPOS != "" && token.StubPOS != "X",
 				Trace:        []string{fmt.Sprintf("%s lemma=%s pos=%s", p.source, token.StubLemma, token.StubPOS)},
@@ -372,6 +376,12 @@ func (externalPreferDirectDictRule) Apply(_ string, token *TokenResult, direct, 
 	token.Trace = append(token.Trace, fmt.Sprintf("rule:direct_dict lemma=%s pos=%s", direct.Lemma, direct.POS))
 	token.Lemma = direct.Lemma
 	token.POS = direct.POS
+	if direct.GrammarLabel != "" {
+		token.GrammarLabel = direct.GrammarLabel
+	}
+	if direct.Feats != "" {
+		token.Feats = direct.Feats
+	}
 	token.Source = "override:direct_dict"
 	token.Resolved = true
 	return true
@@ -392,6 +402,7 @@ func (externalPreferCustomFallbackRule) Apply(_ string, token *TokenResult, _, c
 	token.Lemma = custom.Lemma
 	token.POS = custom.POS
 	token.GrammarLabel = custom.GrammarLabel
+	token.Feats = custom.Feats
 	token.Source = "override:" + custom.Source
 	token.Resolved = true
 	return true
@@ -412,6 +423,9 @@ func (externalAttachGrammarRule) Apply(_ string, token *TokenResult, _, custom s
 		return false
 	}
 	token.GrammarLabel = custom.GrammarLabel
+	if token.Feats == "" && custom.Feats != "" {
+		token.Feats = custom.Feats
+	}
 	token.Trace = append(token.Trace, fmt.Sprintf("rule:attach_grammar label=%s", custom.GrammarLabel))
 	return true
 }
@@ -584,6 +598,57 @@ func findSiblingVenvPython(scriptPath, venvName string) (string, bool) {
 	return "", false
 }
 
+// featsFromJSON converts the analyzer FFI's JSON-object FEATS payload into
+// the UD pipe-separated string ("Case=Ine|Number=Sing") that the rest of the
+// pipeline uses. Returns "" for null/empty/non-object payloads. Keys are
+// emitted in alphabetical order to match UD convention so equality checks
+// against gold strings are stable. Multi-value attributes (e.g. arrays) are
+// joined with "," — also UD convention.
+func featsFromJSON(raw []byte) string {
+	if len(raw) == 0 {
+		return ""
+	}
+	var obj map[string]any
+	if err := json.Unmarshal(raw, &obj); err != nil || len(obj) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(obj))
+	for k := range obj {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	for _, k := range keys {
+		val := featsValueString(obj[k])
+		if val == "" {
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteByte('|')
+		}
+		b.WriteString(k)
+		b.WriteByte('=')
+		b.WriteString(val)
+	}
+	return b.String()
+}
+
+func featsValueString(v any) string {
+	switch typed := v.(type) {
+	case string:
+		return typed
+	case []any:
+		parts := make([]string, 0, len(typed))
+		for _, item := range typed {
+			if s, ok := item.(string); ok && s != "" {
+				parts = append(parts, s)
+			}
+		}
+		return strings.Join(parts, ",")
+	}
+	return ""
+}
+
 func toParsedSentences(result *parserffi.AnalysisResult) []parsedSentence {
 	sentences := make([]parsedSentence, 0, len(result.Sentences))
 	for _, s := range result.Sentences {
@@ -600,6 +665,7 @@ func toParsedSentences(result *parserffi.AnalysisResult) []parsedSentence {
 				StubLemma:    t.Lemma,
 				StubPOS:      t.POS,
 				GrammarLabel: t.GrammarLabel,
+				Feats:        featsFromJSON(t.Feats),
 			})
 
 			isPunct := t.POS == "PUNCT"
@@ -672,6 +738,7 @@ func resolveDictionarySentences(sentences []parsedSentence, formResolutions map[
 				resolved.Lemma = dictRes.Lemma
 				resolved.POS = dictRes.POS
 				resolved.GrammarLabel = dictRes.GrammarLabel
+				resolved.Feats = dictRes.Feats
 				resolved.Source = dictRes.Source
 				resolved.Resolved = true
 				resolved.Trace = append(resolved.Trace, fmt.Sprintf("resolution:%s lemma=%s pos=%s", dictRes.Source, dictRes.Lemma, dictRes.POS))
@@ -697,6 +764,7 @@ func enrichWords(sentences []SentenceResult, glosses map[store.LemmaKey]string) 
 	formSets := make(map[key]map[string]struct{})
 	firstSentence := make(map[key]string)
 	grammarLabels := make(map[key]string)
+	feats := make(map[key]string)
 
 	for _, sent := range sentences {
 		for _, token := range sent.Tokens {
@@ -717,6 +785,11 @@ func enrichWords(sentences []SentenceResult, glosses map[store.LemmaKey]string) 
 					grammarLabels[k] = token.GrammarLabel
 				}
 			}
+			if token.Feats != "" {
+				if _, seen := feats[k]; !seen {
+					feats[k] = token.Feats
+				}
+			}
 		}
 	}
 
@@ -735,6 +808,7 @@ func enrichWords(sentences []SentenceResult, glosses map[store.LemmaKey]string) 
 			Count:           count,
 			Gloss:           glosses[lk],
 			GrammarLabel:    grammarLabels[k],
+			Feats:           feats[k],
 			ExampleSentence: firstSentence[k],
 		})
 	}

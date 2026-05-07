@@ -733,6 +733,7 @@ func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][
 		if pe, ok := parserIndex[key]; ok {
 			entry.Gloss = pe.Gloss
 			entry.GrammarLabel = pe.GrammarLabel
+			entry.Feats = pe.Feats
 			if pe.ExampleSentence != "" {
 				entry.ExampleSentence = pe.ExampleSentence
 			}

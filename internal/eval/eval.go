@@ -34,6 +34,7 @@ type ExpectedTokenRef struct {
 	Lemma        string `json:"lemma"`
 	POS          string `json:"pos"`
 	GrammarLabel string `json:"grammar_label,omitempty"`
+	Feats        string `json:"feats,omitempty"`
 }
 
 type EvaluateOptions struct {
@@ -68,25 +69,38 @@ type BenchmarkConfig struct {
 }
 
 type ParserSummary struct {
-	ExpectedTokens        int     `json:"expected_tokens"`
-	LemmaAccuracy         float64 `json:"lemma_accuracy"`
-	POSAccuracy           float64 `json:"pos_accuracy"`
-	GrammarAccuracy       float64 `json:"grammar_accuracy"`
-	FullAccuracy          float64 `json:"full_accuracy"`
-	ResolvedCoverage      float64 `json:"resolved_coverage"`
-	AvgCaseDurationMs     float64 `json:"avg_case_duration_ms"`
-	P50CaseDurationMs     float64 `json:"p50_case_duration_ms"`
-	P95CaseDurationMs     float64 `json:"p95_case_duration_ms"`
-	WordsPerSecond        float64 `json:"words_per_second"`
-	CharsPerSecond        float64 `json:"chars_per_second"`
-	AvgUniqueForms        float64 `json:"avg_unique_forms"`
-	AvgResolvedTokens     float64 `json:"avg_resolved_tokens"`
-	AvgUnresolvedTokens   float64 `json:"avg_unresolved_tokens"`
-	AvgAnalyzeMs          float64 `json:"avg_analyze_ms"`
-	AvgLookupFormsMs      float64 `json:"avg_lookup_forms_ms"`
-	AvgLookupGlossesMs    float64 `json:"avg_lookup_glosses_ms"`
-	AvgResolveSentencesMs float64 `json:"avg_resolve_sentences_ms"`
-	AvgEnrichWordsMs      float64 `json:"avg_enrich_words_ms"`
+	ExpectedTokens        int                    `json:"expected_tokens"`
+	LemmaAccuracy         float64                `json:"lemma_accuracy"`
+	POSAccuracy           float64                `json:"pos_accuracy"`
+	GrammarAccuracy       float64                `json:"grammar_accuracy"`
+	FullAccuracy          float64                `json:"full_accuracy"`
+	ResolvedCoverage      float64                `json:"resolved_coverage"`
+	FeatsAttributes       []FeatsAttributeMetric `json:"feats_attributes,omitempty"`
+	AvgCaseDurationMs     float64                `json:"avg_case_duration_ms"`
+	P50CaseDurationMs     float64                `json:"p50_case_duration_ms"`
+	P95CaseDurationMs     float64                `json:"p95_case_duration_ms"`
+	WordsPerSecond        float64                `json:"words_per_second"`
+	CharsPerSecond        float64                `json:"chars_per_second"`
+	AvgUniqueForms        float64                `json:"avg_unique_forms"`
+	AvgResolvedTokens     float64                `json:"avg_resolved_tokens"`
+	AvgUnresolvedTokens   float64                `json:"avg_unresolved_tokens"`
+	AvgAnalyzeMs          float64                `json:"avg_analyze_ms"`
+	AvgLookupFormsMs      float64                `json:"avg_lookup_forms_ms"`
+	AvgLookupGlossesMs    float64                `json:"avg_lookup_glosses_ms"`
+	AvgResolveSentencesMs float64                `json:"avg_resolve_sentences_ms"`
+	AvgEnrichWordsMs      float64                `json:"avg_enrich_words_ms"`
+}
+
+// FeatsAttributeMetric reports per-attribute accuracy for a UD FEATS key
+// (e.g. "Case", "Number", "Tense"). Eligible counts only tokens whose gold
+// FEATS contained the attribute; Correct counts those where the actual
+// token's FEATS matched on that attribute. Slice instead of map so the
+// JSON ordering is deterministic (sorted by attribute name).
+type FeatsAttributeMetric struct {
+	Attribute string  `json:"attribute"`
+	Eligible  int     `json:"eligible"`
+	Correct   int     `json:"correct"`
+	Accuracy  float64 `json:"accuracy"`
 }
 
 type CaseReport struct {
@@ -117,6 +131,7 @@ type TokenExpected struct {
 	Lemma        string `json:"lemma"`
 	POS          string `json:"pos"`
 	GrammarLabel string `json:"grammar_label,omitempty"`
+	Feats        string `json:"feats,omitempty"`
 }
 
 type TokenActual struct {
@@ -124,17 +139,24 @@ type TokenActual struct {
 	Lemma        string   `json:"lemma,omitempty"`
 	POS          string   `json:"pos,omitempty"`
 	GrammarLabel string   `json:"grammar_label,omitempty"`
+	Feats        string   `json:"feats,omitempty"`
 	Source       string   `json:"source,omitempty"`
 	Resolved     bool     `json:"resolved"`
 	Trace        []string `json:"trace,omitempty"`
 	RuleTrace    []string `json:"rule_trace,omitempty"`
 }
 
+// TokenMatch records per-comparison hit booleans. Feats holds one entry per
+// FEATS attribute the gold expected; the value is true when the actual token
+// matched on that attribute. Attributes not in the gold are absent. The
+// existing Grammar boolean tracks the legacy single-attribute GrammarLabel
+// match (case-only) and is independent of Feats.
 type TokenMatch struct {
-	Lemma   bool `json:"lemma"`
-	POS     bool `json:"pos"`
-	Grammar bool `json:"grammar"`
-	Full    bool `json:"full"`
+	Lemma   bool            `json:"lemma"`
+	POS     bool            `json:"pos"`
+	Grammar bool            `json:"grammar"`
+	Feats   map[string]bool `json:"feats,omitempty"`
+	Full    bool            `json:"full"`
 }
 
 type PriorityRegression struct {
@@ -296,6 +318,8 @@ type summaryAccumulator struct {
 	fullCorrect             int
 	totalTokens             int
 	resolvedTokens          int
+	featsEligible           map[string]int
+	featsCorrect            map[string]int
 	allDurationsNs          []int64
 	caseCount               int
 	uniqueFormsTotal        int
@@ -351,6 +375,16 @@ func (s *summaryAccumulator) consume(parsed *parsecore.ParseResult, comparisons 
 		if cmp.Match.Full {
 			s.fullCorrect++
 		}
+		for attr, ok := range cmp.Match.Feats {
+			if s.featsEligible == nil {
+				s.featsEligible = make(map[string]int)
+				s.featsCorrect = make(map[string]int)
+			}
+			s.featsEligible[attr]++
+			if ok {
+				s.featsCorrect[attr]++
+			}
+		}
 	}
 }
 
@@ -367,6 +401,7 @@ func (s *summaryAccumulator) finish() ParserSummary {
 		GrammarAccuracy:       ratio(s.grammarCorrect, s.grammarEligible),
 		FullAccuracy:          ratio(s.fullCorrect, s.expectedTokens),
 		ResolvedCoverage:      ratio(s.resolvedTokens, s.totalTokens),
+		FeatsAttributes:       s.feats(),
 		AvgCaseDurationMs:     stats.AvgMs,
 		P50CaseDurationMs:     stats.P50Ms,
 		P95CaseDurationMs:     stats.P95Ms,
@@ -381,6 +416,23 @@ func (s *summaryAccumulator) finish() ParserSummary {
 		AvgResolveSentencesMs: nsAverageMs(s.resolveSentencesNsTotal, s.caseCount),
 		AvgEnrichWordsMs:      nsAverageMs(s.enrichWordsNsTotal, s.caseCount),
 	}
+}
+
+func (s *summaryAccumulator) feats() []FeatsAttributeMetric {
+	if len(s.featsEligible) == 0 {
+		return nil
+	}
+	out := make([]FeatsAttributeMetric, 0, len(s.featsEligible))
+	for attr, eligible := range s.featsEligible {
+		out = append(out, FeatsAttributeMetric{
+			Attribute: attr,
+			Eligible:  eligible,
+			Correct:   s.featsCorrect[attr],
+			Accuracy:  ratio(s.featsCorrect[attr], eligible),
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Attribute < out[j].Attribute })
+	return out
 }
 
 func throughputPerSecond(total, totalNs int64) float64 {
@@ -406,6 +458,7 @@ func compareCase(c DatasetCase, parsed *parsecore.ParseResult) []TokenCompare {
 				Lemma:        expected.Lemma,
 				POS:          expected.POS,
 				GrammarLabel: expected.GrammarLabel,
+				Feats:        expected.Feats,
 			},
 			Actual: TokenActual{Found: found},
 		}
@@ -415,6 +468,7 @@ func compareCase(c DatasetCase, parsed *parsecore.ParseResult) []TokenCompare {
 				Lemma:        token.Lemma,
 				POS:          token.POS,
 				GrammarLabel: token.GrammarLabel,
+				Feats:        token.Feats,
 				Source:       token.Source,
 				Resolved:     token.Resolved,
 				Trace:        slices.Clone(token.Trace),
@@ -428,10 +482,41 @@ func compareCase(c DatasetCase, parsed *parsecore.ParseResult) []TokenCompare {
 		} else {
 			cmp.Match.Grammar = found && token.GrammarLabel == expected.GrammarLabel
 		}
+		if expected.Feats != "" {
+			expectedFeats := parseFeats(expected.Feats)
+			actualFeats := map[string]string{}
+			if found {
+				actualFeats = parseFeats(token.Feats)
+			}
+			cmp.Match.Feats = make(map[string]bool, len(expectedFeats))
+			for k, v := range expectedFeats {
+				cmp.Match.Feats[k] = actualFeats[k] == v
+			}
+		}
 		cmp.Match.Full = cmp.Match.Lemma && cmp.Match.POS && cmp.Match.Grammar
 		comparisons = append(comparisons, cmp)
 	}
 	return comparisons
+}
+
+// parseFeats splits a UD FEATS string ("Case=Ine|Number=Sing") into a
+// map[attribute]value. Returns an empty map for empty input. Malformed
+// segments (no '=' or empty key/value) are skipped silently — gold sets
+// occasionally contain such entries during authoring and a strict parse
+// would fail the whole eval over a typo.
+func parseFeats(s string) map[string]string {
+	out := make(map[string]string)
+	if s == "" {
+		return out
+	}
+	for _, pair := range strings.Split(s, "|") {
+		eq := strings.IndexByte(pair, '=')
+		if eq <= 0 || eq == len(pair)-1 {
+			continue
+		}
+		out[pair[:eq]] = pair[eq+1:]
+	}
+	return out
 }
 
 func flattenNonPunct(sentences []parsecore.SentenceResult) []parsecore.TokenResult {
