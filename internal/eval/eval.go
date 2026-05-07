@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"finnestdb/internal/evalparsers"
 	"finnestdb/internal/parsecore"
 	"finnestdb/internal/store"
 )
@@ -233,7 +234,7 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 		parsers = []string{"basic", "custom"}
 	}
 	supported := make(map[string]struct{})
-	for _, name := range parsecore.SupportedParsers() {
+	for _, name := range evalparsers.SupportedParsers() {
 		supported[name] = struct{}{}
 	}
 	for _, parser := range parsers {
@@ -284,7 +285,7 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 		}
 		for _, parser := range parsers {
 			for i := 0; i < options.WarmupRuns; i++ {
-				if _, err := parsecore.Analyze(db, dataset.Language, c.Text, parser); err != nil {
+				if _, err := evalparsers.Analyze(db, dataset.Language, c.Text, parser); err != nil {
 					return nil, fmt.Errorf("case %s parser %s warmup: %w", c.ID, parser, err)
 				}
 			}
@@ -292,7 +293,7 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 			var last *parsecore.ParseResult
 			samples := make([]int64, 0, options.RepeatRuns)
 			for i := 0; i < options.RepeatRuns; i++ {
-				parsed, err := parsecore.Analyze(db, dataset.Language, c.Text, parser)
+				parsed, err := evalparsers.Analyze(db, dataset.Language, c.Text, parser)
 				if err != nil {
 					return nil, fmt.Errorf("case %s parser %s: %w", c.ID, parser, err)
 				}

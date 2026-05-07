@@ -1,8 +1,13 @@
 # Omorfi Adapter Notes
 
-This project does not bundle Omorfi. The `omorfi` parser mode in
-`internal/parsecore` is an adapter slot that expects an external command via
+This project does not bundle Omorfi. The `omorfi` parser mode is an eval-only
+adapter slot in `internal/evalparsers` that expects an external command via
 `FINNESTDB_OMORFI_CMD`.
+
+The production parser registry in `internal/parsecore` only exposes `basic`
+and `custom`. Lab baselines such as `omorfi` and `estnltk` are available to
+`cmd/parsertest` and comparison scripts, not to the server-facing parser
+registry.
 
 ## Recommended Source
 
@@ -68,8 +73,8 @@ normalization layer.
 The recommended path is `make setup-omorfi`, which creates a repo-local
 `.venv-omorfi/`, installs `omorfi==0.9.12` into it, and downloads the HFST
 models into `~/.cache/omorfi/`. After that, no environment variables need to
-be exported — `internal/parsecore/parsecore.go::runExternalOmorfi`
-auto-discovers `.venv-omorfi/bin/python` next to the bundled adapter at
+be exported — `internal/evalparsers` auto-discovers `.venv-omorfi/bin/python`
+next to the bundled adapter at
 `scripts/omorfi_adapter_example.py`.
 
 Then run:

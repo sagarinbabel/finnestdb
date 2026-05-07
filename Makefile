@@ -298,10 +298,9 @@ verify-dict:
 #
 # parser-comparison.sh and the `enrich-gold-feats` target both auto-detect
 # the venv at .venv-omorfi/ and construct FINNESTDB_OMORFI_CMD from it.
-# internal/parsecore/parsecore.go::runExternalOmorfi also auto-discovers
-# .venv-omorfi/bin/python at runtime (symmetric with the .venv-estnltk
-# discovery), so direct callers like `go run ./cmd/parsertest` work
-# without any env vars exported once the venv is in place.
+# internal/evalparsers owns the same auto-discovery for eval-only parser
+# modes, so direct callers like `go run ./cmd/parsertest` work without any
+# env vars exported once the venv is in place.
 
 OMORFI_VERSION := 0.9.12
 OMORFI_CACHE   := $(HOME)/.cache/omorfi

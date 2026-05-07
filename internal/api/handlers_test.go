@@ -480,6 +480,23 @@ func TestHandleParseMapsAnalyzerValidationErrorsToBadRequest(t *testing.T) {
 	}
 }
 
+func TestHandleParseRejectsLabParserModes(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"FI","text":"kissa","parser":"omorfi"}`))
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusBadRequest)
+	}
+	if !strings.Contains(rec.Body.String(), `unsupported parser "omorfi"`) {
+		t.Fatalf("body=%q missing unsupported parser error", rec.Body.String())
+	}
+}
+
 func TestAuthenticatedReviewNextReturnsNoContentWithoutDueCards(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)
