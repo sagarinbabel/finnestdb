@@ -477,7 +477,7 @@ See `docs/LEXICAL_PLAN.md` "Estonian-specific source choices and adapter contrac
 Dataset format:
 - `name`, `version`, `language`
 - `cases[]` with `id`, `text`, and expected `tokens[]`
-- each expected token includes `surface`, `lemma`, `pos`, and optional `grammar_label` / `occurrence`
+- each expected token includes `surface`, `lemma`, `pos`, and optional `grammar_label` / `feats` / `occurrence`. `feats` is a UD FEATS string like `Case=Ine|Number=Sing|Person=1`; the eval scores it per-attribute when present and is a no-op when absent. All six manual gold sets (`fi-core-v1`, `fi-grammar-v1`, `fi-manual-v1/v2`, `et-grammar-v1`, `et-manual-v1`) carry FEATS as of `2026.05.07k`
 
 The JSON report is designed to be reusable by a future eval UI.
 
@@ -506,7 +506,7 @@ The current Rust parser is still a **heuristic stub**. It does:
 
 The two parser modes differ only in how much enrichment happens after that:
 - **Basic parser** stops after direct dictionary lookup
-- **Custom parser** adds possessive, compound, and case-suffix fallback rules
+- **Custom parser** adds possessive, compound, and case-suffix fallback rules. Every resolution path attaches UD FEATS where the source has it: kaikki tags via `cmd/importdict/feats.go::kaikkiTagsToFeats`, Ekilex morph_codes via `cmd/importekilexdetails/feats.go::ekilexMorphToFeats`, FST analyses via `pkg/lemmatizer-fi-et/udfeats::Compose` (called from `voikkomap.Parse` / `giellaltmap.Parse`), and the case-suffix fallback projects `Case=` via `internal/store/dict.go::featsFromCaseLabel`
 
 What still does **not** exist yet in the browser-facing parser flow:
 - bundled full morphological analysis from Omorfi/Vabamorf (they're external

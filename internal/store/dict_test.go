@@ -470,8 +470,40 @@ func TestCaseSuffixStrip_Inessive(t *testing.T) {
 	if r.GrammarLabel != "inessive" {
 		t.Errorf("talossa grammar label: got %q, want inessive", r.GrammarLabel)
 	}
+	if r.Feats != "Case=Ine" {
+		t.Errorf("talossa feats: got %q, want Case=Ine (case-suffix path projects Case= from grammar_label)", r.Feats)
+	}
 	if r.Source != "case_suffix" {
 		t.Errorf("talossa source: got %q, want case_suffix", r.Source)
+	}
+}
+
+func TestFeatsFromCaseLabel(t *testing.T) {
+	cases := []struct {
+		label string
+		want  string
+	}{
+		{"inessive", "Case=Ine"},
+		{"genitive", "Case=Gen"},
+		{"partitive", "Case=Par"},
+		{"illative", "Case=Ill"},
+		{"elative", "Case=Ela"},
+		{"adessive", "Case=Ade"},
+		{"ablative", "Case=Abl"},
+		{"allative", "Case=All"},
+		{"essive", "Case=Ess"},
+		{"translative", "Case=Tra"},
+		{"comitative", "Case=Com"},
+		{"terminative", "Case=Ter"},
+		{"abessive", "Case=Abe"},
+		{"nominative", ""}, // Nom is implicit
+		{"", ""},
+		{"unknown-label", ""},
+	}
+	for _, tc := range cases {
+		if got := featsFromCaseLabel(tc.label); got != tc.want {
+			t.Errorf("featsFromCaseLabel(%q) = %q, want %q", tc.label, got, tc.want)
+		}
 	}
 }
 

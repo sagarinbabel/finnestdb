@@ -198,13 +198,14 @@ func importEkilex(db *sql.DB, client *ekilexClient, dbLang string, datasets, wor
 	defer stmtLemma.Close()
 
 	stmtForm, err := tx.Prepare(
-		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority)
-		 VALUES (?, ?, ?, ?, ?, ?)
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(form, lang) DO UPDATE SET
 		 lemma = excluded.lemma,
 		 pos = excluded.pos,
 		 source = excluded.source,
-		 source_priority = excluded.source_priority
+		 source_priority = excluded.source_priority,
+		 feats = excluded.feats
 		 WHERE forms.source_priority <= excluded.source_priority`,
 	)
 	if err != nil {
@@ -231,7 +232,11 @@ func importEkilex(db *sql.DB, client *ekilexClient, dbLang string, datasets, wor
 			}
 			forms := append([]string{entry.Lemma}, entry.Forms...)
 			for _, form := range uniqueStrings(forms) {
-				if _, err := stmtForm.Exec(form, entry.Lemma, entry.POS, dbLang, source.Name, source.Priority); err != nil {
+				// Smoke import: Ekilex paradigm-form endpoint returns surface
+				// strings without morph_codes, so we have no FEATS to project
+				// here. The full Ekilex morph pipeline lives in
+				// cmd/importekilexdetails and writes feats via ekilexMorphToFeats.
+				if _, err := stmtForm.Exec(form, entry.Lemma, entry.POS, dbLang, source.Name, source.Priority, ""); err != nil {
 					return processed, err
 				}
 			}

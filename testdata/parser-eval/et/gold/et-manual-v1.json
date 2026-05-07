@@ -11,13 +11,15 @@
           "surface": "Poes",
           "lemma": "pood",
           "pos": "NOUN",
-          "grammar_label": "inessive"
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
         },
         {
           "surface": "sõpra",
           "lemma": "sõber",
           "pos": "NOUN",
-          "grammar_label": "partitive"
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing"
         }
       ]
     },
@@ -29,13 +31,15 @@
           "surface": "Raamatupoes",
           "lemma": "raamatupood",
           "pos": "NOUN",
-          "grammar_label": "inessive"
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
         },
         {
           "surface": "sõnastikke",
           "lemma": "sõnastik",
           "pos": "NOUN",
-          "grammar_label": "partitive"
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Plur"
         }
       ]
     },
@@ -46,18 +50,21 @@
         {
           "surface": "Lennujaamabuss",
           "lemma": "lennujaamabuss",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Number=Sing"
         },
         {
           "surface": "peatus",
           "lemma": "peatuma",
-          "pos": "VERB"
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act"
         },
         {
           "surface": "raudteejaamas",
           "lemma": "raudteejaam",
           "pos": "NOUN",
-          "grammar_label": "inessive"
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
         }
       ]
     },
@@ -69,12 +76,14 @@
           "surface": "Käekotis",
           "lemma": "käekott",
           "pos": "NOUN",
-          "grammar_label": "inessive"
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
         },
         {
           "surface": "märkmik",
           "lemma": "märkmik",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Number=Sing"
         }
       ]
     }

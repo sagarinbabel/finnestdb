@@ -23,7 +23,11 @@
 //   - everything else   ignored for now
 package voikkomap
 
-import "strings"
+import (
+	"strings"
+
+	"finnestdb/pkg/lemmatizer-fi-et/udfeats"
+)
 
 // Analysis is the parser-facing structured view of one FSTOUTPUT line.
 type Analysis struct {
@@ -34,6 +38,7 @@ type Analysis struct {
 	Tense        string // "Pres" / "Past" or empty
 	Mood         string // "Ind" / "Cnd" / "Imp" / "Pot" or empty
 	Person       string // "1" / "2" / "3" / "4" or empty
+	Feats        string // composed UD FEATS string, e.g. "Case=Ine|Number=Sing"; alphabetically sorted
 	Raw          string // the original FSTOUTPUT, for debugging / source provenance
 }
 
@@ -110,6 +115,7 @@ func Parse(fstOutput string) Analysis {
 	}
 
 	a.Lemma = lemmaBuilder.String()
+	a.Feats = udfeats.Compose(a.GrammarLabel, a.Number, a.Tense, a.Mood, a.Person)
 	return a
 }
 

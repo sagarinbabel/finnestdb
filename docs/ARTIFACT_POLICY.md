@@ -109,3 +109,12 @@ this policy: the generator writes to
 absent at runtime (e.g. fresh clone without
 `scripts/setup-local.sh`), the FST step is disabled and the parser
 falls back to the dict + case-suffix path with a single log line.
+
+As of `2026.05.07k`, every analysis in those table JSONs carries an
+explicit `Feats` field (e.g. `"Feats": "Case=Ine|Number=Sing"`)
+composed by `pkg/lemmatizer-fi-et/udfeats::Compose` at parse time. The
+runtime composer prefers the persisted field; older table snapshots
+without `Feats` still load and recompose on the fly, so the policy
+doesn't force regeneration. When a maintainer regenerates against
+their local upstream analyser, the new `Feats` field falls out for
+free — `genlemmatizertables` doesn't need a new flag.

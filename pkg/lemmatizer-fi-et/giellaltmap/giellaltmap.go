@@ -15,7 +15,11 @@
 // genitive, inessive, ...).
 package giellaltmap
 
-import "strings"
+import (
+	"strings"
+
+	"finnestdb/pkg/lemmatizer-fi-et/udfeats"
+)
 
 // Analysis is the parser-facing structured view of one Giellalt output.
 // Mirrors voikkomap.Analysis intentionally so the unified Lemmatize
@@ -28,6 +32,7 @@ type Analysis struct {
 	Tense        string
 	Mood         string
 	Person       string
+	Feats        string // composed UD FEATS string, e.g. "Case=Ine|Number=Sing"; alphabetically sorted
 	IsCompound   bool   // contains '#'; used by the unified merger to deprioritise
 	Raw          string
 }
@@ -65,6 +70,7 @@ func Parse(out string) Analysis {
 	if len(tags) > 1 {
 		applyTags(&a, tags[1:])
 	}
+	a.Feats = udfeats.Compose(a.GrammarLabel, a.Number, a.Tense, a.Mood, a.Person)
 	return a
 }
 

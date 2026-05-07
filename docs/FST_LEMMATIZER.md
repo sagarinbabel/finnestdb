@@ -134,10 +134,24 @@ store. For example, `GrammarLabel=inessive` plus `Number=Sing` becomes
 `GrammarLabel` field remains for older grammar-label metrics, and is
 back-projected from `Case=` when possible.
 
+The composition logic is centralised in
+[`pkg/lemmatizer-fi-et/udfeats`](../pkg/lemmatizer-fi-et/udfeats/udfeats.go),
+which owns the `LegacyLabelToUDCase` / `UDCaseToLegacyLabel` maps and the
+`Compose(grammarLabel, number, tense, mood, person)` function. Both
+`voikkomap.Parse` and `giellaltmap.Parse` call `udfeats.Compose` at
+parse time and persist the result on `Analysis.Feats`. As of `2026.05.07k`
+the smoke FST tables under `testdata/lemmatizer/{fi,et}_min.json`
+include this `Feats` field on every analysis; the runtime composer in
+`internal/store::featsFromFSTAnalysis` prefers the persisted value and
+falls back to recomposing on the fly for legacy table files (so older
+`localdata/lemmatizer-fi-et/tables/` snapshots stay loadable without
+regenerating).
+
 ## Offline generation
 
-Generated-table values use canonical alphabetical UD FEATS ordering, so
-all producers emit the same string shape for the same morphology.
+Generated-table values use canonical alphabetical UD FEATS ordering
+(enforced by `udfeats.Compose`), so all producers emit the same string
+shape for the same morphology.
 
 The Finnish generator:
 

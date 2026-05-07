@@ -116,13 +116,18 @@ const upsertLemmaSQL = `INSERT INTO lemmas (lemma, pos, gloss, lang, source, sou
 		source_priority = excluded.source_priority
 	WHERE lemmas.source_priority <= excluded.source_priority`
 
-const upsertFormSQL = `INSERT INTO forms (form, lemma, pos, lang, source, source_priority)
-	VALUES (?, ?, ?, ?, ?, ?)
+// upsertFormSQL writes a form row including UD FEATS. The conflict update
+// refreshes feats too — re-importing the same source after the FEATS mapper
+// learns a new tag (or kaikki upstream flips a tag) propagates the change
+// instead of silently keeping the old NULL.
+const upsertFormSQL = `INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+	VALUES (?, ?, ?, ?, ?, ?, ?)
 	ON CONFLICT(form, lang) DO UPDATE SET
 		lemma = excluded.lemma,
 		pos = excluded.pos,
 		source = excluded.source,
-		source_priority = excluded.source_priority
+		source_priority = excluded.source_priority,
+		feats = excluded.feats
 	WHERE forms.source_priority <= excluded.source_priority`
 
 // upsertTranslationSQL writes one row per (sense, gloss) pair into the
@@ -213,6 +218,7 @@ func main() {
 	ekilexLimit := flag.Int("ekilex-limit", 0, "Maximum number of Ekilex words to import; 0 means no limit")
 	ekilexTimeout := flag.Duration("ekilex-timeout", 45*time.Second, "Ekilex HTTP client timeout (e.g. 45s, 2m)")
 	ekilexRetries := flag.Int("ekilex-retries", 0, "Retries per Ekilex HTTP request on network/HTTP/JSON error")
+	backfillFeats := flag.Bool("backfill-feats", false, "Stream the kaikki JSONL and only UPDATE forms.feats on rows where feats IS NULL; skips lemma/translation writes")
 	flag.Parse()
 
 	langCode := strings.ToLower(*lang)
@@ -264,6 +270,30 @@ func main() {
 	}
 
 	count := 0
+	if *backfillFeats {
+		if sourceConfig.Name == "ekilex" {
+			log.Fatalf("-backfill-feats is for kaikki JSONL only; Ekilex morph_codes are written by cmd/importekilexdetails")
+		}
+		if *filePath == "" {
+			log.Fatalf("-backfill-feats requires -file pointing to the local kaikki JSONL")
+		}
+		f, err := os.Open(*filePath)
+		if err != nil {
+			log.Fatalf("open file: %v", err)
+		}
+		defer f.Close()
+		reader, err := openJSONLReader(f, *filePath)
+		if err != nil {
+			log.Fatalf("open reader: %v", err)
+		}
+		log.Printf("Backfilling FEATS into %s rows from %s ...", dbLang, *filePath)
+		updated, scanned, err := backfillFeatsJSONL(db, reader, dbLang)
+		if err != nil {
+			log.Fatalf("backfill: %v", err)
+		}
+		fmt.Printf("\nBackfill complete: %d forms updated (of %d scanned) for %s.\n", updated, scanned, dbLang)
+		return
+	}
 	if sourceConfig.Name == "ekilex" {
 		if dbLang != "ET" {
 			log.Fatalf("Ekilex import currently supports ET only, got %s", dbLang)
@@ -551,7 +581,11 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 		}
 
 		// Insert the canonical form → lemma mapping (lemma maps to itself).
-		stmtForm.Exec(entry.Word, entry.Word, pos, dbLang, source.Name, source.Priority)
+		// Lemma form gets Reflex=Yes for known reflexive pronoun headwords;
+		// no other FEATS — kaikki doesn't tag the headword itself, and the
+		// dictionary form has no inflectional context.
+		lemmaFeats := withReflex("", entry.Word, pos)
+		stmtForm.Exec(entry.Word, entry.Word, pos, dbLang, source.Name, source.Priority, lemmaFeats)
 
 		// Insert inflected forms, skipping possessive-tagged forms.
 		for _, f := range entry.Forms {
@@ -562,7 +596,8 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 				skipped++
 				continue
 			}
-			stmtForm.Exec(f.Form, entry.Word, pos, dbLang, source.Name, source.Priority)
+			feats := withReflex(kaikkiTagsToFeats(f.Tags, pos), entry.Word, pos)
+			stmtForm.Exec(f.Form, entry.Word, pos, dbLang, source.Name, source.Priority, feats)
 		}
 
 		count++
@@ -592,6 +627,112 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 	}
 	fmt.Println() // newline after progress indicator
 	return count, skipped, nil
+}
+
+// backfillFeatsJSONL streams a kaikki JSONL file and issues an UPDATE for
+// each form row whose feats column is NULL, computing FEATS from the
+// kaikki Tags via kaikkiTagsToFeats. Rows already populated (e.g. by an
+// earlier importdict run that already had the FEATS mapper, or by the
+// Ekilex pipeline for ET) are left untouched — the WHERE feats IS NULL
+// guard is in the UPDATE statement.
+//
+// Returns (rowsUpdated, formsScanned, error).
+func backfillFeatsJSONL(db *sql.DB, r io.Reader, dbLang string) (int, int, error) {
+	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 4*1024*1024), 4*1024*1024)
+
+	const batchSize = 10_000
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	const updateSQL = `UPDATE forms SET feats = ?
+		WHERE form = ? AND lang = ? AND (feats IS NULL OR feats = '')`
+	stmt, err := tx.Prepare(updateSQL)
+	if err != nil {
+		tx.Rollback()
+		return 0, 0, err
+	}
+
+	updated := 0
+	scanned := 0
+	commit := func() error {
+		stmt.Close()
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+		tx, err = db.Begin()
+		if err != nil {
+			return err
+		}
+		stmt, err = tx.Prepare(updateSQL)
+		return err
+	}
+
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(line) == 0 {
+			continue
+		}
+		var entry kaikkiEntry
+		if err := json.Unmarshal(line, &entry); err != nil {
+			continue
+		}
+		if entry.Word == "" {
+			continue
+		}
+		pos := normalizePos(entry.POS)
+
+		// Lemma form: only the reflexive marker contributes (no inflection).
+		if lf := withReflex("", entry.Word, pos); lf != "" {
+			scanned++
+			res, err := stmt.Exec(lf, entry.Word, dbLang)
+			if err == nil {
+				if n, _ := res.RowsAffected(); n > 0 {
+					updated++
+				}
+			}
+		}
+
+		for _, f := range entry.Forms {
+			if f.Form == "" || f.Form == "-" || f.Form == entry.Word {
+				continue
+			}
+			if hasPossessiveTag(f.Tags) {
+				continue
+			}
+			feats := withReflex(kaikkiTagsToFeats(f.Tags, pos), entry.Word, pos)
+			if feats == "" {
+				continue
+			}
+			scanned++
+			res, err := stmt.Exec(feats, f.Form, dbLang)
+			if err != nil {
+				continue
+			}
+			if n, _ := res.RowsAffected(); n > 0 {
+				updated++
+			}
+		}
+
+		if scanned > 0 && scanned%batchSize == 0 {
+			if err := commit(); err != nil {
+				return updated, scanned, err
+			}
+			fmt.Printf("\r  %d forms scanned, %d updated...", scanned, updated)
+		}
+	}
+
+	stmt.Close()
+	if err := scanner.Err(); err != nil {
+		tx.Rollback()
+		return updated, scanned, err
+	}
+	if err := tx.Commit(); err != nil {
+		return updated, scanned, err
+	}
+	return updated, scanned, nil
 }
 
 // applyCustomGlosses reads a CSV file (columns: word,pos,lang,gloss) and

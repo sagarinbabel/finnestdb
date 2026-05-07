@@ -92,6 +92,14 @@ should add actual generated tables:
 
 Until then, the current runtime is a scaffold with smoke fixtures.
 
+**2026-05-07k status**: smoke fixtures regenerated with the new `Feats`
+field on every analysis (composed by `pkg/lemmatizer-fi-et/udfeats`).
+Future regenerations of the production tables pick up the field
+automatically — no flag, no schema migration. The runtime composer at
+[`internal/store::featsFromFSTAnalysis`](../internal/store/dict.go)
+prefers the persisted field, so once production tables ship the
+parser will short-circuit the on-the-fly composition for direct hits.
+
 ## Attribution
 
 The generator path may depend on these upstream projects:

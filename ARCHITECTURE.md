@@ -601,10 +601,17 @@ Finnish (Phases 1–3 shipped, Phase 4 superseded by FST runtime, Phase 5 partia
 - The evaluation pipeline is now a first-class architectural component.
 - The Finnish lexical pipeline columns are populated:
   `paradigm_class` is set on FI lemmas by `cmd/importkotus` (Phase 3),
-  `forms.feats` is populated by `cmd/importekilexdetails` (ET, via Ekilex
-  morph_code) and by FST candidate merge in `BatchLookupForms` (post-#129),
+  `forms.feats` is populated by `cmd/importdict` (FI/ET kaikki, via
+  `kaikkiTagsToFeats` since 2026-05-07k / PR #139),
+  by `cmd/importekilexdetails` (ET, via Ekilex morph_code), and by FST
+  candidate merge in `BatchLookupForms` (post-#129).
   `translations` and `definitions` are populated by `cmd/importdict`
   (kaikki) and `cmd/importekilexdetails` (Ekilex) per Phase 2.
+  The case-suffix-strip fallback path projects `Case=` into `feats`
+  via `featsFromCaseLabel` so even that resolution path emits FEATS.
+  The shared composer `pkg/lemmatizer-fi-et/udfeats::Compose` is the
+  canonical FEATS-string assembler; FST analyses persist `Analysis.Feats`
+  at parse time so generated tables are self-describing on disk.
   Production FI lemmatizer tables (the local `localdata/lemmatizer-fi-et/`
   artifact) are generated locally by users; the runtime falls back to
   dict-only when they are absent.

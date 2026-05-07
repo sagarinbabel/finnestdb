@@ -42,10 +42,10 @@ locations are auto-discovered by `scripts/parser-comparison{,-et}.sh`.
 
 | Dataset | Source | License | Cases | Tokens | Path | Added | Last refreshed |
 |---|---|---|---:|---:|---|---|---|
-| `fi-core-v1` | hand-authored, project | (project) | 6 | 20 | `testdata/parser-eval/fi/gold/fi-core-v1.json` | early (pre-Plan-C) | — |
-| `fi-grammar-v1` | hand-authored, project | (project) | 80 | 156 | `testdata/parser-eval/fi/gold/fi-grammar-v1.json` | early (pre-Plan-C) | — |
-| `fi-manual-v1` | hand-authored, project | (project) | 22 | 70 | `testdata/parser-eval/fi/gold/fi-manual-v1.json` | early (pre-Plan-C) | — |
-| `fi-manual-v2` | hand-authored, project | (project) | 4 | 9 | `testdata/parser-eval/fi/gold/fi-manual-v2.json` | early (pre-Plan-C) | — |
+| `fi-core-v1` | hand-authored, project | (project) | 6 | 20 | `testdata/parser-eval/fi/gold/fi-core-v1.json` | early (pre-Plan-C) | 2026-05-07 (UD FEATS via `cmd/enrichgoldfeats`) |
+| `fi-grammar-v1` | hand-authored, project | (project) | 80 | 156 | `testdata/parser-eval/fi/gold/fi-grammar-v1.json` | early (pre-Plan-C) | 2026-05-07 (UD FEATS via `cmd/enrichgoldfeats`) |
+| `fi-manual-v1` | hand-authored, project | (project) | 22 | 70 | `testdata/parser-eval/fi/gold/fi-manual-v1.json` | early (pre-Plan-C) | 2026-05-07 (UD FEATS via `cmd/enrichgoldfeats`) |
+| `fi-manual-v2` | hand-authored, project | (project) | 4 | 9 | `testdata/parser-eval/fi/gold/fi-manual-v2.json` | early (pre-Plan-C) | 2026-05-07 (UD FEATS via `cmd/enrichgoldfeats`) |
 | `ud-fi-tdt-dev-v1` | UD\_Finnish-TDT (Turku Dependency Treebank) | CC BY-SA 4.0 | 1,358 | 15,588 | `testdata/parser-eval/fi/gold/ud-fi-tdt-dev-v1.json` | 2026-05-06 (PR #113) | 2026-05-07 |
 | `ud-fi-tdt-test-v1` | UD\_Finnish-TDT | CC BY-SA 4.0 | 1,554 | 17,951 | `testdata/parser-eval/fi/gold/ud-fi-tdt-test-v1.json` | 2026-05-06 (PR #113) | 2026-05-07 |
 | `ud-fi-ftb-dev-v1` | UD\_Finnish-FTB (FinnTreeBank, Helsinki) | CC BY 4.0 | 1,875 | 13,536 | `testdata/parser-eval/fi/gold/ud-fi-ftb-dev-v1.json` | 2026-05-06 (PR #113) | 2026-05-07 |
@@ -56,6 +56,18 @@ locations are auto-discovered by `scripts/parser-comparison{,-et}.sh`.
 
 Re-pull on 2026-05-07 produced byte-identical outputs to what's already
 on `main`; no upstream drift detected since the original 2026-05-06 import.
+
+**2026-05-07k FEATS enrichment**: every committed manual gold set (the four
+FI rows above plus both ET rows below) now carries a `feats` field per
+token, seeded by [`cmd/enrichgoldfeats`](../cmd/enrichgoldfeats/main.go)
+running omorfi (FI) / estnltk (ET) on each case's text and overlaying
+per-token UD FEATS, with `Case=` deterministically anchored to the
+existing `grammar_label`. Audit logs at `*.diff.md` next to each gold
+flag the OOV compounds and case-disagreements that surfaced; the FEATS
+column is honestly empty for the small handful of nominative-singular
+compounds where the surface alone can't disambiguate Number=. The UD-
+imported gold sets already carried FEATS via [`cmd/importud`](../cmd/importud/main.go)
+since their original 2026-05-06 import.
 
 ### 1b. Finnish — local-only train splits (gitignored)
 
@@ -74,8 +86,8 @@ files. Used for OOV/coverage analysis with explicit `-dataset` flags.
 
 | Dataset | Source | License | Cases | Tokens | Path | Added | Last refreshed |
 |---|---|---|---:|---:|---|---|---|
-| `et-grammar-v1` | hand-authored, project | (project) | 50 | 105 | `testdata/parser-eval/et/gold/et-grammar-v1.json` | early (pre-Plan-C) | — |
-| `et-manual-v1` | hand-authored, project | (project) | 4 | 9 | `testdata/parser-eval/et/gold/et-manual-v1.json` | early (pre-Plan-C) | — |
+| `et-grammar-v1` | hand-authored, project | (project) | 50 | 105 | `testdata/parser-eval/et/gold/et-grammar-v1.json` | early (pre-Plan-C) | 2026-05-07 (UD FEATS via `cmd/enrichgoldfeats`) |
+| `et-manual-v1` | hand-authored, project | (project) | 4 | 9 | `testdata/parser-eval/et/gold/et-manual-v1.json` | early (pre-Plan-C) | 2026-05-07 (UD FEATS via `cmd/enrichgoldfeats`) |
 | **ET gold subtotal (committed)** | | | **54** | **114** | | | |
 
 ### 1d. Estonian — local-only (gitignored due to **CC BY-NC-SA**)

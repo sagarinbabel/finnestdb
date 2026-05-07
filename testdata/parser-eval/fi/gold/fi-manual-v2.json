@@ -10,12 +10,14 @@
         {
           "surface": "Matkalaukussani",
           "lemma": "matkalaukku",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Ine|Number=Sing|Number[psor]=Sing|Person[psor]=1"
         },
         {
           "surface": "passi",
           "lemma": "passi",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Nom|Number=Sing"
         }
       ]
     },
@@ -27,12 +29,14 @@
           "surface": "Kaupassa",
           "lemma": "kauppa",
           "pos": "NOUN",
-          "grammar_label": "inessive"
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
         },
         {
           "surface": "ystävääni",
           "lemma": "ystävä",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Par|Number=Sing|Number[psor]=Sing|Person[psor]=1"
         }
       ]
     },
@@ -48,13 +52,15 @@
         {
           "surface": "pysähtyi",
           "lemma": "pysähtyä",
-          "pos": "VERB"
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act"
         },
         {
           "surface": "rautatieasemalla",
           "lemma": "rautatieasema",
           "pos": "NOUN",
-          "grammar_label": "adessive"
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
         }
       ]
     },
@@ -65,13 +71,15 @@
         {
           "surface": "Kirjahyllyssäni",
           "lemma": "kirjahylly",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Ine|Number=Sing|Number[psor]=Sing|Person[psor]=1"
         },
         {
           "surface": "valokuvia",
           "lemma": "valokuva",
           "pos": "NOUN",
-          "grammar_label": "partitive"
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Plur"
         }
       ]
     }

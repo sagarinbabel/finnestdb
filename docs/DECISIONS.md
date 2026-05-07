@@ -187,9 +187,9 @@ bootstrap rule" section for the full policy and rationale.
 
 ---
 
-## Decision 14: `feats` column not backfilled on existing kaikki.org rows
+## Decision 14: `feats` column not backfilled on existing kaikki.org rows — REVERSED 2026-05-07k
 
-**Date:** 2026-05-06
+**Date:** 2026-05-06 · **Reversed:** 2026-05-07 (PR #139)
 
 ### Context
 
@@ -197,12 +197,12 @@ When the `feats` column was added to `forms` (Phase 1 schema delta), an
 implicit question was whether to retroactively populate it on existing
 kaikki.org-sourced rows.
 
-### Decision
+### Original decision (2026-05-06)
 
 Leave `feats=NULL` on existing kaikki.org form rows. Voikko-generated /
 FST-derived rows fill in features at higher priority going forward.
 
-### Reasoning
+### Original reasoning
 
 kaikki.org form rows don't carry UD-style FEATS in the source data, and
 mining them post-hoc from the surface/lemma pair is exactly what the FST
@@ -210,6 +210,26 @@ does at runtime. Backfilling synthetically would create a second,
 lower-quality FEATS source competing with the FST output. Cleaner to
 keep kaikki.org rows feature-less and let higher-priority sources
 contribute FEATS.
+
+### Reversal (2026-05-07k)
+
+The original reasoning was wrong: kaikki form rows DO carry the
+morphology, just not in UD-FEATS shape. Each `forms[]` entry has a
+`Tags []string` field with exactly the lowercase English vocabulary
+that maps deterministically to UD FEATS — `["illative","singular"]`
+→ `Case=Ill|Number=Sing`. PR [#139](https://github.com/sagarinbabel/finnestdb/pull/139) implements this projection in
+`cmd/importdict/feats.go::kaikkiTagsToFeats`, covering Case (15 entries),
+Number, Person, Tense, Mood, Voice, VerbForm, Degree, Reflex (lexical-static),
+PronType. The translation is lossless — we're not synthesising FEATS we
+can't defend; we're reading the same morphological annotation from a
+different field of the same source.
+
+The "competing FEATS source" concern is also resolved by the precedence
+already in place: dict-layer FEATS yield to FST-layer FEATS via
+`enrichResolutionWithFST` when the FST has a richer analysis, and
+`featsFromFSTAnalysis` always wins when both fire. So kaikki-derived
+FEATS act as the floor (better than NULL) without competing with the
+FST ceiling.
 
 ---
 
@@ -560,7 +580,12 @@ Two near-term exceptions are in scope:
    (`attachCaseLabelIfStemMatches` in `internal/store/dict.go`). Lifts grammar
    accuracy off zero on tokens whose stem doesn't change under inflection.
    Explicitly stopgap; removed once production generated tables emit FEATS
-   for direct hits.
+   for direct hits. **Updated 2026-05-07k**: the stopgap path now also
+   projects UD FEATS via `featsFromCaseLabel` (a small map lookup against
+   `pkg/lemmatizer-fi-et/udfeats::LegacyLabelToUDCase`). The `Case=` it
+   emits is the only attribute it can safely commit to from a stripped
+   suffix; Number/Tense/Mood/Person stay empty. The suffix table itself
+   is unchanged — the addition is a projection on top, not an extension.
 2. **Bug fixes** to existing entries if a wrong label is being attached.
 
 ### Reasoning
@@ -993,3 +1018,4 @@ _Questions are date-tagged with the date they were first recorded._
 | 2026-05-07 | Decision 17 added: ESTONIAN_LEXICAL_PLAN consolidated into `docs/LEXICAL_PLAN.md` (PR #135) |
 | 2026-05-07 | Decision 18 added: IMPLEMENTATION.md split into PARSER_FEEDBACK_LOOP.md + README sections (PR #135) |
 | 2026-05-07 | Document reordered latest-first; roadmap moved to TODO.md (preserved here as historical) |
+| 2026-05-07 | Decision 5 amended (PR #139): case-suffix stopgap also projects UD `Case=` into `forms.feats` via `featsFromCaseLabel`; suffix table itself stays frozen. **Decision 14 (kaikki `feats` not backfilled) reversed**: `cmd/importdict/feats.go::kaikkiTagsToFeats` now projects Wiktionary tag arrays into UD FEATS at import time, populating `forms.feats` for every kaikki row |

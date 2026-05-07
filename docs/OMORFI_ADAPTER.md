@@ -36,7 +36,12 @@ FinEstDB expects the same shape returned by the Rust FFI parser:
           "form": "kirjassani",
           "lemma": "kirja",
           "pos": "NOUN",
-          "feats": {},
+          "feats": {
+            "Case": "Ine",
+            "Number": "Sing",
+            "Number[psor]": "Sing",
+            "Person[psor]": "1"
+          },
           "grammar_label": "inessive",
           "mwe_id": null
         }
@@ -45,6 +50,15 @@ FinEstDB expects the same shape returned by the Rust FFI parser:
   ]
 }
 ```
+
+The `feats` object holds UD FEATS as key/value pairs; `parsecore.featsFromJSON`
+sorts and joins them into the canonical `Case=Ine|Number=Sing|...` string used by
+`internal/eval` and the rest of the pipeline. The omorfi adapter at
+[`scripts/omorfi_adapter_example.py`](../scripts/omorfi_adapter_example.py)
+populates this from `analysis.get_ufeats()`; the parallel EstNLTK adapter at
+[`scripts/estnltk_adapter_example.py`](../scripts/estnltk_adapter_example.py)
+runs Vabamorf form codes through [`scripts/_vabamorf_feats.py`](../scripts/_vabamorf_feats.py)
+to produce the same shape.
 
 Omorfi's own CLI/API formats are not identical to this, so the adapter is the
 normalization layer.

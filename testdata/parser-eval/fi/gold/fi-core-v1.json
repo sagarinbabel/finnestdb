@@ -10,18 +10,21 @@
         {
           "surface": "Pankkiin",
           "lemma": "pankki",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Ill|Number=Sing"
         },
         {
           "surface": "menin",
           "lemma": "mennä",
-          "pos": "VERB"
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=1|Tense=Past|VerbForm=Fin|Voice=Act"
         },
         {
           "surface": "aamulla",
           "lemma": "aamu",
           "pos": "NOUN",
-          "grammar_label": "adessive"
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
         }
       ]
     },
@@ -32,30 +35,35 @@
         {
           "surface": "Minä",
           "lemma": "minä",
-          "pos": "PRON"
+          "pos": "PRON",
+          "feats": "Case=Ess|PronType=Ind"
         },
         {
           "surface": "luin",
           "lemma": "lukea",
-          "pos": "VERB"
+          "pos": "VERB",
+          "feats": "Case=Ins|Number=Plur"
         },
         {
           "surface": "kirjassani",
           "lemma": "kirja",
           "pos": "NOUN",
-          "grammar_label": "inessive"
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing|Number[psor]=Sing|Person[psor]=1"
         },
         {
           "surface": "uudesta",
           "lemma": "uusi",
           "pos": "ADJ",
-          "grammar_label": "elative"
+          "grammar_label": "elative",
+          "feats": "Case=Ela|Degree=Pos|Number=Sing"
         },
         {
           "surface": "pankkiautomaatista",
           "lemma": "pankkiautomaatti",
           "pos": "NOUN",
-          "grammar_label": "elative"
+          "grammar_label": "elative",
+          "feats": "Case=Ela|Number=Sing"
         }
       ]
     },
@@ -66,25 +74,29 @@
         {
           "surface": "Kuopion",
           "lemma": "Kuopio",
-          "pos": "PROPN"
+          "pos": "PROPN",
+          "feats": "Number=Sing|Person=1|Style=Arch|VerbForm=Fin|Voice=Act"
         },
         {
           "surface": "kaupunkiin",
           "lemma": "kaupunki",
           "pos": "NOUN",
-          "grammar_label": "illative"
+          "grammar_label": "illative",
+          "feats": "Case=Ill|Number=Sing"
         },
         {
           "surface": "vuoden",
           "lemma": "vuosi",
           "pos": "NOUN",
-          "grammar_label": "genitive"
+          "grammar_label": "genitive",
+          "feats": "Case=Gen|Number=Sing"
         },
         {
           "surface": "alussa",
           "lemma": "alku",
           "pos": "NOUN",
-          "grammar_label": "inessive"
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
         }
       ]
     },
@@ -96,17 +108,20 @@
           "surface": "Kirjassa",
           "lemma": "kirja",
           "pos": "NOUN",
-          "grammar_label": "inessive"
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
         },
         {
           "surface": "uusi",
           "lemma": "uusi",
-          "pos": "ADJ"
+          "pos": "ADJ",
+          "feats": "Case=Nom|Degree=Pos|Number=Sing"
         },
         {
           "surface": "sana",
           "lemma": "sana",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Nom|Number=Sing"
         }
       ]
     },
@@ -118,12 +133,14 @@
           "surface": "Talossa",
           "lemma": "talo",
           "pos": "NOUN",
-          "grammar_label": "inessive"
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
         },
         {
           "surface": "valo",
           "lemma": "valo",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Nom|Number=Sing"
         }
       ]
     },
@@ -135,17 +152,20 @@
           "surface": "Pankkiautomaatista",
           "lemma": "pankkiautomaatti",
           "pos": "NOUN",
-          "grammar_label": "elative"
+          "grammar_label": "elative",
+          "feats": "Case=Ela|Number=Sing"
         },
         {
           "surface": "löytyi",
           "lemma": "löytyä",
-          "pos": "VERB"
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act"
         },
         {
           "surface": "kuitti",
           "lemma": "kuitti",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Nom|Degree=Pos|Number=Sing"
         }
       ]
     }
