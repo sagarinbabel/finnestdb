@@ -114,6 +114,9 @@ func TestParse_Adjective(t *testing.T) {
 	if a.GrammarLabel != "partitive" {
 		t.Errorf("grammar_label=%q want partitive", a.GrammarLabel)
 	}
+	if a.Degree != "Pos" {
+		t.Errorf("degree=%q want Pos (unmarked adjective = positive)", a.Degree)
+	}
 }
 
 func TestParse_DegreeComparative(t *testing.T) {
@@ -293,6 +296,11 @@ func TestParse_FeatsComposition(t *testing.T) {
 			"connegative verb",
 			"[Lt][Xp]puhua[X]puhu[Tt][Cn]",
 			"Connegative=Yes|Mood=Ind|VerbForm=Fin",
+		},
+		{
+			"positive adjective (unmarked degree)",
+			"[Ll][Xp]hyvä[X]hyvä[Sp][Ny]ä",
+			"Case=Par|Degree=Pos|Number=Sing",
 		},
 	}
 	for _, tc := range cases {

@@ -148,6 +148,9 @@ func Parse(fstOutput string) Analysis {
 	}
 
 	a.Lemma = lemmaBuilder.String()
+	if a.UPOS == "ADJ" && a.Degree == "" {
+		a.Degree = "Pos"
+	}
 	a.Feats = composeFeats(&a)
 	return a
 }
