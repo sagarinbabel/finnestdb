@@ -8,6 +8,7 @@ import (
 
 	"finnestdb/internal/parserules"
 	lemmatizer "finnestdb/pkg/lemmatizer-fi-et"
+	"finnestdb/pkg/lemmatizer-fi-et/udfeats"
 )
 
 // FormResolution holds the result of resolving a surface form to its canonical
@@ -478,93 +479,43 @@ func formResolutionFromFSTAnalysis(a lemmatizer.Analysis, source string) FormRes
 }
 
 func featsFromFSTAnalysis(a lemmatizer.Analysis) string {
-	pairs := make([]string, 0, 5)
-	if udCase, ok := legacyLabelToUDCase[a.GrammarLabel]; ok {
-		pairs = append(pairs, "Case="+udCase)
+	// Prefer the FEATS string the analyzer baked in at Parse() time.
+	// Falls through for legacy table files that pre-date the Feats field.
+	if a.Feats != "" {
+		return a.Feats
 	}
-	if a.Number != "" {
-		pairs = append(pairs, "Number="+a.Number)
+	return udfeats.Compose(a.GrammarLabel, a.Number, a.Tense, a.Mood, a.Person)
+}
+
+// featsFromCaseLabel projects a lowercase English case name (the
+// grammar_label vocabulary) into a minimal UD FEATS string. Used by the
+// case-suffix stripping path so a token resolved purely from suffix
+// removal still carries Case= in its FEATS — without this, the FEATS
+// comparison silently scores those tokens as missing.
+//
+// Returns "" for "" / "nominative" (Nom is implicit per UD convention)
+// or for unknown labels. Number= is deliberately NOT projected here:
+// a stripped suffix ("ssa" → inessive) doesn't disambiguate Sing vs
+// Plur. The dict layer doesn't claim what the suffix can't tell us.
+func featsFromCaseLabel(label string) string {
+	if label == "" {
+		return ""
 	}
-	if a.Mood != "" {
-		pairs = append(pairs, "Mood="+a.Mood)
+	udCase, ok := udfeats.LegacyLabelToUDCase[label]
+	if !ok || udCase == "Nom" {
+		return ""
 	}
-	if a.Tense != "" {
-		pairs = append(pairs, "Tense="+a.Tense)
-	}
-	if a.Person != "" {
-		pairs = append(pairs, "Person="+a.Person)
-	}
-	sort.Strings(pairs)
-	return strings.Join(pairs, "|")
+	return "Case=" + udCase
 }
 
 // caseFromFeats extracts the Case= attribute from a UD FEATS string and
 // returns the lowercase English case name used by our existing
 // grammar_label vocabulary. Returns "" when FEATS has no Case= attribute
 // or when the value is Nominative (left implicit per existing convention,
-// matching cmd/importud/main.go).
+// matching cmd/importud/main.go). Thin alias for udfeats.CaseFromFeats —
+// retained at this name because it's the dict layer's vocabulary anchor.
 func caseFromFeats(feats string) string {
-	if feats == "" {
-		return ""
-	}
-	for _, pair := range strings.Split(feats, "|") {
-		eq := strings.Index(pair, "=")
-		if eq < 0 || pair[:eq] != "Case" {
-			continue
-		}
-		val := pair[eq+1:]
-		if val == "Nom" {
-			return "" // nominative implicit
-		}
-		if label, ok := udCaseToLegacyLabel[val]; ok {
-			return label
-		}
-		return ""
-	}
-	return ""
-}
-
-// udCaseToLegacyLabel maps UD Case= values to the lowercase English case
-// names used in our existing gold sets and grammar_label vocabulary.
-// Mirrors cmd/importud/main.go::udCaseToLabel — kept here separately so
-// the dict layer doesn't import a cmd/ package.
-var udCaseToLegacyLabel = map[string]string{
-	"Gen": "genitive",
-	"Par": "partitive",
-	"Ill": "illative",
-	"Ine": "inessive",
-	"Ela": "elative",
-	"All": "allative",
-	"Ade": "adessive",
-	"Abl": "ablative",
-	"Ess": "essive",
-	"Tra": "translative",
-	"Ins": "instructive",
-	"Abe": "abessive",
-	"Com": "comitative",
-	"Ter": "terminative",
-	"Acc": "accusative",
-	"Voc": "vocative",
-}
-
-var legacyLabelToUDCase = map[string]string{
-	"nominative":  "Nom",
-	"genitive":    "Gen",
-	"partitive":   "Par",
-	"illative":    "Ill",
-	"inessive":    "Ine",
-	"elative":     "Ela",
-	"allative":    "All",
-	"adessive":    "Ade",
-	"ablative":    "Abl",
-	"essive":      "Ess",
-	"translative": "Tra",
-	"instructive": "Ins",
-	"abessive":    "Abe",
-	"comitative":  "Com",
-	"terminative": "Ter",
-	"accusative":  "Acc",
-	"vocative":    "Voc",
+	return udfeats.CaseFromFeats(feats)
 }
 
 // pickBestFormCandidate ranks candidates for a surface form. Ranking, higher
@@ -796,7 +747,13 @@ func tryCaseSuffixStrip(stmtLemmas *sql.Stmt, form, lang string, suffixes []pars
 		for _, candidate := range caseSuffixLemmaCandidates(stem, lang) {
 			var lemma, pos string
 			if err := stmtLemmas.QueryRow(candidate, lang).Scan(&lemma, &pos); err == nil {
-				return FormResolution{Lemma: lemma, POS: pos, GrammarLabel: cs.Label, Source: "case_suffix"}, true
+				return FormResolution{
+					Lemma:        lemma,
+					POS:          pos,
+					GrammarLabel: cs.Label,
+					Feats:        featsFromCaseLabel(cs.Label),
+					Source:       "case_suffix",
+				}, true
 			}
 		}
 	}

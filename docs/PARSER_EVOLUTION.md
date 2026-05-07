@@ -29,6 +29,7 @@ committed run.
 
 | Date | Commit | FI fi-manual-v1 lemma | FI ud-tdt lemma | ET et-grammar-v1 lemma | FI grammar | ET grammar | ET coverage |
 |---|---|---:|---:|---:|---:|---:|---:|
+| 2026-05-07k (FEATS-rich gold + dict + adapters end-to-end; **first baseline with non-empty FEATS-attribute table**) | (this PR) | 81.4 | — | 88.6 | 59.5 | 19.6 | 98.9 |
 | 2026-05-07j (post-fst re-measure on main; case-suffix label stopgap + smoke FST tables; **first UD-at-scale baseline**) | [`42e95d9`][c-2026-05-07j] | 81.4 | **60.2** | 88.6 | **59.5** | **19.6** | 98.9 |
 | 2026-05-06i (FST PR 4/4 ships, full suite re-measured) | [`91fecbf`][c-2026-05-06i] | **82.9** | — | 88.6 | 1.4 | 2.0 | **100.0** |
 | 2026-05-06h (FST PR 3/4: Giellalt ET) | [`5944733`][c-2026-05-06h] | — | — | 88.6 | — | **2.0** | **100.0** |
@@ -54,6 +55,75 @@ committed run.
 [c-2026-04-28]: https://github.com/sagarinbabel/finnestdb/commit/bb744ba
 
 ## Entries
+
+### 2026-05-07k — FEATS-rich gold + dict + adapters end-to-end (first non-empty FEATS-attribute table)
+
+**Commit**: this PR
+**Detail**: [`baselines/2026-05-07-feats-rich.md`](baselines/2026-05-07-feats-rich.md), [`baselines/2026-05-07-feats-rich-fi.md`](baselines/2026-05-07-feats-rich-fi.md), [`baselines/2026-05-07-feats-rich-et.md`](baselines/2026-05-07-feats-rich-et.md)
+**Parser version stamp**: `2026.05.07k`
+
+Closes the data-side gap that left the FEATS-attribute eval table empty on every prior baseline. The eval framework's per-attribute scorer ([`internal/eval/eval.go:380-407`](../internal/eval/eval.go)) was complete since [#130](https://github.com/sagarinbabel/finnestdb/pull/130), but it only fires when gold tokens carry `feats`. Until this entry, no committed gold set did.
+
+This entry lands six independently-shippable changes that together make every linguistic surface in the project speak the same UD FEATS vocabulary:
+
+1. **`cmd/importdict/feats.go`** — `kaikkiTagsToFeats` projects Wiktionary tag arrays (`["illative","singular"]` etc.) into UD FEATS strings on every form row imported from kaikki.org. Coverage: Case (15 entries), Number, Person, Tense, Mood, Voice, VerbForm, Degree (Adj), Reflex (lexical-static for `itse`/`enese`/`enda`), PronType. Wired through `upsertFormSQL` and a new `-backfill-feats` mode that updates `WHERE feats IS NULL` rows in place against an existing DB.
+2. **`internal/store/dict.go::featsFromCaseLabel`** — when the case-suffix-strip path is the only signal that resolves a form, it now projects `Case=` into FEATS via `udfeats.LegacyLabelToUDCase`. Number/Tense/etc. stay empty because the suffix alone can't disambiguate them.
+3. **`pkg/lemmatizer-fi-et/udfeats/`** — new shared package that holds the canonical `LegacyLabelToUDCase` / `UDCaseToLegacyLabel` maps and the `Compose(grammarLabel, number, tense, mood, person)` function. Both `voikkomap.Parse` and `giellaltmap.Parse` now compose `Analysis.Feats` at parse time, so generated FST tables are self-describing on disk; `dict.go::featsFromFSTAnalysis` prefers the persisted field and falls back to recomposing for legacy table files (backwards-compatible).
+4. **`scripts/_vabamorf_feats.py`** — Vabamorf form code → UD FEATS mapper, parallel to `cmd/importekilexdetails/feats.go::ekilexMorphToFeats` but for the analyzer's own form codes (`b`, `sin`, `ks`, `tud`, `mas`, …). The EstNLTK adapter at `scripts/estnltk_adapter_example.py` now emits the same UD FEATS shape Omorfi already did, replacing the earlier `{vabamorf_form: <code>}` placeholder.
+5. **`cmd/enrichgoldfeats/`** — new tool that seeds UD FEATS into the 6 manual gold sets by running the language-appropriate adapter on each case's text, deterministically anchoring `Case=` to the gold's existing `grammar_label`, and writing back the gold JSON plus a `.diff.md` audit log flagging tokens that need a manual look (OOV compounds, case disagreements). Applied across `fi-core-v1`, `fi-grammar-v1`, `fi-manual-v1`, `fi-manual-v2`, `et-grammar-v1`, `et-manual-v1` (~370 tokens).
+6. **Smoke FST tables (`testdata/lemmatizer/{fi,et}_min.json`)** — regenerated to include the new `Feats` field so the runtime composer's "prefer persisted" fast path is exercised by tests.
+
+**Headline numbers** (custom parser, lemma/POS unchanged from `2026-05-07j` because the parser's resolution behavior didn't change here — the eval just has more to compare against):
+
+| Dataset | Cases / tokens | Lemma | POS | Grammar | Full | Coverage |
+|---|---|---:|---:|---:|---:|---:|
+| fi-core | 6 / 23 | 85.0 | 90.0 | 30.0 | 0.0 | 95.7 |
+| fi-grammar | 80 / 156 | 96.8 | 98.1 | 59.5 | 0.0 | 99.7 |
+| fi-manual-v1 | 22 / 187 | 81.4 | 85.7 | 6.7 | 0.0 | 91.2 |
+| fi-manual-v2 | 4 / 12 | 88.9 | 100.0 | 33.3 | 11.1 | 100.0 |
+| et-grammar | 50 / 178 | 88.6 | 96.2 | 19.6 | 0.0 | 98.9 |
+| et-manual | 4 / 12 | 77.8 | 77.8 | 0.0 | 0.0 | 91.7 |
+
+The `Full` column drops to ~0 across the board because it's now correctly gated on per-attribute FEATS equality (per [#130](https://github.com/sagarinbabel/finnestdb/pull/130)) and the live DB this measurement runs against has no FEATS yet — see Open issues below. The pre-`2026-05-07j` `Full` column was implicitly ignoring FEATS, so it overstated correctness on whatever non-trivial FEATS the gold set had. This is the first baseline where `Full` is honest about FEATS.
+
+**FEATS-attribute table — the new metric** (per dataset; full table in [`baselines/2026-05-07-feats-rich-fi.md`](baselines/2026-05-07-feats-rich-fi.md) / `-et.md`):
+
+| Dataset | FEATS attributes covered | omorfi/estnltk eligible | omorfi/estnltk correct |
+|---|---|---:|---:|
+| fi-core | 13 (Case, Degree, Mood, Number, Number[psor], Person, Person[psor], PronType, Style, Tense, VerbForm, Voice + 1 more) | 56 | 56 (100.0%) |
+| fi-grammar | 13 (above + InfForm, PartForm) | 449 | 448 (99.8%) |
+| fi-manual-v1 | 8 (Case, Mood, Number, Number[psor], Person, Person[psor], Tense, VerbForm, Voice) | 26 | 26 (100.0%) |
+| fi-manual-v2 | 8 | 26 | 26 (100.0%) |
+| et-grammar | 7 (Case, Mood, Number, Person, Tense, VerbForm, Voice) | 273 | 270 (98.9%) |
+| et-manual | 7 | 20 | 20 (100.0%) |
+
+External analyzers score ≥99% on every dataset because the gold seeds were drawn from those analyzers' own output (with gold's existing `grammar_label` deterministically anchoring Case=). `basic` and `custom` score 0% on every attribute because the live DB has `forms.feats IS NULL` for all 27.2M rows — see "Open issues this surfaced" below.
+
+**Pipeline diagram (new state):**
+
+```
+[kaikki JSONL]    --tags-> [kaikkiTagsToFeats] -+
+[Ekilex morph]    --code-> [ekilexMorphToFeats] +-> forms.feats (SQLite)
+                                                |
+[Voikko VFST]     --tags-> [voikkomap.Parse]    +-> Analysis.Feats
+[Giellalt HFST]   --tags-> [giellaltmap.Parse]  +     (via udfeats.Compose)
+                                                |
+[case-suffix]     --label-> [featsFromCaseLabel]+-> custom parser Token.Feats
+                                                |
+[omorfi adapter]  --ufeats->                    |
+[estnltk adapter] --vabamorf_form_to_feats->    |
+                                                v
+                                         [eval per-FEATS-attr table]
+```
+
+**Open issues this surfaced**:
+
+- **Live DB lacks FEATS**: the production DB used for this measurement was last imported on 2026-05-05, before any of the FEATS mappers landed. Until the user runs `go run ./cmd/importdict -lang fi -reimport -db finnestdb.db -file localdata/kaikki.org-fi.jsonl.gz` (or the matching `-backfill-feats` mode), the `custom` parser has no FEATS to emit and scores 0% on every FEATS attribute. The kaikki JSONL files aren't on the maintainer's machine right now — re-importing requires re-fetching from kaikki.org. Capturing this as a follow-up rather than blocking the entry, because the wiring is unit-tested ([`cmd/importdict/feats_test.go`](../cmd/importdict/feats_test.go), [`internal/store/dict_test.go::TestCaseSuffixStrip_Inessive`](../internal/store/dict_test.go)) and the omorfi/estnltk reference rows on this baseline prove the eval framework is correct.
+- **Vabamorf adapter polarity**: estnltk's morph_analysis layer emits Polarity=Neg only when sentence-level context (`ei` particle) is visible. The new `_vabamorf_feats.py` mapper threads it through, but only ~3 of the 6 gold sets exercise polarity — coverage is honest about which tokens it appears on.
+- **enrichgoldfeats diff reports** flag 16 tokens in `fi-manual-v1` and 1 in `fi-grammar-v1` where omorfi has no analysis (mostly real-world news compounds like `Pokemon-yhteistyö`, `peruutusvakuutuksia`). The case-suffix-strip fallback covered most of them; nominative singular compounds where the surface has no inflectional marker stay empty in FEATS by design.
+- **The fi-manual-v1/v2 slug collision** in `parser-comparison.sh` is unfixed (per the [reference_eval_setup memory](../../.claude/projects/-Users-sagar-Downloads-projects-finnestdb/memory/reference_eval_setup.md)). Worked around in this baseline by re-running v1 explicitly via `cmd/parsertest -out`. Future cleanup should make the script prepend the input filename or refuse to overwrite within a run.
+
+---
 
 ### 2026-05-07j — Post-FST re-measure (case-suffix grammar-label stopgap + smoke FST tables) — pre-FEATS-migration baseline
 

@@ -43,9 +43,18 @@ Current parse flow:
 1. validate language and text length (`300,000` Unicode characters)
 2. call the Rust parser
 3. collect unique surface forms
-4. resolve forms against the dictionary
+4. resolve forms against the dictionary (lemma + POS + UD FEATS where the source carries them)
 5. enrich output with glosses, example sentence, and grammar labels
 6. return parser results plus parse duration and parse-stage stats
+
+UD FEATS are produced by every layer that has the morphological information:
+
+- `cmd/importdict/feats.go::kaikkiTagsToFeats` translates kaikki Wiktionary tag arrays into FEATS at import time, populating `forms.feats` in SQLite
+- `cmd/importekilexdetails/feats.go::ekilexMorphToFeats` does the same for Ekilex morph_codes (ET)
+- `pkg/lemmatizer-fi-et/udfeats::Compose` is the canonical composer used by `voikkomap.Parse` and `giellaltmap.Parse`; FST analyses arrive at the parser already carrying `Feats`
+- `internal/store/dict.go::featsFromCaseLabel` projects `Case=` into FEATS for the case-suffix-strip fallback so even that path emits FEATS
+
+The parser layer doesn't need to reach into multiple sources — every resolution path returns a `FormResolution` with `Feats` already populated where possible.
 
 Current parse stats returned by `parsecore` and `/api/parse` include:
 

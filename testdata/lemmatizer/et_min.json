@@ -1,25 +1,14 @@
 {
-  "maja": [
+  "kooli": [
     {
-      "Lemma": "maja",
+      "Lemma": "kool",
       "UPOS": "NOUN",
       "GrammarLabel": "",
       "Number": "Sing",
       "Tense": "",
       "Mood": "",
       "Person": "",
-      "Raw": "generated-table"
-    }
-  ],
-  "majas": [
-    {
-      "Lemma": "maja",
-      "UPOS": "NOUN",
-      "GrammarLabel": "",
-      "Number": "Sing",
-      "Tense": "",
-      "Mood": "",
-      "Person": "",
+      "Feats": "Number=Sing",
       "Raw": "generated-table"
     }
   ],
@@ -32,18 +21,33 @@
       "Tense": "",
       "Mood": "",
       "Person": "",
+      "Feats": "Number=Sing",
       "Raw": "generated-table"
     }
   ],
-  "kooli": [
+  "maja": [
     {
-      "Lemma": "kool",
+      "Lemma": "maja",
       "UPOS": "NOUN",
       "GrammarLabel": "",
       "Number": "Sing",
       "Tense": "",
       "Mood": "",
       "Person": "",
+      "Feats": "Number=Sing",
+      "Raw": "generated-table"
+    }
+  ],
+  "majas": [
+    {
+      "Lemma": "maja",
+      "UPOS": "NOUN",
+      "GrammarLabel": "",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Feats": "Number=Sing",
       "Raw": "generated-table"
     }
   ],
@@ -56,6 +60,7 @@
       "Tense": "Past",
       "Mood": "Ind",
       "Person": "3",
+      "Feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past",
       "Raw": "generated-table"
     }
   ],
@@ -68,6 +73,7 @@
       "Tense": "Pres",
       "Mood": "Ind",
       "Person": "1",
+      "Feats": "Mood=Ind|Number=Sing|Person=1|Tense=Pres",
       "Raw": "generated-table"
     }
   ],
@@ -80,8 +86,8 @@
       "Tense": "Past",
       "Mood": "Ind",
       "Person": "1",
+      "Feats": "Mood=Ind|Number=Sing|Person=1|Tense=Past",
       "Raw": "generated-table"
     }
   ]
 }
-

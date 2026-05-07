@@ -319,6 +319,23 @@ setup-estnltk:
 compare-parsers-et: parser
 	@bash scripts/parser-comparison-et.sh
 
+# ── Manual gold UD FEATS enrichment ──────────────────────────────────────────
+#
+# Seeds UD FEATS into the manual gold sets by running omorfi (FI) and estnltk
+# (ET) on each case's text and overlaying per-token FEATS, then deterministically
+# anchoring Case= to the gold's existing grammar_label. Updates the gold
+# JSONs in place and writes a `.diff.md` next to each file flagging tokens
+# that need a manual look (OOV compounds, case disagreements).
+#
+# Re-runnable: existing FEATS are overwritten, so this is the single source
+# of truth for refreshing FEATS after improvements to the adapters or maps.
+#
+# Requires both venvs: `make setup-omorfi setup-estnltk` first.
+
+enrich-gold-feats: parser
+	@FINNESTDB_OMORFI_CMD="$$(pwd)/.venv-omorfi/bin/python $$(pwd)/scripts/omorfi_adapter_example.py" \
+	    go run ./cmd/enrichgoldfeats -all
+
 # ── UD treebank gold-set ingest (Plan C / PR 1) ──────────────────────────────
 #
 # Clone Universal Dependencies treebanks and project them into our parser-eval

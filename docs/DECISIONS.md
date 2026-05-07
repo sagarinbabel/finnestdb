@@ -363,7 +363,12 @@ Two near-term exceptions are in scope:
    (`attachCaseLabelIfStemMatches` in `internal/store/dict.go`). Lifts grammar
    accuracy off zero on tokens whose stem doesn't change under inflection.
    Explicitly stopgap; removed once production generated tables emit FEATS
-   for direct hits.
+   for direct hits. **Updated 2026-05-07k**: the stopgap path now also
+   projects UD FEATS via `featsFromCaseLabel` (a small map lookup against
+   `pkg/lemmatizer-fi-et/udfeats::LegacyLabelToUDCase`). The `Case=` it
+   emits is the only attribute it can safely commit to from a stripped
+   suffix; Number/Tense/Mood/Person stay empty. The suffix table itself
+   is unchanged — the addition is a projection on top, not an extension.
 2. **Bug fixes** to existing entries if a wrong label is being attached.
 
 ### Reasoning
@@ -534,3 +539,4 @@ trace in
 | 2026-04-30 | Recorded parse-feedback persistence amendment: alpha ships authenticated parse-session storage as Option A |
 | 2026-05-06 | Decision 5 added: freeze the case-suffix table; further morphology work goes into generated morphology tables under `pkg/lemmatizer-fi-et/tables/` |
 | 2026-05-06 | Decision 6 added: numeric-hyphen tokenization (R1–R4) lives in the shared Rust tokenizer, no per-language rule tables |
+| 2026-05-07 | Decision 5 amended: case-suffix stopgap now also projects UD `Case=` into `forms.feats` via `featsFromCaseLabel`; suffix table itself stays frozen |

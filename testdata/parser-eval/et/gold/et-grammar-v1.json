@@ -3,311 +3,986 @@
   "version": "v1",
   "language": "ET",
   "cases": [
-
-    { "id": "et-0001", "text": "Koer on toas.",
+    {
+      "id": "et-0001",
+      "text": "Koer on toas.",
       "tokens": [
-        { "surface": "Koer", "lemma": "koer", "pos": "NOUN" },
-        { "surface": "toas", "lemma": "tuba", "pos": "NOUN", "grammar_label": "inessive" }
-      ] },
-
-    { "id": "et-0002", "text": "Naabri koer haukus valjult.",
+        {
+          "surface": "Koer",
+          "lemma": "koer",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "toas",
+          "lemma": "tuba",
+          "pos": "NOUN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0002",
+      "text": "Naabri koer haukus valjult.",
       "tokens": [
-        { "surface": "Naabri", "lemma": "naaber", "pos": "NOUN", "grammar_label": "genitive" },
-        { "surface": "koer", "lemma": "koer", "pos": "NOUN" }
-      ] },
-
-    { "id": "et-0003", "text": "Joon hommikul kohvi.",
+        {
+          "surface": "Naabri",
+          "lemma": "naaber",
+          "pos": "NOUN",
+          "grammar_label": "genitive",
+          "feats": "Case=Gen|Number=Sing"
+        },
+        {
+          "surface": "koer",
+          "lemma": "koer",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0003",
+      "text": "Joon hommikul kohvi.",
       "tokens": [
-        { "surface": "kohvi", "lemma": "kohv", "pos": "NOUN", "grammar_label": "partitive" },
-        { "surface": "hommikul", "lemma": "hommik", "pos": "NOUN", "grammar_label": "adessive" }
-      ] },
-
-    { "id": "et-0004", "text": "Elan suures linnas.",
+        {
+          "surface": "kohvi",
+          "lemma": "kohv",
+          "pos": "NOUN",
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing"
+        },
+        {
+          "surface": "hommikul",
+          "lemma": "hommik",
+          "pos": "NOUN",
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0004",
+      "text": "Elan suures linnas.",
       "tokens": [
-        { "surface": "Elan", "lemma": "elama", "pos": "VERB" },
-        { "surface": "linnas", "lemma": "linn", "pos": "NOUN", "grammar_label": "inessive" }
-      ] },
-
-    { "id": "et-0005", "text": "Tulen kodust välja.",
+        {
+          "surface": "Elan",
+          "lemma": "elama",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=1|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "linnas",
+          "lemma": "linn",
+          "pos": "NOUN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0005",
+      "text": "Tulen kodust välja.",
       "tokens": [
-        { "surface": "kodust", "lemma": "kodu", "pos": "NOUN", "grammar_label": "elative" }
-      ] },
-
-    { "id": "et-0006", "text": "Lähen majja sisse.",
+        {
+          "surface": "kodust",
+          "lemma": "kodu",
+          "pos": "NOUN",
+          "grammar_label": "elative",
+          "feats": "Case=Ela|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0006",
+      "text": "Lähen majja sisse.",
       "tokens": [
-        { "surface": "Lähen", "lemma": "minema", "pos": "VERB" },
-        { "surface": "majja", "lemma": "maja", "pos": "NOUN", "grammar_label": "illative" }
-      ] },
-
-    { "id": "et-0007", "text": "Kass magab toolil.",
+        {
+          "surface": "Lähen",
+          "lemma": "minema",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=1|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "majja",
+          "lemma": "maja",
+          "pos": "NOUN",
+          "grammar_label": "illative",
+          "feats": "Case=Ill"
+        }
+      ]
+    },
+    {
+      "id": "et-0007",
+      "text": "Kass magab toolil.",
       "tokens": [
-        { "surface": "Kass", "lemma": "kass", "pos": "NOUN" },
-        { "surface": "magab", "lemma": "magama", "pos": "VERB" },
-        { "surface": "toolil", "lemma": "tool", "pos": "NOUN", "grammar_label": "adessive" }
-      ] },
-
-    { "id": "et-0008", "text": "Võtsin raamatu riiulilt.",
+        {
+          "surface": "Kass",
+          "lemma": "kass",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "magab",
+          "lemma": "magama",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "toolil",
+          "lemma": "tool",
+          "pos": "NOUN",
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0008",
+      "text": "Võtsin raamatu riiulilt.",
       "tokens": [
-        { "surface": "raamatu", "lemma": "raamat", "pos": "NOUN", "grammar_label": "genitive" },
-        { "surface": "riiulilt", "lemma": "riiul", "pos": "NOUN", "grammar_label": "ablative" }
-      ] },
-
-    { "id": "et-0009", "text": "Andsin kingituse sõbrale.",
+        {
+          "surface": "raamatu",
+          "lemma": "raamat",
+          "pos": "NOUN",
+          "grammar_label": "genitive",
+          "feats": "Case=Gen|Number=Sing"
+        },
+        {
+          "surface": "riiulilt",
+          "lemma": "riiul",
+          "pos": "NOUN",
+          "grammar_label": "ablative",
+          "feats": "Case=Abl|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0009",
+      "text": "Andsin kingituse sõbrale.",
       "tokens": [
-        { "surface": "kingituse", "lemma": "kingitus", "pos": "NOUN", "grammar_label": "genitive" },
-        { "surface": "sõbrale", "lemma": "sõber", "pos": "NOUN", "grammar_label": "allative" }
-      ] },
-
-    { "id": "et-0010", "text": "Ta töötab õpetajana.",
+        {
+          "surface": "kingituse",
+          "lemma": "kingitus",
+          "pos": "NOUN",
+          "grammar_label": "genitive",
+          "feats": "Case=Gen|Number=Sing"
+        },
+        {
+          "surface": "sõbrale",
+          "lemma": "sõber",
+          "pos": "NOUN",
+          "grammar_label": "allative",
+          "feats": "Case=All|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0010",
+      "text": "Ta töötab õpetajana.",
       "tokens": [
-        { "surface": "õpetajana", "lemma": "õpetaja", "pos": "NOUN", "grammar_label": "essive" }
-      ] },
-
-    { "id": "et-0011", "text": "Tahan saada arstiks.",
+        {
+          "surface": "õpetajana",
+          "lemma": "õpetaja",
+          "pos": "NOUN",
+          "grammar_label": "essive",
+          "feats": "Case=Ess|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0011",
+      "text": "Tahan saada arstiks.",
       "tokens": [
-        { "surface": "arstiks", "lemma": "arst", "pos": "NOUN", "grammar_label": "translative" }
-      ] },
-
-    { "id": "et-0012", "text": "Laps istub diivanil.",
+        {
+          "surface": "arstiks",
+          "lemma": "arst",
+          "pos": "NOUN",
+          "grammar_label": "translative",
+          "feats": "Case=Tra|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0012",
+      "text": "Laps istub diivanil.",
       "tokens": [
-        { "surface": "Laps", "lemma": "laps", "pos": "NOUN" },
-        { "surface": "diivanil", "lemma": "diivan", "pos": "NOUN", "grammar_label": "adessive" }
-      ] },
-
-    { "id": "et-0013", "text": "Auto aken läks katki.",
+        {
+          "surface": "Laps",
+          "lemma": "laps",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "diivanil",
+          "lemma": "diivan",
+          "pos": "NOUN",
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0013",
+      "text": "Auto aken läks katki.",
       "tokens": [
-        { "surface": "Auto", "lemma": "auto", "pos": "NOUN", "grammar_label": "genitive" },
-        { "surface": "aken", "lemma": "aken", "pos": "NOUN" }
-      ] },
-
-    { "id": "et-0014", "text": "Sõin õuna aias.",
+        {
+          "surface": "Auto",
+          "lemma": "auto",
+          "pos": "NOUN",
+          "grammar_label": "genitive",
+          "feats": "Case=Gen|Number=Sing"
+        },
+        {
+          "surface": "aken",
+          "lemma": "aken",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0014",
+      "text": "Sõin õuna aias.",
       "tokens": [
-        { "surface": "Sõin", "lemma": "sööma", "pos": "VERB" },
-        { "surface": "õuna", "lemma": "õun", "pos": "NOUN", "grammar_label": "partitive" },
-        { "surface": "aias", "lemma": "aed", "pos": "NOUN", "grammar_label": "inessive" }
-      ] },
-
-    { "id": "et-0015", "text": "Vesi voolab jões.",
+        {
+          "surface": "Sõin",
+          "lemma": "sööma",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=1|Tense=Past|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "õuna",
+          "lemma": "õun",
+          "pos": "NOUN",
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing"
+        },
+        {
+          "surface": "aias",
+          "lemma": "aed",
+          "pos": "NOUN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0015",
+      "text": "Vesi voolab jões.",
       "tokens": [
-        { "surface": "Vesi", "lemma": "vesi", "pos": "NOUN" },
-        { "surface": "jões", "lemma": "jõgi", "pos": "NOUN", "grammar_label": "inessive" }
-      ] },
-
-    { "id": "et-0016", "text": "Mina joon teed.",
+        {
+          "surface": "Vesi",
+          "lemma": "vesi",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "jões",
+          "lemma": "jõgi",
+          "pos": "NOUN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0016",
+      "text": "Mina joon teed.",
       "tokens": [
-        { "surface": "joon", "lemma": "jooma", "pos": "VERB" },
-        { "surface": "teed", "lemma": "tee", "pos": "NOUN", "grammar_label": "partitive" }
-      ] },
-
-    { "id": "et-0017", "text": "Ta räägib eesti keelt sujuvalt.",
+        {
+          "surface": "joon",
+          "lemma": "jooma",
+          "pos": "VERB",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "teed",
+          "lemma": "tee",
+          "pos": "NOUN",
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0017",
+      "text": "Ta räägib eesti keelt sujuvalt.",
       "tokens": [
-        { "surface": "räägib", "lemma": "rääkima", "pos": "VERB" },
-        { "surface": "keelt", "lemma": "keel", "pos": "NOUN", "grammar_label": "partitive" }
-      ] },
-
-    { "id": "et-0018", "text": "Nad lähevad koolis koos.",
+        {
+          "surface": "räägib",
+          "lemma": "rääkima",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "keelt",
+          "lemma": "keel",
+          "pos": "NOUN",
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0018",
+      "text": "Nad lähevad koolis koos.",
       "tokens": [
-        { "surface": "lähevad", "lemma": "minema", "pos": "VERB" },
-        { "surface": "koolis", "lemma": "kool", "pos": "NOUN", "grammar_label": "inessive" }
-      ] },
-
-    { "id": "et-0019", "text": "Laps naeris valjusti.",
+        {
+          "surface": "lähevad",
+          "lemma": "minema",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Plur|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "koolis",
+          "lemma": "kool",
+          "pos": "NOUN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0019",
+      "text": "Laps naeris valjusti.",
       "tokens": [
-        { "surface": "naeris", "lemma": "naerma", "pos": "VERB" }
-      ] },
-
-    { "id": "et-0020", "text": "Nad lugesid raamatut õhtul.",
+        {
+          "surface": "naeris",
+          "lemma": "naerma",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act"
+        }
+      ]
+    },
+    {
+      "id": "et-0020",
+      "text": "Nad lugesid raamatut õhtul.",
       "tokens": [
-        { "surface": "lugesid", "lemma": "lugema", "pos": "VERB" },
-        { "surface": "raamatut", "lemma": "raamat", "pos": "NOUN", "grammar_label": "partitive" },
-        { "surface": "õhtul", "lemma": "õhtu", "pos": "NOUN", "grammar_label": "adessive" }
-      ] },
-
-    { "id": "et-0021", "text": "Sööksin õuna, kui mul see oleks.",
+        {
+          "surface": "lugesid",
+          "lemma": "lugema",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=2|Tense=Past|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "raamatut",
+          "lemma": "raamat",
+          "pos": "NOUN",
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing"
+        },
+        {
+          "surface": "õhtul",
+          "lemma": "õhtu",
+          "pos": "NOUN",
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0021",
+      "text": "Sööksin õuna, kui mul see oleks.",
       "tokens": [
-        { "surface": "Sööksin", "lemma": "sööma", "pos": "VERB" },
-        { "surface": "õuna", "lemma": "õun", "pos": "NOUN", "grammar_label": "partitive" }
-      ] },
-
-    { "id": "et-0022", "text": "Eestis räägitakse eesti keelt.",
+        {
+          "surface": "Sööksin",
+          "lemma": "sööma",
+          "pos": "VERB",
+          "feats": "Mood=Cnd|Number=Sing|Person=1|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "õuna",
+          "lemma": "õun",
+          "pos": "NOUN",
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0022",
+      "text": "Eestis räägitakse eesti keelt.",
       "tokens": [
-        { "surface": "Eestis", "lemma": "Eesti", "pos": "PROPN", "grammar_label": "inessive" },
-        { "surface": "räägitakse", "lemma": "rääkima", "pos": "VERB" },
-        { "surface": "keelt", "lemma": "keel", "pos": "NOUN", "grammar_label": "partitive" }
-      ] },
-
-    { "id": "et-0023", "text": "Tule siia kohe!",
+        {
+          "surface": "Eestis",
+          "lemma": "Eesti",
+          "pos": "PROPN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        },
+        {
+          "surface": "räägitakse",
+          "lemma": "rääkima",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Tense=Pres|VerbForm=Fin|Voice=Pass"
+        },
+        {
+          "surface": "keelt",
+          "lemma": "keel",
+          "pos": "NOUN",
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0023",
+      "text": "Tule siia kohe!",
       "tokens": [
-        { "surface": "Tule", "lemma": "tulema", "pos": "VERB" }
-      ] },
-
-    { "id": "et-0024", "text": "Ma ei tea vastust.",
+        {
+          "surface": "Tule",
+          "lemma": "tulema",
+          "pos": "VERB",
+          "feats": "Mood=Imp|Number=Sing|Person=2|Tense=Pres|VerbForm=Fin|Voice=Act"
+        }
+      ]
+    },
+    {
+      "id": "et-0024",
+      "text": "Ma ei tea vastust.",
       "tokens": [
-        { "surface": "tea", "lemma": "teadma", "pos": "VERB" },
-        { "surface": "vastust", "lemma": "vastus", "pos": "NOUN", "grammar_label": "partitive" }
-      ] },
-
-    { "id": "et-0025", "text": "Olen seda raamatut lugenud.",
+        {
+          "surface": "tea",
+          "lemma": "teadma",
+          "pos": "VERB",
+          "feats": "Mood=Imp|Number=Sing|Person=2|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "vastust",
+          "lemma": "vastus",
+          "pos": "NOUN",
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0025",
+      "text": "Olen seda raamatut lugenud.",
       "tokens": [
-        { "surface": "Olen", "lemma": "olema", "pos": "VERB" },
-        { "surface": "raamatut", "lemma": "raamat", "pos": "NOUN", "grammar_label": "partitive" }
-      ] },
-
-    { "id": "et-0026", "text": "Tahan õppida prantsuse keelt.",
+        {
+          "surface": "Olen",
+          "lemma": "olema",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=1|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "raamatut",
+          "lemma": "raamat",
+          "pos": "NOUN",
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0026",
+      "text": "Tahan õppida prantsuse keelt.",
       "tokens": [
-        { "surface": "Tahan", "lemma": "tahtma", "pos": "VERB" },
-        { "surface": "õppida", "lemma": "õppima", "pos": "VERB" },
-        { "surface": "keelt", "lemma": "keel", "pos": "NOUN", "grammar_label": "partitive" }
-      ] },
-
-    { "id": "et-0027", "text": "Lapsed mängivad õues.",
+        {
+          "surface": "Tahan",
+          "lemma": "tahtma",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=1|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "õppida",
+          "lemma": "õppima",
+          "pos": "VERB",
+          "feats": "VerbForm=Inf"
+        },
+        {
+          "surface": "keelt",
+          "lemma": "keel",
+          "pos": "NOUN",
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0027",
+      "text": "Lapsed mängivad õues.",
       "tokens": [
-        { "surface": "Lapsed", "lemma": "laps", "pos": "NOUN" },
-        { "surface": "mängivad", "lemma": "mängima", "pos": "VERB" },
-        { "surface": "õues", "lemma": "õu", "pos": "NOUN", "grammar_label": "inessive" }
-      ] },
-
-    { "id": "et-0028", "text": "Olin magamas, kui telefon helises.",
+        {
+          "surface": "Lapsed",
+          "lemma": "laps",
+          "pos": "NOUN",
+          "feats": "Number=Plur"
+        },
+        {
+          "surface": "mängivad",
+          "lemma": "mängima",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Plur|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "õues",
+          "lemma": "õu",
+          "pos": "NOUN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0028",
+      "text": "Olin magamas, kui telefon helises.",
       "tokens": [
-        { "surface": "Olin", "lemma": "olema", "pos": "VERB" },
-        { "surface": "telefon", "lemma": "telefon", "pos": "NOUN" },
-        { "surface": "helises", "lemma": "helisema", "pos": "VERB" }
-      ] },
-
-    { "id": "et-0029", "text": "Kirjutan kirja õele.",
+        {
+          "surface": "Olin",
+          "lemma": "olema",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=1|Tense=Past|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "telefon",
+          "lemma": "telefon",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "helises",
+          "lemma": "helisema",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act"
+        }
+      ]
+    },
+    {
+      "id": "et-0029",
+      "text": "Kirjutan kirja õele.",
       "tokens": [
-        { "surface": "Kirjutan", "lemma": "kirjutama", "pos": "VERB" },
-        { "surface": "kirja", "lemma": "kiri", "pos": "NOUN", "grammar_label": "partitive" },
-        { "surface": "õele", "lemma": "õde", "pos": "NOUN", "grammar_label": "allative" }
-      ] },
-
-    { "id": "et-0030", "text": "Ta käib pargis igal päeval.",
+        {
+          "surface": "Kirjutan",
+          "lemma": "kirjutama",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=1|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "kirja",
+          "lemma": "kiri",
+          "pos": "NOUN",
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing"
+        },
+        {
+          "surface": "õele",
+          "lemma": "õde",
+          "pos": "NOUN",
+          "grammar_label": "allative",
+          "feats": "Case=All|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0030",
+      "text": "Ta käib pargis igal päeval.",
       "tokens": [
-        { "surface": "käib", "lemma": "käima", "pos": "VERB" },
-        { "surface": "pargis", "lemma": "park", "pos": "NOUN", "grammar_label": "inessive" }
-      ] },
-
-    { "id": "et-0031", "text": "Kohvitass on laual.",
+        {
+          "surface": "käib",
+          "lemma": "käima",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "pargis",
+          "lemma": "park",
+          "pos": "NOUN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0031",
+      "text": "Kohvitass on laual.",
       "tokens": [
-        { "surface": "Kohvitass", "lemma": "kohvitass", "pos": "NOUN" },
-        { "surface": "laual", "lemma": "laud", "pos": "NOUN", "grammar_label": "adessive" }
-      ] },
-
-    { "id": "et-0032", "text": "Rongisõit oli pikk ja väsitav.",
+        {
+          "surface": "Kohvitass",
+          "lemma": "kohvitass",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "laual",
+          "lemma": "laud",
+          "pos": "NOUN",
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0032",
+      "text": "Rongisõit oli pikk ja väsitav.",
       "tokens": [
-        { "surface": "Rongisõit", "lemma": "rongisõit", "pos": "NOUN" }
-      ] },
-
-    { "id": "et-0033", "text": "E-post saabus hiljem õhtul.",
+        {
+          "surface": "Rongisõit",
+          "lemma": "rongisõit",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0033",
+      "text": "E-post saabus hiljem õhtul.",
       "tokens": [
-        { "surface": "õhtul", "lemma": "õhtu", "pos": "NOUN", "grammar_label": "adessive" }
-      ] },
-
-    { "id": "et-0034", "text": "Raamatukogu on suletud pühapäeviti.",
+        {
+          "surface": "õhtul",
+          "lemma": "õhtu",
+          "pos": "NOUN",
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0034",
+      "text": "Raamatukogu on suletud pühapäeviti.",
       "tokens": [
-        { "surface": "Raamatukogu", "lemma": "raamatukogu", "pos": "NOUN" }
-      ] },
-
-    { "id": "et-0035", "text": "Arvuti on uus ja kiire.",
+        {
+          "surface": "Raamatukogu",
+          "lemma": "raamatukogu",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0035",
+      "text": "Arvuti on uus ja kiire.",
       "tokens": [
-        { "surface": "Arvuti", "lemma": "arvuti", "pos": "NOUN" }
-      ] },
-
-    { "id": "et-0036", "text": "Kohvimasin läks hommikul katki.",
+        {
+          "surface": "Arvuti",
+          "lemma": "arvuti",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0036",
+      "text": "Kohvimasin läks hommikul katki.",
       "tokens": [
-        { "surface": "Kohvimasin", "lemma": "kohvimasin", "pos": "NOUN" },
-        { "surface": "hommikul", "lemma": "hommik", "pos": "NOUN", "grammar_label": "adessive" }
-      ] },
-
-    { "id": "et-0037", "text": "Lennujaam on linna lähedal.",
+        {
+          "surface": "Kohvimasin",
+          "lemma": "kohvimasin",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "hommikul",
+          "lemma": "hommik",
+          "pos": "NOUN",
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0037",
+      "text": "Lennujaam on linna lähedal.",
       "tokens": [
-        { "surface": "Lennujaam", "lemma": "lennujaam", "pos": "NOUN" },
-        { "surface": "linna", "lemma": "linn", "pos": "NOUN", "grammar_label": "genitive" }
-      ] },
-
-    { "id": "et-0038", "text": "Vana mees kõnnib aeglaselt.",
+        {
+          "surface": "Lennujaam",
+          "lemma": "lennujaam",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "linna",
+          "lemma": "linn",
+          "pos": "NOUN",
+          "grammar_label": "genitive",
+          "feats": "Case=Gen|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0038",
+      "text": "Vana mees kõnnib aeglaselt.",
       "tokens": [
-        { "surface": "Vana", "lemma": "vana", "pos": "ADJ" },
-        { "surface": "mees", "lemma": "mees", "pos": "NOUN" }
-      ] },
-
-    { "id": "et-0039", "text": "Väike laps magab voodis.",
+        {
+          "surface": "Vana",
+          "lemma": "vana",
+          "pos": "ADJ",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "mees",
+          "lemma": "mees",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0039",
+      "text": "Väike laps magab voodis.",
       "tokens": [
-        { "surface": "Väike", "lemma": "väike", "pos": "ADJ" },
-        { "surface": "laps", "lemma": "laps", "pos": "NOUN" },
-        { "surface": "voodis", "lemma": "voodi", "pos": "NOUN", "grammar_label": "inessive" }
-      ] },
-
-    { "id": "et-0040", "text": "Ilus lill kasvab aias.",
+        {
+          "surface": "Väike",
+          "lemma": "väike",
+          "pos": "ADJ",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "laps",
+          "lemma": "laps",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "voodis",
+          "lemma": "voodi",
+          "pos": "NOUN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0040",
+      "text": "Ilus lill kasvab aias.",
       "tokens": [
-        { "surface": "Ilus", "lemma": "ilus", "pos": "ADJ" },
-        { "surface": "lill", "lemma": "lill", "pos": "NOUN" },
-        { "surface": "aias", "lemma": "aed", "pos": "NOUN", "grammar_label": "inessive" }
-      ] },
-
-    { "id": "et-0041", "text": "Ta on eesti üliõpilane.",
+        {
+          "surface": "Ilus",
+          "lemma": "ilus",
+          "pos": "ADJ",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "lill",
+          "lemma": "lill",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "aias",
+          "lemma": "aed",
+          "pos": "NOUN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0041",
+      "text": "Ta on eesti üliõpilane.",
       "tokens": [
-        { "surface": "üliõpilane", "lemma": "üliõpilane", "pos": "NOUN" }
-      ] },
-
-    { "id": "et-0042", "text": "Koerad jooksevad pargis.",
+        {
+          "surface": "üliõpilane",
+          "lemma": "üliõpilane",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0042",
+      "text": "Koerad jooksevad pargis.",
       "tokens": [
-        { "surface": "Koerad", "lemma": "koer", "pos": "NOUN" },
-        { "surface": "jooksevad", "lemma": "jooksma", "pos": "VERB" },
-        { "surface": "pargis", "lemma": "park", "pos": "NOUN", "grammar_label": "inessive" }
-      ] },
-
-    { "id": "et-0043", "text": "Ostan õunu turult.",
+        {
+          "surface": "Koerad",
+          "lemma": "koer",
+          "pos": "NOUN",
+          "feats": "Number=Plur"
+        },
+        {
+          "surface": "jooksevad",
+          "lemma": "jooksma",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Plur|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "pargis",
+          "lemma": "park",
+          "pos": "NOUN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0043",
+      "text": "Ostan õunu turult.",
       "tokens": [
-        { "surface": "Ostan", "lemma": "ostma", "pos": "VERB" },
-        { "surface": "turult", "lemma": "turg", "pos": "NOUN", "grammar_label": "ablative" }
-      ] },
-
-    { "id": "et-0044", "text": "Lapsed läksid hommikul kooli.",
+        {
+          "surface": "Ostan",
+          "lemma": "ostma",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=1|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "turult",
+          "lemma": "turg",
+          "pos": "NOUN",
+          "grammar_label": "ablative",
+          "feats": "Case=Abl|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0044",
+      "text": "Lapsed läksid hommikul kooli.",
       "tokens": [
-        { "surface": "Lapsed", "lemma": "laps", "pos": "NOUN" },
-        { "surface": "läksid", "lemma": "minema", "pos": "VERB" },
-        { "surface": "hommikul", "lemma": "hommik", "pos": "NOUN", "grammar_label": "adessive" }
-      ] },
-
-    { "id": "et-0045", "text": "Raamatud on riiulis.",
+        {
+          "surface": "Lapsed",
+          "lemma": "laps",
+          "pos": "NOUN",
+          "feats": "Number=Plur"
+        },
+        {
+          "surface": "läksid",
+          "lemma": "minema",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=2|Tense=Past|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "hommikul",
+          "lemma": "hommik",
+          "pos": "NOUN",
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0045",
+      "text": "Raamatud on riiulis.",
       "tokens": [
-        { "surface": "Raamatud", "lemma": "raamat", "pos": "NOUN" },
-        { "surface": "riiulis", "lemma": "riiul", "pos": "NOUN", "grammar_label": "inessive" }
-      ] },
-
-    { "id": "et-0046", "text": "Õpilased loevad raamatukogus.",
+        {
+          "surface": "Raamatud",
+          "lemma": "raamat",
+          "pos": "NOUN",
+          "feats": "Number=Plur"
+        },
+        {
+          "surface": "riiulis",
+          "lemma": "riiul",
+          "pos": "NOUN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0046",
+      "text": "Õpilased loevad raamatukogus.",
       "tokens": [
-        { "surface": "Õpilased", "lemma": "õpilane", "pos": "NOUN" },
-        { "surface": "loevad", "lemma": "lugema", "pos": "VERB" },
-        { "surface": "raamatukogus", "lemma": "raamatukogu", "pos": "NOUN", "grammar_label": "inessive" }
-      ] },
-
-    { "id": "et-0047", "text": "Linnud lendavad lõunasse sügisel.",
+        {
+          "surface": "Õpilased",
+          "lemma": "õpilane",
+          "pos": "NOUN",
+          "feats": "Number=Plur"
+        },
+        {
+          "surface": "loevad",
+          "lemma": "lugema",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Plur|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "raamatukogus",
+          "lemma": "raamatukogu",
+          "pos": "NOUN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0047",
+      "text": "Linnud lendavad lõunasse sügisel.",
       "tokens": [
-        { "surface": "Linnud", "lemma": "lind", "pos": "NOUN" },
-        { "surface": "lendavad", "lemma": "lendama", "pos": "VERB" },
-        { "surface": "sügisel", "lemma": "sügis", "pos": "NOUN", "grammar_label": "adessive" }
-      ] },
-
-    { "id": "et-0048", "text": "Suvel ujuvad lapsed järves.",
+        {
+          "surface": "Linnud",
+          "lemma": "lind",
+          "pos": "NOUN",
+          "feats": "Number=Plur"
+        },
+        {
+          "surface": "lendavad",
+          "lemma": "lendama",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Plur|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act"
+        },
+        {
+          "surface": "sügisel",
+          "lemma": "sügis",
+          "pos": "NOUN",
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0048",
+      "text": "Suvel ujuvad lapsed järves.",
       "tokens": [
-        { "surface": "Suvel", "lemma": "suvi", "pos": "NOUN", "grammar_label": "adessive" },
-        { "surface": "lapsed", "lemma": "laps", "pos": "NOUN" },
-        { "surface": "järves", "lemma": "järv", "pos": "NOUN", "grammar_label": "inessive" }
-      ] },
-
-    { "id": "et-0049", "text": "Õpetaja andis ülesande õpilastele.",
+        {
+          "surface": "Suvel",
+          "lemma": "suvi",
+          "pos": "NOUN",
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
+        },
+        {
+          "surface": "lapsed",
+          "lemma": "laps",
+          "pos": "NOUN",
+          "feats": "Number=Plur"
+        },
+        {
+          "surface": "järves",
+          "lemma": "järv",
+          "pos": "NOUN",
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "et-0049",
+      "text": "Õpetaja andis ülesande õpilastele.",
       "tokens": [
-        { "surface": "Õpetaja", "lemma": "õpetaja", "pos": "NOUN" },
-        { "surface": "ülesande", "lemma": "ülesanne", "pos": "NOUN", "grammar_label": "genitive" },
-        { "surface": "õpilastele", "lemma": "õpilane", "pos": "NOUN", "grammar_label": "allative" }
-      ] },
-
-    { "id": "et-0050", "text": "Talvel on tänavad libedad.",
+        {
+          "surface": "Õpetaja",
+          "lemma": "õpetaja",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        },
+        {
+          "surface": "ülesande",
+          "lemma": "ülesanne",
+          "pos": "NOUN",
+          "grammar_label": "genitive",
+          "feats": "Case=Gen|Number=Sing"
+        },
+        {
+          "surface": "õpilastele",
+          "lemma": "õpilane",
+          "pos": "NOUN",
+          "grammar_label": "allative",
+          "feats": "Case=All|Number=Plur"
+        }
+      ]
+    },
+    {
+      "id": "et-0050",
+      "text": "Talvel on tänavad libedad.",
       "tokens": [
-        { "surface": "Talvel", "lemma": "talv", "pos": "NOUN", "grammar_label": "adessive" }
-      ] }
-
+        {
+          "surface": "Talvel",
+          "lemma": "talv",
+          "pos": "NOUN",
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
+        }
+      ]
+    }
   ]
 }

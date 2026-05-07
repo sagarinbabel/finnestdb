@@ -18,6 +18,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# Local import: the Vabamorf form code → UD FEATS mapper sits next to
+# this script. Adding the script directory to sys.path keeps the import
+# working whether the adapter is invoked via `python scripts/...` from
+# the repo root or via FINNESTDB_ESTNLTK_CMD with an absolute path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _vabamorf_feats import vabamorf_form_to_feats  # noqa: E402
+
 
 CASE_LABELS = {
     "n": "nominative",
@@ -109,11 +116,12 @@ def token_for_span(span: Any) -> dict | None:
         }
     lemma = raw_value(annotation, "lemma") or raw_value(annotation, "root") or form.lower()
     vm_form = raw_value(annotation, "form")
+    feats = vabamorf_form_to_feats(vm_form, raw_pos)
     return {
         "form": form,
         "lemma": lemma.replace("_", ""),
         "pos": pos,
-        "feats": {"vabamorf_form": vm_form} if vm_form else {},
+        "feats": feats,
         "grammar_label": grammar_label(vm_form),
         "mwe_id": None,
     }

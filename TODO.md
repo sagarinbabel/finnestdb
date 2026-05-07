@@ -172,7 +172,12 @@ something for the next learner — and didn't.
       `lemma`/`pos`, and a back-pointer to `parse_feedback.id`.
 - [ ] **Phase 2 — apply accepted grammar-label corrections to `forms.feats`**
       for the specific surface form. Smaller blast radius than full lemma
-      rewrites; useful for the 0%-grammar-on-some-datasets gap.
+      rewrites; useful for the 0%-grammar-on-some-datasets gap. As of
+      `2026.05.07k` the `forms.feats` column is populated by the import
+      pipelines themselves (`cmd/importdict/feats.go::kaikkiTagsToFeats`,
+      `cmd/importekilexdetails/feats.go::ekilexMorphToFeats`), so a
+      correction PR can update an existing row's FEATS instead of
+      writing a parallel `custom_overrides` row in many cases.
 - [ ] **Phase 3 — auto-promote a corrected `(surface, lemma, pos)` tuple
       to a gold-eval case** when N independent users submit the same
       correction. Avoids one user's typo becoming a permanent override.
@@ -268,7 +273,7 @@ and tracked in git history (and PR conversations), not in this list._
    - ~~Extend `tryCompoundSplit()` to handle recursive/ternary compounds~~ — DEFERRED to FST migration. The libvoikko VFST handles compounds natively via concatenated `[Xp]...[X]` segments; see PR [#107](https://github.com/sagarinbabel/finnestdb/pull/107). Don't add this to `tryCompoundSplit`.
    - ~~Add Finnish consonant gradation tables~~ — REJECTED. Gradation belongs in the FST's lexicon-aware paradigm tables, not in string-rewrite rules over the surface. See `docs/DECISIONS.md` Decision 5.
    - [ ] Re-run Finnish and Estonian gold baselines after each fix and keep only justified gains
-   - [ ] **Stopgap to remove**: `attachCaseLabelIfStemMatches` in `internal/store/dict.go` is a temporary patch to lift `grammar_label` accuracy off zero on dict hits. Remove once the FST runtime ([PR #107](https://github.com/sagarinbabel/finnestdb/pull/107) and follow-ups) emits FEATS for direct dict hits.
+   - [ ] **Stopgap to remove**: `attachCaseLabelIfStemMatches` in `internal/store/dict.go` is a temporary patch to lift `grammar_label` accuracy off zero on dict hits. Remove once the FST runtime ([PR #107](https://github.com/sagarinbabel/finnestdb/pull/107) and follow-ups) emits FEATS for direct dict hits. **`2026.05.07k` update**: the case-suffix-strip path (`tryCaseSuffixStrip`) now also projects `Case=` into FEATS via `featsFromCaseLabel`, so the stopgap's output is already structured. The remove condition is unchanged — wait until production FST tables land FEATS for direct hits and the suffix-strip fallback stops being load-bearing.
 
 4. **Close out the FST migration cleanup (post-#117/#118/#120 closure)** _(added 2026-05-07; status updated 2026-05-07 PM)_
 
@@ -279,7 +284,7 @@ and tracked in git history (and PR conversations), not in this list._
    - [x] [PR #129](https://github.com/sagarinbabel/finnestdb/pull/129): full FST candidate merge cascade fix (producer side) — **merged 2026-05-07 09:05 UTC**. Enriches `store.FormResolution.Feats` from FST candidate merges.
    - [x] [PR #130](https://github.com/sagarinbabel/finnestdb/pull/130): per-attribute FEATS eval + report (consumer side, the FEATS threading) — **merged 2026-05-07 09:06 UTC**. `TokenResult`, `WordEntry`, eval gold/expected/actual now carry full UD FEATS; `compareCase` scores per-attribute; `parser-compare` emits a "Per-FEATS-attribute accuracy" markdown section.
    - [ ] **New PR: ET lemmatizer table generator** (`cmd/genlemmatizertables-et` or extend the existing binary). The FI generator exists; ET does not, so on a fresh deploy ET FST is empty.
-   - [ ] Re-freeze baselines once the ET generator lands and gold sets get a `feats` field. Per PR #130 body, `feats_attributes` will be empty in reports until then; back-compatible with existing gold.
+   - [x] **Re-freeze baselines once gold sets get a `feats` field** — done `2026.05.07k`. All 6 manual gold sets now carry FEATS; new baselines committed at `docs/baselines/2026-05-07-feats-rich-*`. ET generator still pending; ET `feats_attributes` table populated against estnltk reference, against custom only after a re-import refreshes the live DB with the new FEATS-aware `cmd/importdict`.
 
 5. **Migrate alpha scheduler to real FSRS** _(added 2026-05-07)_
 

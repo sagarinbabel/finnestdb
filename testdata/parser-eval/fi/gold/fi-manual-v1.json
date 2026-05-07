@@ -10,17 +10,20 @@
         {
           "surface": "kirjassani",
           "lemma": "kirja",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Ine|Number=Sing|Number[psor]=Sing|Person[psor]=1"
         },
         {
           "surface": "uudesta",
           "lemma": "uusi",
-          "pos": "ADJ"
+          "pos": "ADJ",
+          "feats": "Case=Ela|Degree=Pos|Number=Sing"
         },
         {
           "surface": "pankkiautomaatista",
           "lemma": "pankkiautomaatti",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Ela|Number=Sing"
         }
       ]
     },
@@ -31,24 +34,28 @@
         {
           "surface": "Pankit",
           "lemma": "pankki",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Nom|Number=Plur"
         },
         {
           "surface": "syrjäkylille",
           "lemma": "syrjäkylä",
           "pos": "NOUN",
-          "grammar_label": "allative"
+          "grammar_label": "allative",
+          "feats": "Case=All|Number=Plur"
         },
         {
           "surface": "asuntoja",
           "lemma": "asunto",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Par|Number=Plur"
         },
         {
           "surface": "eurolla",
           "lemma": "euro",
           "pos": "NOUN",
-          "grammar_label": "adessive"
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
         }
       ]
     },
@@ -59,17 +66,20 @@
         {
           "surface": "Uudenlaista",
           "lemma": "uudenlainen",
-          "pos": "ADJ"
+          "pos": "ADJ",
+          "feats": "Case=Par|Degree=Pos|Number=Sing"
         },
         {
           "surface": "lastensuojelulaitosta",
           "lemma": "lastensuojelulaitos",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Ela"
         },
         {
           "surface": "karata",
           "lemma": "karata",
-          "pos": "VERB"
+          "pos": "VERB",
+          "feats": "InfForm=1|Number=Sing|VerbForm=Inf|Voice=Act"
         }
       ]
     },
@@ -81,12 +91,14 @@
           "surface": "Suomessa",
           "lemma": "Suomi",
           "pos": "PROPN",
-          "grammar_label": "inessive"
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Sing"
         },
         {
           "surface": "nollatila",
           "lemma": "nollatila",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Par"
         },
         {
           "surface": "Pokemon-yhteistyö",
@@ -96,7 +108,8 @@
         {
           "surface": "kuvastaa",
           "lemma": "kuvastaa",
-          "pos": "VERB"
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act"
         }
       ]
     },
@@ -107,18 +120,21 @@
         {
           "surface": "Pankkiautomaatti",
           "lemma": "pankkiautomaatti",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Nom|Number=Sing"
         },
         {
           "surface": "panisi",
           "lemma": "panna",
-          "pos": "VERB"
+          "pos": "VERB",
+          "feats": "Mood=Cnd|Number=Sing|Person=3|VerbForm=Fin|Voice=Act"
         },
         {
           "surface": "luukulle",
           "lemma": "luukku",
           "pos": "NOUN",
-          "grammar_label": "allative"
+          "grammar_label": "allative",
+          "feats": "Case=All|Number=Sing"
         }
       ]
     },
@@ -134,22 +150,26 @@
         {
           "surface": "robottia",
           "lemma": "robotti",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Par|Number=Sing"
         },
         {
           "surface": "lumityöt",
           "lemma": "lumityö",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Nom|Number=Plur"
         },
         {
           "surface": "ruohonleikkuun",
           "lemma": "ruohonleikkuu",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Gen|Number=Sing"
         },
         {
           "surface": "puhaltamisen",
           "lemma": "puhaltaminen",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Gen"
         }
       ]
     },
@@ -160,18 +180,21 @@
         {
           "surface": "muotoilu",
           "lemma": "muotoilu",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Nom|Number=Sing"
         },
         {
           "surface": "jäämeren",
           "lemma": "jäämeri",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Gen|Number=Sing"
         },
         {
           "surface": "dataan",
           "lemma": "data",
           "pos": "NOUN",
-          "grammar_label": "illative"
+          "grammar_label": "illative",
+          "feats": "Case=Ill|Number=Sing"
         }
       ]
     },
@@ -182,18 +205,21 @@
         {
           "surface": "ajankohtainen",
           "lemma": "ajankohtainen",
-          "pos": "ADJ"
+          "pos": "ADJ",
+          "feats": "Case=Nom|Degree=Pos|Number=Sing"
         },
         {
           "surface": "tietopaketti",
           "lemma": "tietopaketti",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Nom|Number=Sing"
         },
         {
           "surface": "aiheeseensa",
           "lemma": "aihe",
           "pos": "NOUN",
-          "grammar_label": "illative"
+          "grammar_label": "illative",
+          "feats": "Case=Ill|Number=Sing|Person[psor]=3"
         }
       ]
     },
@@ -204,18 +230,21 @@
         {
           "surface": "Ilmastonmuutos",
           "lemma": "ilmastonmuutos",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Nom|Number=Sing"
         },
         {
           "surface": "muutoksia",
           "lemma": "muutos",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Par|Number=Plur"
         },
         {
           "surface": "sääilmiöissä",
           "lemma": "sääilmiö",
           "pos": "NOUN",
-          "grammar_label": "inessive"
+          "grammar_label": "inessive",
+          "feats": "Case=Ine|Number=Plur"
         }
       ]
     },
@@ -226,19 +255,22 @@
         {
           "surface": "Hyvinvointialueet",
           "lemma": "hyvinvointialue",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Nom|Number=Plur"
         },
         {
           "surface": "terveydenhuollon",
           "lemma": "terveydenhuolto",
           "pos": "NOUN",
-          "grammar_label": "genitive"
+          "grammar_label": "genitive",
+          "feats": "Case=Gen|Number=Sing"
         },
         {
           "surface": "toimeenpanolailla",
           "lemma": "toimeenpanolaki",
           "pos": "NOUN",
-          "grammar_label": "adessive"
+          "grammar_label": "adessive",
+          "feats": "Case=Ade"
         }
       ]
     },
@@ -250,18 +282,21 @@
           "surface": "Suomenlahden",
           "lemma": "Suomenlahti",
           "pos": "PROPN",
-          "grammar_label": "genitive"
+          "grammar_label": "genitive",
+          "feats": "Case=Gen"
         },
         {
           "surface": "valuma-alueella",
           "lemma": "valuma-alue",
           "pos": "NOUN",
-          "grammar_label": "adessive"
+          "grammar_label": "adessive",
+          "feats": "Case=Ade|Number=Sing"
         },
         {
           "surface": "ihmistä",
           "lemma": "ihminen",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Par|Number=Sing"
         }
       ]
     },
@@ -282,7 +317,8 @@
         {
           "surface": "pelitiimien",
           "lemma": "pelitiimi",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Gen"
         }
       ]
     },
@@ -293,17 +329,20 @@
         {
           "surface": "asuessani",
           "lemma": "asua",
-          "pos": "VERB"
+          "pos": "VERB",
+          "feats": "Case=Ine|InfForm=2|Number=Sing|Number[psor]=Sing|Person[psor]=1|VerbForm=Inf|Voice=Act"
         },
         {
           "surface": "tapasinkin",
           "lemma": "tavata",
-          "pos": "VERB"
+          "pos": "VERB",
+          "feats": "Clitic=Kin|Mood=Ind|Number=Sing|Person=1|Tense=Past|VerbForm=Fin|Voice=Act"
         },
         {
           "surface": "naamatusten",
           "lemma": "naamatusten",
-          "pos": "ADV"
+          "pos": "ADV",
+          "feats": "Case=Gen"
         }
       ]
     },
@@ -314,17 +353,20 @@
         {
           "surface": "näyttelijäjulkkisten",
           "lemma": "näyttelijäjulkkis",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Gen"
         },
         {
           "surface": "mainosvideoihin",
           "lemma": "mainosvideo",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Gen"
         },
         {
           "surface": "mobiilimainontaan",
           "lemma": "mobiilimainonta",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Ill"
         }
       ]
     },
@@ -340,7 +382,8 @@
         {
           "surface": "naistenvaivojen",
           "lemma": "naistenvaiva",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Gen"
         },
         {
           "surface": "sukupuolinormit",
@@ -356,18 +399,21 @@
         {
           "surface": "ostoprosessin",
           "lemma": "ostoprosessi",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Gen"
         },
         {
           "surface": "loppulaskuun",
           "lemma": "loppulasku",
           "pos": "NOUN",
-          "grammar_label": "illative"
+          "grammar_label": "illative",
+          "feats": "Case=Ill"
         },
         {
           "surface": "peruutusvakuutuksia",
           "lemma": "peruutusvakuutus",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Par"
         }
       ]
     },
@@ -378,17 +424,20 @@
         {
           "surface": "Yrittäjäystävällinen",
           "lemma": "yrittäjäystävällinen",
-          "pos": "ADJ"
+          "pos": "ADJ",
+          "feats": "Case=Gen"
         },
         {
           "surface": "alkoholiluvan",
           "lemma": "alkoholilupa",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Gen"
         },
         {
           "surface": "elintarvikeviranomaisten",
           "lemma": "elintarvikeviranomainen",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Gen"
         }
       ]
     },
@@ -399,18 +448,21 @@
         {
           "surface": "työskenneltyään",
           "lemma": "työskennellä",
-          "pos": "VERB"
+          "pos": "VERB",
+          "feats": "Case=Par|Degree=Pos|Number=Sing|PartForm=Past|Person[psor]=3|VerbForm=Part|Voice=Pass"
         },
         {
           "surface": "paperidivisioonan",
           "lemma": "paperidivisioona",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Gen"
         },
         {
           "surface": "myyntikonttorissa",
           "lemma": "myyntikonttori",
           "pos": "NOUN",
-          "grammar_label": "inessive"
+          "grammar_label": "inessive",
+          "feats": "Case=Ine"
         }
       ]
     },
@@ -422,12 +474,14 @@
           "surface": "alustatyöntekijöistä",
           "lemma": "alustatyöntekijä",
           "pos": "NOUN",
-          "grammar_label": "elative"
+          "grammar_label": "elative",
+          "feats": "Case=Ela"
         },
         {
           "surface": "koulutusaineiston",
           "lemma": "koulutusaineisto",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Ill"
         },
         {
           "surface": "alustayritykset",
@@ -448,12 +502,14 @@
         {
           "surface": "pörssihistorian",
           "lemma": "pörssihistoria",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Gen"
         },
         {
           "surface": "päiväpudotuksen",
           "lemma": "päiväpudotus",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Gen"
         }
       ]
     },
@@ -464,7 +520,8 @@
         {
           "surface": "viestintäviraston",
           "lemma": "viestintävirasto",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Ill"
         },
         {
           "surface": "virkahenkilöt",
@@ -475,7 +532,8 @@
           "surface": "palveludemossa",
           "lemma": "palveludemo",
           "pos": "NOUN",
-          "grammar_label": "inessive"
+          "grammar_label": "inessive",
+          "feats": "Case=Ine"
         }
       ]
     },
@@ -486,17 +544,20 @@
         {
           "surface": "Teknologiasijoittaja",
           "lemma": "teknologiasijoittaja",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Par"
         },
         {
           "surface": "tekoälyharppausta",
           "lemma": "tekoälyharppaus",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Ela"
         },
         {
           "surface": "satelliittinsa",
           "lemma": "satelliitti",
-          "pos": "NOUN"
+          "pos": "NOUN",
+          "feats": "Case=Nom|Number=Sing|Person[psor]=3"
         }
       ]
     }

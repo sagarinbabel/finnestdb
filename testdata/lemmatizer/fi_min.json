@@ -1,73 +1,14 @@
 {
-  "talo": [
+  "hyvää": [
     {
-      "Lemma": "talo",
-      "UPOS": "NOUN",
-      "GrammarLabel": "nominative",
-      "Number": "Sing",
-      "Tense": "",
-      "Mood": "",
-      "Person": "",
-      "Raw": "generated-table"
-    }
-  ],
-  "talossa": [
-    {
-      "Lemma": "talo",
-      "UPOS": "NOUN",
-      "GrammarLabel": "inessive",
-      "Number": "Sing",
-      "Tense": "",
-      "Mood": "",
-      "Person": "",
-      "Raw": "generated-table"
-    }
-  ],
-  "taloja": [
-    {
-      "Lemma": "talo",
-      "UPOS": "NOUN",
+      "Lemma": "hyvä",
+      "UPOS": "ADJ",
       "GrammarLabel": "partitive",
-      "Number": "Plur",
-      "Tense": "",
-      "Mood": "",
-      "Person": "",
-      "Raw": "generated-table"
-    }
-  ],
-  "käden": [
-    {
-      "Lemma": "käsi",
-      "UPOS": "NOUN",
-      "GrammarLabel": "genitive",
       "Number": "Sing",
       "Tense": "",
       "Mood": "",
       "Person": "",
-      "Raw": "generated-table"
-    }
-  ],
-  "naisen": [
-    {
-      "Lemma": "nainen",
-      "UPOS": "NOUN",
-      "GrammarLabel": "genitive",
-      "Number": "Sing",
-      "Tense": "",
-      "Mood": "",
-      "Person": "",
-      "Raw": "generated-table"
-    }
-  ],
-  "olen": [
-    {
-      "Lemma": "olla",
-      "UPOS": "VERB",
-      "GrammarLabel": "",
-      "Number": "Sing",
-      "Tense": "Pres",
-      "Mood": "Ind",
-      "Person": "1",
+      "Feats": "Case=Par|Number=Sing",
       "Raw": "generated-table"
     }
   ],
@@ -80,18 +21,46 @@
       "Tense": "Past",
       "Mood": "Ind",
       "Person": "2",
+      "Feats": "Mood=Ind|Number=Sing|Person=2|Tense=Past",
       "Raw": "generated-table"
     }
   ],
-  "hyvää": [
+  "käden": [
     {
-      "Lemma": "hyvä",
-      "UPOS": "ADJ",
-      "GrammarLabel": "partitive",
+      "Lemma": "käsi",
+      "UPOS": "NOUN",
+      "GrammarLabel": "genitive",
       "Number": "Sing",
       "Tense": "",
       "Mood": "",
       "Person": "",
+      "Feats": "Case=Gen|Number=Sing",
+      "Raw": "generated-table"
+    }
+  ],
+  "naisen": [
+    {
+      "Lemma": "nainen",
+      "UPOS": "NOUN",
+      "GrammarLabel": "genitive",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Feats": "Case=Gen|Number=Sing",
+      "Raw": "generated-table"
+    }
+  ],
+  "olen": [
+    {
+      "Lemma": "olla",
+      "UPOS": "VERB",
+      "GrammarLabel": "",
+      "Number": "Sing",
+      "Tense": "Pres",
+      "Mood": "Ind",
+      "Person": "1",
+      "Feats": "Mood=Ind|Number=Sing|Person=1|Tense=Pres",
       "Raw": "generated-table"
     }
   ],
@@ -104,8 +73,47 @@
       "Tense": "",
       "Mood": "",
       "Person": "",
+      "Feats": "Case=Ela|Number=Sing",
+      "Raw": "generated-table"
+    }
+  ],
+  "talo": [
+    {
+      "Lemma": "talo",
+      "UPOS": "NOUN",
+      "GrammarLabel": "nominative",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Feats": "Number=Sing",
+      "Raw": "generated-table"
+    }
+  ],
+  "taloja": [
+    {
+      "Lemma": "talo",
+      "UPOS": "NOUN",
+      "GrammarLabel": "partitive",
+      "Number": "Plur",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Feats": "Case=Par|Number=Plur",
+      "Raw": "generated-table"
+    }
+  ],
+  "talossa": [
+    {
+      "Lemma": "talo",
+      "UPOS": "NOUN",
+      "GrammarLabel": "inessive",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Feats": "Case=Ine|Number=Sing",
       "Raw": "generated-table"
     }
   ]
 }
-
