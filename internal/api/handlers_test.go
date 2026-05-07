@@ -821,7 +821,11 @@ func TestKnownWordsImportListAndDelete(t *testing.T) {
 	mux := newTestMux(t, api)
 	cookies := loginAndReturnCookies(t, mux, "known@example.com")
 
-	importReq := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissoja","juoksen","tuntematon","juoksen"]}`))
+	// "qwerty123" is the deliberately-unresolvable element: it's not in the
+	// dictionary or Voikko's FST. (Earlier the test used "tuntematon", but
+	// that's a real Finnish word ("unknown" / negative-passive participle of
+	// "tuntea") and the VFST step in BatchLookupForms now resolves it.)
+	importReq := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissoja","juoksen","qwerty123","juoksen"]}`))
 	for _, cookie := range cookies {
 		importReq.AddCookie(cookie)
 	}
@@ -839,7 +843,7 @@ func TestKnownWordsImportListAndDelete(t *testing.T) {
 	if len(importResp.Imported) != 2 {
 		t.Fatalf("imported=%d want 2 (%+v)", len(importResp.Imported), importResp.Imported)
 	}
-	if len(importResp.Unresolved) != 1 || importResp.Unresolved[0] != "tuntematon" {
+	if len(importResp.Unresolved) != 1 || importResp.Unresolved[0] != "qwerty123" {
 		t.Fatalf("unexpected unresolved payload: %+v", importResp.Unresolved)
 	}
 
@@ -1019,7 +1023,11 @@ func TestKnownWordsImportReturnsUnresolvedWithoutCreatingRows(t *testing.T) {
 	mux := newTestMux(t, api)
 	cookies := loginAndReturnCookies(t, mux, "unknown@example.com")
 
-	importReq := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["tuntematon","mysteeri"]}`))
+	// "qwerty123" and "asdfg" are deliberately unresolvable — neither in the
+	// dictionary nor in Voikko's FST. (The earlier inputs "tuntematon" and
+	// "mysteeri" both resolve via the VFST step now: tuntematon → tuntea/ADJ,
+	// mysteeri → mysteeri/NOUN.)
+	importReq := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["qwerty123","asdfg"]}`))
 	for _, cookie := range cookies {
 		importReq.AddCookie(cookie)
 	}

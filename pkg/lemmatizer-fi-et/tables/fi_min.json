@@ -1,0 +1,111 @@
+{
+  "talo": [
+    {
+      "Lemma": "talo",
+      "UPOS": "NOUN",
+      "GrammarLabel": "nominative",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Raw": "generated-table"
+    }
+  ],
+  "talossa": [
+    {
+      "Lemma": "talo",
+      "UPOS": "NOUN",
+      "GrammarLabel": "inessive",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Raw": "generated-table"
+    }
+  ],
+  "taloja": [
+    {
+      "Lemma": "talo",
+      "UPOS": "NOUN",
+      "GrammarLabel": "partitive",
+      "Number": "Plur",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Raw": "generated-table"
+    }
+  ],
+  "käden": [
+    {
+      "Lemma": "käsi",
+      "UPOS": "NOUN",
+      "GrammarLabel": "genitive",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Raw": "generated-table"
+    }
+  ],
+  "naisen": [
+    {
+      "Lemma": "nainen",
+      "UPOS": "NOUN",
+      "GrammarLabel": "genitive",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Raw": "generated-table"
+    }
+  ],
+  "olen": [
+    {
+      "Lemma": "olla",
+      "UPOS": "VERB",
+      "GrammarLabel": "",
+      "Number": "Sing",
+      "Tense": "Pres",
+      "Mood": "Ind",
+      "Person": "1",
+      "Raw": "generated-table"
+    }
+  ],
+  "kysyit": [
+    {
+      "Lemma": "kysyä",
+      "UPOS": "VERB",
+      "GrammarLabel": "",
+      "Number": "Sing",
+      "Tense": "Past",
+      "Mood": "Ind",
+      "Person": "2",
+      "Raw": "generated-table"
+    }
+  ],
+  "hyvää": [
+    {
+      "Lemma": "hyvä",
+      "UPOS": "ADJ",
+      "GrammarLabel": "partitive",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Raw": "generated-table"
+    }
+  ],
+  "pankkiautomaatista": [
+    {
+      "Lemma": "pankkiautomaatti",
+      "UPOS": "NOUN",
+      "GrammarLabel": "elative",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Raw": "generated-table"
+    }
+  ]
+}
+

@@ -3,6 +3,7 @@
         import-ekilex-details-et import-dict-et-recommended import-kotus-fi import-dict-fi-recommended \
         fetch-ekilex-refresh fetch-ekilex-sample fetch-ekilex \
         reduce-ekilex \
+        gen-lemmatizer-tables-fi \
         reimport-dict-fi reimport-dict-et reimport-dict verify-dict \
         setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et \
         import-ud-gold import-ud-gold-fi import-ud-gold-et \
@@ -42,6 +43,24 @@ clean:
 deps:
 	go mod download
 	cd parser && cargo fetch
+
+# ── FST-derived tables (no blobs in git) ───────────────────────────────────────
+#
+# Policy: upstream transducer blobs are not committed. Maintainers may keep
+# local analysers under localdata/ and regenerate factual tables that *are*
+# committed and embedded by the runtime.
+#
+# Example:
+#   make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst
+VFST_PATH ?=
+gen-lemmatizer-tables-fi:
+	@if [ -z "$(VFST_PATH)" ]; then \
+		echo "VFST_PATH is required (local path to mor.vfst; do not commit)."; \
+		exit 1; \
+	fi
+	go run ./cmd/genlemmatizertables -lang fi -vfst "$(VFST_PATH)" \
+	  -wordlist pkg/lemmatizer-fi-et/tables/fi_wordlist.txt \
+	  -out pkg/lemmatizer-fi-et/tables/fi_min.json
 
 # ── Dictionary import targets ──────────────────────────────────────────────────
 # First-time import: skips if the table already has rows for that lang.

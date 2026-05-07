@@ -4,16 +4,40 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+
+	lemmatizer "finnestdb/pkg/lemmatizer-fi-et"
 )
 
 type DB struct {
 	db *sql.DB
+
+	// FST lemmatizer is loaded lazily on first FI BatchLookupForms call.
+	// Tests that don't touch FI form lookups don't pay the embed-decode cost.
+	lemOnce sync.Once
+	lem     *lemmatizer.Lemmatizer
+}
+
+// finnishLemmatizer returns the (lazy-loaded) FST lemmatizer, or nil
+// if loading failed. Callers must tolerate a nil result and fall back
+// to the SQLite-only resolution chain.
+func (d *DB) finnishLemmatizer() *lemmatizer.Lemmatizer {
+	d.lemOnce.Do(func() {
+		l, err := lemmatizer.New()
+		if err != nil {
+			log.Printf("store: lemmatizer init failed (FI FST disabled): %v", err)
+			return
+		}
+		d.lem = l
+	})
+	return d.lem
 }
 
 type User struct {
