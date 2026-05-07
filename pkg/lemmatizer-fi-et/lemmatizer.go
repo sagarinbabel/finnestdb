@@ -17,8 +17,7 @@ import (
 //go:embed tables/fi_min.json
 var fiMinTableJSON []byte
 
-// Analysis is one structured reading of a surface form. Re-exported
-// from voikkomap so callers don't need to reach into a sub-package.
+// Analysis is one structured reading of a surface form.
 type Analysis = voikkomap.Analysis
 
 // Lemmatizer holds the loaded analysis tables and dispatches Lemmatize
