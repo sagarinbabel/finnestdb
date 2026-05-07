@@ -23,6 +23,7 @@ once Voikko-equivalent enrichment lands for FI.
 
 | Date | Commit | FI fi-manual-v1 lemma | ET et-grammar-v1 lemma | FI grammar | ET grammar | ET coverage |
 |---|---|---:|---:|---:|---:|---:|
+| 2026-05-06d (Phase 3 ships) | (PR 3.2 head) | 81.4 | 88.6 | 0.0 | 0.0 | 100.0 |
 | 2026-05-06c (Phase 2 ships) | [`615556e`][c-2026-05-06c] | 81.4 | 88.6 | 0.0 | 0.0 | 100.0 |
 | 2026-05-06b (post-priority-fix) | [`b327d4f`][c-2026-05-06b] | **81.4** | **88.6** | 0.0 | 0.0 | **100.0** |
 | 2026-05-06 | [`46d8b77`][c-2026-05-06] | 81.4 | 80.0 | 0.0 | 0.0 | 100.0 |
@@ -37,6 +38,49 @@ once Voikko-equivalent enrichment lands for FI.
 [c-2026-04-28]: https://github.com/sagarinbabel/finnestdb/commit/bb744ba
 
 ## Entries
+
+### 2026-05-06d — Phase 3 ships Kotus paradigm classes for FI
+
+**Commit**: TBD (PR 3.2 head, follows [#92](https://github.com/sagarinbabel/finnestdb/pull/92) which landed the binary skeleton)
+
+Phase 3 of [`docs/FINNISH_LEXICAL_PLAN.md`](FINNISH_LEXICAL_PLAN.md) is shipped. The Kotus Nykysuomen sanalista 2024 (CC BY 4.0, ~104k FI headwords) is now a tracked artifact under [`data/kotus/`](baselines/) and `cmd/importkotus` populates `paradigm_class` on the FI lemmas table. That's the join key the Phase 4 Voikko adapter needs.
+
+PR 3.1 ([#92](https://github.com/sagarinbabel/finnestdb/pull/92)) landed the binary skeleton against an assumed XML schema — documented in the code as "refine in 3.2 against real data." When 3.2 fetched the real distribution, it turned out to be a **TSV, not XML**: header-prefixed `Hakusana\tHomonymia\tSanaluokka\tTaivutustiedot`. PR 3.2 replaced the parser entirely.
+
+**Headline numbers** (custom parser): identical to 2026-05-06c. Phase 3 doesn't move accuracy or coverage — only metadata enrichment, no new form rows yet, no new lemmas resolvable through `BatchLookupForms`. Voikko (Phase 4) is what makes the metadata pay off by expanding each lemma's Kotus class into its surface paradigm.
+
+**Real-data smoke (against `/tmp/finnestdb-baseline.db`, post-bugfix)**:
+
+```
+Done. processed=104743  paradigms_upgraded=46324  new_lemmas_inserted=4289
+      no_known_class=436  no_paradigm=56485
+```
+
+- 104,743 TSV rows processed
+- 46,324 paradigm-class upgrades on existing kaikki rows (scoped by current row's Sanaluokka)
+- 4,289 new Kotus-only lemmas inserted at `source='kotus'`, priority 10 — includes homonyms like `kuurata`/NOUN + `kuurata`/VERB inserted from separate TSV rows
+- 436 entries with no recognised Sanaluokka label (counted, not inserted)
+- 56,485 entries (54%) have empty `Taivutustiedot` — typically compound headwords; rows inserted with `paradigm_class IS NULL`
+- **Net: 48,740 FI lemmas now carry a populated `paradigm_class`** (~19% of total FI rows)
+
+**Changes since 2026-05-06c**:
+
+- [#92](https://github.com/sagarinbabel/finnestdb/pull/92) — `cmd/importkotus` binary, parser, and per-class fixture tests. Original assumed-schema XML parser.
+- (this PR / 3.2) — TSV parser replacing the XML skeleton, real Kotus 2024 data committed as a tracked artifact under [`data/kotus/`](baselines/), `make import-kotus-fi` target, [`data/kotus/NOTICE.md`](baselines/) for CC BY 4.0 attribution. `make import-dict-fi-recommended` now chains kaikki + Kotus.
+
+**Net effect**:
+
+- **No accuracy/coverage movement** — as designed.
+- **Voikko (Phase 4) is now unblocked.** The next phase is the Voikko generator spike (Phase 3.5), which proves the actual paradigm-generation entry point against the Kotus class numbers we just populated.
+- **Test coverage held at 18 of 18** for `cmd/importkotus`. Tests rewritten for the TSV format; the XML-shape tests from 3.1 are gone since the file format isn't XML.
+
+**Open issues this surfaced**:
+
+- 320 entries (~0.3%) have Sanaluokka labels we don't recognise. Most are compound class strings like `"adverbi, postpositio, prepositio"` (one entry, multiple classes) or rarer terms. The `mapWordClass` table can be extended in a small follow-up. Won't break Phase 4.
+- 56,485 entries with empty Taivutustiedot (Kotus-uncategorised compounds) get rows inserted with `paradigm_class IS NULL`. These are existing FI words that get headword presence but no Voikko-class join. If the Voikko adapter (Phase 4) is happy enough to skip them, fine; if it needs paradigm_class for every row, those compounds need their base lemma's class propagated — a question for Phase 3.5's spike.
+- POS heuristic in 3.1 (number-range) has been replaced by direct Sanaluokka mapping. The 3.1 inflectionType-range fallback is gone — there's no situation where it's needed since real Kotus rows always have explicit `Sanaluokka`.
+
+---
 
 ### 2026-05-06c — Phase 2 ships translations table end-to-end
 
@@ -227,7 +271,7 @@ This was the first measurement event. Prior to [#29](https://github.com/sagarinb
 **Open issues this surfaced**:
 
 - ET compound splitter buggy on `Rongisõit` (et-0032): producing a non-substring lemma. Quietly fixed between this baseline and 2026-05-05.
-- Per-case timing rounds to 0ms (eval-tooling limitation; needs nanosecond precision).
+- ~~Per-case timing rounds to 0ms (eval-tooling limitation; needs nanosecond precision).~~ Resolved 2026-05-06 in PR #103: the eval timer now records `time.Now()` deltas as int64 nanoseconds end-to-end (`samples_ns` in the report JSON; `*_ms` summary fields are now sub-ms float64). Re-baselining the 2026-05-06 datasets surfaced ~40–50k words/s on `custom` for typical Finnish input — see [`baselines/2026-05-06-fi-summary.md#measured-throughput`](baselines/2026-05-06-fi-summary.md#measured-throughput).
 - Grammar accuracy at 0% suggests case-suffix rules need to fire alongside dict, or dict needs to ship grammar labels itself.
 
 ## Reading this doc

@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 #
-# Run a side-by-side comparison of basic, custom, and (when available) estnltk
+# Run a side-by-side comparison of basic, custom, and estnltk (Vabamorf)
 # parsers across the Estonian gold datasets, then assemble the results into a
 # markdown comparison report.
+#
+# EstNLTK/Vabamorf is **required by default** — every Estonian baseline must
+# show the analyzer column so dict-only numbers are never read in isolation.
+# Run `make setup-estnltk` once on a fresh machine. To bypass on a machine
+# where estnltk cannot be installed, pass --allow-missing-baseline (ad-hoc
+# local use only — never commit reports produced this way).
 #
 # Usage:
 #   scripts/parser-comparison-et.sh
 #   scripts/parser-comparison-et.sh -o docs/baselines/latest-et-comparison.md
 #   scripts/parser-comparison-et.sh DS1.json DS2.json ...
+#   scripts/parser-comparison-et.sh --allow-missing-baseline ...
 #
 set -euo pipefail
 
@@ -16,20 +23,24 @@ cd "$ROOT"
 
 OUT=""
 DATASETS=()
+ALLOW_MISSING=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -o|--output) OUT="$2"; shift 2 ;;
+        --allow-missing-baseline) ALLOW_MISSING=true; shift ;;
         -h|--help)
-            sed -n '2,13p' "$0"
+            sed -n '2,18p' "$0"
             exit 0 ;;
         *) DATASETS+=("$1"); shift ;;
     esac
 done
 
 if [[ ${#DATASETS[@]} -eq 0 ]]; then
+    # Default discovery: every et/gold/*.json EXCEPT dev splits (held-out
+    # discipline — see scripts/parser-comparison.sh comment).
     while IFS= read -r f; do DATASETS+=("$f"); done \
-        < <(ls testdata/parser-eval/et/gold/*.json 2>/dev/null | sort)
+        < <(ls testdata/parser-eval/et/gold/*.json 2>/dev/null | grep -v -- '-dev-v' | sort)
 fi
 
 if [[ ${#DATASETS[@]} -eq 0 ]]; then
@@ -48,8 +59,26 @@ fi
 if $estnltk_available; then
     PARSERS="basic,custom,estnltk"
     echo ">> Including estnltk (adapter auto-detected)" >&2
+elif $ALLOW_MISSING; then
+    echo ">> WARNING: estnltk missing, --allow-missing-baseline set — running dict-only" >&2
+    echo ">>          Do NOT commit reports produced this way; analyzer parity is required." >&2
 else
-    echo ">> Skipping estnltk (run 'make setup-estnltk' to enable)" >&2
+    cat >&2 <<'EOF'
+ERROR: estnltk is required for Estonian parser comparison but is not available.
+
+Every committed ET baseline must include the estnltk column so dict-only
+numbers (basic/custom) are never read without the Vabamorf upper bound.
+
+To install:
+    make setup-estnltk
+
+If you genuinely need a dict-only run for local experimentation, pass:
+    --allow-missing-baseline
+
+Override path:
+    export FINNESTDB_ESTNLTK_CMD="..."
+EOF
+    exit 2
 fi
 
 export LD_LIBRARY_PATH="$ROOT/parser/target/release:${LD_LIBRARY_PATH:-}"

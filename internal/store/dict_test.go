@@ -3,8 +3,11 @@ package store
 import (
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
+
+	lemmatizer "finnestdb/pkg/lemmatizer-fi-et"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -516,8 +519,10 @@ func TestCaseSuffixStrip_EstonianStemAlternations(t *testing.T) {
 
 func TestFallbackChainOrdering(t *testing.T) {
 	db := newTestDB(t)
-	// Test that direct lookup takes priority over compound split and case suffix.
-	// Seed "kirjassa" directly in forms table.
+	// Test that direct lookup takes priority over compound split and case suffix
+	// for lemma resolution. The case-suffix matcher may *additively* attach a
+	// label to the dict result (stopgap until the FST runtime lands), but that
+	// must not change the lemma / POS chosen by the dict path.
 	seedForms(t, db, [][4]string{
 		{"kirjassa", "kirja", "NOUN", "FI"},
 	})
@@ -532,9 +537,106 @@ func TestFallbackChainOrdering(t *testing.T) {
 	if !ok {
 		t.Fatal("kirjassa: expected in result map")
 	}
-	// Should resolve via direct dict lookup (step 1), not case suffix stripping (step 4).
-	if r.Source != "dict" {
+	if r.Lemma != "kirja" || r.POS != "NOUN" {
+		t.Errorf("kirjassa: got {%q %q}, want {kirja NOUN}", r.Lemma, r.POS)
+	}
+	// Source must start with "dict" — the dict path won. Suffix attachment may
+	// append "+case_suffix_label" but the dict prefix proves priority order.
+	if !strings.HasPrefix(r.Source, "dict") {
 		t.Errorf("kirjassa: should resolve via 'dict' (priority), got source %q", r.Source)
+	}
+}
+
+// TestBatchLookupForms_AttachCaseLabelOnDictHit covers the custom-mode stopgap
+// where the case-suffix matcher additively attaches a GrammarLabel to a
+// successful direct-dict resolution. This compensates for the forms table
+// carrying only (lemma, pos) — without this pass, grammar accuracy on any
+// dict-resolved token is structurally 0%. Stopgap until pkg/lemmatizer-fi-et/
+// emits FEATS for direct hits.
+func TestBatchLookupForms_AttachCaseLabelOnDictHit(t *testing.T) {
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"talossa", "talo", "NOUN", "FI"},
+	})
+	seedLemmas(t, db, [][4]string{
+		{"talo", "NOUN", "house", "FI"},
+	})
+
+	got := db.BatchLookupForms([]string{"talossa"}, "FI", "custom")
+
+	r, ok := got["talossa"]
+	if !ok {
+		t.Fatal("talossa: expected in result map")
+	}
+	if r.Lemma != "talo" || r.POS != "NOUN" {
+		t.Errorf("talossa: got {%q %q}, want {talo NOUN}", r.Lemma, r.POS)
+	}
+	if r.GrammarLabel != "inessive" {
+		t.Errorf("talossa: grammar label got %q, want inessive", r.GrammarLabel)
+	}
+	if !strings.Contains(r.Source, "+case_suffix_label") {
+		t.Errorf("talossa: source should record additive label; got %q", r.Source)
+	}
+}
+
+// TestBatchLookupForms_AttachCaseLabelBasicModeSkips verifies that the
+// stopgap is gated on parserMode == "custom". The "basic" parser must keep
+// emitting empty grammar labels on dict hits — its identity is "no rules
+// beyond direct dict."
+func TestBatchLookupForms_AttachCaseLabelBasicModeSkips(t *testing.T) {
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"talossa", "talo", "NOUN", "FI"},
+	})
+	seedLemmas(t, db, [][4]string{
+		{"talo", "NOUN", "house", "FI"},
+	})
+
+	got := db.BatchLookupForms([]string{"talossa"}, "FI", "basic")
+
+	r, ok := got["talossa"]
+	if !ok {
+		t.Fatal("talossa: expected in result map")
+	}
+	if r.GrammarLabel != "" {
+		t.Errorf("talossa basic mode: grammar label got %q, want empty", r.GrammarLabel)
+	}
+	if r.Source != "dict" {
+		t.Errorf("talossa basic mode: source got %q, want plain 'dict'", r.Source)
+	}
+}
+
+// TestBatchLookupForms_AttachCaseLabelLemmaMismatchSkips verifies that a
+// label is NOT attached when the case-suffix-strip lemma differs from the
+// dict lemma — that means the suffix path is analyzing a different word and
+// the label would be wrong (e.g. dict says PROPN "Linnas", suffix-strip
+// would say "inessive of linna").
+func TestBatchLookupForms_AttachCaseLabelLemmaMismatchSkips(t *testing.T) {
+	db := newTestDB(t)
+	// Direct dict says the form is its own lemma (a personal name).
+	seedForms(t, db, [][4]string{
+		{"linnas", "linnas", "PROPN", "ET"},
+	})
+	// But the lemmas table also has a different lemma the suffix-strip would
+	// arrive at — that's the false-positive we must reject.
+	seedLemmas(t, db, [][4]string{
+		{"linna", "NOUN", "city", "ET"},
+	})
+
+	got := db.BatchLookupForms([]string{"linnas"}, "ET", "custom")
+
+	r, ok := got["linnas"]
+	if !ok {
+		t.Fatal("linnas: expected in result map")
+	}
+	if r.Lemma != "linnas" || r.POS != "PROPN" {
+		t.Errorf("linnas: got {%q %q}, want {linnas PROPN}", r.Lemma, r.POS)
+	}
+	if r.GrammarLabel != "" {
+		t.Errorf("linnas: grammar label got %q, want empty (lemma-mismatch guard)", r.GrammarLabel)
+	}
+	if r.Source != "dict" {
+		t.Errorf("linnas: source got %q, want plain 'dict'", r.Source)
 	}
 }
 
@@ -1082,5 +1184,47 @@ func TestBatchLookupGlosses_LowerSenseIdxWinsWithinSameSource(t *testing.T) {
 	if got[LemmaKey{"pankki", "NOUN"}] != "bank (financial)" {
 		t.Errorf("lowest sense_idx should win: got %q, want %q",
 			got[LemmaKey{"pankki", "NOUN"}], "bank (financial)")
+	}
+}
+
+// TestPickBestVFSTAnalysis_PreservesSurfaceCase regression-tests the codex
+// review finding on PR #107: when libvoikko returns multiple analyses for
+// the lowercase form (e.g. `turku/NOUN` and `Turku/PROPN` for "turussa"),
+// the VFST fallback was picking the first analysis regardless of surface
+// case, which marked the city name "Turussa" as a common noun. The fix
+// applies the same case/POS scoring as the dictionary candidate ranker.
+func TestPickBestVFSTAnalysis_PreservesSurfaceCase(t *testing.T) {
+	turkuNoun := lemmatizer.Analysis{Lemma: "turku", UPOS: "NOUN", GrammarLabel: "inessive"}
+	turkuPropn := lemmatizer.Analysis{Lemma: "Turku", UPOS: "PROPN", GrammarLabel: "inessive"}
+	analyses := []lemmatizer.Analysis{turkuNoun, turkuPropn}
+
+	// Capitalized surface — PROPN candidate should win even though
+	// the noun reading came first in FST priority order.
+	if got := pickBestVFSTAnalysis("Turussa", analyses); got.Lemma != "Turku" || got.UPOS != "PROPN" {
+		t.Errorf("Turussa: got (%q, %q), want (Turku, PROPN)", got.Lemma, got.UPOS)
+	}
+
+	// Lowercase surface — common-noun reading should win, demoting PROPN.
+	if got := pickBestVFSTAnalysis("turussa", analyses); got.Lemma != "turku" || got.UPOS != "NOUN" {
+		t.Errorf("turussa: got (%q, %q), want (turku, NOUN)", got.Lemma, got.UPOS)
+	}
+
+	// Single analysis — identity (no scoring needed, no panic).
+	if got := pickBestVFSTAnalysis("Turussa", analyses[:1]); got.UPOS != "NOUN" {
+		t.Errorf("single analysis: got %q, want NOUN", got.UPOS)
+	}
+}
+
+// TestPickBestVFSTAnalysis_TiePreservesFSTOrder confirms that when two
+// analyses score identically on the case/POS heuristic, the original FST
+// priority order is preserved — protects the deterministic VFST > Giellalt
+// ordering inside the lemmatizer package from being scrambled by the
+// stable-sort tiebreak.
+func TestPickBestVFSTAnalysis_TiePreservesFSTOrder(t *testing.T) {
+	first := lemmatizer.Analysis{Lemma: "alku", UPOS: "NOUN"}
+	second := lemmatizer.Analysis{Lemma: "alusta", UPOS: "NOUN"}
+	got := pickBestVFSTAnalysis("alusta", []lemmatizer.Analysis{first, second})
+	if got.Lemma != "alku" {
+		t.Errorf("ties should keep FST order: got %q, want %q", got.Lemma, "alku")
 	}
 }

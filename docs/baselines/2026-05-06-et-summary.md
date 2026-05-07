@@ -104,6 +104,25 @@ Both need fixing before Phase 4. Suggested follow-up PR (call it
   the gold set has cases for. Coverage is no longer the bottleneck for
   Estonian — accuracy is.
 
+## Measured throughput
+
+After the eval timer rewrite (PR #103, ns-precision), `cmd/parsertest
+-warmup 2 -repeat 5` on `claude/sweet-swanson-183437` (Apple Silicon,
+single-threaded, warm cache) gives:
+
+| Dataset (cases) | Parser | avg / p50 / p95 (ms) | words/s | chars/s |
+|---|---|---|---:|---:|
+| et-grammar-v1 (50) | basic   | 0.079 / 0.074 / 0.097 | 46.3k | 301k |
+| et-grammar-v1      | custom  | 0.076 / 0.073 / 0.096 | 48.1k | 313k |
+| et-manual-v1 (4)   | basic   | 0.196 / 0.150 / 0.436 | 15.3k | 134k |
+| et-manual-v1       | custom  | 0.201 / 0.138 / 0.435 | 14.9k | 130k |
+
+`et-grammar-v1` clusters around **45–50k words/s** — same regime as
+the Finnish baselines. `et-manual-v1` is ~3× slower because its few
+cases contain the longest sentences in the eval corpus and all of
+the unresolved-token fallback paths fire on them; with only four
+cases it is also the noisiest dataset.
+
 ## Files
 
 - `2026-05-06-et-grammar-v1.json`

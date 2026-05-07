@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -123,6 +124,21 @@ type LemmaStateResponse struct {
 	Lemma  string `json:"lemma"`
 	POS    string `json:"pos"`
 	Status string `json:"status"`
+}
+
+type LemmaStateLookupItem struct {
+	Lemma  string `json:"lemma"`
+	POS    string `json:"pos"`
+	Status string `json:"status,omitempty"`
+}
+
+type LemmaStateLookupRequest struct {
+	Lang   string                 `json:"lang"`
+	Lemmas []LemmaStateLookupItem `json:"lemmas"`
+}
+
+type LemmaStateLookupResponse struct {
+	States []LemmaStateLookupItem `json:"states"`
 }
 
 type ParseFeedbackRequest struct {
@@ -631,6 +647,119 @@ func expandTokenLemmas(token parsecore.TokenResult, dict map[string][]store.Form
 	return []tokenLemma{{Lemma: lemma, POS: token.POS}}
 }
 
+// expandParsedWords reapplies the same dict-driven homonym expansion that
+// handleCreateDeck runs, producing one WordEntry per (lemma, pos) candidate
+// the dictionary knows of for each token. The result mirrors the (lemma, pos)
+// shape of the deck the user would get if they saved this parse, so the
+// import overview's unique-lemma count agrees with the deck's unique count.
+//
+// For (lemma, pos) entries the parser also picked, GrammarLabel,
+// ExampleSentence, and Gloss are inherited from the parser's WordEntry. For
+// homonym alternatives the parser didn't pick, GrammarLabel stays empty;
+// ExampleSentence and Gloss are derived from the first matching token's
+// sentence and a dictionary lookup respectively.
+func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][]store.FormResolution) []parsecore.WordEntry {
+	type aggKey struct {
+		lemma string
+		pos   string
+	}
+	type aggEntry struct {
+		forms       []string
+		formSet     map[string]struct{}
+		count       int
+		exampleText string
+	}
+	agg := map[aggKey]*aggEntry{}
+
+	for _, sent := range parsed.Sentences {
+		for _, token := range sent.Tokens {
+			for _, exp := range expandTokenLemmas(token, dict) {
+				key := aggKey{lemma: exp.Lemma, pos: exp.POS}
+				e, ok := agg[key]
+				if !ok {
+					e = &aggEntry{formSet: map[string]struct{}{}, exampleText: sent.Text}
+					agg[key] = e
+				}
+				e.count++
+				if token.Form != "" {
+					if _, dup := e.formSet[token.Form]; !dup {
+						e.formSet[token.Form] = struct{}{}
+						e.forms = append(e.forms, token.Form)
+					}
+				}
+			}
+		}
+	}
+
+	// Defensive: if we couldn't extract any tokens (e.g. a test fixture or a
+	// degenerate parse with empty Sentences), fall back to whatever the parser
+	// already produced rather than discarding it.
+	if len(agg) == 0 {
+		return parsed.Words
+	}
+
+	parserIndex := map[aggKey]*parsecore.WordEntry{}
+	for i := range parsed.Words {
+		k := aggKey{lemma: parsed.Words[i].Lemma, pos: parsed.Words[i].POS}
+		parserIndex[k] = &parsed.Words[i]
+	}
+
+	missingGlossKeys := make([]store.LemmaKey, 0)
+	for key := range agg {
+		pe, ok := parserIndex[key]
+		if !ok || pe.Gloss == "" {
+			missingGlossKeys = append(missingGlossKeys, store.LemmaKey{Lemma: key.lemma, POS: key.pos})
+		}
+	}
+	glosses := map[store.LemmaKey]string{}
+	if len(missingGlossKeys) > 0 {
+		glosses = a.store.BatchLookupGlosses(missingGlossKeys, parsed.Lang)
+	}
+
+	out := make([]parsecore.WordEntry, 0, len(agg))
+	for key, e := range agg {
+		// Forms: alphabetical, matching parsecore.enrichWords (sort.Strings)
+		// and GetDeckDetails' GROUP_CONCAT-then-strings.Sort path. Without
+		// this the API would hand example-highlighting and other consumers
+		// a different ordering depending on which entry point produced it.
+		sort.Strings(e.forms)
+		entry := parsecore.WordEntry{
+			Lemma:           key.lemma,
+			POS:             key.pos,
+			Forms:           e.forms,
+			Count:           e.count,
+			ExampleSentence: e.exampleText,
+		}
+		if pe, ok := parserIndex[key]; ok {
+			entry.Gloss = pe.Gloss
+			entry.GrammarLabel = pe.GrammarLabel
+			if pe.ExampleSentence != "" {
+				entry.ExampleSentence = pe.ExampleSentence
+			}
+		}
+		if entry.Gloss == "" {
+			if g, ok := glosses[store.LemmaKey{Lemma: key.lemma, POS: key.pos}]; ok {
+				entry.Gloss = g
+			}
+		}
+		out = append(out, entry)
+	}
+
+	// Match parsecore.enrichWords / GetDeckDetails ordering: count desc, then
+	// lemma asc. Map iteration above is non-deterministic, so without this
+	// step the API contract for parsed.Words would silently drift.
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Count != out[j].Count {
+			return out[i].Count > out[j].Count
+		}
+		if out[i].Lemma != out[j].Lemma {
+			return out[i].Lemma < out[j].Lemma
+		}
+		return out[i].POS < out[j].POS
+	})
+	return out
+}
+
 func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
 	var req CreateDeckRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -923,6 +1052,14 @@ func (a *API) HandleLemmaState(w http.ResponseWriter, r *http.Request) {
 	a.requireAuth(a.handleLemmaState).ServeHTTP(w, r)
 }
 
+func (a *API) HandleLemmaStates(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	a.requireAuth(a.handleLemmaStates).ServeHTTP(w, r)
+}
+
 func (a *API) handleLemmaState(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
 	var req LemmaStateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -950,8 +1087,11 @@ func (a *API) handleLemmaState(w http.ResponseWriter, r *http.Request, auth *Aut
 		err = a.store.MarkLemmaKnown(auth.UserID, lang, lemma, pos)
 	case "ignored":
 		err = a.store.MarkLemmaIgnored(auth.UserID, lang, lemma, pos)
+	case "", "neutral":
+		err = a.store.ClearLemmaState(auth.UserID, lang, lemma, pos)
+		status = ""
 	default:
-		http.Error(w, "Status must be known or ignored", http.StatusBadRequest)
+		http.Error(w, "Status must be known, ignored, or empty", http.StatusBadRequest)
 		return
 	}
 	if err != nil {
@@ -965,6 +1105,56 @@ func (a *API) handleLemmaState(w http.ResponseWriter, r *http.Request, auth *Aut
 		POS:    pos,
 		Status: status,
 	})
+}
+
+func (a *API) handleLemmaStates(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	var req LemmaStateLookupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	lang := strings.ToUpper(strings.TrimSpace(req.Lang))
+	if lang != "FI" && lang != "ET" {
+		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
+		return
+	}
+
+	keys := make([]store.LemmaKey, 0, len(req.Lemmas))
+	seen := make(map[store.LemmaKey]struct{}, len(req.Lemmas))
+	for _, item := range req.Lemmas {
+		lemma := strings.TrimSpace(item.Lemma)
+		pos := strings.ToUpper(strings.TrimSpace(item.POS))
+		if lemma == "" || pos == "" {
+			continue
+		}
+		key := store.LemmaKey{Lemma: lemma, POS: pos}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		keys = append(keys, key)
+	}
+
+	states, err := a.store.BatchLemmaStates(auth.UserID, lang, keys)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	resp := LemmaStateLookupResponse{States: make([]LemmaStateLookupItem, 0, len(states))}
+	for _, key := range keys {
+		status := states[key]
+		if status == "" {
+			continue
+		}
+		resp.States = append(resp.States, LemmaStateLookupItem{
+			Lemma:  key.Lemma,
+			POS:    key.POS,
+			Status: status,
+		})
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
@@ -1171,7 +1361,7 @@ type ParseResponse struct {
 	Lang            string               `json:"lang"`
 	ParseID         *int64               `json:"parse_id,omitempty"`
 	TotalTokens     int                  `json:"total_tokens"`
-	ParseDurationMs int64                `json:"parse_duration_ms"`
+	ParseDurationMs float64              `json:"parse_duration_ms"`
 	Stats           parsecore.ParseStats `json:"stats"`
 	Words           []WordEntry          `json:"words"`
 }
@@ -1215,6 +1405,13 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Apply the same dict-driven homonym expansion that handleCreateDeck runs,
+	// so the import overview's unique-lemma count matches the count of the
+	// deck the user gets when saving. See expandParsedWords for details.
+	uniqueForms := collectSurfaceForms(parsed.Sentences)
+	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang)
+	parsed.Words = a.expandParsedWords(parsed, dictCandidates)
+
 	auth, err := a.getCurrentUser(r)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -1254,7 +1451,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		Lang:            parsed.Lang,
 		ParseID:         parseID,
 		TotalTokens:     parsed.TotalTokens,
-		ParseDurationMs: parsed.ParseDurationMs,
+		ParseDurationMs: float64(parsed.ParseDurationNs) / 1e6,
 		Stats:           parsed.Stats,
 		Words:           parsed.Words,
 	})
@@ -1504,6 +1701,7 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/decks/", a.HandleDeckByID)
 	mux.HandleFunc("/api/known-words", a.HandleKnownWords)
 	mux.HandleFunc("/api/lemma-state", a.HandleLemmaState)
+	mux.HandleFunc("/api/lemma-states", a.HandleLemmaStates)
 
 	// Review
 	mux.HandleFunc("/api/review/next", a.HandleReviewNext)

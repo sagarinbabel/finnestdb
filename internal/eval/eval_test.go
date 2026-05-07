@@ -1,6 +1,7 @@
 package eval
 
 import (
+	"math"
 	"testing"
 
 	"finnestdb/internal/parsecore"
@@ -48,16 +49,17 @@ func TestCompareCase_MatchesOccurrenceAndGrammar(t *testing.T) {
 func TestSummaryAccumulator_FullAndCoverage(t *testing.T) {
 	acc := &summaryAccumulator{}
 	parsed := &parsecore.ParseResult{
+		TotalTokens: 2,
 		Stats: parsecore.ParseStats{
 			UniqueForms:      2,
 			ResolvedTokens:   1,
 			UnresolvedTokens: 1,
 			Timings: parsecore.ParseTimings{
-				AnalyzeMs:          4,
-				LookupFormsMs:      3,
-				LookupGlossesMs:    2,
-				ResolveSentencesMs: 1,
-				EnrichWordsMs:      1,
+				AnalyzeNs:          4_000_000,
+				LookupFormsNs:      3_000_000,
+				LookupGlossesNs:    2_000_000,
+				ResolveSentencesNs: 1_000_000,
+				EnrichWordsNs:      1_000_000,
 			},
 		},
 		Sentences: []parsecore.SentenceResult{
@@ -84,7 +86,8 @@ func TestSummaryAccumulator_FullAndCoverage(t *testing.T) {
 		},
 	}
 
-	acc.consume(parsed, comparisons, []int64{8, 10})
+	const charsPerRun = 14 // utf8 rune count of "Kirjassani on."
+	acc.consume(parsed, comparisons, []int64{8_000_000, 10_000_000}, charsPerRun)
 	got := acc.finish()
 
 	if got.ExpectedTokens != 2 {
@@ -134,6 +137,16 @@ func TestSummaryAccumulator_FullAndCoverage(t *testing.T) {
 	}
 	if got.AvgEnrichWordsMs != 1 {
 		t.Fatalf("avg_enrich_words_ms=%v want 1", got.AvgEnrichWordsMs)
+	}
+
+	const totalNs = 8_000_000 + 10_000_000
+	wantWordsPerSec := float64(2*2) / float64(totalNs) * 1e9
+	wantCharsPerSec := float64(charsPerRun*2) / float64(totalNs) * 1e9
+	if math.Abs(got.WordsPerSecond-wantWordsPerSec) > 1e-6 {
+		t.Fatalf("words_per_second=%v want %v", got.WordsPerSecond, wantWordsPerSec)
+	}
+	if math.Abs(got.CharsPerSecond-wantCharsPerSec) > 1e-6 {
+		t.Fatalf("chars_per_second=%v want %v", got.CharsPerSecond, wantCharsPerSec)
 	}
 }
 
