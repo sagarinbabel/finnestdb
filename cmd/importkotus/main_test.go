@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"io"
 	"strings"
 	"testing"
 
@@ -20,6 +21,39 @@ func newTestDB(t *testing.T) *sql.DB {
 	}
 	t.Cleanup(func() { db.Close() })
 	return db
+}
+
+func ParseSanalista(r io.Reader) ([]kotusEntry, int, error) {
+	var out []kotusEntry
+	skipped, err := streamSanalista(r, func(e kotusEntry) error {
+		out = append(out, e)
+		return nil
+	})
+	return out, skipped, err
+}
+
+func writeKotusEntries(db *sql.DB, entries []kotusEntry) (importStats, error) {
+	stats := importStats{}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return stats, err
+	}
+	defer tx.Rollback()
+
+	w, err := newKotusWriter(tx, &stats)
+	if err != nil {
+		return stats, err
+	}
+	defer w.Close()
+
+	for _, e := range entries {
+		if err := w.write(e); err != nil {
+			return stats, err
+		}
+	}
+
+	return stats, tx.Commit()
 }
 
 // --- ParadigmClass formatting ---

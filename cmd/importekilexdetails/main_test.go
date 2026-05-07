@@ -13,6 +13,15 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+func joinTranslations(entry definitionEntry) string {
+	tmp := lemmaPOSMap{}
+	tmp.add("_", "_", collectTranslations(entry))
+	if d, ok := tmp["_"]["_"]; ok {
+		return joinTranslationData(d)
+	}
+	return ""
+}
+
 func TestClassifyMorphCode(t *testing.T) {
 	cases := []struct {
 		code string
