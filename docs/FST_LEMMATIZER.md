@@ -121,7 +121,9 @@ The direct-hit merge is deliberately conservative:
 - When dictionary and FST disagree, the dictionary candidate normally
   wins. A disagreeing FST candidate can win only when the dictionary row
   is weak legacy data (no source priority and no morphology) and the FST
-  has stronger case/POS/morphology evidence.
+  has stronger case/POS/morphology evidence. A dictionary row with any
+  FEATS or projected grammar label is treated as morphologically
+  authoritative for now, even if the FST analysis is richer.
 - If local FST tables are missing, behavior degrades to the dictionary
   path plus the existing case-suffix label stopgap.
 
@@ -133,6 +135,9 @@ store. For example, `GrammarLabel=inessive` plus `Number=Sing` becomes
 back-projected from `Case=` when possible.
 
 ## Offline generation
+
+Generated-table values use canonical alphabetical UD FEATS ordering, so
+all producers emit the same string shape for the same morphology.
 
 The Finnish generator:
 

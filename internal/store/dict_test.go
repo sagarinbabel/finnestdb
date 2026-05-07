@@ -708,7 +708,7 @@ func TestBatchLookupForms_FSTCanCorrectWeakDictLemmaPOS(t *testing.T) {
 	if r.Lemma != "korjata" || r.POS != "VERB" {
 		t.Fatalf("korjasin: got {%q %q}, want {korjata VERB}", r.Lemma, r.POS)
 	}
-	if r.Feats != "Number=Sing|Mood=Ind|Tense=Past|Person=1" {
+	if r.Feats != "Mood=Ind|Number=Sing|Person=1|Tense=Past" {
 		t.Errorf("korjasin: feats got %q", r.Feats)
 	}
 	if r.Source != "fst" {
@@ -755,11 +755,92 @@ func TestBatchLookupForms_FSTOnlyPropagatesFeats(t *testing.T) {
 	if r.Lemma != "olla" || r.POS != "VERB" {
 		t.Fatalf("olen: got {%q %q}, want {olla VERB}", r.Lemma, r.POS)
 	}
-	if r.Feats != "Number=Sing|Mood=Ind|Tense=Pres|Person=1" {
+	if r.Feats != "Mood=Ind|Number=Sing|Person=1|Tense=Pres" {
 		t.Errorf("olen: feats got %q", r.Feats)
 	}
 	if r.Source != "fst" {
 		t.Errorf("olen: source got %q, want fst", r.Source)
+	}
+}
+
+func TestBatchLookupForms_ETFSTMergesDictCandidate(t *testing.T) {
+	installTestLemmatizerTable(t, "ET", map[string][]lemmatizer.Analysis{
+		"raamatus": {
+			{Lemma: "raamat", UPOS: "NOUN", GrammarLabel: "inessive", Number: "Sing", Raw: "generated-table"},
+		},
+	})
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"raamatus", "raamat", "NOUN", "ET"},
+	})
+
+	got := db.BatchLookupForms([]string{"raamatus"}, "ET", "custom")
+
+	r := got["raamatus"]
+	if r.Lemma != "raamat" || r.POS != "NOUN" {
+		t.Fatalf("raamatus: got {%q %q}, want {raamat NOUN}", r.Lemma, r.POS)
+	}
+	if r.Feats != "Case=Ine|Number=Sing" {
+		t.Errorf("raamatus: feats got %q, want Case=Ine|Number=Sing", r.Feats)
+	}
+	if r.Source != "dict+fst_feats" {
+		t.Errorf("raamatus: source got %q, want dict+fst_feats", r.Source)
+	}
+}
+
+func TestBatchLookupForms_DictFeatsBeatSameLemmaPOSFSTFeats(t *testing.T) {
+	installTestLemmatizerTable(t, "ET", map[string][]lemmatizer.Analysis{
+		"raamatus": {
+			{Lemma: "raamat", UPOS: "NOUN", GrammarLabel: "elative", Number: "Plur", Raw: "generated-table"},
+		},
+	})
+	db := newTestDB(t)
+	if _, err := db.db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, feats) VALUES (?, ?, ?, ?, ?)`,
+		"raamatus", "raamat", "NOUN", "ET", "Case=Ine|Number=Sing",
+	); err != nil {
+		t.Fatalf("seed feats form: %v", err)
+	}
+
+	got := db.BatchLookupForms([]string{"raamatus"}, "ET", "custom")
+
+	r := got["raamatus"]
+	if r.Lemma != "raamat" || r.POS != "NOUN" {
+		t.Fatalf("raamatus: got {%q %q}, want {raamat NOUN}", r.Lemma, r.POS)
+	}
+	if r.Feats != "Case=Ine|Number=Sing" {
+		t.Errorf("raamatus: feats got %q, want dict feats", r.Feats)
+	}
+	if r.GrammarLabel != "inessive" {
+		t.Errorf("raamatus: grammar label got %q, want inessive", r.GrammarLabel)
+	}
+	if r.Source != "dict" {
+		t.Errorf("raamatus: source got %q, want dict", r.Source)
+	}
+}
+
+func TestBatchLookupForms_SameLemmaPOSDisagreementCanPreferFSTVerb(t *testing.T) {
+	installTestLemmatizerTable(t, "ET", map[string][]lemmatizer.Analysis{
+		"joon": {
+			{Lemma: "jooma", UPOS: "VERB", Number: "Sing", Mood: "Ind", Tense: "Pres", Person: "1", Raw: "generated-table"},
+		},
+	})
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"joon", "jooma", "NOUN", "ET"},
+	})
+
+	got := db.BatchLookupForms([]string{"joon"}, "ET", "custom")
+
+	r := got["joon"]
+	if r.Lemma != "jooma" || r.POS != "VERB" {
+		t.Fatalf("joon: got {%q %q}, want {jooma VERB}", r.Lemma, r.POS)
+	}
+	if r.Feats != "Mood=Ind|Number=Sing|Person=1|Tense=Pres" {
+		t.Errorf("joon: feats got %q", r.Feats)
+	}
+	if r.Source != "fst" {
+		t.Errorf("joon: source got %q, want fst", r.Source)
 	}
 }
 
@@ -778,6 +859,15 @@ func TestBatchLookupForms_MissingFSTTablesKeepsDictPath(t *testing.T) {
 	}
 	if r.Source != "dict" {
 		t.Errorf("talo: source got %q, want dict", r.Source)
+	}
+}
+
+func TestAppendSourceTagComparesWholeTags(t *testing.T) {
+	if got := appendSourceTag("dict+fst_label", "fst_lab"); got != "dict+fst_label+fst_lab" {
+		t.Errorf("appendSourceTag substring tag got %q", got)
+	}
+	if got := appendSourceTag("dict+fst_label", "fst_label"); got != "dict+fst_label" {
+		t.Errorf("appendSourceTag duplicate tag got %q", got)
 	}
 }
 

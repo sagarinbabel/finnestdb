@@ -45,6 +45,8 @@ type FormResolution struct {
 //	Step 3: [FI + ET] Compound split → both halves in forms table
 //	Step 4: [FI + ET] Case suffix strip → lemma-candidate lookup in lemmas table
 //	Step 5: [FI + ET] FST morphological analysis from generated local tables
+//	        built offline from local analyser resources such as libvoikko VFST
+//	        and Giellalt/HFSTOL.
 //	Step 6: Not resolved → absent from map → caller falls back to stub
 //
 // In "custom" mode, step 1 is a candidate merge rather than a strict
@@ -52,8 +54,10 @@ type FormResolution struct {
 // ranked together. A same (lemma, POS) FST analysis enriches the dictionary
 // candidate with FEATS/GrammarLabel; a disagreeing FST analysis can win only
 // when the dictionary candidate is weak and the FST candidate has better
-// case/POS/morphology evidence. If no FST table is available, this degrades
-// to the SQLite dictionary path and the case-suffix label stopgap.
+// case/POS/morphology evidence. "Weak" is intentionally narrow here: the
+// dict candidate must have no source priority and no morphology. If no FST
+// table is available, this degrades to the SQLite dictionary path and the
+// case-suffix label stopgap.
 //
 // Returns a map from form → FormResolution.
 // Forms that cannot be resolved are absent from the map.
@@ -363,8 +367,10 @@ func appendSourceTag(source, tag string) string {
 	if source == "" {
 		return tag
 	}
-	if strings.Contains(source, "+"+tag) || source == tag {
-		return source
+	for _, part := range strings.Split(source, "+") {
+		if part == tag {
+			return source
+		}
 	}
 	return source + "+" + tag
 }
@@ -428,6 +434,10 @@ func supportScore(c resolutionCandidate) int {
 }
 
 func fstBeatsWeakDict(candidate, other resolutionCandidate) bool {
+	// Conservative displacement: an FST-only candidate may beat a dict-only
+	// candidate only when the dict row is legacy/weak (no source priority and
+	// no FEATS or projected label). Dict morphology, even partial, remains
+	// authoritative until production eval shows a broader threshold is safe.
 	return candidate.hasFST &&
 		!candidate.hasDict &&
 		morphologyScore(candidate.res) > 0 &&
@@ -484,6 +494,7 @@ func featsFromFSTAnalysis(a lemmatizer.Analysis) string {
 	if a.Person != "" {
 		pairs = append(pairs, "Person="+a.Person)
 	}
+	sort.Strings(pairs)
 	return strings.Join(pairs, "|")
 }
 
