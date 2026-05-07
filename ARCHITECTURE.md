@@ -502,9 +502,10 @@ single-source-of-truth ledger of every gold/silver corpus.
 ## Lexical Pipelines
 
 The two languages stitch together different source mixes behind the same
-multi-source schema. See
-[`docs/ESTONIAN_LEXICAL_PLAN.md`](docs/ESTONIAN_LEXICAL_PLAN.md) and
-[`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md).
+multi-source schema. See [`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md)
+for the combined FI + ET lexical-layer architecture (Estonian-specific
+content lives there now; the legacy `docs/ESTONIAN_LEXICAL_PLAN.md` was
+deleted in PR #135).
 
 Estonian (live):
 

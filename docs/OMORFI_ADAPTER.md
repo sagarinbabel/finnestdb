@@ -127,5 +127,6 @@ go run ./cmd/parsertest \
   -parsers basic,custom,estnltk
 ```
 
-See `docs/ESTONIAN_LEXICAL_PLAN.md` for the EKI/Ekilex lexical-data import
-plan and attribution requirements.
+See `docs/LEXICAL_PLAN.md` "Estonian-specific source choices and adapter
+contract" for the EKI/Ekilex lexical-data import plan and attribution
+requirements.
