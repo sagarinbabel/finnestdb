@@ -55,9 +55,10 @@ Important distinction:
 - `basic` and `custom` are admin workbench parser modes in the browser UI
 - `omorfi` and `estnltk` exist today as evaluation/parser-core integration
   points, but not as browser buttons
-- The Finnish lexical pipeline (Kotus + Voikko + kaikki.org) is documented in
-  [`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md); only Phase 1
-  (schema delta) has shipped — no `cmd/importkotus` or `cmd/importvoikko` yet.
+- The Finnish lexical pipeline (Kotus + generated morphology tables +
+  kaikki.org) is documented in [`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md).
+  `cmd/importkotus` is present; production generated FI/ET morphology
+  tables are still deferred beyond the current smoke fixtures.
 
 ## High-Level Architecture
 

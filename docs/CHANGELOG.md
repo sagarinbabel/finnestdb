@@ -134,12 +134,10 @@ the meaningful comparison is custom-prev vs custom-now (did we improve)
 against the analyzer (how far is the upper bound). Bootstrap CIs make it
 honest — a 2.2pp gain on 22 cases stops being headline-worthy.
 
-**FST migration link:** the per-attribute eval planned alongside the FST
-runtime ([PRs #106](https://github.com/sagarinbabel/finnestdb/pull/106) /
-[#107](https://github.com/sagarinbabel/finnestdb/pull/107)) will reuse the
-same `-baseline-dir` machinery — gold case files already carry a `feats`
-field after PR #113, so the per-attribute extension is purely on the
-report side.
+**Generated-table migration link:** future production FI/ET morphology
+tables will reuse the same `-baseline-dir` machinery. Gold case files
+already carry a `feats` field after PR #113, so the per-attribute
+extension is purely on the report side.
 
 ## 2026-05-07 — Gutenberg-FI silver corpus scraper (Plan C / PR 3)
 
@@ -178,11 +176,10 @@ pattern; this PR establishes the scaffolding.
 (Voikko + Omorfi agreement filter for FI; Vabamorf + Ekilex for ET)
 ships in Plan C / PR 4. This PR delivers the raw corpus only.
 
-**FST migration link:** the silver tagger in PR 4 will use the FST
-runtime from [PRs #106](https://github.com/sagarinbabel/finnestdb/pull/106)–[#112](https://github.com/sagarinbabel/finnestdb/pull/112)
-as one half of the agreement filter (the Voikko side); Omorfi via the
-Python adapter is the other half. So PR 4 stacks meaningfully on the
-FST series.
+**Generated-table migration link:** the silver tagger can use future
+production generated morphology tables as one half of the agreement
+filter. Omorfi via the Python adapter remains the other FI comparison
+path.
 
 ## 2026-05-06 — Numeric-hyphen tokenization (FI + ET)
 
