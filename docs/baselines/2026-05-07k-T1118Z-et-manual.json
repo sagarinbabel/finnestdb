@@ -1,0 +1,1485 @@
+{
+  "run_id": "20260507T112135Z-et-manual",
+  "generated_at": "2026-05-07T11:21:35Z",
+  "dataset": {
+    "name": "et-manual",
+    "version": "v1",
+    "language": "ET",
+    "case_count": 4
+  },
+  "parsers": [
+    "basic",
+    "custom",
+    "estnltk"
+  ],
+  "git_commit": "ffd7584",
+  "parser_version": "2026.05.07k",
+  "benchmark": {
+    "warmup_runs": 1,
+    "repeat_runs": 1
+  },
+  "summary": {
+    "basic": {
+      "expected_tokens": 9,
+      "lemma_accuracy": 0.8888888888888888,
+      "pos_accuracy": 0.8888888888888888,
+      "grammar_accuracy": 0.8333333333333334,
+      "full_accuracy": 0.6666666666666666,
+      "resolved_coverage": 0.9166666666666666,
+      "feats_attributes": [
+        {
+          "attribute": "Case",
+          "eligible": 6,
+          "correct": 5,
+          "accuracy": 0.8333333333333334
+        },
+        {
+          "attribute": "Mood",
+          "eligible": 1,
+          "correct": 0,
+          "accuracy": 0
+        },
+        {
+          "attribute": "Number",
+          "eligible": 9,
+          "correct": 8,
+          "accuracy": 0.8888888888888888
+        },
+        {
+          "attribute": "Person",
+          "eligible": 1,
+          "correct": 0,
+          "accuracy": 0
+        },
+        {
+          "attribute": "Tense",
+          "eligible": 1,
+          "correct": 0,
+          "accuracy": 0
+        },
+        {
+          "attribute": "VerbForm",
+          "eligible": 1,
+          "correct": 0,
+          "accuracy": 0
+        },
+        {
+          "attribute": "Voice",
+          "eligible": 1,
+          "correct": 0,
+          "accuracy": 0
+        }
+      ],
+      "avg_case_duration_ms": 0.1209375,
+      "p50_case_duration_ms": 0.116208,
+      "p95_case_duration_ms": 0.126209,
+      "words_per_second": 24806.2015503876,
+      "chars_per_second": 217054.26356589148,
+      "avg_unique_forms": 3,
+      "avg_resolved_tokens": 2.75,
+      "avg_unresolved_tokens": 0.25,
+      "avg_analyze_ms": 0.02320825,
+      "avg_lookup_forms_ms": 0.047562,
+      "avg_lookup_glosses_ms": 0.0437915,
+      "avg_resolve_sentences_ms": 0.00149,
+      "avg_enrich_words_ms": 0.002073
+    },
+    "custom": {
+      "expected_tokens": 9,
+      "lemma_accuracy": 1,
+      "pos_accuracy": 1,
+      "grammar_accuracy": 0.8333333333333334,
+      "full_accuracy": 0.7777777777777778,
+      "resolved_coverage": 1,
+      "feats_attributes": [
+        {
+          "attribute": "Case",
+          "eligible": 6,
+          "correct": 5,
+          "accuracy": 0.8333333333333334
+        },
+        {
+          "attribute": "Mood",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Number",
+          "eligible": 9,
+          "correct": 8,
+          "accuracy": 0.8888888888888888
+        },
+        {
+          "attribute": "Person",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Tense",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "VerbForm",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Voice",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        }
+      ],
+      "avg_case_duration_ms": 0.135219,
+      "p50_case_duration_ms": 0.101834,
+      "p95_case_duration_ms": 0.162625,
+      "words_per_second": 22186.231224901825,
+      "chars_per_second": 194129.52321789096,
+      "avg_unique_forms": 3,
+      "avg_resolved_tokens": 3,
+      "avg_unresolved_tokens": 0,
+      "avg_analyze_ms": 0.01782275,
+      "avg_lookup_forms_ms": 0.060844,
+      "avg_lookup_glosses_ms": 0.0504375,
+      "avg_resolve_sentences_ms": 0.0021875,
+      "avg_enrich_words_ms": 0.00202075
+    },
+    "estnltk": {
+      "expected_tokens": 9,
+      "lemma_accuracy": 1,
+      "pos_accuracy": 1,
+      "grammar_accuracy": 1,
+      "full_accuracy": 1,
+      "resolved_coverage": 1,
+      "feats_attributes": [
+        {
+          "attribute": "Case",
+          "eligible": 6,
+          "correct": 6,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Mood",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Number",
+          "eligible": 9,
+          "correct": 9,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Person",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Tense",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "VerbForm",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Voice",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        }
+      ],
+      "avg_case_duration_ms": 1279.64510425,
+      "p50_case_duration_ms": 1208.727834,
+      "p95_case_duration_ms": 1260.72825,
+      "words_per_second": 2.344400013750922,
+      "chars_per_second": 20.51350012032057,
+      "avg_unique_forms": 3,
+      "avg_resolved_tokens": 3,
+      "avg_unresolved_tokens": 0,
+      "avg_analyze_ms": 1279.30030225,
+      "avg_lookup_forms_ms": 0.2267605,
+      "avg_lookup_glosses_ms": 0.08746875,
+      "avg_resolve_sentences_ms": 0.008156,
+      "avg_enrich_words_ms": 0.00565625
+    }
+  },
+  "cases": [
+    {
+      "case_id": "et-1001",
+      "text": "Poes ootasin sõpra.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples_ns": [
+            130916
+          ],
+          "avg_ms": 0.130916,
+          "p50_ms": 0.130916,
+          "p95_ms": 0.130916
+        },
+        "custom": {
+          "samples_ns": [
+            194333
+          ],
+          "avg_ms": 0.194333,
+          "p50_ms": 0.194333,
+          "p95_ms": 0.194333
+        },
+        "estnltk": {
+          "samples_ns": [
+            1501466666
+          ],
+          "avg_ms": 1501.466666,
+          "p50_ms": 1501.466666,
+          "p95_ms": 1501.466666
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 19916,
+            "lookup_forms_ns": 52166,
+            "lookup_glosses_ns": 53416,
+            "resolve_sentences_ns": 1542,
+            "enrich_words_ns": 2167,
+            "total_ns": 130916
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 29708,
+            "lookup_forms_ns": 50209,
+            "lookup_glosses_ns": 107042,
+            "resolve_sentences_ns": 2292,
+            "enrich_words_ns": 2750,
+            "total_ns": 194333
+          }
+        },
+        "estnltk": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "analyzer:estnltk": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 1501128500,
+            "lookup_forms_ns": 200292,
+            "lookup_glosses_ns": 101000,
+            "resolve_sentences_ns": 11000,
+            "enrich_words_ns": 7625,
+            "total_ns": 1501466666
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Poes",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=poes pos=NOUN",
+                "resolution:dict lemma=pood pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "sõpra",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sõber",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sõber",
+              "pos": "NOUN",
+              "grammar_label": "illative",
+              "feats": "Case=Ill|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=sõpra pos=NOUN",
+                "resolution:dict lemma=sõber pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "feats": {
+                "Case": false,
+                "Number": true
+              },
+              "full": false
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Poes",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=poes pos=NOUN",
+                "resolution:dict lemma=pood pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "sõpra",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sõber",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sõber",
+              "pos": "NOUN",
+              "grammar_label": "illative",
+              "feats": "Case=Ill|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=sõpra pos=NOUN",
+                "resolution:dict lemma=sõber pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "feats": {
+                "Case": false,
+                "Number": true
+              },
+              "full": false
+            }
+          }
+        ],
+        "estnltk": [
+          {
+            "surface": "Poes",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=pood pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "sõpra",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sõber",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sõber",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Sing",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=sõber pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "et-1002",
+      "text": "Raamatupoes müüdi sõnastikke.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples_ns": [
+            116208
+          ],
+          "avg_ms": 0.116208,
+          "p50_ms": 0.116208,
+          "p95_ms": 0.116208
+        },
+        "custom": {
+          "samples_ns": [
+            101834
+          ],
+          "avg_ms": 0.101834,
+          "p50_ms": 0.101834,
+          "p95_ms": 0.101834
+        },
+        "estnltk": {
+          "samples_ns": [
+            1147657667
+          ],
+          "avg_ms": 1147.657667,
+          "p50_ms": 1147.657667,
+          "p95_ms": 1147.657667
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 20542,
+            "lookup_forms_ns": 42041,
+            "lookup_glosses_ns": 48333,
+            "resolve_sentences_ns": 1542,
+            "enrich_words_ns": 2125,
+            "total_ns": 116208
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 16375,
+            "lookup_forms_ns": 45667,
+            "lookup_glosses_ns": 31209,
+            "resolve_sentences_ns": 3792,
+            "enrich_words_ns": 1833,
+            "total_ns": 101834
+          }
+        },
+        "estnltk": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "analyzer:estnltk": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 1147336958,
+            "lookup_forms_ns": 212416,
+            "lookup_glosses_ns": 80583,
+            "resolve_sentences_ns": 8916,
+            "enrich_words_ns": 3875,
+            "total_ns": 1147657667
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Raamatupoes",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "raamatupood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "raamatupood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=raamatupoes pos=NOUN",
+                "resolution:dict lemma=raamatupood pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "sõnastikke",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sõnastik",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Plur"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sõnastik",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Plur",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=sõnastikke pos=NOUN",
+                "resolution:dict lemma=sõnastik pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Raamatupoes",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "raamatupood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "raamatupood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=raamatupoes pos=NOUN",
+                "resolution:dict lemma=raamatupood pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "sõnastikke",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sõnastik",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Plur"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sõnastik",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Plur",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=sõnastikke pos=NOUN",
+                "resolution:dict lemma=sõnastik pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ],
+        "estnltk": [
+          {
+            "surface": "Raamatupoes",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "raamatupood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "raamatupood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=raamatupood pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "sõnastikke",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sõnastik",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Plur"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sõnastik",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Plur",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=sõnastik pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "et-1003",
+      "text": "Lennujaamabuss peatus raudteejaamas.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples_ns": [
+            126209
+          ],
+          "avg_ms": 0.126209,
+          "p50_ms": 0.126209,
+          "p95_ms": 0.126209
+        },
+        "custom": {
+          "samples_ns": [
+            162625
+          ],
+          "avg_ms": 0.162625,
+          "p50_ms": 0.162625,
+          "p95_ms": 0.162625
+        },
+        "estnltk": {
+          "samples_ns": [
+            1208727834
+          ],
+          "avg_ms": 1208.727834,
+          "p50_ms": 1208.727834,
+          "p95_ms": 1208.727834
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 2,
+          "unresolved_tokens": 1,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 2,
+            "punct": 1,
+            "stub": 1
+          },
+          "timings": {
+            "analyze_ns": 29500,
+            "lookup_forms_ns": 52375,
+            "lookup_glosses_ns": 34459,
+            "resolve_sentences_ns": 1459,
+            "enrich_words_ns": 2042,
+            "total_ns": 126209
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "compound": 1,
+            "dict": 2,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 13958,
+            "lookup_forms_ns": 109875,
+            "lookup_glosses_ns": 34166,
+            "resolve_sentences_ns": 1458,
+            "enrich_words_ns": 1875,
+            "total_ns": 162625
+          }
+        },
+        "estnltk": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "analyzer:estnltk": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 1208334792,
+            "lookup_forms_ns": 278334,
+            "lookup_glosses_ns": 85542,
+            "resolve_sentences_ns": 5458,
+            "enrich_words_ns": 7250,
+            "total_ns": 1208727834
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Lennujaamabuss",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "lennujaamabuss",
+              "pos": "NOUN",
+              "feats": "Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "lennujaamabuss",
+              "pos": "NOUN",
+              "source": "stub",
+              "resolved": false,
+              "trace": [
+                "analyzer:rust lemma=lennujaamabuss pos=NOUN",
+                "fallback:stub lemma=lennujaamabuss pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Number": false
+              },
+              "full": false
+            }
+          },
+          {
+            "surface": "peatus",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "peatuma",
+              "pos": "VERB",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "peatu",
+              "pos": "ADJ",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=peatus pos=NOUN",
+                "resolution:dict lemma=peatu pos=ADJ"
+              ]
+            },
+            "match": {
+              "lemma": false,
+              "pos": false,
+              "grammar": true,
+              "feats": {
+                "Mood": false,
+                "Number": true,
+                "Person": false,
+                "Tense": false,
+                "VerbForm": false,
+                "Voice": false
+              },
+              "full": false
+            }
+          },
+          {
+            "surface": "raudteejaamas",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "raudteejaam",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "raudteejaam",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=raudteejaamas pos=NOUN",
+                "resolution:dict lemma=raudteejaam pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Lennujaamabuss",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "lennujaamabuss",
+              "pos": "NOUN",
+              "feats": "Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "lennujaamabuss",
+              "pos": "NOUN",
+              "source": "compound",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=lennujaamabuss pos=NOUN",
+                "resolution:compound lemma=lennujaamabuss pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Number": false
+              },
+              "full": false
+            }
+          },
+          {
+            "surface": "peatus",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "peatuma",
+              "pos": "VERB",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "peatuma",
+              "pos": "VERB",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=peatus pos=NOUN",
+                "resolution:dict lemma=peatuma pos=VERB"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Mood": true,
+                "Number": true,
+                "Person": true,
+                "Tense": true,
+                "VerbForm": true,
+                "Voice": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "raudteejaamas",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "raudteejaam",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "raudteejaam",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=raudteejaamas pos=NOUN",
+                "resolution:dict lemma=raudteejaam pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ],
+        "estnltk": [
+          {
+            "surface": "Lennujaamabuss",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "lennujaamabuss",
+              "pos": "NOUN",
+              "feats": "Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "lennujaamabuss",
+              "pos": "NOUN",
+              "grammar_label": "nominative",
+              "feats": "Number=Sing",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=lennujaamabuss pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Number": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "peatus",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "peatuma",
+              "pos": "VERB",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "peatuma",
+              "pos": "VERB",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=peatuma pos=VERB"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Mood": true,
+                "Number": true,
+                "Person": true,
+                "Tense": true,
+                "VerbForm": true,
+                "Voice": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "raudteejaamas",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "raudteejaam",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "raudteejaam",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=raudteejaam pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "et-1004",
+      "text": "Käekotis oli märkmik.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples_ns": [
+            110417
+          ],
+          "avg_ms": 0.110417,
+          "p50_ms": 0.110417,
+          "p95_ms": 0.110417
+        },
+        "custom": {
+          "samples_ns": [
+            82084
+          ],
+          "avg_ms": 0.082084,
+          "p50_ms": 0.082084,
+          "p95_ms": 0.082084
+        },
+        "estnltk": {
+          "samples_ns": [
+            1260728250
+          ],
+          "avg_ms": 1260.72825,
+          "p50_ms": 1260.72825,
+          "p95_ms": 1260.72825
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 22875,
+            "lookup_forms_ns": 43666,
+            "lookup_glosses_ns": 38958,
+            "resolve_sentences_ns": 1417,
+            "enrich_words_ns": 1958,
+            "total_ns": 110417
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 11250,
+            "lookup_forms_ns": 37625,
+            "lookup_glosses_ns": 29333,
+            "resolve_sentences_ns": 1208,
+            "enrich_words_ns": 1625,
+            "total_ns": 82084
+          }
+        },
+        "estnltk": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "analyzer:estnltk": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 1260400959,
+            "lookup_forms_ns": 216000,
+            "lookup_glosses_ns": 82750,
+            "resolve_sentences_ns": 7250,
+            "enrich_words_ns": 3875,
+            "total_ns": 1260728250
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Käekotis",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "käekott",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "käekott",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=käekotis pos=NOUN",
+                "resolution:dict lemma=käekott pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "märkmik",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "märkmik",
+              "pos": "NOUN",
+              "feats": "Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "märkmik",
+              "pos": "NOUN",
+              "feats": "Case=Nom|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=märkmik pos=NOUN",
+                "resolution:dict lemma=märkmik pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Käekotis",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "käekott",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "käekott",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=käekotis pos=NOUN",
+                "resolution:dict lemma=käekott pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "märkmik",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "märkmik",
+              "pos": "NOUN",
+              "feats": "Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "märkmik",
+              "pos": "NOUN",
+              "feats": "Case=Nom|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=märkmik pos=NOUN",
+                "resolution:dict lemma=märkmik pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ],
+        "estnltk": [
+          {
+            "surface": "Käekotis",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "käekott",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "käekott",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=käekott pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "märkmik",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "märkmik",
+              "pos": "NOUN",
+              "feats": "Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "märkmik",
+              "pos": "NOUN",
+              "grammar_label": "nominative",
+              "feats": "Number=Sing",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=märkmik pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

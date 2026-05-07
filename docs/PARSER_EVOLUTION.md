@@ -29,8 +29,9 @@ committed run.
 
 | Date | Commit | FI fi-manual-v1 lemma | FI ud-tdt lemma | ET et-grammar-v1 lemma | FI grammar | ET grammar | ET coverage |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 2026-05-07k-feats-rich (PR #139; FEATS-rich gold + dict + adapters end-to-end; **first baseline with non-empty FEATS-attribute table**) | (PR #139) | 81.4 | — | 88.6 | 59.5 | 19.6 | 98.9 |
-| 2026-05-07k-T0944Z (post-FEATS re-measure; FST disabled — no production tables; same DB as j) | [`317ab1b`][c-2026-05-07k] | 81.4 | _PENDING_ | 88.6 | 59.5 | 19.6 | 98.9 |
+| 2026-05-07k-T1118Z (FEATS migration + Ekilex bulk drop + FI kaikki backfill; **first measured FEATS lift end-to-end**: FI grammar 59.5→**98.6**, ET grammar 19.6→**78.4**, UD-tdt grammar 22.2→**83.2**) | [`ffd7584`][c-2026-05-07k-T1118Z] | 81.4 | 60.2 | 86.7 | **98.6** | **78.4** | **100.0** |
+| 2026-05-07k-feats-rich (PR #139; FEATS-rich gold + dict + adapters end-to-end; **first baseline with non-empty FEATS-attribute table**, but DB had no FEATS yet) | (PR #139) | 81.4 | — | 88.6 | 59.5 | 19.6 | 98.9 |
+| 2026-05-07k-T0944Z (post-FEATS re-measure; FST disabled — no production tables; same DB as j) | [`317ab1b`][c-2026-05-07k] | 81.4 | _superseded_ | 88.6 | 59.5 | 19.6 | 98.9 |
 | 2026-05-07j (post-fst re-measure on main; case-suffix label stopgap + smoke FST tables; **first UD-at-scale baseline**) | [`42e95d9`][c-2026-05-07j] | 81.4 | **60.2** | 88.6 | **59.5** | **19.6** | 98.9 |
 | 2026-05-06i (FST PR 4/4 ships, full suite re-measured) | [`91fecbf`][c-2026-05-06i] | **82.9** | — | 88.6 | 1.4 | 2.0 | **100.0** |
 | 2026-05-06h (FST PR 3/4: Giellalt ET) | [`5944733`][c-2026-05-06h] | — | — | 88.6 | — | **2.0** | **100.0** |
@@ -44,6 +45,7 @@ committed run.
 | 2026-05-05 (estnltk ceiling) | [`af111c2`][c-2026-05-05] | — | — | **98.1** | — | **92.2** | 100.0 |
 | 2026-04-28 | [`bb744ba`][c-2026-04-28] | 72.9 | — | 87.6 | 0.0 | 2.0 | 94.6 |
 
+[c-2026-05-07k-T1118Z]: https://github.com/sagarinbabel/finnestdb/commit/ffd7584
 [c-2026-05-07k]: https://github.com/sagarinbabel/finnestdb/commit/317ab1b
 [c-2026-05-07j]: https://github.com/sagarinbabel/finnestdb/commit/42e95d9
 [c-2026-05-06i]: https://github.com/sagarinbabel/finnestdb/commit/91fecbf
@@ -57,6 +59,55 @@ committed run.
 [c-2026-04-28]: https://github.com/sagarinbabel/finnestdb/commit/bb744ba
 
 ## Entries
+
+### 2026-05-07k-T1118Z — FEATS migration measured end-to-end (first DB-with-FEATS run)
+
+**Commit measured**: [`ffd7584`][c-2026-05-07k-T1118Z] (= `main` head; merge of PR [#139](https://github.com/sagarinbabel/finnestdb/pull/139))
+**Run started**: 2026-05-07T11:18Z (UTC)
+**Detail**: [`baselines/2026-05-07k-T1118Z-fi.md`](baselines/2026-05-07k-T1118Z-fi.md), [`baselines/2026-05-07k-T1118Z-et.md`](baselines/2026-05-07k-T1118Z-et.md)
+**Parser version stamp**: `2026.05.07k` (`parsecore.ParserVersion`)
+
+First baseline that captures the FEATS-data-thread migration end-to-end on a DB with FEATS populated. The §2026-05-07k-feats-rich entry below shipped the wiring; this entry measures it. Two prerequisite imports were run this session before measurement:
+
+1. **`make reduce-ekilex` + `make import-ekilex-details-et`** — loaded the 6.18M ET form rows with `morph_code → FEATS` projection. ET FEATS coverage in DB went from 0% → **96.0%**. Pipeline: cached raw Ekilex API responses (`localdata/ekilex/details/raw/`, ~1 GB, populated by an earlier `make fetch-ekilex` scrape) → `make reduce-ekilex` (~2 min) → `cmd/importekilexdetails` (~30 sec). 178k unique (lemma, pos) entries; 5.96M form rows touched.
+2. **`cmd/importdict -backfill-feats`** — projected Wiktionary tag arrays into UD FEATS for 26.6M FI form rows in-place. FI FEATS coverage in DB went from 0% → **99.3%**. Pipeline: download `kaikki.org-dictionary-Finnish.jsonl.gz` (248 MB compressed, ~22 sec on a fast connection) → `cmd/importdict -lang fi -file ...gz -backfill-feats -source-key kaikki ...` (~2 min for the 26.6M `WHERE feats IS NULL` updates).
+
+**Headline numbers** (custom parser):
+
+| Dataset (cases / tokens) | Lemma | POS | Grammar | Full | Coverage |
+|---|---:|---:|---:|---:|---:|
+| _Curated FI sets:_ | | | | | |
+| fi-grammar (80 / 156) | 96.8 | 98.1 | **98.6** | 50.6 | 99.7 |
+| fi-core (6 / 23) | 85.0 | 90.0 | **100.0** | 45.0 | 95.7 |
+| fi-manual-v1 (22 / 187) | 81.4 | 85.7 | **60.0** | 32.9 | 91.2 |
+| fi-manual-v2 (4 / 12) | 88.9 | 100.0 | **100.0** | 44.4 | 100.0 |
+| _UD FI test sets:_ | | | | | |
+| ud-fi-ftb-test (1867 / 13,973) | 71.4 | 66.4 | **83.6** | 28.3 | 92.5 |
+| ud-fi-ood-test (2106 / 16,151) | 62.5 | 65.6 | **79.6** | 21.2 | 85.0 |
+| ud-fi-pud-test (1000 / 13,474) | 60.0 | 66.0 | **78.5** | 20.8 | 85.5 |
+| ud-fi-tdt-test (1554 / 17,951) | 60.2 | 67.8 | **83.2** | 21.3 | 89.6 |
+| _Curated ET sets:_ | | | | | |
+| et-grammar (50 / 178) | 86.7 | 91.4 | **78.4** | 79.0 | 100.0 |
+| et-manual (4 / 12) | 100.0 | 100.0 | **83.3** | 77.8 | 100.0 |
+
+**Net effect vs `2026-05-07j`** (custom parser; both DB-state-of-art and FEATS migration accumulated between the two):
+
+- **FI grammar accuracy lifts: +39 to +70pp across every FI dataset.** kaikki tag arrays (`["illative","singular"]`) now project to UD FEATS at import time via `cmd/importdict/feats.go::kaikkiTagsToFeats`. Custom matches omorfi exactly on `fi-core` (100%) and `fi-manual-v1` (60%); within 1.4pp of omorfi on `fi-grammar` (98.6 vs 100.0). UD-FI grammar accuracy lands in the 78.5–83.6% band.
+- **ET grammar accuracy lifts: +59 to +83pp.** `et-grammar` 19.6 → 78.4 (LEARNINGS.md projected ~95%; the remaining 16pp gap to estnltk's 94.1% is on contextual-disambiguation cases). `et-manual` 0.0 → 83.3.
+- **ET lemma jumped on et-manual: 77.8 → 100.0** (+22.2pp). The bulk Ekilex drop's long-tail form coverage closed the cases the kaikki+public-headwords slice was missing.
+- **Lemma/POS slight regressions on et-grammar: 88.6 → 86.7 lemma (−1.9pp), 96.2 → 91.4 POS (−4.8pp).** Ekilex bulk introduces multi-lemma homonyms (e.g. PROPN/NOUN tied surfaces) that the dict ranker mishandles at bulk scale. Same kind of issue [`b327d4f`](https://github.com/sagarinbabel/finnestdb/commit/b327d4f) (PR 0.5) fixed for the public-headwords slice; recurs at bulk scale. **Action**: ranker tweak follow-up to recover the lost pp without regressing grammar.
+- **Full% drops vs j across the board (−5 to −31pp on FI; ET +28 to +67pp despite the shift).** `Match.Full` is now FEATS-strict (PR [#130](https://github.com/sagarinbabel/finnestdb/pull/130)) — every gold-supplied FEATS attribute must match. FI Full% reflects the mismatch on Number/Tense/Mood/Person attributes between dict-projected FEATS and gold FEATS. The remaining gap to omorfi/estnltk Full% is the per-attribute disambiguation that contextual analysis does and the dict-only path doesn't.
+
+**Open issues this surfaced**:
+
+- **Per-FEATS-attribute table now non-empty** — but the FI side wasn't measured against UD because UD gold's FEATS shape needs alignment with what `kaikkiTagsToFeats` produces (e.g. PronType, InfForm/PartForm). [`baselines/2026-05-07-feats-rich-fi.md`](baselines/2026-05-07-feats-rich-fi.md) holds the per-attribute gold reference. Next step: stratify the per-attribute table by analyzer family to see where custom's tag-projected FEATS disagree with gold FEATS systematically.
+- **Ranker regression on et-grammar at bulk-Ekilex scale.** Loss of 1.9pp lemma / 4.8pp POS / 4.0pp grammar on et-grammar suggests the source-priority + case-match heuristics in `pickBestFormCandidate` need revalidation against the Ekilex bulk shape. Filed as a follow-up; expect a PR that revisits the ranker tiebreak rules and re-baselines.
+- **The "FI FEATS muted" issue from §2026-05-07k-feats-rich is resolved.** That entry's "live DB lacks FEATS — until the user runs `cmd/importdict -lang fi -backfill-feats`..." was the gating step. Done in this session.
+- **FST runtime still off** — `localdata/lemmatizer-fi-et/tables/` is empty here, so the FST step doesn't fire. The FEATS lift in this baseline comes from the dict-import-time projection, not the FST runtime. Maintainer-local table generation would unlock the FST contribution on top of the existing lift.
+
+**Convention note**: the `THHMMZ` suffix means UTC run start time. This is the second `2026-05-07k` baseline of the day (after `T0944Z`, which has been superseded by this run since FI/ET FEATS were not yet loaded then). Multiple baselines on the same parser-behavior version are distinguished by run timestamp. See [`PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md).
+
+---
 
 ### 2026-05-07k-feats-rich — FEATS-rich gold + dict + adapters end-to-end (first non-empty FEATS-attribute table)
 
