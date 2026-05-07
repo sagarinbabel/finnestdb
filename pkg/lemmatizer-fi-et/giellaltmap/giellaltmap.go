@@ -22,8 +22,8 @@ import (
 )
 
 // Analysis is the parser-facing structured view of one Giellalt output.
-// Mirrors voikkomap.Analysis intentionally so the unified Lemmatize
-// layer can compare directly.
+// Mirrors voikkomap.Analysis field names intentionally so the unified
+// Lemmatize layer can compare directly; plus IsCompound (Giellalt-only).
 type Analysis struct {
 	Lemma        string
 	UPOS         string
@@ -34,6 +34,16 @@ type Analysis struct {
 	Person       string
 	Voice        string
 	VerbForm     string
+	Degree       string
+	PronType     string
+	PartForm     string
+	InfForm      string
+	PersonPsor   string
+	NumberPsor   string
+	Clitic       string
+	NumType      string
+	Connegative  string
+	AdpType      string
 	Feats        string // composed UD FEATS string, e.g. "Case=Ine|Number=Sing"; alphabetically sorted
 	IsCompound   bool   // contains '#'; used by the unified merger to deprioritise
 	Raw          string
@@ -72,8 +82,32 @@ func Parse(out string) Analysis {
 	if len(tags) > 1 {
 		applyTags(&a, tags[1:])
 	}
-	a.Feats = udfeats.Compose(a.GrammarLabel, a.Number, a.Tense, a.Mood, a.Person, a.Voice, a.VerbForm)
+	a.Feats = composeFeats(&a)
 	return a
+}
+
+func composeFeats(a *Analysis) string {
+	pairs := make(map[string]string, 16)
+	if udCase, ok := udfeats.LegacyLabelToUDCase[a.GrammarLabel]; ok && udCase != "Nom" {
+		pairs["Case"] = udCase
+	}
+	pairs["Number"] = a.Number
+	pairs["Tense"] = a.Tense
+	pairs["Mood"] = a.Mood
+	pairs["Person"] = a.Person
+	pairs["Voice"] = a.Voice
+	pairs["VerbForm"] = a.VerbForm
+	pairs["Degree"] = a.Degree
+	pairs["PronType"] = a.PronType
+	pairs["PartForm"] = a.PartForm
+	pairs["InfForm"] = a.InfForm
+	pairs["Person[psor]"] = a.PersonPsor
+	pairs["Number[psor]"] = a.NumberPsor
+	pairs["Clitic"] = a.Clitic
+	pairs["NumType"] = a.NumType
+	pairs["Connegative"] = a.Connegative
+	pairs["AdpType"] = a.AdpType
+	return udfeats.ComposeMap(pairs)
 }
 
 // applyTags walks the per-tag list (after the lemma) and fills the
@@ -81,7 +115,7 @@ func Parse(out string) Analysis {
 func applyTags(a *Analysis, tags []string) {
 	for _, tag := range tags {
 		switch tag {
-		// POS
+		// ── POS ──────────────────────────────────────────────
 		case "N":
 			a.UPOS = "NOUN"
 		case "V":
@@ -98,7 +132,13 @@ func applyTags(a *Analysis, tags []string) {
 			a.UPOS = "CCONJ"
 		case "CS":
 			a.UPOS = "SCONJ"
-		case "Po", "Pr", "Adp":
+		case "Po":
+			a.UPOS = "ADP"
+			a.AdpType = "Post"
+		case "Pr":
+			a.UPOS = "ADP"
+			a.AdpType = "Prep"
+		case "Adp":
 			a.UPOS = "ADP"
 		case "Interj":
 			a.UPOS = "INTJ"
@@ -109,13 +149,13 @@ func applyTags(a *Analysis, tags []string) {
 		case "Prop":
 			a.UPOS = "PROPN"
 
-		// Number
+		// ── Number ───────────────────────────────────────────
 		case "Sg":
 			a.Number = "Sing"
 		case "Pl":
 			a.Number = "Plur"
 
-		// Case
+		// ── Case ─────────────────────────────────────────────
 		case "Nom":
 			a.GrammarLabel = "nominative"
 		case "Gen":
@@ -145,19 +185,19 @@ func applyTags(a *Analysis, tags []string) {
 		case "Ins":
 			a.GrammarLabel = "instructive"
 
-		// Tense
+		// ── Tense ────────────────────────────────────────────
 		case "Prs":
 			a.Tense = "Pres"
 		case "Prt":
 			a.Tense = "Past"
 
-		// Voice
+		// ── Voice ────────────────────────────────────────────
 		case "Act":
 			a.Voice = "Act"
 		case "Pass":
 			a.Voice = "Pass"
 
-		// Mood (sets VerbForm=Fin as a side-effect)
+		// ── Mood (sets VerbForm=Fin as a side-effect) ────────
 		case "Ind":
 			a.Mood = "Ind"
 			a.VerbForm = "Fin"
@@ -171,13 +211,109 @@ func applyTags(a *Analysis, tags []string) {
 			a.Mood = "Pot"
 			a.VerbForm = "Fin"
 
-		// VerbForm: infinitives and participles
-		case "Inf", "InfA", "InfE", "InfMA", "InfMIST":
+		// ── VerbForm: infinitives (with InfForm subtype) ─────
+		case "Inf":
 			a.VerbForm = "Inf"
-		case "PrsPrc", "PrfPrc":
-			a.VerbForm = "Part"
+		case "InfA":
+			a.VerbForm = "Inf"
+			a.InfForm = "1"
+		case "InfE":
+			a.VerbForm = "Inf"
+			a.InfForm = "2"
+		case "InfMA":
+			a.VerbForm = "Inf"
+			a.InfForm = "3"
+		case "InfMIST":
+			a.VerbForm = "Inf"
+			a.InfForm = "5"
 
-		// Person+Number combinations: Sg1, Sg2, Sg3, Pl1, Pl2, Pl3
+		// ── VerbForm: participles (with PartForm subtype) ────
+		case "PrsPrc":
+			a.VerbForm = "Part"
+			a.PartForm = "Pres"
+		case "PrfPrc":
+			a.VerbForm = "Part"
+			a.PartForm = "Past"
+		case "AgPrc":
+			a.VerbForm = "Part"
+			a.PartForm = "Agt"
+		case "NegPrc":
+			a.VerbForm = "Part"
+			a.PartForm = "Neg"
+
+		// ── Degree ───────────────────────────────────────────
+		case "Pos":
+			a.Degree = "Pos"
+		case "Comp":
+			a.Degree = "Cmp"
+		case "Superl":
+			a.Degree = "Sup"
+
+		// ── PronType ─────────────────────────────────────────
+		case "Dem":
+			a.PronType = "Dem"
+		case "Interr":
+			a.PronType = "Int"
+		case "Rel":
+			a.PronType = "Rel"
+		case "Indef":
+			a.PronType = "Ind"
+		case "Pers":
+			a.PronType = "Prs"
+		case "Refl":
+			a.PronType = "Rfl"
+		case "Recipr":
+			a.PronType = "Rcp"
+
+		// ── NumType ──────────────────────────────────────────
+		case "Card":
+			a.NumType = "Card"
+		case "Ord":
+			a.NumType = "Ord"
+
+		// ── Possessive suffixes → Person[psor] / Number[psor]
+		case "PxSg1":
+			a.PersonPsor = "1"
+			a.NumberPsor = "Sing"
+		case "PxSg2":
+			a.PersonPsor = "2"
+			a.NumberPsor = "Sing"
+		case "PxSg3":
+			a.PersonPsor = "3"
+			a.NumberPsor = "Sing"
+		case "PxPl1":
+			a.PersonPsor = "1"
+			a.NumberPsor = "Plur"
+		case "PxPl2":
+			a.PersonPsor = "2"
+			a.NumberPsor = "Plur"
+		case "PxPl3":
+			a.PersonPsor = "3"
+			a.NumberPsor = "Plur"
+		case "Px3":
+			a.PersonPsor = "3"
+
+		// ── Clitic (stacked: -kohan → Ko,Han) ────────────────
+		case "Qst":
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "Ko")
+		case "Foc/han":
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "Han")
+		case "Foc/pa":
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "Pa")
+		case "Foc/kaan":
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "Kaan")
+		case "Foc/ka":
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "Ka")
+		case "Foc/kin":
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "Kin")
+		case "Foc/s":
+			a.Clitic = udfeats.AppendSortedValue(a.Clitic, "S")
+
+		// ── Connegative ──────────────────────────────────────
+		case "ConNeg":
+			a.Connegative = "Yes"
+
+		// ── Person+Number combinations ───────────────────────
 		case "Sg1":
 			a.Number = "Sing"
 			a.Person = "1"

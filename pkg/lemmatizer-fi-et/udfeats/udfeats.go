@@ -68,51 +68,50 @@ var UDCaseToLegacyLabel = map[string]string{
 	"Voc": "vocative",
 }
 
-// Compose builds a UD-canonical FEATS string from the structured
-// fields an FST analyzer fills. Returns "" when nothing maps.
-//
-// Attribute order is alphabetical (UD canonical). Empty inputs are
-// skipped. "Nom" is treated as implicit and omitted.
-//
-// The signature is deliberately positional rather than struct-based so
-// both voikkomap and giellaltmap can call it without taking a dependency
-// on each other or on a shared Analysis type.
+// Compose builds a UD-canonical FEATS string from the core structured
+// fields. Returns "" when nothing maps. Delegates to ComposeMap after
+// building the attribute map. Kept for backward-compatibility with
+// callers that only have the original seven fields (e.g. dict.go
+// fallback for legacy table files).
 func Compose(grammarLabel, number, tense, mood, person, voice, verbForm string) string {
 	pairs := make(map[string]string, 7)
 	if udCase, ok := LegacyLabelToUDCase[grammarLabel]; ok && udCase != "Nom" {
 		pairs["Case"] = udCase
 	}
-	if number != "" {
-		pairs["Number"] = number
+	pairs["Number"] = number
+	pairs["Tense"] = tense
+	pairs["Mood"] = mood
+	pairs["Person"] = person
+	pairs["Voice"] = voice
+	pairs["VerbForm"] = verbForm
+	return ComposeMap(pairs)
+}
+
+// ComposeMap builds a UD-canonical FEATS string from an arbitrary map of
+// attribute→value pairs. Empty values are skipped. Keys are sorted
+// alphabetically per UD convention.
+func ComposeMap(pairs map[string]string) string {
+	n := 0
+	for _, v := range pairs {
+		if v != "" {
+			n++
+		}
 	}
-	if mood != "" {
-		pairs["Mood"] = mood
-	}
-	if tense != "" {
-		pairs["Tense"] = tense
-	}
-	if person != "" {
-		pairs["Person"] = person
-	}
-	if voice != "" {
-		pairs["Voice"] = voice
-	}
-	if verbForm != "" {
-		pairs["VerbForm"] = verbForm
-	}
-	if len(pairs) == 0 {
+	if n == 0 {
 		return ""
 	}
-	keys := make([]string, 0, len(pairs))
-	for k := range pairs {
-		keys = append(keys, k)
+	keys := make([]string, 0, n)
+	for k, v := range pairs {
+		if v != "" {
+			keys = append(keys, k)
+		}
 	}
 	for i := 1; i < len(keys); i++ {
 		for j := i; j > 0 && keys[j-1] > keys[j]; j-- {
 			keys[j-1], keys[j] = keys[j], keys[j-1]
 		}
 	}
-	out := make([]byte, 0, 32)
+	out := make([]byte, 0, 64)
 	for i, k := range keys {
 		if i > 0 {
 			out = append(out, '|')
@@ -122,6 +121,62 @@ func Compose(grammarLabel, number, tense, mood, person, voice, verbForm string) 
 		out = append(out, pairs[k]...)
 	}
 	return string(out)
+}
+
+// AppendSortedValue inserts value into a comma-separated sorted string
+// (UD convention for multi-valued features like Clitic=Han,Kin). Returns
+// value unchanged if existing is empty. Deduplicates.
+func AppendSortedValue(existing, value string) string {
+	if existing == "" {
+		return value
+	}
+	vals := splitComma(existing)
+	pos := len(vals)
+	for i, v := range vals {
+		if value == v {
+			return existing
+		}
+		if value < v {
+			pos = i
+			break
+		}
+	}
+	vals = append(vals, "")
+	copy(vals[pos+1:], vals[pos:])
+	vals[pos] = value
+	n := 0
+	for _, v := range vals {
+		if n > 0 {
+			n++ // comma
+		}
+		n += len(v)
+	}
+	out := make([]byte, 0, n)
+	for i, v := range vals {
+		if i > 0 {
+			out = append(out, ',')
+		}
+		out = append(out, v...)
+	}
+	return string(out)
+}
+
+func splitComma(s string) []string {
+	n := 1
+	for i := 0; i < len(s); i++ {
+		if s[i] == ',' {
+			n++
+		}
+	}
+	out := make([]string, 0, n)
+	start := 0
+	for i := 0; i <= len(s); i++ {
+		if i == len(s) || s[i] == ',' {
+			out = append(out, s[start:i])
+			start = i + 1
+		}
+	}
+	return out
 }
 
 // CaseFromFeats returns the lowercase English case label for the

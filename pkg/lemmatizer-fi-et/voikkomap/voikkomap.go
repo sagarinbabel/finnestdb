@@ -40,6 +40,16 @@ type Analysis struct {
 	Person       string // "1" / "2" / "3" / "4" or empty
 	Voice        string // "Act" / "Pass" or empty
 	VerbForm     string // "Fin" / "Inf" / "Part" or empty
+	Degree       string // "Pos" / "Cmp" / "Sup" or empty
+	PronType     string // "Dem" / "Int" / "Rel" / "Ind" / "Prs" / "Rfl" / "Rcp" or empty
+	PartForm     string // "Pres" / "Past" / "Agt" / "Neg" or empty (Finnish-specific)
+	InfForm      string // "1" / "2" / "3" / "5" or empty (Finnish-specific)
+	PersonPsor   string // "1" / "2" / "3" or empty — Person[psor]
+	NumberPsor   string // "Sing" / "Plur" or empty — Number[psor]
+	Clitic       string // "Ko" / "Han" / "Pa" / "Kaan" / "Ka" / "Kin" / "S" or empty
+	NumType      string // "Card" / "Ord" or empty
+	Connegative  string // "Yes" or empty
+	AdpType      string // "Post" / "Prep" or empty
 	Feats        string // composed UD FEATS string, e.g. "Case=Ine|Number=Sing"; alphabetically sorted
 	Raw          string // the original FSTOUTPUT, for debugging / source provenance
 }
@@ -81,8 +91,12 @@ func Parse(fstOutput string) Analysis {
 			case tag == "X":
 				// Already handled above by the insideXp close. Nothing to do.
 			case strings.HasPrefix(tag, "L"):
-				if pos := classToUPOS(tag[1:]); pos != "" {
+				body := tag[1:]
+				if pos := classToUPOS(body); pos != "" {
 					a.UPOS = pos
+				}
+				if nt := numTypeFromClass(body); nt != "" {
+					a.NumType = nt
 				}
 			case strings.HasPrefix(tag, "S"):
 				if grammar := sijamuotoToLabel(tag[1:]); grammar != "" {
@@ -93,9 +107,11 @@ func Parse(fstOutput string) Analysis {
 					a.Number = num
 				}
 			case strings.HasPrefix(tag, "T"):
-				if mood := moodToUD(tag[1:]); mood != "" {
+				body := tag[1:]
+				if mood := moodToUD(body); mood != "" {
 					if mood == "Inf" {
 						a.VerbForm = "Inf"
+						a.InfForm = infFormFromMood(body)
 					} else {
 						a.Mood = mood
 						a.VerbForm = "Fin"
@@ -108,6 +124,16 @@ func Parse(fstOutput string) Analysis {
 			case strings.HasPrefix(tag, "P"):
 				if person := tag[1:]; len(person) == 1 && person[0] >= '1' && person[0] <= '4' {
 					a.Person = person
+				}
+			case strings.HasPrefix(tag, "R"):
+				applyParticiple(&a, tag[1:])
+			case strings.HasPrefix(tag, "C"):
+				applyComparison(&a, tag[1:])
+			case strings.HasPrefix(tag, "O"):
+				applyPossessive(&a, tag[1:])
+			case strings.HasPrefix(tag, "F"):
+				if cl := cliticToUD(tag[1:]); cl != "" {
+					a.Clitic = udfeats.AppendSortedValue(a.Clitic, cl)
 				}
 			}
 
@@ -122,8 +148,35 @@ func Parse(fstOutput string) Analysis {
 	}
 
 	a.Lemma = lemmaBuilder.String()
-	a.Feats = udfeats.Compose(a.GrammarLabel, a.Number, a.Tense, a.Mood, a.Person, a.Voice, a.VerbForm)
+	if a.UPOS == "ADJ" && a.Degree == "" {
+		a.Degree = "Pos"
+	}
+	a.Feats = composeFeats(&a)
 	return a
+}
+
+func composeFeats(a *Analysis) string {
+	pairs := make(map[string]string, 16)
+	if udCase, ok := udfeats.LegacyLabelToUDCase[a.GrammarLabel]; ok && udCase != "Nom" {
+		pairs["Case"] = udCase
+	}
+	pairs["Number"] = a.Number
+	pairs["Tense"] = a.Tense
+	pairs["Mood"] = a.Mood
+	pairs["Person"] = a.Person
+	pairs["Voice"] = a.Voice
+	pairs["VerbForm"] = a.VerbForm
+	pairs["Degree"] = a.Degree
+	pairs["PronType"] = a.PronType
+	pairs["PartForm"] = a.PartForm
+	pairs["InfForm"] = a.InfForm
+	pairs["Person[psor]"] = a.PersonPsor
+	pairs["Number[psor]"] = a.NumberPsor
+	pairs["Clitic"] = a.Clitic
+	pairs["NumType"] = a.NumType
+	pairs["Connegative"] = a.Connegative
+	pairs["AdpType"] = a.AdpType
+	return udfeats.ComposeMap(pairs)
 }
 
 // classToUPOS maps the body of a [L*] tag (e.g. "n", "t", "ee") to a
@@ -234,6 +287,113 @@ func tenseToUD(body string) string {
 		return "Pres"
 	case "i":
 		return "Past"
+	}
+	return ""
+}
+
+func infFormFromMood(body string) string {
+	switch body {
+	case "n1":
+		return "1"
+	case "n2":
+		return "2"
+	case "n3":
+		return "3"
+	case "n4":
+		return "4"
+	case "n5":
+		return "5"
+	}
+	return ""
+}
+
+// applyParticiple handles [R*] tags — Voikko's participle/derivation
+// family. Sets VerbForm, PartForm, and Voice where the tag implies
+// active vs. passive.
+func applyParticiple(a *Analysis, body string) {
+	switch body {
+	case "v": // VA-participle (active present)
+		a.VerbForm = "Part"
+		a.PartForm = "Pres"
+	case "u": // NUT-participle (active past)
+		a.VerbForm = "Part"
+		a.PartForm = "Past"
+	case "t": // TU-participle (passive past)
+		a.VerbForm = "Part"
+		a.PartForm = "Past"
+		a.Voice = "Pass"
+	case "a": // TAVA-participle (passive present)
+		a.VerbForm = "Part"
+		a.PartForm = "Pres"
+		a.Voice = "Pass"
+	case "m": // MA-participle (agent)
+		a.VerbForm = "Part"
+		a.PartForm = "Agt"
+	case "e": // MATON-participle (negative/caritive)
+		a.VerbForm = "Part"
+		a.PartForm = "Neg"
+	}
+}
+
+// applyComparison handles [C*] tags — degree of comparison AND
+// connegative. In Voikko FSTOUTPUT, [Cc]=comparative, [Cs]=superlative,
+// [Cn]=connegative. Positive degree is unmarked (no tag emitted).
+func applyComparison(a *Analysis, body string) {
+	switch body {
+	case "c":
+		a.Degree = "Cmp"
+	case "s":
+		a.Degree = "Sup"
+	case "n":
+		a.Connegative = "Yes"
+	}
+}
+
+func numTypeFromClass(body string) string {
+	switch body {
+	case "u":
+		return "Card"
+	case "ur":
+		return "Ord"
+	}
+	return ""
+}
+
+func applyPossessive(a *Analysis, body string) {
+	switch body {
+	case "1y":
+		a.PersonPsor = "1"
+		a.NumberPsor = "Sing"
+	case "2y":
+		a.PersonPsor = "2"
+		a.NumberPsor = "Sing"
+	case "1m":
+		a.PersonPsor = "1"
+		a.NumberPsor = "Plur"
+	case "2m":
+		a.PersonPsor = "2"
+		a.NumberPsor = "Plur"
+	case "3":
+		a.PersonPsor = "3"
+	}
+}
+
+func cliticToUD(body string) string {
+	switch body {
+	case "ko":
+		return "Ko"
+	case "han":
+		return "Han"
+	case "pa":
+		return "Pa"
+	case "kaan":
+		return "Kaan"
+	case "ka":
+		return "Ka"
+	case "kin":
+		return "Kin"
+	case "s":
+		return "S"
 	}
 	return ""
 }

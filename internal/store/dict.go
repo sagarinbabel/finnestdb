@@ -513,7 +513,28 @@ func featsFromFSTAnalysis(a lemmatizer.Analysis) string {
 	if a.Feats != "" {
 		return a.Feats
 	}
-	return udfeats.Compose(a.GrammarLabel, a.Number, a.Tense, a.Mood, a.Person, a.Voice, a.VerbForm)
+	pairs := map[string]string{
+		"Number":       a.Number,
+		"Tense":        a.Tense,
+		"Mood":         a.Mood,
+		"Person":       a.Person,
+		"Voice":        a.Voice,
+		"VerbForm":     a.VerbForm,
+		"Degree":       a.Degree,
+		"PronType":     a.PronType,
+		"PartForm":     a.PartForm,
+		"InfForm":      a.InfForm,
+		"Person[psor]": a.PersonPsor,
+		"Number[psor]": a.NumberPsor,
+		"Clitic":       a.Clitic,
+		"NumType":      a.NumType,
+		"Connegative":  a.Connegative,
+		"AdpType":      a.AdpType,
+	}
+	if udCase, ok := udfeats.LegacyLabelToUDCase[a.GrammarLabel]; ok && udCase != "Nom" {
+		pairs["Case"] = udCase
+	}
+	return udfeats.ComposeMap(pairs)
 }
 
 // featsFromCaseLabel projects a lowercase English case name (the
