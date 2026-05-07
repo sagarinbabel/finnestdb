@@ -509,7 +509,7 @@ func EnsureDictionarySourceColumns(db *sql.DB) error {
 
 // BackfillLegacyKaikkiProvenance labels FI/ET rows that were imported before
 // cmd/importdict threaded -source-key / -source-priority through. Those rows
-// carry the SQLite column defaults (source='' and source_priority=0), which
+// carry the SQLite column defaults (source=” and source_priority=0), which
 // makes verify-dict and `make doctor` flag the entire dictionary as untracked
 // even though it's the kaikki dump every fresh install gets.
 //
@@ -2035,10 +2035,6 @@ func getOwnedCardSchedule(q sqlQueryRower, userID, cardID int64) (*Card, ReviewS
 		_ = json.Unmarshal([]byte(fsrsJSON.String), &schedule)
 	}
 	return &card, schedule, nil
-}
-
-func (d *DB) getOwnedCardSchedule(userID, cardID int64) (*Card, ReviewSchedule, error) {
-	return getOwnedCardSchedule(d.db, userID, cardID)
 }
 
 func (d *DB) remainingNewCardsToday(userID int64) (int, error) {

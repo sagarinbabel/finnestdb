@@ -267,17 +267,6 @@ type resolutionCandidate struct {
 	origSource     string // dict candidate's original Source before enrichment
 }
 
-// lookupBestForm runs the multi-row form lookup and ranks the candidates.
-// Returns the best FormResolution and true if any candidate exists, else
-// false. The original (uncased) surface is needed for case-match scoring.
-func lookupBestForm(stmt *sql.Stmt, surface, lowerSurface, lang string) (FormResolution, bool) {
-	candidates, ok := lookupFormCandidates(stmt, lowerSurface, lang)
-	if !ok {
-		return FormResolution{}, false
-	}
-	return formResolutionFromCandidate(pickBestFormCandidate(surface, candidates)), true
-}
-
 func lookupFormCandidates(stmt *sql.Stmt, lowerSurface, lang string) ([]formCandidate, bool) {
 	rows, err := stmt.Query(lowerSurface, lang)
 	if err != nil {

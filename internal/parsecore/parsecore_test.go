@@ -51,20 +51,6 @@ func TestSupportedParsersList(t *testing.T) {
 	}
 }
 
-func TestParserDefinitionsExposeEstNLTKForEstonian(t *testing.T) {
-	defs := ParserDefinitions()
-	for _, def := range defs {
-		if def.Name != "estnltk" {
-			continue
-		}
-		if !slices.Equal(def.Languages, []string{"ET"}) {
-			t.Fatalf("estnltk languages=%v want [ET]", def.Languages)
-		}
-		return
-	}
-	t.Fatal("estnltk parser definition missing")
-}
-
 func TestOmorfiRulesPreferCustomFallbackAndTraceIt(t *testing.T) {
 	token := &TokenResult{
 		Form:     "kirjassani",

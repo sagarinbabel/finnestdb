@@ -115,12 +115,6 @@ type ParseResult struct {
 	Sentences       []SentenceResult `json:"sentences"`
 }
 
-type ParserDefinition struct {
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Languages   []string `json:"languages,omitempty"`
-}
-
 type parser interface {
 	Name() string
 	Parse(db *store.DB, lang, text string) (*ParseResult, error)
@@ -169,15 +163,6 @@ func SupportedParsers() []string {
 	}
 	sort.Strings(names)
 	return names
-}
-
-func ParserDefinitions() []ParserDefinition {
-	return []ParserDefinition{
-		{Name: "basic", Description: "Rust tokenizer plus direct dictionary lookup", Languages: []string{"FI", "ET"}},
-		{Name: "custom", Description: "Rust tokenizer plus possessive, compound, and case-suffix fallbacks", Languages: []string{"FI", "ET"}},
-		{Name: "omorfi", Description: "External Finnish baseline adapter with inspectable override rules", Languages: []string{"FI"}},
-		{Name: "estnltk", Description: "External Estonian EstNLTK/Vabamorf baseline adapter with inspectable override rules", Languages: []string{"ET"}},
-	}
 }
 
 func registry() map[string]parser {

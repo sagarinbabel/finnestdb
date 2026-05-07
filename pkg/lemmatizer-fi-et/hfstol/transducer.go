@@ -9,14 +9,14 @@ import (
 )
 
 const (
-	hfstMagic              = "HFST"
-	transducerHeaderLen    = 2 + 2 + 4 + 4 + 4 + 4 + 9*4 // 56 bytes
-	indexEntrySize         = 6                            // uint16 + uint32
-	unweightedTransSize    = 8                            // uint16 + uint16 + uint32
-	weightedTransSize      = 12                           // uint16 + uint16 + uint32 + float32
-	noSymbol        uint16 = 0xFFFF
-	noTableIndex    uint32 = 0xFFFFFFFF
-	transTableStart uint32 = 0x80000000
+	hfstMagic                  = "HFST"
+	transducerHeaderLen        = 2 + 2 + 4 + 4 + 4 + 4 + 9*4 // 56 bytes
+	indexEntrySize             = 6                           // uint16 + uint32
+	unweightedTransSize        = 8                           // uint16 + uint16 + uint32
+	weightedTransSize          = 12                          // uint16 + uint16 + uint32 + float32
+	noSymbol            uint16 = 0xFFFF
+	noTableIndex        uint32 = 0xFFFFFFFF
+	transTableStart     uint32 = 0x80000000
 )
 
 // flag diacritic operations, matching libvoikko / HFST conventions.
@@ -50,9 +50,9 @@ type Transducer struct {
 
 	// alphabet
 	symbolToString    []string
-	stringToSymbol    map[rune]uint16    // single-rune symbols only
-	multiCharSymbols  map[string]uint16  // multi-rune surface symbols (rare in analyzers)
-	symbolToDiacritic []opFeatureValue   // index → flag op (only meaningful for flag-diacritic symbols)
+	stringToSymbol    map[rune]uint16   // single-rune symbols only
+	multiCharSymbols  map[string]uint16 // multi-rune surface symbols (rare in analyzers)
+	symbolToDiacritic []opFeatureValue  // index → flag op (only meaningful for flag-diacritic symbols)
 	flagFeatureCount  uint16
 	unknownSymbol     uint16
 	defaultSymbol     uint16
@@ -73,12 +73,6 @@ func Open(path string) (*Transducer, error) {
 	if err != nil {
 		return nil, err
 	}
-	return parse(data)
-}
-
-// OpenBytes is like Open but takes the pre-loaded contents directly.
-// Useful with go:embed.
-func OpenBytes(data []byte) (*Transducer, error) {
 	return parse(data)
 }
 
