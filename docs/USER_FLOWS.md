@@ -14,34 +14,77 @@ Domain: **finne.st**.
 
 ## Map of the flow
 
+```mermaid
+flowchart TD
+    %% ===== Anonymous =====
+    L["🌐 Landing<br/>finne.st"]
+    AR["Anonymous results<br/>+ sign-up ribbon"]
+    SU["Create account<br/>email+pw or Google"]
+    SI["Sign in<br/>email+pw or Google"]
+
+    L -->|"paste · upload · sample"| AR
+    L -->|"Sign in"| SI
+    AR -->|"Save these words"| SU
+
+    %% ===== Auth bridge =====
+    SU -.->|"carry forward<br/>anonymous parses"| D
+    SI --> D
+
+    %% ===== Signed-in main loop =====
+    D["📊 Dashboard"]
+    P["📝 Parse<br/>+ recent · history"]
+    EPH["Ephemeral parse<br/>(opt-out toggle)"]
+    R["Results table<br/>+ POS filter · CSV"]
+    SP{"Save as…"}
+    DL["📚 Decks list<br/>+ known-words panel"]
+    DD["Deck detail<br/>+ comprehension projection"]
+    REV["🎯 Review session<br/>FSRS · Again/Hard/Good/Easy"]
+    REVALL["Review all due<br/>cross-deck"]
+
+    D --> P
+    D --> DL
+    D --> REVALL
+
+    P -->|"parse"| R
+    P -.->|"opt-out toggle"| EPH
+    EPH --> R
+    R --> SP
+    SP -->|"new deck"| DD
+    SP -->|"add to existing"| DD
+
+    DL -->|"click deck"| DD
+    DL -->|"+ New from text"| P
+    DL -->|"Review all"| REVALL
+    DD -->|"Review this deck"| REV
+    REVALL --> REV
+    REV -->|"done · out of cards"| D
+
+    %% ===== Cold start =====
+    D -.->|"first time<br/>0 decks"| CS["Cold start"]
+    CS -->|"Paste a text"| P
+    CS -->|"Import known words"| KW["Known-words<br/>import"]
+    CS -.->|"gated · research"| TOP["Top-1000<br/>seed deck"]
+    KW --> DL
+    TOP --> DD
+
+    %% ===== Styling =====
+    classDef anon fill:#fef3c7,stroke:#92400e,color:#1a1a1a
+    classDef gated fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:5 5,color:#1a1a1a
+    classDef hub fill:#dbeafe,stroke:#1e40af,color:#1a1a1a
+    class L,AR,SU,SI anon
+    class TOP,EPH gated
+    class D,DD hub
 ```
-                        ┌─────────────────────────────┐
-   anonymous visitor ──►│ /  Landing + Inline Parse   │
-                        │   (paste → results inline)  │
-                        └──────────────┬──────────────┘
-                                       │ "Save this list" CTA
-                                       ▼
-                        ┌─────────────────────────────┐
-                        │ /signin   /signup           │
-                        │ Email+password │ Google     │
-                        └──────────────┬──────────────┘
-                                       ▼
-                        ┌─────────────────────────────┐
-              ┌────────►│ /dashboard                  │◄────────┐
-              │         │ stats │ recent decks │ CTAs │         │
-              │         └──┬──────┬──────────┬───┬────┘         │
-              │            │      │          │   │              │
-              │            ▼      ▼          ▼   ▼              │
-              │       /parse   /decks    /known  /review        │
-              │            │      │          │   │              │
-              │            ▼      ▼          │   │              │
-              │      Results  Deck detail────┘   │              │
-              │            │      │              │              │
-              │  Save deck │      │ Review this  │              │
-              │  Add to ───┘      └─────────►────┘              │
-              │  existing                                       │
-              └─── back to dashboard ───────────────────────────┘
-```
+
+In words:
+
+1. **Anonymous path**: paste → results → "save these words" CTA → sign up. Anonymous parses are ephemeral; nothing server-side until sign-up.
+2. **Returning path**: sign in → dashboard → parse / decks / review.
+3. **Inner loop**: parse → results → save (new deck OR add to existing) → deck detail → review.
+4. **Cold start**: a brand-new account with zero decks lands on the dashboard's empty state with three options — paste a text, import known words, or seed from the top-1000 baseline (gated on the research project).
+5. **Cross-cutting correction**: from any results row or review card, the `✎ Wrong?` icon opens a modal with two paths (flag-only or propose-fix) — see §10 below.
+
+Yellow nodes are anonymous-only. Dashed-border nodes are not yet built (cold-start top-1000, opt-out ephemeral parse). Blue hub nodes are the highest-traffic surfaces.
 
 ## Screen-by-screen
 
@@ -346,6 +389,32 @@ The user asked: modal? button? inline? Existing implementation
 explicit button per row. It works but is heavy. **Recommendation: keep
 the modal, change the entry point and add a low-friction "just flag"
 path.**
+
+```mermaid
+flowchart LR
+    A["Any results row<br/>or review card"]
+    M{"Correction modal"}
+    F["parse_feedback row<br/>flag_only=true"]
+    FX["parse_feedback row<br/>+ proposed_lemma · pos<br/>+ optional grammar · notes"]
+    T["Submitted ✓<br/>toast"]
+    Q["Admin triage<br/>/admin/feedback"]
+
+    A -->|"✎ Wrong?<br/>(hover · focus)"| M
+    M -->|"◉ I don't know<br/>the right answer"| F
+    M -->|"○ Right answer is …"| FX
+    F --> T
+    FX --> T
+    T -->|"return to source row"| A
+    F -.->|"flag-only filter"| Q
+    FX -.->|"default queue"| Q
+
+    classDef new fill:#fef3c7,stroke:#92400e,color:#1a1a1a
+    class F new
+```
+
+Yellow indicates the new "flag-only" path that captures users who
+notice a wrong parse but can't articulate the fix — signal we're
+losing today.
 
 ```
    Row in results table:                                          
