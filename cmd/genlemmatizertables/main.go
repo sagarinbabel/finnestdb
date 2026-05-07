@@ -54,34 +54,10 @@ func main() {
 
 	table := map[string][]voikkomap.Analysis{}
 	for _, w := range words {
-		raw := ana.Analyze(w)
-		if len(raw) == 0 {
-			continue
-		}
-		out := make([]voikkomap.Analysis, 0, len(raw))
-		for _, line := range raw {
-			a, ok := parse(line)
-			if !ok {
-				continue
-			}
-			out = append(out, a)
-		}
+		out := analyzeWord(ana, parse, w)
 		if len(out) == 0 {
 			continue
 		}
-		// Stable output.
-		sort.Slice(out, func(i, j int) bool {
-			if out[i].Lemma != out[j].Lemma {
-				return out[i].Lemma < out[j].Lemma
-			}
-			if out[i].UPOS != out[j].UPOS {
-				return out[i].UPOS < out[j].UPOS
-			}
-			if out[i].GrammarLabel != out[j].GrammarLabel {
-				return out[i].GrammarLabel < out[j].GrammarLabel
-			}
-			return out[i].Raw < out[j].Raw
-		})
 		table[w] = out
 	}
 
@@ -108,6 +84,37 @@ func main() {
 	if err := os.WriteFile(*outPath, b, 0o644); err != nil {
 		fatalf("write %s: %v", *outPath, err)
 	}
+}
+
+// analyzeWord runs the language-specific analyser for one surface form,
+// projects each raw reading through `parse`, and returns the result in
+// the analyser's emission order.
+//
+// Order is significant. Both Voikko's VFST and Giellalt's HFST OL emit
+// analyses in a fixed, priority-encoding sequence — surface-compatible /
+// nominative readings tend to come first. Downstream consumers
+// (`internal/store::mergeAndRankDictFSTCandidates`, FST-only lookup)
+// treat the first analysis on ties as the highest-priority reading and
+// use it to enrich same-lemma dict candidates. Sorting the slice here
+// (e.g. by GrammarLabel) silently reorders cases — for ET, "maja"'s
+// genitive/nominative/partitive readings get realphabetised so genitive
+// wins on ties, marking nominative base forms as genitive. Preserve
+// analyser order; reproducibility comes from FST determinism, not from
+// re-sorting.
+func analyzeWord(ana analyzer, parse parseLine, word string) []voikkomap.Analysis {
+	raw := ana.Analyze(word)
+	if len(raw) == 0 {
+		return nil
+	}
+	out := make([]voikkomap.Analysis, 0, len(raw))
+	for _, line := range raw {
+		a, ok := parse(line)
+		if !ok {
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
 }
 
 // openBackend resolves the language-specific analyser and parser. ET
