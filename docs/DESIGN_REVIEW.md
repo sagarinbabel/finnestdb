@@ -1,11 +1,23 @@
 # Design Review (2026-05-07)
 
-Review of the FinnEst design folder — branding, Aalto app system, clickable
-prototype, wireframe clickthrough, view components, and mobile design.
+Review of the FinnEst `design/` folder. Files checked into the repo are
+referenced as `design/<name>`; files marked **(local only)** exist in the
+working copy but are not committed — they were reviewed from the design
+bundle delivered separately.
+
+**Checked in:** `wireframe-clickthrough.html`, `flow-diagram.html`,
+`finnest.html`, `finnest v2.html`, `finnest mobile.html`, `app.jsx`,
+`view-*.jsx`, `v2-*.jsx`, `m-*.jsx`, `design-canvas.jsx`,
+`tweaks-panel.jsx`, `components.jsx`, `data.jsx`.
+
+**Local only (not in repo):** `branding.html`, `finnest aalto.html`,
+`finnest prototype.html`, `proto-app.jsx`, `proto-screens.jsx`,
+`proto-flows.jsx`, `aalto-app.jsx`, `aalto-landing.jsx`,
+`finnest-aalto-standalone.html`.
 
 ---
 
-## branding.html — The FinnEst mark
+## branding.html — The FinnEst mark (local only)
 
 ### Strengths
 
@@ -51,7 +63,7 @@ prototype, wireframe clickthrough, view components, and mobile design.
 
 ---
 
-## finnest aalto.html — App design system
+## finnest aalto.html — App design system (local only)
 
 ### Strengths
 
@@ -101,7 +113,7 @@ prototype, wireframe clickthrough, view components, and mobile design.
 
 ---
 
-## finnest prototype.html — Clickable prototype
+## finnest prototype.html — Clickable prototype (local only)
 
 Interactive prototype adds flows on top of the Aalto design system:
 SignupRibbon, SaveAsModal, CorrectionModal, ColdStart, KnownWordsImport,
