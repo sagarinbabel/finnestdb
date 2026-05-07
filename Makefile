@@ -126,14 +126,20 @@ import-dict-fi-recommended: import-dict-fi import-kotus-fi
 # One-command local setup: build dictionaries if missing, then run.
 # Kept separate from `make run` so running the server doesn't implicitly start
 # multi-minute downloads/imports in CI or quick-dev loops.
-setup-local: import-dict-fi-recommended import-dict-et-recommended
+# setup-local is the single bootstrap entry point for a fresh clone:
+# fetches every third-party artifact into localdata/ (gitignored, see
+# docs/ARTIFACT_POLICY.md), then imports everything into finnestdb.db.
+# Pass SKIP_EKILEX_DETAILS=1 / SKIP_SILVER=1 / SKIP_UD=1 to opt out of
+# the slow steps.
+setup-local:
+	@bash scripts/setup-local.sh
 
 run-local: setup-local run
 
 # Adds missing Estonian EKI ühendsõnastik 2026 public headwords from the
 # tracked compact Ekilex snapshot. Existing Kaikki rows are preserved.
 import-ekilex-et:
-	go run ./cmd/importekilex -db finnestdb.db -file data/ekilex/eki-public-words-2026-et.jsonl
+	go run ./cmd/importekilex -db finnestdb.db -file localdata/ekilex/eki-public-words-2026-et.jsonl
 
 # Imports the rich Ekilex data drop (definitions/*.jsonl + forms/*.tsv,
 # produced by `make reduce-ekilex`) into lemmas + forms. Loads ~178k lemma
@@ -142,31 +148,34 @@ import-ekilex-et:
 # the form's morph_code to disambiguate homonyms — see
 # cmd/importekilexdetails for the table.
 import-ekilex-details-et:
-	go run ./cmd/importekilexdetails -db finnestdb.db -data data/ekilex
+	go run ./cmd/importekilexdetails -db finnestdb.db -data localdata/ekilex
 
 # ── Kotus Nykysuomen sanalista (Finnish inflection class metadata) ────────────
 # Phase 3 of docs/FINNISH_LEXICAL_PLAN.md. Reads the tracked TSV under
-# data/kotus/ (CC BY 4.0; see data/kotus/NOTICE.md) and fills paradigm_class
+# localdata/kotus/ (CC BY 4.0; see localdata/kotus/NOTICE.md) and fills paradigm_class
 # on existing FI lemmas. Existing rows from kaikki keep their source/gloss;
 # only paradigm_class is set. Kotus-only headwords are inserted at
 # source='kotus', priority=10. See cmd/importkotus for the full conflict
 # policy.
 import-kotus-fi:
-	go run ./cmd/importkotus -db finnestdb.db -file data/kotus/nykysuomensanalista2024.txt
+	go run ./cmd/importkotus -db finnestdb.db -file localdata/kotus/nykysuomensanalista2024.txt
 
 # ── Ekilex /api/word/details enrichment scrape ────────────────────────────────
 # Requires EKILEX_API_KEY in the environment. Raw responses land under
 # localdata/ekilex/details/ (gitignored). See cmd/fetchekilex.
 
-# Refreshes data/ekilex/eki-public-words-2026-et.jsonl from /api/public_word/eki
+# Refreshes localdata/ekilex/eki-public-words-2026-et.jsonl from /api/public_word/eki
 # only if the headword set has changed.
 fetch-ekilex-refresh:
-	go run ./cmd/fetchekilex refresh-queue
+	go run ./cmd/fetchekilex refresh-queue \
+	  -out localdata/ekilex/eki-public-words-2026-et.jsonl
 
 # Fetches a small spread of headwords with both /eki and the unfiltered
 # variant so we can compare payload size/content before committing the full run.
 fetch-ekilex-sample:
-	go run ./cmd/fetchekilex sample
+	go run ./cmd/fetchekilex sample \
+	  -queue localdata/ekilex/eki-public-words-2026-et.jsonl \
+	  -out-dir localdata/ekilex/details/samples
 
 # Full resumable scrape. -rps is a *global* request rate cap shared across
 # workers; -workers should be ~2x rps to keep request latency from becoming
@@ -178,10 +187,12 @@ EKILEX_WORKERS ?= 16
 EKILEX_RPS ?= 16
 fetch-ekilex:
 	go run ./cmd/fetchekilex fetch \
+	  -queue localdata/ekilex/eki-public-words-2026-et.jsonl \
+	  -out-dir localdata/ekilex/details \
 	  -workers=$(EKILEX_WORKERS) -rps=$(EKILEX_RPS) -max-attempts=3
 
 # Reduces the gzipped raw payloads under localdata/ekilex/details/raw/ into
-# two sharded committable artifacts under data/ekilex/:
+# two sharded committable artifacts under localdata/ekilex/:
 #   - definitions/<letter>.jsonl: per-word lemma + morphology + meanings
 #   - forms/<letter>.tsv:         one row per inflected form (lemma, form, morph_code)
 # Sharding is by first lowercase letter of the lemma (Estonian alphabet plus
@@ -189,7 +200,10 @@ fetch-ekilex:
 # run `go test ./cmd/reduceekilex/` to verify, or `go test ./cmd/reduceekilex/
 # -update-golden` to refresh fixtures after intentional reducer changes.
 reduce-ekilex:
-	go run ./cmd/reduceekilex
+	go run ./cmd/reduceekilex \
+	  -raw-dir localdata/ekilex/details/raw \
+	  -out-compact-dir localdata/ekilex/definitions \
+	  -out-forms-dir localdata/ekilex/forms
 # Full refresh: drops existing entries then re-imports.
 reimport-dict-fi:
 	go run ./cmd/importdict -lang fi -db finnestdb.db -reimport
@@ -337,7 +351,7 @@ eval-check: eval
 # ── Silver corpus scraping (Plan C / PR 3) ───────────────────────────────────
 #
 # Fetches Finnish-language books from Project Gutenberg into the silver-tier
-# corpus at data/silver-fi/. Polite scraper (1.5s between requests).
+# corpus at localdata/silver-fi/. Polite scraper (1.5s between requests).
 # Idempotent — re-running skips books already in the manifest.
 #
 # The default target (500k tokens) covers ~14 books from the most popular
@@ -347,5 +361,5 @@ scrape-gutenberg-fi:
 	go run ./cmd/scrapegutenberg \
 	    -lang fi \
 	    -target-tokens $(TARGET_TOKENS) \
-	    -out data/silver-fi/raw \
-	    -manifest data/silver-fi/manifest.jsonl
+	    -out localdata/silver-fi/raw \
+	    -manifest localdata/silver-fi/manifest.jsonl

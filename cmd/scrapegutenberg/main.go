@@ -11,8 +11,8 @@
 //	go run ./cmd/scrapegutenberg \
 //	    -lang fi \
 //	    -target-tokens 500000 \
-//	    -out data/silver-fi/raw \
-//	    -manifest data/silver-fi/manifest.jsonl
+//	    -out localdata/silver-fi/raw \
+//	    -manifest localdata/silver-fi/manifest.jsonl
 //
 // Pipeline:
 //
@@ -76,8 +76,8 @@ func main() {
 	var (
 		langFlag     = flag.String("lang", "fi", "Gutenberg language code to scrape (e.g. fi, et)")
 		targetTokens = flag.Int("target-tokens", 500_000, "Stop once the cumulative token count crosses this threshold")
-		outDir       = flag.String("out", "data/silver-fi/raw", "Directory for cleaned per-book .txt files")
-		manifestPath = flag.String("manifest", "data/silver-fi/manifest.jsonl", "JSONL manifest of fetched books")
+		outDir       = flag.String("out", "localdata/silver-fi/raw", "Directory for cleaned per-book .txt files")
+		manifestPath = flag.String("manifest", "localdata/silver-fi/manifest.jsonl", "JSONL manifest of fetched books")
 		dryRun       = flag.Bool("dry-run", false, "Print which IDs would be fetched without downloading")
 		userAgent    = flag.String("user-agent", defaultUserAgent, "User-Agent for HTTP requests")
 	)

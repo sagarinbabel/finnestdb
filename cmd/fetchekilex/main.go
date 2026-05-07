@@ -1,5 +1,5 @@
 // cmd/fetchekilex fetches Ekilex /api/word/details payloads for every Estonian
-// public headword in data/ekilex/eki-public-words-2026-et.jsonl.
+// public headword in localdata/ekilex/eki-public-words-2026-et.jsonl.
 //
 // Subcommands:
 //
@@ -210,7 +210,7 @@ func cmdRefreshQueue(args []string) error {
 	fs := flag.NewFlagSet("refresh-queue", flag.ExitOnError)
 	base := fs.String("base-url", "https://ekilex.ee", "Ekilex base URL")
 	keyEnv := fs.String("key-env", "EKILEX_API_KEY", "Env var holding API key")
-	out := fs.String("out", "data/ekilex/eki-public-words-2026-et.jsonl", "Queue file path")
+	out := fs.String("out", "localdata/ekilex/eki-public-words-2026-et.jsonl", "Queue file path")
 	dataset := fs.String("dataset", "eki", "Dataset code for /api/public_word/{code}")
 	fs.Parse(args)
 
@@ -322,7 +322,7 @@ func cmdSample(args []string) error {
 	fs := flag.NewFlagSet("sample", flag.ExitOnError)
 	base := fs.String("base-url", "https://ekilex.ee", "")
 	keyEnv := fs.String("key-env", "EKILEX_API_KEY", "")
-	queue := fs.String("queue", "data/ekilex/eki-public-words-2026-et.jsonl", "")
+	queue := fs.String("queue", "localdata/ekilex/eki-public-words-2026-et.jsonl", "")
 	outDir := fs.String("out-dir", "localdata/ekilex/details/samples", "")
 	wordsFlag := fs.String("words", "koer,maja,jooksma,kell,või", "comma-separated lemmas; only the first matching word_id is returned for duplicate lemmas — use -word-ids for explicit coverage")
 	idsFlag := fs.String("word-ids", "", "comma-separated word_ids (overrides -words)")
@@ -439,7 +439,7 @@ func cmdFetch(args []string) error {
 	fs := flag.NewFlagSet("fetch", flag.ExitOnError)
 	base := fs.String("base-url", "https://ekilex.ee", "")
 	keyEnv := fs.String("key-env", "EKILEX_API_KEY", "")
-	queuePath := fs.String("queue", "data/ekilex/eki-public-words-2026-et.jsonl", "")
+	queuePath := fs.String("queue", "localdata/ekilex/eki-public-words-2026-et.jsonl", "")
 	outDir := fs.String("out-dir", "localdata/ekilex/details", "")
 	workers := fs.Int("workers", 16, "concurrent workers")
 	rps := fs.Float64("rps", 16, "global request rate cap (shared across all workers, not per-worker)")
