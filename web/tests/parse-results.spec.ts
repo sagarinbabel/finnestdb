@@ -223,24 +223,19 @@ test('user can mark result rows known or ignored from inspect results', async ({
   await expect(page.locator('#results-page')).toHaveClass(/active/);
 
   const firstRow = page.locator('#word-table-body tr').first();
-  await expect(firstRow.locator('.word-state-badge')).toHaveText('Known');
-  await expect(firstRow.getByRole('button', { name: 'Known' })).toBeDisabled();
+  await expect(firstRow.locator('.word-pill-known.is-active')).toBeVisible();
   await expect(firstRow.getByRole('button', { name: 'Known' })).toBeVisible();
   await expect(firstRow.getByRole('button', { name: 'Ignore' })).toBeVisible();
   await expect(firstRow.getByRole('button', { name: 'Suggest fix' })).toBeVisible();
 
-  await Promise.all([
-    firstRow.getByRole('button', { name: 'Ignore' }).click(),
-    expect(firstRow.getByRole('button', { name: 'Ignore' })).toBeDisabled(),
-  ]);
-  await expect(firstRow.locator('.word-state-badge')).toHaveText('Ignored');
-  await expect(firstRow.getByRole('button', { name: 'Ignore' })).toBeDisabled();
+  await firstRow.getByRole('button', { name: 'Ignore' }).click();
+  await expect(firstRow.locator('.word-icon-ignore.is-active')).toBeVisible();
+  await expect(firstRow.locator('.word-pill-known.is-active')).toHaveCount(0);
   await expect(page.locator('.toast.success')).toContainText(/ignored/i);
 
   const secondRow = page.locator('#word-table-body tr').nth(1);
   await secondRow.getByRole('button', { name: 'Known' }).click();
-  await expect(secondRow.locator('.word-state-badge')).toHaveText('Known');
-  await expect(secondRow.getByRole('button', { name: 'Known' })).toBeDisabled();
+  await expect(secondRow.locator('.word-pill-known.is-active')).toBeVisible();
 
   expect(captured).toEqual([
     { lang: 'FI', lemma: 'laulaa', pos: 'VERB', status: 'ignored' },
