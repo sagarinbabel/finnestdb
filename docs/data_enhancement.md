@@ -205,7 +205,43 @@ pull` will pick up upstream fixes; re-import after pulling.
 
 ---
 
-## 5. Open follow-ups
+## 5. Frequency baselines
+
+Per-form / per-lemma frequency lists used to compare against this
+project's user-aggregated frequency. Bulk files live under
+`localdata/frequency/` (gitignored); methodology, coverage curves, and
+license attribution live in
+[`docs/FREQUENCY_BASELINES.md`](FREQUENCY_BASELINES.md).
+
+| Dataset | Source | License | Forms (top-N) | Path | Added | Last refreshed |
+|---|---|---|---:|---|---|---|
+| `opensubtitles-2018-fi-50k` | [hermitdave/FrequencyWords](https://github.com/hermitdave/FrequencyWords) | CC BY-SA 4.0 | 50,000 | `localdata/frequency/fi/opensubtitles-2018-fi-50k.txt` | 2026-05-07 | 2026-05-07 |
+| `opensubtitles-2018-et-50k` | [hermitdave/FrequencyWords](https://github.com/hermitdave/FrequencyWords) | CC BY-SA 4.0 | 50,000 | `localdata/frequency/et/opensubtitles-2018-et-50k.txt` | 2026-05-07 | 2026-05-07 |
+| `UD_Finnish-TDT-forms` | [UD\_Finnish-TDT](https://github.com/UniversalDependencies/UD_Finnish-TDT) train | CC BY-SA 4.0 | 49,179 unique | `localdata/frequency/fi/UD_Finnish-TDT-forms.tsv` | 2026-05-07 | 2026-05-07 |
+| `UD_Finnish-TDT-forms-words` | UD\_Finnish-TDT, PUNCT/SYM filtered | CC BY-SA 4.0 | 48,964 unique | `localdata/frequency/fi/UD_Finnish-TDT-forms-words.tsv` | 2026-05-07 | 2026-05-07 |
+| `UD_Finnish-TDT-lemmas` | UD\_Finnish-TDT (col 3) | CC BY-SA 4.0 | 23,025 unique | `localdata/frequency/fi/UD_Finnish-TDT-lemmas.tsv` | 2026-05-07 | 2026-05-07 |
+| `UD_Estonian-EDT-forms` | [UD\_Estonian-EDT](https://github.com/UniversalDependencies/UD_Estonian-EDT) train | **CC BY-NC-SA 4.0** | 73,176 unique | `localdata/frequency/et/UD_Estonian-EDT-forms.tsv` | 2026-05-07 | 2026-05-07 |
+| `UD_Estonian-EDT-forms-words` | UD\_Estonian-EDT, PUNCT/SYM filtered | **CC BY-NC-SA 4.0** | 73,040 unique | `localdata/frequency/et/UD_Estonian-EDT-forms-words.tsv` | 2026-05-07 | 2026-05-07 |
+| `UD_Estonian-EDT-lemmas` | UD\_Estonian-EDT (col 3) | **CC BY-NC-SA 4.0** | 36,324 unique | `localdata/frequency/et/UD_Estonian-EDT-lemmas.tsv` | 2026-05-07 | 2026-05-07 |
+
+The ET-EDT-derived files are CC BY-NC-SA — non-commercial only. Stays
+in `localdata/` per the license-compatibility rule. Watch this if the
+project ever monetizes.
+
+### How to regenerate
+
+```bash
+make fetch-frequency-baselines
+# or
+go run ./cmd/fetchfrequency
+```
+
+Idempotent — re-running with no upstream change produces byte-identical
+files.
+
+---
+
+## 6. Open follow-ups
 
 Things that would expand the corpus further and were considered during
 this pass but **not** done:

@@ -150,6 +150,97 @@ infrastructure, not shared linguistic content.
 In other words: the parsers learn from each other through which
 *problems* are worth solving, not through which *strings* to emit.
 
+## Measurable Divergences
+
+_Added 2026-05-07._
+
+This section records empirical observations about where Finnish and
+Estonian diverge in measurable ways. These are not novel findings in
+linguistics — register variation in token-frequency distributions and
+the influence of inflectional richness on Zipfian decay are
+well-studied. They are recorded here because (a) the specific
+measurements on our specific corpora are useful project artifacts, and
+(b) the observations have direct product implications for comprehension
+prediction and deck construction.
+
+### Register dominates language: top-N inflected-form coverage
+
+Top-N inflected-form coverage of running text varies far more by
+register than by language. Coverage curves measured 2026-05-07 against
+public corpora (see [`docs/FREQUENCY_BASELINES.md`](FREQUENCY_BASELINES.md) for
+methodology, license attribution, and reproduction recipe; bulk files
+under `localdata/frequency/`):
+
+| | Subtitle (OpenSubtitles 2018) | Written (UD treebank, words only) |
+|---|---:|---:|
+| **Finnish, top 1000** | 65.2% | 40.1% |
+| **Estonian, top 1000** | 72.9% | 42.9% |
+| **Finnish, top 5000** | 82.0% | 59.1% |
+| **Estonian, top 5000** | 87.1% | 61.8% |
+
+**Primary observation.** The subtitle-vs-written gap is roughly **25
+percentage points** within each language at top-1000 forms. The
+Finnish-vs-Estonian gap within either register is **3–7 percentage
+points**. The register effect dominates the language effect by a factor
+of ~5×.
+
+**Secondary observation.** Within either register, Estonian is
+consistently slightly easier than Finnish at every top-N level. This
+gap is small but reproduces across both corpus sources we have, despite
+opposite corpus-size relationships:
+
+- OpenSubtitles ET has ~half the tokens of OpenSubtitles FI (smaller
+  corpus, shorter long tail — would inflate ET's top-N coverage).
+- UD-Estonian-EDT has ~2× the tokens of UD-Finnish-TDT (larger corpus,
+  longer long tail — would deflate ET's top-N coverage).
+
+The gap appears in both directions of the size confound, so at least
+part of it is genuine. A plausible linguistic explanation is that
+Estonian morphology is marginally less elaborate than Finnish (no vowel
+harmony, weakened/limited consonant gradation, 14 cases vs 15), which
+would compress the Zipfian tail of distinct forms slightly. But the
+measurement is preliminary — see
+[`TODO.md` "Re-test FI vs ET top-N coverage with corpus-size-comparable
+data"](../TODO.md) for the size-matched re-measurement we should
+do before committing to the linguistic interpretation.
+
+### Product implications
+
+1. **Don't promise a fixed comprehension % at a fixed form count
+   without specifying the register.** "Learn 1000 words → understand
+   80% of text" is roughly true for Estonian subtitles, very wrong for
+   Finnish news/literature. This matters for any user-facing claim
+   about deck size or learning targets.
+2. **Comprehension prediction must condition on the source register**
+   if we want predictions to be calibrated. A learner pasting Yle
+   news will have a much lower comprehension number than a learner
+   pasting subtitles, for the same known-form set. The user is likely
+   to perceive this as a bug ("but I know all the conversational
+   words") unless we explain it.
+3. **The user-aggregated frequency from real pasted text should be
+   register-tagged when feasible** so we can publish the curves split
+   by register and see which our actual users are reading. See
+   [`docs/ML_IDEAS.md` §2b](ML_IDEAS.md) and
+   [`TODO.md` "Discover the most-frequent inflected forms in
+   user-pasted text"](../TODO.md).
+
+### Theoretical context (so we don't overclaim)
+
+Register variation in token-coverage curves is documented in:
+
+- Sinclair, J. (1991). *Corpus, Concordance, Collocation.* Oxford
+  University Press — early work establishing register effects on
+  frequency distributions.
+- Biber, D. (1993). "Representativeness in Corpus Design." *Literary
+  and Linguistic Computing* — register sampling and frequency
+  estimation.
+- Zipf, G. K. (1949). *Human Behavior and the Principle of Least
+  Effort.* — the underlying distributional law.
+
+The contribution of this measurement is **specific numbers on FI and
+ET inflected-form coverage from these specific corpora using this
+project's tokenization**. It is not a discovery; it is a calibration.
+
 ## Parity Checklist
 
 When we ship a parser-quality release, both languages must pass:

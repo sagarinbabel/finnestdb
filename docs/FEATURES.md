@@ -156,6 +156,18 @@ FinEstDB is positioned around four technical bets:
 - **Future autoresearch**: the dictionary/lemma layer is designed so
   that new sources of evidence can be merged into a single canonical
   lexical knowledge graph over time. See `AUTORESEARCH.md`.
+- **Inflected-form-aware frequency and comprehension prediction**:
+  unlike most public Finnish/Estonian frequency lists (which rank
+  lemmas), FinEstDB measures inflected-form frequency directly,
+  because that is the unit a learner actually has to recognize when
+  reading running text. Our 2026-05-07 baseline measurement found
+  that the top-1000 inflected forms cover ~65–73% of subtitle text
+  but only ~40–43% of written news/literature in both languages —
+  register effects dwarf the FI-vs-ET gap. This drives how we
+  calibrate comprehension prediction. See
+  [`docs/CROSS_LANGUAGE_STRATEGY.md` "Measurable
+  Divergences"](CROSS_LANGUAGE_STRATEGY.md) and
+  [`docs/FREQUENCY_BASELINES.md`](FREQUENCY_BASELINES.md).
 
 ## Two Evaluation Tracks
 
