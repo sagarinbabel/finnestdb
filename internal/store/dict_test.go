@@ -896,6 +896,35 @@ func TestBatchLookupForms_ETFSTMergesDictCandidate(t *testing.T) {
 	}
 }
 
+func TestBatchLookupForms_FSTRollsBackSameLabelConflictingFeats(t *testing.T) {
+	installTestLemmatizerTable(t, "ET", map[string][]lemmatizer.Analysis{
+		"raamatus": {
+			{Lemma: "raamat", UPOS: "NOUN", GrammarLabel: "inessive", Number: "Sing", Raw: "generated-table-sing"},
+			{Lemma: "raamat", UPOS: "NOUN", GrammarLabel: "inessive", Number: "Plur", Raw: "generated-table-plur"},
+		},
+	})
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"raamatus", "raamat", "NOUN", "ET"},
+	})
+
+	got := db.BatchLookupForms([]string{"raamatus"}, "ET", "custom")
+
+	r := got["raamatus"]
+	if r.Lemma != "raamat" || r.POS != "NOUN" {
+		t.Fatalf("raamatus: got {%q %q}, want {raamat NOUN}", r.Lemma, r.POS)
+	}
+	if r.Feats != "" {
+		t.Errorf("raamatus: feats got %q, want empty because same-label FST analyses disagree on full FEATS", r.Feats)
+	}
+	if r.GrammarLabel != "" {
+		t.Errorf("raamatus: grammar label got %q, want original empty label after ambiguous FST rollback", r.GrammarLabel)
+	}
+	if r.Source != "dict" {
+		t.Errorf("raamatus: source got %q, want dict after ambiguous FST rollback", r.Source)
+	}
+}
+
 func TestBatchLookupForms_DictFeatsBeatSameLemmaPOSFSTFeats(t *testing.T) {
 	installTestLemmatizerTable(t, "ET", map[string][]lemmatizer.Analysis{
 		"raamatus": {

@@ -261,8 +261,10 @@ type resolutionCandidate struct {
 	fstOrder       int
 	fstLabelCount  int    // how many FST analyses matched this candidate
 	firstFSTLabel  string // GrammarLabel from the first FST match
+	firstFSTFeats  string // FEATS from the first FST match
 	origLabel      string // dict candidate's original GrammarLabel before enrichment
 	origFeats      string // dict candidate's original Feats before enrichment
+	origSource     string // dict candidate's original Source before enrichment
 }
 
 // lookupBestForm runs the multi-row form lookup and ranks the candidates.
@@ -334,11 +336,14 @@ func mergeAndRankDictFSTCandidates(surface string, dictCandidates []formCandidat
 			if candidates[idx].fstLabelCount == 0 {
 				candidates[idx].origLabel = candidates[idx].res.GrammarLabel
 				candidates[idx].origFeats = candidates[idx].res.Feats
+				candidates[idx].origSource = candidates[idx].res.Source
 				candidates[idx].res = enrichResolutionWithFST(candidates[idx].res, fstRes)
 				candidates[idx].firstFSTLabel = fstRes.GrammarLabel
-			} else if candidates[idx].firstFSTLabel != fstRes.GrammarLabel {
+				candidates[idx].firstFSTFeats = fstRes.Feats
+			} else if candidates[idx].firstFSTLabel != fstRes.GrammarLabel || candidates[idx].firstFSTFeats != fstRes.Feats {
 				candidates[idx].res.GrammarLabel = candidates[idx].origLabel
 				candidates[idx].res.Feats = candidates[idx].origFeats
+				candidates[idx].res.Source = candidates[idx].origSource
 			}
 			candidates[idx].fstLabelCount++
 			continue
