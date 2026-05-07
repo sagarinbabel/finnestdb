@@ -226,9 +226,14 @@ Google for Android) is a later wrapper concern.
   (NULL for password, Google `sub` for Google).
 - Anonymous parses from the same browser session can be **carried
   forward**: after sign-up, last-N anonymous parses (held in
-  `localStorage`) are POSTed to `/api/parse/import-anonymous`,
-  re-parsed server-side, and saved as `parse_sessions` so the user
-  doesn't lose what they just did.
+  `sessionStorage`, scoped to the tab — *not* `localStorage*`, which
+  would survive browser restarts and contradict the
+  anonymous-is-ephemeral promise) are POSTed to
+  `/api/parse/import-anonymous`, re-parsed server-side, and saved as
+  `parse_sessions` so the user doesn't lose what they just did. If we
+  later want survival across restarts, it must be opt-in (a "remember
+  these parses on this device" checkbox on the sign-up form) and
+  documented in the privacy footer; never silent.
 
 ### 4. Dashboard (post-login default)
 
@@ -537,19 +542,32 @@ front so it's already there when the user flips to the back.
 
 ## Account model
 
-Minimal alpha schema:
+Today's `users` schema (from `internal/store/db.go::initSchema`, plus
+the `password_hash` column added by `ALTER`):
 
-| Field | Required | Notes |
+| Field | Status | Notes |
 |---|---|---|
-| `id` | yes | existing surrogate key |
-| `email` | yes | unique |
-| `first_name` | yes | for greeting copy |
-| `last_name` | no | not needed for alpha |
-| `auth_provider` | yes | `password` \| `google` |
-| `auth_provider_uid` | conditionally | NULL for `password`, Google `sub` for Google |
-| `password_hash` | conditionally | NULL when `auth_provider != 'password'` |
-| `is_admin` | yes | already exists |
-| `created_at`, `last_login_at` | yes | already exist |
+| `id` | exists | `INTEGER PRIMARY KEY AUTOINCREMENT` |
+| `email` | exists | `TEXT UNIQUE` |
+| `email_verified` | exists | `INTEGER DEFAULT 0`. Bumped to `1` after Google OAuth (Google guarantees verified) |
+| `is_admin` | exists | `INTEGER DEFAULT 0` |
+| `settings_json` | exists | `TEXT` JSON blob with `new_per_day`, `retention`, `theme`. The first-run register picker can store its choice here under a new key |
+| `password_hash` | exists | `TEXT NOT NULL DEFAULT ''` (added by ALTER). For OAuth-only accounts the empty string already works as a placeholder; we'll relax/clarify the `NOT NULL` on the OAuth migration |
+
+Migration deltas needed for the user flows in this doc:
+
+| Field | Add | Notes |
+|---|---|---|
+| `first_name` | yes | for greeting copy on the dashboard. Required at signup |
+| `last_name` | optional | not needed for alpha |
+| `auth_provider` | yes | `password` \| `google`. Default `password` for existing rows |
+| `auth_provider_uid` | yes | NULL for password, Google `sub` for Google. Unique on `(auth_provider, auth_provider_uid)` |
+| `created_at` | yes | not currently on the table. Add `DATETIME DEFAULT CURRENT_TIMESTAMP` |
+| `last_login_at` | yes | not currently on the table. Add nullable; updated on each session start |
+
+`email_verified` already exists, so we should not add a separate
+"verified" flag for Google sign-ins — Google OAuth flips the existing
+column.
 
 Profile page (out of scope for first version, but flagged): change
 display name, change password (password accounts only), connected

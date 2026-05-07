@@ -5,17 +5,25 @@ AIs (v0.dev, Lovable, Bolt, Cursor's design canvas, Figma Make, etc.)
 and getting back UI that lands inside our existing CSS, doesn't
 re-invent the type/colour system, and respects our actual user flows._
 
-There is no `design/` folder in the repo. The current design source of
-truth is:
+The current design source of truth is:
 
 - [`web/index.html`](../web/index.html) — the live shell, all real
-  pages, and the correction modal.
+  pages (anonymous landing, sign-in, dashboard, inspect, decks,
+  review, admin surfaces), and the correction modal.
 - [`web/styles.css`](../web/styles.css) — design tokens and component
-  styles.
+  styles. **Heads-up:** `web/styles.css` defines an early hex-based
+  `:root` block at the top, then later (line ~2339) overrides those
+  same tokens with the **Design v2 OKLCH** values for both default
+  and `[data-theme="light"]`. The OKLCH block wins. The token table
+  below is the *effective* one — match that, not the early hex.
 - [`mockup.html`](../mockup.html) — older, single-file design mockup
   kept around for reference but **not** the current visual direction.
 - [`docs/USER_FLOWS.md`](USER_FLOWS.md) — screen-by-screen behaviour
   spec.
+- A local, gitignored `design/` folder also exists on the maintainer's
+  machine with HTML and JSX directions (`finnest v2.html`, `v2-*.jsx`,
+  etc.). The Design v2 OKLCH values in `web/styles.css` come from
+  that direction.
 
 When prompting a design AI, attach `web/index.html`, `web/styles.css`,
 and `docs/USER_FLOWS.md` if the tool accepts file context. Otherwise,
@@ -47,20 +55,23 @@ DESIGN CONSTRAINTS, NON-NEGOTIABLE:
    - Code / form data / morphology labels: 'IBM Plex Mono', monospace.
    Do not introduce additional families.
 
-4. Color tokens (CSS vars — DO NOT recolour):
-     --bg-primary       #ffffff (light) / #0f172a (dark)
-     --bg-secondary     #f5f5f5 / #1e293b
-     --bg-tertiary      #e9e9e9 / #334155
-     --text-primary     #1a1a1a / #f5f5f5
-     --text-secondary   #666666 / #94a3b8
-     --border           #e0e0e0 / #334155
-     --card-bg          #ffffff / #1e293b
-     --accent           #2563eb / #3b82f6
-     --accent-hover     #1d4ed8 / #60a5fa
-     --success          #10b981
-     --warning          #f59e0b
-     --danger           #ef4444
-     --shadow           rgba(0,0,0,0.1) / rgba(0,0,0,0.3)
+4. Color tokens (CSS vars — DO NOT recolour). Default is the dark INK
+   theme; `[data-theme="light"]` is the PAPER override. Values are
+   OKLCH because the live tokens in `web/styles.css` are OKLCH from
+   line ~2339; the hex block earlier in that file is overridden.
+     --bg-primary       oklch(0.165 0.008 250) / oklch(0.97 0.005 85)  /* INK / PAPER */
+     --bg-secondary     oklch(0.21 0.008 250)  / oklch(1 0 0)
+     --bg-tertiary      oklch(0.25 0.010 250)  / oklch(0.92 0.005 85)
+     --text-primary     oklch(0.96 0.005 90)   / oklch(0.18 0.008 250)
+     --text-secondary   oklch(0.72 0.008 90)   / oklch(0.42 0.010 250)
+     --border           oklch(0.30 0.010 250)  / oklch(0.82 0.008 85)
+     --card-bg          oklch(0.165 0.008 250) / oklch(0.97 0.005 85)
+     --accent           oklch(0.72 0.19 38)    / oklch(0.55 0.19 35)   /* vermillion */
+     --accent-hover     oklch(0.80 0.14 85)    / oklch(0.62 0.14 80)
+     --success          oklch(0.78 0.13 145)
+     --warning          oklch(0.80 0.14 85)
+     --danger           oklch(0.64 0.18 28)
+     --shadow           rgba(0,0,0,0.35)       / rgba(25,23,19,0.10)
    Part-of-speech colour set (used in the results table chips):
      --pos-noun  #3b82f6   --pos-verb  #10b981
      --pos-adj   #8b5cf6   --pos-adv   #14b8a6
@@ -77,7 +88,9 @@ DESIGN CONSTRAINTS, NON-NEGOTIABLE:
    - Inputs: `.form-group` with stacked label + control. No floating
      labels.
    - Coverage gauge: `.coverage-gauge` with `.coverage-gauge-bar` and
-     `.coverage-gauge-fill` (semantic class `high` / `mid` / `low`).
+     `.coverage-gauge-fill` (semantic class `high` / `medium` / `low`
+     — `medium`, not `mid`; the runtime in `web/app.ts` uses
+     `medium`).
    - Word table: `.word-table`, sortable headers `.sort-btn`, POS
      filter chips `.pos-filter-chip`, language pills `.results-pill`.
    - Modals: `.modal` + `.modal-card` + `.modal-actions` (see the
@@ -133,7 +146,11 @@ Layout, top to bottom:
 2. Hero block: an h1 in Fraunces ("Learn Finnish & Estonian by reading
    what you love."), a one-line subtitle, then immediately the parse
    form.
-3. Parse form is a single card (`.card-bg`, 8px radius, shadow):
+3. Parse form is a single card (background `var(--card-bg)`, 8px
+   radius, shadow). Note `--card-bg` is a CSS variable, not a class —
+   the actual card classes in the codebase are `.signin-card`,
+   `.action-card`, and `.placeholder-card`; pattern-match on whichever
+   is closest, or a plain `<section>` with the variable applied:
    - language toggle (Auto / FI / ET) as a segmented control
    - textarea with 10 rows, 300,000 char max
    - file picker accepting .txt, .md, .epub, .apkg (drag-and-drop too)
@@ -235,7 +252,7 @@ prefers-reduced-motion.
 ### Sign-in / Create account
 
 ```
-Redesign the auth screen at `/signin` to add Google OAuth alongside
+Redesign the auth screen at `#/signin` to add Google OAuth alongside
 email+password. Tabs at the top: "Sign in" / "Create account".
 
 Top: a single Google button — full-width on mobile, max 360px on
@@ -258,7 +275,10 @@ Google button, the divider, and the First-name field.
 ### Dashboard (signed-in landing)
 
 ```
-Redesign the dashboard at `/dashboard`.
+Redesign the dashboard at `#/dashboard`. The app is hash-routed —
+generated links MUST use the hash form (`#/dashboard`, `#/inspect` for
+parse, `#/decks`, `#/review`, `#/signin`, `#/`). Bare paths like
+`/parse` will leave the SPA or 404.
 
 Top section: greeting using first name, sub-line "Pick up where you
 left off, or read something new."
@@ -279,9 +299,11 @@ colours), word count, "X% known" mini-bar, and a Review button.
 
 EMPTY STATE (zero decks, zero parses): replace the recent-decks list
 with a card titled "Just getting started?" listing three options:
-"Paste a text" (link to /parse), "Import known words" (link to /decks
-known-words section), "Start with the top 1000 Finnish words" (link
-to /decks/top-1000-fi). The third one is gated on a feature flag —
+"Paste a text" (link to `#/inspect`), "Import known words" (link to
+`#/decks` known-words section), "Start with the top 1000 Finnish
+words" (link to `#/decks/top-1000-fi` — note this route is **new**
+and does not exist yet, gated on the seed-deck research project). The
+third one is gated on a feature flag —
 hide if the seed deck doesn't exist for the user's preferred lang.
 
 Reference the existing `#dashboard-page` block in `web/index.html`
@@ -291,11 +313,11 @@ lines 196–241.
 ### Decks list
 
 ```
-Redesign `/decks` to surface deck-level coverage and a global "review
+Redesign `#/decks` to surface deck-level coverage and a global "review
 all" affordance.
 
 Top: header "Your decks" + button "+ New from text" (links to
-/parse).
+`#/inspect`).
 
 Then a list of deck cards. Each card:
 - Title (Fraunces, 1.5rem) + language pill on the right.
@@ -319,7 +341,7 @@ always-expanded layout.
 ### Deck detail (with comprehension prediction)
 
 ```
-Design `/decks/:id`. Reuse the results-page word table at the bottom;
+Design `#/decks/:id`. Reuse the results-page word table at the bottom;
 the top of the page is new.
 
 Top band:
@@ -344,7 +366,7 @@ animate from 0%.
 ### Review session
 
 ```
-Refine `/review`. The screen already exists at
+Refine `#/review`. The screen already exists at
 `web/index.html` lines 331–376.
 
 Changes:
@@ -429,6 +451,14 @@ Before merging anything from a design AI:
 3. Toggle dark mode and check every colour comes from CSS vars.
 4. Tab through the page — every interactive element must focus
    visibly.
-5. Run `npm run --prefix web test` (Playwright) for the route you
-   touched. The test harness in `web/tests/` already covers landing,
-   sign-in, parse, deck save, and review.
+5. Run the Playwright suite that covers landing, sign-in, parse,
+   deck save, and review:
+
+   ```sh
+   cd web && npx playwright test
+   ```
+
+   `web/package.json` doesn't define a `test` script — run Playwright
+   directly via the local install. The suite in `web/tests/` boots
+   the Go server itself (see `web/playwright.config.ts`) so make sure
+   port 8081 is free.

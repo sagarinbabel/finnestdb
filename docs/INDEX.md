@@ -204,8 +204,16 @@ descriptions when two docs sound similar.
   one-off; safe to read for history but not maintained.
 - [`docs/baselines/`](baselines/) — frozen eval reports per PR (see
   Parser quality section above).
-- [`../experiments/`](../experiments/) — dated spike reports
-  (currently the Voikko generator spike from 2026-05-06).
+- [`../experiments/`](../experiments/) — dated spike reports and
+  research plans. Current entries:
+  - [`2026-05-06-phase3.5-voikko-generator-spike.md`](../experiments/2026-05-06-phase3.5-voikko-generator-spike.md)
+    — phase 3.5 Voikko generator spike.
+  - [`2026-05-07-top-1000-inflected-forms.md`](../experiments/2026-05-07-top-1000-inflected-forms.md)
+    — research plan for a static, register-aware top-1000
+    inflected-form table per language and the cold-start "Start with
+    the top 1000" seed deck.
+  - Plus two `2026-04-28-autoresearch-fi-manual-*.jsonl` runs from
+    `cmd/autoresearch`.
 - [`testdata/parser-eval/`](../testdata/parser-eval/) — gold dataset
   files plus per-language `notes/annotation-notes.md`.
 - [`pkg/lemmatizer-fi-et/data/{fi,et}/README.md`](../pkg/lemmatizer-fi-et/data/)

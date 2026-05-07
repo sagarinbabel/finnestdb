@@ -594,7 +594,7 @@ New work surfaced by the review (not yet broken into sequenced PRs):
 - [ ] **Anonymous parse path**. Reverse the alpha "Parse is sign-in only" decision; add ephemeral `/api/parse` for unauth callers. Pairs with the rate-limiting work already on this list. See `docs/USER_FLOWS.md` §1.
 - [ ] **Live stats strip under the textarea**. Detected language, char count, token count, unique-form count, number count — debounced. Drives the language-mismatch banner. See `docs/USER_FLOWS.md` §1.
 - [ ] **Anki .apkg upload**. Front-field extraction client-side, dropped into the textarea. New file-upload type alongside `.txt` / `.md` / `.epub`.
-- [ ] **Carry-forward of anonymous parses on sign-up**. Last-N parses held in `localStorage`, POSTed and persisted after account creation so the user doesn't lose what they just did.
+- [ ] **Carry-forward of anonymous parses on sign-up**. Last-N parses held in **`sessionStorage`** (tab-scoped — `localStorage` would survive browser restarts and break the anonymous-is-ephemeral promise), POSTed and persisted after account creation so the user doesn't lose what they just did. Cross-restart survival, if we ever ship it, must be an explicit opt-in checkbox.
 - [ ] **Google OAuth**. Adds `auth_provider`, `auth_provider_uid` columns; `password_hash` becomes nullable for OAuth accounts. Email+password path stays the default. See `docs/USER_FLOWS.md` §3.
 - [ ] **`first_name` on the user profile**. Required at signup; used for greeting copy on the dashboard.
 - [ ] **"Add to existing deck" save path**. Results-page save panel gains a radio for new-deck vs. add-to-existing; merge by `(lemma, pos)` with `deck_lemma_stats` accumulation. New verb on the deck-import API. See `docs/USER_FLOWS.md` §6.
