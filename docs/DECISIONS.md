@@ -349,11 +349,13 @@ compounds, etc. Existing TODO items #15 (three-part compound splitting) and
 ### Decision
 
 **Freeze the case-suffix table at its current size.** Further morphology
-investment goes into generated factual morphology tables under
-[`pkg/lemmatizer-fi-et/tables/`](../pkg/lemmatizer-fi-et/tables/) and the
-offline generator/reader code that can reproduce them from local upstream
+investment goes into generated factual morphology tables loaded by
+[`pkg/lemmatizer-fi-et`](../pkg/lemmatizer-fi-et/) from
+`localdata/lemmatizer-fi-et/tables/` (gitignored), plus the offline
+generator/reader code that can reproduce them from local upstream
 analysers. Per [docs/ARTIFACT_POLICY.md](ARTIFACT_POLICY.md), upstream
-transducer blobs are local-only and are not committed.
+transducer blobs and the derived tables are both local-only and are
+not committed.
 
 Two near-term exceptions are in scope:
 

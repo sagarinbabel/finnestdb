@@ -34,17 +34,23 @@ The accepted architecture is therefore:
 
 `pkg/lemmatizer-fi-et/` contains:
 
-- `lemmatizer.go` - runtime loader for generated FI/ET JSON tables.
-- `tables/fi_min.json` - minimal Finnish smoke table.
-- `tables/et_min.json` - minimal Estonian smoke table.
-- `tables/fi_wordlist.txt` - seed word list for the current FI smoke
-  table.
+- `lemmatizer.go` - runtime loader that reads FI/ET JSON tables from
+  `localdata/lemmatizer-fi-et/tables/` (default) or
+  `LEMMATIZER_TABLES_DIR`. The tables themselves are not tracked.
 - `vfst/` - reader for local Voikko VFST files, used by generators and
   tests.
 - `hfstol/` - reader for local HFST optimised-lookup files, used by
   generators and tests.
 - `voikkomap/` and `giellaltmap/` - tag normalization into the parser's
   `Analysis` struct.
+
+Adjacent inputs (committed, not under `pkg/`):
+
+- [`testdata/lemmatizer/{fi,et}_min.json`](../testdata/lemmatizer/) -
+  hand-authored unit-test fixtures; `lemmatizer_test.go` loads these
+  via `NewFromDir`.
+- [`cmd/genlemmatizertables/wordlists/fi_smoke.txt`](../cmd/genlemmatizertables/wordlists/fi_smoke.txt) -
+  seed word list for the current FI smoke generator run.
 
 No `.vfst`, `.hfstol`, or `.hfst` files are committed.
 

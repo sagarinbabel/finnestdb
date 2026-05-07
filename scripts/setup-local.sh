@@ -77,7 +77,7 @@ make parser
 
 # ── 2. localdata/ tree ────────────────────────────────────────────────────────
 log "Preparing localdata/ subtree"
-mkdir -p localdata/{kotus,ekilex/{details/raw,definitions,forms},silver-fi/raw}
+mkdir -p localdata/{kotus,ekilex/{details/raw,definitions,forms},silver-fi/raw,lemmatizer-fi-et/tables}
 
 # ── 3. Kotus Nykysuomen sanalista ─────────────────────────────────────────────
 KOTUS_FILE="localdata/kotus/nykysuomensanalista2024.txt"
@@ -162,6 +162,27 @@ if [[ -d "localdata/ekilex/definitions" && -n "$(ls -A localdata/ekilex/definiti
 else
     warn "Skipping import-ekilex-details-et because reduced Ekilex shards are missing."
 fi
+
+# ── 9. lemmatizer FST-derived tables (best effort) ────────────────────────────
+# Per docs/ARTIFACT_POLICY.md the JSON tables consumed by
+# pkg/lemmatizer-fi-et are not tracked in git. The runtime loads them
+# from localdata/lemmatizer-fi-et/tables/ on New(); without them, the
+# custom-mode parser still works via dict + case-suffix stopgap, but the
+# FST step (Step 5 fallback) is disabled.
+LEMMATIZER_FI_TABLE="localdata/lemmatizer-fi-et/tables/fi_min.json"
+if [[ -f "$LEMMATIZER_FI_TABLE" ]]; then
+    log "Lemmatizer FI table already present at $LEMMATIZER_FI_TABLE — skipping gen."
+elif [[ -n "${VFST_PATH:-}" ]]; then
+    log "Generating lemmatizer FI table from $VFST_PATH …"
+    make gen-lemmatizer-tables-fi VFST_PATH="$VFST_PATH"
+else
+    warn "VFST_PATH not set — skipping lemmatizer FI table generation."
+    warn "   Without it, FST step 5 in custom-mode parser is disabled."
+    warn "   To enable: install libvoikko (e.g. brew install libvoikko on macOS) and"
+    warn "   re-run with VFST_PATH=/path/to/mor.vfst (locate via 'voikkospell -t')."
+fi
+# ET table generation is not yet wired into a generator. Until then, FST
+# analysis for Estonian is disabled by design — the dict-only path runs.
 
 # ── done ──────────────────────────────────────────────────────────────────────
 log ""

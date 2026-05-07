@@ -5,9 +5,11 @@ Licensing stubs / provenance notes for upstream Estonian morphology sources.
 ## Policy
 
 This repository does **not** vendor or embed transducer blobs (e.g.
-`.hfstol`, `.hfst`) in-tree. We ship **generated factual tables** derived
-offline from upstream analysers instead (see `pkg/lemmatizer-fi-et/tables/`
-and `docs/ARTIFACT_POLICY.md`).
+`.hfstol`, `.hfst`) in-tree, and does not commit the generated factual
+tables either. The runtime loads tables from disk under
+`localdata/lemmatizer-fi-et/tables/` (gitignored); see
+[docs/ARTIFACT_POLICY.md](../../../../docs/ARTIFACT_POLICY.md) and
+[docs/FST_LEMMATIZER.md](../../../../docs/FST_LEMMATIZER.md).
 
 The licenses in this directory are retained as references for the
 upstream sources used when generating those tables.

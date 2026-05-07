@@ -81,8 +81,13 @@ Earlier versions of this policy allowed offline-generated factual tables
   (build-time) or from disk (boot-time). Nothing about the design needs
   them in git.
 
-The migration path for the already-tracked
-`pkg/lemmatizer-fi-et/tables/*.json` is a separate follow-up PR (the
-generator runs into `localdata/lemmatizer-fi-et/tables/`, the package
-loads from disk on `New()`, hand-authored test fixtures live under
-`testdata/lemmatizer/`). Tracked here so we don't lose it.
+The `pkg/lemmatizer-fi-et/tables/*.json` migration completed alongside
+this policy: the generator writes to
+[`localdata/lemmatizer-fi-et/tables/`](../localdata/) (gitignored),
+[`pkg/lemmatizer-fi-et`](../pkg/lemmatizer-fi-et/) loads from disk on
+`New()` (default `localdata/lemmatizer-fi-et/tables`, override via
+`LEMMATIZER_TABLES_DIR`), and hand-authored test fixtures live under
+[`testdata/lemmatizer/`](../testdata/lemmatizer/). When tables are
+absent at runtime (e.g. fresh clone without
+`scripts/setup-local.sh`), the FST step is disabled and the parser
+falls back to the dict + case-suffix path with a single log line.
