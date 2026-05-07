@@ -466,16 +466,27 @@ func fstBeatsWeakDict(candidate, other resolutionCandidate) bool {
 		morphologyScore(other.res) == 0
 }
 
+// morphologyScore is intentionally binary: 1 if the resolution carries any
+// morphology (FEATS or a projected GrammarLabel), 0 otherwise.
+//
+// A scaled version (e.g. one point per FEATS attribute) is tempting but
+// systematically biases POS comparisons: Estonian VERBs carry ~6 FEATS
+// dimensions (Mood/Number/Person/Tense/VerbForm/Voice) while NOUNs carry ~2
+// (Case/Number), so a richer-wins tiebreak makes any verb homonym beat any
+// noun reading regardless of which one is actually correct in context. After
+// the 2026-05-07 Ekilex bulk landed dense FEATS on every form, this caused
+// observable lemma/POS regressions on et-grammar (arstiks→arstima/VERB,
+// teed→tegema/VERB, koolis→koolma/VERB, kirja→kirjama/VERB, mees→mesi/NOUN).
+//
+// Binary scoring keeps morphology meaningful where it actually signals
+// confidence (a FEATS-bearing candidate beating a bare one, e.g. an
+// FST-enriched dict candidate vs. a legacy entry with no morphology) without
+// turning into a POS-density vote between cross-POS homonyms.
 func morphologyScore(res FormResolution) int {
-	score := 0
-	if res.GrammarLabel != "" {
-		score++
+	if res.GrammarLabel != "" || res.Feats != "" {
+		return 1
 	}
-	if res.Feats != "" {
-		score += 2
-		score += strings.Count(res.Feats, "|")
-	}
-	return score
+	return 0
 }
 
 func formResolutionFromFSTAnalysis(a lemmatizer.Analysis, source string) FormResolution {
