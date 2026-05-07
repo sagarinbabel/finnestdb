@@ -10,6 +10,42 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-05-07 — Baseline filename convention + freeze-baseline script
+
+Standardizes the baseline filename convention so every baseline has a
+**date AND time** stamp and the `docs/baselines/` directory stays
+**append-only** in practice, not just in policy.
+
+Canonical form going forward:
+
+```
+docs/baselines/YYYY-MM-DD<rev>-T<HHMM>Z-<dataset>.<ext>
+```
+
+— matching the `2026-05-07k-T1118Z-fi-core.json` style introduced with
+the [#140](https://github.com/sagarinbabel/finnestdb/pull/140) baseline. Older tagged-style files
+(`2026-05-06-final-*`, `2026-05-07-feats-rich-*`, etc.) are left as-is —
+renaming them would break PR/commit cross-references the
+[#141](https://github.com/sagarinbabel/finnestdb/pull/141) append-only history section was meant to
+preserve.
+
+- New [`scripts/freeze-baseline.sh`](../scripts/freeze-baseline.sh)
+  takes the comparison-script `RUN_TS`, reads the parser-version letter
+  from `parsecore.ParserVersion`, derives the date + UTC HHMM, and
+  copies per-dataset JSONs + cross-language summaries from
+  `reports/parser-eval/` into `docs/baselines/` under the canonical
+  name. **Refuses to overwrite** an existing target file — append-only
+  is enforced mechanically, not just by convention. Override the
+  parser-version letter with `-rev <letter>` for the rare case of
+  freezing a measurement made before a same-day version bump.
+- [`docs/baselines/README.md`](baselines/README.md) gains a
+  "Filename convention" section spelling out the spec, with examples,
+  the rationale for `T<HHMM>Z` (multiple same-day same-`<rev>`
+  re-measures), and a pointer to the script.
+- [`docs/PARSER_EVAL_METHODOLOGY.md §5 Freeze a baseline`](PARSER_EVAL_METHODOLOGY.md)
+  replaces the manual `cp` recipe with a one-line `scripts/freeze-baseline.sh "$RUN_TS"`
+  invocation.
+
 ## 2026-05-07 — Newcomer experience: `make doctor` + setup symmetry
 
 Closes the gap between "the docs say setup is one command" and "the

@@ -9,10 +9,59 @@ For the cross-measurement narrative — what changed between dates and
 why — see [`../PARSER_EVOLUTION.md`](../PARSER_EVOLUTION.md). This
 directory is the data; that doc is the story.
 
+## Filename convention
+
+Every committed baseline filename follows this canonical format:
+
+```
+YYYY-MM-DD<rev>-T<HHMM>Z-<dataset>.<ext>
+```
+
+Field-by-field:
+
+| Component | Meaning | Example |
+|---|---|---|
+| `YYYY-MM-DD` | UTC date of the comparison-script run-start (`scripts/parser-comparison.sh`'s `RUN_TS`) | `2026-05-07` |
+| `<rev>` | The single-letter parser-version stamp at measurement time, from [`internal/parsecore/parsecore.go`](../../internal/parsecore/parsecore.go)'s `ParserVersion` (e.g. `2026.05.07k` → `k`). Bumped manually when the *parser* changes; the time component disambiguates same-`<rev>` re-measures. | `k` |
+| `-T<HHMM>Z-` | UTC hour+minute of run-start, dashes around | `-T1118Z-` |
+| `<dataset>` | Gold-set name. For per-dataset JSONs: the slug derived from the input file basename ([`scripts/parser-comparison.sh`](../../scripts/parser-comparison.sh) post-PR [#146](https://github.com/sagarinbabel/finnestdb/pull/146) — earlier the JSON `name` field was used and v1/v2 collided). For cross-language summaries: `fi` or `et`. | `fi-grammar`, `ud-fi-tdt-test`, `fi`, `et` |
+| `<ext>` | `.json` for the raw `cmd/parsertest` reports; `.md` for the cross-language wide-format summaries | `.json` / `.md` |
+
+Full examples:
+
+```
+2026-05-07k-T1118Z-fi-core.json          ← per-dataset raw report
+2026-05-07k-T1118Z-ud-fi-tdt-test.json   ← per-dataset on UD test split
+2026-05-07k-T1118Z-fi.md                 ← cross-language FI summary
+2026-05-07k-T1118Z-et.md                 ← cross-language ET summary
+```
+
+**Append-only.** Older baselines are never renamed or deleted, even when the
+convention drifts. This is what keeps "see `2026-05-06-final-fi-core`" in old
+PR descriptions and commit messages resolvable forever. Tagged-style names
+(`-final-`, `-feats-rich-`, `-post-fst-`) committed before this convention
+landed are left as-is and continue to be valid baseline references; new
+freezes use the canonical form. The cross-reference of every baseline ID is
+maintained in [`SYSTEM_VERSIONING.md` § Parser evaluation baseline history](../SYSTEM_VERSIONING.md), which is also append-only ([#141](https://github.com/sagarinbabel/finnestdb/pull/141)).
+
+**Why time, not just date.** Multiple baselines on the same day at the same
+parser-version `<rev>` happen routinely — first measure pre-change, second
+post-change, third after a fix. Without `T<HHMM>Z` they'd collide on
+filename and the freeze step would silently overwrite (the same class of bug
+as the v1/v2 dataset slug collision). With it, every freeze is uniquely
+identified by its run-start moment.
+
+The freeze step in [`PARSER_EVAL_METHODOLOGY.md §5`](../PARSER_EVAL_METHODOLOGY.md) is automated by
+[`scripts/freeze-baseline.sh`](../../scripts/freeze-baseline.sh), which reads
+the parser-version letter from `parsecore.ParserVersion`, derives the date
++ time from the comparison script's `RUN_TS`, and refuses to overwrite an
+existing target file (so append-only is enforced mechanically, not just by
+convention).
+
 ## How to read a baseline file
 
-Each `YYYY-MM-DD-<dataset>.json` is the raw report emitted by
-`cmd/parsertest`. The keys you care about are under `summary.<parser>`:
+Each baseline JSON is the raw report emitted by `cmd/parsertest`. The keys
+you care about are under `summary.<parser>`:
 
 | Field | Meaning |
 |---|---|
@@ -57,8 +106,20 @@ Any drop in accuracy is a regression and needs justification.
 ## Updating a baseline
 
 Only commit a new baseline when the parser improves and you want to
-freeze the new floor. Always include the date in the filename and
-**keep older baselines** so we have a history.
+freeze the new floor. Use [`scripts/freeze-baseline.sh`](../../scripts/freeze-baseline.sh)
+so the canonical filename convention (above) is applied automatically:
+
+```bash
+# After a comparison script run that wrote to reports/parser-eval/
+# (where RUN_TS is the YYYYMMDDTHHMMSSZ timestamp visible in those filenames)
+scripts/freeze-baseline.sh "$RUN_TS"
+```
+
+The script copies each per-dataset JSON and the cross-language summaries
+into `docs/baselines/` under the canonical name and refuses to overwrite
+an existing target (append-only). Older baselines are **never** renamed
+or deleted — that's the property that keeps cross-references in PR
+descriptions and `PARSER_EVOLUTION.md` valid forever.
 
 ## Current reference set
 
