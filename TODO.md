@@ -1,6 +1,6 @@
 # FinEstDB TODO - Findings & Action Items
 
-_Current as of 2026-04-29 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
+_Current as of 2026-05-07 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
 
 This is the single repo-level task list. It tracks current audit work, active
 engineering backlog, and longer-term findings from the PRD review.
@@ -15,15 +15,13 @@ conflict.
 - [Current Audit Status](#current-audit-status)
 - [Roadmap Status](#roadmap-status)
 - [Active Engineering Backlog](#active-engineering-backlog)
+- [Research Goals](#research-goals)
 - [Critical Findings](#critical-findings)
   - [1. Synchronous Deck Creation Blocking Issue](#1-synchronous-deck-creation-blocking-issue)
   - [2. Disambiguation Model Specification Missing](#2-disambiguation-model-specification-missing)
   - [3. MWE Handling Underspecified](#3-mwe-handling-underspecified)
   - [4. Example Generation FFI Contract Incomplete](#4-example-generation-ffi-contract-incomplete)
-- [Implementation Priorities](#implementation-priorities)
-  - [High Priority](#high-priority)
-  - [Medium Priority](#medium-priority)
-  - [Low Priority](#low-priority)
+- [Implementation Backlog](#implementation-backlog)
 - [Notes](#notes)
 
 ## Current Audit Status
@@ -62,6 +60,146 @@ Near-term items that remain open after Phase 1 and Phase 2:
 - [ ] Use the new eval regressions to prioritize parser fixes. Recursive compounds and consonant gradation are *not* candidates here — they're gated behind the FST migration ([PR #106](https://github.com/sagarinbabel/finnestdb/pull/106) / [#107](https://github.com/sagarinbabel/finnestdb/pull/107)). See `docs/DECISIONS.md` Decision 5.
 - [ ] Add analyzer cache-hit and unknown-lemma counters to complement the existing stage-timing stats
 - [ ] Document the expected browser-QA setup more clearly in the repo so Playwright use is obvious on a fresh checkout
+
+## Research Goals
+
+_Added 2026-05-07._
+
+Larger investigations recorded here so they don't get lost between PRs.
+These are not "must-do this quarter"; they are explicit research bets we
+want to pursue alongside execution work.
+
+### Discover the most-frequent inflected forms in user-pasted text
+
+**What.** As users paste text, aggregate per-form counts into a running
+tally per language. Periodically recompute and publish a ranked top-N
+list of **inflected surface forms** (not lemmas) for Finnish and Estonian.
+
+**Why this is novel (working hypothesis).** Public Finnish/Estonian
+frequency lists either rank lemmas (wrong unit for a learner reading
+running text) or rank forms on a fixed corpus (subtitle, news, Wikipedia)
+that may not reflect what real learners want to read. The aggregated
+user-pasted corpus reflects real reader interest. The "novel" claim is a
+hypothesis until checked against public baselines under
+[`docs/FREQUENCY_BASELINES.md`](docs/FREQUENCY_BASELINES.md).
+
+**Tasks.**
+
+- [ ] Schema for per-language inflected-form counts; document
+      retention/anonymization policy
+- [ ] Aggregation job — online (per-parse increment) or offline batch
+- [ ] Ranked top-N publication: UI surface + downloadable artifact
+- [ ] Comparison against the public baselines in [`docs/FREQUENCY_BASELINES.md`](docs/FREQUENCY_BASELINES.md)
+      to validate the "differs from existing lists" claim
+- [ ] Surface comprehension-coverage curves to learners
+      ("learn N forms → understand X% of running text"), linking to
+      `Comprehension prediction per deck` below
+
+**Cross-references.**
+
+- Rationale, ML angle, and constraints: [`docs/ML_IDEAS.md` §2b](docs/ML_IDEAS.md)
+- Public baseline lists used for comparison: [`docs/FREQUENCY_BASELINES.md`](docs/FREQUENCY_BASELINES.md)
+- Comprehension prediction (already tracked as §13 below) is the
+  natural consumer of this ranking; both should ship together.
+
+### Re-test FI vs ET top-N coverage with corpus-size-comparable data
+
+**Added 2026-05-07.**
+
+**What.** Confirm or refute the ~3–7pp Estonian-vs-Finnish coverage
+advantage observed in our 2026-05-07 baseline measurements (see
+[`docs/CROSS_LANGUAGE_STRATEGY.md` "Measurable Divergences"](docs/CROSS_LANGUAGE_STRATEGY.md))
+using corpora that are size-matched and register-matched between the two
+languages.
+
+**Why.** The current measurement is mixed evidence:
+
+- In OpenSubtitles 2018, the ET corpus is roughly half the size of the
+  FI corpus, so smaller-corpus effect (shorter long tail) could
+  partially inflate ET's top-N coverage.
+- In UD treebanks, the ET treebank is roughly 2× the FI treebank — the
+  opposite of the inflation direction — and ET still has a slight
+  coverage advantage. So the gap is at least partly real.
+
+A size-matched, register-matched re-measurement would let us state with
+high confidence whether the gap reflects a genuine morphological
+property (ET being marginally less inflectionally rich than FI) or
+sampling artifacts.
+
+**Tasks.**
+
+- [ ] Identify or sub-sample one comparable corpus per language at the
+      same register (e.g. matched-size Yle FI news + ERR ET news,
+      matched-size Project Gutenberg FI + DEA ET, etc.)
+- [ ] Compute and compare top-N coverage curves with bootstrap CIs
+- [ ] Report the result in `docs/CROSS_LANGUAGE_STRATEGY.md` and
+      `docs/FREQUENCY_BASELINES.md`
+
+**Cross-references.**
+
+- Initial measurement: `docs/FREQUENCY_BASELINES.md`
+- Theoretical context (register variation in Zipfian distributions —
+  well-studied; this work is empirical confirmation on FI/ET): see
+  citations in CROSS_LANGUAGE_STRATEGY.md once added.
+
+### Close the self-improving feedback loop (accepted corrections → lexical updates)
+
+**Added 2026-05-07.**
+
+**What.** Today, a logged-in user can submit a parse correction
+(`POST /api/parse/feedback`, [internal/api/handlers.go](internal/api/handlers.go))
+and an admin can change its status to `accepted`
+([internal/store/db.go::UpdateParseFeedbackStatus](internal/store/db.go)).
+**Accepted corrections do not currently update any lexical row, gold case,
+or future parse output.** They sit in `parse_feedback` as data with no
+downstream consumer. The "self-improving system" thesis fails until this
+loop closes.
+
+**Why.** The correction-feedback moat is one of the project's core
+differentiators (see
+[`docs/FEATURES.md` "User correction loop"](docs/FEATURES.md)). Every
+accepted correction that doesn't update the lexicon is a learner who fixed
+something for the next learner — and didn't.
+
+**Tasks (sequenced).**
+
+- [ ] **Phase 1 — apply accepted lemma/POS corrections as a `custom_overrides`
+      lexical row.** Schema: a new source `custom_overrides` with the
+      highest priority (1000), already mentioned in
+      `docs/FINNISH_LEXICAL_PLAN.md` "Resolution Layer" but not wired up.
+      On admin acceptance, write a row to `forms` (or `lemmas`) with
+      `source='custom_overrides'`, `source_priority=1000`, the proposed
+      `lemma`/`pos`, and a back-pointer to `parse_feedback.id`.
+- [ ] **Phase 2 — apply accepted grammar-label corrections to `forms.feats`**
+      for the specific surface form. Smaller blast radius than full lemma
+      rewrites; useful for the 0%-grammar-on-some-datasets gap.
+- [ ] **Phase 3 — auto-promote a corrected `(surface, lemma, pos)` tuple
+      to a gold-eval case** when N independent users submit the same
+      correction. Avoids one user's typo becoming a permanent override.
+      Threshold and review workflow TBD.
+- [ ] **Phase 4 — eval-backed safety check before applying.** Run the
+      candidate `custom_overrides` row against the frozen gold sets; reject
+      if it causes a regression on N or more cases. Same pattern as
+      `cmd/autoresearch` but at correction-time, not in a batch.
+- [ ] **Phase 5 (long-tail) — automatic re-ranking of source priorities**
+      when a single source consistently produces accepted corrections in
+      one direction. Out of scope for alpha; revisit after Phase 4 is
+      stable.
+
+**Cross-references.**
+
+- Schema groundwork: source priority columns + `dict_metadata` already
+  exist; the `custom_overrides` source is named in
+  [`docs/FINNISH_LEXICAL_PLAN.md` "Resolution Layer"](docs/FINNISH_LEXICAL_PLAN.md).
+- `cmd/autoresearch` provides the eval-backed-safety pattern for Phase 4.
+- This work is gated on the FEATS threading PR (Implementation
+  Priorities → High §4) so corrections can update FEATS, not just
+  GrammarLabel.
+
+**Confidence.** Phase 1 is a 1-week task with high confidence. Phase 2
+is a few-day task. Phase 3 needs design before scoping. Phase 4 needs
+a measured eval-time budget; if it adds >100ms to admin-accept latency,
+push it to a background job. Phase 5 is research, not engineering.
 
 ## Critical Findings
 
@@ -108,9 +246,13 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
 - [ ] Expand the FFI contract to cover whole-sentence synthesis: expose a helper that given a lemma + desired feature change returns one or more grammatically sound sentences (maybe templated), or alternatively move generation to Go and only call Rust for token-level inflections
 - [ ] Document how agreement, pronoun insertion, and enclitic handling work
 
-## Implementation Priorities
+## Implementation Backlog
 
-### High Priority
+_Flattened 2026-05-07: priority labels (High/Medium/Low) removed because
+relative priority shifts too often for the labels to be reliable. Items
+appear in roughly the order they were historically prioritized, but the
+order is not load-bearing. Current priority is decided in conversation
+and tracked in git history (and PR conversations), not in this list._
 
 1. **Prototype parser with Omorfi integration**
    - [x] Prototype `analyze_text` + Omorfi wiring with a small corpus to validate throughput
@@ -128,19 +270,38 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
    - [ ] Re-run Finnish and Estonian gold baselines after each fix and keep only justified gains
    - [ ] **Stopgap to remove**: `attachCaseLabelIfStemMatches` in `internal/store/dict.go` is a temporary patch to lift `grammar_label` accuracy off zero on dict hits. Remove once the FST runtime ([PR #107](https://github.com/sagarinbabel/finnestdb/pull/107) and follow-ups) emits FEATS for direct dict hits.
 
-### Medium Priority
+4. **Close out the FST migration cleanup (post-#117/#118/#120 closure)** _(added 2026-05-07; status updated 2026-05-07 PM)_
 
-4. **Disambiguation model**
+   PRs #117, #118, #120 were closed without merging on 2026-05-07 because they shipped vendored FST blobs that violate `docs/ARTIFACT_POLICY.md`. The salvageable logic was re-cherry-picked across PRs #127, #128, #129, #130 — most of which now have merged.
+
+   - [x] [PR #127](https://github.com/sagarinbabel/finnestdb/pull/127): parallel-FST scoring in `BatchLookupForms` step 1 — **merged 2026-05-07 08:12 UTC** (commit `035ca20`).
+   - [x] [PR #128](https://github.com/sagarinbabel/finnestdb/pull/128): migrate lemmatizer tables out of `pkg/` and `git`, runtime loads from `localdata/lemmatizer-fi-et/tables/` — **merged 2026-05-07 08:12 UTC** (commit `6e92adb`). Production tables still generated by `make gen-lemmatizer-tables-fi` locally.
+   - [x] [PR #129](https://github.com/sagarinbabel/finnestdb/pull/129): full FST candidate merge cascade fix (producer side) — **merged 2026-05-07 09:05 UTC**. Enriches `store.FormResolution.Feats` from FST candidate merges.
+   - [x] [PR #130](https://github.com/sagarinbabel/finnestdb/pull/130): per-attribute FEATS eval + report (consumer side, the FEATS threading) — **merged 2026-05-07 09:06 UTC**. `TokenResult`, `WordEntry`, eval gold/expected/actual now carry full UD FEATS; `compareCase` scores per-attribute; `parser-compare` emits a "Per-FEATS-attribute accuracy" markdown section.
+   - [ ] **New PR: ET lemmatizer table generator** (`cmd/genlemmatizertables-et` or extend the existing binary). The FI generator exists; ET does not, so on a fresh deploy ET FST is empty.
+   - [ ] Re-freeze baselines once the ET generator lands and gold sets get a `feats` field. Per PR #130 body, `feats_attributes` will be empty in reports until then; back-compatible with existing gold.
+
+5. **Migrate alpha scheduler to real FSRS** _(added 2026-05-07)_
+
+   `internal/store/db.go::nextScheduleForRating` is a hand-rolled step scheduler with hardcoded day arrays `{1,3,7,14,30,60}` (good) / `{3,7,14,30,60,90}` (easy). `again` is 10 minutes; `hard` is 8 hours. This is **not** FSRS; `docs/srs-deck-spec.md §13–24` already recommends [`go-fsrs`](https://github.com/open-spaced-repetition/go-fsrs).
+
+   - [ ] Add the `go-fsrs` dependency. Plan the schema delta on `card_state` (FSRS needs stability, difficulty, last review, last rating, retrievability — multiple fields the current schema doesn't carry).
+   - [ ] Implement `FSRSScheduleForRating(card, rating, now) (next time.Time, newState CardState)` behind a feature flag. Keep `nextScheduleForRating` as fallback while the migration is in flight.
+   - [ ] Migration plan for existing `card_state` rows: derive starter FSRS state from `Step`/`Streak` heuristically; document it in `docs/srs-deck-spec.md`.
+   - [ ] Cutover: flip the feature flag on a staging DB, validate against a small user cohort, then cutover production.
+   - [ ] If we *don't* go to FSRS for alpha, **rename `nextScheduleForRating` honestly** (e.g. `alphaStepSchedule`) and update the spec to say "alpha intentionally ships a step scheduler; FSRS migration is post-alpha." Either ship FSRS or stop calling the alpha scheduler "FSRS-shaped." Honest naming is a 10-line PR.
+
+6. **Disambiguation model**
    - [ ] Select UD treebanks (Finnish, Estonian)
    - [ ] Train initial POS tagging model
    - [ ] Establish evaluation metrics and baseline
    - [ ] Version model artifacts
 
-5. **Server surface cleanup**
+7. **Server surface cleanup**
    - [ ] Either implement real auth/deck/review behavior or narrow the exposed stub endpoints so the server surface matches the parser-workbench product focus
    - [ ] Remove or isolate non-parser product scaffolding that no longer reflects the active roadmap
 
-6. **Custom dictionary knowledge graph spike**
+8. **Custom dictionary knowledge graph spike**
    - [ ] Spike a separate custom lexicon for Finnish and Estonian that can accumulate data from multiple upstream dictionaries plus manual edits
    - [ ] Michael: run the full Ekilex `word/details` enrichment scrape when you have time and enough disk space. Sagar does not currently have space for this locally. The lightweight Ekilex import in `localdata/ekilex/eki-public-words-2026-et.jsonl` only uses `/api/public_word/eki`; the richer endpoint has POS, definitions, usage examples, and paradigms, but sample payloads were about 492 KB for `koer` and 770 KB for `maja`. Fetching details for all 174,229 public Estonian headwords would be roughly 87+ GB of raw JSON and 174k HTTP requests, likely many hours before retries or rate limits. Please run it as a resumable batch job with checkpointing by `word_id`, conservative rate limiting, retry/backoff, raw responses in ignored `localdata/`, and a compact reduced JSONL artifact for review/commit after validation.
    - [ ] Design provenance tables so accepted fields (definition, examples, morphology, register) retain source attribution and fetch/import metadata
@@ -149,66 +310,158 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
    - [ ] Define how fallback lookups append new source facts and trigger per-entry recompilation rather than full-database rebuilds
    - [ ] Define manual injection flows for curated edits, CSV/JSONL imports, and precedence rules between manual facts and auto-imported facts
 
-### Low Priority
-
-7. **Background job system**
+9. **Background job system**
    - [ ] Design async processing architecture for deck creation
    - [ ] Implement job queue (in-memory or external)
    - [ ] Add "processing" state to deck model
    - [ ] Create webhook/polling mechanism for status updates
 
-8. **Sentence generation**
+10. **Sentence generation**
    - [ ] Design sentence-level synthesis API
    - [ ] Implement agreement rules
    - [ ] Add validation via re-parsing
    - [ ] Test with various feature changes
 
-9. **EPUB and file upload support**
+11. **EPUB and file upload support**
    - [ ] Add EPUB text extraction to the import pipeline (parse XHTML content documents, strip markup, concatenate chapter text)
    - [ ] Accept file upload in `/api/import/decks` alongside raw text paste
    - [ ] Support plain-text (.txt) and EPUB (.epub) as initial formats
    - Surasura already does EPUB extraction for Japanese/Chinese; same approach applies to Finnish/Estonian content
    - Lowers friction for book-based learners who currently have to paste text manually
 
-10. **External vocabulary import (Anki, CSV)**
+12. **External vocabulary import (Anki, CSV)**
    - [ ] Design an import endpoint (`POST /api/import/known-words`) that accepts a list of known lemmas+POS pairs
    - [ ] Support Anki deck export (.apkg or exported .txt) as an import source for bootstrapping `user_known_lemmas`
    - [ ] Support plain CSV/TSV import for users with custom vocabulary lists
    - [ ] Map imported surface forms to known lemmas using the existing dictionary lookup + fallback chain
    - Surasura imports known vocabulary from Anki, Migaku, and Jiten.moe to bootstrap the user's known-word state; same idea applies here so coverage metrics and new-card selection are useful from day one
 
-11. **Comprehension prediction per deck**
+13. **Comprehension prediction per deck**
    - [ ] Add a "predicted comprehension %" display to deck detail views using token-weighted coverage
    - [ ] Show before/after projection: "if you learn the top N words from this deck, your comprehension goes from X% to Y%"
    - [ ] Compute marginal comprehension gain per word to drive study ordering
    - Token-weighted coverage (`srs-deck-spec.md §Coverage metrics`) already defines the formula; this item is about surfacing it as a prominent UI feature
    - Surasura's core UX centers on showing comprehension percentages before and after consuming media
 
-12. **Highest-leverage study ordering across decks**
+   **Sequencing and parallelization _(added 2026-05-07)_.**
+
+   This work is **parallel-safe with the FEATS-threading PR and the
+   CRF-disambiguator track** (see `docs/ML_IDEAS.md §1a`). It touches
+   `web/app.ts`, a small handful of new API endpoints, and a couple of
+   read-side store helpers. None of those overlap with the parser hot
+   path. The math is small; the open questions are product design.
+
+   **Formulas (verified against [`docs/srs-deck-spec.md` §Coverage
+   metrics](docs/srs-deck-spec.md)).**
+
+   ```
+   personal_coverage(text, user_known_set) =
+       Σ token_count[t] for t in tokens(text) where t.lemma ∈ user_known_set
+       ÷ Σ token_count[t] for t in tokens(text)
+
+   marginal_gain(text, user_known_set, candidate_lemma) =
+       Σ token_count[t] for t in tokens(text) where t.lemma == candidate_lemma
+       ÷ Σ token_count[t] for t in tokens(text)
+   ```
+
+   Both are O(N) over the deck's `occurrence` rows once a known-lemma
+   set lookup is indexed. No new tables required. The deck's
+   per-`(lemma, pos)` token counts are already materialized at deck
+   creation time (`internal/store/db.go::CreateDeck` expands tokens
+   into `occurrence` rows).
+
+   **Backend tasks.**
+
+   - [ ] Read-side helper: `store.DeckLemmaStats(deckID) []LemmaCount`
+         returning `(lemma, pos, token_count)` rows from `occurrence`,
+         sorted by `token_count` desc. Cache invalidation: invalidate
+         on deck content change (rare).
+   - [ ] Read-side helper: `store.UserKnownLemmaSet(userID, lang) map[LemmaKey]bool`
+         (this likely already exists in some form for known-words
+         filtering during deck creation; verify and reuse if so).
+   - [ ] New endpoint: `GET /api/decks/:id/comprehension`
+         - returns `{ coverage_pct: float, total_tokens: int, known_tokens: int, top_unlocks: [{lemma, pos, gain_pct, token_count}, ...] }`
+         - `top_unlocks` is the top N (default 10) candidate lemmas
+           ranked by `marginal_gain` for the current user.
+   - [ ] Extend `GET /api/decks/:id` response to include the headline
+         `comprehension_pct` so the deck list / dashboard can render
+         it without an extra round trip per deck.
+
+   **Frontend tasks.**
+
+   - [ ] Deck-detail page: add a "Predicted comprehension" badge near
+         the deck title showing `X% / 100%`. Click → expand to the
+         marginal-gain projection table.
+   - [ ] Deck list / dashboard: add the comprehension column.
+   - [ ] Marginal-gain projection: "Learn these N words to reach Y%
+         comprehension." Show the next 10 unlocks; let the user "mark
+         as known" inline.
+
+   **Open product-design questions (decide before frontend work).**
+
+   - [ ] Where does this surface live: deck detail page, parse results
+         page, or both? Recommendation: deck detail first (highest
+         signal-to-noise), then optionally on parse results once the
+         shape is settled.
+   - [ ] How does coverage interact with the user's *ignored* lemma
+         set? Treat ignored as known (so "I don't care about proper
+         names" raises my coverage), or as separate? `srs-deck-spec.md`
+         doesn't take a position; needs a call.
+   - [ ] Form-level vs lemma-level coverage display. Most users will
+         want lemma-level ("I know the word"); advanced learners may
+         want form-level ("I know this exact inflected form"). Pick
+         lemma-level for v1; expose form-level as a toggle later.
+
+   **Suggested form to start in parallel.** Sketch the UI layout
+   (Figma or a hand drawing is fine), write the backend endpoint
+   stubs against an in-memory test deck, ship the deck-detail badge
+   first as the smallest meaningful slice. The marginal-gain
+   projection can be a separate PR. Confidence: high that this
+   shipping order minimizes blast radius.
+
+   **Eval / sanity check.** Before shipping, sanity-check the
+   coverage numbers against the public baselines under
+   [`docs/FREQUENCY_BASELINES.md`](docs/FREQUENCY_BASELINES.md) — if a user with the top-1000
+   FI inflected forms as their known set sees `personal_coverage`
+   far from 65% on subtitle-style decks or far from 40% on written
+   decks, something is wrong. The expected band is the calibration
+   data we already collected.
+
+   **Cross-references.**
+
+   - Formulas: [`docs/srs-deck-spec.md` §Coverage metrics](docs/srs-deck-spec.md)
+   - Calibration baselines:
+     [`docs/FREQUENCY_BASELINES.md`](docs/FREQUENCY_BASELINES.md) and
+     [`docs/CROSS_LANGUAGE_STRATEGY.md` "Measurable Divergences"](docs/CROSS_LANGUAGE_STRATEGY.md)
+   - User-text-aggregated frequency feeds the same machinery —
+     see Research Goals above.
+   - Cross-deck variant of marginal gain — see §6 below.
+
+14. **Highest-leverage study ordering across decks**
     - [ ] Extend new-card ranking to consider comprehension gain across all study-list decks, not just token_count within a single source
     - [ ] Rank candidate words by: "how many tokens across all active decks does learning this lemma unlock?"
     - [ ] Allow the user to weight decks by priority (high/medium/low) so words in high-priority content are preferred
     - Current ranking (`srs-deck-spec.md §New card selection`) sorts by token_count within the selected source; cross-deck optimization would be a meaningful upgrade
     - Surasura generates "highest-leverage order" study sequences by analyzing frequency across a user's entire content library
 
-13. **Progress dashboard**
+15. **Progress dashboard**
     - [ ] Implement the dashboard tab with learning progress visualization over time
     - [ ] Show: total known lemmas, cards in review, comprehension trend per deck, daily review count
     - [ ] Add a cumulative comprehension chart: how does total coverage change as the user learns more words?
     - The frontend already has a dashboard tab placeholder; this is about filling it with meaningful data
     - Surasura has an interactive HTML dashboard with progress tracking that users find motivating
 
-14. **Observability**
+16. **Observability**
     - [x] Add timing instrumentation to parser steps
     - [ ] Track analyzer cache hit rates
     - [ ] Monitor unknown lemma frequency
     - [ ] Create dashboards/alerts for parser health
 
-15. **Three-part compound splitting** — ~~SUPERSEDED by FST migration~~
+17. **Three-part compound splitting** — ~~SUPERSEDED by FST migration~~
     - Recursive compounds are handled natively by libvoikko VFST via concatenated `[Xp]...[X]` segments; see [PR #107](https://github.com/sagarinbabel/finnestdb/pull/107) (FI) and the planned ET equivalent.
     - Do NOT extend `tryCompoundSplit()` — see `docs/DECISIONS.md` Decision 5.
 
-16. **Consonant gradation rules** — ~~REJECTED~~
+18. **Consonant gradation rules** — ~~REJECTED~~
     - Gradation does not belong in `internal/parserules/` or
       `internal/store/dict.go::tryCaseSuffixStrip`. It belongs in the FST's
       lexicon-aware paradigm tables (`pkg/lemmatizer-fi-et/`).
@@ -216,7 +469,7 @@ Example generation relies on "FST synthesizer + reparse to validate features" (�
       false positives at lemma boundaries and double-counts cases the FST
       already handles. See `docs/DECISIONS.md` Decision 5.
 
-17. **Bloom filter for compound pre-filtering**
+19. **Bloom filter for compound pre-filtering**
     - [ ] Profile compound splitting performance on large texts (10k+ tokens) before implementing
     - Currently each unresolved form triggers up to N×2 SQLite queries for split-point attempts
     - A Bloom filter over the forms table could eliminate most impossible splits without DB queries

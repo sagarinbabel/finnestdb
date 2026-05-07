@@ -40,6 +40,42 @@ lemma/POS candidates. That matters for homonyms such as ET `joon` and FI
 `osat`: deck ingest can preserve multiple dictionary candidates while
 the parser still picks one best analysis for display.
 
+### Source priority semantics _(added 2026-05-07)_
+
+Every row carries `source_priority` (integer, higher wins). The resolver
+ranks candidate rows by:
+
+1. **Source priority** (higher first).
+2. **Source name** (deterministic tiebreak, ascending).
+3. **Surface plausibility** (case-match against the input form;
+   demote `PROPN` candidates when the input is lowercase).
+
+The third rule was added in
+[PR #84](https://github.com/sagarinbabel/finnestdb/pull/84) ("source-aware
+lookup ranking") after the Ekilex bulk import surfaced PROPN homonyms
+beating common-noun lemmas — see
+[`docs/baselines/2026-05-06b-summary.md`](baselines/2026-05-06b-summary.md)
+for the regression-and-recovery story. **Whenever a new source lands,
+re-run the gold eval and freeze a new baseline before promoting it to
+production priority.** Adding a source without re-evaluation is the
+known way to silently regress accuracy.
+
+### Multi-lemma surface forms (homonyms) _(added 2026-05-07)_
+
+The `forms` PK is `(form, lang, lemma, pos)` so one surface form can
+map to multiple `(lemma, pos)` candidates. Examples:
+
+- ET `joon` = NOUN "line" + 1Sg present of VERB `jooma` ("to drink")
+- FI `osat` = NOUN nominative plural of `osa` ("part") + 2Sg present
+  of VERB `osata` ("to know how to")
+
+At deck-ingest time, every dict candidate becomes its own `occurrence`
+row and its own card. The parser's single pick is only used when the
+dict has zero entries for the form. This means a learner studying
+`joon` sees both senses; correctness is preserved, and disambiguation
+is deferred to the user-correction loop and (eventually) a contextual
+disambiguator (see [`docs/ML_IDEAS.md` §1a](ML_IDEAS.md)).
+
 ### Generated tables and dictionary boundary
 
 The lemmatizer package now follows
@@ -49,18 +85,32 @@ generated factual tables, not upstream transducer blobs.
 Resolution order is:
 
 1. **Generated table lookup** (`pkg/lemmatizer-fi-et/`): exact
-   surface-form analyses from committed JSON tables.
+   surface-form analyses from committed JSON tables. Post PRs
+   [#127](https://github.com/sagarinbabel/finnestdb/pull/127) and
+   [#129](https://github.com/sagarinbabel/finnestdb/pull/129), the
+   FST contributes candidates in parallel with dict step 1, not as a
+   step-5 fallback.
 2. **Multi-source dictionary lookup** (`internal/store/dict.go`):
    SQLite rows ranked by source priority, source name, and surface
-   plausibility.
+   plausibility (see "Source priority semantics" above).
 3. **Rule fallback** (`internal/parserules/`): suffix stripping,
    compound splitting, and language-specific fallback behavior.
 4. **Stub fallback**: preserve the input surface when nothing resolves.
 
-The current FI/ET generated tables are smoke fixtures. They prove the
-integration and policy, not production morphology coverage. Production
-coverage claims require production generated tables plus fresh eval on
-the exact committed data.
+Post-FST goals:
+
+- FST handles the vast majority of FI tokens (target: >95% of words).
+- Dict catches the long tail (proper nouns, English loans, brand
+  names) and supplies translations/definitions.
+- Suffix/compound rules near-zero firing rate on FI; if higher than
+  noise, that signals an FST gap worth investigating.
+
+The current FI/ET generated tables are smoke fixtures (9 FI keys, 7 ET
+keys; see [`testdata/lemmatizer/`](../testdata/lemmatizer/)). They
+prove the integration and policy, not production morphology coverage.
+Production coverage requires running `make gen-lemmatizer-tables-fi`
+locally to write the full table to `localdata/lemmatizer-fi-et/tables/`.
+The ET generator is not yet implemented.
 
 ### Importer pattern
 
@@ -72,6 +122,27 @@ Each rich source should have a dedicated `cmd/import<source>/` or
 - record source, priority, attribution, license, version, and command;
 - be idempotent or support explicit source replacement;
 - keep focused tests and fixtures for reducer/generator behavior.
+
+### Cross-references _(added 2026-05-07)_
+
+- **Per-language source choices**: this doc's Finnish sections below
+  + `docs/ESTONIAN_LEXICAL_PLAN.md` for ET-specific source choices.
+- **System-level architecture**: [`ARCHITECTURE.md` §5 "Dictionary /
+  Persistence"](../ARCHITECTURE.md) for how the lexical layer plugs
+  into parsecore, the API, and the deck flow.
+- **Cross-language strategy**: [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md)
+  for what is shared vs. language-specific at the parser strategy
+  level (error taxonomy, evaluation discipline, external benchmark
+  slots).
+- **FST migration**: [`docs/FST_LEMMATIZER.md`](FST_LEMMATIZER.md) for
+  the change document, [`docs/FST_LEMMATIZER_ROADMAP.md`](FST_LEMMATIZER_ROADMAP.md)
+  for the per-PR sequencing.
+- **Public frequency baselines**: [`docs/FREQUENCY_BASELINES.md`](FREQUENCY_BASELINES.md)
+  for inflected-form baselines used to compare against user-aggregated
+  frequency. Bulk frequency files live under `localdata/frequency/`
+  (gitignored), populated by `cmd/fetchfrequency`.
+- **Data corpora ledger**: [`docs/data_enhancement.md`](data_enhancement.md)
+  is the single source of truth for every external corpus pulled in.
 
 ## Current Decision
 
