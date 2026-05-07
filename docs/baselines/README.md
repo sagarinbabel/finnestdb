@@ -84,6 +84,15 @@ derived from. Older baselines (pre-PR #103) used a `samples` field in
 integer milliseconds; reading the unit off the field name is the
 forward-compatible way to interpret these.
 
+When a report is generated with `parsertest -stratified`, each parser
+summary also carries a `stratification` object with three axis breakdowns
+(`by_upos`, `by_oov`, `by_compound`). Each entry has `bucket`,
+`expected_tokens`, `lemma_correct`, `pos_correct`, `full_correct`, and the
+matching `*_accuracy` floats. The field is omitted from JSON when the flag
+is off, so legacy baselines remain byte-identical. See
+[`../PARSER_EVAL_METHODOLOGY.md`](../PARSER_EVAL_METHODOLOGY.md) §Stratified
+breakdown for the bucket definitions and motivation.
+
 ## How to reproduce
 
 ```bash

@@ -282,3 +282,32 @@ func mustParseTime(t *testing.T, raw string) time.Time {
 	}
 	return parsed
 }
+
+// TestHasDuplicateDatasetParser feeds the helper used by emitStratifiedTables
+// to decide whether short-ID labels are needed when the user passes multiple
+// JSONs for the same gold set without -baseline-dir.
+func TestHasDuplicateDatasetParser(t *testing.T) {
+	// Two runs of the same dataset/parser combo — the case the reviewer
+	// flagged as "duplicate-looking rows."
+	if !hasDuplicateDatasetParser([]*eval.Report{
+		{Dataset: eval.ReportDataset{Name: "fi-grammar"}, Parsers: []string{"basic", "custom"}},
+		{Dataset: eval.ReportDataset{Name: "fi-grammar"}, Parsers: []string{"custom", "omorfi"}},
+	}) {
+		t.Error("duplicates not detected for two reports of fi-grammar with overlapping parsers")
+	}
+	if hasDuplicateDatasetParser([]*eval.Report{
+		{Dataset: eval.ReportDataset{Name: "fi-grammar"}, Parsers: []string{"basic", "custom"}},
+		{Dataset: eval.ReportDataset{Name: "fi-manual"}, Parsers: []string{"basic", "custom"}},
+	}) {
+		t.Error("false positive: distinct datasets should not be a dup")
+	}
+	if hasDuplicateDatasetParser([]*eval.Report{
+		{Dataset: eval.ReportDataset{Name: "fi-grammar"}, Parsers: []string{"basic", "custom"}},
+		{Dataset: eval.ReportDataset{Name: "fi-grammar"}, Parsers: []string{"omorfi"}},
+	}) {
+		t.Error("false positive: same dataset but disjoint parsers is not a dup")
+	}
+	if hasDuplicateDatasetParser(nil) {
+		t.Error("nil input should not be a dup")
+	}
+}

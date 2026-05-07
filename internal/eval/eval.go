@@ -49,6 +49,10 @@ type EvaluateOptions struct {
 	// (fi-manual-v1.json vs fi-manual-v2.json, both with name="fi-manual")
 	// don't collide in reports/parser-eval/.
 	RunIDSlug string
+	// Stratified attaches a UPOS-bucket / OOV / compoundness breakdown to
+	// each ParserSummary. Off by default so the legacy JSON schema is
+	// byte-identical when callers don't opt in. See stratify.go.
+	Stratified bool
 }
 
 type Report struct {
@@ -105,6 +109,12 @@ type ParserSummary struct {
 	AvgLookupGlossesMs    float64                `json:"avg_lookup_glosses_ms"`
 	AvgResolveSentencesMs float64                `json:"avg_resolve_sentences_ms"`
 	AvgEnrichWordsMs      float64                `json:"avg_enrich_words_ms"`
+	// Stratification holds per-UPOS-bucket / per-OOV / per-compoundness
+	// accuracy breakdowns. Populated only when Evaluate is called with
+	// Stratified=true (or when callers post-attach it via
+	// ComputeStratification). Omitted from JSON when nil so historical
+	// reports stay byte-identical.
+	Stratification *Stratification `json:"stratification,omitempty"`
 }
 
 // FeatsAttributeMetric reports per-attribute accuracy for a UD FEATS key
@@ -304,6 +314,13 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 
 	for _, parser := range parsers {
 		report.Summary[parser] = summaries[parser].finish()
+	}
+	if options.Stratified {
+		for _, parser := range parsers {
+			summary := report.Summary[parser]
+			summary.Stratification = ComputeStratification(parser, report.Cases)
+			report.Summary[parser] = summary
+		}
 	}
 	report.PriorityRegressions = computePriorityRegressions(report)
 	return report, nil

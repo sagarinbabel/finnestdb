@@ -19,6 +19,11 @@
 // to disable. CIs prevent reading "82.3% beats 80.1%" as significant when
 // it's noise on a 22-case manual set.
 //
+// With -stratified, a UPOS-bucket / OOV / compoundness breakdown is emitted
+// after the headline. Stratification is computed on the fly from the report's
+// case-level comparisons, so the flag works on historical baseline JSONs
+// regardless of whether they were generated with parsertest's -stratified.
+//
 // Usage:
 //
 //	# Generate reports first via cmd/parsertest:
@@ -59,6 +64,7 @@ func main() {
 	mainParser := flag.String("main-parser", defaultMainParser, "Parser name treated as 'now' in the headline")
 	bootstrapN := flag.Int("bootstrap", 1000, "Bootstrap iterations for 95% case-level CIs. 0 disables CIs.")
 	bootstrapSeed := flag.Int64("bootstrap-seed", 0xF1E57DB, "RNG seed for the bootstrap (deterministic by default).")
+	stratified := flag.Bool("stratified", false, "Emit a per-(dataset, parser, bucket) breakdown by UPOS / OOV / compoundness after the headline. Computed on the fly from the report's case comparisons.")
 	flag.Parse()
 
 	paths := flag.Args()
@@ -97,6 +103,100 @@ func main() {
 	}
 	emitLegacyTable(now)
 	emitFeatsAttributeTable(now)
+
+	if *stratified {
+		fmt.Println()
+		emitStratifiedTables(now, prev)
+	}
+}
+
+// emitStratifiedTables computes and prints the three-axis stratified breakdown
+// for each (dataset, parser) pair. Computed on the fly from each report's
+// case-level comparisons rather than read from Summary.Stratification, so the
+// flag works on historical baseline JSONs that predate the stratified output.
+//
+// When prev is non-empty (-baseline-dir mode), the matching prior report for
+// each dataset is also expanded into rows, with explicit "prev" / "now"
+// labels so the two are visually distinct. When prev is nil but multiple now
+// reports were supplied, each row carries a short timestamp label derived
+// from the report's RunID — without this, two reports for the same dataset
+// would render as duplicate-looking rows. Sidecars from cmd/parsertest
+// always pass a single report and don't trigger label rendering.
+func emitStratifiedTables(now []*eval.Report, prev map[string]*eval.Report) {
+	// In baseline-dir mode, force "prev" / "now" labels so the rendered
+	// table reads as a comparison rather than two anonymous rows. The
+	// short-ID label is reserved for the simpler N-reports-no-baseline
+	// case where the user is directly inspecting a handful of JSONs.
+	useExplicitPrevNow := len(prev) > 0
+	// Detect the case that the user passed multiple JSONs naming the same
+	// (dataset, parser) without -baseline-dir. There we still need labels
+	// to disambiguate, but the labels should be the short report IDs
+	// rather than the binary "prev" / "now" pair.
+	useShortIDLabels := !useExplicitPrevNow && hasDuplicateDatasetParser(now)
+
+	inputs := make([]eval.StratifiedReportInput, 0)
+	for _, r := range now {
+		for _, parser := range r.Parsers {
+			strat := eval.ComputeStratification(parser, r.Cases)
+			if strat == nil {
+				continue
+			}
+			label := ""
+			if useExplicitPrevNow {
+				label = "now"
+			} else if useShortIDLabels {
+				label = eval.ReportShortLabel(r)
+			}
+			inputs = append(inputs, eval.StratifiedReportInput{
+				DatasetName: r.Dataset.Name,
+				Parser:      parser,
+				Label:       label,
+				Stratified:  strat,
+			})
+		}
+		if useExplicitPrevNow {
+			prevReport, ok := prev[r.Dataset.Name]
+			if !ok {
+				continue
+			}
+			for _, parser := range prevReport.Parsers {
+				strat := eval.ComputeStratification(parser, prevReport.Cases)
+				if strat == nil {
+					// Older summary-only baselines have no cases to
+					// re-stratify. Silently skip prev for that dataset;
+					// the user still sees the now rows, which is the
+					// most informative thing we can render.
+					continue
+				}
+				inputs = append(inputs, eval.StratifiedReportInput{
+					DatasetName: prevReport.Dataset.Name,
+					Parser:      parser,
+					Label:       "prev",
+					Stratified:  strat,
+				})
+			}
+		}
+	}
+	inputs = eval.SortedStratifiedInputsByDatasetParser(inputs)
+	eval.RenderStratifiedMarkdown(os.Stdout, "Stratified accuracy", inputs)
+}
+
+// hasDuplicateDatasetParser reports whether any (dataset, parser) pair appears
+// more than once across the supplied reports — the signal that a user passed
+// e.g. an old and new run for the same gold set without -baseline-dir, and
+// the rendered rows must carry labels to stay distinguishable.
+func hasDuplicateDatasetParser(reports []*eval.Report) bool {
+	seen := make(map[string]struct{})
+	for _, r := range reports {
+		for _, parser := range r.Parsers {
+			key := r.Dataset.Name + "\x00" + parser
+			if _, ok := seen[key]; ok {
+				return true
+			}
+			seen[key] = struct{}{}
+		}
+	}
+	return false
 }
 
 // loadReports reads each JSON path into an eval.Report.
