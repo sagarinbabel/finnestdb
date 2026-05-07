@@ -33,12 +33,15 @@
 #   7.  Scrape Gutenberg-FI silver corpus (~4 MB) via
 #       cmd/scrapegutenberg.
 #   8.  Import all of the above into finnestdb.db.
+#   9.  Generate FI lemmatizer tables (best effort; needs VFST_PATH).
+#   10. Fetch public frequency baselines (~10 MB) via cmd/fetchfrequency.
 #
 # Usage:
 #   scripts/setup-local.sh                   # full setup
 #   SKIP_EKILEX_DETAILS=1 scripts/setup-local.sh   # skip step 5 even with key
 #   SKIP_SILVER=1 scripts/setup-local.sh           # skip step 7
 #   SKIP_UD=1 scripts/setup-local.sh               # skip step 6
+#   SKIP_FREQUENCY=1 scripts/setup-local.sh        # skip step 10
 #   EKILEX_RPS=24 EKILEX_WORKERS=24 scripts/setup-local.sh   # tune scrape
 #
 # After this finishes, you can hand a teammate a fast-bootstrap zip
@@ -192,6 +195,20 @@ fi
 # ET table generation is not yet wired into a generator. Until then, FST
 # analysis for Estonian is disabled by design — the dict-only path runs.
 
+# ── 10. public frequency baselines (best effort) ──────────────────────────────
+# OpenSubtitles 2018 + UD-FI-TDT + UD-ET-EDT → localdata/frequency/{fi,et}/.
+# Used as comparison anchors for the user-aggregated frequency work.
+# See docs/FREQUENCY_BASELINES.md.
+if [[ -n "${SKIP_FREQUENCY:-}" ]]; then
+    warn "SKIP_FREQUENCY set — skipping frequency baseline fetch."
+elif [[ -d "localdata/frequency/fi" && -d "localdata/frequency/et" && \
+        -f "localdata/frequency/fi/opensubtitles-2018-fi-50k.txt" ]]; then
+    log "Frequency baselines already present — skipping fetch."
+else
+    log "Fetching public frequency baselines (~10 MB)…"
+    make fetch-frequency-baselines || warn "fetch-frequency-baselines failed; continuing."
+fi
+
 # ── done ──────────────────────────────────────────────────────────────────────
 log ""
 log "Setup complete."
@@ -204,6 +221,7 @@ log "  localdata/silver-fi/             — Gutenberg silver, $(du -sh localdata
 log "  localdata/ud-cache/              — UD treebank clones, $(du -sh localdata/ud-cache 2>/dev/null | awk '{print $1}')"
 log "  localdata/parser-eval/           — local-only parser-eval gold, $(du -sh localdata/parser-eval 2>/dev/null | awk '{print $1}')"
 log "  localdata/lemmatizer-fi-et/      — generated lemmatizer tables, $(du -sh localdata/lemmatizer-fi-et 2>/dev/null | awk '{print $1}')"
+log "  localdata/frequency/             — public frequency baselines, $(du -sh localdata/frequency 2>/dev/null | awk '{print $1}')"
 log ""
 log "Single-folder bootstrap — everything above lives under ./localdata/."
 log "To hand a teammate a fast-bootstrap zip (skips every fetch above):"
