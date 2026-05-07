@@ -319,3 +319,101 @@ func TestEvaluateOptions_StratifiedOff(t *testing.T) {
 		t.Errorf("Stratification should be nil by default, got %+v", report.Summary["custom"].Stratification)
 	}
 }
+
+// TestRenderStratifiedMarkdown_RunColumnEmittedWhenLabelsSet covers the
+// reviewer's primary complaint: when two reports name the same (dataset,
+// parser), they used to render as visually identical rows. With Label set,
+// the renderer adds a Run column so the two rows are distinguishable.
+func TestRenderStratifiedMarkdown_RunColumnEmittedWhenLabelsSet(t *testing.T) {
+	mk := func(lemma float64) *Stratification {
+		return &Stratification{
+			ByUPOS: []StratifiedMetric{{
+				Bucket: "open", ExpectedTokens: 100,
+				LemmaCorrect: int(lemma * 100), LemmaAccuracy: lemma,
+				POSCorrect: 95, POSAccuracy: 0.95,
+				LemmaPOSCorrect: int(lemma*100) - 1, LemmaPOSAccuracy: lemma - 0.01,
+				FullCorrect: 80, FullAccuracy: 0.80,
+			}},
+		}
+	}
+	var buf bytes.Buffer
+	RenderStratifiedMarkdown(&buf, "Stratified accuracy", []StratifiedReportInput{
+		{DatasetName: "fi-grammar", Parser: "custom", Label: "prev", Stratified: mk(0.85)},
+		{DatasetName: "fi-grammar", Parser: "custom", Label: "now", Stratified: mk(0.90)},
+	})
+	out := buf.String()
+
+	mustContain := []string{
+		"| Dataset | Run | Parser | Bucket | Tokens | Lemma | POS | Lemma+POS | Full |",
+		"| fi-grammar | prev | custom | open | 100 | 85.0% |",
+		"| fi-grammar | now | custom | open | 100 | 90.0% |",
+	}
+	for _, want := range mustContain {
+		if !strings.Contains(out, want) {
+			t.Errorf("missing %q in:\n%s", want, out)
+		}
+	}
+	// And the legacy 4-column header should NOT appear when labels are set.
+	if strings.Contains(out, "| Dataset | Parser | Bucket | Tokens |") {
+		t.Errorf("legacy non-Run header leaked into labelled rendering:\n%s", out)
+	}
+}
+
+// TestRenderStratifiedMarkdown_RunColumnSuppressedWhenNoLabels guards the
+// parsertest sidecar case: a single report's stratification renders without
+// the Run column because adding it would just clutter the table.
+func TestRenderStratifiedMarkdown_RunColumnSuppressedWhenNoLabels(t *testing.T) {
+	strat := &Stratification{
+		ByUPOS: []StratifiedMetric{{
+			Bucket: "open", ExpectedTokens: 100,
+			LemmaCorrect: 90, LemmaAccuracy: 0.9,
+		}},
+	}
+	var buf bytes.Buffer
+	RenderStratifiedMarkdown(&buf, "Stratified accuracy", []StratifiedReportInput{
+		{DatasetName: "fi-grammar", Parser: "custom", Stratified: strat},
+	})
+	out := buf.String()
+	if !strings.Contains(out, "| Dataset | Parser | Bucket | Tokens | Lemma | POS | Lemma+POS | Full |") {
+		t.Errorf("expected legacy header without Run column, got:\n%s", out)
+	}
+	if strings.Contains(out, "| Dataset | Run | Parser |") {
+		t.Errorf("Run column should be suppressed for single-report rendering, got:\n%s", out)
+	}
+}
+
+func TestReportShortLabel(t *testing.T) {
+	cases := []struct {
+		name string
+		r    *Report
+		want string
+	}{
+		{"nil", nil, ""},
+		{"runID with slug", &Report{RunID: "20260507T122013Z-fi-grammar"}, "20260507T122013Z"},
+		{"runID without slug", &Report{RunID: "20260507T122013Z"}, "20260507T122013Z"},
+		{"falls back to generated", &Report{Generated: "2026-05-07T12:20:13Z"}, "2026-05-07T12:20:13Z"},
+		{"falls back to commit", &Report{GitCommit: "b7ab30f"}, "b7ab30f"},
+		{"empty", &Report{}, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := ReportShortLabel(tc.r); got != tc.want {
+				t.Errorf("ReportShortLabel=%q want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestSortedStratifiedInputsByDatasetParser_LabelStable covers that two
+// reports for the same (dataset, parser) sort by label, so prev and now
+// render adjacent in deterministic order.
+func TestSortedStratifiedInputsByDatasetParser_LabelStable(t *testing.T) {
+	got := SortedStratifiedInputsByDatasetParser([]StratifiedReportInput{
+		{DatasetName: "fi-grammar", Parser: "custom", Label: "now"},
+		{DatasetName: "fi-grammar", Parser: "custom", Label: "prev"},
+	})
+	if got[0].Label != "now" || got[1].Label != "prev" {
+		// Sort is alphabetical: "now" < "prev"
+		t.Errorf("sort order: got [%s, %s] want [now, prev]", got[0].Label, got[1].Label)
+	}
+}
