@@ -289,6 +289,10 @@ function escapeAttr(str: string): string {
         .replace(/>/g, '&gt;');
 }
 
+function escapeRegExp(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function posLabel(pos: string): string {
     return POS_LABELS[pos] || pos;
 }
@@ -1286,7 +1290,7 @@ function sortWords(words: DisplayWordEntry[], sort: SortState): DisplayWordEntry
 function highlightFormsInSentence(sentence: string, forms: string[]): string {
     let result = escapeHtml(sentence);
     for (const form of forms) {
-        const escaped = escapeHtml(form);
+        const escaped = escapeRegExp(escapeHtml(form));
         const regex = new RegExp(`\\b(${escaped})\\b`, 'gi');
         result = result.replace(regex, '<span class="highlight-form">$1</span>');
     }

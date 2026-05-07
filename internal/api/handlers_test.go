@@ -98,6 +98,29 @@ func TestHandleParseRejectsInvalidRequests(t *testing.T) {
 	}
 }
 
+func TestHandleParseRejectsOversizedJSONBeforeAnalyze(t *testing.T) {
+	api := newTestAPI(t)
+	called := false
+	api.analyze = func(_ *store.DB, _, _, _ string) (*parsecore.ParseResult, error) {
+		called = true
+		return nil, fmt.Errorf("analyze should not run")
+	}
+	mux := newTestMux(t, api)
+
+	body := `{"lang":"FI","text":"` + strings.Repeat("a", maxJSONBodyBytes) + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want %d", rec.Code, http.StatusBadRequest)
+	}
+	if called {
+		t.Fatal("analyze was called for oversized request body")
+	}
+}
+
 func TestHandleParseReturnsJSONResponse(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
