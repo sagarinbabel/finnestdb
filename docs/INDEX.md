@@ -1,0 +1,208 @@
+# Documentation Index
+
+_Created 2026-05-07 PM. Single map of every doc in this repo, organized
+by purpose. Designed to be cold-readable: any reader (human or LLM) should
+be able to find the right doc for their question in under a minute._
+
+If you're new to the repo, read in this order: [`../README.md`](../README.md) →
+[`../TODO.md`](../TODO.md) → [`../ARCHITECTURE.md`](../ARCHITECTURE.md) →
+this index for everything else.
+
+## At a glance
+
+| If you want to know... | Go to |
+|---|---|
+| What this project is and how to run it | [`README.md`](../README.md) |
+| What's shipped and what's open | [`TODO.md`](../TODO.md) |
+| Why we made the choices we did | [`docs/DECISIONS.md`](DECISIONS.md) |
+| What changed when (per-PR doc impact) | [`docs/CHANGELOG.md`](CHANGELOG.md) |
+| How the system is wired together | [`ARCHITECTURE.md`](../ARCHITECTURE.md) |
+| How the lexical layer works | [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) |
+| What the product is from a learner's view | [`docs/FEATURES.md`](FEATURES.md) |
+| How parser quality has moved over time | [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) |
+| Why FI and ET diverge measurably | [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md) |
+| What ML directions fit the project | [`docs/ML_IDEAS.md`](ML_IDEAS.md) |
+
+## By purpose
+
+### Entry point
+
+- [`../README.md`](../README.md) — what FinEstDB is, how to run it, project
+  structure, build instructions, browser regression tests, dictionary import,
+  parser evaluation CLI, known limitations, documentation index pointer.
+
+### System architecture (current state)
+
+- [`../ARCHITECTURE.md`](../ARCHITECTURE.md) — system architecture, layer
+  responsibilities, data flow, parser modes (browser vs eval-only),
+  baselines summary. Updated with each parser-affecting PR.
+- [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) — lexical layer architecture:
+  schema, source priority semantics, multi-lemma surface forms,
+  FST↔dict boundary, importer pattern, FI source choices, ET source
+  choices (consolidated from the deleted `ESTONIAN_LEXICAL_PLAN.md`).
+- [`architecture.md`](architecture.md) — redirect stub pointing at
+  `ARCHITECTURE.md` (kept so old links resolve).
+
+### Product framing (user-facing)
+
+- [`docs/FEATURES.md`](FEATURES.md) — what the product is from a
+  learner's perspective. Inspect → correct → deck → review loop.
+  Technology differentiators (fast parser, benchmarked quality, user
+  correction loop, future autoresearch, inflected-form-aware
+  frequency).
+
+### Status and planning
+
+- [`../TODO.md`](../TODO.md) — single repo-level task list. **What's in
+  main / What's not in main yet / Open PRs / Research Goals / Notes
+  & historical**. The first thing to read if you want to do work.
+- [`docs/DECISIONS.md`](DECISIONS.md) — decisions log, latest-first.
+  18 entries with date, context, decision, reasoning, trade-off,
+  how-to-revisit. Cross-linked to CHANGELOG where the same event
+  appears in both.
+- [`docs/CHANGELOG.md`](CHANGELOG.md) — documentation changelog,
+  reverse-chronological. Tracks doc-level changes per PR, cross-linked
+  to DECISIONS.
+
+### Parser quality and measurement
+
+- [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) — chronological log
+  of measured parser-quality changes. Trend table at top, dated entries
+  below (one per parser-affecting PR). The "did we improve?" record.
+- [`docs/PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) —
+  how `make compare-parsers` works: what's measured, parsers under
+  comparison, schema details, baseline-freezing convention.
+- [`docs/PARSER_EVAL_DATASETS.md`](PARSER_EVAL_DATASETS.md) — gold
+  dataset structure, how new cases are annotated, how draft sets get
+  promoted.
+- [`docs/baselines/`](baselines/) — frozen per-PR eval reports (FI +
+  ET, JSON + summary markdown). Latest is `2026-05-07k-T0944Z`.
+  See [`docs/baselines/README.md`](baselines/README.md) for the
+  baseline schema.
+- [`docs/SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) — how parser
+  behavior, eval baselines, deck/review scheduler, API contract, and
+  data schema are versioned independently.
+- [`docs/OMORFI_ADAPTER.md`](OMORFI_ADAPTER.md) — Finnish external
+  baseline integration (Helsinki HFST → Python adapter → FFI).
+- [`docs/OMORFI_COMPARISON.md`](OMORFI_COMPARISON.md) — methodology
+  for comparing custom parser vs Omorfi.
+- [`docs/srs-deck-spec.md`](srs-deck-spec.md) — spaced-repetition deck
+  spec: card lifecycle, scheduling math, coverage metrics,
+  comprehension prediction formulas.
+
+### Cross-language strategy
+
+- [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md) —
+  what's shared between FI and ET (pipeline shape, eval harness, error
+  taxonomy) vs language-specific (morphology rules, lexicon,
+  disambiguation). Includes "Measurable Divergences" with
+  register-vs-language coverage findings.
+
+### Roadmap and exploration
+
+- [`docs/ML_IDEAS.md`](ML_IDEAS.md) — ML roadmap: word-level
+  disambiguator (CRF), neural lemmatizer for unknown words,
+  knowledge-distillation, fastText embeddings, user-text-aggregated
+  frequency, comprehension prediction, sentence-level cached
+  translations. Confidence levels per item.
+- [`docs/ideas.md`](ideas.md) — exploratory roadmap including
+  AI-native phasing.
+- [`docs/AUTORESEARCH.md`](AUTORESEARCH.md) — automated rule-ablation
+  loop driven by parser-eval. Currently measure-and-revert; the
+  self-improving correction loop in `TODO.md` is the next step.
+
+### Specialized infrastructure
+
+- [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md) — what is and isn't
+  allowed in git. Single-folder bootstrap rule (everything gitignored
+  goes under `localdata/`). No transducer blobs. No bulk corpora.
+  Generator/fetcher code only.
+- [`docs/data_enhancement.md`](data_enhancement.md) — single-source-of-
+  truth ledger of every external corpus the project pulls in (gold,
+  silver, dictionary, treebank cache, frequency baselines). Each row:
+  source URL, license, size, path, added date, last-refreshed date.
+- [`docs/FREQUENCY_BASELINES.md`](FREQUENCY_BASELINES.md) —
+  methodology and license attribution for the public Finnish/Estonian
+  frequency baselines (OpenSubtitles 2018 + UD treebanks). Used as
+  comparison anchors for the user-text-aggregated frequency work.
+- [`docs/FST_LEMMATIZER.md`](FST_LEMMATIZER.md) — change document for
+  the FST lemmatizer migration (PRs #106–#112) that produced the
+  `pkg/lemmatizer-fi-et/` runtime.
+- [`docs/FST_LEMMATIZER_ROADMAP.md`](FST_LEMMATIZER_ROADMAP.md) —
+  per-PR sequencing of the FST migration work.
+- [`docs/PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md) — UX and
+  schema for "Suggest fix" parse-feedback flow. Admin queue triage,
+  always-attach-parse-session rule, planned writeback to `custom_overrides`
+  lexical rows.
+
+### Process and operations
+
+- [`docs/GETTING_STARTED.md`](GETTING_STARTED.md) — first-run guide
+  for trying the parser interactively.
+- [`docs/GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) — security and
+  hardening posture required before exposing the alpha publicly.
+- [`docs/LEARNINGS.md`](LEARNINGS.md) — parser-eval learnings as
+  patterns we want to repeat (or avoid).
+
+### Historical / superseded
+
+- [`docs/IMPLEMENTATION.md`](IMPLEMENTATION.md) — redirect stub.
+  Original content split: "Suggest fix" UX → `PARSER_FEEDBACK_LOOP.md`,
+  build instructions → README.md, limitations → README.md.
+- [`../IMPLEMENTATION_ANALYSIS.md`](../IMPLEMENTATION_ANALYSIS.md) —
+  March 2026 pre-implementation analysis. Recommends Postgres + Python,
+  which the project did not adopt. Banner directs readers to
+  ARCHITECTURE.md instead.
+- [`../finnestdb-prd-alpha.md`](../finnestdb-prd-alpha.md) — original
+  product requirements document. Kept as historical reference for the
+  initial product vision; the consumer-alpha plan in
+  [`../TODO.md`](../TODO.md) supersedes it where they conflict.
+- [`../ALTERNATIVE_NAMES.md`](../ALTERNATIVE_NAMES.md) — exploratory
+  naming brainstorm from March 2026. Not authoritative.
+
+### Reports and one-off artifacts (not living docs)
+
+- [`docs/qa-reports/`](qa-reports/) — dated QA reports (E2E doc
+  behavior, numeric-hyphen tokenization regression check). Each is a
+  one-off; safe to read for history but not maintained.
+- [`docs/baselines/`](baselines/) — frozen eval reports per PR (see
+  Parser quality section above).
+- [`../experiments/`](../experiments/) — dated spike reports
+  (currently the Voikko generator spike from 2026-05-06).
+- [`testdata/parser-eval/`](../testdata/parser-eval/) — gold dataset
+  files plus per-language `notes/annotation-notes.md`.
+- [`pkg/lemmatizer-fi-et/data/{fi,et}/README.md`](../pkg/lemmatizer-fi-et/data/)
+  — license stubs and provenance for upstream Voikko / Giellalt /
+  HFST sources used by the local table generator.
+
+## Doc cross-reference graph (reading paths)
+
+For an LLM building a project model from cold:
+
+1. **Project model**: README → ARCHITECTURE → LEXICAL_PLAN → CROSS_LANGUAGE_STRATEGY
+2. **Status / what to do**: README → TODO (and that's enough; TODO links out everywhere it needs to)
+3. **History / "what happened?"**: CHANGELOG → DECISIONS (latest-first, cross-linked) → PARSER_EVOLUTION
+4. **Parser quality**: PARSER_EVAL_METHODOLOGY → PARSER_EVOLUTION → docs/baselines/
+5. **Architecture deep-dive**: ARCHITECTURE → LEXICAL_PLAN → ARTIFACT_POLICY → data_enhancement
+6. **Roadmap / future**: TODO Research Goals → ML_IDEAS → ideas
+7. **Product / UX**: FEATURES → PARSER_FEEDBACK_LOOP → srs-deck-spec
+
+For a human starting from the URL: README is the entry point, this index
+is the second-tier map, every doc has a one-line purpose statement
+above so you can skim before opening it.
+
+## Conventions
+
+- **Dates** at top of doc (`_Current as of YYYY-MM-DD_`) tell you when
+  the doc was last verified against code state.
+- **CHANGELOG vs DECISIONS overlap**: CHANGELOG records what changed;
+  DECISIONS records why. Where the same event appears in both, both
+  cross-link.
+- **Status markers**: items in TODO marked `[x]` are shipped, `[ ]` are
+  open. Items marked `~~strikethrough~~` are superseded — see
+  [`docs/DECISIONS.md`](DECISIONS.md) for the reasoning.
+- **Local-only paths** (under `localdata/`) are gitignored; treat any
+  doc reference to `localdata/foo` as "you must populate this locally
+  via `scripts/setup-local.sh`."
+- **PR references** (`#NNN`) link to GitHub. Closed-without-merging
+  PRs are noted explicitly when relevant; see DECISIONS.md.
