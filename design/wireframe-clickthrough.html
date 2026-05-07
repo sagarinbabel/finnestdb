@@ -1,0 +1,2411 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="ink">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>finnest — wireframe click-through</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────── tokens ─────────────────────────── */
+:root {
+  --bg:        oklch(0.165 0.008 250);
+  --bg-deep:   oklch(0.125 0.008 250);
+  --bg-raise:  oklch(0.21 0.008 250);
+  --bg-hover:  oklch(0.25 0.010 250);
+  --line:      oklch(0.30 0.010 250);
+  --line-soft: oklch(0.24 0.008 250);
+  --ink:       oklch(0.96 0.005 90);
+  --ink-soft:  oklch(0.78 0.008 90);
+  --ink-mute:  oklch(0.55 0.010 90);
+  --accent:    oklch(0.72 0.19 38);
+  --known:     oklch(0.78 0.13 145);
+  --learning:  oklch(0.80 0.14 85);
+  --new:       oklch(0.72 0.19 38);
+  --fi:        oklch(0.78 0.13 200);
+  --et:        oklch(0.74 0.16 320);
+
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-disp: "Fraunces", "Times New Roman", serif;
+
+  --r-sm: 2px;
+  --r-md: 4px;
+  --r-lg: 8px;
+  --topbar: 56px;
+  --flowbar: 40px;
+}
+[data-theme="paper"] {
+  --bg:        oklch(0.97 0.005 85);
+  --bg-deep:   oklch(0.94 0.005 85);
+  --bg-raise:  oklch(1 0 0);
+  --bg-hover:  oklch(0.92 0.005 85);
+  --line:      oklch(0.82 0.008 85);
+  --line-soft: oklch(0.88 0.005 85);
+  --ink:       oklch(0.18 0.008 250);
+  --ink-soft:  oklch(0.40 0.010 250);
+  --ink-mute:  oklch(0.58 0.010 250);
+  --accent:    oklch(0.55 0.19 35);
+  --known:     oklch(0.55 0.13 145);
+  --learning:  oklch(0.62 0.14 80);
+  --new:       oklch(0.55 0.19 35);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "ss01", "cv11";
+  min-height: 100vh;
+}
+::selection { background: var(--accent); color: var(--bg-deep); }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; border: 2px solid var(--bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--line-soft); }
+
+.mono { font-family: var(--font-mono); }
+.num  { font-variant-numeric: tabular-nums; }
+.disp { font-family: var(--font-disp); }
+
+/* ─────────────────────────── topbar ─────────────────────────── */
+.topbar {
+  height: var(--topbar);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 24px;
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.brand {
+  font-family: var(--font-disp);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  cursor: pointer;
+}
+.brand .dot { color: var(--accent); }
+
+.topnav { display: flex; gap: 2px; }
+.topnav button {
+  all: unset;
+  cursor: pointer;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--ink-mute);
+  border-radius: var(--r-md);
+  position: relative;
+}
+.topnav button:hover { color: var(--ink); }
+.topnav button.active { color: var(--ink); }
+.topnav button.active::after {
+  content: "";
+  position: absolute;
+  left: 14px; right: 14px; bottom: -1px;
+  height: 2px; background: var(--accent);
+}
+
+.topbar-spacer { flex: 1; }
+.topbar-actions { display: flex; gap: 6px; align-items: center; }
+.icon-btn {
+  all: unset;
+  cursor: pointer;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-family: var(--font-sans);
+  transition: all 0.08s;
+}
+.icon-btn:hover { border-color: var(--ink-mute); color: var(--ink); }
+.icon-btn.active { background: var(--ink); color: var(--bg-deep); border-color: var(--ink); }
+
+.avatar-btn {
+  all: unset;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+.avatar-btn:hover { border-color: var(--ink-mute); }
+.avatar-btn .av {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--learning));
+  color: var(--bg-deep);
+  display: grid; place-items: center;
+  font-weight: 700; font-size: 11px;
+  font-family: var(--font-mono);
+}
+.avatar-btn .name { font-size: 12.5px; color: var(--ink-soft); }
+
+.signin {
+  all: unset;
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: var(--r-md);
+  background: var(--ink);
+  color: var(--bg-deep);
+  font-weight: 600;
+  font-size: 13px;
+}
+.signin:hover { background: var(--accent); }
+
+/* ─────────────────────────── flow strip (top) ─────────────────────────── */
+.flowstrip {
+  position: sticky;
+  top: var(--topbar);
+  z-index: 40;
+  height: var(--flowbar);
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.flowstrip::-webkit-scrollbar { display: none; }
+.flowstrip .step {
+  all: unset;
+  cursor: pointer;
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  border-radius: var(--r-sm);
+  white-space: nowrap;
+  border: 1px solid transparent;
+  transition: all 0.08s;
+}
+.flowstrip .step:hover { color: var(--ink-soft); background: var(--bg-raise); }
+.flowstrip .step.active {
+  color: var(--bg-deep);
+  background: var(--accent);
+}
+.flowstrip .arrow { color: var(--line); margin: 0 -2px; }
+
+/* ─────────────────────────── screens & layout ─────────────────────────── */
+.screen { display: none; }
+.screen.active { display: block; }
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 32px 96px;
+}
+.page.narrow { max-width: 720px; }
+.page.wide { max-width: 1280px; }
+
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.page-head h1 {
+  font-family: var(--font-disp);
+  font-weight: 600;
+  font-size: 38px;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.page-head .sub {
+  color: var(--ink-mute);
+  margin-top: 6px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+}
+.page-head .actions { display: flex; gap: 8px; align-items: center; }
+
+/* ─────────────────────────── shared components ─────────────────────────── */
+.btn {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font-size: 12.5px;
+  cursor: pointer;
+  color: var(--ink-soft);
+  background: transparent;
+  transition: all 0.08s;
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+.btn:hover { border-color: var(--ink-mute); color: var(--ink); }
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg-deep);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+.btn-primary:hover { background: oklch(0.78 0.19 38); border-color: oklch(0.78 0.19 38); }
+.btn-ghost { border-color: transparent; }
+.btn-ghost:hover { background: var(--bg-raise); color: var(--ink); }
+.btn-lg { padding: 10px 18px; font-size: 14px; }
+.btn-block { width: 100%; justify-content: center; }
+.btn .kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  border: 1px solid currentColor;
+  padding: 0 4px;
+  border-radius: 3px;
+  opacity: 0.6;
+}
+
+.panel {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.panel-head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; gap: 12px;
+}
+.panel-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+.panel-body { padding: 16px; }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  background: var(--bg-raise);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  line-height: 1.4;
+}
+.tag.fi { color: var(--fi); border-color: oklch(from var(--fi) l c h / 0.4); background: oklch(from var(--fi) l c h / 0.1); }
+.tag.et { color: var(--et); border-color: oklch(from var(--et) l c h / 0.4); background: oklch(from var(--et) l c h / 0.1); }
+.tag.new { color: var(--new); border-color: oklch(from var(--new) l c h / 0.4); background: oklch(from var(--new) l c h / 0.08); }
+.tag.known { color: var(--known); border-color: oklch(from var(--known) l c h / 0.4); background: oklch(from var(--known) l c h / 0.08); }
+.tag.learning { color: var(--learning); border-color: oklch(from var(--learning) l c h / 0.4); background: oklch(from var(--learning) l c h / 0.08); }
+
+.lang-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  background: var(--bg-raise);
+}
+.lang-badge.fi { color: var(--fi); border-color: oklch(from var(--fi) l c h / 0.4); }
+.lang-badge.et { color: var(--et); border-color: oklch(from var(--et) l c h / 0.4); }
+.lang-badge .glyph {
+  font-family: var(--font-disp);
+  font-style: italic;
+  font-weight: 600;
+}
+
+/* tables */
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table thead th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  font-weight: 500;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-deep);
+  position: sticky;
+  top: 0;
+}
+.data-table tbody td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.data-table tbody tr { transition: background 0.06s; cursor: pointer; }
+.data-table tbody tr:hover { background: var(--bg-hover); }
+.data-table .row-num { color: var(--ink-mute); font-family: var(--font-mono); width: 28px; font-size: 11px; }
+.data-table .lemma { font-family: var(--font-mono); font-weight: 500; color: var(--ink); }
+.data-table .gloss { color: var(--ink-soft); }
+.data-table .grammar { font-family: var(--font-mono); color: var(--ink-mute); font-size: 11px; }
+.data-table .count { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+.data-table .status { width: 120px; }
+.data-table .actions { width: 80px; text-align: right; }
+.data-table .wrong-link {
+  visibility: hidden;
+  color: var(--ink-mute);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+.data-table tbody tr:hover .wrong-link { visibility: visible; }
+.data-table .wrong-link:hover { color: var(--accent); }
+
+/* ─────────────────────────── landing screen ─────────────────────────── */
+.landing-wrap {
+  max-width: 720px;
+  margin: 80px auto 0;
+  padding: 0 32px 80px;
+  text-align: center;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  letter-spacing: 0.06em;
+  margin-bottom: 24px;
+}
+.eyebrow .pulse {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--known);
+  box-shadow: 0 0 0 0 oklch(from var(--known) l c h / 0.6);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+.hero-h {
+  font-family: var(--font-disp);
+  font-weight: 600;
+  font-size: 44px;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  margin-bottom: 16px;
+}
+.hero-sub {
+  color: var(--ink-mute);
+  font-size: 16px;
+  line-height: 1.5;
+  margin-bottom: 32px;
+}
+
+.paste-box {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  text-align: left;
+  transition: border-color 0.15s;
+}
+.paste-box:focus-within { border-color: var(--accent); }
+.paste-box textarea {
+  all: unset;
+  display: block;
+  width: 100%;
+  min-height: 200px;
+  padding: 20px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  color: var(--ink);
+  resize: vertical;
+}
+.paste-box textarea::placeholder {
+  color: var(--ink-mute);
+  font-style: italic;
+}
+.paste-foot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.meter {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+}
+.meter b { color: var(--ink-soft); font-weight: 500; }
+
+.demo-chips {
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-mute);
+}
+.demo-chip {
+  all: unset;
+  cursor: pointer;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--ink-soft);
+  font-size: 11.5px;
+}
+.demo-chip:hover { border-color: var(--accent); color: var(--ink); }
+
+.freemium-strip {
+  margin-top: 80px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.freemium-cell {
+  padding: 24px 24px 24px 0;
+  border-right: 1px solid var(--line);
+  text-align: left;
+}
+.freemium-cell:last-child { border-right: none; }
+.freemium-cell:not(:first-child) { padding-left: 24px; }
+.freemium-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  margin-bottom: 6px;
+}
+.freemium-h {
+  font-family: var(--font-disp);
+  font-weight: 600;
+  font-size: 17px;
+  margin-bottom: 6px;
+}
+.freemium-p {
+  font-size: 12.5px;
+  color: var(--ink-mute);
+  line-height: 1.5;
+}
+
+/* ─────────────────────────── results / signup ribbon ─────────────────────────── */
+.signup-ribbon {
+  background: linear-gradient(135deg,
+    oklch(from var(--accent) l c h / 0.12),
+    oklch(from var(--learning) l c h / 0.06));
+  border: 1px solid oklch(from var(--accent) l c h / 0.3);
+  border-radius: var(--r-md);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.signup-ribbon .star {
+  font-size: 22px;
+  color: var(--accent);
+}
+.signup-ribbon .body { flex: 1; }
+.signup-ribbon h3 {
+  font-family: var(--font-disp);
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+.signup-ribbon p {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.signup-ribbon .actions { display: flex; gap: 8px; }
+
+.coverage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-mute);
+  margin-bottom: 16px;
+}
+.coverage .bar {
+  flex: 1;
+  max-width: 360px;
+  height: 6px;
+  background: var(--bg-raise);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.coverage .fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--known), var(--accent));
+  border-radius: 999px;
+}
+.coverage .pct { color: var(--ink); font-weight: 500; }
+
+.results-meta {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-mute);
+  margin-bottom: 16px;
+}
+.results-meta b { color: var(--ink-soft); font-weight: 500; }
+
+.pos-chips {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.pos-chip {
+  all: unset;
+  cursor: pointer;
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 2px;
+  color: var(--ink-mute);
+  border: 1px solid var(--line);
+  transition: all 0.08s;
+}
+.pos-chip:hover { color: var(--ink-soft); border-color: var(--ink-mute); }
+.pos-chip.active {
+  background: var(--ink);
+  color: var(--bg-deep);
+  border-color: var(--ink);
+}
+
+.save-panel {
+  margin-top: 24px;
+  padding: 20px;
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.save-panel h3 {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 12px;
+}
+.save-panel .radio-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  cursor: pointer;
+  font-size: 13px;
+}
+.save-panel .radio-row input { margin-top: 4px; accent-color: var(--accent); }
+.save-panel .radio-row .field {
+  margin-top: 6px;
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  border-radius: var(--r-sm);
+}
+.save-panel .save-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ─────────────────────────── auth ─────────────────────────── */
+.auth-wrap {
+  max-width: 420px;
+  margin: 80px auto 0;
+  padding: 0 24px 80px;
+}
+.auth-card {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 32px;
+}
+.auth-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+.auth-tabs button {
+  all: unset;
+  cursor: pointer;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--ink-mute);
+  position: relative;
+  margin-bottom: -1px;
+}
+.auth-tabs button.active {
+  color: var(--ink);
+  border-bottom: 2px solid var(--accent);
+}
+.auth-card h1 {
+  font-family: var(--font-disp);
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+.auth-card .lede {
+  color: var(--ink-mute);
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+.auth-google {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--ink);
+  color: var(--bg-deep);
+  border: 1px solid var(--ink);
+  border-radius: var(--r-md);
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: all 0.08s;
+}
+.auth-google:hover { background: var(--accent); border-color: var(--accent); }
+.auth-google .g {
+  font-family: var(--font-disp);
+  font-style: italic;
+  font-weight: 800;
+  font-size: 16px;
+}
+.auth-divider {
+  text-align: center;
+  margin: 20px 0;
+  position: relative;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-mute);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.auth-divider::before, .auth-divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: calc(50% - 60px);
+  height: 1px;
+  background: var(--line);
+}
+.auth-divider::before { left: 0; }
+.auth-divider::after { right: 0; }
+
+.field-group { margin-bottom: 14px; }
+.field-group label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 6px;
+}
+.field-group input {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  border-radius: var(--r-md);
+}
+.field-group input:focus { outline: none; border-color: var(--accent); }
+
+.legal {
+  margin-top: 16px;
+  font-size: 11px;
+  color: var(--ink-mute);
+  line-height: 1.5;
+}
+
+/* ─────────────────────────── dashboard ─────────────────────────── */
+.greeting {
+  font-family: var(--font-disp);
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+.greeting-sub { color: var(--ink-mute); font-size: 14px; }
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 24px 0 32px;
+}
+.stat-card {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 16px;
+}
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 8px;
+}
+.stat-value {
+  font-family: var(--font-disp);
+  font-weight: 600;
+  font-size: 32px;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.stat-sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  margin-top: 4px;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 32px;
+}
+.action-card {
+  all: unset;
+  cursor: pointer;
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 20px;
+  transition: all 0.08s;
+}
+.action-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.action-card h3 {
+  font-family: var(--font-disp);
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+.action-card p {
+  font-size: 12.5px;
+  color: var(--ink-mute);
+  line-height: 1.5;
+}
+
+.subhead {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin: 24px 0 12px;
+}
+
+.deck-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+  transition: background 0.06s;
+}
+.deck-row:last-child { border-bottom: none; }
+.deck-row:hover { background: var(--bg-hover); }
+.deck-row .title {
+  font-family: var(--font-disp);
+  font-weight: 600;
+  font-size: 16px;
+}
+.deck-row .meta {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-mute);
+  margin-top: 2px;
+}
+.deck-row .deck-actions { display: flex; gap: 6px; }
+.deck-more {
+  all: unset;
+  cursor: pointer;
+  width: 28px; height: 28px;
+  display: grid; place-items: center;
+  border-radius: var(--r-md);
+  color: var(--ink-mute);
+  font-size: 16px;
+}
+.deck-more:hover { background: var(--bg-raise); color: var(--ink); }
+
+/* cold-start empty card */
+.coldstart-card {
+  background: var(--bg-deep);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  padding: 24px;
+}
+.coldstart-card h3 {
+  font-family: var(--font-disp);
+  font-weight: 600;
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+.coldstart-card p { color: var(--ink-mute); font-size: 13px; margin-bottom: 16px; }
+.coldstart-options { display: grid; gap: 8px; }
+.coldstart-option {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  transition: all 0.08s;
+}
+.coldstart-option:hover { border-color: var(--accent); }
+.coldstart-option.gated { opacity: 0.5; cursor: not-allowed; }
+.coldstart-option .num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+  width: 24px;
+}
+.coldstart-option .lbl { flex: 1; font-size: 13px; }
+.coldstart-option .arrow { color: var(--ink-mute); }
+
+/* ─────────────────────────── parse signed-in ─────────────────────────── */
+.parse-form { background: var(--bg-deep); border: 1px solid var(--line); border-radius: var(--r-lg); }
+.parse-form .toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.toggle-group {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 2px;
+}
+.toggle-group button {
+  all: unset;
+  cursor: pointer;
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  border-radius: 2px;
+  color: var(--ink-mute);
+}
+.toggle-group button.active { background: var(--ink); color: var(--bg-deep); }
+.parse-form textarea {
+  all: unset;
+  display: block;
+  width: 100%;
+  min-height: 240px;
+  padding: 20px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--ink);
+}
+.parse-form textarea::placeholder { color: var(--ink-mute); font-style: italic; }
+.parse-form .stats-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+}
+.parse-form .stats-strip b { color: var(--ink-soft); font-weight: 500; }
+.parse-form .stats-strip .sep { color: var(--line); }
+.parse-form .submit-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+.parse-form .opt-out {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.parse-form .opt-out input { accent-color: var(--accent); }
+
+.history-list { margin-top: 24px; }
+.history-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+}
+.history-row:hover { background: var(--bg-hover); }
+.history-row .h-title { font-family: var(--font-mono); }
+.history-row .h-meta { font-family: var(--font-mono); font-size: 11px; color: var(--ink-mute); }
+
+/* ─────────────────────────── deck detail ─────────────────────────── */
+.deck-hero {
+  padding: 32px 0 24px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 24px;
+}
+.deck-hero h1 {
+  font-family: var(--font-disp);
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.deck-hero .hero-meta {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-mute);
+}
+.deck-hero .coverage-bar {
+  margin: 16px 0 12px;
+  width: 100%;
+  height: 8px;
+  background: var(--bg-deep);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.deck-hero .coverage-fill { height: 100%; background: linear-gradient(90deg, var(--known), var(--accent)); }
+.projection {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+  display: grid;
+  gap: 4px;
+  margin: 12px 0 20px;
+}
+.projection .row { display: flex; justify-content: space-between; max-width: 360px; }
+.projection .row .pct { color: var(--accent); font-weight: 500; }
+.deck-hero .actions { display: flex; gap: 8px; }
+
+/* ─────────────────────────── review session ─────────────────────────── */
+.review-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 32px 80px;
+}
+.review-progress {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-mute);
+  margin-bottom: 24px;
+}
+.review-progress .bar {
+  flex: 1;
+  height: 4px;
+  background: var(--bg-raise);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.review-progress .fill { height: 100%; background: var(--accent); }
+
+.review-card {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 48px 32px;
+  text-align: center;
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  position: relative;
+}
+.review-card .mode-tag {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+}
+.review-card .sentence {
+  font-family: var(--font-disp);
+  font-size: 24px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+.review-card .sentence .target {
+  background: oklch(from var(--accent) l c h / 0.18);
+  border-bottom: 2px solid var(--accent);
+  padding: 0 4px;
+}
+.review-card .reveal-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  margin-top: 24px;
+}
+.review-card .back { display: none; flex-direction: column; align-items: center; gap: 12px; }
+.review-card.flipped .back { display: flex; }
+.review-card.flipped .reveal-hint { display: none; }
+.review-card .lemma-big {
+  font-family: var(--font-disp);
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+}
+.review-card .meaning { font-size: 18px; color: var(--ink-soft); }
+.review-card .gram { font-family: var(--font-mono); font-size: 12px; color: var(--ink-mute); }
+.review-card .wrong-card-link {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-mute);
+  margin-top: 8px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+.review-card .wrong-card-link:hover { color: var(--accent); }
+
+.review-buttons {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.review-btn {
+  all: unset;
+  cursor: pointer;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  text-align: center;
+  font-size: 13.5px;
+  transition: all 0.08s;
+}
+.review-btn:hover { border-color: var(--ink-mute); }
+.review-btn .lbl { display: block; font-weight: 500; }
+.review-btn .ms { display: block; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-mute); margin-top: 2px; }
+.review-btn .kbd { display: inline-block; font-family: var(--font-mono); font-size: 10px; padding: 0 4px; border: 1px solid var(--line); border-radius: 2px; margin-left: 4px; opacity: 0.6; }
+.review-btn-good { border-color: var(--accent); color: var(--accent); }
+.review-btn-good:hover { background: var(--accent); color: var(--bg-deep); }
+
+@media (max-width: 600px) {
+  .review-buttons { grid-template-columns: 1fr 1fr; }
+}
+
+.review-secondary {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.review-secondary button {
+  all: unset;
+  cursor: pointer;
+  color: var(--ink-mute);
+  padding: 4px;
+}
+.review-secondary button:hover { color: var(--accent); }
+
+/* ─────────────────────────── modal ─────────────────────────── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: oklch(0.10 0.008 250 / 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.modal-backdrop.active { display: flex; }
+.modal-card {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  width: 100%;
+  max-width: 480px;
+  padding: 24px;
+}
+.modal-card h2 {
+  font-family: var(--font-disp);
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.modal-card .read-only {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 12px;
+  margin-bottom: 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.modal-card .read-only .label {
+  font-size: 10px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 4px;
+}
+.radio-block {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.radio-block.selected { border-color: var(--accent); background: oklch(from var(--accent) l c h / 0.06); }
+.radio-block label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13.5px;
+}
+.radio-block input { margin-top: 4px; accent-color: var(--accent); }
+.radio-block .extra { display: none; margin-top: 12px; padding-left: 24px; }
+.radio-block.selected .extra { display: block; }
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* ─────────────────────────── flow controls (bottom) ─────────────────────────── */
+.flow-controls {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 8px;
+  z-index: 60;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  box-shadow: 0 8px 24px oklch(0 0 0 / 0.3);
+}
+.flow-controls button {
+  all: unset;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  transition: all 0.08s;
+}
+.flow-controls button:hover { background: var(--bg-raise); color: var(--ink); }
+.flow-controls button:disabled { opacity: 0.3; cursor: not-allowed; }
+.flow-controls .now {
+  padding: 6px 12px;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+}
+
+/* ─────────────────────────── click hint ─────────────────────────── */
+[data-go] { position: relative; }
+[data-go]::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  pointer-events: none;
+  border: 1px dashed transparent;
+  transition: border-color 0.15s;
+}
+body.show-hotspots [data-go]::after { border-color: oklch(from var(--accent) l c h / 0.5); }
+
+@media (max-width: 720px) {
+  .topbar { padding: 0 16px; gap: 12px; }
+  .topnav { display: none; }
+  .stats-row, .action-grid { grid-template-columns: 1fr; }
+  .freemium-strip { grid-template-columns: 1fr; }
+  .freemium-cell { border-right: none; border-bottom: 1px solid var(--line); padding: 16px 0; }
+  .page { padding: 24px 16px 96px; }
+  .hero-h { font-size: 32px; }
+  .deck-hero h1 { font-size: 26px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ────────────── topbar (state-aware) ────────────── -->
+<header class="topbar">
+  <span class="brand" data-go="landing">finnest<span class="dot">.</span></span>
+
+  <!-- anonymous: minimal nav -->
+  <nav class="topnav nav-anon">
+    <button data-go="landing">Home</button>
+    <button>About</button>
+  </nav>
+
+  <!-- signed-in: full nav -->
+  <nav class="topnav nav-user" hidden>
+    <button class="topnav-btn" data-nav="dashboard" data-go="dashboard">Dashboard</button>
+    <button class="topnav-btn" data-nav="parse" data-go="parse">Parse</button>
+    <button class="topnav-btn" data-nav="decks" data-go="decks">Decks</button>
+    <button class="topnav-btn" data-nav="review" data-go="review">Review</button>
+  </nav>
+
+  <span class="topbar-spacer"></span>
+
+  <div class="topbar-actions">
+    <button class="icon-btn" id="show-hotspots" title="Highlight clickable areas">⚡ Hotspots</button>
+    <button class="icon-btn active" data-theme-set="ink">INK</button>
+    <button class="icon-btn" data-theme-set="paper">PAPER</button>
+    <button class="signin nav-anon" data-go="signin">Sign in</button>
+    <div class="avatar-btn nav-user" hidden>
+      <span class="av">SD</span>
+      <span class="name">Sagar</span>
+    </div>
+  </div>
+</header>
+
+<!-- ────────────── flow strip ────────────── -->
+<div class="flowstrip" id="flowstrip">
+  <button class="step" data-go="landing">01 Landing</button>
+  <span class="arrow">→</span>
+  <button class="step" data-go="anon-results">02 Anon results</button>
+  <span class="arrow">→</span>
+  <button class="step" data-go="signup">03 Signup</button>
+  <span class="arrow">→</span>
+  <button class="step" data-go="dashboard">04 Dashboard</button>
+  <span class="arrow">→</span>
+  <button class="step" data-go="parse">05 Parse</button>
+  <span class="arrow">→</span>
+  <button class="step" data-go="results">06 Results</button>
+  <span class="arrow">→</span>
+  <button class="step" data-go="decks">07 Decks</button>
+  <span class="arrow">→</span>
+  <button class="step" data-go="deck-detail">08 Deck detail</button>
+  <span class="arrow">→</span>
+  <button class="step" data-go="review">09 Review</button>
+  <span class="arrow">·</span>
+  <button class="step" data-go="cold-start">10 Cold start</button>
+  <span class="arrow">·</span>
+  <button class="step" data-go="signin">11 Signin</button>
+</div>
+
+<!-- ════════════════ 01 / LANDING ════════════════ -->
+<section class="screen" id="screen-landing" data-state="anon">
+  <div class="landing-wrap">
+    <div class="eyebrow">
+      <span class="pulse"></span>
+      free · no account · nothing saved server-side
+    </div>
+    <h1 class="hero-h">Learn Finnish &amp; Estonian by reading what you love.</h1>
+    <p class="hero-sub">Paste any text. We'll show every word, what it means, and how often it appears. Save it as a review deck once you sign up.</p>
+
+    <div class="paste-box">
+      <textarea placeholder="Paste a paragraph, an article, lyrics — anything in Finnish or Estonian.
+
+⌘V works.">Aurinko paistaa, ja koirat juoksevat puistossa. Lapset nauravat ja heittävät palloa nurmikolla.</textarea>
+      <div class="paste-foot">
+        <span class="lang-badge fi"><span class="glyph">Aa</span>Finnish · 0.94</span>
+        <span class="meter"><b>4,213</b> chars · <b>612</b> tokens · <b>287</b> unique forms · <b>0</b> numbers</span>
+        <span style="flex:1"></span>
+        <button class="btn">📎 Upload .txt · .epub · .apkg</button>
+        <button class="btn btn-primary btn-lg" data-go="anon-results">Parse text <span class="kbd">⌘↵</span></button>
+      </div>
+    </div>
+
+    <div class="demo-chips">
+      <span>or try →</span>
+      <button class="demo-chip">FI · news headline</button>
+      <button class="demo-chip">FI · Moominvalley</button>
+      <button class="demo-chip">ET · children's poem</button>
+    </div>
+
+    <div class="freemium-strip">
+      <div class="freemium-cell">
+        <div class="freemium-num">01</div>
+        <div class="freemium-h">Parse anything, free</div>
+        <div class="freemium-p">Up to 300k characters per paste. No login. Nothing saved server-side.</div>
+      </div>
+      <div class="freemium-cell">
+        <div class="freemium-num">02</div>
+        <div class="freemium-h">Copy or download</div>
+        <div class="freemium-p">Word list as plain text or CSV — drop straight into Anki, sheets, anything.</div>
+      </div>
+      <div class="freemium-cell">
+        <div class="freemium-num">03</div>
+        <div class="freemium-h">Save decks · sign in</div>
+        <div class="freemium-p">Persist progress, FSRS review across decks, leverage ranking. Free Google sign-in.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 02 / ANON RESULTS ════════════════ -->
+<section class="screen" id="screen-anon-results" data-state="anon">
+  <div class="page">
+    <div style="margin-bottom:16px">
+      <button class="btn btn-ghost" data-go="landing">← New text</button>
+    </div>
+
+    <div class="signup-ribbon">
+      <span class="star">✦</span>
+      <div class="body">
+        <h3>Want to remember these words?</h3>
+        <p>Sign up free to turn this list into a review deck — we'll teach you the words you don't know in 5 min/day.</p>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" data-go="signup">Create account</button>
+        <button class="btn btn-ghost">Later</button>
+      </div>
+    </div>
+
+    <div class="coverage">
+      <span>Coverage</span>
+      <div class="bar"><div class="fill" style="width:71%"></div></div>
+      <span class="pct">71%</span>
+      <span style="color:var(--ink-mute)">· estimated · no known-words list yet</span>
+    </div>
+
+    <div class="results-meta">
+      <span class="lang-badge fi"><span class="glyph">Aa</span>Finnish</span>
+      <span><b>287</b> unique forms</span>
+      <span class="sep">·</span>
+      <span>Custom parser</span>
+      <span class="sep">·</span>
+      <span><b>342</b> ms</span>
+      <span style="flex:1"></span>
+      <button class="btn">Export CSV</button>
+    </div>
+
+    <div class="pos-chips">
+      <button class="pos-chip active">All</button>
+      <button class="pos-chip">Nouns</button>
+      <button class="pos-chip">Verbs</button>
+      <button class="pos-chip">Adj</button>
+      <button class="pos-chip">Adv</button>
+      <button class="pos-chip">Other</button>
+    </div>
+
+    <div class="panel">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="row-num">#</th>
+            <th>Form</th>
+            <th>Definition</th>
+            <th>Grammar</th>
+            <th class="count">×</th>
+            <th class="actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-num">01</td>
+            <td><span class="lemma">olla</span> <span class="tag">verb</span></td>
+            <td class="gloss">be, exist</td>
+            <td class="grammar">indic · pres</td>
+            <td class="count">34</td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">02</td>
+            <td><span class="lemma">hän</span> <span class="tag">pron</span></td>
+            <td class="gloss">he, she, they (sg.)</td>
+            <td class="grammar">nom sg</td>
+            <td class="count">22</td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">03</td>
+            <td><span class="lemma">koira</span> <span class="tag">noun</span></td>
+            <td class="gloss">dog</td>
+            <td class="grammar">nom pl</td>
+            <td class="count">18</td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">04</td>
+            <td><span class="lemma">juosta</span> <span class="tag">verb</span></td>
+            <td class="gloss">run</td>
+            <td class="grammar">indic · pres · 3pl</td>
+            <td class="count">14</td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">05</td>
+            <td><span class="lemma">puisto</span> <span class="tag">noun</span></td>
+            <td class="gloss">park</td>
+            <td class="grammar">iness sg</td>
+            <td class="count">11</td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">06</td>
+            <td><span class="lemma">paistaa</span> <span class="tag">verb</span></td>
+            <td class="gloss">shine</td>
+            <td class="grammar">indic · pres · 3sg</td>
+            <td class="count">9</td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td colspan="6" style="text-align:center;color:var(--ink-mute);font-family:var(--font-mono);font-size:11.5px;padding:14px;cursor:default">
+              · · · 281 more rows · · ·
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top:14px;font-size:11.5px;color:var(--ink-mute);font-family:var(--font-mono)">
+      This parse wasn't saved. <a style="color:var(--accent);text-decoration:none;cursor:pointer" data-go="signup">Sign up</a> to keep your parse history.
+    </p>
+  </div>
+</section>
+
+<!-- ════════════════ 03 / SIGN UP ════════════════ -->
+<section class="screen" id="screen-signup" data-state="anon">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="active">Create account</button>
+        <button data-go="signin">Sign in</button>
+      </div>
+      <h1>Save these words.</h1>
+      <p class="lede">Free. No card. Pick up where you left off.</p>
+
+      <button class="auth-google" data-go="dashboard">
+        <span class="g">G</span> Continue with Google
+      </button>
+
+      <div class="auth-divider">or with email</div>
+
+      <div class="field-group">
+        <label>First name</label>
+        <input type="text" placeholder="Sagar" value="Sagar" />
+      </div>
+      <div class="field-group">
+        <label>Email</label>
+        <input type="email" placeholder="you@example.com" />
+      </div>
+      <div class="field-group">
+        <label>Password</label>
+        <input type="password" placeholder="At least 8 characters" />
+      </div>
+
+      <button class="btn btn-primary btn-lg btn-block" data-go="dashboard">Create account</button>
+
+      <p class="legal">
+        By creating an account you agree to our Terms and Privacy. We don't sell your data and don't train external models on it.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 04 / SIGN IN ════════════════ -->
+<section class="screen" id="screen-signin" data-state="anon">
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button data-go="signup">Create account</button>
+        <button class="active">Sign in</button>
+      </div>
+      <h1>Welcome back.</h1>
+      <p class="lede">Email and password, or Google.</p>
+
+      <button class="auth-google" data-go="dashboard">
+        <span class="g">G</span> Continue with Google
+      </button>
+
+      <div class="auth-divider">or with email</div>
+
+      <div class="field-group">
+        <label>Email</label>
+        <input type="email" placeholder="you@example.com" />
+      </div>
+      <div class="field-group">
+        <label>Password</label>
+        <input type="password" placeholder="••••••••" />
+      </div>
+
+      <button class="btn btn-primary btn-lg btn-block" data-go="dashboard">Sign in</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 05 / DASHBOARD ════════════════ -->
+<section class="screen" id="screen-dashboard" data-state="user" data-nav="dashboard">
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1 class="greeting">Welcome back, Sagar.</h1>
+        <p class="greeting-sub">Pick up where you left off, or read something new.</p>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Words known</div>
+        <div class="stat-value">1,204 <span style="color:var(--ink-mute);font-size:14px">FI</span></div>
+        <div class="stat-sub">+182 this month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Due to review</div>
+        <div class="stat-value">23</div>
+        <div class="stat-sub">across 2 decks</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">New today</div>
+        <div class="stat-value">8 / 20</div>
+        <div class="stat-sub">12 left in budget</div>
+      </div>
+    </div>
+
+    <div class="action-grid">
+      <button class="action-card" data-go="parse">
+        <h3>Read a new text →</h3>
+        <p>Paste any Finnish or Estonian text and parse its dictionary-backed vocabulary.</p>
+      </button>
+      <button class="action-card" data-go="review">
+        <h3>Review due words →</h3>
+        <p>23 due — about 5 minutes of work to clear today's queue.</p>
+      </button>
+      <button class="action-card" data-go="decks">
+        <h3>Your decks →</h3>
+        <p>2 decks · 1,009 unique words across them.</p>
+      </button>
+    </div>
+
+    <div class="subhead">Recent decks</div>
+    <div class="panel">
+      <div class="deck-row" data-go="deck-detail">
+        <div>
+          <div class="title">Aurinko ja koirat — story 1</div>
+          <div class="meta">FI · 842 words · 68% known · +14 new ready</div>
+        </div>
+        <span class="lang-badge fi"><span class="glyph">Aa</span>FI</span>
+        <button class="btn btn-primary" data-go="review">Review</button>
+        <button class="deck-more">⋯</button>
+      </div>
+      <div class="deck-row" data-go="deck-detail">
+        <div>
+          <div class="title">Eesti lastelauluraamat</div>
+          <div class="meta">ET · 167 words · 42% known · +8 new ready</div>
+        </div>
+        <span class="lang-badge et"><span class="glyph">Õõ</span>ET</span>
+        <button class="btn btn-primary" data-go="review">Review</button>
+        <button class="deck-more">⋯</button>
+      </div>
+    </div>
+
+    <p style="margin-top:24px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-mute)">
+      ↳ <a style="color:var(--accent);text-decoration:none;cursor:pointer" data-go="cold-start">See cold-start variant</a>
+      (what new accounts with 0 decks see).
+    </p>
+  </div>
+</section>
+
+<!-- ════════════════ 05b / COLD START ════════════════ -->
+<section class="screen" id="screen-cold-start" data-state="user" data-nav="dashboard">
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1 class="greeting">Welcome, Sagar.</h1>
+        <p class="greeting-sub">Let's get you started — three ways in.</p>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Words known</div>
+        <div class="stat-value">0</div>
+        <div class="stat-sub">FI · ET</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Due to review</div>
+        <div class="stat-value">0</div>
+        <div class="stat-sub">no decks yet</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">New today</div>
+        <div class="stat-value">— / 20</div>
+        <div class="stat-sub">budget unused</div>
+      </div>
+    </div>
+
+    <div class="coldstart-card">
+      <h3>Just getting started?</h3>
+      <p>Pick whichever fits. You can do all three over time.</p>
+      <div class="coldstart-options">
+        <button class="coldstart-option" data-go="parse">
+          <span class="num">01</span>
+          <span class="lbl"><b>Paste a text</b> · the most common path. Article, chapter, song lyrics.</span>
+          <span class="arrow">→</span>
+        </button>
+        <button class="coldstart-option" data-go="decks">
+          <span class="num">02</span>
+          <span class="lbl"><b>Import the words you already know</b> · Anki export, CSV, or paste a list.</span>
+          <span class="arrow">→</span>
+        </button>
+        <button class="coldstart-option gated" title="Gated on the top-1000 research project shipping">
+          <span class="num">03</span>
+          <span class="lbl"><b>Start with the top 1000 Finnish words</b> · gated · research project</span>
+          <span class="arrow">→</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 06 / PARSE (signed-in) ════════════════ -->
+<section class="screen" id="screen-parse" data-state="user" data-nav="parse">
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1>Parse a text</h1>
+        <p class="sub">Pasted text is saved to your account so you can come back to it. Toggle "don't save this one" for sensitive text.</p>
+      </div>
+    </div>
+
+    <div class="parse-form">
+      <div class="toolbar">
+        <span class="panel-title">Language</span>
+        <div class="toggle-group">
+          <button>Auto</button>
+          <button class="active">FI</button>
+          <button>ET</button>
+        </div>
+        <span style="flex:1"></span>
+        <button class="btn">📎 Upload .txt · .md · .epub · .apkg</button>
+      </div>
+
+      <textarea placeholder="Paste a paragraph, an article, lyrics — anything in Finnish or Estonian.">Aurinko paistaa, ja koirat juoksevat puistossa. Lapset nauravat ja heittävät palloa nurmikolla.</textarea>
+
+      <div class="stats-strip">
+        <span class="lang-badge fi"><span class="glyph">Aa</span>Finnish · 0.94</span>
+        <span class="sep">·</span>
+        <span><b>4,213</b> chars</span>
+        <span class="sep">·</span>
+        <span><b>612</b> tokens</span>
+        <span class="sep">·</span>
+        <span><b>287</b> unique forms</span>
+        <span class="sep">·</span>
+        <span><b>0</b> numbers</span>
+      </div>
+
+      <div class="submit-row">
+        <label class="opt-out"><input type="checkbox" /> Don't save this one</label>
+        <button class="btn btn-primary btn-lg" data-go="results">Parse text <span class="kbd">⌘↵</span></button>
+      </div>
+    </div>
+
+    <div class="subhead">Recent parses</div>
+    <div class="panel">
+      <div class="history-row">
+        <span class="h-title">Aurinko ja koirat — story 1</span>
+        <span class="h-meta">FI · 287 forms</span>
+        <span class="h-meta">2 hr ago</span>
+        <button class="btn" data-go="results">Open</button>
+        <button class="deck-more">⋯</button>
+      </div>
+      <div class="history-row">
+        <span class="h-title">News headline · iltalehti.fi</span>
+        <span class="h-meta">FI · 64 forms</span>
+        <span class="h-meta">yesterday</span>
+        <button class="btn" data-go="results">Open</button>
+        <button class="deck-more">⋯</button>
+      </div>
+      <div class="history-row">
+        <span class="h-title">Eesti lastelauluraamat — peatükk 1</span>
+        <span class="h-meta">ET · 167 forms</span>
+        <span class="h-meta">3 days ago</span>
+        <button class="btn" data-go="deck-detail">Open</button>
+        <button class="deck-more">⋯</button>
+      </div>
+    </div>
+
+    <p style="margin-top:14px;font-size:11.5px;color:var(--ink-mute);font-family:var(--font-mono)">
+      Saved to your account. <a style="color:var(--accent);text-decoration:none;cursor:pointer">Manage parse history →</a>
+    </p>
+  </div>
+</section>
+
+<!-- ════════════════ 07 / RESULTS (signed-in) ════════════════ -->
+<section class="screen" id="screen-results" data-state="user" data-nav="parse">
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1>Aurinko ja koirat — story 1</h1>
+        <p class="sub">parsed 2 hr ago · 287 unique forms</p>
+      </div>
+      <div class="actions">
+        <button class="btn btn-ghost" data-go="parse">← New text</button>
+        <button class="btn">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="coverage">
+      <span>Coverage</span>
+      <div class="bar"><div class="fill" style="width:71%"></div></div>
+      <span class="pct">71%</span>
+      <span style="color:var(--ink-mute)">· based on your 1,204 known FI words</span>
+    </div>
+
+    <div class="pos-chips">
+      <button class="pos-chip active">All</button>
+      <button class="pos-chip">Nouns</button>
+      <button class="pos-chip">Verbs</button>
+      <button class="pos-chip">Adj</button>
+      <button class="pos-chip">Adv</button>
+      <button class="pos-chip">Other</button>
+    </div>
+
+    <div class="panel">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="row-num">#</th>
+            <th>Form</th>
+            <th>Definition</th>
+            <th>Grammar</th>
+            <th class="count">×</th>
+            <th class="status">Status</th>
+            <th class="actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-num">01</td>
+            <td><span class="lemma">olla</span> <span class="tag">verb</span></td>
+            <td class="gloss">be, exist</td>
+            <td class="grammar">indic · pres</td>
+            <td class="count">34</td>
+            <td><span class="tag known">Known</span></td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">02</td>
+            <td><span class="lemma">hän</span> <span class="tag">pron</span></td>
+            <td class="gloss">he, she</td>
+            <td class="grammar">nom sg</td>
+            <td class="count">22</td>
+            <td><span class="tag known">Known</span></td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">03</td>
+            <td><span class="lemma">koira</span> <span class="tag">noun</span></td>
+            <td class="gloss">dog</td>
+            <td class="grammar">nom pl</td>
+            <td class="count">18</td>
+            <td><span class="tag learning">Studying</span></td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">04</td>
+            <td><span class="lemma">juosta</span> <span class="tag">verb</span></td>
+            <td class="gloss">run</td>
+            <td class="grammar">indic · pres · 3pl</td>
+            <td class="count">14</td>
+            <td><span class="tag new">New</span></td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">05</td>
+            <td><span class="lemma">puisto</span> <span class="tag">noun</span></td>
+            <td class="gloss">park</td>
+            <td class="grammar">iness sg</td>
+            <td class="count">11</td>
+            <td><span class="tag new">New</span></td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">06</td>
+            <td><span class="lemma">paistaa</span> <span class="tag">verb</span></td>
+            <td class="gloss">shine</td>
+            <td class="grammar">indic · pres · 3sg</td>
+            <td class="count">9</td>
+            <td><span class="tag new">New</span></td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td colspan="7" style="text-align:center;color:var(--ink-mute);font-family:var(--font-mono);font-size:11.5px;padding:14px;cursor:default">
+              · · · 281 more rows · · ·
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="save-panel">
+      <h3>Save these 287 words as…</h3>
+
+      <div style="border:1px solid var(--accent);background:oklch(from var(--accent) l c h / 0.06);border-radius:var(--r-md);padding:12px;margin-bottom:8px">
+        <label class="radio-row">
+          <input type="radio" name="save" checked />
+          <div style="flex:1">
+            <div><b>A new deck</b></div>
+            <input class="field" type="text" value="Aurinko ja koirat — story 1" />
+            <label style="display:flex;gap:6px;margin-top:8px;font-size:12px;color:var(--ink-mute);font-family:var(--font-mono)">
+              <input type="checkbox" /> Mark words I checked as already known (12 selected)
+            </label>
+          </div>
+        </label>
+      </div>
+      <div style="border:1px solid var(--line);border-radius:var(--r-md);padding:12px">
+        <label class="radio-row">
+          <input type="radio" name="save" />
+          <div style="flex:1">
+            <div><b>Add to an existing deck</b></div>
+            <select class="field" style="background-image:none;-webkit-appearance:none;appearance:none">
+              <option>▾ Aurinko ja koirat — story 1 (842 words)</option>
+              <option>▾ Eesti lastelauluraamat (167 words)</option>
+            </select>
+          </div>
+        </label>
+      </div>
+
+      <div class="save-actions">
+        <button class="btn btn-ghost">Cancel</button>
+        <button class="btn btn-primary" data-go="deck-detail">Save →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 08 / DECKS LIST ════════════════ -->
+<section class="screen" id="screen-decks" data-state="user" data-nav="decks">
+  <div class="page">
+    <div class="page-head">
+      <div>
+        <h1>Your decks</h1>
+        <p class="sub">2 decks · 1,009 unique words across them</p>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" data-go="parse">+ New from text</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="deck-row" data-go="deck-detail">
+        <div>
+          <div class="title">Aurinko ja koirat — story 1</div>
+          <div class="meta">842 words · 68% known · +14 new ready</div>
+        </div>
+        <span class="lang-badge fi"><span class="glyph">Aa</span>FI</span>
+        <button class="btn btn-primary" data-go="review">Review</button>
+        <button class="deck-more">⋯</button>
+      </div>
+      <div class="deck-row" data-go="deck-detail">
+        <div>
+          <div class="title">Eesti lastelauluraamat</div>
+          <div class="meta">167 words · 42% known · +8 new ready</div>
+        </div>
+        <span class="lang-badge et"><span class="glyph">Õõ</span>ET</span>
+        <button class="btn btn-primary" data-go="review">Review</button>
+        <button class="deck-more">⋯</button>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px">
+        <div>
+          <div style="font-family:var(--font-disp);font-weight:600;font-size:16px">Review all due words across both languages</div>
+          <div class="meta" style="margin-top:2px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-mute)">23 cards due now</div>
+        </div>
+        <button class="btn btn-primary" data-go="review">Review →</button>
+      </div>
+    </div>
+
+    <div class="subhead">Known words</div>
+    <div class="panel">
+      <div style="padding:16px">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+          <span class="panel-title">Language</span>
+          <div class="toggle-group">
+            <button class="active">FI</button>
+            <button>ET</button>
+          </div>
+          <span style="flex:1"></span>
+          <span style="font-family:var(--font-mono);font-size:11.5px;color:var(--ink-mute)">1,204 known · 0 ignored</span>
+        </div>
+
+        <textarea style="width:100%;min-height:80px;padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-md);color:var(--ink);font-family:var(--font-sans);font-size:13px;resize:vertical" placeholder="Paste one word per line, or separate with commas. We'll resolve forms to lemmas via the dictionary."></textarea>
+
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+          <button class="btn btn-primary">Import words</button>
+          <button class="btn">📎 Upload .apkg or .csv</button>
+          <span style="flex:1"></span>
+          <button class="btn">Export CSV</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 09 / DECK DETAIL ════════════════ -->
+<section class="screen" id="screen-deck-detail" data-state="user" data-nav="decks">
+  <div class="page wide">
+    <div style="margin-bottom:8px">
+      <button class="btn btn-ghost" data-go="decks">← All decks</button>
+    </div>
+
+    <div class="deck-hero">
+      <h1>Aurinko ja koirat — story 1 <span class="lang-badge fi"><span class="glyph">Aa</span>FI</span></h1>
+      <div class="hero-meta">842 unique words · 68% token-weighted coverage · imported 2 hr ago</div>
+
+      <div class="coverage-bar"><div class="coverage-fill" style="width:68%"></div></div>
+
+      <div class="projection">
+        <div class="row"><span>Learn the next 20 words</span><span class="pct">→ 81%</span></div>
+        <div class="row"><span>Learn the next 50 words</span><span class="pct">→ 89%</span></div>
+        <div class="row"><span>Learn the next 100 words</span><span class="pct">→ 94%</span></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary btn-lg" data-go="review">Review this deck</button>
+        <button class="btn">+20 to today's queue</button>
+        <button class="btn btn-ghost">Rename</button>
+        <button class="btn btn-ghost">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="pos-chips">
+      <button class="pos-chip active">All</button>
+      <button class="pos-chip">Nouns</button>
+      <button class="pos-chip">Verbs</button>
+      <button class="pos-chip">Adj</button>
+      <button class="pos-chip">Adv</button>
+      <button class="pos-chip">Other</button>
+    </div>
+
+    <div class="panel">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th class="row-num">#</th>
+            <th>Form</th>
+            <th>Definition</th>
+            <th>Grammar</th>
+            <th class="count">×</th>
+            <th class="status">Status</th>
+            <th class="actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="row-num">01</td>
+            <td><span class="lemma">olla</span> <span class="tag">verb</span></td>
+            <td class="gloss">be, exist</td>
+            <td class="grammar">indic · pres</td>
+            <td class="count">34</td>
+            <td><span class="tag known">Known</span></td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">02</td>
+            <td><span class="lemma">hän</span> <span class="tag">pron</span></td>
+            <td class="gloss">he, she</td>
+            <td class="grammar">nom sg</td>
+            <td class="count">22</td>
+            <td><span class="tag known">Known</span></td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">03</td>
+            <td><span class="lemma">koira</span> <span class="tag">noun</span></td>
+            <td class="gloss">dog</td>
+            <td class="grammar">nom pl</td>
+            <td class="count">18</td>
+            <td><span class="tag learning">Studying</span></td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">04</td>
+            <td><span class="lemma">juosta</span> <span class="tag">verb</span></td>
+            <td class="gloss">run</td>
+            <td class="grammar">indic · pres · 3pl</td>
+            <td class="count">14</td>
+            <td><span class="tag new">New</span></td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td class="row-num">05</td>
+            <td><span class="lemma">puisto</span> <span class="tag">noun</span></td>
+            <td class="gloss">park</td>
+            <td class="grammar">iness sg</td>
+            <td class="count">11</td>
+            <td><span class="tag new">New</span></td>
+            <td class="actions"><button class="wrong-link" data-go="correction">✎ Wrong?</button></td>
+          </tr>
+          <tr>
+            <td colspan="7" style="text-align:center;color:var(--ink-mute);font-family:var(--font-mono);font-size:11.5px;padding:14px;cursor:default">
+              · · · 837 more rows · · ·
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ 10 / REVIEW SESSION ════════════════ -->
+<section class="screen" id="screen-review" data-state="user" data-nav="review">
+  <div class="review-wrap">
+    <div class="page-head">
+      <div>
+        <h1>Review</h1>
+        <p class="sub">All decks · Finnish · 23 due</p>
+      </div>
+      <div class="actions">
+        <select class="btn" style="padding:6px 10px">
+          <option>All decks · FI</option>
+          <option>All decks · ET</option>
+          <option>Aurinko ja koirat — story 1</option>
+          <option>Eesti lastelauluraamat</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="review-progress">
+      <span>Card <b style="color:var(--ink)">3</b> of <b style="color:var(--ink)">23</b></span>
+      <div class="bar"><div class="fill" style="width:13%"></div></div>
+      <span>13%</span>
+    </div>
+
+    <div class="review-card" id="review-card-flip">
+      <span class="tag mode-tag">Sentence card</span>
+
+      <div class="front-view">
+        <div class="sentence">
+          Aurinko paistaa, ja <span class="target">koirat</span> juoksevat puistossa.
+        </div>
+        <div class="reveal-hint">Tap the card to reveal · <span class="kbd" style="font-family:var(--font-mono);font-size:10px;border:1px solid currentColor;padding:0 4px;border-radius:3px">space</span></div>
+      </div>
+
+      <div class="back">
+        <span class="tag fi">FI · noun</span>
+        <div class="lemma-big">koira</div>
+        <div class="meaning">dog</div>
+        <div class="gram">koirat = nominative plural</div>
+        <button class="wrong-card-link" data-go="correction">✎ Wrong?</button>
+      </div>
+    </div>
+
+    <div class="review-buttons">
+      <button class="review-btn">
+        <span class="lbl">Again <span class="kbd">1</span></span>
+        <span class="ms">&lt; 1 min</span>
+      </button>
+      <button class="review-btn">
+        <span class="lbl">Hard <span class="kbd">2</span></span>
+        <span class="ms">3 min</span>
+      </button>
+      <button class="review-btn review-btn-good">
+        <span class="lbl">Good <span class="kbd">3</span></span>
+        <span class="ms">2 d</span>
+      </button>
+      <button class="review-btn">
+        <span class="lbl">Easy <span class="kbd">4</span></span>
+        <span class="ms">5 d</span>
+      </button>
+    </div>
+
+    <div class="review-secondary">
+      <button>Mark known</button>
+      <span style="color:var(--line)">·</span>
+      <button>Ignore word</button>
+      <span style="color:var(--line)">·</span>
+      <button>Load another</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════ correction modal (overlay) ════════════════ -->
+<div class="modal-backdrop" id="modal-correction">
+  <div class="modal-card">
+    <h2>Suggest a correction</h2>
+
+    <div class="read-only">
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 16px">
+        <span class="label">Surface</span>
+        <span style="color:var(--ink)">koirat</span>
+        <span class="label">Parsed as</span>
+        <span style="color:var(--ink)">koira · noun · nominative plural</span>
+      </div>
+    </div>
+
+    <div class="radio-block selected" id="radio-flag">
+      <label>
+        <input type="radio" name="kind" checked />
+        <div>
+          <b>This is wrong</b> · I don't know the right answer.
+          <div style="font-size:11.5px;color:var(--ink-mute);margin-top:2px">
+            Send a flag-only signal. An admin will look at it.
+          </div>
+        </div>
+      </label>
+    </div>
+
+    <div class="radio-block" id="radio-propose">
+      <label>
+        <input type="radio" name="kind" />
+        <div>
+          <b>This is wrong</b> · here's the right answer:
+        </div>
+      </label>
+      <div class="extra">
+        <div class="field-group">
+          <label>Base form</label>
+          <input type="text" value="koirat" />
+        </div>
+        <div class="field-group">
+          <label>Part of speech</label>
+          <select style="display:block;width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--line);color:var(--ink);font-family:var(--font-sans);font-size:13.5px;border-radius:var(--r-md)">
+            <option>Noun</option>
+            <option>Verb</option>
+            <option>Adjective</option>
+          </select>
+        </div>
+        <div class="field-group">
+          <label>Grammar (optional)</label>
+          <input type="text" placeholder="e.g. partitive sg, past 3sg" />
+        </div>
+        <div class="field-group">
+          <label>Notes (optional)</label>
+          <input type="text" placeholder="anything else?" />
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" data-modal-close>Cancel</button>
+      <button class="btn btn-primary" data-modal-close>Send</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ flow controls (bottom pill) ════════════════ -->
+<div class="flow-controls">
+  <button id="flow-prev" title="Previous (←)">←</button>
+  <span class="now" id="flow-now">01 / Landing</span>
+  <button id="flow-next" title="Next (→)">→</button>
+</div>
+
+<script>
+/* ─────────────────────────── routing ─────────────────────────── */
+const FLOW = [
+  { id: 'landing',       title: '01 / Landing',          state: 'anon' },
+  { id: 'anon-results',  title: '02 / Anon results',     state: 'anon' },
+  { id: 'signup',        title: '03 / Sign up',          state: 'anon' },
+  { id: 'signin',        title: '11 / Sign in',          state: 'anon' },
+  { id: 'dashboard',     title: '04 / Dashboard',        state: 'user', nav: 'dashboard' },
+  { id: 'cold-start',    title: '10 / Cold start',       state: 'user', nav: 'dashboard' },
+  { id: 'parse',         title: '05 / Parse',            state: 'user', nav: 'parse' },
+  { id: 'results',       title: '06 / Results',          state: 'user', nav: 'parse' },
+  { id: 'decks',         title: '07 / Decks list',       state: 'user', nav: 'decks' },
+  { id: 'deck-detail',   title: '08 / Deck detail',      state: 'user', nav: 'decks' },
+  { id: 'review',        title: '09 / Review',           state: 'user', nav: 'review' },
+];
+
+// guided-tour order for ← → keys
+const TOUR_ORDER = [
+  'landing','anon-results','signup','dashboard','parse','results','deck-detail','review','decks','cold-start','signin'
+];
+
+function go(id) {
+  if (id === 'correction') {
+    document.getElementById('modal-correction').classList.add('active');
+    return;
+  }
+  // close any open modal
+  document.querySelectorAll('.modal-backdrop.active').forEach(m => m.classList.remove('active'));
+
+  const target = FLOW.find(f => f.id === id);
+  if (!target) return;
+
+  // toggle screens
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+
+  // toggle anon / user UI on topbar
+  const isUser = target.state === 'user';
+  document.querySelectorAll('.nav-anon').forEach(el => el.hidden = isUser);
+  document.querySelectorAll('.nav-user').forEach(el => el.hidden = !isUser);
+
+  // active nav button
+  document.querySelectorAll('.topnav-btn').forEach(b => {
+    b.classList.toggle('active', target.nav && b.dataset.nav === target.nav);
+  });
+
+  // active flowstrip step
+  document.querySelectorAll('#flowstrip .step').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('data-go') === id);
+  });
+
+  // bottom pill
+  document.getElementById('flow-now').textContent = target.title;
+  const idx = TOUR_ORDER.indexOf(id);
+  document.getElementById('flow-prev').disabled = idx <= 0;
+  document.getElementById('flow-next').disabled = idx === -1 || idx >= TOUR_ORDER.length - 1;
+
+  // hash
+  if (location.hash !== '#' + id) {
+    history.replaceState(null, '', '#' + id);
+  }
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+// global click-to-navigate
+document.body.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-go]');
+  if (t) {
+    e.preventDefault();
+    go(t.getAttribute('data-go'));
+  }
+  if (e.target.matches('[data-modal-close]')) {
+    e.target.closest('.modal-backdrop').classList.remove('active');
+  }
+  if (e.target.classList.contains('modal-backdrop')) {
+    e.target.classList.remove('active');
+  }
+});
+
+// flow pill prev/next
+document.getElementById('flow-prev').addEventListener('click', () => {
+  const cur = FLOW.find(f => document.getElementById('screen-' + f.id).classList.contains('active'));
+  if (!cur) return;
+  const i = TOUR_ORDER.indexOf(cur.id);
+  if (i > 0) go(TOUR_ORDER[i - 1]);
+});
+document.getElementById('flow-next').addEventListener('click', () => {
+  const cur = FLOW.find(f => document.getElementById('screen-' + f.id).classList.contains('active'));
+  if (!cur) return;
+  const i = TOUR_ORDER.indexOf(cur.id);
+  if (i >= 0 && i < TOUR_ORDER.length - 1) go(TOUR_ORDER[i + 1]);
+});
+
+// keyboard arrows
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches('input, textarea, select')) return;
+  if (e.key === 'ArrowLeft') document.getElementById('flow-prev').click();
+  if (e.key === 'ArrowRight') document.getElementById('flow-next').click();
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-backdrop.active').forEach(m => m.classList.remove('active'));
+  }
+});
+
+// review-card flip
+document.getElementById('review-card-flip').addEventListener('click', (e) => {
+  if (e.target.closest('[data-go]')) return;
+  e.currentTarget.classList.toggle('flipped');
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === ' ' && document.getElementById('screen-review').classList.contains('active') && !e.target.matches('input, textarea')) {
+    e.preventDefault();
+    document.getElementById('review-card-flip').classList.toggle('flipped');
+  }
+});
+
+// modal radio toggling
+document.querySelectorAll('.radio-block').forEach(rb => {
+  rb.addEventListener('click', () => {
+    document.querySelectorAll('.radio-block').forEach(b => b.classList.remove('selected'));
+    rb.classList.add('selected');
+    const r = rb.querySelector('input[type=radio]');
+    if (r) r.checked = true;
+  });
+});
+
+/* ─────────────────────────── theme ─────────────────────────── */
+document.querySelectorAll('[data-theme-set]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.documentElement.dataset.theme = btn.dataset.themeSet;
+    document.querySelectorAll('[data-theme-set]').forEach(b => {
+      b.classList.toggle('active', b.dataset.themeSet === btn.dataset.themeSet);
+    });
+  });
+});
+
+/* ─────────────────────────── hotspot toggle ─────────────────────────── */
+document.getElementById('show-hotspots').addEventListener('click', () => {
+  document.body.classList.toggle('show-hotspots');
+});
+
+/* ─────────────────────────── boot ─────────────────────────── */
+const startId = (location.hash || '#landing').slice(1);
+go(FLOW.find(f => f.id === startId) ? startId : 'landing');
+
+window.addEventListener('hashchange', () => {
+  const id = (location.hash || '#landing').slice(1);
+  if (FLOW.find(f => f.id === id)) go(id);
+});
+</script>
+</body>
+</html>

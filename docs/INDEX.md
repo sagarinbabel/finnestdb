@@ -76,6 +76,18 @@ descriptions when two docs sound similar.
   correction loop, inflected-form-aware frequency). Notes about
   autoresearch are post-live ideas, not current roadmap.
 
+- [`docs/USER_FLOWS.md`](USER_FLOWS.md) — screen-by-screen consumer
+  alpha spec with ASCII wireframes. Anonymous landing → sign-up hook
+  → dashboard → parse → results → save/add-to-existing deck → review.
+  Includes the recommended correction-flow design (flag-only path,
+  ✎ entry point) and the open questions on translation, register
+  picker, and cold-start.
+
+- [`docs/DESIGN_AI_PROMPTS.md`](DESIGN_AI_PROMPTS.md) — system prompt
+  + per-screen prompt templates for handing FinEstDB screens to v0,
+  Lovable, Bolt, Cursor, or Figma Make without losing the existing
+  type/colour system.
+
 ### Status and planning
 
 - [`../TODO.md`](../TODO.md) — single repo-level task list. **What's in
@@ -192,8 +204,16 @@ descriptions when two docs sound similar.
   one-off; safe to read for history but not maintained.
 - [`docs/baselines/`](baselines/) — frozen eval reports per PR (see
   Parser quality section above).
-- [`../experiments/`](../experiments/) — dated spike reports
-  (currently the Voikko generator spike from 2026-05-06).
+- [`../experiments/`](../experiments/) — dated spike reports and
+  research plans. Current entries:
+  - [`2026-05-06-phase3.5-voikko-generator-spike.md`](../experiments/2026-05-06-phase3.5-voikko-generator-spike.md)
+    — phase 3.5 Voikko generator spike.
+  - [`2026-05-07-top-1000-inflected-forms.md`](../experiments/2026-05-07-top-1000-inflected-forms.md)
+    — research plan for a static, register-aware top-1000
+    inflected-form table per language and the cold-start "Start with
+    the top 1000" seed deck.
+  - Plus two `2026-04-28-autoresearch-fi-manual-*.jsonl` runs from
+    `cmd/autoresearch`.
 - [`testdata/parser-eval/`](../testdata/parser-eval/) — gold dataset
   files plus per-language `notes/annotation-notes.md`.
 - [`pkg/lemmatizer-fi-et/data/{fi,et}/README.md`](../pkg/lemmatizer-fi-et/data/)
