@@ -173,10 +173,56 @@ func tryFSTAnalyze(lem *lemmatizer.Lemmatizer, lang, lower string) (FormResoluti
 			Lemma:        a.Lemma,
 			POS:          a.UPOS,
 			GrammarLabel: a.GrammarLabel,
+			Feats:        "",
 			Source:       "fst",
 		}, true
 	}
 	return FormResolution{}, false
+}
+
+// pickBestVFSTAnalysis ranks VFST analyses against the original surface
+// using the same case/POS scoring as the dictionary path, plus a strict
+// initial-case match so capitalized surfaces ("Turussa") prefer lemmas
+// that also start uppercase ("Turku") over lowercase homonyms ("turku").
+// Ties fall back to alphabetic lemma order — same chain as
+// pickBestFormCandidate — so behavior matches the dict path exactly.
+func pickBestVFSTAnalysis(surface string, analyses []lemmatizer.Analysis) lemmatizer.Analysis {
+	if len(analyses) == 1 {
+		return analyses[0]
+	}
+	scored := make([]lemmatizer.Analysis, len(analyses))
+	copy(scored, analyses)
+	sort.SliceStable(scored, func(i, j int) bool {
+		ai, aj := scored[i], scored[j]
+		aiCase, aiPOS := caseMatchScore(surface, ai.Lemma), posSanityScore(surface, ai.UPOS)
+		ajCase, ajPOS := caseMatchScore(surface, aj.Lemma), posSanityScore(surface, aj.UPOS)
+		if aiCase != ajCase {
+			return aiCase > ajCase
+		}
+		if aiPOS != ajPOS {
+			return aiPOS > ajPOS
+		}
+		aiStrict, ajStrict := strictCaseMatchScore(surface, ai.Lemma), strictCaseMatchScore(surface, aj.Lemma)
+		if aiStrict != ajStrict {
+			return aiStrict > ajStrict
+		}
+		if ai.Lemma != aj.Lemma {
+			return ai.Lemma < aj.Lemma
+		}
+		return ai.UPOS < aj.UPOS
+	})
+	return scored[0]
+}
+
+// strictCaseMatchScore is a stricter complement to caseMatchScore: it
+// returns 1 only when surface and lemma share the same uppercase/lowercase
+// initial. This separates "Turussa" + "Turku" (1) from "Turussa" + "turku"
+// (0), which caseMatchScore intentionally does not distinguish.
+func strictCaseMatchScore(surface, lemma string) int {
+	if startsUpper(surface) == startsUpper(lemma) {
+		return 1
+	}
+	return 0
 }
 
 // formCandidate is the internal shape used while ranking multi-lemma matches.
