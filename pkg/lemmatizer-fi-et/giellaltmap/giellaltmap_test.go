@@ -22,12 +22,54 @@ func TestParse_Verb1Sg(t *testing.T) {
 		a.Number != "Sing" || a.Person != "1" {
 		t.Errorf("got %+v", a)
 	}
+	if a.Voice != "Act" {
+		t.Errorf("voice=%q want Act", a.Voice)
+	}
+	if a.VerbForm != "Fin" {
+		t.Errorf("verbform=%q want Fin", a.VerbForm)
+	}
 }
 
 func TestParse_VerbPast2Sg(t *testing.T) {
 	a := Parse("kysyä+V+Act+Ind+Prt+Sg2")
 	if a.Tense != "Past" || a.Person != "2" {
 		t.Errorf("got %+v", a)
+	}
+	if a.Voice != "Act" {
+		t.Errorf("voice=%q want Act", a.Voice)
+	}
+}
+
+func TestParse_VerbPassive(t *testing.T) {
+	a := Parse("sanoa+V+Pass+Ind+Prs")
+	if a.Voice != "Pass" {
+		t.Errorf("voice=%q want Pass", a.Voice)
+	}
+	if a.Mood != "Ind" || a.Tense != "Pres" {
+		t.Errorf("mood=%q tense=%q want Ind/Pres", a.Mood, a.Tense)
+	}
+}
+
+func TestParse_Infinitive(t *testing.T) {
+	a := Parse("olla+V+Act+Inf")
+	if a.VerbForm != "Inf" {
+		t.Errorf("verbform=%q want Inf", a.VerbForm)
+	}
+	if a.Voice != "Act" {
+		t.Errorf("voice=%q want Act", a.Voice)
+	}
+	if a.Mood != "" {
+		t.Errorf("mood=%q want empty (infinitives have no mood)", a.Mood)
+	}
+}
+
+func TestParse_Participle(t *testing.T) {
+	a := Parse("sanoa+V+Act+PrfPrc+Sg+Nom")
+	if a.VerbForm != "Part" {
+		t.Errorf("verbform=%q want Part", a.VerbForm)
+	}
+	if a.Voice != "Act" {
+		t.Errorf("voice=%q want Act", a.Voice)
 	}
 }
 

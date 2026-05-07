@@ -172,6 +172,8 @@ func openBackend(lang, vfstPath, hfstolPath string) (analyzer, parseLine, error)
 				Tense:        g.Tense,
 				Mood:         g.Mood,
 				Person:       g.Person,
+				Voice:        g.Voice,
+				VerbForm:     g.VerbForm,
 				Feats:        g.Feats,
 				Raw:          g.Raw,
 			}, true

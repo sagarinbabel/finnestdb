@@ -259,6 +259,10 @@ type resolutionCandidate struct {
 	hasDict        bool
 	hasFST         bool
 	fstOrder       int
+	fstLabelCount  int    // how many FST analyses matched this candidate
+	firstFSTLabel  string // GrammarLabel from the first FST match
+	origLabel      string // dict candidate's original GrammarLabel before enrichment
+	origFeats      string // dict candidate's original Feats before enrichment
 }
 
 // lookupBestForm runs the multi-row form lookup and ranks the candidates.
@@ -327,7 +331,16 @@ func mergeAndRankDictFSTCandidates(surface string, dictCandidates []formCandidat
 		if idx, ok := byKey[key]; ok {
 			candidates[idx].hasFST = true
 			candidates[idx].fstOrder = min(candidates[idx].fstOrder, order)
-			candidates[idx].res = enrichResolutionWithFST(candidates[idx].res, fstRes)
+			if candidates[idx].fstLabelCount == 0 {
+				candidates[idx].origLabel = candidates[idx].res.GrammarLabel
+				candidates[idx].origFeats = candidates[idx].res.Feats
+				candidates[idx].res = enrichResolutionWithFST(candidates[idx].res, fstRes)
+				candidates[idx].firstFSTLabel = fstRes.GrammarLabel
+			} else if candidates[idx].firstFSTLabel != fstRes.GrammarLabel {
+				candidates[idx].res.GrammarLabel = candidates[idx].origLabel
+				candidates[idx].res.Feats = candidates[idx].origFeats
+			}
+			candidates[idx].fstLabelCount++
 			continue
 		}
 		candidates = append(candidates, resolutionCandidate{
@@ -484,7 +497,7 @@ func featsFromFSTAnalysis(a lemmatizer.Analysis) string {
 	if a.Feats != "" {
 		return a.Feats
 	}
-	return udfeats.Compose(a.GrammarLabel, a.Number, a.Tense, a.Mood, a.Person)
+	return udfeats.Compose(a.GrammarLabel, a.Number, a.Tense, a.Mood, a.Person, a.Voice, a.VerbForm)
 }
 
 // featsFromCaseLabel projects a lowercase English case name (the

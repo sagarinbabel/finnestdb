@@ -38,6 +38,8 @@ type Analysis struct {
 	Tense        string // "Pres" / "Past" or empty
 	Mood         string // "Ind" / "Cnd" / "Imp" / "Pot" or empty
 	Person       string // "1" / "2" / "3" / "4" or empty
+	Voice        string // "Act" / "Pass" or empty
+	VerbForm     string // "Fin" / "Inf" / "Part" or empty
 	Feats        string // composed UD FEATS string, e.g. "Case=Ine|Number=Sing"; alphabetically sorted
 	Raw          string // the original FSTOUTPUT, for debugging / source provenance
 }
@@ -92,7 +94,12 @@ func Parse(fstOutput string) Analysis {
 				}
 			case strings.HasPrefix(tag, "T"):
 				if mood := moodToUD(tag[1:]); mood != "" {
-					a.Mood = mood
+					if mood == "Inf" {
+						a.VerbForm = "Inf"
+					} else {
+						a.Mood = mood
+						a.VerbForm = "Fin"
+					}
 				}
 			case strings.HasPrefix(tag, "A"):
 				if tense := tenseToUD(tag[1:]); tense != "" {
@@ -115,7 +122,7 @@ func Parse(fstOutput string) Analysis {
 	}
 
 	a.Lemma = lemmaBuilder.String()
-	a.Feats = udfeats.Compose(a.GrammarLabel, a.Number, a.Tense, a.Mood, a.Person)
+	a.Feats = udfeats.Compose(a.GrammarLabel, a.Number, a.Tense, a.Mood, a.Person, a.Voice, a.VerbForm)
 	return a
 }
 
