@@ -5,11 +5,10 @@
 // Two callers, one source of truth:
 //
 //   - voikkomap.Analysis and giellaltmap.Analysis fill their morphological
-//     fields (Number, Tense, Mood, Person, Voice, VerbForm, GrammarLabel) and call
-//     udfeats.Compose(...) once at Parse() time, persisting the FEATS
-//     string in their Feats field. Generated table JSONs are then
+//     fields and call udfeats.ComposeMap once at Parse() time, persisting
+//     the FEATS string in their Feats field. Generated table JSONs are then
 //     self-describing.
-//   - internal/store/dict.go calls Compose for analyses that arrive
+//   - internal/store/dict.go calls ComposeMap for analyses that arrive
 //     without a pre-built Feats (older table files, FST results that
 //     bypass the table cache).
 //
@@ -66,25 +65,6 @@ var UDCaseToLegacyLabel = map[string]string{
 	"Ter": "terminative",
 	"Acc": "accusative",
 	"Voc": "vocative",
-}
-
-// Compose builds a UD-canonical FEATS string from the core structured
-// fields. Returns "" when nothing maps. Delegates to ComposeMap after
-// building the attribute map. Kept for backward-compatibility with
-// callers that only have the original seven fields (e.g. dict.go
-// fallback for legacy table files).
-func Compose(grammarLabel, number, tense, mood, person, voice, verbForm string) string {
-	pairs := make(map[string]string, 7)
-	if udCase, ok := LegacyLabelToUDCase[grammarLabel]; ok && udCase != "Nom" {
-		pairs["Case"] = udCase
-	}
-	pairs["Number"] = number
-	pairs["Tense"] = tense
-	pairs["Mood"] = mood
-	pairs["Person"] = person
-	pairs["Voice"] = voice
-	pairs["VerbForm"] = verbForm
-	return ComposeMap(pairs)
 }
 
 // ComposeMap builds a UD-canonical FEATS string from an arbitrary map of
