@@ -24,7 +24,7 @@
 //	    -lang FI \
 //	    -name ud-fi-tdt-test-v1 \
 //	    -version v1 \
-//	    -output testdata/parser-eval/fi/gold/ud-fi-tdt-test-v1.json
+//	    -output localdata/parser-eval/fi/gold/ud-fi-tdt-test-v1.json
 //
 // CoNLL-U format reference:
 // https://universaldependencies.org/format.html

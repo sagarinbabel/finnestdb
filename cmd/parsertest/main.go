@@ -190,6 +190,9 @@ func formatRate(rate float64) string {
 
 func datasetSlug(path string) string {
 	base := filepath.Base(path)
+	if strings.HasSuffix(strings.ToLower(base), ".json.gz") {
+		return base[:len(base)-len(".json.gz")]
+	}
 	if ext := filepath.Ext(base); strings.EqualFold(ext, ".json") {
 		base = strings.TrimSuffix(base, ext)
 	}

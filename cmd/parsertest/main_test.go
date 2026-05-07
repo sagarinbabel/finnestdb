@@ -13,10 +13,11 @@ func TestDatasetSlug_DistinguishesSameNameVersions(t *testing.T) {
 		{"testdata/parser-eval/fi/gold/fi-manual-v2.json", "fi-manual-v2"},
 		// Other gold files retain their unique slugs.
 		{"testdata/parser-eval/fi/gold/fi-core-v1.json", "fi-core-v1"},
-		{"testdata/parser-eval/fi/gold/ud-fi-tdt-test-v1.json", "ud-fi-tdt-test-v1"},
+		{"testdata/parser-eval/fi/gold/ud-fi-tdt-test-v1.json.gz", "ud-fi-tdt-test-v1"},
 		// Bare and absolute paths.
 		{"fi-manual-v2.json", "fi-manual-v2"},
 		{"/abs/dir/fi-manual-v2.JSON", "fi-manual-v2"},
+		{"/abs/dir/fi-manual-v2.JSON.GZ", "fi-manual-v2"},
 		{"/abs/dir/no-extension", "no-extension"},
 	}
 	for _, c := range cases {

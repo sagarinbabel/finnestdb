@@ -486,10 +486,10 @@ gitignored bootstrap state fits in a single zip of `localdata/`.
 
 | Treebank      | License        | Test cases | Dev cases | Train cases | Gold JSON                                                                       |
 |---------------|----------------|-----------:|----------:|------------:|---------------------------------------------------------------------------------|
-| Finnish-TDT   | CC BY-SA 4.0   |     1,554  |    1,358  |     12,204  | committed: `testdata/parser-eval/fi/gold/ud-fi-tdt-{test,dev}-v1.json`; train at `localdata/parser-eval/fi/gold-train/ud-fi-tdt-train-v1.json` |
-| Finnish-FTB   | CC BY 4.0      |     1,867  |    1,875  |     14,972  | committed: `testdata/parser-eval/fi/gold/ud-fi-ftb-{test,dev}-v1.json`; train at `localdata/parser-eval/fi/gold-train/ud-fi-ftb-train-v1.json` |
-| Finnish-PUD   | CC BY-SA 3.0   |     1,000  |        — |          — | committed: `testdata/parser-eval/fi/gold/ud-fi-pud-test-v1.json`               |
-| Finnish-OOD   | CC BY-SA 4.0   |     2,106  |        — |          — | committed: `testdata/parser-eval/fi/gold/ud-fi-ood-test-v1.json`               |
+| Finnish-TDT   | CC BY-SA 4.0   |     1,554  |    1,358  |     12,204  | committed: `testdata/parser-eval/fi/gold/ud-fi-tdt-{test,dev}-v1.json.gz`; train at `localdata/parser-eval/fi/gold-train/ud-fi-tdt-train-v1.json` |
+| Finnish-FTB   | CC BY 4.0      |     1,867  |    1,875  |     14,972  | committed: `testdata/parser-eval/fi/gold/ud-fi-ftb-{test,dev}-v1.json.gz`; train at `localdata/parser-eval/fi/gold-train/ud-fi-ftb-train-v1.json` |
+| Finnish-PUD   | CC BY-SA 3.0   |     1,000  |        — |          — | committed: `testdata/parser-eval/fi/gold/ud-fi-pud-test-v1.json.gz`               |
+| Finnish-OOD   | CC BY-SA 4.0   |     2,106  |        — |          — | committed: `testdata/parser-eval/fi/gold/ud-fi-ood-test-v1.json.gz`               |
 | Estonian-EDT  | CC BY-NC-SA    |     3,190  |    3,110  |     24,419  | local-only: `localdata/parser-eval/et/gold/ud-et-edt-{test,dev}-v1.json` + `localdata/parser-eval/et/gold-train/ud-et-edt-train-v1.json` |
 | Estonian-EWT  | CC BY-NC-SA    |       910  |      823  |      5,375  | local-only: `localdata/parser-eval/et/gold/ud-et-ewt-{test,dev}-v1.json` + `localdata/parser-eval/et/gold-train/ud-et-ewt-train-v1.json` |
 

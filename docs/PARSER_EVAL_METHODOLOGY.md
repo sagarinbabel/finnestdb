@@ -208,11 +208,12 @@ bash scripts/parser-comparison.sh -o reports/parser-eval/$(date +%Y-%m-%d)-fi.md
 bash scripts/parser-comparison-et.sh -o reports/parser-eval/$(date +%Y-%m-%d)-et.md
 ```
 
-Default discovery: every `testdata/parser-eval/{fi,et}/gold/*.json` not matching
-`-dev-v` (held-out test discipline — dev sets are for per-commit "watch" eval,
-not committed baselines). Each dataset gets its own JSON report under
-`reports/parser-eval/${RUN_TS}-${name}.json`. The markdown summary aggregates
-them.
+Default discovery: every `.json` or `.json.gz` dataset under
+`testdata/parser-eval/{fi,et}/gold/` and `localdata/parser-eval/{fi,et}/gold/`
+not matching `-dev-v` (held-out test discipline — dev sets are for per-commit
+"watch" eval, not committed baselines). Each dataset gets its own JSON report
+under `reports/parser-eval/${RUN_TS}-${name}.json`. The markdown summary
+aggregates them.
 
 ### 5. Freeze a baseline
 

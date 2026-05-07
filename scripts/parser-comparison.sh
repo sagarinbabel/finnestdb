@@ -40,7 +40,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ${#DATASETS[@]} -eq 0 ]]; then
-    # Default discovery: every fi/gold/*.json EXCEPT dev splits. Test sets
+    # Default discovery: every fi/gold/*.json or *.json.gz EXCEPT dev splits. Test sets
     # are the held-out headline; dev is for per-commit "watch" eval (run
     # explicitly with -dataset). Train splits live under gold-train/ and
     # never auto-discover. See docs/PARSER_EVAL_DATASETS.md for the
@@ -51,8 +51,10 @@ if [[ ${#DATASETS[@]} -eq 0 ]]; then
     # has dropped in via setup-local.sh). The same merge applies on the
     # ET side — see scripts/parser-comparison-et.sh.
     while IFS= read -r f; do DATASETS+=("$f"); done \
-        < <(ls testdata/parser-eval/fi/gold/*.json localdata/parser-eval/fi/gold/*.json 2>/dev/null \
-            | grep -v -- '-dev-v' | sort)
+        < <(ls \
+            testdata/parser-eval/fi/gold/*.json testdata/parser-eval/fi/gold/*.json.gz \
+            localdata/parser-eval/fi/gold/*.json localdata/parser-eval/fi/gold/*.json.gz \
+            2>/dev/null | grep -v -- '-dev-v' | sort)
 fi
 
 if [[ ${#DATASETS[@]} -eq 0 ]]; then
@@ -138,7 +140,9 @@ for ds in "${DATASETS[@]}"; do
     # overwrite the first report with the second. Filenames are unique
     # by definition. Slugify so a path with spaces or weird chars can't
     # escape REPORTS_DIR.
-    base="$(basename "$ds" .json)"
+    base="$(basename "$ds")"
+    base="${base%.json.gz}"
+    base="${base%.json}"
     slug="$(printf '%s' "$base" | python3 -c "
 import re, sys
 raw = sys.stdin.read().strip()

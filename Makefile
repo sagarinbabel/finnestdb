@@ -418,16 +418,16 @@ import-ud-gold: import-ud-gold-fi import-ud-gold-et
 # split.
 eval: parser
 	@export LD_LIBRARY_PATH="$$(pwd)/parser/target/release:$${LD_LIBRARY_PATH:-}"; \
-	for ds in testdata/parser-eval/*/gold/*.json localdata/parser-eval/*/gold/*.json; do \
+	for ds in testdata/parser-eval/*/gold/*.json testdata/parser-eval/*/gold/*.json.gz localdata/parser-eval/*/gold/*.json localdata/parser-eval/*/gold/*.json.gz; do \
 		[ -f "$$ds" ] || continue; \
-		case "$$ds" in *-dev-v*.json) continue ;; esac; \
+		case "$$ds" in *-dev-v*.json|*-dev-v*.json.gz) continue ;; esac; \
 		echo "== $$ds =="; \
 		go run ./cmd/parsertest -dataset "$$ds" -parsers basic,custom -warmup 1 -repeat 3; \
 	done
 
 eval-watch: parser
 	@export LD_LIBRARY_PATH="$$(pwd)/parser/target/release:$${LD_LIBRARY_PATH:-}"; \
-	for ds in testdata/parser-eval/*/gold/*.json localdata/parser-eval/*/gold/*.json; do \
+	for ds in testdata/parser-eval/*/gold/*.json testdata/parser-eval/*/gold/*.json.gz localdata/parser-eval/*/gold/*.json localdata/parser-eval/*/gold/*.json.gz; do \
 		[ -f "$$ds" ] || continue; \
 		echo "== $$ds =="; \
 		go run ./cmd/parsertest -dataset "$$ds" -parsers basic,custom -warmup 1 -repeat 3; \
