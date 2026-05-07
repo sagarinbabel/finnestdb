@@ -10,6 +10,41 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-05-07 — Newcomer experience: `make doctor` + setup symmetry
+
+Closes the gap between "the docs say setup is one command" and "the
+parser silently runs in degraded mode because something didn't fetch".
+
+- New [`make doctor`](../cmd/doctor/main.go) reports DB presence + per-
+  source row counts, FST table presence, analyzer venv presence
+  (`.venv-omorfi`, `.venv-estnltk`), Ekilex shard presence, UD cache,
+  frequency baselines, and the Rust parser shared library. Each missing
+  piece carries a one-line hint and a "go to" target. Returns 0 unless
+  the DB or the FI/ET dictionary is missing entirely; everything else is
+  informational so the user understands the *degraded modes* their setup
+  implies. Added to [`docs/INDEX.md`](INDEX.md) and the
+  [`README.md`](../README.md) Quickstart.
+- [`scripts/parser-comparison.sh`](../scripts/parser-comparison.sh) and
+  [`scripts/parser-comparison-et.sh`](../scripts/parser-comparison-et.sh)
+  now slug from the dataset *file basename* rather than the JSON `name`
+  field. Pre-fix, `fi-manual-v1.json` and `fi-manual-v2.json` both
+  declared `name="fi-manual"` and silently overwrote each other in
+  `reports/parser-eval/`. Fix called out in
+  [`docs/PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) §pitfalls.
+- `make setup-omorfi` now creates `.venv-omorfi/` symmetrically with
+  `make setup-estnltk`'s `.venv-estnltk/` instead of pip-installing into
+  the active interpreter. `parser-comparison.sh` auto-constructs
+  `FINNESTDB_OMORFI_CMD` from the venv when present, mirroring the
+  existing EstNLTK auto-detection. Closes the open issue noted in
+  [`docs/PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) §pitfalls
+  about asymmetric venv discovery.
+- New `BackfillLegacyKaikkiProvenance` migration in
+  [`internal/store/db.go`](../internal/store/db.go) labels FI/ET rows
+  that legacy importers left with empty `source` / `source_priority=0`
+  as `(source='kaikki', source_priority=10)`. Idempotent — runs every
+  startup but matches no rows once applied. Surfaced as a WARN in
+  `make doctor` until a server start has run the migration.
+
 ## 2026-05-07 PM — Docs restructure + LLM-friendly navigation
 
 Restructures the spine docs so a reader (human or LLM) can answer

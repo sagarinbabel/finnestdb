@@ -185,6 +185,23 @@ Use this when you're hacking on parser code and don't need a populated DB.
 `./finnestdb` will start but the parse page returns zero matches until you
 populate the DB via path A or B.
 
+#### Verifying your setup: `make doctor`
+
+Once any of paths A / B / C completes, run `make doctor` to see what
+quality mode the parser will run in:
+
+```bash
+make doctor
+```
+
+Reports DB presence + per-source row counts, FST table presence, analyzer
+venv presence (`.venv-omorfi`, `.venv-estnltk`), Ekilex shard presence,
+UD cache, frequency baselines, and the Rust parser shared library — each
+with a one-line hint for the missing pieces. Returns `0` unless the DB
+or the FI/ET dictionary is missing entirely; everything else is
+informational so you understand the *degraded modes* your setup implies
+rather than discovering them from surprise eval numbers.
+
 ---
 
 The app opens to the public landing page. Sign in with an email address and

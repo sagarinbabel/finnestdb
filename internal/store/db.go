@@ -482,6 +482,11 @@ func EnsureDictMetadataSchema(db *sql.DB) error {
 // CREATE TABLE statements above; this exists for upgrade compatibility. Both
 // the server (internal/store) and the standalone importer (cmd/importdict)
 // call it so the column set stays in one place.
+//
+// After ensuring the columns exist, BackfillLegacyKaikkiProvenance fills any
+// rows whose source was left empty by an older importer that didn't thread
+// source/priority through. The combination is idempotent: once a row carries
+// real provenance, neither the ALTER TABLE nor the UPDATE touches it.
 func EnsureDictionarySourceColumns(db *sql.DB) error {
 	for table, columns := range map[string][]string{
 		"lemmas": {
@@ -497,6 +502,33 @@ func EnsureDictionarySourceColumns(db *sql.DB) error {
 			if _, err := db.Exec(`ALTER TABLE ` + table + ` ADD COLUMN ` + column); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 				return err
 			}
+		}
+	}
+	return BackfillLegacyKaikkiProvenance(db)
+}
+
+// BackfillLegacyKaikkiProvenance labels FI/ET rows that were imported before
+// cmd/importdict threaded -source-key / -source-priority through. Those rows
+// carry the SQLite column defaults (source='' and source_priority=0), which
+// makes verify-dict and `make doctor` flag the entire dictionary as untracked
+// even though it's the kaikki dump every fresh install gets.
+//
+// We can attribute these rows to kaikki with high confidence: the only writers
+// that ever produced empty-source rows were the FI/ET kaikki paths in
+// cmd/importdict before the provenance flags landed; every later writer
+// (Ekilex, Kotus, custom glosses) has always set both fields explicitly.
+//
+// Idempotent — the WHERE clause matches no rows after the first run, so
+// re-applying is a no-op.
+func BackfillLegacyKaikkiProvenance(db *sql.DB) error {
+	const legacyKaikkiPriority = 10
+	for _, table := range []string{"lemmas", "forms"} {
+		if _, err := db.Exec(
+			`UPDATE `+table+` SET source = 'kaikki', source_priority = ? `+
+				`WHERE lang IN ('FI','ET') AND (source IS NULL OR source = '') AND source_priority = 0`,
+			legacyKaikkiPriority,
+		); err != nil {
+			return fmt.Errorf("backfill %s provenance: %w", table, err)
 		}
 	}
 	return nil

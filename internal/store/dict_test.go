@@ -224,6 +224,82 @@ func TestEnsureMultiLemmaSchema_PreservesRowsAndAddsMultiLemmaSupport(t *testing
 	}
 }
 
+func TestBackfillLegacyKaikkiProvenance(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "legacy.db")
+	raw, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open raw: %v", err)
+	}
+	defer raw.Close()
+
+	// Simulate the pre-provenance state: tables exist with the source/
+	// source_priority columns added but populated only with their column
+	// defaults ('' / 0). A real legacy DB looks exactly like this.
+	if _, err := raw.Exec(`
+		CREATE TABLE lemmas (
+			lemma TEXT NOT NULL, pos TEXT NOT NULL, gloss TEXT, lang TEXT NOT NULL,
+			source TEXT NOT NULL DEFAULT '',
+			source_priority INTEGER NOT NULL DEFAULT 0,
+			PRIMARY KEY (lemma, pos, lang)
+		);
+		CREATE TABLE forms (
+			form TEXT NOT NULL, lemma TEXT NOT NULL, pos TEXT NOT NULL, lang TEXT NOT NULL,
+			source TEXT NOT NULL DEFAULT '',
+			source_priority INTEGER NOT NULL DEFAULT 0,
+			PRIMARY KEY (form, lang, lemma, pos)
+		);
+		-- Two legacy FI rows (kaikki, but missing provenance):
+		INSERT INTO lemmas (lemma, pos, gloss, lang) VALUES ('pankki', 'NOUN', 'bank', 'FI');
+		INSERT INTO forms  (form, lemma, pos, lang)  VALUES ('pankissa', 'pankki', 'NOUN', 'FI');
+		-- One ET row already labeled (Ekilex import path) — must be preserved:
+		INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+		    VALUES ('koer', 'NOUN', 'dog', 'ET', 'ekilex', 20);
+		INSERT INTO forms  (form, lemma, pos, lang, source, source_priority)
+		    VALUES ('koera', 'koer', 'NOUN', 'ET', 'ekilex', 20);
+	`); err != nil {
+		t.Fatalf("seed legacy schema: %v", err)
+	}
+
+	if err := BackfillLegacyKaikkiProvenance(raw); err != nil {
+		t.Fatalf("backfill: %v", err)
+	}
+
+	// Legacy FI rows now carry kaikki provenance.
+	var src string
+	var prio int
+	if err := raw.QueryRow(`SELECT source, source_priority FROM lemmas WHERE lemma='pankki' AND lang='FI'`).Scan(&src, &prio); err != nil {
+		t.Fatalf("query FI lemma: %v", err)
+	}
+	if src != "kaikki" || prio != 10 {
+		t.Errorf("FI lemma: got source=%q priority=%d, want kaikki/10", src, prio)
+	}
+	if err := raw.QueryRow(`SELECT source, source_priority FROM forms WHERE form='pankissa' AND lang='FI'`).Scan(&src, &prio); err != nil {
+		t.Fatalf("query FI form: %v", err)
+	}
+	if src != "kaikki" || prio != 10 {
+		t.Errorf("FI form: got source=%q priority=%d, want kaikki/10", src, prio)
+	}
+
+	// Pre-labeled ET row was not touched.
+	if err := raw.QueryRow(`SELECT source, source_priority FROM lemmas WHERE lemma='koer' AND lang='ET'`).Scan(&src, &prio); err != nil {
+		t.Fatalf("query ET lemma: %v", err)
+	}
+	if src != "ekilex" || prio != 20 {
+		t.Errorf("ET lemma: backfill stomped pre-labeled row; got source=%q priority=%d, want ekilex/20", src, prio)
+	}
+
+	// Idempotent: a second run touches no rows and changes nothing.
+	if err := BackfillLegacyKaikkiProvenance(raw); err != nil {
+		t.Fatalf("backfill (second run): %v", err)
+	}
+	if err := raw.QueryRow(`SELECT source, source_priority FROM lemmas WHERE lemma='koer' AND lang='ET'`).Scan(&src, &prio); err != nil {
+		t.Fatalf("query ET lemma (second run): %v", err)
+	}
+	if src != "ekilex" || prio != 20 {
+		t.Errorf("ET lemma after re-run: got source=%q priority=%d, want ekilex/20", src, prio)
+	}
+}
+
 func TestEnsureMultiLemmaSchema_PreservesAddedColumns(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "with-source.db")
 	raw, err := sql.Open("sqlite3", dbPath)
