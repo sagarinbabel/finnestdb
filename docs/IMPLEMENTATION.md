@@ -81,8 +81,10 @@ Current UI features:
 
 - desktop/mobile navigation with public, user, and admin route groups
 - Inspect form with language selector
-- language mismatch warning
 - file load support for `.txt` / `.md`
+- hybrid language handling: paste/file auto-switch on high-confidence detection,
+  blocking mismatch warning when selected and detected language conflict, and
+  advisory unknown-language warning
 - coverage gauge with token/row-weighted proxy score
 - POS filter chips above the results table
 - results table with row numbering and sorting
@@ -171,6 +173,7 @@ checks:
 - correction submission
 - POS filter behavior
 - language mismatch blocking and switching
+- paste/file language auto-switching
 - file upload flow
 - mobile nav behavior
 

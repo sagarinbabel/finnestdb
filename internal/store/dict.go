@@ -14,11 +14,19 @@ import (
 // lemma and POS, along with metadata about how it was resolved.
 //
 //	Source values: "dict", "possessive", "compound", "case_suffix"
-//	GrammarLabel: e.g. "inessive" from case suffix stripping; empty for direct dict hits
+//	GrammarLabel: legacy single-attribute label (e.g. "inessive"); empty for
+//	  direct dict hits unless attached by stopgap or projected from Feats
+//	Feats: full UD FEATS string for the form (e.g.
+//	  "Case=Ine|Number=Sing"). Currently populated for ET via
+//	  cmd/importekilexdetails::ekilexMorphToFeats from Ekilex morph_codes.
+//	  When non-empty, takes precedence over GrammarLabel for downstream
+//	  display; GrammarLabel is back-projected from Feats' Case= attribute
+//	  for back-compat with the case-only metric.
 type FormResolution struct {
 	Lemma        string
 	POS          string
-	GrammarLabel string // e.g. "inessive", empty for direct dict hits
+	GrammarLabel string // e.g. "inessive", empty when no case info available
+	Feats        string // UD FEATS string, e.g. "Case=Ine|Number=Sing"
 	Source       string // how this resolution was found
 }
 
@@ -38,6 +46,14 @@ type FormResolution struct {
 //	Step 5: [FI only] VFST morphological analysis (libvoikko mor.vfst)
 //	Step 6: Not resolved → absent from map → caller falls back to stub
 //
+// In "custom" mode, after step 1 succeeds the case-suffix matcher is also run
+// purely to attach a GrammarLabel (case name) to the dict result. The forms
+// table only stores (lemma, pos), so without this pass every direct dict hit
+// would carry an empty grammar label and grammar-accuracy would always be 0%
+// on dict-resolved tokens. This is a stopgap until the FST runtime
+// (PRs #106/#107) emits FEATS natively — see docs/DECISIONS.md for the
+// rationale on not extending the suffix table further.
+//
 // Returns a map from form → FormResolution.
 // Forms that cannot be resolved are absent from the map.
 func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) map[string]FormResolution {
@@ -49,7 +65,7 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 	// Step 1 query fetches all candidates with source metadata so the picker
 	// can rank them. Steps 2–4 remain single-row lookups because their
 	// fallback paths commit to one resolution by construction.
-	stmtFormsAll, err := d.db.Prepare(`SELECT lemma, pos, source, source_priority FROM forms WHERE form = ? AND lang = ?`)
+	stmtFormsAll, err := d.db.Prepare(`SELECT lemma, pos, source, source_priority, COALESCE(feats, '') FROM forms WHERE form = ? AND lang = ?`)
 	if err != nil {
 		return result
 	}
@@ -78,6 +94,15 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		// against the original-case surface so PROPN homonyms don't beat
 		// common-noun lemmas on lowercase surfaces.
 		if best, ok := lookupBestForm(stmtFormsAll, form, lower, lang); ok {
+			// Stopgap (custom mode): the dict knows lemma+POS but not the
+			// inflectional case. Run the case-suffix matcher additively to
+			// attach a label, only when the suffix-strip points to the same
+			// lemma we just resolved (otherwise the label would belong to a
+			// different word). This will be removed once the FST runtime in
+			// pkg/lemmatizer-fi-et/ produces FEATS for direct hits.
+			if parserMode == "custom" && best.GrammarLabel == "" {
+				best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
+			}
 			result[form] = best
 			continue
 		}
@@ -154,11 +179,15 @@ func tryVFSTAnalyze(lem *lemmatizer.Lemmatizer, lower string) (FormResolution, b
 // Source / SourcePriority come from the row-level dictionary metadata; older
 // rows that pre-date the source-priority work have empty strings and zero
 // priority, which is fine — the case-match and POS heuristics still rank them.
+// Feats is the per-form UD FEATS string (e.g. "Case=Ine|Number=Sing"); empty
+// for rows imported from sources without per-form morphology (e.g.
+// kaikki.org). Populated for ET via Ekilex morph_codes (PR Plan-C/4).
 type formCandidate struct {
 	Lemma          string
 	POS            string
 	Source         string
 	SourcePriority int
+	Feats          string
 }
 
 // lookupBestForm runs the multi-row form lookup and ranks the candidates.
@@ -174,7 +203,7 @@ func lookupBestForm(stmt *sql.Stmt, surface, lowerSurface, lang string) (FormRes
 	var candidates []formCandidate
 	for rows.Next() {
 		var c formCandidate
-		if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority); err != nil {
+		if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority, &c.Feats); err != nil {
 			return FormResolution{}, false
 		}
 		candidates = append(candidates, c)
@@ -184,7 +213,63 @@ func lookupBestForm(stmt *sql.Stmt, surface, lowerSurface, lang string) (FormRes
 	}
 
 	best := pickBestFormCandidate(surface, candidates)
-	return FormResolution{Lemma: best.Lemma, POS: best.POS, Source: "dict"}, true
+	res := FormResolution{Lemma: best.Lemma, POS: best.POS, Feats: best.Feats, Source: "dict"}
+	// Project Case= from Feats to GrammarLabel for back-compat with the
+	// case-only metric. New code should consume Feats directly; the
+	// projection lets the existing eval keep working unchanged.
+	if best.Feats != "" {
+		res.GrammarLabel = caseFromFeats(best.Feats)
+	}
+	return res, true
+}
+
+// caseFromFeats extracts the Case= attribute from a UD FEATS string and
+// returns the lowercase English case name used by our existing
+// grammar_label vocabulary. Returns "" when FEATS has no Case= attribute
+// or when the value is Nominative (left implicit per existing convention,
+// matching cmd/importud/main.go).
+func caseFromFeats(feats string) string {
+	if feats == "" {
+		return ""
+	}
+	for _, pair := range strings.Split(feats, "|") {
+		eq := strings.Index(pair, "=")
+		if eq < 0 || pair[:eq] != "Case" {
+			continue
+		}
+		val := pair[eq+1:]
+		if val == "Nom" {
+			return "" // nominative implicit
+		}
+		if label, ok := udCaseToLegacyLabel[val]; ok {
+			return label
+		}
+		return ""
+	}
+	return ""
+}
+
+// udCaseToLegacyLabel maps UD Case= values to the lowercase English case
+// names used in our existing gold sets and grammar_label vocabulary.
+// Mirrors cmd/importud/main.go::udCaseToLabel — kept here separately so
+// the dict layer doesn't import a cmd/ package.
+var udCaseToLegacyLabel = map[string]string{
+	"Gen": "genitive",
+	"Par": "partitive",
+	"Ill": "illative",
+	"Ine": "inessive",
+	"Ela": "elative",
+	"All": "allative",
+	"Ade": "adessive",
+	"Abl": "ablative",
+	"Ess": "essive",
+	"Tra": "translative",
+	"Ins": "instructive",
+	"Abe": "abessive",
+	"Com": "comitative",
+	"Ter": "terminative",
+	"Acc": "accusative",
+	"Voc": "vocative",
 }
 
 // pickBestFormCandidate ranks candidates for a surface form. Ranking, higher
@@ -371,6 +456,33 @@ func tryCompoundSplit(stmtForms *sql.Stmt, form, lang string) (FormResolution, b
 }
 
 // ─── Case suffix stripping ──────────────────────────────────────────────────
+
+// attachCaseLabelIfStemMatches augments a successful dict resolution with a
+// case label, when the case-suffix matcher independently arrives at the same
+// lemma. Stopgap until the FST runtime (PRs #106/#107) lands and emits FEATS
+// for direct dict hits.
+//
+// Returns the input unchanged if no label can be attached. Conservative by
+// design: a label is attached only when both
+//   - case-suffix-strip succeeds on the surface, and
+//   - the suffix-strip lemma exactly matches the dict lemma.
+//
+// The lemma-equality guard prevents false positives where the suffix happens
+// to terminate a different word (e.g. dict says `aas` "meadow", suffix-strip
+// would say "inessive of `aa`" — different lemma, no label attached).
+func attachCaseLabelIfStemMatches(stmtLemmas *sql.Stmt, dictResolution FormResolution, lower, lang string) FormResolution {
+	suffixes := parserules.FinnishCaseSuffixes
+	if lang == "ET" {
+		suffixes = parserules.EstonianCaseSuffixes
+	}
+	labeled, ok := tryCaseSuffixStrip(stmtLemmas, lower, lang, suffixes)
+	if !ok || labeled.Lemma != dictResolution.Lemma || labeled.GrammarLabel == "" {
+		return dictResolution
+	}
+	dictResolution.GrammarLabel = labeled.GrammarLabel
+	dictResolution.Source = dictResolution.Source + "+case_suffix_label"
+	return dictResolution
+}
 
 // tryCaseSuffixStrip strips case suffixes and validates the stem against the
 // lemmas table (stricter than forms — reduces false positives from short suffixes).
