@@ -8,6 +8,23 @@ If you're new to the repo, read in this order: [`../README.md`](../README.md) �
 [`../TODO.md`](../TODO.md) → [`../ARCHITECTURE.md`](../ARCHITECTURE.md) →
 this index for everything else.
 
+## Quick reference
+
+Compact one-liner per doc, by purpose. Use this when you need to pick a
+doc in 30 seconds; use ["By purpose"](#by-purpose) below for the longer
+descriptions when two docs sound similar.
+
+- **Entry point:** [`../README.md`](../README.md) (what the project is, how to run, project structure, doc index)
+- **System architecture:** [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (current), [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) (lexical-layer detail)
+- **Product framing:** [`docs/FEATURES.md`](FEATURES.md) (user-facing)
+- **What's done / what's next:** [`../TODO.md`](../TODO.md) (the only doc you need for status)
+- **Why we made choices:** [`docs/DECISIONS.md`](DECISIONS.md) (latest-first, 18 decisions)
+- **What changed when:** [`docs/CHANGELOG.md`](CHANGELOG.md) (latest-first, cross-linked to DECISIONS)
+- **Measured parser quality:** [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) (chronological log)
+- **ML roadmap:** [`docs/ML_IDEAS.md`](ML_IDEAS.md)
+- **Calibration data:** [`docs/FREQUENCY_BASELINES.md`](FREQUENCY_BASELINES.md), [`docs/data_enhancement.md`](data_enhancement.md)
+- **Specialized:** [`docs/PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md), [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md), [`docs/PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md), [`docs/SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md), [`docs/srs-deck-spec.md`](srs-deck-spec.md), [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md)
+
 ## At a glance
 
 | If you want to know... | Go to |
