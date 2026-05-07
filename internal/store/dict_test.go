@@ -1357,6 +1357,78 @@ func TestBatchLookupForms_LegacyRowsWithEmptySource(t *testing.T) {
 	}
 }
 
+// TestBatchLookupForms_DoesNotPickVerbHomonymOnFEATSDensity covers the
+// 2026-05-07 ET regression where the Ekilex bulk drop populated dense FEATS
+// on every form and a scaled morphologyScore tiebreak started picking
+// VERB readings over NOUN readings purely because verbs structurally carry
+// more FEATS attributes (Mood/Number/Person/Tense/VerbForm/Voice ≈ 6) than
+// nouns (Case/Number ≈ 2). The picker has no contextual disambiguation —
+// when both candidates have FEATS, it must defer to the deterministic
+// fallback (source priority → lemma asc) rather than vote on FEATS density.
+func TestBatchLookupForms_DoesNotPickVerbHomonymOnFEATSDensity(t *testing.T) {
+	db := newTestDB(t)
+	rows := []struct {
+		form, lemma, pos, feats string
+	}{
+		{"arstiks", "arst", "NOUN", "Case=Tra|Number=Sing"},
+		{"arstiks", "arstima", "VERB", "Mood=Cnd|Tense=Pres|VerbForm=Fin|Voice=Act"},
+	}
+	for _, r := range rows {
+		if _, err := db.db.Exec(
+			`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			r.form, r.lemma, r.pos, "ET", "ekilex", 20, r.feats,
+		); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+
+	got := db.BatchLookupForms([]string{"arstiks"}, "ET", "custom")
+	r, ok := got["arstiks"]
+	if !ok {
+		t.Fatal("arstiks: expected resolution")
+	}
+	if r.Lemma != "arst" || r.POS != "NOUN" {
+		t.Errorf("arstiks: got %s/%s, want arst/NOUN (lemma asc tiebreak after morphology ties)",
+			r.Lemma, r.POS)
+	}
+}
+
+// TestBatchLookupForms_NominativeNotPunishedByEmptyGrammarLabel covers the
+// adjacent corner of the same regression: a NOUN/Nom candidate has FEATS
+// (Case=Nom|Number=Sing) but its projected GrammarLabel is "" because Nom
+// is implicit per UD convention. A scaled morphologyScore that gave +1 for
+// non-empty GrammarLabel made any non-Nom homonym beat the Nom reading on
+// otherwise-equal candidates — observed for "mees" (man, NOUN/Nom) losing
+// to "mesi" (honey, NOUN/Ine) in the et-grammar set.
+func TestBatchLookupForms_NominativeNotPunishedByEmptyGrammarLabel(t *testing.T) {
+	db := newTestDB(t)
+	rows := []struct {
+		form, lemma, pos, feats string
+	}{
+		{"mees", "mees", "NOUN", "Case=Nom|Number=Sing"},
+		{"mees", "mesi", "NOUN", "Case=Ine|Number=Sing"},
+	}
+	for _, r := range rows {
+		if _, err := db.db.Exec(
+			`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			r.form, r.lemma, r.pos, "ET", "ekilex", 20, r.feats,
+		); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+
+	got := db.BatchLookupForms([]string{"mees"}, "ET", "custom")
+	r, ok := got["mees"]
+	if !ok {
+		t.Fatal("mees: expected resolution")
+	}
+	if r.Lemma != "mees" {
+		t.Errorf("mees: got lemma=%s, want mees (Nom→empty-label must not lose to Ine→inessive)", r.Lemma)
+	}
+}
+
 // seedLemmasFull and seedTranslations are minimal helpers that write into
 // the post-Phase-1 / post-#67 schema (with source / source_priority).
 func seedLemmasFull(t *testing.T, db *DB, rows []struct {
