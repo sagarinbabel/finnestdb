@@ -1,0 +1,1521 @@
+{
+  "run_id": "20260507T113918Z-fi-manual",
+  "generated_at": "2026-05-07T11:39:18Z",
+  "dataset": {
+    "name": "fi-manual",
+    "version": "v2",
+    "language": "FI",
+    "case_count": 4
+  },
+  "parsers": [
+    "basic",
+    "custom",
+    "omorfi"
+  ],
+  "git_commit": "ffd7584",
+  "parser_version": "2026.05.07k",
+  "benchmark": {
+    "warmup_runs": 1,
+    "repeat_runs": 1
+  },
+  "summary": {
+    "basic": {
+      "expected_tokens": 9,
+      "lemma_accuracy": 0.8888888888888888,
+      "pos_accuracy": 1,
+      "grammar_accuracy": 1,
+      "full_accuracy": 0.4444444444444444,
+      "resolved_coverage": 0.9166666666666666,
+      "feats_attributes": [
+        {
+          "attribute": "Case",
+          "eligible": 7,
+          "correct": 6,
+          "accuracy": 0.8571428571428571
+        },
+        {
+          "attribute": "Mood",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Number",
+          "eligible": 8,
+          "correct": 7,
+          "accuracy": 0.875
+        },
+        {
+          "attribute": "Number[psor]",
+          "eligible": 3,
+          "correct": 0,
+          "accuracy": 0
+        },
+        {
+          "attribute": "Person",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Person[psor]",
+          "eligible": 3,
+          "correct": 0,
+          "accuracy": 0
+        },
+        {
+          "attribute": "Tense",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "VerbForm",
+          "eligible": 1,
+          "correct": 0,
+          "accuracy": 0
+        },
+        {
+          "attribute": "Voice",
+          "eligible": 1,
+          "correct": 0,
+          "accuracy": 0
+        }
+      ],
+      "avg_case_duration_ms": 0.161979,
+      "p50_case_duration_ms": 0.107541,
+      "p95_case_duration_ms": 0.11775,
+      "words_per_second": 18520.919378437946,
+      "chars_per_second": 191382.83357719213,
+      "avg_unique_forms": 3,
+      "avg_resolved_tokens": 2.75,
+      "avg_unresolved_tokens": 0.25,
+      "avg_analyze_ms": 0.027281,
+      "avg_lookup_forms_ms": 0.07859425,
+      "avg_lookup_glosses_ms": 0.04878125,
+      "avg_resolve_sentences_ms": 0.0030105,
+      "avg_enrich_words_ms": 0.002677
+    },
+    "custom": {
+      "expected_tokens": 9,
+      "lemma_accuracy": 0.8888888888888888,
+      "pos_accuracy": 1,
+      "grammar_accuracy": 1,
+      "full_accuracy": 0.4444444444444444,
+      "resolved_coverage": 1,
+      "feats_attributes": [
+        {
+          "attribute": "Case",
+          "eligible": 7,
+          "correct": 6,
+          "accuracy": 0.8571428571428571
+        },
+        {
+          "attribute": "Mood",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Number",
+          "eligible": 8,
+          "correct": 7,
+          "accuracy": 0.875
+        },
+        {
+          "attribute": "Number[psor]",
+          "eligible": 3,
+          "correct": 0,
+          "accuracy": 0
+        },
+        {
+          "attribute": "Person",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Person[psor]",
+          "eligible": 3,
+          "correct": 0,
+          "accuracy": 0
+        },
+        {
+          "attribute": "Tense",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "VerbForm",
+          "eligible": 1,
+          "correct": 0,
+          "accuracy": 0
+        },
+        {
+          "attribute": "Voice",
+          "eligible": 1,
+          "correct": 0,
+          "accuracy": 0
+        }
+      ],
+      "avg_case_duration_ms": 0.09585375,
+      "p50_case_duration_ms": 0.076916,
+      "p95_case_duration_ms": 0.088708,
+      "words_per_second": 31297.68005946559,
+      "chars_per_second": 323409.3606144778,
+      "avg_unique_forms": 3,
+      "avg_resolved_tokens": 3,
+      "avg_unresolved_tokens": 0,
+      "avg_analyze_ms": 0.0181975,
+      "avg_lookup_forms_ms": 0.03943725,
+      "avg_lookup_glosses_ms": 0.033281,
+      "avg_resolve_sentences_ms": 0.0013645,
+      "avg_enrich_words_ms": 0.001802
+    },
+    "omorfi": {
+      "expected_tokens": 9,
+      "lemma_accuracy": 1,
+      "pos_accuracy": 1,
+      "grammar_accuracy": 1,
+      "full_accuracy": 1,
+      "resolved_coverage": 1,
+      "feats_attributes": [
+        {
+          "attribute": "Case",
+          "eligible": 7,
+          "correct": 7,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Mood",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Number",
+          "eligible": 8,
+          "correct": 8,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Number[psor]",
+          "eligible": 3,
+          "correct": 3,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Person",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Person[psor]",
+          "eligible": 3,
+          "correct": 3,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Tense",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "VerbForm",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        },
+        {
+          "attribute": "Voice",
+          "eligible": 1,
+          "correct": 1,
+          "accuracy": 1
+        }
+      ],
+      "avg_case_duration_ms": 390.98119825,
+      "p50_case_duration_ms": 386.435,
+      "p95_case_duration_ms": 393.741042,
+      "words_per_second": 7.673003237566808,
+      "chars_per_second": 79.28770012152368,
+      "avg_unique_forms": 3,
+      "avg_resolved_tokens": 3,
+      "avg_unresolved_tokens": 0,
+      "avg_analyze_ms": 390.65425025,
+      "avg_lookup_forms_ms": 0.21510425,
+      "avg_lookup_glosses_ms": 0.076385,
+      "avg_resolve_sentences_ms": 0.01130175,
+      "avg_enrich_words_ms": 0.00431225
+    }
+  },
+  "cases": [
+    {
+      "case_id": "fi-3001",
+      "text": "Matkalaukussani oli passi.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples_ns": [
+            107541
+          ],
+          "avg_ms": 0.107541,
+          "p50_ms": 0.107541,
+          "p95_ms": 0.107541
+        },
+        "custom": {
+          "samples_ns": [
+            88708
+          ],
+          "avg_ms": 0.088708,
+          "p50_ms": 0.088708,
+          "p95_ms": 0.088708
+        },
+        "omorfi": {
+          "samples_ns": [
+            393741042
+          ],
+          "avg_ms": 393.741042,
+          "p50_ms": 393.741042,
+          "p95_ms": 393.741042
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 19375,
+            "lookup_forms_ns": 40417,
+            "lookup_glosses_ns": 42500,
+            "resolve_sentences_ns": 1458,
+            "enrich_words_ns": 2167,
+            "total_ns": 107541
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 16541,
+            "lookup_forms_ns": 33583,
+            "lookup_glosses_ns": 33916,
+            "resolve_sentences_ns": 1375,
+            "enrich_words_ns": 1875,
+            "total_ns": 88708
+          }
+        },
+        "omorfi": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "analyzer:omorfi": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 393429667,
+            "lookup_forms_ns": 199375,
+            "lookup_glosses_ns": 78416,
+            "resolve_sentences_ns": 9500,
+            "enrich_words_ns": 4333,
+            "total_ns": 393741042
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Matkalaukussani",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "matkalaukku",
+              "pos": "NOUN",
+              "feats": "Case=Ine|Number=Sing|Number[psor]=Sing|Person[psor]=1"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "matkalaukku",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=matkalaukussani pos=NOUN",
+                "resolution:dict lemma=matkalaukku pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true,
+                "Number[psor]": false,
+                "Person[psor]": false
+              },
+              "full": false
+            }
+          },
+          {
+            "surface": "passi",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "passi",
+              "pos": "NOUN",
+              "feats": "Case=Nom|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "passi",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=passi pos=NOUN",
+                "resolution:dict lemma=passi pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": false,
+                "Number": false
+              },
+              "full": false
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Matkalaukussani",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "matkalaukku",
+              "pos": "NOUN",
+              "feats": "Case=Ine|Number=Sing|Number[psor]=Sing|Person[psor]=1"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "matkalaukku",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=matkalaukussani pos=NOUN",
+                "resolution:dict lemma=matkalaukku pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true,
+                "Number[psor]": false,
+                "Person[psor]": false
+              },
+              "full": false
+            }
+          },
+          {
+            "surface": "passi",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "passi",
+              "pos": "NOUN",
+              "feats": "Case=Nom|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "passi",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=passi pos=NOUN",
+                "resolution:dict lemma=passi pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": false,
+                "Number": false
+              },
+              "full": false
+            }
+          }
+        ],
+        "omorfi": [
+          {
+            "surface": "Matkalaukussani",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "matkalaukku",
+              "pos": "NOUN",
+              "feats": "Case=Ine|Number=Sing|Number[psor]=Sing|Person[psor]=1"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "matkalaukku",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing|Number[psor]=Sing|Person[psor]=1",
+              "source": "analyzer:omorfi",
+              "resolved": true,
+              "trace": [
+                "analyzer:omorfi lemma=matkalaukku pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true,
+                "Number[psor]": true,
+                "Person[psor]": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "passi",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "passi",
+              "pos": "NOUN",
+              "feats": "Case=Nom|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "passi",
+              "pos": "NOUN",
+              "grammar_label": "nominative",
+              "feats": "Case=Nom|Number=Sing",
+              "source": "analyzer:omorfi",
+              "resolved": true,
+              "trace": [
+                "analyzer:omorfi lemma=passi pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "fi-3002",
+      "text": "Kaupassa odotin ystävääni.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples_ns": [
+            101250
+          ],
+          "avg_ms": 0.10125,
+          "p50_ms": 0.10125,
+          "p95_ms": 0.10125
+        },
+        "custom": {
+          "samples_ns": [
+            76125
+          ],
+          "avg_ms": 0.076125,
+          "p50_ms": 0.076125,
+          "p95_ms": 0.076125
+        },
+        "omorfi": {
+          "samples_ns": [
+            401799209
+          ],
+          "avg_ms": 401.799209,
+          "p50_ms": 401.799209,
+          "p95_ms": 401.799209
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 14583,
+            "lookup_forms_ns": 40417,
+            "lookup_glosses_ns": 41667,
+            "resolve_sentences_ns": 1459,
+            "enrich_words_ns": 1750,
+            "total_ns": 101250
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 13833,
+            "lookup_forms_ns": 29708,
+            "lookup_glosses_ns": 28000,
+            "resolve_sentences_ns": 1333,
+            "enrich_words_ns": 1583,
+            "total_ns": 76125
+          }
+        },
+        "omorfi": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "analyzer:omorfi": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 401456459,
+            "lookup_forms_ns": 230041,
+            "lookup_glosses_ns": 81041,
+            "resolve_sentences_ns": 10291,
+            "enrich_words_ns": 4625,
+            "total_ns": 401799209
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Kaupassa",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kauppa",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kauppa",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=kaupassa pos=NOUN",
+                "resolution:dict lemma=kauppa pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "ystävääni",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "ystävä",
+              "pos": "NOUN",
+              "feats": "Case=Par|Number=Sing|Number[psor]=Sing|Person[psor]=1"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "ystävä",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=ystävääni pos=NOUN",
+                "resolution:dict lemma=ystävä pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true,
+                "Number[psor]": false,
+                "Person[psor]": false
+              },
+              "full": false
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Kaupassa",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kauppa",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kauppa",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=kaupassa pos=NOUN",
+                "resolution:dict lemma=kauppa pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "ystävääni",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "ystävä",
+              "pos": "NOUN",
+              "feats": "Case=Par|Number=Sing|Number[psor]=Sing|Person[psor]=1"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "ystävä",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=ystävääni pos=NOUN",
+                "resolution:dict lemma=ystävä pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true,
+                "Number[psor]": false,
+                "Person[psor]": false
+              },
+              "full": false
+            }
+          }
+        ],
+        "omorfi": [
+          {
+            "surface": "Kaupassa",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kauppa",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kauppa",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "analyzer:omorfi",
+              "resolved": true,
+              "trace": [
+                "analyzer:omorfi lemma=kauppa pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "ystävääni",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "ystävä",
+              "pos": "NOUN",
+              "feats": "Case=Par|Number=Sing|Number[psor]=Sing|Person[psor]=1"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "ystävä",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Sing|Number[psor]=Sing|Person[psor]=1",
+              "source": "analyzer:omorfi",
+              "resolved": true,
+              "trace": [
+                "analyzer:omorfi lemma=ystävä pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true,
+                "Number[psor]": true,
+                "Person[psor]": true
+              },
+              "full": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "fi-3003",
+      "text": "Lentokenttäbussi pysähtyi rautatieasemalla.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples_ns": [
+            321375
+          ],
+          "avg_ms": 0.321375,
+          "p50_ms": 0.321375,
+          "p95_ms": 0.321375
+        },
+        "custom": {
+          "samples_ns": [
+            141666
+          ],
+          "avg_ms": 0.141666,
+          "p50_ms": 0.141666,
+          "p95_ms": 0.141666
+        },
+        "omorfi": {
+          "samples_ns": [
+            381949542
+          ],
+          "avg_ms": 381.949542,
+          "p50_ms": 381.949542,
+          "p95_ms": 381.949542
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 2,
+          "unresolved_tokens": 1,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 2,
+            "punct": 1,
+            "stub": 1
+          },
+          "timings": {
+            "analyze_ns": 52208,
+            "lookup_forms_ns": 188209,
+            "lookup_glosses_ns": 73250,
+            "resolve_sentences_ns": 2708,
+            "enrich_words_ns": 2958,
+            "total_ns": 321375
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "compound": 1,
+            "dict": 2,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 28208,
+            "lookup_forms_ns": 64333,
+            "lookup_glosses_ns": 43666,
+            "resolve_sentences_ns": 1542,
+            "enrich_words_ns": 2083,
+            "total_ns": 141666
+          }
+        },
+        "omorfi": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "analyzer:omorfi": 2,
+            "override:compound": 1,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 381628042,
+            "lookup_forms_ns": 216834,
+            "lookup_glosses_ns": 69916,
+            "resolve_sentences_ns": 14541,
+            "enrich_words_ns": 4083,
+            "total_ns": 381949542
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Lentokenttäbussi",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "lentokenttäbussi",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "lentokenttäbussi",
+              "pos": "NOUN",
+              "source": "stub",
+              "resolved": false,
+              "trace": [
+                "analyzer:rust lemma=lentokenttäbussi pos=NOUN",
+                "fallback:stub lemma=lentokenttäbussi pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "pysähtyi",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pysähtyä",
+              "pos": "VERB",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pysähtyi",
+              "pos": "VERB",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=pysähtyi pos=NOUN",
+                "resolution:dict lemma=pysähtyi pos=VERB"
+              ]
+            },
+            "match": {
+              "lemma": false,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Mood": true,
+                "Number": true,
+                "Person": true,
+                "Tense": true,
+                "VerbForm": false,
+                "Voice": false
+              },
+              "full": false
+            }
+          },
+          {
+            "surface": "rautatieasemalla",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "rautatieasema",
+              "pos": "NOUN",
+              "grammar_label": "adessive",
+              "feats": "Case=Ade|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "rautatieasema",
+              "pos": "NOUN",
+              "grammar_label": "adessive",
+              "feats": "Case=Ade|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=rautatieasemalla pos=NOUN",
+                "resolution:dict lemma=rautatieasema pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Lentokenttäbussi",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "lentokenttäbussi",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "lentokenttäbussi",
+              "pos": "NOUN",
+              "source": "compound",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=lentokenttäbussi pos=NOUN",
+                "resolution:compound lemma=lentokenttäbussi pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "pysähtyi",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pysähtyä",
+              "pos": "VERB",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pysähtyi",
+              "pos": "VERB",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=pysähtyi pos=NOUN",
+                "resolution:dict lemma=pysähtyi pos=VERB"
+              ]
+            },
+            "match": {
+              "lemma": false,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Mood": true,
+                "Number": true,
+                "Person": true,
+                "Tense": true,
+                "VerbForm": false,
+                "Voice": false
+              },
+              "full": false
+            }
+          },
+          {
+            "surface": "rautatieasemalla",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "rautatieasema",
+              "pos": "NOUN",
+              "grammar_label": "adessive",
+              "feats": "Case=Ade|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "rautatieasema",
+              "pos": "NOUN",
+              "grammar_label": "adessive",
+              "feats": "Case=Ade|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=rautatieasemalla pos=NOUN",
+                "resolution:dict lemma=rautatieasema pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ],
+        "omorfi": [
+          {
+            "surface": "Lentokenttäbussi",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "lentokenttäbussi",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "lentokenttäbussi",
+              "pos": "NOUN",
+              "source": "override:compound",
+              "resolved": true,
+              "trace": [
+                "analyzer:omorfi lemma=Lentokenttäbussi pos=X",
+                "rule:custom_fallback lemma=lentokenttäbussi pos=NOUN source=compound"
+              ],
+              "rule_trace": [
+                "prefer_custom_fallback_when_unknown"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "pysähtyi",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pysähtyä",
+              "pos": "VERB",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pysähtyä",
+              "pos": "VERB",
+              "feats": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act",
+              "source": "analyzer:omorfi",
+              "resolved": true,
+              "trace": [
+                "analyzer:omorfi lemma=pysähtyä pos=VERB"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Mood": true,
+                "Number": true,
+                "Person": true,
+                "Tense": true,
+                "VerbForm": true,
+                "Voice": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "rautatieasemalla",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "rautatieasema",
+              "pos": "NOUN",
+              "grammar_label": "adessive",
+              "feats": "Case=Ade|Number=Sing"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "rautatieasema",
+              "pos": "NOUN",
+              "grammar_label": "adessive",
+              "feats": "Case=Ade|Number=Sing",
+              "source": "analyzer:omorfi",
+              "resolved": true,
+              "trace": [
+                "analyzer:omorfi lemma=rautatieasema pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "fi-3004",
+      "text": "Kirjahyllyssäni on valokuvia.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples_ns": [
+            117750
+          ],
+          "avg_ms": 0.11775,
+          "p50_ms": 0.11775,
+          "p95_ms": 0.11775
+        },
+        "custom": {
+          "samples_ns": [
+            76916
+          ],
+          "avg_ms": 0.076916,
+          "p50_ms": 0.076916,
+          "p95_ms": 0.076916
+        },
+        "omorfi": {
+          "samples_ns": [
+            386435000
+          ],
+          "avg_ms": 386.435,
+          "p50_ms": 386.435,
+          "p95_ms": 386.435
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 22958,
+            "lookup_forms_ns": 45334,
+            "lookup_glosses_ns": 37708,
+            "resolve_sentences_ns": 6417,
+            "enrich_words_ns": 3833,
+            "total_ns": 117750
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 14208,
+            "lookup_forms_ns": 30125,
+            "lookup_glosses_ns": 27542,
+            "resolve_sentences_ns": 1208,
+            "enrich_words_ns": 1667,
+            "total_ns": 76916
+          }
+        },
+        "omorfi": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "analyzer:omorfi": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 386102833,
+            "lookup_forms_ns": 214167,
+            "lookup_glosses_ns": 76167,
+            "resolve_sentences_ns": 10875,
+            "enrich_words_ns": 4208,
+            "total_ns": 386435000
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Kirjahyllyssäni",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kirjahylly",
+              "pos": "NOUN",
+              "feats": "Case=Ine|Number=Sing|Number[psor]=Sing|Person[psor]=1"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kirjahylly",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=kirjahyllyssäni pos=NOUN",
+                "resolution:dict lemma=kirjahylly pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true,
+                "Number[psor]": false,
+                "Person[psor]": false
+              },
+              "full": false
+            }
+          },
+          {
+            "surface": "valokuvia",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "valokuva",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Plur"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "valokuva",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Plur",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=valokuvia pos=NOUN",
+                "resolution:dict lemma=valokuva pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Kirjahyllyssäni",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kirjahylly",
+              "pos": "NOUN",
+              "feats": "Case=Ine|Number=Sing|Number[psor]=Sing|Person[psor]=1"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kirjahylly",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=kirjahyllyssäni pos=NOUN",
+                "resolution:dict lemma=kirjahylly pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true,
+                "Number[psor]": false,
+                "Person[psor]": false
+              },
+              "full": false
+            }
+          },
+          {
+            "surface": "valokuvia",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "valokuva",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Plur"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "valokuva",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Plur",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=valokuvia pos=NOUN",
+                "resolution:dict lemma=valokuva pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ],
+        "omorfi": [
+          {
+            "surface": "Kirjahyllyssäni",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "kirjahylly",
+              "pos": "NOUN",
+              "feats": "Case=Ine|Number=Sing|Number[psor]=Sing|Person[psor]=1"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "kirjahylly",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "Case=Ine|Number=Sing|Number[psor]=Sing|Person[psor]=1",
+              "source": "analyzer:omorfi",
+              "resolved": true,
+              "trace": [
+                "analyzer:omorfi lemma=kirjahylly pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true,
+                "Number[psor]": true,
+                "Person[psor]": true
+              },
+              "full": true
+            }
+          },
+          {
+            "surface": "valokuvia",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "valokuva",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Plur"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "valokuva",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "Case=Par|Number=Plur",
+              "source": "analyzer:omorfi",
+              "resolved": true,
+              "trace": [
+                "analyzer:omorfi lemma=valokuva pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "feats": {
+                "Case": true,
+                "Number": true
+              },
+              "full": true
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
