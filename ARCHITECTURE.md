@@ -346,9 +346,9 @@ Files:
 - `cmd/fetchekilex/` — resumable Ekilex `/api/word/details` scraper
 - `cmd/reduceekilex/` — reduces raw payloads into sharded JSONL + TSV
   artifacts, with golden tests covering all 41 Estonian inflection classes
-- `cmd/genlemmatizertables/` — generates the FI lemmatizer JSON tables
-  under `localdata/lemmatizer-fi-et/tables/` from a local libvoikko
-  `mor.vfst` (no transducer blob committed)
+- `cmd/genlemmatizertables/` — generates FI/ET lemmatizer JSON tables
+  under `localdata/lemmatizer-fi-et/tables/` from local analyser files
+  (`mor.vfst` for FI, `.hfstol` for ET; no analyser blob committed)
 - `cmd/fetchfrequency/` — downloads public FI/ET frequency baselines
   (OpenSubtitles + UD treebanks) into `localdata/frequency/` for
   comparison against user-aggregated frequency
@@ -521,7 +521,7 @@ Estonian (live):
 Finnish (Phases 1–3 shipped, Phase 4 superseded by FST runtime, Phase 5 partially shipped):
 
 - analyzer baseline: Omorfi adapter slot
-- lexical sources: kaikki.org (priority 20) + Kotus sanalista (priority 10,
+- lexical sources: kaikki.org (priority 10) + Kotus sanalista (priority 10,
   fills `paradigm_class`)
 - generated morphology tables: `pkg/lemmatizer-fi-et/` reads JSON tables
   from `localdata/lemmatizer-fi-et/tables/` (gitignored per
@@ -625,10 +625,9 @@ The intended sequence from the current codebase is:
 3. use eval regressions and observability metrics to drive targeted parser fixes
 4. compare custom rules against the Omorfi (FI) and EstNLTK (ET) baselines
 5. continue the lexical pipelines:
-   - **ET**: production Estonian lemmatizer-table generator — analogous
-     to `cmd/genlemmatizertables` for FI, sourcing local Giellalt/HFST
-     analyses. Until then, ET FST is disabled at runtime (dict-only path
-     runs).
+   - **ET**: production Estonian lemmatizer table generation now uses
+     `cmd/genlemmatizertables -lang et -hfstol ...`; the remaining work is
+     a production wordlist, provenance notes, row counts, and eval gate.
    - **FI**: production FI lemmatizer-table generation against a real
      word list (current `cmd/genlemmatizertables/wordlists/fi_smoke.txt`
      ships as a smoke fixture). Phases 1–3 of

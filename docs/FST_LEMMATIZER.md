@@ -35,9 +35,9 @@ See also:
   `Analysis` shape:
   - `voikkomap/`
   - `giellaltmap/`
-- [`cmd/genlemmatizertables`](../cmd/genlemmatizertables/), currently a
-  Finnish VFST table generator that reads a local `mor.vfst` plus a
-  seed wordlist and writes generated JSON to
+- [`cmd/genlemmatizertables`](../cmd/genlemmatizertables/), a FI/ET table
+  generator that reads a local `mor.vfst` for FI or `.hfstol` analyser for
+  ET plus a seed wordlist and writes generated JSON to
   `localdata/lemmatizer-fi-et/tables/`.
 
 Test fixtures under [`testdata/lemmatizer/`](../testdata/lemmatizer/)
@@ -263,7 +263,8 @@ generation, even though their transducer blobs are not committed.
 - Add a production-sized FI word list and regenerate
   `localdata/lemmatizer-fi-et/tables/fi_min.json` into a properly named
   production table.
-- Add an ET generator path from a local Giellalt/HFST analyser.
+- Promote the ET generator path from smoke wordlists to a production wordlist
+  with provenance, row counts, and fresh eval.
 - Store table provenance in machine-readable metadata next to the JSON
   tables.
 - Rebaseline parser eval only after production generated tables land.

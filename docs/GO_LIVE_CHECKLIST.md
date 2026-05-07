@@ -7,25 +7,30 @@ real users outside a trusted dev/internal environment.
 
 ## Authentication and Sessions
 
-Current status: blocker.
+Current status: real auth is implemented; remaining go-live work is hardening.
 
-- `POST /api/auth/login` accepts any email/password and creates the user.
-- `getCurrentUser` trusts a plain `user_id` cookie directly.
-- Anyone who can set `user_id=1` can impersonate that user. If that row is an
-  admin, they become an admin.
-- `HttpOnly` and `SameSite=Strict` do not protect against a forged cookie value.
+- `POST /api/auth/register` creates users with Argon2id password hashes.
+- `POST /api/auth/login` verifies passwords and issues a random
+  `session_token` cookie.
+- Session tokens are hashed before storage in `user_sessions`, and logout
+  revokes the server-side session.
+- `getCurrentUser` resolves the authenticated user from the hashed session
+  token, not from a client-provided user id.
+- Legacy alpha users with an empty `password_hash` are bootstrapped on first
+  login; this migration path should be retired before public launch.
 
 Required before go-live:
 
-- Replace the mock login flow with real credential or identity-provider auth.
-- Replace the raw `user_id` cookie with a signed, server-verifiable session.
-- Ensure session cookies are `HttpOnly`, `Secure` in production, scoped to the
-  app path/domain, and have a deliberate expiration policy.
-- Add logout/session invalidation semantics that actually revoke the server-side
-  session.
-- Add regression tests proving a forged `user_id` cookie cannot authenticate.
-- Add regression tests proving non-admin users cannot access admin APIs or admin
-  routes.
+- Remove or explicitly expire the empty-password bootstrap path for legacy
+  alpha accounts.
+- Keep regression tests proving forged/unknown session cookies cannot
+  authenticate.
+- Keep regression tests proving non-admin users cannot access admin APIs or
+  admin routes.
+- Add CSRF protection or strict Origin/Content-Type checks for
+  cookie-authenticated state-changing routes.
+- Decide whether production should use first-party password auth long term or
+  add an identity-provider option.
 
 ## Abuse Controls
 
@@ -38,9 +43,11 @@ queue pressure.
 Required before go-live:
 
 - Add rate limits for anonymous and authenticated `POST /api/parse`.
-- Add rate limits for `POST /api/parse/feedback` and `POST /api/auth/login`.
+- Add rate limits for `POST /api/parse/feedback`, `POST /api/auth/login`, and
+  `POST /api/auth/register`.
 - Keep request-size enforcement for pasted text and verify it is applied before
-  expensive parser work.
+  JSON decoding and expensive parser work.
+- Configure HTTP server read/write/header timeouts.
 - Add IP/account-level throttling or deployment-level WAF limits.
 - Log rejected requests at a level useful for abuse monitoring without storing
   pasted text unnecessarily.
@@ -62,4 +69,3 @@ Required before go-live:
 - Surface the storage behavior in the UI before broad public release.
 - Add a parse-history deletion or retention policy before handling sensitive
   production user data.
-

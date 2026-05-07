@@ -83,7 +83,7 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 
 ### Parser quality
 
-- [ ] **ET lemmatizer table generator** (`cmd/genlemmatizertables-et` or extend the existing binary). The FI generator exists; ET does not, so on a fresh deploy ET FST is empty.
+- [x] **ET lemmatizer table generator** — shipped in `cmd/genlemmatizertables -lang et -hfstol ...` plus `make gen-lemmatizer-tables-et`. Remaining production work is a real ET wordlist, provenance notes, row counts, and a fresh eval gate before relying on a full ET table in deployment.
 - [x] **Re-freeze baselines once gold sets get a `feats` field** — done 2026-05-07k via PR [#139](https://github.com/sagarinbabel/finnestdb/pull/139). All 6 manual gold sets now carry FEATS (`cmd/enrichgoldfeats`); new baselines committed at `docs/baselines/2026-05-07-feats-rich-*`. The `feats_attributes` table is non-empty for omorfi (FI) and estnltk (ET); for `custom` it stays at 0% until the live SQLite DB is re-imported with the new FEATS-aware `cmd/importdict` (runbook in the methodology doc).
 - [ ] **Re-import the live DB to populate `forms.feats`** — ship-after-#139. `go run ./cmd/importdict -lang fi -reimport` (or `-backfill-feats` for no downtime) populates ~26.8M FI rows from kaikki Wiktionary tags; `make import-ekilex-details-et` populates the ET rows from morph_codes. Until this runs, `custom` parser FEATS output stays empty even though all the producer code is in place.
 - [ ] **Remove the `attachCaseLabelIfStemMatches` stopgap** in `internal/store/dict.go` once the FST runtime emits FEATS for direct dict hits. PR [#139](https://github.com/sagarinbabel/finnestdb/pull/139) added `featsFromCaseLabel` so the stopgap's output is at least UD-shaped (`Case=Xxx`); the remove condition still requires production FST tables.
@@ -135,14 +135,14 @@ Phase 1 is gated on FEATS threading (already shipped via [PR #130](https://githu
 
 ### Backend hardening (mostly @chickendude / go-live)
 
-- [ ] **@chickendude go-live**: replace mock auth and raw `user_id` cookie sessions before exposing the app to real users. See [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md).
-- [ ] **@chickendude go-live**: add rate limiting and abuse controls to `POST /api/parse`, `POST /api/parse/feedback`, and login routes before broad public rollout. See [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md).
+- [x] **Legacy mock-auth/raw-cookie replacement** — current auth uses Argon2id password hashes and DB-backed `session_token` sessions. Remaining go-live auth work is bootstrap retirement, CSRF/Origin posture, and operational controls in [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md).
+- [ ] **@chickendude go-live**: add rate limiting and abuse controls to `POST /api/parse`, `POST /api/parse/feedback`, login, and register routes before broad public rollout. See [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md).
 - [ ] Define and implement a retention policy for `parse_sessions.source_text`; current alpha behavior documented in [`docs/FEATURES.md`](docs/FEATURES.md).
 - [ ] Preserve existing `card_state` scheduling data when rebuilding `cards` during schema migrations instead of dropping and recreating.
 - [ ] Batch known/ignored checks during deck creation so card seeding does not do one lookup per unique `(lang, lemma, pos)` pair.
 - [ ] Replace `COUNT(*)` existence checks in known-word and parse-feedback paths with `EXISTS`/short-circuit queries.
 - [ ] Document parse-session storage behavior directly in the parse UI, not only in docs.
-- [ ] **PR 9 — security review and hardening pass** (from consumer alpha plan): auth/session, role enforcement, CSRF, XSS, rate limiting, data isolation, admin-route leakage, correction submission abuse. Findings in `docs/SECURITY_REVIEW_ALPHA.md`.
+- [ ] **Security review and hardening pass**: session bootstrap retirement, role enforcement, CSRF/Origin checks, XSS, request-size caps before JSON decode, HTTP timeouts, rate limiting, data isolation, admin-route leakage, and correction-submission abuse. Findings doc is planned as `docs/SECURITY_REVIEW_ALPHA.md`.
 - [ ] Either implement real auth/deck/review behavior or narrow the exposed stub endpoints to match current product focus. Remove or isolate non-parser scaffolding that no longer reflects the active roadmap.
 - [ ] **Background job system** for deck creation: design async architecture, implement job queue (in-memory or external), add "processing" state to deck model, webhook/polling status updates.
 - [ ] **Operational constraints for parsing**: define expected latency per 10k tokens, max retries, when to push to background job/queue so `/api/decks` returns quickly with a "processing" state rather than blocking.
@@ -619,8 +619,8 @@ Already on this list and just confirmed by the review:
 
 ### Post-Alpha Follow-Ups from Alpha PR Review
 
-- [ ] @chickendude go-live: replace mock auth and raw `user_id` cookie sessions before exposing the app to real users; see `docs/GO_LIVE_CHECKLIST.md`
-- [ ] @chickendude go-live: add rate limiting and abuse controls to `POST /api/parse`, `POST /api/parse/feedback`, and login routes before broad public rollout; see `docs/GO_LIVE_CHECKLIST.md`
+- [x] Replace the legacy mock-auth/raw-cookie path; current auth uses Argon2id password hashes and DB-backed `session_token` sessions
+- [ ] @chickendude go-live: add rate limiting and abuse controls to `POST /api/parse`, `POST /api/parse/feedback`, login, and register routes before broad public rollout; see `docs/GO_LIVE_CHECKLIST.md`
 - [ ] Define and implement a retention policy for `parse_sessions.source_text`; current alpha behavior is documented in `docs/FEATURES.md`
 - [ ] Preserve existing `card_state` scheduling data when rebuilding `cards` during schema migrations instead of dropping and recreating the table
 - [ ] Batch known/ignored checks during deck creation so card seeding does not do one lookup per unique `(lang, lemma, pos)` pair
