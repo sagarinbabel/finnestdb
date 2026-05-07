@@ -492,7 +492,7 @@ Product and strategy:
 - [docs/ideas.md](docs/ideas.md) — exploratory roadmap, includes AI-native phasing
 
 Lexical pipelines:
-- [docs/FINNISH_LEXICAL_PLAN.md](docs/FINNISH_LEXICAL_PLAN.md) — Kotus + Voikko + kaikki.org
+- [docs/LEXICAL_PLAN.md](docs/LEXICAL_PLAN.md) — Kotus + Voikko + kaikki.org
 - [docs/ESTONIAN_LEXICAL_PLAN.md](docs/ESTONIAN_LEXICAL_PLAN.md) — EstNLTK + EKI/Ekilex
 
 Parser tooling:

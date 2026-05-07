@@ -86,7 +86,7 @@ Done. processed=104743  paradigms_upgraded=46324  new_lemmas_inserted=4289
 
 **Commit**: [`615556e`][c-2026-05-06c] (PRs [#85](https://github.com/sagarinbabel/finnestdb/pull/85), [#86](https://github.com/sagarinbabel/finnestdb/pull/86), [#89](https://github.com/sagarinbabel/finnestdb/pull/89))
 
-Phase 2 of [`docs/FINNISH_LEXICAL_PLAN.md`](FINNISH_LEXICAL_PLAN.md) is shipped across both languages. Each kaikki and Ekilex sense's English translation is now its own row in the `translations` table; the read path consults `translations` first, falling back to `lemmas.gloss` only when no row matches.
+Phase 2 of [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) is shipped across both languages. Each kaikki and Ekilex sense's English translation is now its own row in the `translations` table; the read path consults `translations` first, falling back to `lemmas.gloss` only when no row matches.
 
 **Headline numbers** (custom parser): identical to 2026-05-06b. Phase 2 doesn't move accuracy or coverage — eval doesn't measure gloss text correctness. The change is structural, not behavioral.
 

@@ -67,7 +67,7 @@ This is the regression Phase 4 (Voikko) would trigger on FI without a
 fix: every form-source we add multiplies homonym candidates, and
 `BatchLookupForms` arbitrarily picks one. **The source-priority +
 POS-aware resolution layer described in
-[FINNISH_LEXICAL_PLAN.md "Resolution Layer"](../FINNISH_LEXICAL_PLAN.md)
+[LEXICAL_PLAN.md "Resolution Layer"](../LEXICAL_PLAN.md)
 needs to land before more form-sources do**, or each new source
 trades coverage gains for accuracy losses.
 

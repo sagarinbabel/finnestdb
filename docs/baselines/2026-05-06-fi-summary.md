@@ -3,7 +3,7 @@
 Refresh of [`2026-04-28-fi-summary.md`](2026-04-28-fi-summary.md) on
 current `main` (commit `46d8b77`). Anchors PR 0 of the Finnish lexical
 plan — the reference point Phases 2–5 measure regressions/improvements
-against. See [`docs/FINNISH_LEXICAL_PLAN.md`](../FINNISH_LEXICAL_PLAN.md).
+against. See [`docs/LEXICAL_PLAN.md`](../LEXICAL_PLAN.md).
 
 ## Dictionary state
 

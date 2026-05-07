@@ -1,111 +1,100 @@
-# FST lemmatizer migration — roadmap
+# Generated-table lemmatizer roadmap
 
-Status: planning + pre-change baselines locked
-Date: 2026-05-06
+Status: policy-adjusted after PRs #107, #108, #110, and #112. The repo
+now follows [docs/ARTIFACT_POLICY.md](ARTIFACT_POLICY.md): generated
+factual tables may be committed; upstream transducer blobs may not.
+
+Date: 2026-05-06 to 2026-05-07
 Driver: Phase 3.5 spike, recorded in
 [experiments/2026-05-06-phase3.5-voikko-generator-spike.md](../experiments/2026-05-06-phase3.5-voikko-generator-spike.md)
 
 ## What changed in plan
 
-The original [Finnish lexical plan](FINNISH_LEXICAL_PLAN.md) had a Phase 4
-that would offline-generate ~6M Finnish forms via a Voikko paradigm
-generator and import them into SQLite as static rows. The Phase 3.5
-spike shut that path down: libvoikko ships an *analyzer* runtime, not a
-generator, and the public C API has no generation function.
+The original Finnish lexical plan had a Phase 4 that would
+offline-generate millions of Finnish forms via a Voikko paradigm
+generator and import them into SQLite. The Phase 3.5 spike found that
+the released Voikko tooling exposes analysis, not paradigm generation,
+through the practical public interfaces available to this project.
 
-Investigating the alternative paths surfaced a better architecture:
-**port the runtime FSTs themselves to Go and look up surface forms
-directly**, instead of offline-enumerating every paradigm into SQLite.
-This is faster (microsecond lookups vs SQLite hash hits), lighter (~35
-MB of FST data vs millions of rows), and naturally combines two
-lexicons (Voikko's curated VFST + Giellalt's HFST optimised-lookup).
+The first implementation pass then explored pure-Go readers for Voikko
+VFST and HFST optimised-lookup analyser formats. That code remains
+useful for local generation and test fixtures, but the shipping policy
+changed before merge: the repository should not commit or embed
+transducer blobs.
 
-## Final architecture
+The accepted architecture is therefore:
 
-A new package `pkg/lemmatizer-fi-et/` provides:
+1. Keep analyser readers and tag mappers as generator support.
+2. Generate factual analysis tables offline from locally available
+   upstream analysers.
+3. Commit only those factual tables and their provenance.
+4. Embed generated tables in the runtime.
 
-- `vfst/` — Go port of libvoikko's
-  [`UnweightedTransducer`](https://github.com/voikko/corevoikko/blob/master/libvoikko/src/fst/UnweightedTransducer.cpp)
-  runtime. Reads `mor.vfst` (Voikko's compiled Finnish morphology
-  analyzer) directly. ~5 MB vendored data. Memory-mapped, sub-µs
-  lookups.
-- `hfstol/` — Go port of HFST's
-  [optimised-lookup runtime](https://github.com/hfst/hfst/tree/master/libhfst/src/implementations/optimized-lookup).
-  Reads `analyser-gt-desc.hfstol` files compiled from
-  [`giellalt/lang-fin`](https://github.com/giellalt/lang-fin) and
-  [`giellalt/lang-est`](https://github.com/giellalt/lang-est).
-  ~26 MB per language.
-- A unified `Lemmatize(word string) []Analysis` that queries both
-  backends per Finnish lookup, merges results, and dedupes by
-  `(lemma, tag-set)`. Voikko-priority on overlap (more curated);
-  Giellalt fills coverage gaps. For Estonian, Giellalt-only (Voikko
-  doesn't cover ET).
+## Current architecture
 
-Runtime closure: pure Go, no cgo, no shared library, no SQLite query on
-the hot path. Existing dictionary tables (`forms`, `lemmas`,
-`paradigm_class`) are still consulted for gloss/translation lookup but
-not for morphological analysis.
+`pkg/lemmatizer-fi-et/` contains:
 
-## Why this beats the original plan
+- `lemmatizer.go` - runtime loader for generated FI/ET JSON tables.
+- `tables/fi_min.json` - minimal Finnish smoke table.
+- `tables/et_min.json` - minimal Estonian smoke table.
+- `tables/fi_wordlist.txt` - seed word list for the current FI smoke
+  table.
+- `vfst/` - reader for local Voikko VFST files, used by generators and
+  tests.
+- `hfstol/` - reader for local HFST optimised-lookup files, used by
+  generators and tests.
+- `voikkomap/` and `giellaltmap/` - tag normalization into the parser's
+  `Analysis` struct.
 
-| Dimension | Original Phase 4 (SQLite seed) | New FST runtime |
+No `.vfst`, `.hfstol`, or `.hfst` files are committed.
+
+## PR sequence after policy cleanup
+
+| PR | Scope after cleanup | Merge gate |
 |---|---|---|
-| Lookup time | ~5 µs (SQLite hash) | ~1 µs (memory-mapped FST) |
-| Disk footprint | ~250 MB seed table + indexes | ~35 MB per language |
-| Build dependency | Voikko paradigm generator (does not exist as released tool) | Giellalt source build (one-time) |
-| Coverage | Voikko only | Voikko + Giellalt union |
-| Runtime deps | None new | None |
-| Refresh cost | Re-run Voikko build pipeline | Bump vendored `.vfst` / `.hfstol` files |
+| #107 | FI table-backed lemmatizer scaffold, VFST reader/generator support, minimal FI smoke table | No vendored blobs; no production eval claims unless production table is committed |
+| #108 | HFST optimised-lookup reader and Giellalt FI tag mapping support for offline generation | No vendored blobs; no claim that runtime uses a production Giellalt FI table |
+| #110 | ET table runtime path and minimal ET smoke table | No vendored blobs; ET eval claims deferred until production ET table exists |
+| #112 | Documentation aligned with generated-table policy | No stale references to shipped transducers, embedded binary growth, or old final deltas |
 
-## PR sequence
+## Baseline policy
 
-| PR | Scope | Acceptance |
-|---|---|---|
-| **0** (this PR) | Pre-change FI + ET baselines, Phase 3.5 spike report, this roadmap | Baselines committed; reviewers understand the plan |
-| **1** | `pkg/lemmatizer-fi-et/vfst/`, vendored `mor.vfst`, golden tests, Voikko-tag → UD-features mapping, `Lemmatize` interface, parser integration for FI | FI eval ≥ baseline on all four datasets; new package has unit tests; integration through `internal/parsecore` |
-| **2** | `pkg/lemmatizer-fi-et/hfstol/`, vendored Giellalt FI `.hfstol`, merged `Lemmatize` results with dedup | FI eval coverage ↑ on at least one dataset; no regressions |
-| **3** | Build `giellalt/lang-est`, vendor ET `.hfstol`, ET integration | ET eval coverage ↑ on at least one dataset |
-| **4** | Final delta vs baseline, `docs/FST_LEMMATIZER.md` (architecture + attribution + perf numbers), update `FINNISH_LEXICAL_PLAN.md` to mark Phase 4 superseded | Numbers documented, plan updated, attribution complete |
+The pre-FST baselines remain useful as historical reference points.
+Post-PR and final eval snapshots from the earlier blob-backed runtime
+were removed or deferred because they were not generated from production
+tables committed under the current policy.
 
-Reviewer for the series: **@chickendude**.
+Future eval snapshots must state:
 
-## Pre-change baselines (snapshot before any FST work)
+- exact table file names;
+- table row counts;
+- upstream source/version;
+- generator command;
+- commit SHA used for the eval.
 
-Captured by `make compare-parsers` and `make compare-parsers-et`,
-parser commit `265dd21` (current `main`):
+## Promotion path
 
-- FI summary: [docs/baselines/2026-05-06-pre-fst-comparison-fi.md](baselines/2026-05-06-pre-fst-comparison-fi.md)
-- ET summary: [docs/baselines/2026-05-06-pre-fst-comparison-et.md](baselines/2026-05-06-pre-fst-comparison-et.md)
-- Per-dataset JSONs at `docs/baselines/2026-05-06-pre-fst-*.json`
+The next production-oriented PR should not change policy again. It
+should add actual generated tables:
 
-Headline numbers (custom parser):
+1. Choose production word lists for FI and ET.
+2. Generate tables from local upstream analysers.
+3. Commit generated tables plus provenance metadata.
+4. Run `go test ./...` and `cargo test`.
+5. Re-run parser comparison scripts.
+6. Add new baseline docs that explicitly name the generated tables.
 
-| Lang | Dataset | Lemma | POS | Coverage |
-|---|---|---:|---:|---:|
-| FI | fi-core | 85.0% | 90.0% | 95.7% |
-| FI | fi-grammar | 96.8% | 98.1% | 99.7% |
-| FI | fi-manual-v1 | 81.4% | 85.7% | 91.2% |
-| FI | fi-manual-v2 | 88.9% | 100.0% | 100.0% |
-| ET | et-grammar | 88.6% | 96.2% | 98.9% |
-| ET | et-manual | 77.8% | 77.8% | 91.7% |
-
-The biggest headroom is on the manual datasets (fi-manual-v1 lemma
-81.4%; et-manual lemma 77.8%) — those are hand-curated harder cases
-where the current SQLite-rule path under-resolves. The FST path should
-particularly help there.
+Until then, the current runtime is a scaffold with smoke fixtures.
 
 ## Attribution
 
-This work depends on three independently-developed open-source
-projects. Their licences will be reproduced verbatim alongside the
-vendored data files in PR 1+:
+The generator path may depend on these upstream projects:
 
-- **libvoikko** (MPL 1.1 / GPLv2 / LGPLv2.1 tri-license) — runtime
-  algorithm reference and `mor.vfst` data file.
-- **HFST** (GPLv3) — runtime algorithm reference for the
-  optimised-lookup format.
-- **GiellaLT lang-fin / lang-est** (GPLv3) — `.hfstol` data files
-  compiled from their lexc sources.
+- **libvoikko / voikko-fi** for Finnish analyses.
+- **HFST** for optimised-lookup tooling and format reference.
+- **GiellaLT lang-fin / lang-est-x-utee** for Finnish and Estonian
+  morphology.
 
-Vendored data inherits the upstream licences. The Go runtime code is
-ours and lives under the project's existing licence.
+License and attribution files under `pkg/lemmatizer-fi-et/data/` are
+kept for auditability. They do not mean the corresponding transducer
+blobs are committed.

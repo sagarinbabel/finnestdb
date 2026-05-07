@@ -327,7 +327,7 @@ If parser-quality work outgrows the volunteer feedback signal, revisit anonymous
 
 ---
 
-## Decision 5: Don't Extend the Case-Suffix Table; the FST is the Real Answer
+## Decision 5: Don't Extend the Case-Suffix Table; Generated Morphology Tables Are the Real Answer
 
 **Date:** 2026-05-06
 
@@ -348,21 +348,20 @@ compounds, etc. Existing TODO items #15 (three-part compound splitting) and
 
 ### Decision
 
-**Freeze the case-suffix table at its current size.** Any further morphology
-investment goes into the pure-Go FST runtime under
-[`pkg/lemmatizer-fi-et/`](../pkg/lemmatizer-fi-et/) — see
-[PR #106](https://github.com/sagarinbabel/finnestdb/pull/106) (roadmap +
-spike) and
-[PR #107](https://github.com/sagarinbabel/finnestdb/pull/107) (Voikko VFST Go
-port, FI step 5).
+**Freeze the case-suffix table at its current size.** Further morphology
+investment goes into generated factual morphology tables under
+[`pkg/lemmatizer-fi-et/tables/`](../pkg/lemmatizer-fi-et/tables/) and the
+offline generator/reader code that can reproduce them from local upstream
+analysers. Per [docs/ARTIFACT_POLICY.md](ARTIFACT_POLICY.md), upstream
+transducer blobs are local-only and are not committed.
 
 Two near-term exceptions are in scope:
 
 1. **The stopgap label-attach pass on dict hits**
    (`attachCaseLabelIfStemMatches` in `internal/store/dict.go`). Lifts grammar
    accuracy off zero on tokens whose stem doesn't change under inflection.
-   Explicitly stopgap; removed once the FST runtime emits FEATS for direct
-   hits.
+   Explicitly stopgap; removed once production generated tables emit FEATS
+   for direct hits.
 2. **Bug fixes** to existing entries if a wrong label is being attached.
 
 ### Reasoning
@@ -402,20 +401,20 @@ morphology. Five reasons, each grounded in real tokens from our gold sets:
    be split *before* suffix logic, and the split needs paradigm-class
    awareness — FST territory.
 
-5. **We are already building the FST.** PRs
-   [#106](https://github.com/sagarinbabel/finnestdb/pull/106) /
-   [#107](https://github.com/sagarinbabel/finnestdb/pull/107) port the
-   libvoikko VFST runtime to pure Go and embed `mor.vfst` directly. The
-   suffix table is throwaway code by the time the FST integration
-   finishes (PR 4 of 4 in that series). Extending it is engineering
-   against our own roadmap.
+5. **We are already building a table-backed morphology path.** PRs
+   [#107](https://github.com/sagarinbabel/finnestdb/pull/107),
+   [#108](https://github.com/sagarinbabel/finnestdb/pull/108), and
+   [#110](https://github.com/sagarinbabel/finnestdb/pull/110) add the
+   generated-table runtime and offline analyser readers. The suffix table
+   should remain fallback code while production tables are generated.
 
 ### Trade-off Accepted
 
 The stopgap will not produce grammar labels for stem-alternating forms
 (`toas`, `Naabri`, `linnas`-as-inessive). That's acceptable because:
 
-- Stem-alternating forms are exactly what the FST handles natively;
+- Stem-alternating forms are exactly what generated analyser-derived
+  tables are meant to cover;
 - The existing 15+17 entries are sufficient to lift grammar accuracy off
   zero on the easy majority case (Finnish has cleaner suffixation than
   Estonian; Estonian's harder cases were always going to need the FST).
@@ -531,5 +530,5 @@ trace in
 | 2026-04-28 | Initial decisions documented: custom parser rationale, architecture, evaluation approach, roadmap |
 | 2026-04-29 | Decision 4 added: parse feedback requires login in v1; source_text persisted only on feedback submit |
 | 2026-04-30 | Recorded parse-feedback persistence amendment: alpha ships authenticated parse-session storage as Option A |
-| 2026-05-06 | Decision 5 added: freeze the case-suffix table; further morphology work goes into the pure-Go FST runtime under `pkg/lemmatizer-fi-et/` (PRs #106/#107) |
+| 2026-05-06 | Decision 5 added: freeze the case-suffix table; further morphology work goes into generated morphology tables under `pkg/lemmatizer-fi-et/tables/` |
 | 2026-05-06 | Decision 6 added: numeric-hyphen tokenization (R1–R4) lives in the shared Rust tokenizer, no per-language rule tables |

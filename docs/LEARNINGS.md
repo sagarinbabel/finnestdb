@@ -12,9 +12,9 @@ to be revisited.
 
 ---
 
-## 2026-05-07 — The FST and the stopgap cover almost completely different paths
+## 2026-05-07 — Pre-policy FST scheduling experiment was not production evidence
 
-**Source:** integration test merging PRs
+**Source:** historical integration test merging pre-policy versions of PRs
 [#106-#112](https://github.com/sagarinbabel/finnestdb/pull/112)
 (FST series), [#111](https://github.com/sagarinbabel/finnestdb/pull/111)
 (ns timer), [#109](https://github.com/sagarinbabel/finnestdb/pull/109)
@@ -24,9 +24,13 @@ to be revisited.
 report). Worktree at `.claude/worktrees/integration-test/` on branch
 `integration-test-2026-05-07`.
 
-**The numbers:**
+This entry is retained as an integration lesson only. It predates the
+generated-table artifact policy and must not be cited as a final runtime
+or eval claim for the current PR stack.
 
-| Dataset            | Cases | Pre-FST grammar | PR #112's claim (FST alone) | Merged stack (FST + stopgap) |
+**The historical numbers:**
+
+| Dataset            | Cases | Pre-FST grammar | Pre-policy FST-only run | Merged stack (FST + stopgap) |
 |--------------------|------:|----------------:|----------------------------:|-----------------------------:|
 | fi-grammar manual  |    80 |            0.0% |                        1.4% |                    **60.8%** |
 | fi-manual-v1       |    22 |            0.0% |                       13.3% |                    **20.0%** |
@@ -45,8 +49,7 @@ grammar-accuracy work of the FST alone on fi-grammar (+59.4pp vs
 than the case-suffix matcher (Number, Tense, Mood, Person, plus richer
 Case coverage on stem-alternating forms). Yet it runs on <5% of inputs
 because of cascading-vs-merging architecture in `BatchLookupForms`.
-PR #112 explicitly defers fixing this as the first of three "follow-up"
-items.
+The old doc branch deferred fixing this as follow-up work.
 
 **What to do:**
 

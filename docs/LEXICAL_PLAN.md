@@ -1,26 +1,88 @@
-# Finnish Lexical Plan
+# Lexical Plan
 
-This is the working plan for making Finnish lexical coverage first-class.
-It is the Finnish counterpart to
-[`docs/ESTONIAN_LEXICAL_PLAN.md`](ESTONIAN_LEXICAL_PLAN.md). Schema-level
-groundwork (multi-source rows, source priority, attribution metadata) is
-shared and lives in the ET track — see [#66] and [#67]. This doc covers
-only what is Finnish-specific.
+This is the working plan for making Finnish and Estonian lexical coverage
+first-class. Schema-level groundwork (multi-source rows, source priority,
+attribution metadata, translations, definitions, and parser eval discipline)
+is shared across languages. Source choices and importer details remain
+language-specific.
 
 [#66]: https://github.com/sagarinbabel/finnestdb/pull/66
 [#67]: https://github.com/sagarinbabel/finnestdb/pull/67
 [#68]: https://github.com/sagarinbabel/finnestdb/pull/68
 
+## Language-agnostic Lexical Architecture
+
+The parser and deck flow query one multi-source dictionary API where:
+
+- **Provenance is row-level and deterministic.** Lemma, form,
+  translation, definition, and generated-table rows identify their
+  source. What the resolver returns is reproducible from committed data.
+- **New sources fill gaps or intentionally override.** Higher-priority
+  sources can win over lower-priority sources; lower-priority sources
+  still contribute candidates where higher-priority sources are silent.
+- **FI and ET share the same shape.** The source mix differs by
+  language, but importer structure, attribution, eval, and resolver
+  semantics should stay shared.
+
+### Schema overview
+
+| Table/artifact | Role | Provenance |
+|---|---|---|
+| `lemmas` | one row per `(lemma, pos, lang, source)` | `source`, `source_priority` |
+| `forms` | one or more `(form, lang, lemma, pos)` candidates | `source`, `source_priority` |
+| `translations` | per-meaning translations into `target_lang` | `source` |
+| `definitions` | monolingual definitions in `lang` | `source` |
+| `dict_metadata` | per-source attribution, version, license, import notes | one row per source |
+| `pkg/lemmatizer-fi-et/tables/` | generated factual morphology analyses | table provenance, generator command, upstream source |
+
+The `forms` primary key allows one surface form to map to multiple
+lemma/POS candidates. That matters for homonyms such as ET `joon` and FI
+`osat`: deck ingest can preserve multiple dictionary candidates while
+the parser still picks one best analysis for display.
+
+### Generated tables and dictionary boundary
+
+The lemmatizer package now follows
+[docs/ARTIFACT_POLICY.md](ARTIFACT_POLICY.md): runtime code embeds
+generated factual tables, not upstream transducer blobs.
+
+Resolution order is:
+
+1. **Generated table lookup** (`pkg/lemmatizer-fi-et/`): exact
+   surface-form analyses from committed JSON tables.
+2. **Multi-source dictionary lookup** (`internal/store/dict.go`):
+   SQLite rows ranked by source priority, source name, and surface
+   plausibility.
+3. **Rule fallback** (`internal/parserules/`): suffix stripping,
+   compound splitting, and language-specific fallback behavior.
+4. **Stub fallback**: preserve the input surface when nothing resolves.
+
+The current FI/ET generated tables are smoke fixtures. They prove the
+integration and policy, not production morphology coverage. Production
+coverage claims require production generated tables plus fresh eval on
+the exact committed data.
+
+### Importer pattern
+
+Each rich source should have a dedicated `cmd/import<source>/` or
+`cmd/gen<artifact>/` entry point. Importers and generators should:
+
+- read the source's native format or local analyser output;
+- write deterministic rows or generated tables;
+- record source, priority, attribution, license, version, and command;
+- be idempotent or support explicit source replacement;
+- keep focused tests and fixtures for reducer/generator behavior.
+
 ## Current Decision
 
-Finnish has no single Sonaveeb-equivalent. We combine three open sources
-into the same lemma/form/translation tables, tagged by `source`, and
-resolve at query time by `source_priority` (mechanism landing in [#67]).
+Finnish has no single Sonaveeb-equivalent. We combine open sources into
+the same lemma/form/translation tables, tag rows by `source`, and resolve
+at query time by `source_priority`.
 
 | Source | Role | License |
 | --- | --- | --- |
 | **Kotus sanalista** | Authoritative lemma list with Kotus inflection class (51 nominal + 76 verb classes) | CC BY 4.0 |
-| **Voikko** | Generator: expands `(lemma, Kotus class)` into the full surface paradigm with morph features | GPL/LGPL — generator binary; output is data |
+| **Voikko / Giellalt-derived tables** | Offline source for generated factual morphology tables; current committed tables are smoke fixtures | Upstream analysers stay local; committed tables need provenance |
 | **kaikki.org (Wiktionary)** | Translations, monolingual definitions, irregular forms not covered by Kotus classes | CC BY-SA 3.0 |
 
 Deliberately not used:
@@ -34,10 +96,8 @@ Deliberately not used:
 
 ## Why This Path
 
-- Voikko is rule-based, so we *compute* the Finnish paradigm rather than
-  trust scraped tables. This is more reliable than any single online
-  dictionary for inflection, including for words Wiktionary covers
-  poorly (rare nouns, neologisms, derivations).
+- Generated morphology tables let us consume rule-based analyser output
+  as plain factual data without shipping the analyser blobs.
 - Kotus is the canonical lemma-and-class authority and is openly
   licensed.
 - kaikki.org is the only practical bulk source for Finnish↔English
@@ -57,17 +117,17 @@ Reference pages:
 
 These were decided before implementation began.
 
-1. **Voikko deployment: precompute paradigms offline.** The build pipeline
-   runs Voikko once, produces a JSONL seed file
-   (`data/voikko/fi-voikko-forms-<version>.jsonl.gz`), and ships it as a
-   static artifact. The runtime importer reads it like any other JSONL
-   source. No cgo, no libvoikko at runtime, same import shape as
-   kaikki.org.
+1. **Generated-table deployment.** The build/generation pipeline may run
+   local upstream analysers, but the repository ships only generated
+   factual tables under `pkg/lemmatizer-fi-et/tables/`. Upstream analyser
+   blobs such as `.vfst`, `.hfstol`, and `.hfst` are local-only and must
+   not be committed.
 2. **Translations and definitions tables land now**, not after Sonaveeb
    integration. The Finnish plan needs them; the Estonian plan benefits
    from them; landing them once avoids two parallel solutions.
-3. **Storage budget acceptable** for the ~6M Voikko-generated form rows
-   (~300–500MB on disk for FI). No on-demand generation.
+3. **Production morphology tables are deferred.** The current committed
+   FI/ET tables are smoke fixtures. Broad runtime/eval claims wait until
+   production generated tables, provenance, and fresh baselines land.
 4. **Adapter packaging: separate `cmd/` binaries per rich source**, matching
    the precedent set by `cmd/importekilex/` on main. New binaries:
    `cmd/importkotus/` and `cmd/importvoikko/`. `cmd/importdict/` stays
@@ -154,32 +214,20 @@ fields in `dict_metadata`.
 - For lemmas already present from kaikki.org: upgrade `paradigm_class`
   in place rather than insert a duplicate row at lower priority.
 
-### `cmd/importvoikko/` (source key `voikko`, default priority 30)
+### `cmd/genlemmatizertables/` (generated morphology tables)
 
-The bit that makes Finnish actually nicer than Estonian: rule-based
-paradigm computation rather than scraped tables.
+The current generated-table path is intentionally narrower than the
+original Voikko seed plan.
 
-- **Offline build step** (run once per Voikko/sanalista version):
-  for every Kotus lemma, call into Voikko to enumerate the inflected
-  forms. The exact entry point is the open question Phase 3.5 (the
-  Voikko generator spike) closes — the installed `voikkospell` ships
-  morphological *analysis* (`-m` / `-M`), not a `--paradigm`
-  *generator* despite some older docs implying otherwise. Likely
-  candidates: libvoikko's C API via Python (`pyvoikko` /
-  `python3-libvoikko`), the standalone `voikkogen` tool when
-  available, or driving `vislcg3` / Giellatekno-style FSTs over the
-  same morphological data Voikko is built from. The spike commits
-  the chosen path before this phase produces the full seed.
-- Ship the JSONL under `data/voikko/` (mirroring `data/ekilex/`),
-  e.g. `data/voikko/fi-voikko-forms-<version>.jsonl.gz`.
-- `cmd/importvoikko/` reads it and writes rows to `forms` with
-  `source='voikko'` and `feats` populated.
-
-Volume estimate:
-
-- ~70k nominals × ~28 productive forms ≈ 2M rows
-- ~25k verbs × ~150 forms ≈ 3.7M rows
-- Total ≈ 6M form rows, ~300–500MB on disk.
+- The generator may read local upstream analysers such as Voikko
+  `mor.vfst`, but those analyser files stay outside git.
+- The committed output is a factual JSON table under
+  `pkg/lemmatizer-fi-et/tables/`.
+- `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst`
+  regenerates the current FI smoke table from
+  `pkg/lemmatizer-fi-et/tables/fi_wordlist.txt`.
+- A production FI/ET table PR must add a production word list,
+  provenance, generator command, row counts, and fresh eval.
 
 ### `cmd/importdict/` — kaikki.org (source key `kaikki`, default priority 20)
 
@@ -272,8 +320,8 @@ boundaries.
   committed the file as a tracked artifact under
   [`data/kotus/`](../data/kotus/) (CC BY 4.0). After import,
   ~49k FI lemmas carry a populated `paradigm_class`. Eval baseline
-  unchanged — Phase 3 is metadata enrichment; Phase 4 (Voikko) is
-  what makes it pay off. See
+  unchanged — Phase 3 is metadata enrichment; production generated
+  morphology tables are what make it pay off. See
   [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) for the
   measurement entry.
 - **Phase 3.5 — Voikko generator spike. (Done, 2026-05-06.)** Confirmed
@@ -284,28 +332,19 @@ boundaries.
   produces correct paradigm forms, but the spike also surfaced a
   better architecture overall — see Phases 4–5 below. Full report:
   [experiments/2026-05-06-phase3.5-voikko-generator-spike.md](../experiments/2026-05-06-phase3.5-voikko-generator-spike.md).
-- **Phase 4 — Voikko seed.** ~~Offline-generate
-  `data/voikko/fi-voikko-forms-<version>.jsonl.gz`, commit it, import
-  via the new `cmd/importvoikko/` binary.~~
-  **Superseded by the FST-runtime architecture below.** A 6M-row
-  static seed turned out to be the wrong artifact — porting the FST
-  *runtime* to Go gives faster lookups, smaller disk footprint, and
-  union coverage of Voikko + Giellalt in one move. See
-  [docs/FST_LEMMATIZER_ROADMAP.md](FST_LEMMATIZER_ROADMAP.md).
-- **Phase 4 (replacement) — FST lemmatizer in Go.** New package
-  `pkg/lemmatizer-fi-et/` with two subpackages: `vfst/` (Voikko VFST
-  runtime, ported from libvoikko sources) and `hfstol/` (HFST
-  optimised-lookup runtime, ported from upstream HFST). Vendored data:
-  `mor.vfst` from libvoikko upstream + `analyser-gt-desc.hfstol` for
-  Finnish (compiled from `giellalt/lang-fin`). Tests:
-  consonant gradation, vowel harmony, *-nen* class, partitive plural
-  resolve correctly via FST lookup. Compare against
-  [`docs/baselines/2026-05-06-pre-fst-*`](baselines/) (frozen
-  pre-change snapshot).
-- **Phase 5 — Estonian via Giellalt.** Repeat the Phase 4 build for
-  `giellalt/lang-est`; vendor ET `.hfstol`; extend `Lemmatize` to
-  cover ET. Voikko has no Estonian model so ET is Giellalt-only.
-  Compare against pre-change ET baselines.
+- **Phase 4 — Voikko seed.** Superseded. The planned committed
+  `data/voikko/fi-voikko-forms-<version>.jsonl.gz` seed is not the
+  shipping path.
+- **Phase 4 (replacement) — generated-table lemmatizer scaffold.**
+  New package `pkg/lemmatizer-fi-et/` embeds generated factual tables
+  from `pkg/lemmatizer-fi-et/tables/` and exposes
+  `Lemmatize(lang, word)`. The package also contains VFST/HFST reader
+  support for local generation, but no transducer blobs are committed.
+  Current FI/ET tables are smoke fixtures, so old final eval deltas are
+  removed/deferred. See [docs/FST_LEMMATIZER.md](FST_LEMMATIZER.md).
+- **Phase 5 — Estonian via generated tables.** ET uses the same table
+  runtime. A production ET PR still needs a generated table from a local
+  Giellalt/HFST source plus provenance and fresh eval.
 
 ## Migration Framework Plan
 
@@ -341,19 +380,17 @@ When that happens, the framework should:
 
 ## Open Questions
 
-All major decisions are locked above. Remaining items to confirm during
-implementation:
+Remaining items to confirm during implementation:
 
-- **Voikko paradigm-generation entry point.** The installed
-  `voikkospell` ships `-m` / `-M` for morphological analysis, not a
-  `--paradigm` generator. Phase 3.5 spike resolves the actual
-  generation path (libvoikko via Python, `voikkogen`, or FST-based
-  alternative) before Phase 4 commits to the full seed.
+- **Production generated-table scope.** Pick the FI and ET word lists,
+  table names, row-count targets, provenance format, and eval gates for
+  the first production generated-table PR.
+- **ET generation path.** Add a generator command for local Giellalt/HFST
+  Estonian analyses, analogous to the current FI VFST smoke generator.
 - **Exact morph-feature schema for `feats`.** UD features are the
-  obvious target, but Voikko's native output uses its own tag set.
-  The adapter script will normalize; mapping table goes in
-  [`scripts/`](../scripts/) and is locked alongside the Phase 3.5
-  spike (so Phase 4 only writes; it doesn't decide).
+  target, but upstream analysers expose native tag sets. The mapping
+  tables should live next to the generator/parser code and be locked
+  before production tables are promoted.
 - **kaikki.org extraction of fi.wiktionary defs vs en.wiktionary
   glosses.** Phase 2 (#85) deferred this — the write path hard-codes
   `target_lang='EN'` because both FI and ET kaikki dumps are
@@ -365,13 +402,12 @@ implementation:
 
 ## See Also
 
-- [`docs/ESTONIAN_LEXICAL_PLAN.md`](ESTONIAN_LEXICAL_PLAN.md) — sibling
-  plan; schema groundwork lives there
+- [`docs/ESTONIAN_LEXICAL_PLAN.md`](ESTONIAN_LEXICAL_PLAN.md) — legacy
+  sibling plan; this document is the consolidated path forward
 - [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md) — what
   is shared vs. language-specific
 - [`docs/OMORFI_ADAPTER.md`](OMORFI_ADAPTER.md) — Omorfi as parser
-  baseline; uses the same FSTs Voikko does, but is a separate concern
-  from data seeding
+  baseline; separate from generated-table shipping policy
 - [`internal/parserules/finnish.go`](../internal/parserules/finnish.go)
   — runtime suffix stripping that complements stored forms
 - [`cmd/importdict/main.go`](../cmd/importdict/main.go) — current
