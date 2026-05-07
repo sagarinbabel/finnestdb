@@ -249,12 +249,15 @@ func (t *Transducer) getMaxTc(stateIndex uint32) uint32 {
 	head := t.decodeTransitionAtIndex(stateIndex)
 	maxTc := uint32(head.moreTrans)
 	if maxTc == 255 {
-		oc := t.decodeTransitionAt(t.transitionStart + (int(stateIndex)+1)*transitionLen)
-		// OverflowCell.moreTransitions occupies bytes 0-3, but we just
-		// reuse the transition decoder's 8-byte slice; its symIn+symOut
-		// pair is the low 32 bits of the cell's first uint32.
-		full := uint32(oc.symIn) | uint32(oc.symOut)<<16
-		maxTc = full + 1
+		maxTc = t.decodeOverflowCount(stateIndex) + 1
 	}
 	return maxTc
+}
+
+func (t *Transducer) decodeOverflowCount(stateIndex uint32) uint32 {
+	// Overflow states store [head transition | overflow cell | t2 | t3 | ...].
+	// The overflow cell's first four bytes are the transition-count extension;
+	// the remaining bytes are padding from the transition table's point of view.
+	off := t.transitionStart + (int(stateIndex)+1)*transitionLen
+	return binary.LittleEndian.Uint32(t.data[off : off+4])
 }
