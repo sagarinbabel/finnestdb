@@ -56,7 +56,18 @@ reports/
 .venv-omorfi/
 
 # Local corpora and manual text imports
+# All third-party data artifacts go here — see docs/ARTIFACT_POLICY.md.
+# Populated by scripts/setup-local.sh (Ekilex shards, Kotus sanalista,
+# Gutenberg silver, etc.). Zip + share with a teammate to bootstrap fast.
 localdata/
+
+# Belt-and-braces: explicitly forbid the legacy data/ subtrees that were
+# tracked before the 2026-05-07 cleanup. Anything new written to data/
+# should now go to localdata/ instead.
+data/ekilex/
+data/kotus/
+data/silver-fi/
+data/silver-fi-runosto/
 
 # UD treebank cache (cloned by scripts/fetch-and-import-ud.sh).
 # ~50 MB per treebank, regenerable from the importer — don't commit.

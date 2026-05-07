@@ -88,7 +88,7 @@ ET's are more invasive.
 morph_code per form, and we throw it away on import.**
 
 ```
-$ awk -F'\t' '$1=="koer"' data/ekilex/forms/k.tsv | head
+$ awk -F'\t' '$1=="koer"' localdata/ekilex/forms/k.tsv | head
 koer	koer	SgN     # Sg Nominative
 koer	koera	SgAdt   # Sg Aditive (rare; "into-position")
 koer	koera	SgG     # Sg Genitive

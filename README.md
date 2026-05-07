@@ -190,27 +190,27 @@ snapshot must stay local and is not needed to import the tracked snapshot.
 For end-to-end Ekilex enrichment (definitions, paradigms, ~6M form rows), the
 pipeline is `cmd/fetchekilex` (resumable scrape) → `cmd/reduceekilex`
 (golden-tested reduce) → tracked sharded data under
-[`data/ekilex/`](data/ekilex/) → `cmd/importekilexdetails` (bulk-load into
+`localdata/ekilex/` → `cmd/importekilexdetails` (bulk-load into
 the dictionary tables, multi-lemma aware). The first three stages run
 offline; only the loader step is required at deploy time.
 
 #### Refreshing Ekilex Data
 
 **Most contributors will not need to run this — the reduced output is already
-committed under [`data/ekilex/`](data/ekilex/).** You only need to run it when
+committed under `localdata/ekilex/`.** You only need to run it when
 refreshing the latest Ekilex data. The full pipeline is four ordered steps;
 most users will only need step 4:
 
 1. **Fetch the list of words** — `make fetch-ekilex-refresh`
-   - re-fetches `/api/public_word/eki` and overwrites the tracked headword list
-     (`data/ekilex/eki-public-words-2026-et.jsonl`)
+   - re-fetches `/api/public_word/eki` and overwrites the local headword list
+     (`localdata/ekilex/eki-public-words-2026-et.jsonl`, gitignored)
    - only updates if the headword set has changed
 2. **Scrape per-word details** — `make fetch-ekilex`
    - see setup instructions below
    - goes through the wordlist from step 1 and pulls `/api/word/details` for every `word_id`
    - writes gzipped raw payloads under `localdata/ekilex/details/raw/` (gitignored)
 3. **Extract / reduce** — `make reduce-ekilex`
-   - reduces the raw payloads into sharded committable artifacts under [`data/ekilex/`](data/ekilex/):
+   - reduces the raw payloads into sharded committable artifacts under `localdata/ekilex/`:
      - `definitions/<letter>.jsonl`: extracts lemma + morphology + meanings
      - `forms/<letter>.tsv`: a list of inflected forms, one row per inflected form with the corresponding lemma
    - golden-tested; see the `reduce-ekilex` notes in [Makefile](Makefile).
@@ -439,7 +439,7 @@ What **does** exist now for parser research:
 - a parser evaluation CLI
 - external adapter slots for the Omorfi (FI) and EstNLTK (ET) baselines
 - an Ekilex (ET) extraction pipeline (`fetchekilex` → `reduceekilex`)
-  with golden-tested reductions tracked under `data/ekilex/`
+  with golden-tested reductions written to `localdata/ekilex/` (gitignored)
 
 So the custom mode is stronger than the basic mode for many dictionary-backed
 cases, but it is still not a full morphology parser.
@@ -470,8 +470,9 @@ cases, but it is still not a full morphology parser.
   dict.go                 BatchLookupForms / BatchLookupGlosses
 /parser                   Rust tokenizer / sentence splitter (stub heuristics)
 /web                      Frontend (HTML, CSS, TypeScript)
-/data/ekilex              Tracked Ekilex CC BY 4.0 snapshots: public-word JSONL,
-                          sharded definitions/forms reductions, NOTICE.md
+/localdata                Gitignored. Populated by `make setup-local` — Ekilex
+                          CC BY 4.0 shards, Kotus sanalista, silver corpora.
+                          Zip + share with teammates for fast bootstrap.
 /testdata/parser-eval     Frozen gold datasets per language
 /docs/baselines           Frozen parser-eval baseline reports
 finnestdb-prd-alpha.md    Full product requirements document

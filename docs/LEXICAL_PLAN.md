@@ -317,8 +317,8 @@ boundaries.
   PR 3.2 replaced the parser with the real TSV format from the
   official 2024 distribution
   (`https://kaino.kotus.fi/lataa/nykysuomensanalista2024.txt`) and
-  committed the file as a tracked artifact under
-  [`data/kotus/`](../data/kotus/) (CC BY 4.0). After import,
+  fetched into the gitignored `localdata/kotus/` via `make setup-local`
+  (CC BY 4.0; see [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md)). After import,
   ~49k FI lemmas carry a populated `paradigm_class`. Eval baseline
   unchanged — Phase 3 is metadata enrichment; production generated
   morphology tables are what make it pay off. See

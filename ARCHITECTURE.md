@@ -41,7 +41,7 @@ Current product surface on `main`:
   plus dedicated `translations` and `definitions` tables
 - Estonian source-data pipeline end-to-end: `cmd/fetchekilex` resumable
   scraper → `cmd/reduceekilex` golden-tested reducer → tracked CC BY 4.0
-  artifacts under `data/ekilex/` (~177k headwords) → loaded into the
+  artifacts under `localdata/ekilex/` (~177k headwords) → loaded into the
   dictionary tables by `cmd/importekilexdetails` (~178k lemmas, ~6.2M
   form rows, ~15s wall time)
 - multi-lemma `forms` PK `(form, lang, lemma, pos)`: a single ambiguous
@@ -340,7 +340,7 @@ Files:
   shape via `-source-key`)
 - `cmd/importekilex/` — compact Ekilex public-headword snapshot loader
 - `cmd/importekilexdetails/` — loads the reduced Ekilex data drop
-  (`data/ekilex/{definitions,forms}/`) into the dictionary tables;
+  (`localdata/ekilex/{definitions,forms}/`) into the dictionary tables;
   ~178k lemmas + ~6.2M form rows
 - `cmd/fetchekilex/` — resumable Ekilex `/api/word/details` scraper
 - `cmd/reduceekilex/` — reduces raw payloads into sharded JSONL + TSV
@@ -441,7 +441,7 @@ Files:
   manual sets, fi-grammar-v1)
 - `testdata/parser-eval/{fi,et}/gold-train/` — gitignored UD train
   splits, used for OOV/coverage only
-- `data/silver-fi/` — Plan C silver-tier corpus (Gutenberg-FI raw text
+- `localdata/silver-fi/` — Plan C silver-tier corpus (Gutenberg-FI raw text
   + JSONL manifest); morphological annotation deferred to PR 4
 - `docs/baselines/` — frozen baseline reports per parser/language
 - `docs/PARSER_EVAL_DATASETS.md`
@@ -494,7 +494,7 @@ Estonian (live):
 - analyzer baseline: EstNLTK / Vabamorf via the `estnltk` adapter
 - lexical sources: kaikki.org (priority 10) + EKI/Ekilex (priority 20)
 - Ekilex bulk path: `cmd/fetchekilex` → `cmd/reduceekilex` → tracked
-  sharded artifacts in `data/ekilex/` → loaded by
+  sharded artifacts in `localdata/ekilex/` → loaded by
   `cmd/importekilexdetails` (multi-lemma aware, with morph-class
   homonym disambiguation and `(lemma, pos)` gloss merging)
 - Ekilex API path (smaller queries, on-demand): `cmd/importdict
@@ -586,7 +586,7 @@ The intended sequence from the current codebase is:
 3. use eval regressions and observability metrics to drive targeted parser fixes
 4. compare custom rules against the Omorfi (FI) and EstNLTK (ET) baselines
 5. continue the lexical pipelines:
-   - **ET**: load the reduced Ekilex artifacts from `data/ekilex/` into
+   - **ET**: load the reduced Ekilex artifacts from `localdata/ekilex/` into
      the dictionary tables (in flight as
      [#78](https://github.com/sagarinbabel/finnestdb/pull/78))
    - **FI**: execute Phases 2–5 of
