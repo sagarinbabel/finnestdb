@@ -1,0 +1,87 @@
+{
+  "maja": [
+    {
+      "Lemma": "maja",
+      "UPOS": "NOUN",
+      "GrammarLabel": "",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Raw": "generated-table"
+    }
+  ],
+  "majas": [
+    {
+      "Lemma": "maja",
+      "UPOS": "NOUN",
+      "GrammarLabel": "",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Raw": "generated-table"
+    }
+  ],
+  "lapse": [
+    {
+      "Lemma": "laps",
+      "UPOS": "NOUN",
+      "GrammarLabel": "",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Raw": "generated-table"
+    }
+  ],
+  "kooli": [
+    {
+      "Lemma": "kool",
+      "UPOS": "NOUN",
+      "GrammarLabel": "",
+      "Number": "Sing",
+      "Tense": "",
+      "Mood": "",
+      "Person": "",
+      "Raw": "generated-table"
+    }
+  ],
+  "oli": [
+    {
+      "Lemma": "olema",
+      "UPOS": "VERB",
+      "GrammarLabel": "",
+      "Number": "Sing",
+      "Tense": "Past",
+      "Mood": "Ind",
+      "Person": "3",
+      "Raw": "generated-table"
+    }
+  ],
+  "teen": [
+    {
+      "Lemma": "tegema",
+      "UPOS": "VERB",
+      "GrammarLabel": "",
+      "Number": "Sing",
+      "Tense": "Pres",
+      "Mood": "Ind",
+      "Person": "1",
+      "Raw": "generated-table"
+    }
+  ],
+  "tegin": [
+    {
+      "Lemma": "tegema",
+      "UPOS": "VERB",
+      "GrammarLabel": "",
+      "Number": "Sing",
+      "Tense": "Past",
+      "Mood": "Ind",
+      "Person": "1",
+      "Raw": "generated-table"
+    }
+  ]
+}
+

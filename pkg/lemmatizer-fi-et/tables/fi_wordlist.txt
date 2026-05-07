@@ -1,0 +1,12 @@
+# Minimal FI wordlist for lemmatizer tables.
+# Extend as needed; regenerate tables offline (see docs/ARTIFACT_POLICY.md).
+talo
+talossa
+taloja
+käden
+naisen
+olen
+kysyit
+hyvää
+pankkiautomaatista
+

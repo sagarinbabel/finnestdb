@@ -1,33 +1,26 @@
 # `data/et/`
 
-Vendored Estonian morphology data compiled by Giellalt upstream.
+Licensing stubs / provenance notes for upstream Estonian morphology sources.
 
-## `analyser-gt-desc.hfstol`
+## Policy
 
-The Giellalt Estonian morphology analyser in HFST optimised-lookup
-binary format. Compiled from
-[`giellalt/lang-est-x-utee`](https://github.com/giellalt/lang-est-x-utee)
-lexc/twolc sources via `make`, using HFST 3.17.1 (`hfst-fst2fst -O`).
-Licensed under GPLv3+; see `LICENSE-hfst.txt` (HFST runtime algorithm)
-and `LICENSE-giellalt-lang-est.txt` (linguistic data).
+This repository does **not** vendor or embed transducer blobs (e.g.
+`.hfstol`, `.hfst`) in-tree. We ship **generated factual tables** derived
+offline from upstream analysers instead (see `pkg/lemmatizer-fi-et/tables/`
+and `docs/ARTIFACT_POLICY.md`).
 
-This file is read at runtime by [`pkg/lemmatizer-fi-et/hfstol`](../../hfstol)
-and embedded into the binary at compile time via `//go:embed` from
-[`../../lemmatizer.go`](../../lemmatizer.go).
+The licenses in this directory are retained as references for the
+upstream sources used when generating those tables.
 
-To refresh: rebuild lang-est-x-utee against a current HFST toolchain
-(see [docs/FST_LEMMATIZER_ROADMAP.md](../../../../docs/FST_LEMMATIZER_ROADMAP.md))
-and copy the new `.hfstol` here.
+## Upstream: GiellaLT lang-est-x-utee + HFST optimised-lookup
 
-## Provenance
+GiellaLT Estonian morphology analysers are often produced as HFST
+optimised-lookup artifacts (e.g. `analyser-gt-desc.hfstol`), compiled from
+[`giellalt/lang-est-x-utee`](https://github.com/giellalt/lang-est-x-utee).
 
-```
-analyser-gt-desc.hfstol:
-  sha256 = fd3e5ec6179484e2a0eaf6f9b87e5285d0f5d41045478d8b971e586ba1150e17
-  source: built locally from giellalt/lang-est-x-utee@HEAD
-  HFST version: 3.17.1
-  built: 2026-05-06
-```
+HFST tooling/runtime and many GiellaLT resources are distributed under
+GPL-family licenses; those transducer blobs must not be committed here.
+Instead, use them offline to generate factual tables.
 
 ## A note on the repo name
 
