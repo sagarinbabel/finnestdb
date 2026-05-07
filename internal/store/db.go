@@ -25,14 +25,16 @@ type DB struct {
 	lem     *lemmatizer.Lemmatizer
 }
 
-// finnishLemmatizer returns the (lazy-loaded) FST lemmatizer, or nil
-// if loading failed. Callers must tolerate a nil result and fall back
-// to the SQLite-only resolution chain.
-func (d *DB) finnishLemmatizer() *lemmatizer.Lemmatizer {
+// fstLemmatizer returns the (lazy-loaded) FST lemmatizer, or nil if
+// loading failed. Callers must tolerate a nil result and fall back to
+// the SQLite-only resolution chain. Both FI and ET share one loaded
+// instance — the embedded data files are inert until Lemmatize is
+// called for that language.
+func (d *DB) fstLemmatizer() *lemmatizer.Lemmatizer {
 	d.lemOnce.Do(func() {
 		l, err := lemmatizer.New()
 		if err != nil {
-			log.Printf("store: lemmatizer init failed (FI FST disabled): %v", err)
+			log.Printf("store: lemmatizer init failed (FST analyzers disabled): %v", err)
 			return
 		}
 		d.lem = l

@@ -49,6 +49,48 @@ func TestNewAndLemmatize_Finnish(t *testing.T) {
 	}
 }
 
+func TestNewAndLemmatize_Estonian(t *testing.T) {
+	l, err := New()
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	t.Cleanup(func() { _ = l.Close() })
+
+	cases := []struct {
+		surface  string
+		wantLem  string
+		wantPOS  string
+	}{
+		{"maja", "maja", "NOUN"},                    // house
+		{"majas", "maja", "NOUN"},                   // house+inessive
+		{"lapse", "laps", "NOUN"},                    // child+genitive (consonant gradation ps→ps)
+		{"kooli", "kool", "NOUN"},                    // school+genitive (multiple readings)
+		{"oli", "olema", "VERB"},                     // was (3sg past of olema)
+		{"teen", "tegema", "VERB"},                   // I do (1sg present)
+		{"tegin", "tegema", "VERB"},                  // I did (1sg past)
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.surface, func(t *testing.T) {
+			analyses := l.Lemmatize("ET", tc.surface)
+			if len(analyses) == 0 {
+				t.Fatalf("Lemmatize(ET, %q): no analyses", tc.surface)
+			}
+			matched := false
+			for _, a := range analyses {
+				if a.Lemma == tc.wantLem && a.UPOS == tc.wantPOS {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				t.Errorf("Lemmatize(ET, %q) had no analysis matching {lemma=%q UPOS=%q}.\nAll: %+v",
+					tc.surface, tc.wantLem, tc.wantPOS, analyses)
+			}
+		})
+	}
+}
+
 func TestLemmatize_UnknownLanguage(t *testing.T) {
 	l, _ := New()
 	defer l.Close()

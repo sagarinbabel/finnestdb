@@ -17,6 +17,8 @@ import (
 //go:embed tables/fi_min.json
 var fiMinTableJSON []byte
 
+//go:embed tables/et_min.json
+var etMinTableJSON []byte
 // Analysis is one structured reading of a surface form.
 type Analysis = voikkomap.Analysis
 
@@ -24,6 +26,7 @@ type Analysis = voikkomap.Analysis
 // calls per language. Safe for concurrent use after construction.
 type Lemmatizer struct {
 	fi map[string][]Analysis
+	et map[string][]Analysis
 }
 
 // New constructs a Lemmatizer with all currently-supported language
@@ -33,12 +36,17 @@ func New() (*Lemmatizer, error) {
 	if err := json.Unmarshal(fiMinTableJSON, &fi); err != nil {
 		return nil, fmt.Errorf("lemmatizer: parse embedded FI table: %w", err)
 	}
-	return &Lemmatizer{fi: fi}, nil
+	var et map[string][]Analysis
+	if err := json.Unmarshal(etMinTableJSON, &et); err != nil {
+		return nil, fmt.Errorf("lemmatizer: parse embedded ET table: %w", err)
+	}
+	return &Lemmatizer{fi: fi, et: et}, nil
 }
 
 // Close releases backing resources. After Close, Lemmatize is unsafe.
 func (l *Lemmatizer) Close() error {
 	l.fi = nil
+	l.et = nil
 	return nil
 }
 
@@ -55,6 +63,11 @@ func (l *Lemmatizer) Lemmatize(lang, word string) []Analysis {
 			return nil
 		}
 		return l.fi[word]
+	case "ET":
+		if l.et == nil || len(l.et) == 0 {
+			return nil
+		}
+		return l.et[word]
 	default:
 		return nil
 	}
