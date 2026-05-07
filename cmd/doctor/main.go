@@ -5,7 +5,7 @@
 //
 // Exit code:
 //   - 0   the dictionary is present and provenance-tagged; everything else
-//         is informational
+//     is informational
 //   - 1   a critical piece is missing (no DB, no FI/ET dictionary)
 //
 // The intent is to surface degraded modes, not to fail the build. A run
@@ -240,10 +240,10 @@ func checkFSTTables() check {
 		}
 	case hasET:
 		return check{
-			name:  "FST lemmatizer tables",
-			level: levelWarn,
+			name:   "FST lemmatizer tables",
+			level:  levelWarn,
 			detail: fmt.Sprintf("FI: missing\nET: %s", humanSize(et)),
-			hint:  "regenerate FI: `make gen-lemmatizer-tables-fi VFST_PATH=...`",
+			hint:   "regenerate FI: `make gen-lemmatizer-tables-fi VFST_PATH=...`",
 		}
 	default:
 		return check{
@@ -329,8 +329,8 @@ func checkETAnalyser() []check {
 		return []check{{
 			name:   "ET morphological analyser (Giellalt hfstol)",
 			level:  levelWarn,
-			detail: "analyser-gt-desc.hfstol not found under pkg/lemmatizer-fi-et/data/et/",
-			hint:   "download from Giellalt lang-est nightly, place in pkg/lemmatizer-fi-et/data/et/, then `make gen-lemmatizer-tables-et HFSTOL_PATH=<path>`",
+			detail: "analyser-gt-desc.hfstol not found under localdata/lemmatizer-fi-et/",
+			hint:   "download from Giellalt lang-est nightly, place at localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol, then `make gen-lemmatizer-tables-et HFSTOL_PATH=localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol`",
 		}}
 	}
 
@@ -342,10 +342,10 @@ func checkETAnalyser() []check {
 	}}
 }
 
-// findHFSTOL searches the expected location for the ET hfstol transducer.
+// findHFSTOL searches the expected localdata location for the ET hfstol transducer.
 func findHFSTOL() string {
 	candidates := []string{
-		"pkg/lemmatizer-fi-et/data/et/analyser-gt-desc.hfstol",
+		"localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol",
 	}
 	for _, p := range candidates {
 		if fileExists(p) {
@@ -508,10 +508,10 @@ func checkRustParser() check {
 		}
 	}
 	return check{
-		name:  "Rust parser shared library",
-		level: levelWarn,
+		name:   "Rust parser shared library",
+		level:  levelWarn,
 		detail: "release build not found under parser/target/release/",
-		hint:  "`make parser` (cargo build --release)",
+		hint:   "`make parser` (cargo build --release)",
 	}
 }
 

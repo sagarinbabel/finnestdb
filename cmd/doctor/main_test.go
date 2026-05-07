@@ -94,6 +94,39 @@ func TestCheckDB_MissingDBFails(t *testing.T) {
 	}
 }
 
+func TestCheckETAnalyserHintUsesLocaldata(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	checks := checkETAnalyser()
+	if len(checks) != 1 {
+		t.Fatalf("expected one ET analyser check, got %d", len(checks))
+	}
+
+	got := checks[0].detail + "\n" + checks[0].hint
+	if !strings.Contains(got, "localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol") {
+		t.Errorf("ET analyser hint should point to localdata, got %q", got)
+	}
+	if strings.Contains(got, "pkg/lemmatizer-fi-et/data/et") {
+		t.Errorf("ET analyser hint should not point to package data, got %q", got)
+	}
+}
+
+func TestFindHFSTOLUsesLocaldataPath(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	path := filepath.Join("localdata", "lemmatizer-fi-et", "analyser-gt-desc.hfstol")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("fixture"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := findHFSTOL(); got != path {
+		t.Errorf("findHFSTOL() = %q, want %q", got, path)
+	}
+}
+
 func TestFileExists(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "x.txt")
