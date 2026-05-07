@@ -2037,10 +2037,6 @@ func getOwnedCardSchedule(q sqlQueryRower, userID, cardID int64) (*Card, ReviewS
 	return &card, schedule, nil
 }
 
-func (d *DB) getOwnedCardSchedule(userID, cardID int64) (*Card, ReviewSchedule, error) {
-	return getOwnedCardSchedule(d.db, userID, cardID)
-}
-
 func (d *DB) remainingNewCardsToday(userID int64) (int, error) {
 	newPerDay, err := d.userNewCardsPerDay(userID)
 	if err != nil {
