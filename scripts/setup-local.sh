@@ -83,6 +83,10 @@ else
         warn "EKILEX_API_KEY not set; trying without (some endpoints may 401)."
     fi
     make fetch-ekilex-refresh || warn "fetch-ekilex-refresh exited non-zero — continuing without."
+    if [[ ! -f "$EKILEX_QUEUE" ]]; then
+        warn "Ekilex public-word snapshot is still missing at $EKILEX_QUEUE."
+        warn "   ET setup will skip Ekilex public-word enrichment this run."
+    fi
 fi
 
 # ── 5. Ekilex /api/word/details (the long part) ───────────────────────────────
@@ -92,6 +96,9 @@ elif [[ -z "${EKILEX_API_KEY:-}" ]]; then
     warn "EKILEX_API_KEY not set — skipping Ekilex details scrape."
     warn "   Without it, parser still runs but lacks rich ET morphology + glosses."
     warn "   Get a free key at https://ekilex.ee/, then re-run this script."
+elif [[ ! -f "$EKILEX_QUEUE" ]]; then
+    warn "Ekilex queue missing at $EKILEX_QUEUE — skipping details scrape."
+    warn "   Re-run after fetch-ekilex-refresh succeeds."
 elif [[ -d "localdata/ekilex/definitions" && -n "$(ls -A localdata/ekilex/definitions 2>/dev/null)" ]]; then
     log "Ekilex reduced shards already present at localdata/ekilex/{definitions,forms}/ — skipping fetch."
 else
@@ -125,7 +132,18 @@ fi
 # ── 8. populate finnestdb.db ──────────────────────────────────────────────────
 log "Importing dictionaries into finnestdb.db…"
 make import-dict-fi-recommended
-make import-dict-et-recommended
+make import-dict-et
+if [[ -f "$EKILEX_QUEUE" ]]; then
+    make import-ekilex-et
+else
+    warn "Skipping import-ekilex-et because $EKILEX_QUEUE is missing."
+fi
+if [[ -d "localdata/ekilex/definitions" && -n "$(ls -A localdata/ekilex/definitions 2>/dev/null)" && \
+      -d "localdata/ekilex/forms" && -n "$(ls -A localdata/ekilex/forms 2>/dev/null)" ]]; then
+    make import-ekilex-details-et
+else
+    warn "Skipping import-ekilex-details-et because reduced Ekilex shards are missing."
+fi
 
 # ── done ──────────────────────────────────────────────────────────────────────
 log ""

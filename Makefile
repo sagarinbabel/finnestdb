@@ -167,12 +167,15 @@ import-kotus-fi:
 # Refreshes localdata/ekilex/eki-public-words-2026-et.jsonl from /api/public_word/eki
 # only if the headword set has changed.
 fetch-ekilex-refresh:
-	go run ./cmd/fetchekilex refresh-queue
+	go run ./cmd/fetchekilex refresh-queue \
+	  -out localdata/ekilex/eki-public-words-2026-et.jsonl
 
 # Fetches a small spread of headwords with both /eki and the unfiltered
 # variant so we can compare payload size/content before committing the full run.
 fetch-ekilex-sample:
-	go run ./cmd/fetchekilex sample
+	go run ./cmd/fetchekilex sample \
+	  -queue localdata/ekilex/eki-public-words-2026-et.jsonl \
+	  -out-dir localdata/ekilex/details/samples
 
 # Full resumable scrape. -rps is a *global* request rate cap shared across
 # workers; -workers should be ~2x rps to keep request latency from becoming
@@ -184,6 +187,8 @@ EKILEX_WORKERS ?= 16
 EKILEX_RPS ?= 16
 fetch-ekilex:
 	go run ./cmd/fetchekilex fetch \
+	  -queue localdata/ekilex/eki-public-words-2026-et.jsonl \
+	  -out-dir localdata/ekilex/details \
 	  -workers=$(EKILEX_WORKERS) -rps=$(EKILEX_RPS) -max-attempts=3
 
 # Reduces the gzipped raw payloads under localdata/ekilex/details/raw/ into
@@ -195,7 +200,10 @@ fetch-ekilex:
 # run `go test ./cmd/reduceekilex/` to verify, or `go test ./cmd/reduceekilex/
 # -update-golden` to refresh fixtures after intentional reducer changes.
 reduce-ekilex:
-	go run ./cmd/reduceekilex
+	go run ./cmd/reduceekilex \
+	  -raw-dir localdata/ekilex/details/raw \
+	  -out-compact-dir localdata/ekilex/definitions \
+	  -out-forms-dir localdata/ekilex/forms
 # Full refresh: drops existing entries then re-imports.
 reimport-dict-fi:
 	go run ./cmd/importdict -lang fi -db finnestdb.db -reimport
