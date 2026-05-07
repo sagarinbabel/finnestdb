@@ -10,6 +10,12 @@
 # tracked in git. Re-running is idempotent — sources that are already
 # present are skipped.
 #
+# Single-folder bootstrap rule (2026-05-07): every artifact this script
+# produces lives under ./localdata/, including the UD treebank cache
+# and any local-only parser-eval gold. There is no second data root.
+# Zipping localdata/ + finnestdb.db captures the entire fetched state.
+# See docs/data_enhancement.md for the full ledger.
+#
 # Steps:
 #   1.  Build the Rust parser shared library (`make parser`)
 #   2.  mkdir localdata/ subtree
@@ -21,8 +27,9 @@
 #       IF NOT set: skip with a clear note. Setup still succeeds; the
 #       parser just runs without the rich Ekilex enrichment until
 #       someone re-runs with a key.
-#   6.  Fetch UD treebanks (FI committed, ET local-only) via
-#       scripts/fetch-and-import-ud.sh.
+#   6.  Fetch UD treebanks → localdata/ud-cache/ + parser-eval gold
+#       (FI committed under testdata/, ET + train splits local-only
+#       under localdata/parser-eval/) via scripts/fetch-and-import-ud.sh.
 #   7.  Scrape Gutenberg-FI silver corpus (~4 MB) via
 #       cmd/scrapegutenberg.
 #   8.  Import all of the above into finnestdb.db.
@@ -34,7 +41,8 @@
 #   SKIP_UD=1 scripts/setup-local.sh               # skip step 6
 #   EKILEX_RPS=24 EKILEX_WORKERS=24 scripts/setup-local.sh   # tune scrape
 #
-# After this finishes, you can hand a teammate a fast-bootstrap zip:
+# After this finishes, you can hand a teammate a fast-bootstrap zip
+# that captures *every* fetched/derived artifact in a single folder:
 #   tar czf finnestdb-bootstrap.tgz localdata/ finnestdb.db
 # They drop it next to the repo, untar, and skip every fetch.
 #
@@ -130,10 +138,10 @@ fi
 # ── 6. UD treebanks ───────────────────────────────────────────────────────────
 if [[ -n "${SKIP_UD:-}" ]]; then
     warn "SKIP_UD set — skipping UD treebank fetch."
-elif [[ -d "data/ud-cache" && -n "$(ls -A data/ud-cache 2>/dev/null)" ]]; then
-    log "UD treebanks already present at data/ud-cache/ — skipping fetch."
+elif [[ -d "localdata/ud-cache" && -n "$(ls -A localdata/ud-cache 2>/dev/null)" ]]; then
+    log "UD treebanks already present at localdata/ud-cache/ — skipping fetch."
 else
-    log "Fetching UD treebanks (FI + ET)…"
+    log "Fetching UD treebanks (FI + ET) → localdata/ud-cache/, gold → testdata/parser-eval/fi/gold/ + localdata/parser-eval/{fi,et}/…"
     bash scripts/fetch-and-import-ud.sh both
 fi
 
@@ -189,13 +197,16 @@ log ""
 log "Setup complete."
 log ""
 log "Repo state:"
-log "  finnestdb.db        — populated SQLite, ~$(du -h finnestdb.db 2>/dev/null | awk '{print $1}')"
-log "  localdata/kotus/    — Kotus sanalista, $(du -sh localdata/kotus 2>/dev/null | awk '{print $1}')"
-log "  localdata/ekilex/   — Ekilex shards, $(du -sh localdata/ekilex 2>/dev/null | awk '{print $1}')"
-log "  localdata/silver-fi/ — Gutenberg silver, $(du -sh localdata/silver-fi 2>/dev/null | awk '{print $1}')"
-log "  data/ud-cache/      — UD treebank clones, $(du -sh data/ud-cache 2>/dev/null | awk '{print $1}')"
+log "  finnestdb.db                     — populated SQLite, ~$(du -h finnestdb.db 2>/dev/null | awk '{print $1}')"
+log "  localdata/kotus/                 — Kotus sanalista, $(du -sh localdata/kotus 2>/dev/null | awk '{print $1}')"
+log "  localdata/ekilex/                — Ekilex shards, $(du -sh localdata/ekilex 2>/dev/null | awk '{print $1}')"
+log "  localdata/silver-fi/             — Gutenberg silver, $(du -sh localdata/silver-fi 2>/dev/null | awk '{print $1}')"
+log "  localdata/ud-cache/              — UD treebank clones, $(du -sh localdata/ud-cache 2>/dev/null | awk '{print $1}')"
+log "  localdata/parser-eval/           — local-only parser-eval gold, $(du -sh localdata/parser-eval 2>/dev/null | awk '{print $1}')"
+log "  localdata/lemmatizer-fi-et/      — generated lemmatizer tables, $(du -sh localdata/lemmatizer-fi-et 2>/dev/null | awk '{print $1}')"
 log ""
-log "To bootstrap a teammate fast (skip every fetch):"
+log "Single-folder bootstrap — everything above lives under ./localdata/."
+log "To hand a teammate a fast-bootstrap zip (skips every fetch above):"
 log "  tar czf finnestdb-bootstrap.tgz localdata/ finnestdb.db"
 log "  # send the .tgz; they untar in repo root and run ./finnestdb"
 log ""

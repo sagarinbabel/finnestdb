@@ -18,12 +18,17 @@
 #
 # Output:
 #
-#   testdata/parser-eval/fi/gold/ud-fi-<treebank>-<split>-v1.json   (committed)
-#   testdata/parser-eval/et/gold/ud-et-<treebank>-<split>-v1.json   (gitignored — NC license)
+#   testdata/parser-eval/fi/gold/ud-fi-<treebank>-<split>-v1.json   (committed; CC BY / CC BY-SA)
+#   localdata/parser-eval/et/gold/ud-et-<treebank>-<split>-v1.json  (gitignored; CC BY-NC-SA)
 #
-# Train splits go under .../gold-train/ (gitignored) so the default
-# parser-comparison.sh discovery pattern doesn't accidentally include
-# 12,000-sentence files in headline runs.
+# Train splits and the cloned UD treebank cache live entirely under
+# localdata/ — see docs/ARTIFACT_POLICY.md and docs/data_enhancement.md.
+# Auto-discovery in scripts/parser-comparison{,-et}.sh now globs both
+# testdata/parser-eval/<lang>/gold/ AND localdata/parser-eval/<lang>/gold/
+# so the local-only files are picked up too.
+#
+# Single-folder bootstrap: zipping localdata/ + finnestdb.db captures
+# every fetched/derived artifact this script produces.
 #
 # Usage:
 #
@@ -47,7 +52,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-UD_CACHE="$ROOT/data/ud-cache"
+UD_CACHE="$ROOT/localdata/ud-cache"
 mkdir -p "$UD_CACHE"
 
 clone_or_update() {
@@ -109,8 +114,11 @@ import_split() {
 import_fi() {
     for tb in UD_Finnish-TDT UD_Finnish-FTB; do
         clone_or_update "$tb"
-        # Train goes under gold-train/ (gitignored), dev/test under gold/.
-        import_split "$tb" train FI "testdata/parser-eval/fi/gold-train"
+        # Dev/test go under testdata/ (committed gold). Train splits are
+        # 12k–15k cases each — kept under localdata/ so they don't bloat
+        # headline parser-comparison runs (held-out discipline) and so a
+        # single-folder zip of localdata/ captures every local artifact.
+        import_split "$tb" train FI "localdata/parser-eval/fi/gold-train"
         import_split "$tb" dev   FI "testdata/parser-eval/fi/gold"
         import_split "$tb" test  FI "testdata/parser-eval/fi/gold"
     done
@@ -124,10 +132,12 @@ import_fi() {
 import_et() {
     for tb in UD_Estonian-EDT UD_Estonian-EWT; do
         clone_or_update "$tb"
-        # ET treebanks are CC BY-NC-SA — gold output is gitignored.
-        import_split "$tb" train ET "testdata/parser-eval/et/gold-train"
-        import_split "$tb" dev   ET "testdata/parser-eval/et/gold"
-        import_split "$tb" test  ET "testdata/parser-eval/et/gold"
+        # ET treebanks are CC BY-NC-SA — derived gold cannot be
+        # redistributed from this permissively-licensed code repo, so
+        # all three splits live under localdata/ (gitignored).
+        import_split "$tb" train ET "localdata/parser-eval/et/gold-train"
+        import_split "$tb" dev   ET "localdata/parser-eval/et/gold"
+        import_split "$tb" test  ET "localdata/parser-eval/et/gold"
     done
 }
 

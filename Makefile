@@ -323,13 +323,15 @@ compare-parsers-et: parser
 # Clone Universal Dependencies treebanks and project them into our parser-eval
 # gold JSON format. ~1M gold tokens combined (FI + ET, train+dev+test).
 #
-# FI gold files are committed (CC BY / CC BY-SA). ET gold is gitignored (CC
-# BY-NC-SA — we run it locally for internal eval only). Train splits go under
-# gold-train/ for both languages and are gitignored regardless of license
-# because they're large and only used for OOV/coverage analysis.
+# FI dev/test files are committed under testdata/parser-eval/fi/gold/ (CC BY
+# / CC BY-SA). ET dev/test and all train splits live under
+# localdata/parser-eval/{fi,et}/{gold,gold-train}/ — gitignored. ET sources
+# are CC BY-NC-SA so derivatives can't be redistributed; train splits are
+# kept local because they're large (12k–25k cases each) and only used for
+# OOV/coverage analysis. See docs/data_enhancement.md for the full ledger.
 #
 # Re-running is idempotent and fast (~30s) — the heavy step is the initial
-# clone (~50 MB per treebank, cached under data/ud-cache/).
+# clone (~50 MB per treebank, cached under localdata/ud-cache/).
 import-ud-gold-fi:
 	@bash scripts/fetch-and-import-ud.sh fi
 
@@ -339,9 +341,11 @@ import-ud-gold-et:
 import-ud-gold: import-ud-gold-fi import-ud-gold-et
 
 # Run the standard local parser eval sweep without requiring external baselines.
+# Globs both the committed gold (testdata/parser-eval/) and any local-only
+# gold a fresh setup-local.sh has produced (localdata/parser-eval/).
 eval: parser
 	@export LD_LIBRARY_PATH="$$(pwd)/parser/target/release:$${LD_LIBRARY_PATH:-}"; \
-	for ds in testdata/parser-eval/*/gold/*.json; do \
+	for ds in testdata/parser-eval/*/gold/*.json localdata/parser-eval/*/gold/*.json; do \
 		[ -f "$$ds" ] || continue; \
 		echo "== $$ds =="; \
 		go run ./cmd/parsertest -dataset "$$ds" -parsers basic,custom -warmup 1 -repeat 3; \

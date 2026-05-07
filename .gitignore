@@ -55,34 +55,18 @@ reports/
 .cache/
 .venv-omorfi/
 
-# Local corpora and manual text imports
-# All third-party data artifacts go here — see docs/ARTIFACT_POLICY.md.
-# Populated by scripts/setup-local.sh (Ekilex shards, Kotus sanalista,
-# Gutenberg silver, etc.). Zip + share with a teammate to bootstrap fast.
+# Single root for every gitignored runtime artifact: dictionary corpora,
+# Gutenberg silver, generated lemmatizer tables, the UD treebank cache, and
+# any local-only parser-eval gold (NC-licensed ET dev/test, train splits).
+# See docs/ARTIFACT_POLICY.md and docs/data_enhancement.md for the full
+# inventory. `tar czf finnestdb-bootstrap.tgz localdata/ finnestdb.db`
+# captures the entire bootstrap state for handoff to a teammate.
 localdata/
 
-# Belt-and-braces: explicitly forbid the legacy data/ subtrees that were
-# tracked before the 2026-05-07 cleanup. Anything new written to data/
-# should now go to localdata/ instead.
-data/ekilex/
-data/kotus/
-data/silver-fi/
-data/silver-fi-runosto/
-
-# UD treebank cache (cloned by scripts/fetch-and-import-ud.sh).
-# ~50 MB per treebank, regenerable from the importer — don't commit.
-data/ud-cache/
-
-# Train splits of UD-derived gold are gitignored: each is 10–30 MB and
-# they're used for OOV/coverage analysis, not headline eval. Regenerable
-# via scripts/fetch-and-import-ud.sh.
-testdata/parser-eval/fi/gold-train/
-testdata/parser-eval/et/gold-train/
-
-# Estonian UD treebanks (EDT, EWT) are CC BY-NC-SA. The derived gold JSON
-# stays local — the public repo only hosts FI UD gold (CC BY / CC BY-SA).
-# See cmd/importud/main.go for source attribution.
-testdata/parser-eval/et/gold/ud-et-*.json
+# Legacy data/ paths (pre-2026-05-07) are kept here as belt-and-braces in
+# case a stale workflow still writes to them. New code MUST write to
+# localdata/ instead — there is no second data root.
+data/
 
 # Claude Code
 .claude/

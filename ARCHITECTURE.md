@@ -439,8 +439,11 @@ Files:
 - `internal/eval/eval.go`
 - `testdata/parser-eval/{fi,et}/gold/` — committed gold (FI UD CC BY,
   manual sets, fi-grammar-v1)
-- `testdata/parser-eval/{fi,et}/gold-train/` — gitignored UD train
-  splits, used for OOV/coverage only
+- `localdata/parser-eval/{fi,et}/{gold,gold-train}/` — gitignored
+  parser-eval gold for sources we can't redistribute (NC-licensed ET UD
+  dev/test) and for splits we just don't want auto-discovered (FI/ET
+  UD train splits, used for OOV/coverage only). All under localdata/
+  per the single-folder bootstrap rule.
 - `localdata/silver-fi/` — Plan C silver-tier corpus (Gutenberg-FI raw text
   + JSONL manifest); morphological annotation deferred to PR 4
 - `docs/baselines/` — frozen baseline reports per parser/language
@@ -467,20 +470,27 @@ Held-out discipline (introduced 2026-05-06c, Plan C / PR 1):
 - UD test sets are the held-out anchor; manual / fi-grammar-v1 / etc.
   are curated adversarial sets retained alongside
 
-UD-derived gold (Plan C / PR 1):
+UD-derived gold (Plan C / PR 1, paths consolidated 2026-05-07):
 
-| Treebank      | License        | Test cases | Dev cases | Train cases | Gold JSON                                                           |
-|---------------|----------------|-----------:|----------:|------------:|---------------------------------------------------------------------|
-| Finnish-TDT   | CC BY-SA 4.0   |     1,554  |    1,358  |     12,204  | `fi/gold/ud-fi-tdt-{test,dev}-v1.json` + `gold-train/...`           |
-| Finnish-FTB   | CC BY 4.0      |     1,867  |    1,875  |     14,972  | `fi/gold/ud-fi-ftb-{test,dev}-v1.json` + `gold-train/...`           |
-| Finnish-PUD   | CC BY-SA 3.0   |     1,000  |        — |          — | `fi/gold/ud-fi-pud-test-v1.json`                                    |
-| Finnish-OOD   | CC BY-SA 4.0   |     2,119  |        — |          — | `fi/gold/ud-fi-ood-test-v1.json`                                    |
-| Estonian-EDT  | CC BY-NC-SA    |     3,190  |    3,110  |     24,419  | local-only (gitignored): `et/gold/ud-et-edt-{test,dev}-v1.json` etc. |
-| Estonian-EWT  | CC BY-NC-SA    |       910  |      823  |      5,380  | local-only (gitignored): `et/gold/ud-et-ewt-{test,dev}-v1.json` etc. |
+Committed FI test/dev gold lives under `testdata/parser-eval/fi/gold/`.
+Everything else (FI/ET train splits, NC-licensed ET UD dev/test) lives
+under `localdata/parser-eval/{fi,et}/{gold,gold-train}/` so the entire
+gitignored bootstrap state fits in a single zip of `localdata/`.
 
-About 900k gold tokens locally (FI committed, ET local-only). Run
-`make import-ud-gold` after a fresh checkout to materialize the local
-files.
+| Treebank      | License        | Test cases | Dev cases | Train cases | Gold JSON                                                                       |
+|---------------|----------------|-----------:|----------:|------------:|---------------------------------------------------------------------------------|
+| Finnish-TDT   | CC BY-SA 4.0   |     1,554  |    1,358  |     12,204  | committed: `testdata/parser-eval/fi/gold/ud-fi-tdt-{test,dev}-v1.json`; train at `localdata/parser-eval/fi/gold-train/ud-fi-tdt-train-v1.json` |
+| Finnish-FTB   | CC BY 4.0      |     1,867  |    1,875  |     14,972  | committed: `testdata/parser-eval/fi/gold/ud-fi-ftb-{test,dev}-v1.json`; train at `localdata/parser-eval/fi/gold-train/ud-fi-ftb-train-v1.json` |
+| Finnish-PUD   | CC BY-SA 3.0   |     1,000  |        — |          — | committed: `testdata/parser-eval/fi/gold/ud-fi-pud-test-v1.json`               |
+| Finnish-OOD   | CC BY-SA 4.0   |     2,106  |        — |          — | committed: `testdata/parser-eval/fi/gold/ud-fi-ood-test-v1.json`               |
+| Estonian-EDT  | CC BY-NC-SA    |     3,190  |    3,110  |     24,419  | local-only: `localdata/parser-eval/et/gold/ud-et-edt-{test,dev}-v1.json` + `localdata/parser-eval/et/gold-train/ud-et-edt-train-v1.json` |
+| Estonian-EWT  | CC BY-NC-SA    |       910  |      823  |      5,375  | local-only: `localdata/parser-eval/et/gold/ud-et-ewt-{test,dev}-v1.json` + `localdata/parser-eval/et/gold-train/ud-et-ewt-train-v1.json` |
+
+About 776k gold tokens locally (FI committed test/dev + everything
+else under localdata/). Run `make import-ud-gold` after a fresh
+checkout to materialize the local files. See
+[`docs/data_enhancement.md`](docs/data_enhancement.md) for the
+single-source-of-truth ledger of every gold/silver corpus.
 
 ## Lexical Pipelines
 
