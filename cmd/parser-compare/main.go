@@ -19,6 +19,11 @@
 // to disable. CIs prevent reading "82.3% beats 80.1%" as significant when
 // it's noise on a 22-case manual set.
 //
+// With -stratified, a UPOS-bucket / OOV / compoundness breakdown is emitted
+// after the headline. Stratification is computed on the fly from the report's
+// case-level comparisons, so the flag works on historical baseline JSONs
+// regardless of whether they were generated with parsertest's -stratified.
+//
 // Usage:
 //
 //	# Generate reports first via cmd/parsertest:
@@ -59,6 +64,7 @@ func main() {
 	mainParser := flag.String("main-parser", defaultMainParser, "Parser name treated as 'now' in the headline")
 	bootstrapN := flag.Int("bootstrap", 1000, "Bootstrap iterations for 95% case-level CIs. 0 disables CIs.")
 	bootstrapSeed := flag.Int64("bootstrap-seed", 0xF1E57DB, "RNG seed for the bootstrap (deterministic by default).")
+	stratified := flag.Bool("stratified", false, "Emit a per-(dataset, parser, bucket) breakdown by UPOS / OOV / compoundness after the headline. Computed on the fly from the report's case comparisons.")
 	flag.Parse()
 
 	paths := flag.Args()
@@ -97,6 +103,34 @@ func main() {
 	}
 	emitLegacyTable(now)
 	emitFeatsAttributeTable(now)
+
+	if *stratified {
+		fmt.Println()
+		emitStratifiedTables(now)
+	}
+}
+
+// emitStratifiedTables computes and prints the three-axis stratified breakdown
+// for each (dataset, parser) pair. Computed on the fly from each report's
+// case-level comparisons rather than read from Summary.Stratification, so the
+// flag works on historical baseline JSONs that predate the stratified output.
+func emitStratifiedTables(reports []*eval.Report) {
+	inputs := make([]eval.StratifiedReportInput, 0)
+	for _, r := range reports {
+		for _, parser := range r.Parsers {
+			strat := eval.ComputeStratification(parser, r.Cases)
+			if strat == nil {
+				continue
+			}
+			inputs = append(inputs, eval.StratifiedReportInput{
+				DatasetName: r.Dataset.Name,
+				Parser:      parser,
+				Stratified:  strat,
+			})
+		}
+	}
+	inputs = eval.SortedStratifiedInputsByDatasetParser(inputs)
+	eval.RenderStratifiedMarkdown(os.Stdout, "Stratified accuracy", inputs)
 }
 
 // loadReports reads each JSON path into an eval.Report.

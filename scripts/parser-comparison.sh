@@ -15,6 +15,7 @@
 #   scripts/parser-comparison.sh -o report.md                          # write to file
 #   scripts/parser-comparison.sh DS1.json DS2.json ...                 # custom datasets
 #   scripts/parser-comparison.sh --allow-missing-baseline ...          # skip omorfi (escape hatch)
+#   scripts/parser-comparison.sh --stratified ...                      # add UPOS/OOV/compound breakdowns
 #
 set -euo pipefail
 
@@ -24,11 +25,13 @@ cd "$ROOT"
 OUT=""
 DATASETS=()
 ALLOW_MISSING=false
+STRATIFIED=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -o|--output) OUT="$2"; shift 2 ;;
         --allow-missing-baseline) ALLOW_MISSING=true; shift ;;
+        --stratified) STRATIFIED=true; shift ;;
         -h|--help)
             sed -n '2,18p' "$0"
             exit 0 ;;
@@ -120,6 +123,13 @@ mkdir -p "$REPORTS_DIR"
 THIS_RUN_REPORTS=()
 RUN_TS="$(date -u +%Y%m%dT%H%M%SZ)"
 
+PARSERTEST_EXTRA=()
+COMPARE_EXTRA=()
+if $STRATIFIED; then
+    PARSERTEST_EXTRA+=(-stratified)
+    COMPARE_EXTRA+=(-stratified)
+fi
+
 for ds in "${DATASETS[@]}"; do
     # Slug from the dataset *filename* (not the JSON `name` field).
     # Multiple gold files can share the same internal `name` (e.g.
@@ -137,11 +147,12 @@ print(slug[:80])
 ")"
     out="$REPORTS_DIR/${RUN_TS}-${slug}.json"
     echo ">> $ds → $slug" >&2
-    go run ./cmd/parsertest -dataset "$ds" -parsers "$PARSERS" -warmup 2 -repeat 5 -out "$out" >&2
+    go run ./cmd/parsertest -dataset "$ds" -parsers "$PARSERS" -warmup 2 -repeat 5 -out "$out" "${PARSERTEST_EXTRA[@]}" >&2
     THIS_RUN_REPORTS+=("$out")
 done
 
 ARGS=(-title "Parser comparison ($RUN_TS, parsers: $PARSERS)")
+ARGS+=("${COMPARE_EXTRA[@]}")
 ARGS+=("${THIS_RUN_REPORTS[@]}")
 
 if [[ -n "$OUT" ]]; then

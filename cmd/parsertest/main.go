@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -19,6 +20,7 @@ func main() {
 	outPath := flag.String("out", "", "Path to write JSON report (default: reports/parser-eval/<run>.json)")
 	warmupRuns := flag.Int("warmup", 1, "Warmup runs per case before timing")
 	repeatRuns := flag.Int("repeat", 5, "Timed runs per case")
+	stratified := flag.Bool("stratified", false, "Attach UPOS-bucket / OOV / compoundness breakdowns to each parser summary, and write a <basename>.stratified.md sidecar next to the JSON report.")
 	flag.Parse()
 
 	if *datasetPath == "" {
@@ -46,7 +48,8 @@ func main() {
 		// per gold file. dataset.Name alone collides for gold sets that share
 		// a name across versioned files (e.g. fi-manual-v1.json and
 		// fi-manual-v2.json both carry name="fi-manual").
-		RunIDSlug: datasetSlug(*datasetPath),
+		RunIDSlug:  datasetSlug(*datasetPath),
+		Stratified: *stratified,
 	})
 	if err != nil {
 		log.Fatalf("evaluate: %v", err)
@@ -64,9 +67,24 @@ func main() {
 		log.Fatalf("write report: %v", err)
 	}
 
+	var sidecarPath string
+	if *stratified {
+		sidecarPath = eval.SidecarPathForReport(reportPath)
+		if sidecarPath == "" {
+			log.Fatalf("cannot derive stratified sidecar path from %q (must end in .json)", reportPath)
+		}
+		if err := writeStratifiedSidecar(sidecarPath, report); err != nil {
+			log.Fatalf("write stratified sidecar: %v", err)
+		}
+	}
+
 	fmt.Printf("Dataset: %s (%s)\n", report.Dataset.Name, report.Dataset.Language)
 	fmt.Printf("Cases: %d\n", report.Dataset.CaseCount)
-	fmt.Printf("Report: %s\n\n", reportPath)
+	fmt.Printf("Report: %s\n", reportPath)
+	if sidecarPath != "" {
+		fmt.Printf("Stratified: %s\n", sidecarPath)
+	}
+	fmt.Println()
 	for _, parser := range report.Parsers {
 		summary := report.Summary[parser]
 		fmt.Printf(
@@ -117,6 +135,46 @@ func main() {
 			)
 		}
 	}
+}
+
+// writeStratifiedSidecar emits a markdown file with the three-axis breakdown
+// for each parser in the report. Pulled out so the main path stays readable
+// and a future caller (e.g. a CI step that wants the markdown without
+// re-running the evaluator) can reuse it. The file mirrors the JSON report's
+// stratification data — re-running parsertest with -stratified is the only
+// way to refresh it.
+func writeStratifiedSidecar(path string, report *eval.Report) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	fmt.Fprintf(f, "# Stratified eval — %s (%s)\n\n", report.Dataset.Name, report.Dataset.Language)
+	fmt.Fprintf(f, "Run: %s · Generated: %s\n", report.RunID, report.Generated)
+	if report.GitCommit != "" {
+		fmt.Fprintf(f, " · Commit: `%s`", report.GitCommit)
+	}
+	if report.ParserVersion != "" {
+		fmt.Fprintf(f, " · Parser: `%s`", report.ParserVersion)
+	}
+	fmt.Fprintln(f)
+	fmt.Fprintln(f)
+
+	inputs := make([]eval.StratifiedReportInput, 0, len(report.Parsers))
+	for _, parser := range report.Parsers {
+		summary, ok := report.Summary[parser]
+		if !ok {
+			continue
+		}
+		inputs = append(inputs, eval.StratifiedReportInput{
+			DatasetName: report.Dataset.Name,
+			Parser:      parser,
+			Stratified:  summary.Stratification,
+		})
+	}
+	eval.RenderStratifiedMarkdown(f, "Stratified accuracy", inputs)
+	return nil
 }
 
 func formatRate(rate float64) string {

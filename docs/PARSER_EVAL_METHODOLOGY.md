@@ -63,6 +63,30 @@ Schema details: [`baselines/README.md`](baselines/README.md).
 > better. If only one moved, name which side, and avoid leaning on a moving
 > Full% headline that doesn't tell you which dimension changed.
 
+### Stratified breakdown (`-stratified`)
+
+Even Lemma+POS hides structural variation. On UD-FTB-test the `custom` parser
+scores 71.4% lemma overall — but that splits into ~80% open-class, ~54%
+closed-class, ~62% PROPN, ~93% NUM (see [`LEARNINGS.md`](LEARNINGS.md)
+§2026-05-07 — UD-TDT for the original observation). A regression in any one
+slice (PROPN dropping from 60% → 30%) can be invisible in the rolled-up
+number when the dominant slice (open-class NOUN/VERB) hasn't moved.
+
+Pass `-stratified` to `cmd/parsertest` to attach a three-axis breakdown to
+each parser summary in the JSON report and write a `<run>.stratified.md`
+sidecar:
+
+1. **UPOS bucket** — `open` (NOUN/VERB/ADJ/ADV), `closed` (DET/PRON/CCONJ/...),
+   `propn`, `num`, `punct`, `other`.
+2. **OOV** — `in-dict` (parser resolved the surface) vs `oov` (didn't).
+3. **Compoundness** — `compound` (surface contains a hyphen, or parser used
+   the compound-split rule) vs `simple`.
+
+`cmd/parser-compare -stratified` prints the same tables alongside the
+headline. The compare-side computation is on-the-fly from the report's
+case-level comparisons, so it works on historical baseline JSONs that predate
+the flag.
+
 ## Parsers under comparison
 
 | Parser | What it is | What it tests |
