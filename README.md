@@ -579,7 +579,7 @@ will close most of the long tail.
 /cmd/parsertest           Parser evaluation CLI (basic, custom, omorfi, estnltk)
 /cmd/parser-compare       Render parser-eval reports as a markdown comparison table
 /cmd/corpusmine           Mine corpus text for disagreement-heavy gold candidates
-/cmd/autoresearch         Automated rule-ablation loop driven by parser-eval
+/cmd/autoresearch         Parked post-live idea: parser-eval rule-ablation loop
 /cmd/importdict           Dictionary import: kaikki.org JSONL or Ekilex API → SQLite
 /cmd/importkotus          Kotus sanalista TSV → SQLite (populates paradigm_class)
 /cmd/importekilex         Compact Ekilex public_word snapshot importer (ET headwords)

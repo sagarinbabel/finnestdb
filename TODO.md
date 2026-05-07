@@ -120,7 +120,7 @@ Today, accepted parse-feedback corrections sit in `parse_feedback` as data with 
 - [ ] **Phase 1 — apply accepted lemma/POS corrections** as a `custom_overrides` lexical row (new source, priority 1000, named in [`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md) "Resolution Layer" but not wired up). On admin acceptance, write a `forms`/`lemmas` row with `source='custom_overrides'`, `source_priority=1000`, proposed `lemma`/`pos`, back-pointer to `parse_feedback.id`. ~1-week task, high confidence.
 - [ ] **Phase 2 — apply accepted grammar-label corrections** to `forms.feats` for the specific surface form. Smaller blast radius. Few-day task.
 - [ ] **Phase 3 — auto-promote a corrected `(surface, lemma, pos)` tuple to a gold-eval case** when N independent users submit the same correction. Threshold and review workflow TBD.
-- [ ] **Phase 4 — eval-backed safety check before applying.** Run candidate `custom_overrides` row against frozen gold sets; reject on regression of ≥N cases. Same pattern as `cmd/autoresearch` but at correction time. If it adds >100ms to admin-accept latency, push to background job.
+- [ ] **Phase 4 — eval-backed safety check before applying.** Run candidate `custom_overrides` row against frozen gold sets; reject on regression of ≥N cases. Reuse the existing parser-eval/baseline discipline, but do not revive or expand `cmd/autoresearch` for alpha. If it adds >100ms to admin-accept latency, push to background job.
 - [ ] **Phase 5 (research, not engineering)** — automatic re-ranking of source priorities when a single source consistently produces accepted corrections in one direction. Out of scope for alpha.
 
 Phase 1 is gated on FEATS threading (already shipped via [PR #130](https://github.com/sagarinbabel/finnestdb/pull/130)) so corrections can update FEATS, not just GrammarLabel.
@@ -299,8 +299,8 @@ something for the next learner — and didn't.
       Threshold and review workflow TBD.
 - [ ] **Phase 4 — eval-backed safety check before applying.** Run the
       candidate `custom_overrides` row against the frozen gold sets; reject
-      if it causes a regression on N or more cases. Same pattern as
-      `cmd/autoresearch` but at correction-time, not in a batch.
+      if it causes a regression on N or more cases. Use the parser-eval
+      baseline discipline directly; `cmd/autoresearch` remains parked.
 - [ ] **Phase 5 (long-tail) — automatic re-ranking of source priorities**
       when a single source consistently produces accepted corrections in
       one direction. Out of scope for alpha; revisit after Phase 4 is
@@ -311,7 +311,8 @@ something for the next learner — and didn't.
 - Schema groundwork: source priority columns + `dict_metadata` already
   exist; the `custom_overrides` source is named in
   [`docs/LEXICAL_PLAN.md` "Resolution Layer"](docs/LEXICAL_PLAN.md).
-- `cmd/autoresearch` provides the eval-backed-safety pattern for Phase 4.
+- `cmd/autoresearch` is parked as a post-live idea. It may be useful later as
+  inspiration, but it is not part of the alpha implementation scope.
 - This work is gated on the FEATS threading PR (already shipped via
   [PR #130](https://github.com/sagarinbabel/finnestdb/pull/130)) so
   corrections can update FEATS, not just GrammarLabel.
@@ -692,7 +693,8 @@ Companion docs introduced alongside this plan:
   the product is, how users learn before reading, leverage and comprehension
   concepts, progress tracking concept, mobile web direction, and technology
   differentiators (fast parser, benchmarked quality, user-correction loop,
-  future autoresearch).
+  inflected-form-aware frequency). Autoresearch belongs in the post-live idea
+  parking lot, not the active alpha plan.
 
 ##### PR 2 — Auth roles and surface separation
 

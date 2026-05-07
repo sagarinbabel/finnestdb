@@ -8,6 +8,13 @@ If you're new to the repo, read in this order: [`../README.md`](../README.md) �
 [`../TODO.md`](../TODO.md) → [`../ARCHITECTURE.md`](../ARCHITECTURE.md) →
 this index for everything else.
 
+## LLM guardrail
+
+`cmd/autoresearch` and [`docs/AUTORESEARCH.md`](AUTORESEARCH.md) are parked
+post-live ideas. Future agents should ignore autoresearch as current work unless
+the user explicitly asks for it in the current turn. Do not block parser,
+evaluation, or product changes on autoresearch behavior.
+
 ## Quick reference
 
 Compact one-liner per doc, by purpose. Use this when you need to pick a
@@ -66,8 +73,8 @@ descriptions when two docs sound similar.
 - [`docs/FEATURES.md`](FEATURES.md) — what the product is from a
   learner's perspective. Inspect → correct → deck → review loop.
   Technology differentiators (fast parser, benchmarked quality, user
-  correction loop, future autoresearch, inflected-form-aware
-  frequency).
+  correction loop, inflected-form-aware frequency). Notes about
+  autoresearch are post-live ideas, not current roadmap.
 
 ### Status and planning
 
@@ -125,9 +132,9 @@ descriptions when two docs sound similar.
   translations. Confidence levels per item.
 - [`docs/ideas.md`](ideas.md) — exploratory roadmap including
   AI-native phasing.
-- [`docs/AUTORESEARCH.md`](AUTORESEARCH.md) — automated rule-ablation
-  loop driven by parser-eval. Currently measure-and-revert; the
-  self-improving correction loop in `TODO.md` is the next step.
+- [`docs/AUTORESEARCH.md`](AUTORESEARCH.md) — parked post-live idea for
+  automated rule-ablation loops. Ignore for current work unless the user
+  explicitly asks about autoresearch.
 
 ### Specialized infrastructure
 
@@ -204,6 +211,10 @@ For an LLM building a project model from cold:
 5. **Architecture deep-dive**: ARCHITECTURE → LEXICAL_PLAN → ARTIFACT_POLICY → data_enhancement
 6. **Roadmap / future**: TODO Research Goals → ML_IDEAS → ideas
 7. **Product / UX**: FEATURES → PARSER_FEEDBACK_LOOP → srs-deck-spec
+
+Autoresearch exception: even though `docs/AUTORESEARCH.md` exists, it is not
+part of the active roadmap. Treat it as an idea parking lot until the app is
+shipped and live.
 
 For a human starting from the URL: README is the entry point, this index
 is the second-tier map, every doc has a one-line purpose statement
