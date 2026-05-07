@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"finnestdb/internal/api"
 	"finnestdb/internal/store"
@@ -74,7 +75,15 @@ func main() {
 	addr := fmt.Sprintf(":%s", *port)
 	log.Printf("Starting server on http://localhost%s", addr)
 	log.Printf("Database: %s", *dbPath)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }

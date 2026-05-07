@@ -19,6 +19,7 @@ const (
 	sessionCookieName = "session_token"
 	sessionLifetime   = 7 * 24 * time.Hour
 	minPasswordLength = 8
+	maxJSONBodyBytes  = 4 << 20
 )
 
 type API struct {
@@ -330,8 +331,7 @@ func (a *API) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if !decodeJSONRequest(w, r, &req) {
 		return
 	}
 
@@ -385,8 +385,7 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if !decodeJSONRequest(w, r, &req) {
 		return
 	}
 
@@ -763,8 +762,7 @@ func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][
 
 func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
 	var req CreateDeckRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if !decodeJSONRequest(w, r, &req) {
 		return
 	}
 
@@ -862,8 +860,7 @@ func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
 		a.handleGetDeck(w, auth, deckID)
 	case http.MethodPatch:
 		var req UpdateDeckRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+		if !decodeJSONRequest(w, r, &req) {
 			return
 		}
 		title := strings.TrimSpace(req.Title)
@@ -983,8 +980,7 @@ func (a *API) HandleKnownWords(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) handleKnownWordsImport(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
 	var req KnownWordsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if !decodeJSONRequest(w, r, &req) {
 		return
 	}
 	if req.Lang != "FI" && req.Lang != "ET" {
@@ -1063,8 +1059,7 @@ func (a *API) HandleLemmaStates(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) handleLemmaState(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
 	var req LemmaStateRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if !decodeJSONRequest(w, r, &req) {
 		return
 	}
 
@@ -1110,8 +1105,7 @@ func (a *API) handleLemmaState(w http.ResponseWriter, r *http.Request, auth *Aut
 
 func (a *API) handleLemmaStates(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
 	var req LemmaStateLookupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if !decodeJSONRequest(w, r, &req) {
 		return
 	}
 
@@ -1255,8 +1249,7 @@ func (a *API) HandleReviewAnswer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req ReviewAnswerRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if !decodeJSONRequest(w, r, &req) {
 		return
 	}
 	if req.CardID <= 0 {
@@ -1296,8 +1289,7 @@ func (a *API) HandleCardIgnore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req ReviewCardMutationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if !decodeJSONRequest(w, r, &req) {
 		return
 	}
 	if req.CardID <= 0 {
@@ -1331,8 +1323,7 @@ func (a *API) HandleCardKnown(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req ReviewCardMutationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if !decodeJSONRequest(w, r, &req) {
 		return
 	}
 	if req.CardID <= 0 {
@@ -1374,8 +1365,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req ParseRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if !decodeJSONRequest(w, r, &req) {
 		return
 	}
 
@@ -1468,8 +1458,7 @@ func (a *API) HandleParseFeedback(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) handleParseFeedback(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
 	var req ParseFeedbackRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+	if !decodeJSONRequest(w, r, &req) {
 		return
 	}
 	lang := strings.TrimSpace(req.Lang)
@@ -1573,8 +1562,7 @@ func (a *API) handleAdminParseFeedback(w http.ResponseWriter, r *http.Request, a
 			return
 		}
 		var req ParseFeedbackReviewRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+		if !decodeJSONRequest(w, r, &req) {
 			return
 		}
 		if !isValidParseFeedbackStatus(req.Status, false) {
@@ -1639,8 +1627,7 @@ func (a *API) handleAdminUsers(w http.ResponseWriter, r *http.Request, authCtx *
 			return
 		}
 		var req AdminUserUpdateRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+		if !decodeJSONRequest(w, r, &req) {
 			return
 		}
 		// Self-demotion guard: an admin cannot remove their own is_admin flag,
@@ -1680,6 +1667,15 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func decodeJSONRequest(w http.ResponseWriter, r *http.Request, dst any) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, maxJSONBodyBytes)
+	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return false
+	}
+	return true
 }
 
 func (a *API) SetupRoutes(mux *http.ServeMux) {
