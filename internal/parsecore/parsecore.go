@@ -18,6 +18,18 @@ import (
 
 const MaxTextChars = 300_000
 
+// ParserVersion identifies the parser-behavior iteration that this binary was
+// built from. Bumped on parser-affecting PRs and stamped into every eval JSON
+// report under `parser_version` so a saved report is self-describing without
+// needing the matching git commit on hand.
+//
+// Convention: YYYY.MM.DD followed by a lowercase iteration letter that maps
+// 1:1 to the dated entries in docs/PARSER_EVOLUTION.md (e.g. 2026.05.07j ↔
+// §2026-05-07j). For the SemVer-style `parser-vN` scheme used in
+// docs/SYSTEM_VERSIONING.md, see that doc — they are the same idea expressed
+// at different granularities, and SYSTEM_VERSIONING.md tracks the mapping.
+const ParserVersion = "2026.05.07j"
+
 const omorfiCommandEnv = "FINNESTDB_OMORFI_CMD"
 const estnltkCommandEnv = "FINNESTDB_ESTNLTK_CMD"
 

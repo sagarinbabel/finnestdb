@@ -55,6 +55,8 @@ test-results/
 reports/
 .cache/
 .venv-omorfi/
+.venv-estnltk
+.venv-estnltk/
 
 # Single root for every gitignored runtime artifact: dictionary corpora,
 # Gutenberg silver, generated lemmatizer tables, the UD treebank cache, and

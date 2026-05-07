@@ -50,6 +50,7 @@ type Report struct {
 	Dataset             ReportDataset            `json:"dataset"`
 	Parsers             []string                 `json:"parsers"`
 	GitCommit           string                   `json:"git_commit,omitempty"`
+	ParserVersion       string                   `json:"parser_version,omitempty"`
 	Benchmark           BenchmarkConfig          `json:"benchmark"`
 	Summary             map[string]ParserSummary `json:"summary"`
 	PriorityRegressions []PriorityRegression     `json:"priority_regressions,omitempty"`
@@ -232,8 +233,9 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 			Language:  dataset.Language,
 			CaseCount: len(dataset.Cases),
 		},
-		Parsers:   parsers,
-		GitCommit: options.GitCommit,
+		Parsers:       parsers,
+		GitCommit:     options.GitCommit,
+		ParserVersion: parsecore.ParserVersion,
 		Benchmark: BenchmarkConfig{
 			WarmupRuns: options.WarmupRuns,
 			RepeatRuns: options.RepeatRuns,

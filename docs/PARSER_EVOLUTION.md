@@ -21,20 +21,28 @@ reference (Estonian external analyzer), not a measurement event —
 it shows what "good" looks like and what `custom` should approach
 once Voikko-equivalent enrichment lands for FI.
 
-| Date | Commit | FI fi-manual-v1 lemma | ET et-grammar-v1 lemma | FI grammar | ET grammar | ET coverage |
-|---|---|---:|---:|---:|---:|---:|
-| 2026-05-06i (FST PR 4/4 ships, full suite re-measured) | [`91fecbf`][c-2026-05-06i] | **82.9** | 88.6 | **1.4** | **2.0** | 100.0 |
-| 2026-05-06h (FST PR 3/4: Giellalt ET) | [`5944733`][c-2026-05-06h] | — | 88.6 | — | **2.0** | **100.0** |
-| 2026-05-06g (FST PR 2/4: Giellalt FI HFST) | [`7d5cafd`][c-2026-05-06g] | — | — | 1.4 | — | — |
-| 2026-05-06f (FST PR 1/4: Voikko VFST) | [`d9937c0`][c-2026-05-06f] | — | — | **1.4** | — | — |
-| 2026-05-06d (Phase 3 ships) | (PR 3.2 head) | 81.4 | 88.6 | 0.0 | 0.0 | 100.0 |
-| 2026-05-06c (Phase 2 ships) | [`615556e`][c-2026-05-06c] | 81.4 | 88.6 | 0.0 | 0.0 | 100.0 |
-| 2026-05-06b (post-priority-fix) | [`b327d4f`][c-2026-05-06b] | **81.4** | **88.6** | 0.0 | 0.0 | **100.0** |
-| 2026-05-06 | [`46d8b77`][c-2026-05-06] | 81.4 | 80.0 | 0.0 | 0.0 | 100.0 |
-| 2026-05-05 | [`af111c2`][c-2026-05-05] | — | 88.6 | — | 2.0 | 94.6 |
-| 2026-05-05 (estnltk ceiling) | [`af111c2`][c-2026-05-05] | — | **98.1** | — | **92.2** | 100.0 |
-| 2026-04-28 | [`bb744ba`][c-2026-04-28] | 72.9 | 87.6 | 0.0 | 2.0 | 94.6 |
+Two FI lemma columns are tracked: `fi-manual-v1` (curated, 22 cases) for
+continuity with prior baselines, and `ud-fi-tdt-test` (UD, 1,554 cases) for
+real-world reading. The UD column lights up only on baselines that measured it
+(2026-05-07j onward); earlier baselines show "—" because UD wasn't part of the
+committed run.
 
+| Date | Commit | FI fi-manual-v1 lemma | FI ud-tdt lemma | ET et-grammar-v1 lemma | FI grammar | ET grammar | ET coverage |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 2026-05-07j (post-fst re-measure on main; case-suffix label stopgap + smoke FST tables; **first UD-at-scale baseline**) | [`42e95d9`][c-2026-05-07j] | 81.4 | **60.2** | 88.6 | **59.5** | **19.6** | 98.9 |
+| 2026-05-06i (FST PR 4/4 ships, full suite re-measured) | [`91fecbf`][c-2026-05-06i] | **82.9** | — | 88.6 | 1.4 | 2.0 | **100.0** |
+| 2026-05-06h (FST PR 3/4: Giellalt ET) | [`5944733`][c-2026-05-06h] | — | — | 88.6 | — | **2.0** | **100.0** |
+| 2026-05-06g (FST PR 2/4: Giellalt FI HFST) | [`7d5cafd`][c-2026-05-06g] | — | — | — | 1.4 | — | — |
+| 2026-05-06f (FST PR 1/4: Voikko VFST) | [`d9937c0`][c-2026-05-06f] | — | — | — | **1.4** | — | — |
+| 2026-05-06d (Phase 3 ships) | (PR 3.2 head) | 81.4 | — | 88.6 | 0.0 | 0.0 | 100.0 |
+| 2026-05-06c (Phase 2 ships) | [`615556e`][c-2026-05-06c] | 81.4 | — | 88.6 | 0.0 | 0.0 | 100.0 |
+| 2026-05-06b (post-priority-fix) | [`b327d4f`][c-2026-05-06b] | **81.4** | — | **88.6** | 0.0 | 0.0 | **100.0** |
+| 2026-05-06 | [`46d8b77`][c-2026-05-06] | 81.4 | — | 80.0 | 0.0 | 0.0 | 100.0 |
+| 2026-05-05 | [`af111c2`][c-2026-05-05] | — | — | 88.6 | — | 2.0 | 94.6 |
+| 2026-05-05 (estnltk ceiling) | [`af111c2`][c-2026-05-05] | — | — | **98.1** | — | **92.2** | 100.0 |
+| 2026-04-28 | [`bb744ba`][c-2026-04-28] | 72.9 | — | 87.6 | 0.0 | 2.0 | 94.6 |
+
+[c-2026-05-07j]: https://github.com/sagarinbabel/finnestdb/commit/42e95d9
 [c-2026-05-06i]: https://github.com/sagarinbabel/finnestdb/commit/91fecbf
 [c-2026-05-06h]: https://github.com/sagarinbabel/finnestdb/commit/5944733
 [c-2026-05-06g]: https://github.com/sagarinbabel/finnestdb/commit/7d5cafd
@@ -46,6 +54,82 @@ once Voikko-equivalent enrichment lands for FI.
 [c-2026-04-28]: https://github.com/sagarinbabel/finnestdb/commit/bb744ba
 
 ## Entries
+
+### 2026-05-07j — Post-FST re-measure (case-suffix grammar-label stopgap + smoke FST tables) — pre-FEATS-migration baseline
+
+**Commit measured**: [`42e95d9`][c-2026-05-07j] (= `main` head at 2026-05-07T11:22Z, the moment this measurement was taken; subsequent commits landed during/after the run — see "Post-baseline movement" below)
+**Detail**: [`baselines/2026-05-07-post-fst-fi.md`](baselines/2026-05-07-post-fst-fi.md), [`baselines/2026-05-07-post-fst-et.md`](baselines/2026-05-07-post-fst-et.md), [`PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md)
+**Parser version stamp**: `2026.05.07j` (`parsecore.ParserVersion`)
+
+Re-runs the full FI + ET eval suite on `main` after PR [#109](https://github.com/sagarinbabel/finnestdb/pull/109) (case-suffix grammar-label stopgap) and the artifact-policy migration ([`8d75dbf`](https://github.com/sagarinbabel/finnestdb/commit/8d75dbf), PR [#125](https://github.com/sagarinbabel/finnestdb/pull/125)) landed on top of the FST stack. The 2026-05-06i FINAL snapshots restored in [#124](https://github.com/sagarinbabel/finnestdb/pull/124) were taken on the maintainer's PR4 branch where the embedded `fi_min.json` / `et_min.json` were locally regenerated against full Voikko / Giellalt analysers; this re-measure captures the state a fresh clone of `main` actually exhibits, where those tables are the 12-form smoke fixtures the artifact policy intends.
+
+**Post-baseline movement (informational; not measured here):** between this measurement and the PR that lands this entry, five PRs merged to `main` ([#127](https://github.com/sagarinbabel/finnestdb/pull/127) FST step promotion → parallel scorer in dict step 1; [#128](https://github.com/sagarinbabel/finnestdb/pull/128) lemmatizer tables → `testdata/lemmatizer/` + `localdata/lemmatizer-fi-et/tables/`; [#129](https://github.com/sagarinbabel/finnestdb/pull/129) full FST candidate merge; [#130](https://github.com/sagarinbabel/finnestdb/pull/130) FEATS migration — gate `Match.Full` on FEATS, attach FEATS-only custom morphology, thread per-attribute FEATS through eval and report; [#131](https://github.com/sagarinbabel/finnestdb/pull/131) data consolidation under `localdata/`). The numbers below therefore freeze the **pre-FEATS-migration / pre-FST-step-promotion** state — useful as the "before" reference for the FEATS migration's measured impact. A follow-up `2026-05-07k` entry should re-run these datasets on the post-FEATS code path.
+
+**Headline numbers** (custom parser):
+
+| Dataset (cases / tokens) | Lemma | POS | Grammar | Full | Coverage |
+|---|---:|---:|---:|---:|---:|
+| _Curated FI sets:_ | | | | | |
+| fi-grammar (80 / 156) | 96.8 | 98.1 | **59.5** | **79.5** | 99.7 |
+| fi-core (6 / 23) | 85.0 | 90.0 | **30.0** | **50.0** | 95.7 |
+| fi-manual-v1 (22 / 187) | 81.4 | 85.7 | 6.7 | 64.3 | 91.2 |
+| fi-manual-v2 (4 / 12) | 88.9 | 100.0 | **33.3** | 66.7 | 100.0 |
+| _UD FI test sets (real-world):_ | | | | | |
+| ud-fi-ftb-test (1867 / 13,973) | 71.4 | 66.4 | 22.4 | 41.1 | 92.5 |
+| ud-fi-ood-test (2106 / 16,151) | 62.5 | 65.6 | 23.0 | 39.3 | 85.0 |
+| ud-fi-pud-test (1000 / 13,474) | 60.0 | 66.0 | 19.7 | 34.7 | 85.5 |
+| ud-fi-tdt-test (1554 / 17,951) | 60.2 | 67.8 | 22.2 | 36.3 | 89.6 |
+| _Curated ET sets:_ | | | | | |
+| et-grammar (50 / 178) | 88.6 | 96.2 | **19.6** | **51.4** | 98.9 |
+| et-manual (4 / 12) | 77.8 | 77.8 | 0.0 | 11.1 | 91.7 |
+
+**Total evaluated:** 8 FI datasets / 61,927 FI tokens; 2 ET datasets / 190 ET tokens. **First baseline that exercises the parser at scale on real-world text** — the prior FINAL baseline only measured 378 FI tokens across 4 curated sets. The curated-vs-UD lemma gap (97% → 60%) is the LEARNINGS finding ([§2026-05-07](LEARNINGS.md)) reproduced and now committed under continuous measurement.
+
+External-analyzer reference columns (omorfi for FI, estnltk/Vabamorf for ET) recorded in the JSON reports per the comparison-script default policy — see [`baselines/2026-05-07-post-fst-fi.md`](baselines/2026-05-07-post-fst-fi.md) for the full side-by-side gap table. omorfi 0.9.12 now ships with `pyhfst` (pure Python) rather than the C `hfst` library, so `make setup-omorfi` works on macOS arm64 without HFST C builds; this re-measure used the bundled adapter against `~/.cache/omorfi/omorfi.analyse.hfst` (25 MB tarball).
+
+**Headline gap to omorfi (FI custom vs. omorfi, percentage-point lag — positive = custom behind):**
+
+| Dataset | Δ Lemma | Δ POS | Δ Grammar | Δ Full | Δ Coverage |
+|---|---:|---:|---:|---:|---:|
+| fi-grammar (curated) | −1.3 | −1.9 | +40.5 | +42.3 | +0.3 |
+| ud-fi-ftb-test (UD) | **+11.9** | **+8.6** | **+60.6** | **+28.8** | +1.9 |
+| ud-fi-ood-test (UD) | +6.0 | +5.1 | +54.5 | +22.3 | +0.6 |
+| ud-fi-pud-test (UD) | +8.1 | +6.0 | +57.3 | +27.3 | +0.1 |
+| ud-fi-tdt-test (UD) | +9.0 | +7.8 | +58.7 | +27.0 | +0.3 |
+
+**Changes since 2026-05-06i** (commits reachable from HEAD that affect the eval; in chronological order):
+
+- [`2febc31`](https://github.com/sagarinbabel/finnestdb/commit/2febc31) — `ET FEATS via Ekilex morph_code + LEARNINGS doc`. ET form rows now carry FEATS derived from Ekilex `morph_code` (SgN, SgG, PlAd, IndPrSg1, …). Effect on this re-measure is muted because the DB used here lacks the bulk Ekilex import (see open issues); the latent mechanism still lands when that import runs.
+- [`da37ae9`](https://github.com/sagarinbabel/finnestdb/commit/da37ae9) — `Eval parity + grammar-label stopgap + suffix-table freeze (#109)`. **Largest single mechanism behind the grammar-accuracy lift in this entry.** After dict Step 1 resolves a (lemma, POS), the case-suffix matcher runs additively to attach a `GrammarLabel`, only when the suffix-strip independently arrives at the same lemma. New helper `attachCaseLabelIfStemMatches` in `internal/store/dict.go`. Bilingual: applies for FI and ET via `parserules.{Finnish,Estonian}CaseSuffixes`. The same PR also froze the suffix table — see DECISIONS.md Decision 5 — because new morphology work goes through `pkg/lemmatizer-fi-et/` (FST), not by extending the suffix list further.
+- [`80e5946`](https://github.com/sagarinbabel/finnestdb/commit/80e5946) — `dict: rank VFST analyses against original surface case`. Hardens VFST disambiguation so PROPN homonyms don't beat common-noun lemmas on lowercase surfaces inside the Step 5 FST path. Effect on this re-measure is small because the smoke `fi_min.json` covers ~12 forms; the mechanism is what stops PROPN/NOUN homonyms from regressing once the local table is regenerated against full Voikko `mor.vfst`.
+- [`8d75dbf`](https://github.com/sagarinbabel/finnestdb/commit/8d75dbf) — `data: migrate third-party artifacts to localdata/ + tighten artifact policy` (PR [#125](https://github.com/sagarinbabel/finnestdb/pull/125)). Codifies what PR4 already documented: upstream transducer blobs and any `localdata/` corpora artifacts are out-of-tree; the runtime-embedded `pkg/lemmatizer-fi-et/tables/{fi,et}_min.json` files stay smoke fixtures, regenerated locally via `make gen-lemmatizer-tables-fi VFST_PATH=…`.
+- [`8b4fd9f`](https://github.com/sagarinbabel/finnestdb/commit/8b4fd9f) / [`6cf0610`](https://github.com/sagarinbabel/finnestdb/commit/6cf0610) — `docs: restore staged FST eval snapshots + per-stage attribution entries` and follow-up bootstrap-path fix (PR [#124](https://github.com/sagarinbabel/finnestdb/pull/124)). Restored the FINAL snapshot files into `docs/baselines/` and the per-stage entries 2026-05-06f/g/h/i in this evolution doc.
+
+**Net effect vs 2026-05-06i** (custom parser):
+
+- **FI grammar accuracy lifts (driven by [`da37ae9`](https://github.com/sagarinbabel/finnestdb/commit/da37ae9)'s case-suffix label stopgap; reproducible from public code):**
+  - `fi-grammar`: 1.4 → **59.5** (+58.1pp), full 51.9 → **79.5** (+27.6pp)
+  - `fi-core`: 0.0 → **30.0** (+30.0pp), full 35.0 → **50.0** (+15.0pp)
+  - `fi-manual-v2`: 0.0 → **33.3** (+33.3pp), full 55.6 → 66.7 (+11.1pp)
+- **ET grammar accuracy lift (same mechanism, ET wired):**
+  - `et-grammar`: 2.0 → **19.6** (+17.6pp), full 42.9 → **51.4** (+8.5pp)
+- **Lemma/coverage drops on FST-driven datasets (smoke tables vs. maintainer-local full tables):**
+  - `fi-manual-v1`: lemma 82.9 → 81.4 (−1.5pp), coverage 96.9 → 91.2 (−5.7pp)
+  - `fi-core`: coverage 100.0 → 95.7 (−4.3pp)
+  - `et-manual`: lemma 88.9 → 77.8 (−11.1pp), grammar 16.7 → 0.0 (−16.7pp), coverage 100.0 → 91.7 (−8.3pp)
+  - `et-grammar`: coverage 100.0 → 98.9 (−1.1pp)
+  - These drops are not parser-code regressions — they reflect that on a fresh clone the embedded FST tables cover ~12 forms by design. To reproduce 2026-05-06i numbers on `main`, regenerate `fi_min.json` / `et_min.json` locally against full upstream analysers per the [artifact policy](ARTIFACT_POLICY.md).
+- **Lemma/POS holds on dict-saturated datasets** where the case-suffix stopgap adds grammar labels but doesn't change the resolved lemma: `fi-grammar` (lemma 96.8 unchanged from PR 0.5 dict-only), `fi-core` lemma 85.0 unchanged, `fi-manual-v2` 88.9 unchanged, `et-grammar` 88.6 unchanged.
+- **Note**: `fi-manual-v1` grammar dropped 13.3 → 6.7. The stopgap fires only when both the case-suffix matcher resolves the surface AND it agrees on the lemma; on real-world Finnish (v1, 22 cases) the suffix matcher was less reliable than what the maintainer-local full FST table emitted at 2026-05-06i. The FST runtime is the long-term answer; the stopgap is explicitly transitional (suffix table is frozen — see DECISIONS.md Decision 5).
+
+**Open issues this surfaced**:
+
+- The 2026-05-06i FINAL snapshots are non-reproducible from a fresh clone — they require the maintainer's local `fi_min.json` / `et_min.json` regeneration via `make gen-lemmatizer-tables-fi VFST_PATH=…` against full upstream Voikko `mor.vfst` / Giellalt `analyser-gt-desc.hfstol` (paths kept under `localdata/`, gitignored). This re-measure makes the public-repo state legible. A follow-up could either (a) document a deterministic local-table regeneration recipe (exact upstream analyser version + wordlist) so anyone can land the FINAL numbers on their own machine, or (b) ship the runtime so it can `mmap` an out-of-tree `mor.vfst` / `analyser-gt-desc.hfstol` at startup — the latter would close the public/private numbers gap entirely without changing the artifact policy.
+- The `parser-comparison.sh` script slugifies dataset names from the JSON `dataset.name` field, so `fi-manual-v1.json` and `fi-manual-v2.json` (both with `dataset.name == "fi-manual"`) overwrite each other under `${RUN_TS}-fi-manual.json`. This re-measure worked around it by re-running v1 individually with `-out` set explicitly. The script could either prepend the input-file basename or refuse to overwrite existing files in the same run.
+- The DB used for this measurement does not contain the Ekilex bulk drop ([#78](https://github.com/sagarinbabel/finnestdb/pull/78)) — only kaikki + the Ekilex public-headwords snapshot. ET counts: 392,863 forms / 186,798 lemmas. The 2026-05-06i FINAL was measured against a DB with ~6.18M ET forms. The grammar-accuracy effect of [`2febc31`](https://github.com/sagarinbabel/finnestdb/commit/2febc31) (ET FEATS via Ekilex `morph_code`) is therefore muted in this baseline; for the full ET FEATS lift the bulk import has to be replayed (`make fetch-ekilex && make reduce-ekilex && make import-ekilex-details-et`).
+- The `omorfi` adapter dispatch in `internal/parsecore/parsecore.go` does not auto-discover a `.venv-omorfi/bin/python` sibling the way the `estnltk` adapter discovers `.venv-estnltk/bin/python`. With omorfi 0.9.12's pure-Python `pyhfst` backend, the natural install path is now a per-tool venv; symmetric venv discovery for omorfi would let `make setup-omorfi` "just work" without `FINNESTDB_OMORFI_CMD` having to be exported by hand.
+
+---
 
 ### 2026-05-06i — FST PR 4/4 ships: change document + final eval freeze
 
