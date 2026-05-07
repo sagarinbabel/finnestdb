@@ -5,6 +5,7 @@ importkotus
 importdict
 importekilex
 importekilexdetails
+/importud
 fetchekilex
 reduceekilex
 parsertest
@@ -12,6 +13,7 @@ parser-compare
 corpusmine
 autoresearch
 server
+/scrapegutenberg
 *.db
 *.db-shm
 *.db-wal
@@ -55,6 +57,21 @@ reports/
 
 # Local corpora and manual text imports
 localdata/
+
+# UD treebank cache (cloned by scripts/fetch-and-import-ud.sh).
+# ~50 MB per treebank, regenerable from the importer — don't commit.
+data/ud-cache/
+
+# Train splits of UD-derived gold are gitignored: each is 10–30 MB and
+# they're used for OOV/coverage analysis, not headline eval. Regenerable
+# via scripts/fetch-and-import-ud.sh.
+testdata/parser-eval/fi/gold-train/
+testdata/parser-eval/et/gold-train/
+
+# Estonian UD treebanks (EDT, EWT) are CC BY-NC-SA. The derived gold JSON
+# stays local — the public repo only hosts FI UD gold (CC BY / CC BY-SA).
+# See cmd/importud/main.go for source attribution.
+testdata/parser-eval/et/gold/ud-et-*.json
 
 # Claude Code
 .claude/

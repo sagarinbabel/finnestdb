@@ -101,7 +101,7 @@ you submit:
 
 - `õ` present → Estonian (this character never appears in Finnish)
 - `ä`/`ö` > 1.5% of letters → Finnish
-- Neither → warning shown (advisory only; you can still parse)
+- Neither → advisory unknown-language warning; you can still parse
 
 ---
 
@@ -136,8 +136,9 @@ dictionaries (takes a while; downloads a lot of data), use:
 make run-local
 ```
 
-The app opens to the public landing page. Sign in with an email address to use
-Inspect, Decks, and Review. The current auth flow is an alpha stub; see
+The app opens to the public landing page. Sign in with an email address and
+password (8+ chars) to use Parse, Decks, and Review. The current auth flow is
+an alpha stub; see
 [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md) before exposing the app
 to real users.
 
@@ -280,14 +281,14 @@ go run ./cmd/importdict -lang fi -db finnestdb.db -custom-glosses ./my-overrides
 # CSV format: word,pos,lang,gloss
 ```
 
-### Testing the Inspect Feature
+### Testing the Parse Feature
 
 1. Open **http://localhost:8080**
-2. Sign in with an email address.
-3. Open **Inspect**.
+2. Sign in with an email address and password (8+ chars).
+3. Open **Parse**.
 4. Select a language: **Finnish (FI)** or **Estonian (ET)**.
 5. Paste text into the textarea (up to 300,000 Unicode characters).
-6. Click **Inspect text**.
+6. Click **Parse text**.
 7. You'll see a word list table:
 
 | Column | What it shows |
@@ -300,7 +301,7 @@ go run ./cmd/importdict -lang fi -db finnestdb.db -custom-glosses ./my-overrides
 | Grammar | Case or grammar label inferred by enrichment when available |
 | Tokens | How many times the lemma appears in the parsed text |
 
-The user-facing Inspect result shows dictionary coverage, unique lemmas, token
+The user-facing parse result shows dictionary coverage, unique lemmas, token
 count, definitions, grammar labels when available, and correction actions.
 Internal parser-mode and parse-duration details remain visible in the admin
 workbench.
@@ -406,13 +407,15 @@ Golden dataset guidance:
 
 ### Language Validation
 
-The app checks whether your pasted text matches the selected language:
+The app checks whether pasted or file-loaded text matches the selected language:
 
 - **Estonian detection:** the character `õ` is unique to Estonian — its presence is a strong signal
 - **Finnish detection:** `ä` and `ö` appear in >1.5% of letters in typical Finnish text
-- If neither signal is found, you'll see a warning (English text, for example, will trigger this)
+- **Fast path:** high-confidence pasted or file-loaded text auto-switches the selected language
+- **Guardrail:** if the selected language still conflicts with detected Finnish or Estonian, parse is blocked until you switch languages
+- If neither signal is found, you'll see an advisory warning (English text, for example, will trigger this)
 
-The warning is advisory only — you can still parse the text.
+Unknown-language warnings are advisory only, so you can still parse. Detected Finnish/Estonian mismatch warnings are blocking because parsing under the wrong language produces lower-quality results.
 
 ### Known Limitations
 

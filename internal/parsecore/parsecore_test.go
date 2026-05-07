@@ -145,12 +145,12 @@ func TestComputeParseStatsCountsResolutionSourcesAndTimings(t *testing.T) {
 			},
 		},
 	}, 3, ParseTimings{
-		AnalyzeMs:          4,
-		LookupFormsMs:      3,
-		LookupGlossesMs:    2,
-		ResolveSentencesMs: 1,
-		EnrichWordsMs:      1,
-		TotalMs:            11,
+		AnalyzeNs:          4_000_000,
+		LookupFormsNs:      3_000_000,
+		LookupGlossesNs:    2_000_000,
+		ResolveSentencesNs: 1_000_000,
+		EnrichWordsNs:      1_000_000,
+		TotalNs:            11_000_000,
 	})
 
 	if stats.UniqueForms != 3 {
@@ -171,7 +171,7 @@ func TestComputeParseStatsCountsResolutionSourcesAndTimings(t *testing.T) {
 	if stats.SourceCounts["possessive"] != 1 || stats.SourceCounts["stub"] != 1 || stats.SourceCounts["punct"] != 1 {
 		t.Fatalf("unexpected source counts: %#v", stats.SourceCounts)
 	}
-	if stats.Timings.TotalMs != 11 {
-		t.Fatalf("total_ms=%d want 11", stats.Timings.TotalMs)
+	if stats.Timings.TotalNs != 11_000_000 {
+		t.Fatalf("total_ns=%d want 11_000_000", stats.Timings.TotalNs)
 	}
 }

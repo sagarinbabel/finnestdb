@@ -108,7 +108,7 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 			Lang:            lang,
 			Parser:          parser,
 			TotalTokens:     3,
-			ParseDurationMs: 17,
+			ParseDurationNs: 17_000_000,
 			Stats: parsecore.ParseStats{
 				UniqueForms:      2,
 				TotalSentences:   1,
@@ -119,12 +119,12 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 					"stub": 1,
 				},
 				Timings: parsecore.ParseTimings{
-					AnalyzeMs:          5,
-					LookupFormsMs:      4,
-					LookupGlossesMs:    3,
-					ResolveSentencesMs: 2,
-					EnrichWordsMs:      1,
-					TotalMs:            17,
+					AnalyzeNs:          5_000_000,
+					LookupFormsNs:      4_000_000,
+					LookupGlossesNs:    3_000_000,
+					ResolveSentencesNs: 2_000_000,
+					EnrichWordsNs:      1_000_000,
+					TotalNs:            17_000_000,
 				},
 			},
 			Words: []parsecore.WordEntry{
@@ -161,7 +161,7 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 		t.Fatalf("total_tokens=%d want 3", resp.TotalTokens)
 	}
 	if resp.ParseDurationMs != 17 {
-		t.Fatalf("parse_duration_ms=%d want 17", resp.ParseDurationMs)
+		t.Fatalf("parse_duration_ms=%v want 17", resp.ParseDurationMs)
 	}
 	if resp.Stats.UniqueForms != 2 {
 		t.Fatalf("stats.unique_forms=%d want 2", resp.Stats.UniqueForms)
@@ -169,8 +169,8 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 	if resp.Stats.ResolvedTokens != 2 {
 		t.Fatalf("stats.resolved_tokens=%d want 2", resp.Stats.ResolvedTokens)
 	}
-	if resp.Stats.Timings.TotalMs != 17 {
-		t.Fatalf("stats.timings.total_ms=%d want 17", resp.Stats.Timings.TotalMs)
+	if resp.Stats.Timings.TotalNs != 17_000_000 {
+		t.Fatalf("stats.timings.total_ns=%d want 17_000_000", resp.Stats.Timings.TotalNs)
 	}
 	if len(resp.Words) != 2 {
 		t.Fatalf("words=%d want 2", len(resp.Words))
@@ -190,7 +190,7 @@ func TestHandleParseCreatesParseSessionForAuthenticatedUser(t *testing.T) {
 			Lang:            lang,
 			Parser:          parser,
 			TotalTokens:     2,
-			ParseDurationMs: 11,
+			ParseDurationNs: 11_000_000,
 			Stats:           parsecore.ParseStats{},
 			Words: []parsecore.WordEntry{
 				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 1},
@@ -241,7 +241,7 @@ func TestHandleParseHydratesLemmaStateForAuthenticatedUser(t *testing.T) {
 			Lang:            lang,
 			Parser:          parser,
 			TotalTokens:     2,
-			ParseDurationMs: 11,
+			ParseDurationNs: 11_000_000,
 			Stats:           parsecore.ParseStats{},
 			Words: []parsecore.WordEntry{
 				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 1},
@@ -295,6 +295,145 @@ func TestHandleParseHydratesLemmaStateForAuthenticatedUser(t *testing.T) {
 	}
 	if byLemma["juosta"].LearningState != "ignored" {
 		t.Fatalf("juosta learning_state=%q want ignored", byLemma["juosta"].LearningState)
+	}
+}
+
+// TestHandleParseExpandsHomonyms verifies that the import overview's words
+// list is dict-expanded the same way handleCreateDeck expands tokens, so the
+// unique-lemma count in the import overview matches the deck's unique count.
+func TestHandleParseExpandsHomonyms(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("joon", "NOUN", "line", "ET"); err != nil {
+		t.Fatalf("UpsertLemma joon: %v", err)
+	}
+	if err := api.store.UpsertLemma("jooma", "VERB", "drink", "ET"); err != nil {
+		t.Fatalf("UpsertLemma jooma: %v", err)
+	}
+	for _, r := range [][4]string{
+		{"joon", "joon", "NOUN", "ET"},
+		{"joon", "jooma", "VERB", "ET"},
+	} {
+		if err := api.store.UpsertForm(r[0], r[1], r[2], r[3]); err != nil {
+			t.Fatalf("UpsertForm %v: %v", r, err)
+		}
+	}
+
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang:        lang,
+			Parser:      "custom",
+			TotalTokens: 3,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "Ma joon vett.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Ma", Lemma: "mina", POS: "PRON"},
+						{Form: "joon", Lemma: "jooma", POS: "VERB"},
+						{Form: "vett", Lemma: "vesi", POS: "NOUN"},
+						{Form: ".", POS: "PUNCT"},
+					},
+				},
+			},
+			// Parser's pick: only one entry for "joon" (jooma/VERB).
+			Words: []parsecore.WordEntry{
+				{Lemma: "mina", POS: "PRON", Forms: []string{"Ma"}, Count: 1},
+				{Lemma: "jooma", POS: "VERB", Forms: []string{"joon"}, Count: 1, Gloss: "drink"},
+				{Lemma: "vesi", POS: "NOUN", Forms: []string{"vett"}, Count: 1},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"ET","text":"Ma joon vett."}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
+	}
+
+	var resp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	// Parser produced 3 entries (mina, jooma, vesi). After expansion the
+	// dict-known homonym joon/NOUN appears too — total 4, matching what the
+	// deck would have.
+	if len(resp.Words) != 4 {
+		t.Fatalf("len(words)=%d want 4 (mina, jooma, vesi, joon-noun): %+v", len(resp.Words), resp.Words)
+	}
+	byKey := map[string]parsecore.WordEntry{}
+	for _, w := range resp.Words {
+		byKey[w.Lemma+"/"+w.POS] = w
+	}
+	joonNoun, ok := byKey["joon/NOUN"]
+	if !ok {
+		t.Fatalf("joon/NOUN missing from expanded words: %+v", resp.Words)
+	}
+	if joonNoun.Gloss != "line" {
+		t.Errorf("joon/NOUN gloss=%q want line", joonNoun.Gloss)
+	}
+	if len(joonNoun.Forms) != 1 || joonNoun.Forms[0] != "joon" {
+		t.Errorf("joon/NOUN forms=%v want [joon]", joonNoun.Forms)
+	}
+	if joonNoun.Count != 1 {
+		t.Errorf("joon/NOUN count=%d want 1", joonNoun.Count)
+	}
+
+	// Order contract matches parsecore.enrichWords / GetDeckDetails: count
+	// desc, lemma asc. Map iteration in expandParsedWords would otherwise
+	// produce non-deterministic ordering and silently drift the API contract.
+	for i := 1; i < len(resp.Words); i++ {
+		prev, cur := resp.Words[i-1], resp.Words[i]
+		if cur.Count > prev.Count {
+			t.Errorf("words[%d..%d] not count-desc: %s(count=%d) before %s(count=%d)",
+				i-1, i, prev.Lemma, prev.Count, cur.Lemma, cur.Count)
+		}
+		if cur.Count == prev.Count && cur.Lemma < prev.Lemma {
+			t.Errorf("words[%d..%d] tie not lemma-asc: %s before %s",
+				i-1, i, prev.Lemma, cur.Lemma)
+		}
+	}
+	// Forms within each entry are alphabetical (parsecore.enrichWords:729 +
+	// GetDeckDetails:1223 contract).
+	for _, w := range resp.Words {
+		for j := 1; j < len(w.Forms); j++ {
+			if w.Forms[j-1] > w.Forms[j] {
+				t.Errorf("%s/%s forms not sorted: %v", w.Lemma, w.POS, w.Forms)
+				break
+			}
+		}
+	}
+}
+
+func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
+	api := newTestAPI(t)
+	parsed := &parsecore.ParseResult{
+		Lang: "ET",
+		Sentences: []parsecore.SentenceResult{
+			{
+				Text: "joon",
+				Tokens: []parsecore.TokenResult{
+					{Form: "joon", Lemma: "joon", POS: "NOUN"},
+				},
+			},
+		},
+	}
+	dict := map[string][]store.FormResolution{
+		"joon": {
+			{Lemma: "joon", POS: "VERB"},
+			{Lemma: "joon", POS: "NOUN"},
+		},
+	}
+
+	got := api.expandParsedWords(parsed, dict)
+	if len(got) != 2 {
+		t.Fatalf("len=%d want 2: %+v", len(got), got)
+	}
+	if got[0].Lemma != "joon" || got[0].POS != "NOUN" {
+		t.Fatalf("first=%s/%s want joon/NOUN: %+v", got[0].Lemma, got[0].POS, got)
+	}
+	if got[1].Lemma != "joon" || got[1].POS != "VERB" {
+		t.Fatalf("second=%s/%s want joon/VERB: %+v", got[1].Lemma, got[1].POS, got)
 	}
 }
 
@@ -822,6 +961,63 @@ func TestLemmaStateRequiresAuthentication(t *testing.T) {
 	}
 }
 
+func TestLemmaStatesBatchLookupReturnsCurrentStates(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "lemma-state-batch@example.com")
+
+	for _, body := range []string{
+		`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"known"}`,
+		`{"lang":"FI","lemma":"juosta","pos":"VERB","status":"ignored"}`,
+	} {
+		req := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(body))
+		for _, cookie := range cookies {
+			req.AddCookie(cookie)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("seed state status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/lemma-states", strings.NewReader(`{
+		"lang":"FI",
+		"lemmas":[
+			{"lemma":"kissa","pos":"NOUN"},
+			{"lemma":"juosta","pos":"VERB"},
+			{"lemma":"talo","pos":"NOUN"},
+			{"lemma":"kissa","pos":"NOUN"}
+		]
+	}`))
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var resp LemmaStateLookupResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	got := map[string]string{}
+	for _, state := range resp.States {
+		got[state.Lemma+"/"+state.POS] = state.Status
+	}
+	if got["kissa/NOUN"] != "known" {
+		t.Fatalf("kissa/NOUN=%q want known (states=%+v)", got["kissa/NOUN"], resp.States)
+	}
+	if got["juosta/VERB"] != "ignored" {
+		t.Fatalf("juosta/VERB=%q want ignored (states=%+v)", got["juosta/VERB"], resp.States)
+	}
+	if _, ok := got["talo/NOUN"]; ok {
+		t.Fatalf("neutral talo/NOUN should be omitted from response: %+v", resp.States)
+	}
+}
+
 func TestKnownWordsImportReturnsUnresolvedWithoutCreatingRows(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)
@@ -995,6 +1191,112 @@ func TestCreateDeckSkipsKnownWordsWhenSeedingCards(t *testing.T) {
 	}
 	if cardCount != 1 {
 		t.Fatalf("card_count=%d want 1", cardCount)
+	}
+}
+
+// TestClearLemmaStateEnsuresCardWhenDeckSkippedSeeding covers both ways a
+// deck-create can skip ensureCard for a lemma — the lemma was already known,
+// or already ignored — and verifies that clearing the state via /api/lemma-state
+// seeds a card so the lemma becomes reviewable. Both paths share the same
+// ClearLemmaState body, but parallel coverage guards against a future
+// regression that would split them.
+func TestClearLemmaStateEnsuresCardWhenDeckSkippedSeeding(t *testing.T) {
+	cases := []struct {
+		name        string
+		preState    string // "known" or "ignored" — applied before deck create
+		emailSuffix string
+	}{
+		{name: "known", preState: "known", emailSuffix: "known"},
+		{name: "ignored", preState: "ignored", emailSuffix: "ignored"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			api := newTestAPI(t)
+			if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+				t.Fatalf("UpsertLemma: %v", err)
+			}
+			if err := api.store.UpsertForm("kissa", "kissa", "NOUN", "FI"); err != nil {
+				t.Fatalf("UpsertForm: %v", err)
+			}
+
+			api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+				return &parsecore.ParseResult{
+					Lang: lang,
+					Sentences: []parsecore.SentenceResult{
+						{
+							Text: "Kissa juoksee.",
+							Tokens: []parsecore.TokenResult{
+								{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+								{Form: "juoksee", Lemma: "juosta", POS: "VERB"},
+								{Form: ".", POS: "PUNCT"},
+							},
+						},
+					},
+				}, nil
+			}
+
+			mux := newTestMux(t, api)
+			cookies := loginAndReturnCookies(t, mux, "clear-card-"+tc.emailSuffix+"@example.com")
+
+			// Mark kissa with the pre-state via /api/lemma-state, mirroring the
+			// existing real-user flows (known-word import for "known", trash-
+			// icon button on a parse result for "ignored").
+			preReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state",
+				strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"`+tc.preState+`"}`))
+			for _, cookie := range cookies {
+				preReq.AddCookie(cookie)
+			}
+			preRec := httptest.NewRecorder()
+			mux.ServeHTTP(preRec, preReq)
+			if preRec.Code != http.StatusOK {
+				t.Fatalf("pre-state mark status=%d body=%q", preRec.Code, preRec.Body.String())
+			}
+
+			createReq := httptest.NewRequest(http.MethodPost, "/api/decks",
+				strings.NewReader(`{"title":"Test deck","lang":"FI","text":"Kissa juoksee."}`))
+			for _, cookie := range cookies {
+				createReq.AddCookie(cookie)
+			}
+			createRec := httptest.NewRecorder()
+			mux.ServeHTTP(createRec, createReq)
+			if createRec.Code != http.StatusOK {
+				t.Fatalf("create deck status=%d body=%q", createRec.Code, createRec.Body.String())
+			}
+
+			auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
+			if err != nil || auth == nil {
+				t.Fatal("expected authenticated user")
+			}
+
+			// Pre-condition: only juosta has a card; kissa was skipped because
+			// it was already known/ignored at deck-create time.
+			if cardCount, _ := api.store.CountCards(auth.UserID, "FI"); cardCount != 1 {
+				t.Fatalf("pre-clear card_count=%d want 1", cardCount)
+			}
+
+			// Clear via the API — the user "marks as unknown" / "stops ignoring".
+			clearReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state",
+				strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":""}`))
+			for _, cookie := range cookies {
+				clearReq.AddCookie(cookie)
+			}
+			clearRec := httptest.NewRecorder()
+			mux.ServeHTTP(clearRec, clearReq)
+			if clearRec.Code != http.StatusOK {
+				t.Fatalf("clear status=%d body=%q", clearRec.Code, clearRec.Body.String())
+			}
+
+			// Post-condition: kissa now has a card row, so it's reachable from
+			// the review queue.
+			cardCount, err := api.store.CountCards(auth.UserID, "FI")
+			if err != nil {
+				t.Fatalf("CountCards: %v", err)
+			}
+			if cardCount != 2 {
+				t.Fatalf("post-clear card_count=%d want 2 (juosta + kissa now seeded)", cardCount)
+			}
+		})
 	}
 }
 
@@ -1651,7 +1953,7 @@ func TestParseFeedbackSubmissionAndAdminReview(t *testing.T) {
 			Lang:            lang,
 			Parser:          parser,
 			TotalTokens:     2,
-			ParseDurationMs: 11,
+			ParseDurationNs: 11_000_000,
 			Stats:           parsecore.ParseStats{},
 			Words: []parsecore.WordEntry{
 				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 1},
