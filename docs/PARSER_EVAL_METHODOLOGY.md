@@ -34,7 +34,7 @@ Schema details: [`baselines/README.md`](baselines/README.md).
 | Parser | What it is | What it tests |
 |---|---|---|
 | `basic` | Tokenize + lowercase + direct SQLite form lookup | Pure dictionary recall |
-| `custom` | Basic + multi-step enrichment (possessive strip, compound split, case-suffix matcher, FST step 5) | The actual finnestdb runtime |
+| `custom` | Basic + multi-step enrichment (possessive strip, compound split, case-suffix matcher) plus parallel-FST scoring inside dict step 1 (post-PR #127) and FEATS-aware FST candidate merge (post-PR #129) | The actual finnestdb runtime |
 | `omorfi` | Helsinki HFST analyzer for Finnish (external, via Python adapter) | Reference upper bound for FI |
 | `estnltk` | Vabamorf via EstNLTK for Estonian (external, via Python venv adapter) | Reference upper bound for ET |
 

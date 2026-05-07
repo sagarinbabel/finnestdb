@@ -1,4 +1,4 @@
-_Current as of 2026-04-29 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
+_Current as of 2026-05-07 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
 # FinEstDB Features
 

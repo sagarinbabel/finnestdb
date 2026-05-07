@@ -22,8 +22,8 @@ These are documentation starting points, not claims that the systems are stable.
 
 | System | Current version | Notes |
 |--------|-----------------|-------|
-| Parser behavior | `parser-v1` (= dated tag `2026.05.07j`, see [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md)) | `basic`, `custom`, evaluation-only `omorfi`/`estnltk` wired through `parsecore`. The constant `parsecore.ParserVersion` carries the dated tag and is stamped into every eval JSON report's `parser_version` field. |
-| Parser evaluation baseline | `parser-baseline-2026-05-07-j` | The 2026-05-07j freeze under `docs/baselines/2026-05-07-post-fst-*` (FI: 8 datasets / 61,927 tokens; ET: 2 datasets / 190 tokens). See [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) §2026-05-07j. |
+| Parser behavior | `parser-v1` (= dated tag `2026.05.07k`, see [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md)) | `basic`, `custom`, evaluation-only `omorfi`/`estnltk` wired through `parsecore`. The constant `parsecore.ParserVersion` carries the dated tag and is stamped into every eval JSON report's `parser_version` field. |
+| Parser evaluation baseline | `parser-baseline-2026-05-07-k-T0944Z` | The 2026-05-07k freeze under `docs/baselines/2026-05-07k-T0944Z-*` (FI: 8 datasets / 61,927 tokens; ET: 2 datasets / 190 tokens). See [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) §2026-05-07k-T0944Z. The wall-clock `THHMMZ` suffix is part of the baseline ID — multiple baselines on the same parser-behavior-version are distinguished by their run-start UTC time. The j freeze (2026-05-07j; same parser scope, pre-FEATS-eval) is retained as `docs/baselines/2026-05-07-post-fst-*`. |
 | Deck review system | `review-v0` | Backend and UI scaffolding exist, but review scheduling is not yet a locked production contract. |
 | API contract | `api-v0` | Alpha API surface; parse is the most mature contract. |
 | Data schema | implicit | Schema exists in code today; explicit migrations should become the source of truth before production data matters. |
@@ -56,7 +56,7 @@ when each `parser-vN` ships:
 
 | `parser-vN` | Latest dated iteration when bumped | Notable behaviors introduced |
 |---|---|---|
-| `parser-v1` | `2026.05.07j` | Baseline scope: dict (basic/custom), case-suffix grammar-label stopgap, FST step-5 fallback against smoke fixtures, omorfi/estnltk eval columns. |
+| `parser-v1` | `2026.05.07k` | Baseline scope: dict (basic/custom), case-suffix grammar-label stopgap, FST as parallel scorer in dict step 1 (post-#127) against smoke fixtures, FST candidate-merge FEATS enrichment (post-#129), per-attribute FEATS eval (post-#130), omorfi/estnltk eval columns. Iterations within v1: `j` (2026-05-07, pre-FEATS-eval), `k` (2026-05-07, post-FEATS-eval). |
 
 Do not bump a subsystem version for implementation-only refactors that preserve
 observable behavior. Record those in git history instead.
