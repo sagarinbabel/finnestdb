@@ -24,7 +24,7 @@ descriptions when two docs sound similar.
 - **Entry point:** [`../README.md`](../README.md) (what the project is, how to run, project structure, doc index)
 - **Setup verifier:** [`make doctor`](../cmd/doctor/main.go) — single-screen report on DB sources, FST tables, analyzer venvs, Ekilex shards, UD cache, frequency baselines
 - **System architecture:** [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (current), [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) (lexical-layer detail)
-- **Product framing:** [`docs/FEATURES.md`](FEATURES.md) (user-facing)
+- **Product framing:** [`docs/FEATURES.md`](FEATURES.md) (user-facing), [`docs/DESIGN_REVIEW.md`](DESIGN_REVIEW.md) (design folder audit + TODO)
 - **What's done / what's next:** [`../TODO.md`](../TODO.md) (the only doc you need for status)
 - **Why we made choices:** [`docs/DECISIONS.md`](DECISIONS.md) (latest-first, 18 decisions)
 - **What changed when:** [`docs/CHANGELOG.md`](CHANGELOG.md) (latest-first, cross-linked to DECISIONS)
@@ -44,6 +44,7 @@ descriptions when two docs sound similar.
 | How the system is wired together | [`ARCHITECTURE.md`](../ARCHITECTURE.md) |
 | How the lexical layer works | [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) |
 | What the product is from a learner's view | [`docs/FEATURES.md`](FEATURES.md) |
+| Design audit + open TODO | [`docs/DESIGN_REVIEW.md`](DESIGN_REVIEW.md) |
 | How parser quality has moved over time | [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) |
 | Why FI and ET diverge measurably | [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md) |
 | What ML directions fit the project | [`docs/ML_IDEAS.md`](ML_IDEAS.md) |
@@ -82,6 +83,12 @@ descriptions when two docs sound similar.
   Includes the recommended correction-flow design (flag-only path,
   ✎ entry point) and the open questions on translation, register
   picker, and cold-start.
+
+- [`docs/DESIGN_REVIEW.md`](DESIGN_REVIEW.md) — audit of the `design/`
+  folder: branding, Aalto app system, wireframe clickthrough, view
+  components, mobile prototype, and flow diagram. Includes a prioritized
+  TODO list (P0–P3) covering the leverage → word-list → study-deck flow,
+  correction round-trip, and design-system convergence.
 
 - [`docs/DESIGN_AI_PROMPTS.md`](DESIGN_AI_PROMPTS.md) — system prompt
   + per-screen prompt templates for handing FinEstDB screens to v0,
@@ -230,7 +237,7 @@ For an LLM building a project model from cold:
 4. **Parser quality**: PARSER_EVAL_METHODOLOGY → PARSER_EVOLUTION → docs/baselines/
 5. **Architecture deep-dive**: ARCHITECTURE → LEXICAL_PLAN → ARTIFACT_POLICY → data_enhancement
 6. **Roadmap / future**: TODO Research Goals → ML_IDEAS → ideas
-7. **Product / UX**: FEATURES → PARSER_FEEDBACK_LOOP → srs-deck-spec
+7. **Product / UX**: FEATURES → PARSER_FEEDBACK_LOOP → srs-deck-spec → DESIGN_REVIEW (open design TODO)
 
 Autoresearch exception: even though `docs/AUTORESEARCH.md` exists, it is not
 part of the active roadmap. Treat it as an idea parking lot until the app is
