@@ -188,15 +188,15 @@ func emitBeforeAfterTable(now []*eval.Report, prev map[string]*eval.Report, main
 		cases := nowR.Dataset.CaseCount
 		prevR := prev[ds]
 
-		for _, m := range []metric{metricLemma, metricPOS, metricGrammar, metricCoverage} {
-			nowVal := summaryMetric(nowR.Summary[mainParser], m)
+		for _, m := range []metric{metricLemma, metricPOS, metricLemmaPOS, metricGrammar, metricCoverage} {
+			nowVal := metricFromReport(nowR, mainParser, m)
 			prevVal := math.NaN()
 			if prevR != nil {
-				prevVal = summaryMetric(prevR.Summary[mainParser], m)
+				prevVal = metricFromReport(prevR, mainParser, m)
 			}
 			analyzerVal := math.NaN()
 			if analyzer != "" {
-				analyzerVal = summaryMetric(nowR.Summary[analyzer], m)
+				analyzerVal = metricFromReport(nowR, analyzer, m)
 			}
 
 			nowCell := formatAccuracyWithCI(nowVal, nowR, mainParser, m, bootstrap, rng)
@@ -223,8 +223,8 @@ func emitBeforeAfterTable(now []*eval.Report, prev map[string]*eval.Report, main
 // retained as an appendix when -baseline-dir is set, and as the default
 // output when -baseline-dir is not set (back-compat).
 func emitLegacyTable(reports []*eval.Report) {
-	fmt.Println("| Dataset | Cases | Parser | Lemma | POS | Grammar | Full | Coverage | Avg ms |")
-	fmt.Println("|---|---:|---|---:|---:|---:|---:|---:|---:|")
+	fmt.Println("| Dataset | Cases | Parser | Lemma | POS | Lemma+POS | Grammar | Full | Coverage | Avg ms |")
+	fmt.Println("|---|---:|---|---:|---:|---:|---:|---:|---:|---:|")
 
 	for _, r := range reports {
 		for _, parser := range r.Parsers {
@@ -232,9 +232,11 @@ func emitLegacyTable(reports []*eval.Report) {
 			if !ok {
 				continue
 			}
-			fmt.Printf("| %s | %d | %s | %.1f%% | %.1f%% | %.1f%% | %.1f%% | %.1f%% | %.1f |\n",
+			fmt.Printf("| %s | %d | %s | %.1f%% | %.1f%% | %.1f%% | %.1f%% | %.1f%% | %.1f%% | %.1f |\n",
 				r.Dataset.Name, r.Dataset.CaseCount, parser,
-				s.LemmaAccuracy*100, s.POSAccuracy*100, s.GrammarAccuracy*100,
+				s.LemmaAccuracy*100, s.POSAccuracy*100,
+				lemmaPOSDisplay(s, r, parser)*100,
+				s.GrammarAccuracy*100,
 				s.FullAccuracy*100, s.ResolvedCoverage*100, s.AvgCaseDurationMs)
 		}
 	}
@@ -349,8 +351,13 @@ type metric struct {
 }
 
 var (
-	metricLemma    = metric{label: "Lemma", read: func(s eval.ParserSummary) float64 { return s.LemmaAccuracy }}
-	metricPOS      = metric{label: "POS", read: func(s eval.ParserSummary) float64 { return s.POSAccuracy }}
+	metricLemma = metric{label: "Lemma", read: func(s eval.ParserSummary) float64 { return s.LemmaAccuracy }}
+	metricPOS   = metric{label: "POS", read: func(s eval.ParserSummary) float64 { return s.POSAccuracy }}
+	// metricLemmaPOS is the dictionary-entry attachment metric: did the
+	// surface form land on the right (lemma, POS) entry? First-class for
+	// language-learning quality alongside Grammar — see
+	// docs/PARSER_EVAL_METHODOLOGY.md.
+	metricLemmaPOS = metric{label: "Lemma+POS", read: func(s eval.ParserSummary) float64 { return s.LemmaPOSAccuracy }}
 	metricGrammar  = metric{label: "Grammar", read: func(s eval.ParserSummary) float64 { return s.GrammarAccuracy }}
 	metricCoverage = metric{label: "Coverage", read: func(s eval.ParserSummary) float64 { return s.ResolvedCoverage }}
 )
@@ -361,6 +368,45 @@ func summaryMetric(s eval.ParserSummary, m metric) float64 {
 		return math.NaN()
 	}
 	return v
+}
+
+// metricFromReport reads m for parser from r.Summary, falling back to per-case
+// recomputation for Lemma+POS on baselines that pre-date the field. The
+// fallback only triggers when the summary value is 0 yet the surrounding
+// Lemma/POS values prove the parser ran on the data — this preserves
+// "0% because we got nothing right" while fixing "0% because the field
+// didn't exist when the JSON was written."
+func metricFromReport(r *eval.Report, parser string, m metric) float64 {
+	s, ok := r.Summary[parser]
+	if !ok {
+		return math.NaN()
+	}
+	if m.label == "Lemma+POS" {
+		return lemmaPOSDisplay(s, r, parser)
+	}
+	return summaryMetric(s, m)
+}
+
+// lemmaPOSDisplay returns LemmaPOSAccuracy from the summary, or — if absent
+// (old baselines pre-dating this metric) — recomputes it from the report's
+// per-case Comparisons. Without this fallback, comparing a fresh report
+// against a pre-PR baseline directory would show "0.0%" for the prev cell
+// and read as a catastrophic regression rather than "metric not present in
+// the baseline."
+func lemmaPOSDisplay(s eval.ParserSummary, r *eval.Report, parser string) float64 {
+	if s.LemmaPOSAccuracy > 0 || s.LemmaAccuracy == 0 || s.POSAccuracy == 0 {
+		return s.LemmaPOSAccuracy
+	}
+	stats := perCaseStats(r, parser)
+	var num, den int
+	for _, st := range stats {
+		num += st.lemmaPOSCorrect
+		den += st.expectedTokens
+	}
+	if den == 0 {
+		return 0
+	}
+	return float64(num) / float64(den)
 }
 
 // formatAccuracyWithCI returns "82.3% ±0.4" when bootstrap > 0, else "82.3%".
@@ -417,6 +463,7 @@ func bootstrapHalfWidth(r *eval.Report, parser string, m metric, B int, rng *ran
 type caseStats struct {
 	lemmaCorrect    int
 	posCorrect      int
+	lemmaPOSCorrect int
 	grammarCorrect  int
 	grammarEligible int
 	fullCorrect     int
@@ -442,6 +489,9 @@ func perCaseStats(r *eval.Report, parser string) []caseStats {
 			}
 			if cmp.Match.POS {
 				s.posCorrect++
+			}
+			if cmp.Match.Lemma && cmp.Match.POS {
+				s.lemmaPOSCorrect++
 			}
 			if cmp.Expected.GrammarLabel != "" {
 				s.grammarEligible++
@@ -470,6 +520,8 @@ func metricNumDen(s caseStats, m metric) (int, int) {
 		return s.lemmaCorrect, s.expectedTokens
 	case "POS":
 		return s.posCorrect, s.expectedTokens
+	case "Lemma+POS":
+		return s.lemmaPOSCorrect, s.expectedTokens
 	case "Grammar":
 		return s.grammarCorrect, s.grammarEligible
 	case "Full":

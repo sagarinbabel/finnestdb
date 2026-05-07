@@ -65,10 +65,11 @@ func main() {
 	for _, parser := range report.Parsers {
 		summary := report.Summary[parser]
 		fmt.Printf(
-			"%-6s lemma=%5.1f%% pos=%5.1f%% grammar=%5.1f%% full=%5.1f%% coverage=%5.1f%% avg=%7.3fms p50=%7.3fms p95=%7.3fms\n",
+			"%-6s lemma=%5.1f%% pos=%5.1f%% attach=%5.1f%% grammar=%5.1f%% full=%5.1f%% coverage=%5.1f%% avg=%7.3fms p50=%7.3fms p95=%7.3fms\n",
 			parser,
 			summary.LemmaAccuracy*100,
 			summary.POSAccuracy*100,
+			summary.LemmaPOSAccuracy*100,
 			summary.GrammarAccuracy*100,
 			summary.FullAccuracy*100,
 			summary.ResolvedCoverage*100,

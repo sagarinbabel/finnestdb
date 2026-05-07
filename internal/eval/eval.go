@@ -70,9 +70,17 @@ type BenchmarkConfig struct {
 }
 
 type ParserSummary struct {
-	ExpectedTokens        int                    `json:"expected_tokens"`
-	LemmaAccuracy         float64                `json:"lemma_accuracy"`
-	POSAccuracy           float64                `json:"pos_accuracy"`
+	ExpectedTokens int     `json:"expected_tokens"`
+	LemmaAccuracy  float64 `json:"lemma_accuracy"`
+	POSAccuracy    float64 `json:"pos_accuracy"`
+	// LemmaPOSAccuracy is the joint "did the surface form attach to the right
+	// dictionary entry?" metric: fraction of evaluated tokens where lemma AND
+	// POS both match gold. Dictionary entries are keyed by (lemma, POS) — a
+	// homograph like Finnish "kuusi" (NOUN spruce vs NUM six) only routes to
+	// the right entry when both fields land. Tracked alongside LemmaAccuracy
+	// because LemmaAccuracy alone overstates attachment when POS is wrong on
+	// a homograph.
+	LemmaPOSAccuracy      float64                `json:"lemma_pos_accuracy"`
 	GrammarAccuracy       float64                `json:"grammar_accuracy"`
 	FullAccuracy          float64                `json:"full_accuracy"`
 	ResolvedCoverage      float64                `json:"resolved_coverage"`
@@ -315,6 +323,7 @@ type summaryAccumulator struct {
 	expectedTokens          int
 	lemmaCorrect            int
 	posCorrect              int
+	lemmaPOSCorrect         int
 	grammarEligible         int
 	grammarCorrect          int
 	fullCorrect             int
@@ -368,6 +377,9 @@ func (s *summaryAccumulator) consume(parsed *parsecore.ParseResult, comparisons 
 		if cmp.Match.POS {
 			s.posCorrect++
 		}
+		if cmp.Match.Lemma && cmp.Match.POS {
+			s.lemmaPOSCorrect++
+		}
 		if cmp.Expected.GrammarLabel != "" {
 			s.grammarEligible++
 			if cmp.Match.Grammar {
@@ -400,6 +412,7 @@ func (s *summaryAccumulator) finish() ParserSummary {
 		ExpectedTokens:        s.expectedTokens,
 		LemmaAccuracy:         ratio(s.lemmaCorrect, s.expectedTokens),
 		POSAccuracy:           ratio(s.posCorrect, s.expectedTokens),
+		LemmaPOSAccuracy:      ratio(s.lemmaPOSCorrect, s.expectedTokens),
 		GrammarAccuracy:       ratio(s.grammarCorrect, s.grammarEligible),
 		FullAccuracy:          ratio(s.fullCorrect, s.expectedTokens),
 		ResolvedCoverage:      ratio(s.resolvedTokens, s.totalTokens),

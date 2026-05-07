@@ -12,22 +12,56 @@ numbers mean, and how to reproduce a baseline on a fresh machine. Companion to:
 This doc is about **the process**: what to run, what input it consumes, what
 output it produces, and how to read that output.
 
+## Framing: two first-class parser outputs
+
+For a language-learning tool, the parser has two jobs that matter equally to a
+learner reading text:
+
+1. **Dictionary-entry attachment** — given an inflected surface form, which
+   dictionary headword should this learner be sent to? (`pankkiin → pankki /
+   NOUN / "bank"`). This is what makes the click-to-define UX work at all.
+2. **Grammatical analysis** — what *did* this form become in this sentence,
+   and why? (`pankkiin = pankki in the illative singular`). This is what makes
+   the parser educational — it explains, not just translates.
+
+Treat these as peer metrics, not as a primary plus a footnote. A parser that
+attaches `pankkiin` to `pankki` but cannot say it is illative singular is
+useful but incomplete. A parser that labels illative singular but attaches to
+the wrong lemma is also incomplete. The product goal is the joint result.
+
+The two outputs also feed back into each other: morphological evidence (case,
+number, tense, person, mood) helps disambiguate between otherwise plausible
+lemma/POS candidates — Finnish `kuusi` is `NOUN` ("spruce") in inessive but
+`NUM` ("six") in nominative, and the FEATS in context decide which dictionary
+entry is right. So the FST/FEATS work is not ornamental; it is part of making
+attachment more accurate too.
+
+The metric table below reflects this: lemma+POS attachment and grammar are
+both reported; "Full" stays as the all-correct ceiling.
+
 ## What we measure
 
 Per dataset, per parser, on **non-PUNCT tokens** that the gold answer marks for
 evaluation:
 
-| Metric | Definition |
-|---|---|
-| **Lemma accuracy** | Fraction of evaluated tokens where the parser's lemma matches gold |
-| **POS accuracy** | Fraction where Universal POS matches gold |
-| **Grammar accuracy** | Fraction where `grammar_label` matches gold (only on tokens where gold *has* a label — e.g. case-name for nouns) |
-| **Full accuracy** | Fraction where lemma AND POS AND grammar all match |
-| **Resolved coverage** | Fraction of input tokens the parser resolved to a dictionary entry (not "unknown") |
-| **Avg/p50/p95 case time** | Per-case wall time (sub-millisecond, nanosecond-precision since PR #103) |
-| **Throughput** | Aggregate tokens/sec and chars/sec across the full dataset |
+| Metric | Tier | Definition |
+|---|---|---|
+| **Lemma accuracy** | attachment (component) | Fraction of evaluated tokens where the parser's lemma matches gold |
+| **POS accuracy** | attachment (component) | Fraction where Universal POS matches gold |
+| **Lemma+POS accuracy** | attachment (joint, **first-class**) | Fraction where lemma AND POS *both* match — the actual "did this surface form land on the right dictionary entry?" metric, since entries are keyed by `(lemma, POS)`. Watch this over `Lemma accuracy` alone, especially on languages with `NOUN`/`NUM`/`PROPN` homographs |
+| **Grammar accuracy** | grammar (single attribute, **first-class**) | Fraction where `grammar_label` matches gold (only on tokens where gold *has* a label — e.g. case-name for nouns) |
+| **Per-FEATS-attribute accuracy** | grammar (full UD FEATS) | One row per UD FEATS attribute (Case, Number, Tense, Mood, Person, VerbForm, Voice, …); accuracy on the gold subset that supplied that attribute. Landed 2026-05-07k |
+| **Full accuracy** | joint ceiling | Fraction where lemma AND POS AND grammar AND every gold FEATS attribute match. Useful as a single "everything correct" headline, but movement should be diagnosed against the two first-class metrics, not used to mask which side is slipping |
+| **Resolved coverage** | reach | Fraction of input tokens the parser resolved to a dictionary entry (not "unknown") |
+| **Avg/p50/p95 case time** | speed | Per-case wall time (sub-millisecond, nanosecond-precision since PR #103) |
+| **Throughput** | speed | Aggregate tokens/sec and chars/sec across the full dataset |
 
 Schema details: [`baselines/README.md`](baselines/README.md).
+
+> When reading a report, eyes go to **Lemma+POS** (attachment) and **Grammar
+> + per-FEATS** (analysis) first. If both move together, the parser got
+> better. If only one moved, name which side, and avoid leaning on a moving
+> Full% headline that doesn't tell you which dimension changed.
 
 ## Parsers under comparison
 

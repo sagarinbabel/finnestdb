@@ -376,11 +376,12 @@ func evaluate(datasetPath, dbPath, parserMode string) (map[string]float64, error
 		return nil, fmt.Errorf("no summary for parser %q", parserMode)
 	}
 	return map[string]float64{
-		"lemma":    s.LemmaAccuracy,
-		"pos":      s.POSAccuracy,
-		"grammar":  s.GrammarAccuracy,
-		"full":     s.FullAccuracy,
-		"coverage": s.ResolvedCoverage,
+		"lemma":     s.LemmaAccuracy,
+		"pos":       s.POSAccuracy,
+		"lemma_pos": s.LemmaPOSAccuracy,
+		"grammar":   s.GrammarAccuracy,
+		"full":      s.FullAccuracy,
+		"coverage":  s.ResolvedCoverage,
 	}, nil
 }
 
