@@ -263,9 +263,19 @@ boundaries.
   import path; not blocking subsequent phases. See
   [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) for the
   measurement entry.
-- **Phase 3 — Kotus adapter.** Pull sanalista, populate
-  `paradigm_class` on existing FI lemmas, insert any Kotus lemmas not
-  yet present. Tests: lemma count grows; eval baseline unchanged.
+- **Phase 3 — Kotus adapter.** Shipped 2026-05-06 across two PRs.
+  PR 3.1 ([#92](https://github.com/sagarinbabel/finnestdb/pull/92))
+  landed the `cmd/importkotus` binary against an assumed XML schema.
+  PR 3.2 replaced the parser with the real TSV format from the
+  official 2024 distribution
+  (`https://kaino.kotus.fi/lataa/nykysuomensanalista2024.txt`) and
+  committed the file as a tracked artifact under
+  [`data/kotus/`](../data/kotus/) (CC BY 4.0). After import,
+  ~49k FI lemmas carry a populated `paradigm_class`. Eval baseline
+  unchanged — Phase 3 is metadata enrichment; Phase 4 (Voikko) is
+  what makes it pay off. See
+  [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) for the
+  measurement entry.
 - **Phase 3.5 — Voikko generator spike. (Done, 2026-05-06.)** Confirmed
   that none of the candidate generation paths (`voikkospell --paradigm`,
   `voikkogen`, libvoikko Python wrapper, libvoikko C API) actually

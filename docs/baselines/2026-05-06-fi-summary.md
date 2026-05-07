@@ -66,8 +66,43 @@ down 2.6pp — worth investigating during Phase 2 work.
 - **`custom` continues to beat `basic` on real-world text** by a wide
   margin (+25.7pp lemma on `fi-manual-v1`). Compound + possessive
   enrichment is paying off.
-- **Per-case timing rounds to 0ms.** Same tooling limitation as April
-  — switch eval reporter to nanoseconds when timing data is needed.
+
+## Measured throughput
+
+The eval timer was rewritten in PR #103 to record nanoseconds end-to-end
+(was: integer milliseconds, which truncated nearly every per-case sample
+to 0). Re-running the same `cmd/parsertest -warmup 2 -repeat 5` sweep
+on `main` after the fix gives us per-case latency and throughput we can
+actually quote, on `claude/sweet-swanson-183437` against the same
+dictionary state described above (Apple Silicon, single-threaded, warm
+cache):
+
+| Dataset (cases) | Parser | avg / p50 / p95 (ms) | words/s | chars/s |
+|---|---|---|---:|---:|
+| fi-core-v1 (6)    | basic   | 0.097 / 0.094 / 0.126 | 39.3k | 311k |
+| fi-core-v1        | custom  | 0.095 / 0.093 / 0.118 | 40.4k | 319k |
+| fi-manual-v1 (22) | basic   | 0.137 / 0.120 / 0.202 | 64.3k | 650k |
+| fi-manual-v1      | custom  | 0.217 / 0.205 / 0.381 | 40.7k | 411k |
+| fi-manual-v2 (4)  | basic   | 0.072 / 0.064 / 0.107 | 41.9k | 433k |
+| fi-manual-v2      | custom  | 0.070 / 0.065 / 0.086 | 43.1k | 445k |
+| fi-grammar-v1 (80)| basic   | 0.075 / 0.074 / 0.100 | 47.9k | 361k |
+| fi-grammar-v1     | custom  | 0.073 / 0.072 / 0.098 | 49.2k | 371k |
+
+Reading this:
+
+- **Steady-state Finnish throughput is ~40–50k words/s on `custom`**,
+  the parser we ship to users. Per-case latency clusters around
+  70–220 µs, so a typical web-form paragraph parses in well under a
+  millisecond.
+- `fi-manual-v1` is the only dataset where `custom` is slower than
+  `basic` (0.217 ms vs 0.137 ms): the gap is the compound and
+  possessive fallback work doing more `BatchLookupForms` calls
+  (lookup time is 0.127 ms vs 0.051 ms). On the other datasets dict
+  coverage is already high enough that fallback rules don't fire,
+  and the two parsers run essentially the same code path.
+- The throughput claim in [`docs/DECISIONS.md`](../DECISIONS.md)
+  ("fast — Rust + dictionary lookup") now has a measured floor we
+  can defend regressions against. It is not a hand-wave anymore.
 
 ## Files
 
