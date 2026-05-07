@@ -187,6 +187,124 @@ func TestCompareCase_PerAttributeFeats(t *testing.T) {
 	if cmp.Actual.Feats != "Case=Ine|Number=Plur" {
 		t.Errorf("actual.Feats=%q want Case=Ine|Number=Plur", cmp.Actual.Feats)
 	}
+	if cmp.Match.Full {
+		t.Errorf("Match.Full should be false when a FEATS attribute mismatches: %+v", cmp.Match)
+	}
+}
+
+// TestCompareCase_FullRequiresFeatsMatch covers the three FEATS-driven Full
+// transitions: a Number-only mismatch flips Full off, a Tense+Mood mismatch
+// flips Full off, and a fully-correct verb morphology keeps Full true. Without
+// this gating the per-attribute report would surface FEATS errors but
+// full_accuracy would still claim 100%.
+func TestCompareCase_FullRequiresFeatsMatch(t *testing.T) {
+	cases := []struct {
+		name      string
+		gold      string
+		actual    string
+		wantFull  bool
+		wantMatch map[string]bool
+	}{
+		{
+			name:      "number mismatch only",
+			gold:      "Case=Ine|Number=Sing",
+			actual:    "Case=Ine|Number=Plur",
+			wantFull:  false,
+			wantMatch: map[string]bool{"Case": true, "Number": false},
+		},
+		{
+			name:      "tense and mood mismatch",
+			gold:      "Mood=Ind|Number=Sing|Person=3|Tense=Pres",
+			actual:    "Mood=Imp|Number=Sing|Person=3|Tense=Past",
+			wantFull:  false,
+			wantMatch: map[string]bool{"Mood": false, "Number": true, "Person": true, "Tense": false},
+		},
+		{
+			name:      "all attributes match",
+			gold:      "Case=Ine|Number=Sing",
+			actual:    "Case=Ine|Number=Sing",
+			wantFull:  true,
+			wantMatch: map[string]bool{"Case": true, "Number": true},
+		},
+		{
+			name:      "actual missing feats entirely",
+			gold:      "Case=Ine|Number=Sing",
+			actual:    "",
+			wantFull:  false,
+			wantMatch: map[string]bool{"Case": false, "Number": false},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := DatasetCase{
+				ID:   "fi-1",
+				Text: "x.",
+				Tokens: []ExpectedTokenRef{
+					{Surface: "x", Lemma: "x", POS: "VERB", Feats: tc.gold},
+				},
+			}
+			parsed := &parsecore.ParseResult{
+				Sentences: []parsecore.SentenceResult{
+					{Tokens: []parsecore.TokenResult{
+						{Form: "x", Lemma: "x", POS: "VERB", Feats: tc.actual, Resolved: true},
+					}},
+				},
+			}
+			got := compareCase(c, parsed)
+			if len(got) != 1 {
+				t.Fatalf("comparisons=%d want 1", len(got))
+			}
+			cmp := got[0]
+			if cmp.Match.Full != tc.wantFull {
+				t.Errorf("Match.Full=%v want %v (feats=%+v)", cmp.Match.Full, tc.wantFull, cmp.Match.Feats)
+			}
+			for attr, want := range tc.wantMatch {
+				if got := cmp.Match.Feats[attr]; got != want {
+					t.Errorf("Match.Feats[%q]=%v want %v", attr, got, want)
+				}
+			}
+		})
+	}
+}
+
+// TestSummaryAccumulator_FullAccuracyRespectsFeats verifies the accumulator
+// rolls per-token Full into FullAccuracy, so a Number/Tense FEATS divergence
+// (which the legacy GrammarAccuracy can't see) actually lowers
+// full_accuracy on the parser-compare report.
+func TestSummaryAccumulator_FullAccuracyRespectsFeats(t *testing.T) {
+	acc := &summaryAccumulator{}
+	parsed := &parsecore.ParseResult{
+		TotalTokens: 2,
+		Sentences: []parsecore.SentenceResult{
+			{Tokens: []parsecore.TokenResult{
+				{Form: "a", Lemma: "a", POS: "NOUN", Resolved: true},
+				{Form: "b", Lemma: "b", POS: "NOUN", Resolved: true},
+			}},
+		},
+	}
+	c := DatasetCase{
+		Tokens: []ExpectedTokenRef{
+			{Surface: "a", Lemma: "a", POS: "NOUN", Feats: "Case=Ine|Number=Sing"},
+			{Surface: "b", Lemma: "b", POS: "NOUN", Feats: "Case=Ine|Number=Sing"},
+		},
+	}
+	parsedRun := &parsecore.ParseResult{
+		Sentences: []parsecore.SentenceResult{
+			{Tokens: []parsecore.TokenResult{
+				{Form: "a", Lemma: "a", POS: "NOUN", Feats: "Case=Ine|Number=Sing", Resolved: true},
+				{Form: "b", Lemma: "b", POS: "NOUN", Feats: "Case=Ine|Number=Plur", Resolved: true},
+			}},
+		},
+	}
+	comparisons := compareCase(c, parsedRun)
+	acc.consume(parsed, comparisons, []int64{1_000_000}, 2)
+	got := acc.finish()
+	if got.FullAccuracy != 0.5 {
+		t.Errorf("full_accuracy=%v want 0.5 (one of two tokens has FEATS mismatch)", got.FullAccuracy)
+	}
+	if got.LemmaAccuracy != 1.0 || got.POSAccuracy != 1.0 {
+		t.Errorf("lemma=%v pos=%v want both 1.0", got.LemmaAccuracy, got.POSAccuracy)
+	}
 }
 
 func TestSummaryAccumulator_FeatsAttributeBreakdown(t *testing.T) {

@@ -408,12 +408,20 @@ func (externalPreferCustomFallbackRule) Apply(_ string, token *TokenResult, _, c
 	return true
 }
 
-type externalAttachGrammarRule struct{}
+type externalAttachMorphologyRule struct{}
 
-func (externalAttachGrammarRule) Name() string { return "attach_custom_grammar_label" }
+func (externalAttachMorphologyRule) Name() string { return "attach_custom_morphology" }
 
-func (externalAttachGrammarRule) Apply(_ string, token *TokenResult, _, custom store.FormResolution) bool {
-	if token.GrammarLabel != "" || custom.GrammarLabel == "" {
+// Apply attaches custom GrammarLabel and/or Feats to an already-resolved
+// analyzer token when the analyzer has no morphology of its own and lemma/POS
+// agree. Fires for label-only customs (legacy case-suffix path), feats-only
+// customs (FST verb morphology like Number/Tense/Mood/Person — no case label),
+// and the both-present case. The earlier label-only gate dropped FEATS-only
+// FST analyses on the floor when omorfi/estnltk had the lemma but no FEATS.
+func (externalAttachMorphologyRule) Apply(_ string, token *TokenResult, _, custom store.FormResolution) bool {
+	tokenNeedsLabel := token.GrammarLabel == "" && custom.GrammarLabel != ""
+	tokenNeedsFeats := token.Feats == "" && custom.Feats != ""
+	if !tokenNeedsLabel && !tokenNeedsFeats {
 		return false
 	}
 	if custom.Lemma != "" && token.Lemma != custom.Lemma {
@@ -422,11 +430,16 @@ func (externalAttachGrammarRule) Apply(_ string, token *TokenResult, _, custom s
 	if custom.POS != "" && token.POS != custom.POS {
 		return false
 	}
-	token.GrammarLabel = custom.GrammarLabel
-	if token.Feats == "" && custom.Feats != "" {
-		token.Feats = custom.Feats
+	traceParts := make([]string, 0, 2)
+	if tokenNeedsLabel {
+		token.GrammarLabel = custom.GrammarLabel
+		traceParts = append(traceParts, "label="+custom.GrammarLabel)
 	}
-	token.Trace = append(token.Trace, fmt.Sprintf("rule:attach_grammar label=%s", custom.GrammarLabel))
+	if tokenNeedsFeats {
+		token.Feats = custom.Feats
+		traceParts = append(traceParts, "feats="+custom.Feats)
+	}
+	token.Trace = append(token.Trace, "rule:attach_morphology "+strings.Join(traceParts, " "))
 	return true
 }
 
@@ -434,7 +447,7 @@ func defaultExternalAnalyzerRules() []externalAnalyzerRule {
 	return []externalAnalyzerRule{
 		externalPreferDirectDictRule{},
 		externalPreferCustomFallbackRule{},
-		externalAttachGrammarRule{},
+		externalAttachMorphologyRule{},
 	}
 }
 

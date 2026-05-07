@@ -482,6 +482,13 @@ func compareCase(c DatasetCase, parsed *parsecore.ParseResult) []TokenCompare {
 		} else {
 			cmp.Match.Grammar = found && token.GrammarLabel == expected.GrammarLabel
 		}
+		// featsFullMatch defaults true when gold has no FEATS, so older
+		// gold sets that only specify lemma/POS/grammar_label keep the
+		// pre-FEATS Full semantics. When gold supplies FEATS, every
+		// expected attribute must match for Full to hold — otherwise a
+		// Number/Tense/Mood divergence (which the case-only Grammar
+		// metric can't see) would keep Full inflated.
+		featsFullMatch := true
 		if expected.Feats != "" {
 			expectedFeats := parseFeats(expected.Feats)
 			actualFeats := map[string]string{}
@@ -490,10 +497,14 @@ func compareCase(c DatasetCase, parsed *parsecore.ParseResult) []TokenCompare {
 			}
 			cmp.Match.Feats = make(map[string]bool, len(expectedFeats))
 			for k, v := range expectedFeats {
-				cmp.Match.Feats[k] = actualFeats[k] == v
+				match := actualFeats[k] == v
+				cmp.Match.Feats[k] = match
+				if !match {
+					featsFullMatch = false
+				}
 			}
 		}
-		cmp.Match.Full = cmp.Match.Lemma && cmp.Match.POS && cmp.Match.Grammar
+		cmp.Match.Full = cmp.Match.Lemma && cmp.Match.POS && cmp.Match.Grammar && featsFullMatch
 		comparisons = append(comparisons, cmp)
 	}
 	return comparisons
