@@ -99,6 +99,139 @@ func TestOmorfiRulesPreferCustomFallbackAndTraceIt(t *testing.T) {
 	}
 }
 
+// TestAttachMorphologyRule_AttachesOnLemmaPOSAgreement covers all four
+// shapes of (token has label?, token has feats?) × (custom has label?, custom
+// has feats?) the attach rule cares about, plus the lemma/POS guards.
+//
+// The FEATS-only case is the one #129 cares about: the FST emits verb
+// morphology like "Mood=Ind|Number=Sing|Person=3|Tense=Pres" with no
+// case-derived GrammarLabel. The earlier rule gated on custom.GrammarLabel
+// and dropped these on the floor when omorfi already had lemma+POS.
+func TestAttachMorphologyRule_AttachesOnLemmaPOSAgreement(t *testing.T) {
+	rule := externalAttachMorphologyRule{}
+	cases := []struct {
+		name      string
+		token     TokenResult
+		custom    store.FormResolution
+		wantApply bool
+		wantLabel string
+		wantFeats string
+		wantTrace string
+	}{
+		{
+			name:      "feats-only attach when token missing FEATS",
+			token:     TokenResult{Lemma: "lukea", POS: "VERB"},
+			custom:    store.FormResolution{Lemma: "lukea", POS: "VERB", Feats: "Mood=Ind|Number=Sing|Person=3|Tense=Pres"},
+			wantApply: true,
+			wantLabel: "",
+			wantFeats: "Mood=Ind|Number=Sing|Person=3|Tense=Pres",
+			wantTrace: "rule:attach_morphology feats=Mood=Ind|Number=Sing|Person=3|Tense=Pres",
+		},
+		{
+			name:      "label-only attach (legacy case-suffix path)",
+			token:     TokenResult{Lemma: "kirja", POS: "NOUN"},
+			custom:    store.FormResolution{Lemma: "kirja", POS: "NOUN", GrammarLabel: "inessive"},
+			wantApply: true,
+			wantLabel: "inessive",
+			wantFeats: "",
+			wantTrace: "rule:attach_morphology label=inessive",
+		},
+		{
+			name:      "label and feats both attached when both missing",
+			token:     TokenResult{Lemma: "kirja", POS: "NOUN"},
+			custom:    store.FormResolution{Lemma: "kirja", POS: "NOUN", GrammarLabel: "inessive", Feats: "Case=Ine|Number=Sing"},
+			wantApply: true,
+			wantLabel: "inessive",
+			wantFeats: "Case=Ine|Number=Sing",
+			wantTrace: "rule:attach_morphology label=inessive feats=Case=Ine|Number=Sing",
+		},
+		{
+			name:      "no-op when token already has both",
+			token:     TokenResult{Lemma: "kirja", POS: "NOUN", GrammarLabel: "inessive", Feats: "Case=Ine|Number=Sing"},
+			custom:    store.FormResolution{Lemma: "kirja", POS: "NOUN", GrammarLabel: "elative", Feats: "Case=Ela"},
+			wantApply: false,
+			wantLabel: "inessive",
+			wantFeats: "Case=Ine|Number=Sing",
+		},
+		{
+			name:      "no-op when custom is empty",
+			token:     TokenResult{Lemma: "kirja", POS: "NOUN"},
+			custom:    store.FormResolution{Lemma: "kirja", POS: "NOUN"},
+			wantApply: false,
+			wantLabel: "",
+			wantFeats: "",
+		},
+		{
+			name:      "lemma mismatch blocks feats-only attach",
+			token:     TokenResult{Lemma: "lukea", POS: "VERB"},
+			custom:    store.FormResolution{Lemma: "luku", POS: "NOUN", Feats: "Case=Nom|Number=Sing"},
+			wantApply: false,
+			wantLabel: "",
+			wantFeats: "",
+		},
+		{
+			name:      "POS mismatch blocks feats-only attach",
+			token:     TokenResult{Lemma: "lukea", POS: "NOUN"},
+			custom:    store.FormResolution{Lemma: "lukea", POS: "VERB", Feats: "Mood=Ind|Tense=Pres"},
+			wantApply: false,
+			wantLabel: "",
+			wantFeats: "",
+		},
+		{
+			name:      "fills feats but not label when token already has label",
+			token:     TokenResult{Lemma: "kirja", POS: "NOUN", GrammarLabel: "inessive"},
+			custom:    store.FormResolution{Lemma: "kirja", POS: "NOUN", GrammarLabel: "elative", Feats: "Case=Ine|Number=Sing"},
+			wantApply: true,
+			wantLabel: "inessive",
+			wantFeats: "Case=Ine|Number=Sing",
+			wantTrace: "rule:attach_morphology feats=Case=Ine|Number=Sing",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			tok := tc.token
+			got := rule.Apply("FI", &tok, store.FormResolution{}, tc.custom)
+			if got != tc.wantApply {
+				t.Fatalf("Apply()=%v want %v", got, tc.wantApply)
+			}
+			if tok.GrammarLabel != tc.wantLabel {
+				t.Errorf("GrammarLabel=%q want %q", tok.GrammarLabel, tc.wantLabel)
+			}
+			if tok.Feats != tc.wantFeats {
+				t.Errorf("Feats=%q want %q", tok.Feats, tc.wantFeats)
+			}
+			if tc.wantTrace != "" {
+				if len(tok.Trace) == 0 || tok.Trace[len(tok.Trace)-1] != tc.wantTrace {
+					t.Errorf("trace=%v want last entry %q", tok.Trace, tc.wantTrace)
+				}
+			}
+		})
+	}
+}
+
+func TestFeatsFromJSON(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"empty bytes", "", ""},
+		{"empty object", `{}`, ""},
+		{"null", `null`, ""},
+		{"single attr", `{"Case":"Ine"}`, "Case=Ine"},
+		{"sorted keys", `{"Number":"Sing","Case":"Ine"}`, "Case=Ine|Number=Sing"},
+		{"array value joined", `{"Case":["Ine","Ade"]}`, "Case=Ine,Ade"},
+		{"non-string skipped", `{"Case":42}`, ""},
+		{"invalid json", `not-json`, ""},
+	}
+	for _, tc := range cases {
+		got := featsFromJSON([]byte(tc.in))
+		if got != tc.want {
+			t.Errorf("%s: featsFromJSON(%q)=%q want %q", tc.name, tc.in, got, tc.want)
+		}
+	}
+}
+
 func TestExternalAnalyzerParserUsesConfiguredSource(t *testing.T) {
 	db, err := store.NewDB(":memory:")
 	if err != nil {
