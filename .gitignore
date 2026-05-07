@@ -23,7 +23,6 @@
 
 # Rust
 parser/target/
-parser/Cargo.lock
 
 # Go
 *.exe
@@ -57,7 +56,10 @@ web/node_modules/
 
 # Local test artifacts
 test-results/
-reports/
+reports/**
+!reports/
+!reports/**/
+!reports/parser-eval/audit-*.md
 .cache/
 .venv-omorfi/
 .venv-estnltk
