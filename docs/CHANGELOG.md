@@ -6,6 +6,52 @@ product documentation. Code changes belong in git history, not here.
 Entries are reverse-chronological. Each entry links to the docs it
 introduced or modified so the docs index stays navigable.
 
+## 2026-05-07 — Single-folder data root + ET UD gold materialized
+
+Consolidates every gitignored runtime data artifact under
+[`localdata/`](../localdata/) so a single tarball captures the entire
+bootstrap state. Materializes the ET UD parser-eval gold and the
+FI/ET UD train splits that PR #113 (Plan C / PR 1) had documented but
+not yet generated on the user's machine.
+
+- New [`docs/data_enhancement.md`](data_enhancement.md): single-source-of-truth
+  ledger of every gold/silver/dictionary corpus the project pulls in.
+  Each row tracks source URL, license, size, path, added date, and
+  last-refreshed date. Update on every import.
+- Path consolidation:
+  - `data/ud-cache/` → `localdata/ud-cache/`
+  - `testdata/parser-eval/fi/gold-train/` → `localdata/parser-eval/fi/gold-train/`
+  - `testdata/parser-eval/et/gold/ud-et-*.json` → `localdata/parser-eval/et/gold/`
+  - `testdata/parser-eval/et/gold-train/` → `localdata/parser-eval/et/gold-train/`
+  Committed FI dev/test gold under `testdata/parser-eval/fi/gold/` is
+  unchanged (still byte-identical after re-import).
+- [`scripts/fetch-and-import-ud.sh`](../scripts/fetch-and-import-ud.sh)
+  writes to the new locations.
+- [`scripts/parser-comparison.sh`](../scripts/parser-comparison.sh) and
+  [`scripts/parser-comparison-et.sh`](../scripts/parser-comparison-et.sh)
+  auto-discover from both `testdata/parser-eval/<lang>/gold/` and
+  `localdata/parser-eval/<lang>/gold/`. Held-out discipline preserved
+  (still excludes `*-dev-v*` and `gold-train/`).
+- [`scripts/setup-local.sh`](../scripts/setup-local.sh) summary lists
+  every `localdata/` subtree on completion and emits the bootstrap
+  tar instruction (`tar czf finnestdb-bootstrap.tgz localdata/ finnestdb.db`).
+- [`.gitignore`](../.gitignore) collapsed: the `localdata/` blanket rule
+  covers everything; legacy `data/` paths kept as a belt-and-braces guard.
+- [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md) gains a "Single-folder
+  bootstrap rule" section documenting the invariant.
+- [`ARCHITECTURE.md`](../ARCHITECTURE.md) §Evaluation Stack treebank
+  table updated with the new path strings; Estonian-EWT train count
+  corrected (5,375 actual vs. 5,380 documented).
+- Local gold available after this PR + a `make import-ud-gold` run:
+  ~37k FI cases / 339k FI tokens, ~37.9k ET cases / 437k ET tokens —
+  ~7.5× the cases and ~8.5× the tokens previously visible in `git`.
+
+**Why now:** the previous layout had three gitignored data roots
+(`localdata/`, `data/ud-cache/`, two carve-outs under
+`testdata/parser-eval/`). Handing a teammate a "fast bootstrap" zip
+required either three separate archives or a custom recipe that knew
+the carve-outs. Consolidating to one root removes the foot-gun.
+
 ## 2026-05-07 — Runtime docs parity pass
 
 Aligns user-facing docs with the E2E behavior report in

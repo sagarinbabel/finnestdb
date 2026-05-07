@@ -20,7 +20,7 @@
 // Usage:
 //
 //	go run ./cmd/importud \
-//	    -input data/ud-cache/UD_Finnish-TDT/fi_tdt-ud-test.conllu \
+//	    -input localdata/ud-cache/UD_Finnish-TDT/fi_tdt-ud-test.conllu \
 //	    -lang FI \
 //	    -name ud-fi-tdt-test-v1 \
 //	    -version v1 \

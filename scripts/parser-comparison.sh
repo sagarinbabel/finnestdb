@@ -42,8 +42,14 @@ if [[ ${#DATASETS[@]} -eq 0 ]]; then
     # explicitly with -dataset). Train splits live under gold-train/ and
     # never auto-discover. See docs/PARSER_EVAL_DATASETS.md for the
     # held-out discipline introduced in PR Plan-C/1.
+    #
+    # We glob both testdata/parser-eval/fi/gold/ (committed FI gold) and
+    # localdata/parser-eval/fi/gold/ (any local-only FI gold a teammate
+    # has dropped in via setup-local.sh). The same merge applies on the
+    # ET side — see scripts/parser-comparison-et.sh.
     while IFS= read -r f; do DATASETS+=("$f"); done \
-        < <(ls testdata/parser-eval/fi/gold/*.json 2>/dev/null | grep -v -- '-dev-v' | sort)
+        < <(ls testdata/parser-eval/fi/gold/*.json localdata/parser-eval/fi/gold/*.json 2>/dev/null \
+            | grep -v -- '-dev-v' | sort)
 fi
 
 if [[ ${#DATASETS[@]} -eq 0 ]]; then

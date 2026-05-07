@@ -29,6 +29,24 @@ All of the above live under [`localdata/`](../localdata/), which is
 **gitignored**. Generator/fetcher code lives in `cmd/` and writes there
 exclusively.
 
+### Single-folder bootstrap rule (2026-05-07)
+
+`localdata/` is the **only** place gitignored runtime data lives. The
+UD treebank cache, NC-licensed ET parser-eval gold, and FI/ET train
+splits all moved here on 2026-05-07. There is no second data root.
+This guarantees:
+
+- A teammate handoff is always one tarball:
+  `tar czf finnestdb-bootstrap.tgz localdata/ finnestdb.db`.
+- A fresh `setup-local.sh` run leaves the working tree with `git status`
+  empty (only `localdata/` and `finnestdb.db` change, both gitignored).
+- The data ledger in [`docs/data_enhancement.md`](data_enhancement.md)
+  has a single root path to track per source — no scattered exceptions.
+
+When adding a new corpus or generator, write to a subdirectory of
+`localdata/` from day one. Do NOT introduce a sibling like `data/`
+or `corpora/`.
+
 ## What is allowed in git
 
 - **Generator code** that, given local access to upstream analysers, can
