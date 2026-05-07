@@ -46,13 +46,16 @@ type FormResolution struct {
 //	Step 5: [FI only] VFST morphological analysis (libvoikko mor.vfst)
 //	Step 6: Not resolved → absent from map → caller falls back to stub
 //
-// In "custom" mode, after step 1 succeeds the case-suffix matcher is also run
-// purely to attach a GrammarLabel (case name) to the dict result. The forms
-// table only stores (lemma, pos), so without this pass every direct dict hit
-// would carry an empty grammar label and grammar-accuracy would always be 0%
-// on dict-resolved tokens. This is a stopgap until the FST runtime
-// (PRs #106/#107) emits FEATS natively — see docs/DECISIONS.md for the
-// rationale on not extending the suffix table further.
+// In "custom" mode, after step 1 succeeds we lazily attach a GrammarLabel
+// (case name) to the dict result when the dict didn't supply a label/FEATS:
+// the FST is consulted first (FI/ET only, gated on best.GrammarLabel == ""
+// AND best.Feats == ""), and the case-suffix matcher acts as a fallback when
+// the FST didn't fire, didn't agree on the lemma, or returned an empty label.
+// The forms table only stores (lemma, pos) for many entries, so without this
+// pass every dict hit without FEATS would carry an empty grammar label and
+// grammar-accuracy would be 0% on those tokens. This is a stopgap until the
+// FST runtime (PRs #106/#107) emits FEATS natively — see docs/DECISIONS.md
+// for the rationale on not extending the suffix table further.
 //
 // Returns a map from form → FormResolution.
 // Forms that cannot be resolved are absent from the map.
@@ -94,14 +97,33 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		// against the original-case surface so PROPN homonyms don't beat
 		// common-noun lemmas on lowercase surfaces.
 		if best, ok := lookupBestForm(stmtFormsAll, form, lower, lang); ok {
-			// Stopgap (custom mode): the dict knows lemma+POS but not the
-			// inflectional case. Run the case-suffix matcher additively to
-			// attach a label, only when the suffix-strip points to the same
-			// lemma we just resolved (otherwise the label would belong to a
-			// different word). This will be removed once the FST runtime in
-			// pkg/lemmatizer-fi-et/ produces FEATS for direct hits.
+			// Lazy attach inside the dict-hit branch when the dict didn't
+			// supply a label/FEATS. Two paths, in priority order:
+			//   1. FST analysis (FI/ET only) — only run when both
+			//      best.GrammarLabel == "" AND best.Feats == "" so we
+			//      don't pay the per-token FST cost when the dict already
+			//      back-projected a label from FEATS or carries any FEATS
+			//      string at all (a labeled FEATS path is preferable to
+			//      an FST guess). The lemma-equality guard prevents
+			//      attaching a label that belongs to a different word.
+			//   2. Case-suffix stopgap — only when FST didn't fire,
+			//      didn't agree on the lemma, or returned an empty label.
 			if parserMode == "custom" && best.GrammarLabel == "" {
-				best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
+				attached := false
+				if best.Feats == "" && (lang == "FI" || lang == "ET") {
+					if lem := d.fstLemmatizer(); lem != nil {
+						if a, ok := pickFirstFSTAnalysis(lem.Lemmatize(lang, lower)); ok {
+							if a.Lemma == best.Lemma && a.GrammarLabel != "" {
+								best.GrammarLabel = a.GrammarLabel
+								best.Source = best.Source + "+fst_label"
+								attached = true
+							}
+						}
+					}
+				}
+				if !attached {
+					best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
+				}
 			}
 			result[form] = best
 			continue
@@ -161,23 +183,42 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 // only for ET; non-compound > compound) lives in pkg/lemmatizer-fi-et;
 // this helper just picks the first valid analysis it returns.
 func tryFSTAnalyze(lem *lemmatizer.Lemmatizer, lang, lower string) (FormResolution, bool) {
-	analyses := lem.Lemmatize(lang, lower)
-	if len(analyses) == 0 {
+	a, ok := pickFirstFSTAnalysis(lem.Lemmatize(lang, lower))
+	if !ok {
 		return FormResolution{}, false
 	}
+	return FormResolution{
+		Lemma:        a.Lemma,
+		POS:          a.UPOS,
+		GrammarLabel: a.GrammarLabel,
+		Feats:        "",
+		Source:       "fst",
+	}, true
+}
+
+// pickFirstFSTAnalysis returns the best analysis with non-empty
+// (Lemma, UPOS) — preferring any analysis that also carries a non-empty
+// GrammarLabel, falling back to the first valid analysis when none does.
+// Used both by tryFSTAnalyze (when dict missed) and by the lazy
+// label-attach path in BatchLookupForms (when dict hit and we want to
+// attach a grammar_label). The label-preference protects against
+// dropping a labeled reading when an unlabeled one happens to come first
+// in Lemmatize's output ordering.
+func pickFirstFSTAnalysis(analyses []lemmatizer.Analysis) (lemmatizer.Analysis, bool) {
+	var firstValid lemmatizer.Analysis
+	found := false
 	for _, a := range analyses {
 		if a.Lemma == "" || a.UPOS == "" {
 			continue
 		}
-		return FormResolution{
-			Lemma:        a.Lemma,
-			POS:          a.UPOS,
-			GrammarLabel: a.GrammarLabel,
-			Feats:        "",
-			Source:       "fst",
-		}, true
+		if a.GrammarLabel != "" {
+			return a, true
+		}
+		if !found {
+			firstValid, found = a, true
+		}
 	}
-	return FormResolution{}, false
+	return firstValid, found
 }
 
 // pickBestVFSTAnalysis ranks VFST analyses against the original surface

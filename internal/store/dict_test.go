@@ -541,18 +541,21 @@ func TestFallbackChainOrdering(t *testing.T) {
 		t.Errorf("kirjassa: got {%q %q}, want {kirja NOUN}", r.Lemma, r.POS)
 	}
 	// Source must start with "dict" — the dict path won. Suffix attachment may
-	// append "+case_suffix_label" but the dict prefix proves priority order.
+	// append "+fst_label" or "+case_suffix_label" but the dict prefix proves
+	// priority order.
 	if !strings.HasPrefix(r.Source, "dict") {
 		t.Errorf("kirjassa: should resolve via 'dict' (priority), got source %q", r.Source)
 	}
 }
 
-// TestBatchLookupForms_AttachCaseLabelOnDictHit covers the custom-mode stopgap
-// where the case-suffix matcher additively attaches a GrammarLabel to a
-// successful direct-dict resolution. This compensates for the forms table
-// carrying only (lemma, pos) — without this pass, grammar accuracy on any
-// dict-resolved token is structurally 0%. Stopgap until pkg/lemmatizer-fi-et/
-// emits FEATS for direct hits.
+// TestBatchLookupForms_AttachCaseLabelOnDictHit covers the custom-mode
+// label-attachment paths where, after a successful direct-dict resolution,
+// the parser additively attaches a GrammarLabel. Two paths can do this in
+// priority order: the FST step-promotion path (fst_label) and the
+// case-suffix stopgap (case_suffix_label). Either is acceptable here — the
+// invariant under test is that grammar accuracy on dict-resolved tokens
+// isn't structurally 0% in custom mode. Whichever path fires must agree on
+// "inessive" for "talossa".
 func TestBatchLookupForms_AttachCaseLabelOnDictHit(t *testing.T) {
 	db := newTestDB(t)
 	seedForms(t, db, [][4]string{
@@ -574,8 +577,8 @@ func TestBatchLookupForms_AttachCaseLabelOnDictHit(t *testing.T) {
 	if r.GrammarLabel != "inessive" {
 		t.Errorf("talossa: grammar label got %q, want inessive", r.GrammarLabel)
 	}
-	if !strings.Contains(r.Source, "+case_suffix_label") {
-		t.Errorf("talossa: source should record additive label; got %q", r.Source)
+	if !strings.Contains(r.Source, "+fst_label") && !strings.Contains(r.Source, "+case_suffix_label") {
+		t.Errorf("talossa: source should record additive label (either +fst_label or +case_suffix_label); got %q", r.Source)
 	}
 }
 
