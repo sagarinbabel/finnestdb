@@ -100,11 +100,92 @@ Review of `branding.html` and `finnest aalto.html` from the design bundle.
 
 ---
 
-## Cross-cutting recommendation
+## finnest prototype.html — Clickable prototype
 
-The superscript lockup (`Finn^fi Est^et`) is the strongest design element in
-the system. The branding guide section 04 shows it in the topbar at 26px — commit
-to that in the app. The current app topbar just shows `finnest.` in italic serif,
-which wastes the brand's best asset. The superscripts at topbar size are small
-but legible, and they make every page feel like the product is demonstrating
-what it does.
+Interactive prototype adds flows on top of the Aalto design system:
+SignupRibbon, SaveAsModal, CorrectionModal, ColdStart, KnownWordsImport,
+EphemeralToggle, ReviewDoneCard. Wired via proto-app.jsx + proto-screens.jsx
++ proto-flows.jsx.
+
+### Strengths
+
+- **Cold-start onboarding** ("Three ways to seed your first deck") is
+  well-structured: paste text (recommended), import known words (Anki/CSV),
+  seed top-1000 (gated/coming soon). Clear progressive disclosure.
+
+- **CorrectionModal** has a smart two-path design: "I don't know the answer"
+  (flag-only) vs "Right answer is…" (propose lemma + POS + grammar + notes).
+  Flag-only is the recommended path, which is correct — most users won't know
+  the right answer but can still signal a problem.
+
+- **SignupRibbon** for anonymous users is well-placed — appears above results
+  after a parse, not before. The user gets value first, then sees the save
+  prompt. Good funnel design.
+
+- **Tweaks panel** for toggling demo state (signed in/out, cold/warm start,
+  ephemeral, Aalto intensity, theme) makes the prototype self-documenting for
+  stakeholder walkthroughs.
+
+### Missing flows — TODO
+
+1. **Signed-in user correction submission.** The CorrectionModal exists and
+   renders for signed-in users, but the submission flow is incomplete:
+   - Where does the correction go after "Submit"? The toast says
+     "→ /admin/feedback queue" but there's no queue view or triage screen.
+   - Signed-in corrections should attach the user's identity so the submitter
+     gets credit / notification when the correction is accepted or rejected.
+   - Need a "My submissions" view (or at least a list in the user profile)
+     showing pending / accepted / rejected corrections.
+   - Consider: should corrections be per-parse (tied to the specific sentence
+     context) or per-lemma (global)? The modal currently captures the sentence
+     but the data model isn't shown.
+   - **Action:** Add a corrections history panel accessible from the user
+     avatar menu, and show submission status (pending / accepted / rejected)
+     as a badge or inline in the parse results where the user flagged it.
+
+2. **Leverage page — filter by deck.** The current leverage view shows words
+   ranked across all 5 active decks with a single "+14% comprehension gain"
+   summary. Missing:
+   - **Deck filter / selector** at the top of the leverage page — let the user
+     pick a single deck (or "all decks") and see leverage ranked within that
+     scope. Each deck has different text, so the highest-leverage words differ.
+   - **Current → target comprehension projection.** Instead of just "+14%",
+     show: "You currently understand **62%** of *Kalevala ch.1*. Learn these
+     15 words → **78%**." The user needs to see where they are now AND where
+     they'd get to. This is the core motivation loop.
+   - **Goal threshold.** Let the user set a target comprehension % (e.g. 90%)
+     and show exactly how many words they need to learn to reach it. The number
+     of words is the gap between current known coverage and the target.
+   - **Auto-create deck from leverage words.** When viewing leverage for a
+     specific deck, add a "Create study deck" button that bundles the top N
+     leverage words (up to the target %) into a new FSRS deck automatically.
+     Flow: user picks a deck → sees leverage ranking → sets target (e.g. 85%)
+     → clicks "Create deck for these 23 words" → SaveAsModal opens with the
+     words pre-selected → deck appears in Decks view, ready for review.
+   - **Action:** Add deck filter dropdown, current/target comprehension bar,
+     and "Create leverage deck" CTA to the leverage page.
+
+3. **Leverage → Deck creation flow (end-to-end).** The "Add top 10 to queue"
+   button exists but is ambiguous — which queue? The user should be able to:
+   - Select specific leverage words (checkboxes or shift-click)
+   - Click "Create deck from selected" or "Add to existing deck"
+   - Reuse the SaveAsModal with the selected words pre-populated
+
+---
+
+## Cross-cutting recommendations
+
+1. **Commit to the superscript lockup in the app topbar.** The `Finn^fi Est^et`
+   mark is the strongest design element in the system. The branding guide
+   section 04 shows it in the topbar at 26px — use it. The current app topbar
+   shows `finnest.` in italic serif, which wastes the brand's best asset.
+
+2. **Unify flag blues.** The branding guide defines Finnish blue (#003580) and
+   Estonian blue (#0072CE) as distinct colors. The app should use both — not
+   collapse them into one `--blue`. This matters especially on the leverage
+   page where FI and ET deck tiles are shown side by side.
+
+3. **Correction flow is the highest-priority gap.** The prototype has the
+   modal but no backend flow. For a language tool, user corrections are the
+   primary quality signal — this needs a complete round-trip: submit → triage
+   → accept/reject → notify user → update parse data.
