@@ -19,7 +19,6 @@ var fiMinTableJSON []byte
 
 //go:embed tables/et_min.json
 var etMinTableJSON []byte
-
 // Analysis is one structured reading of a surface form.
 type Analysis = voikkomap.Analysis
 

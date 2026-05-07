@@ -1,14 +1,20 @@
 package hfstol
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
 
+// Local-only test path. The repository does not vendor .hfstol artifacts;
+// if the file is absent, these integration tests are skipped.
 const fiAnalyserPath = "../data/fi/analyser-gt-desc.hfstol"
 
 func loadFi(t *testing.T) *Transducer {
 	t.Helper()
+	if _, err := os.Stat(fiAnalyserPath); err != nil {
+		t.Skipf("skipping: %s not present (%v)", fiAnalyserPath, err)
+	}
 	tr, err := Open(fiAnalyserPath)
 	if err != nil {
 		t.Fatalf("open %s: %v", fiAnalyserPath, err)
