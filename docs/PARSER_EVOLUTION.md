@@ -29,6 +29,7 @@ committed run.
 
 | Date | Commit | FI fi-manual-v1 lemma | FI ud-tdt lemma | ET et-grammar-v1 lemma | FI grammar | ET grammar | ET coverage |
 |---|---|---:|---:|---:|---:|---:|---:|
+| 2026-05-07k-T0944Z (post-FEATS re-measure; FST disabled — no production tables; same DB as j) | [`317ab1b`][c-2026-05-07k] | 81.4 | _PENDING_ | 88.6 | 59.5 | 19.6 | 98.9 |
 | 2026-05-07j (post-fst re-measure on main; case-suffix label stopgap + smoke FST tables; **first UD-at-scale baseline**) | [`42e95d9`][c-2026-05-07j] | 81.4 | **60.2** | 88.6 | **59.5** | **19.6** | 98.9 |
 | 2026-05-06i (FST PR 4/4 ships, full suite re-measured) | [`91fecbf`][c-2026-05-06i] | **82.9** | — | 88.6 | 1.4 | 2.0 | **100.0** |
 | 2026-05-06h (FST PR 3/4: Giellalt ET) | [`5944733`][c-2026-05-06h] | — | — | 88.6 | — | **2.0** | **100.0** |
@@ -42,6 +43,7 @@ committed run.
 | 2026-05-05 (estnltk ceiling) | [`af111c2`][c-2026-05-05] | — | — | **98.1** | — | **92.2** | 100.0 |
 | 2026-04-28 | [`bb744ba`][c-2026-04-28] | 72.9 | — | 87.6 | 0.0 | 2.0 | 94.6 |
 
+[c-2026-05-07k]: https://github.com/sagarinbabel/finnestdb/commit/317ab1b
 [c-2026-05-07j]: https://github.com/sagarinbabel/finnestdb/commit/42e95d9
 [c-2026-05-06i]: https://github.com/sagarinbabel/finnestdb/commit/91fecbf
 [c-2026-05-06h]: https://github.com/sagarinbabel/finnestdb/commit/5944733
@@ -54,6 +56,53 @@ committed run.
 [c-2026-04-28]: https://github.com/sagarinbabel/finnestdb/commit/bb744ba
 
 ## Entries
+
+### 2026-05-07k-T0944Z — Post-FEATS re-measure (FST disabled, dict + case-suffix path)
+
+**Commit measured**: [`317ab1b`][c-2026-05-07k] (= `main` head; merge of PR [#133](https://github.com/sagarinbabel/finnestdb/pull/133) which committed the j baseline)
+**Run started**: 2026-05-07T09:44Z (UTC)
+**Detail**: [`baselines/2026-05-07k-T0944Z-fi.md`](baselines/2026-05-07k-T0944Z-fi.md), [`baselines/2026-05-07k-T0944Z-et.md`](baselines/2026-05-07k-T0944Z-et.md), [`PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md)
+**Parser version stamp**: `2026.05.07k` (`parsecore.ParserVersion`)
+
+Re-runs the same 8 FI + 2 ET datasets used in §2026-05-07j on `main` after the FEATS-migration stack landed: PR [#127](https://github.com/sagarinbabel/finnestdb/pull/127) (FST step promoted to parallel scorer in dict step 1), [#128](https://github.com/sagarinbabel/finnestdb/pull/128) (lemmatizer tables migrated to disk-loaded `localdata/lemmatizer-fi-et/tables/` with `testdata/lemmatizer/` fixtures), [#129](https://github.com/sagarinbabel/finnestdb/pull/129) (full FST candidate merge), [#130](https://github.com/sagarinbabel/finnestdb/pull/130) (FEATS migration — gate `Match.Full` on FEATS, attach FEATS-only custom morphology, thread per-attribute FEATS through eval and report), [#131](https://github.com/sagarinbabel/finnestdb/pull/131) (data consolidation under `localdata/`).
+
+**Two simultaneous reasons curated headline numbers don't move vs j**:
+
+1. **Eval semantics (PR #130) — gold-driven.** `Match.Full` now requires per-attribute FEATS matching when the gold supplies a FEATS string. Curated FI/ET gold sets don't carry FEATS in annotations, so `Match.Full` falls back to pre-FEATS semantics (lemma & POS & grammar_label). UD test sets DO carry full UD FEATS, so Full% on UD reflects stricter matching.
+2. **FST runtime (PR #128) — disabled on this measurement.** The runtime now disk-loads tables from `localdata/lemmatizer-fi-et/tables/`. That directory is empty on this machine (only `testdata/lemmatizer/` holds 12-form smoke fixtures used by tests, not by the production lookup). The runtime treats the missing tables as `ErrNoTables` → "FST disabled, fall through to dict + case-suffix path". So this baseline measures the **dict + case-suffix stopgap with FST off** — same effective parser as the j baseline (which also had FST off because j's smoke fixtures only covered 12 forms).
+
+**Headline numbers** (custom parser):
+
+| Dataset (cases / tokens) | Lemma | POS | Grammar | Full | Coverage |
+|---|---:|---:|---:|---:|---:|
+| _Curated FI sets:_ | | | | | |
+| fi-grammar (80 / 156) | 96.8 | 98.1 | 59.5 | 79.5 | 99.7 |
+| fi-core (6 / 23) | 85.0 | 90.0 | 30.0 | 50.0 | 95.7 |
+| fi-manual-v1 (22 / 187) | 81.4 | 85.7 | 6.7 | 64.3 | 91.2 |
+| fi-manual-v2 (4 / 12) | 88.9 | 100.0 | 33.3 | 66.7 | 100.0 |
+| _UD FI test sets (real-world):_ | | | | | |
+| ud-fi-ftb-test (1867 / 13,973) | _PENDING_ | _PENDING_ | _PENDING_ | _PENDING_ | _PENDING_ |
+| ud-fi-ood-test (2106 / 16,151) | _PENDING_ | _PENDING_ | _PENDING_ | _PENDING_ | _PENDING_ |
+| ud-fi-pud-test (1000 / 13,474) | _PENDING_ | _PENDING_ | _PENDING_ | _PENDING_ | _PENDING_ |
+| ud-fi-tdt-test (1554 / 17,951) | _PENDING_ | _PENDING_ | _PENDING_ | _PENDING_ | _PENDING_ |
+| _Curated ET sets:_ | | | | | |
+| et-grammar (50 / 178) | 88.6 | 96.2 | 19.6 | 51.4 | 98.9 |
+| et-manual (4 / 12) | 77.8 | 77.8 | 0.0 | 11.1 | 91.7 |
+
+**Net effect vs 2026-05-07j** (custom parser):
+
+- **Curated FI/ET: zero movement.** Full%, Lemma, POS, Grammar, Coverage all identical to j on all six curated datasets. The FEATS migration's `Match.Full` change doesn't fire when gold has no FEATS, and FST is off in both j and k.
+- **UD FI: Full% drops** because UD gold supplies full FEATS and parser supplies none (FST off; no Ekilex bulk drop). Lemma/POS/Grammar/Coverage hold (same dict + case-suffix path). _Filled in once UD pass completes._
+
+**Convention note**: this is the first baseline tagged with a wall-clock timestamp suffix (`-T0944Z`). The letter (`k`) is the within-stack ordinal that follows `j`; the `THHMMZ` suffix lets multiple baselines on the same parser-behavior-version stay distinct in `docs/baselines/` and on disk. See [`PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) for the full convention.
+
+**Open issues this surfaced**:
+
+- **FST production tables not on this machine.** `localdata/lemmatizer-fi-et/tables/` is empty here, so the FST step is off across the entire baseline. To make the FST contribution measurable we either (a) regenerate locally via `make gen-lemmatizer-tables-fi VFST_PATH=…` against an upstream Voikko `mor.vfst`, or (b) ship a deterministic regeneration recipe that's runnable from a fresh clone. Tracked since §2026-05-07j; still open.
+- **Ekilex bulk drop missing on this DB.** ET FEATS via Ekilex `morph_code` (commit [`2febc31`](https://github.com/sagarinbabel/finnestdb/commit/2febc31)) requires the ~6.18M form rows from `make import-ekilex-details-et`. This DB is at the kaikki + Ekilex public-headwords state (392k forms). The projected ~95% ET grammar lift documented in [`LEARNINGS.md`](LEARNINGS.md) needs that import replayed before it's measurable.
+- **Curated gold doesn't have FEATS.** The FEATS migration's main accuracy mechanism only fires on FEATS-bearing gold. Curated FI/ET sets pre-date FEATS-aware annotation, so the migration's impact is invisible on them. Backfilling FEATS into the curated gold would let us see per-attribute FEATS scoring on those small high-signal sets too — a small JSON-edit job, gated on whether the curated sets need to keep tracking the analyzer ceiling closely.
+
+---
 
 ### 2026-05-07j — Post-FST re-measure (case-suffix grammar-label stopgap + smoke FST tables) — pre-FEATS-migration baseline
 
@@ -275,7 +324,7 @@ First step of the FST stack. Adds `pkg/lemmatizer-fi-et/vfst/` — a pure-Go por
 
 **Commit**: TBD (PR 3.2 head, follows [#92](https://github.com/sagarinbabel/finnestdb/pull/92) which landed the binary skeleton)
 
-Phase 3 of [`docs/FINNISH_LEXICAL_PLAN.md`](FINNISH_LEXICAL_PLAN.md) is shipped. The Kotus Nykysuomen sanalista 2024 (CC BY 4.0, ~104k FI headwords) is now a tracked artifact under [`data/kotus/`](baselines/) and `cmd/importkotus` populates `paradigm_class` on the FI lemmas table. That's the join key the Phase 4 Voikko adapter needs.
+Phase 3 of [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) is shipped. The Kotus Nykysuomen sanalista 2024 (CC BY 4.0, ~104k FI headwords) lives under `localdata/kotus/` (gitignored per `docs/ARTIFACT_POLICY.md` after the 2026-05-07 single-folder bootstrap migration) and `cmd/importkotus` populates `paradigm_class` on the FI lemmas table. That's the join key the Phase 4 Voikko adapter needs.
 
 PR 3.1 ([#92](https://github.com/sagarinbabel/finnestdb/pull/92)) landed the binary skeleton against an assumed XML schema — documented in the code as "refine in 3.2 against real data." When 3.2 fetched the real distribution, it turned out to be a **TSV, not XML**: header-prefixed `Hakusana\tHomonymia\tSanaluokka\tTaivutustiedot`. PR 3.2 replaced the parser entirely.
 

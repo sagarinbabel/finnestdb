@@ -125,8 +125,11 @@ Each rich source should have a dedicated `cmd/import<source>/` or
 
 ### Cross-references _(added 2026-05-07)_
 
-- **Per-language source choices**: this doc's Finnish sections below
-  + `docs/ESTONIAN_LEXICAL_PLAN.md` for ET-specific source choices.
+- **Per-language source choices**: this doc covers both the Finnish
+  sections below ("Current Decision", "Adapters") and the consolidated
+  Estonian section ("Estonian-specific source choices and adapter
+  contract"). The legacy `docs/ESTONIAN_LEXICAL_PLAN.md` was deleted
+  on 2026-05-07; its unique content lives here now.
 - **System-level architecture**: [`ARCHITECTURE.md` §5 "Dictionary /
   Persistence"](../ARCHITECTURE.md) for how the lexical layer plugs
   into parsecore, the API, and the deck flow.
@@ -318,6 +321,104 @@ needed:
   [`internal/parserules/finnish.go`](../internal/parserules/finnish.go)
   still handles them at runtime.
 
+## Estonian-specific source choices and adapter contract
+
+_Consolidated 2026-05-07 from the legacy `docs/ESTONIAN_LEXICAL_PLAN.md`._
+
+### Current ET decision
+
+Use two complementary upstream paths:
+
+1. **External analyzer baseline:** EstNLTK / Vabamorf through the
+   `estnltk` parser adapter.
+2. **Sanctioned lexical data:** EKI/Ekilex/Sõnaveeb-derived lexical data
+   imported with explicit attribution, license text, source version,
+   and change notices via `cmd/importekilex` and `cmd/importekilexdetails`.
+
+The local custom parser stays useful as a fast deterministic baseline
+and as the product parser. External analyzer output is comparison data
+unless we explicitly choose to promote a behavior into local rules or
+dictionary rows.
+
+Reference pages:
+
+- Sõnaveeb about/license: <https://sonaveeb.ee/about?uilang=en>
+- Ekilex application/API entry point: <https://ekilex.ee/login>
+- EstNLTK repository: <https://github.com/estnltk/estnltk>
+
+### EstNLTK adapter contract
+
+Parser mode: `estnltk`.
+
+Command override:
+
+```bash
+export FINNESTDB_ESTNLTK_CMD="/path/to/python /path/to/scripts/estnltk_adapter_example.py"
+```
+
+Default discovery:
+
+- `scripts/estnltk_adapter_example.py`
+- `.venv-estnltk/bin/python` when created by `make setup-estnltk`
+- nearest repo root containing `go.mod`
+- executable directory fallback
+
+Subprocess timeout: each call spawns a fresh Python process and reloads
+Vabamorf, so cold start alone is roughly 1 second per call. The default
+budget is `30s`, overridable with a Go duration string:
+
+```bash
+export FINNESTDB_ESTNLTK_TIMEOUT=1m
+```
+
+Setup:
+
+```bash
+make setup-estnltk
+```
+
+Evaluation:
+
+```bash
+make compare-parsers-et
+# or directly
+go run ./cmd/parsertest \
+  -dataset testdata/parser-eval/et/gold/et-grammar-v1.json \
+  -parsers basic,custom,estnltk
+```
+
+The adapter emits the same JSON shape as the Rust FFI parser and the
+Omorfi adapter. The shared external-analyzer path then:
+
+- records `source=analyzer:estnltk`
+- preserves analyzer lemma, POS, and grammar label
+- uses direct/custom dictionary overrides only when the analyzer returns
+  an unresolved or `X` POS token
+- attaches local grammar labels when they agree with analyzer lemma/POS
+
+### ET lexical import sequence
+
+Recommended path on a fresh machine (uses the bulk Ekilex pipeline; no
+API key needed at deploy time, only during the offline scrape):
+
+```bash
+make import-dict-et            # kaikki.org Estonian
+make import-ekilex-et          # tracked CC BY 4.0 public-word snapshot
+make import-ekilex-details-et  # ~178k lemmas + ~6.2M form rows from
+                                # the reduced Ekilex artifacts under
+                                # localdata/ekilex/
+make compare-parsers-et
+```
+
+The smoke-import path `make import-dict-et-ekilex` (which hits the live
+Ekilex API per word, requires `EKILEX_API_KEY`) is intentionally configured
+as a small smoke import. **Do not use it as the production data path** —
+it is rate-limited, slow, and the bulk pipeline above is the canonical
+loader. See `Makefile` and `cmd/fetchekilex` for the bulk-scrape recipe.
+
+ET corrections follow the same shared correction path as Finnish — see
+[`docs/PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md).
+
 ## Resolution Layer
 
 The parser's enrichment chain in
@@ -476,8 +577,6 @@ Remaining items to confirm during implementation:
 
 ## See Also
 
-- [`docs/ESTONIAN_LEXICAL_PLAN.md`](ESTONIAN_LEXICAL_PLAN.md) — legacy
-  sibling plan; this document is the consolidated path forward
 - [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md) — what
   is shared vs. language-specific
 - [`docs/OMORFI_ADAPTER.md`](OMORFI_ADAPTER.md) — Omorfi as parser

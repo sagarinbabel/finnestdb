@@ -1,0 +1,1185 @@
+{
+  "run_id": "20260507T094909Z-et-manual",
+  "generated_at": "2026-05-07T09:49:09Z",
+  "dataset": {
+    "name": "et-manual",
+    "version": "v1",
+    "language": "ET",
+    "case_count": 4
+  },
+  "parsers": [
+    "basic",
+    "custom",
+    "estnltk"
+  ],
+  "git_commit": "317ab1b",
+  "parser_version": "2026.05.07k",
+  "benchmark": {
+    "warmup_runs": 1,
+    "repeat_runs": 1
+  },
+  "summary": {
+    "basic": {
+      "expected_tokens": 9,
+      "lemma_accuracy": 0.7777777777777778,
+      "pos_accuracy": 0.7777777777777778,
+      "grammar_accuracy": 0,
+      "full_accuracy": 0.1111111111111111,
+      "resolved_coverage": 0.8333333333333334,
+      "avg_case_duration_ms": 0.1441665,
+      "p50_case_duration_ms": 0.136958,
+      "p95_case_duration_ms": 0.159292,
+      "words_per_second": 20809.272611875855,
+      "chars_per_second": 182081.1353539137,
+      "avg_unique_forms": 3,
+      "avg_resolved_tokens": 2.5,
+      "avg_unresolved_tokens": 0.5,
+      "avg_analyze_ms": 0.029927,
+      "avg_lookup_forms_ms": 0.0540625,
+      "avg_lookup_glosses_ms": 0.043979,
+      "avg_resolve_sentences_ms": 0.01241675,
+      "avg_enrich_words_ms": 0.00186425
+    },
+    "custom": {
+      "expected_tokens": 9,
+      "lemma_accuracy": 0.7777777777777778,
+      "pos_accuracy": 0.7777777777777778,
+      "grammar_accuracy": 0,
+      "full_accuracy": 0.1111111111111111,
+      "resolved_coverage": 0.9166666666666666,
+      "avg_case_duration_ms": 0.1264065,
+      "p50_case_duration_ms": 0.104417,
+      "p95_case_duration_ms": 0.1565,
+      "words_per_second": 23732.95677041924,
+      "chars_per_second": 207663.37174116838,
+      "avg_unique_forms": 3,
+      "avg_resolved_tokens": 2.75,
+      "avg_unresolved_tokens": 0.25,
+      "avg_analyze_ms": 0.01763575,
+      "avg_lookup_forms_ms": 0.07227075,
+      "avg_lookup_glosses_ms": 0.0318855,
+      "avg_resolve_sentences_ms": 0.001417,
+      "avg_enrich_words_ms": 0.00181275
+    },
+    "estnltk": {
+      "expected_tokens": 9,
+      "lemma_accuracy": 1,
+      "pos_accuracy": 1,
+      "grammar_accuracy": 1,
+      "full_accuracy": 1,
+      "resolved_coverage": 1,
+      "avg_case_duration_ms": 1313.41545875,
+      "p50_case_duration_ms": 1308.200917,
+      "p95_case_duration_ms": 1312.925584,
+      "words_per_second": 2.284121128629894,
+      "chars_per_second": 19.98605987551157,
+      "avg_unique_forms": 3,
+      "avg_resolved_tokens": 3,
+      "avg_unresolved_tokens": 0,
+      "avg_analyze_ms": 1313.0555525,
+      "avg_lookup_forms_ms": 0.27030225,
+      "avg_lookup_glosses_ms": 0.06406225,
+      "avg_resolve_sentences_ms": 0.008531,
+      "avg_enrich_words_ms": 0.00563525
+    }
+  },
+  "cases": [
+    {
+      "case_id": "et-1001",
+      "text": "Poes ootasin sõpra.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples_ns": [
+            107250
+          ],
+          "avg_ms": 0.10725,
+          "p50_ms": 0.10725,
+          "p95_ms": 0.10725
+        },
+        "custom": {
+          "samples_ns": [
+            104417
+          ],
+          "avg_ms": 0.104417,
+          "p50_ms": 0.104417,
+          "p95_ms": 0.104417
+        },
+        "estnltk": {
+          "samples_ns": [
+            1312925584
+          ],
+          "avg_ms": 1312.925584,
+          "p50_ms": 1312.925584,
+          "p95_ms": 1312.925584
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 15375,
+            "lookup_forms_ns": 39459,
+            "lookup_glosses_ns": 48042,
+            "resolve_sentences_ns": 1584,
+            "enrich_words_ns": 1625,
+            "total_ns": 107250
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 18917,
+            "lookup_forms_ns": 43708,
+            "lookup_glosses_ns": 37167,
+            "resolve_sentences_ns": 1459,
+            "enrich_words_ns": 1667,
+            "total_ns": 104417
+          }
+        },
+        "estnltk": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "analyzer:estnltk": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 1312618209,
+            "lookup_forms_ns": 218583,
+            "lookup_glosses_ns": 65083,
+            "resolve_sentences_ns": 7541,
+            "enrich_words_ns": 5292,
+            "total_ns": 1312925584
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Poes",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pood",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pood",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=poes pos=NOUN",
+                "resolution:dict lemma=pood pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "sõpra",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sõber",
+              "pos": "NOUN",
+              "grammar_label": "partitive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sõber",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=sõpra pos=NOUN",
+                "resolution:dict lemma=sõber pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Poes",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pood",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pood",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=poes pos=NOUN",
+                "resolution:dict lemma=pood pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "sõpra",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sõber",
+              "pos": "NOUN",
+              "grammar_label": "partitive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sõber",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=sõpra pos=NOUN",
+                "resolution:dict lemma=sõber pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          }
+        ],
+        "estnltk": [
+          {
+            "surface": "Poes",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "pood",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "pood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "vabamorf_form=sg in",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=pood pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "sõpra",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sõber",
+              "pos": "NOUN",
+              "grammar_label": "partitive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sõber",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "vabamorf_form=sg p",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=sõber pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "et-1002",
+      "text": "Raamatupoes müüdi sõnastikke.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples_ns": [
+            159292
+          ],
+          "avg_ms": 0.159292,
+          "p50_ms": 0.159292,
+          "p95_ms": 0.159292
+        },
+        "custom": {
+          "samples_ns": [
+            156500
+          ],
+          "avg_ms": 0.1565,
+          "p50_ms": 0.1565,
+          "p95_ms": 0.1565
+        },
+        "estnltk": {
+          "samples_ns": [
+            1308200917
+          ],
+          "avg_ms": 1308.200917,
+          "p50_ms": 1308.200917,
+          "p95_ms": 1308.200917
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 2,
+          "unresolved_tokens": 1,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 2,
+            "punct": 1,
+            "stub": 1
+          },
+          "timings": {
+            "analyze_ns": 36125,
+            "lookup_forms_ns": 71958,
+            "lookup_glosses_ns": 46041,
+            "resolve_sentences_ns": 1458,
+            "enrich_words_ns": 1666,
+            "total_ns": 159292
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 2,
+          "unresolved_tokens": 1,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 2,
+            "punct": 1,
+            "stub": 1
+          },
+          "timings": {
+            "analyze_ns": 15750,
+            "lookup_forms_ns": 111833,
+            "lookup_glosses_ns": 25042,
+            "resolve_sentences_ns": 1292,
+            "enrich_words_ns": 1417,
+            "total_ns": 156500
+          }
+        },
+        "estnltk": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "analyzer:estnltk": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 1307769709,
+            "lookup_forms_ns": 340959,
+            "lookup_glosses_ns": 59208,
+            "resolve_sentences_ns": 11833,
+            "enrich_words_ns": 4250,
+            "total_ns": 1308200917
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Raamatupoes",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "raamatupood",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "raamatupoes",
+              "pos": "NOUN",
+              "source": "stub",
+              "resolved": false,
+              "trace": [
+                "analyzer:rust lemma=raamatupoes pos=NOUN",
+                "fallback:stub lemma=raamatupoes pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": false,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "sõnastikke",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sõnastik",
+              "pos": "NOUN",
+              "grammar_label": "partitive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sõnastik",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=sõnastikke pos=NOUN",
+                "resolution:dict lemma=sõnastik pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Raamatupoes",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "raamatupood",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "raamatupoes",
+              "pos": "NOUN",
+              "source": "stub",
+              "resolved": false,
+              "trace": [
+                "analyzer:rust lemma=raamatupoes pos=NOUN",
+                "fallback:stub lemma=raamatupoes pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": false,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "sõnastikke",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sõnastik",
+              "pos": "NOUN",
+              "grammar_label": "partitive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sõnastik",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=sõnastikke pos=NOUN",
+                "resolution:dict lemma=sõnastik pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          }
+        ],
+        "estnltk": [
+          {
+            "surface": "Raamatupoes",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "raamatupood",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "raamatupood",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "vabamorf_form=sg in",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=raamatupood pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "sõnastikke",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "sõnastik",
+              "pos": "NOUN",
+              "grammar_label": "partitive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "sõnastik",
+              "pos": "NOUN",
+              "grammar_label": "partitive",
+              "feats": "vabamorf_form=pl p",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=sõnastik pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "et-1003",
+      "text": "Lennujaamabuss peatus raudteejaamas.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples_ns": [
+            136958
+          ],
+          "avg_ms": 0.136958,
+          "p50_ms": 0.136958,
+          "p95_ms": 0.136958
+        },
+        "custom": {
+          "samples_ns": [
+            161334
+          ],
+          "avg_ms": 0.161334,
+          "p50_ms": 0.161334,
+          "p95_ms": 0.161334
+        },
+        "estnltk": {
+          "samples_ns": [
+            1324920917
+          ],
+          "avg_ms": 1324.920917,
+          "p50_ms": 1324.920917,
+          "p95_ms": 1324.920917
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 2,
+          "unresolved_tokens": 1,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 2,
+            "punct": 1,
+            "stub": 1
+          },
+          "timings": {
+            "analyze_ns": 31125,
+            "lookup_forms_ns": 58125,
+            "lookup_glosses_ns": 42042,
+            "resolve_sentences_ns": 1584,
+            "enrich_words_ns": 1791,
+            "total_ns": 136958
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "compound": 1,
+            "dict": 2,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 23917,
+            "lookup_forms_ns": 95833,
+            "lookup_glosses_ns": 36583,
+            "resolve_sentences_ns": 1583,
+            "enrich_words_ns": 1833,
+            "total_ns": 161334
+          }
+        },
+        "estnltk": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "analyzer:estnltk": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 1324541417,
+            "lookup_forms_ns": 298292,
+            "lookup_glosses_ns": 58875,
+            "resolve_sentences_ns": 6875,
+            "enrich_words_ns": 4333,
+            "total_ns": 1324920917
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Lennujaamabuss",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "lennujaamabuss",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "lennujaamabuss",
+              "pos": "NOUN",
+              "source": "stub",
+              "resolved": false,
+              "trace": [
+                "analyzer:rust lemma=lennujaamabuss pos=NOUN",
+                "fallback:stub lemma=lennujaamabuss pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "peatus",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "peatuma",
+              "pos": "VERB"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "peatus",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=peatus pos=NOUN",
+                "resolution:dict lemma=peatus pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": false,
+              "pos": false,
+              "grammar": true,
+              "full": false
+            }
+          },
+          {
+            "surface": "raudteejaamas",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "raudteejaam",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "raudteejaam",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=raudteejaamas pos=NOUN",
+                "resolution:dict lemma=raudteejaam pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Lennujaamabuss",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "lennujaamabuss",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "lennujaamabuss",
+              "pos": "NOUN",
+              "source": "compound",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=lennujaamabuss pos=NOUN",
+                "resolution:compound lemma=lennujaamabuss pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "peatus",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "peatuma",
+              "pos": "VERB"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "peatus",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=peatus pos=NOUN",
+                "resolution:dict lemma=peatus pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": false,
+              "pos": false,
+              "grammar": true,
+              "full": false
+            }
+          },
+          {
+            "surface": "raudteejaamas",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "raudteejaam",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "raudteejaam",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=raudteejaamas pos=NOUN",
+                "resolution:dict lemma=raudteejaam pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          }
+        ],
+        "estnltk": [
+          {
+            "surface": "Lennujaamabuss",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "lennujaamabuss",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "lennujaamabuss",
+              "pos": "NOUN",
+              "grammar_label": "nominative",
+              "feats": "vabamorf_form=sg n",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=lennujaamabuss pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "peatus",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "peatuma",
+              "pos": "VERB"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "peatuma",
+              "pos": "VERB",
+              "feats": "vabamorf_form=s",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=peatuma pos=VERB"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "raudteejaamas",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "raudteejaam",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "raudteejaam",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "vabamorf_form=sg in",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=raudteejaam pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "et-1004",
+      "text": "Käekotis oli märkmik.",
+      "token_count": 3,
+      "duration_ms": {
+        "basic": {
+          "samples_ns": [
+            173166
+          ],
+          "avg_ms": 0.173166,
+          "p50_ms": 0.173166,
+          "p95_ms": 0.173166
+        },
+        "custom": {
+          "samples_ns": [
+            83375
+          ],
+          "avg_ms": 0.083375,
+          "p50_ms": 0.083375,
+          "p95_ms": 0.083375
+        },
+        "estnltk": {
+          "samples_ns": [
+            1307614417
+          ],
+          "avg_ms": 1307.614417,
+          "p50_ms": 1307.614417,
+          "p95_ms": 1307.614417
+        }
+      },
+      "stats": {
+        "basic": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 37083,
+            "lookup_forms_ns": 46708,
+            "lookup_glosses_ns": 39791,
+            "resolve_sentences_ns": 45041,
+            "enrich_words_ns": 2375,
+            "total_ns": 173166
+          }
+        },
+        "custom": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "dict": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 11959,
+            "lookup_forms_ns": 37709,
+            "lookup_glosses_ns": 28750,
+            "resolve_sentences_ns": 1334,
+            "enrich_words_ns": 2334,
+            "total_ns": 83375
+          }
+        },
+        "estnltk": {
+          "unique_forms": 3,
+          "total_sentences": 1,
+          "resolved_tokens": 3,
+          "unresolved_tokens": 0,
+          "punct_tokens": 1,
+          "source_counts": {
+            "analyzer:estnltk": 3,
+            "punct": 1
+          },
+          "timings": {
+            "analyze_ns": 1307292875,
+            "lookup_forms_ns": 223375,
+            "lookup_glosses_ns": 73083,
+            "resolve_sentences_ns": 7875,
+            "enrich_words_ns": 8666,
+            "total_ns": 1307614417
+          }
+        }
+      },
+      "comparisons": {
+        "basic": [
+          {
+            "surface": "Käekotis",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "käekott",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "käekott",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=käekotis pos=NOUN",
+                "resolution:dict lemma=käekott pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "märkmik",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "märkmik",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "märkmik",
+              "pos": "X",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=märkmik pos=NOUN",
+                "resolution:dict lemma=märkmik pos=X"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": false,
+              "grammar": true,
+              "full": false
+            }
+          }
+        ],
+        "custom": [
+          {
+            "surface": "Käekotis",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "käekott",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "käekott",
+              "pos": "NOUN",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=käekotis pos=NOUN",
+                "resolution:dict lemma=käekott pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": false,
+              "full": false
+            }
+          },
+          {
+            "surface": "märkmik",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "märkmik",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "märkmik",
+              "pos": "X",
+              "source": "dict",
+              "resolved": true,
+              "trace": [
+                "analyzer:rust lemma=märkmik pos=NOUN",
+                "resolution:dict lemma=märkmik pos=X"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": false,
+              "grammar": true,
+              "full": false
+            }
+          }
+        ],
+        "estnltk": [
+          {
+            "surface": "Käekotis",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "käekott",
+              "pos": "NOUN",
+              "grammar_label": "inessive"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "käekott",
+              "pos": "NOUN",
+              "grammar_label": "inessive",
+              "feats": "vabamorf_form=sg in",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=käekott pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          },
+          {
+            "surface": "märkmik",
+            "occurrence": 1,
+            "expected": {
+              "lemma": "märkmik",
+              "pos": "NOUN"
+            },
+            "actual": {
+              "found": true,
+              "lemma": "märkmik",
+              "pos": "NOUN",
+              "grammar_label": "nominative",
+              "feats": "vabamorf_form=sg n",
+              "source": "analyzer:estnltk",
+              "resolved": true,
+              "trace": [
+                "analyzer:estnltk lemma=märkmik pos=NOUN"
+              ]
+            },
+            "match": {
+              "lemma": true,
+              "pos": true,
+              "grammar": true,
+              "full": true
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
