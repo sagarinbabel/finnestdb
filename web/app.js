@@ -1042,9 +1042,9 @@ function sortWords(words, sort) {
                 cmp = a.count - b.count;
                 break;
         }
-        if (cmp === 0)
-            cmp = a.originalIndex - b.originalIndex;
-        return cmp * direction;
+        if (cmp !== 0)
+            return cmp * direction;
+        return a.originalIndex - b.originalIndex;
     });
     return sorted;
 }
