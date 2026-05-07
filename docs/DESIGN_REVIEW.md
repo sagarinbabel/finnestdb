@@ -129,67 +129,7 @@ EphemeralToggle, ReviewDoneCard. Wired via proto-app.jsx + proto-screens.jsx
 
 ### Missing flows — TODO
 
-1. **Signed-in user correction submission.** The CorrectionModal exists and
-   renders for signed-in users, but the submission flow is incomplete:
-   - Where does the correction go after "Submit"? The toast says
-     "→ /admin/feedback queue" but there's no queue view or triage screen.
-   - Signed-in corrections should attach the user's identity so the submitter
-     gets credit / notification when the correction is accepted or rejected.
-   - Need a "My submissions" view (or at least a list in the user profile)
-     showing pending / accepted / rejected corrections.
-   - Consider: should corrections be per-parse (tied to the specific sentence
-     context) or per-lemma (global)? The modal currently captures the sentence
-     but the data model isn't shown.
-   - **Action:** Add a corrections history panel accessible from the user
-     avatar menu, and show submission status (pending / accepted / rejected)
-     as a badge or inline in the parse results where the user flagged it.
-
-2. **Leverage page — filter by deck.** The current leverage view shows words
-   ranked across all 5 active decks with a single "+14% comprehension gain"
-   summary. Missing:
-   - **Deck filter / selector** at the top of the leverage page — let the user
-     pick a single deck (or "all decks") and see leverage ranked within that
-     scope. Each deck has different text, so the highest-leverage words differ.
-   - **Current → target comprehension projection.** Instead of just "+14%",
-     show: "You currently understand **62%** of *Kalevala ch.1*. Learn these
-     15 words → **78%**." The user needs to see where they are now AND where
-     they'd get to. This is the core motivation loop.
-   - **Goal threshold.** Let the user set a target comprehension % (e.g. 90%)
-     and show exactly how many words they need to learn to reach it. The number
-     of words is the gap between current known coverage and the target.
-   - **Auto-create deck from leverage words.** When viewing leverage for a
-     specific deck, add a "Create study deck" button that bundles the top N
-     leverage words (up to the target %) into a new FSRS deck automatically.
-     Flow: user picks a deck → sees leverage ranking → sets target (e.g. 85%)
-     → clicks "Create deck for these 23 words" → SaveAsModal opens with the
-     words pre-selected → deck appears in Decks view, ready for review.
-   - **Action:** Add deck filter dropdown, current/target comprehension bar,
-     and "Create leverage deck" CTA to the leverage page.
-
-3. **Leverage → Deck creation flow (end-to-end).** The "Add top 10 to queue"
-   button exists but is ambiguous — which queue? The user should be able to:
-   - Select specific leverage words (checkboxes or shift-click)
-   - Click "Create deck from selected" or "Add to existing deck"
-   - Reuse the SaveAsModal with the selected words pre-populated
-
----
-
-## Cross-cutting recommendations
-
-1. **Commit to the superscript lockup in the app topbar.** The `Finn^fi Est^et`
-   mark is the strongest design element in the system. The branding guide
-   section 04 shows it in the topbar at 26px — use it. The current app topbar
-   shows `finnest.` in italic serif, which wastes the brand's best asset.
-
-2. **Unify flag blues.** The branding guide defines Finnish blue (#003580) and
-   Estonian blue (#0072CE) as distinct colors. The app should use both — not
-   collapse them into one `--blue`. This matters especially on the leverage
-   page where FI and ET deck tiles are shown side by side.
-
-3. **Correction flow is the highest-priority gap.** The prototype has the
-   modal but no backend flow. For a language tool, user corrections are the
-   primary quality signal — this needs a complete round-trip: submit → triage
-   → accept/reject → notify user → update parse data.
+See consolidated TODO list at the end of this document.
 
 ---
 
@@ -406,3 +346,152 @@ Newsreader serif warmth, two-intensity system). Recommended convergence:
 5. **Converge the two design directions.** The wireframe and Aalto prototype
    are diverging. Pick one token system, one type stack, one responsive
    strategy. See "Convergence plan" above.
+
+---
+
+## Consolidated design TODO
+
+All open items collected from the reviews above, grouped by priority.
+
+### P0 — Core user flows (missing or broken)
+
+1. **Leverage → word list → study deck (end-to-end).** The comprehension
+   projection says "Learn 20 words → 81%" but the user can't see *which* 20
+   words, can't review them, can't act on the number. Full flow:
+
+   a. **Deck Detail or Leverage page** shows the projection: "You know 62%.
+      Learn these 20 words → 81%." The "these 20 words" text is a link /
+      expandable section.
+   b. **Clicking it reveals the ranked word list** — the actual 20 lemmas,
+      with gloss, POS, frequency bar, and a checkbox per row (all checked by
+      default). The user can uncheck words they don't want or adjust the
+      target % slider to grow/shrink the list.
+   c. **"Create study deck" button** at the bottom of the list. Opens
+      SaveAsModal with the selected words pre-populated. Deck name defaults
+      to something like "Kalevala ch.1 — top 20 leverage words".
+   d. **Deck appears in the Decks view**, tagged as a leverage-derived deck
+      (e.g. a small ⚡ badge). User can start reviewing immediately.
+   e. **As the user learns words from the leverage deck**, the comprehension
+      projection on the source deck updates in real time: "You know 68%.
+      Learn these 14 remaining words → 81%." The feedback loop closes.
+   f. **When all leverage words are learned**, the projection tier collapses
+      and the next tier appears: "You know 81%. Learn 30 more → 89%."
+
+   Current state: view-deck.jsx shows the now→target numbers. The wireframe
+   shows three hardcoded tiers. Neither lets the user see the words or create
+   a deck. The "Add top 10 to queue" button in view-leverage.jsx is ambiguous
+   (which queue?). This is the highest-priority feature gap.
+
+2. **Signed-in user correction submission round-trip.** The CorrectionModal
+   exists and renders, but the flow after "Submit" is incomplete:
+   - Where does the correction go? The toast says "→ /admin/feedback queue"
+     but there's no queue view or triage screen.
+   - Signed-in corrections should attach user identity so the submitter gets
+     credit / notification when the correction is accepted or rejected.
+   - Need a "My submissions" view (or at least a list in the user profile)
+     showing pending / accepted / rejected corrections.
+   - Should corrections be per-parse (tied to the specific sentence context)
+     or per-lemma (global)? The modal captures the sentence but the data
+     model isn't shown.
+   - **Action:** Add corrections history panel accessible from the user avatar
+     menu. Show submission status (pending / accepted / rejected) as a badge
+     or inline in the parse results where the user flagged it.
+
+3. **Leverage page — deck filter + comprehension projection.** The leverage
+   page (view-leverage.jsx, v2-leverage.jsx) shows words ranked across all
+   decks with "+14% comprehension gain" but no baseline. Missing:
+   - **Deck filter / selector** — let the user pick a single deck (or "all
+     decks") and see leverage ranked within that scope. view-leverage.jsx has
+     a scope filter (All/Active/Finnish/Estonian) but not per-deck.
+   - **Now → target projection** (same as view-deck.jsx has): "You know 62%
+     of *Kalevala ch.1*. Learn these 15 words → 78%."
+   - **Goal threshold slider** — user sets target % (default 85%), list shows
+     exactly how many words to learn. The word list below updates live.
+   - **"Create study deck" CTA** — bundles the leverage words into a new FSRS
+     deck (see P0 item 1 above).
+
+### P1 — Design system convergence
+
+4. **Unify wireframe and Aalto token systems.** Two parallel CSS architectures
+   (wireframe OKLCH + Aalto hex/OKLCH hybrid) that don't share code. Pick one
+   and retire the other. Recommendation: wireframe OKLCH tokens with Aalto
+   role names. See "Convergence plan" section above.
+
+5. **Unify FI/ET colors.** Three different FI/ET color schemes across files:
+   - Branding: hex flag blues (#003580 / #0072CE)
+   - Aalto: collapsed into one `--blue`, `--et` maps to `--ink` (wrong)
+   - Wireframe: OKLCH hue-differentiated (cyan FI / magenta ET)
+   Recommendation: wireframe approach. Works in both themes, clearly distinct.
+
+6. **Commit to the superscript lockup in the app topbar.** The `Finn^fi Est^et`
+   mark is the strongest brand element. The branding guide section 04 shows it
+   in the topbar at 26px. All app shells currently show `finnest.` in italic
+   serif instead.
+
+7. **Pick one type stack.** Aalto uses Newsreader + Inter Tight + IBM Plex
+   Mono. Wireframe uses Fraunces + IBM Plex Sans + IBM Plex Mono.
+   Recommendation: Fraunces + IBM Plex (optical sizing, weight axes, more
+   cohesive mono pairing).
+
+8. **Unify responsive strategy.** The wireframe-clickthrough has `@media`
+   breakpoints at 720px. The Aalto prototype has none. The mobile prototype
+   (`finnest mobile.html` + `m-*.jsx`) is a third, separate codebase.
+   Recommendation: use the wireframe's breakpoints as canonical; retire the
+   separate mobile prototype.
+
+### P2 — Component gaps
+
+9. **"✎ Wrong?" button should be native to view-review.jsx.** Currently only
+   exists as a DOM injection in proto-screens.jsx via setInterval polling.
+   Build it into the review component properly.
+
+10. **Review flow in wireframe.** Screen 11 (Review) only shows a static card.
+    The Aalto prototype's FSRS-driven review loop with scope selection,
+    progress bar, and ReviewDoneCard is much further along. Port it.
+
+11. **Mobile prototype coverage.** Only 3 of 11+ screens (Landing, Wordlist,
+    Review). Missing: Decks/Library, Deck Detail, Leverage, Settings, Cold
+    Start, Sign-in. If staying with the responsive-breakpoint strategy (P1
+    item 8), these are covered by the desktop views collapsing.
+
+### P3 — Polish / brand guide gaps
+
+12. **Branding: `.lockup .book` styled but never shown.** Either add artboard
+    or remove dead CSS.
+
+13. **Branding: Fraunces variant defined but never used.** Either add a
+    comparison card or drop `.lockup.fraunces`.
+
+14. **Branding: "Sanatorium" / "Paimio" naming unexplained.** Add a one-liner
+    linking to Aalto's Paimio Sanatorium.
+
+15. **Branding: No favicon artboard.** Prove the two-tone tile works at
+    16x16 / 32x32.
+
+16. **Branding: Superscript spacing fragile.** `margin-left: 0.55em` on `.est`
+    is a magic number. Document or calculate.
+
+17. **Branding: No clear-space rules or don'ts section.**
+
+18. **Aalto: `--red-acc` defined but never used.** Assign to error states /
+    destructive actions or cut it.
+
+19. **Aalto: `body { overflow: hidden }`.** Verify on shorter screens (768px).
+
+20. **Aalto: `.form-pill.more` dashed border reads as drag target.** Use a `+`
+    icon in a solid ghost pill instead.
+
+21. **Aalto: Savoy-vase SVG styled but path not in file.** Ensure silhouette
+    is abstract enough.
+
+22. **Wireframe: Flowstrip numbering starts at 0.** Start at 1 or drop
+    numbers.
+
+23. **Wireframe: No dark/light toggle.** Add PAPER token set for parity.
+
+24. **Wireframe: Comprehension projection uses hardcoded tiers** (20/50/100).
+    Should be data-driven from the actual leverage ranking.
+
+25. **Wireframe: `data-go` routing is fragile.** Fine for throwaway
+    clickthrough; any further investment should use hash routes or React
+    Router.
