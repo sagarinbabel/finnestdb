@@ -89,6 +89,11 @@ The current app exposes two parser modes on the parse page:
   - Finnish possessive suffix stripping
   - Finnish/Estonian compound splitting
   - Finnish/Estonian case suffix stripping
+  - **FST candidate scoring in parallel with dict step 1** (post-PR #127), with
+    candidate-merge FEATS enrichment (post-PR #129). When local lemmatizer
+    tables are present in `localdata/lemmatizer-fi-et/tables/`, the FST
+    contributes morphological analyses alongside the dict lookup; otherwise
+    the FST step is silently disabled and the dict-only path runs.
 
 The parser core also has evaluation-only external adapter modes:
 
@@ -445,7 +450,7 @@ go run ./cmd/parsertest \
   -parsers basic,custom,estnltk
 ```
 
-See `docs/ESTONIAN_LEXICAL_PLAN.md` for the EKI/Ekilex lexical-data import plan.
+See `docs/LEXICAL_PLAN.md` "Estonian-specific source choices and adapter contract" for the EKI/Ekilex lexical-data import plan.
 
 Dataset format:
 - `name`, `version`, `language`
@@ -505,10 +510,15 @@ cases, but it is still not a full morphology parser.
 /cmd/corpusmine           Mine corpus text for disagreement-heavy gold candidates
 /cmd/autoresearch         Automated rule-ablation loop driven by parser-eval
 /cmd/importdict           Dictionary import: kaikki.org JSONL or Ekilex API → SQLite
+/cmd/importkotus          Kotus sanalista TSV → SQLite (populates paradigm_class)
 /cmd/importekilex         Compact Ekilex public_word snapshot importer (ET headwords)
 /cmd/importekilexdetails  Bulk-load reduced Ekilex data drop into dict tables (ET)
+/cmd/importud             Convert Universal Dependencies CoNLL-U → parser-eval gold JSON
 /cmd/fetchekilex          Resumable Ekilex /api/word/details scraper (multi-worker)
 /cmd/reduceekilex         Reduce raw Ekilex payloads to sharded JSONL/TSV artifacts
+/cmd/scrapegutenberg      Public-domain FI book scraper for silver-tier corpus
+/cmd/fetchfrequency       Public FI/ET frequency baselines (OpenSubtitles + UD)
+/cmd/genlemmatizertables  Generate FI lemmatizer JSON tables from a local libvoikko
 /internal/api             API handlers (POST /api/parse, auth, decks, feedback)
 /internal/auth            Argon2id passwords + DB-backed sliding sessions
 /internal/eval            Dataset-based parser evaluation engine
@@ -520,14 +530,23 @@ cases, but it is still not a full morphology parser.
                           lemmas/forms with source priority, translations,
                           definitions, paradigm_class, feats)
   dict.go                 BatchLookupForms / BatchLookupGlosses
-/parser                   Rust tokenizer / sentence splitter (stub heuristics)
+/parser                   Rust tokenizer / sentence splitter (heuristic, with R1–R4
+                          numeric-hyphen rules — see DECISIONS.md Decision 6)
+/pkg/lemmatizer-fi-et     Generated-table FST runtime (loads from localdata/)
 /web                      Frontend (HTML, CSS, TypeScript)
-/localdata                Gitignored. Populated by `make setup-local` — Ekilex
-                          CC BY 4.0 shards, Kotus sanalista, silver corpora.
-                          Zip + share with teammates for fast bootstrap.
-/testdata/parser-eval     Frozen gold datasets per language
+/localdata                Single-folder bootstrap root (gitignored). Populated by
+                          `scripts/setup-local.sh`: Ekilex CC BY 4.0 shards,
+                          Kotus sanalista, Gutenberg-FI silver corpus, UD treebank
+                          cache, FI/ET parser-eval gold (NC-licensed ET stays here),
+                          FI/ET train splits, generated lemmatizer tables, public
+                          frequency baselines. `tar czf finnestdb-bootstrap.tgz
+                          localdata/ finnestdb.db` captures the entire bootstrap
+                          state — see docs/ARTIFACT_POLICY.md for the policy.
+/testdata/parser-eval     Frozen gold datasets per language (CC BY/BY-SA only;
+                          NC-licensed gold lives under localdata/parser-eval/)
+/testdata/lemmatizer      Hand-authored unit-test fixtures for pkg/lemmatizer-fi-et
 /docs/baselines           Frozen parser-eval baseline reports
-finnestdb-prd-alpha.md    Full product requirements document
+finnestdb-prd-alpha.md    Full product requirements document (historical)
 ```
 
 ## Documentation
@@ -545,8 +564,7 @@ Product and strategy:
 - [docs/ideas.md](docs/ideas.md) — exploratory roadmap, includes AI-native phasing
 
 Lexical pipelines:
-- [docs/LEXICAL_PLAN.md](docs/LEXICAL_PLAN.md) — Kotus + Voikko + kaikki.org
-- [docs/ESTONIAN_LEXICAL_PLAN.md](docs/ESTONIAN_LEXICAL_PLAN.md) — EstNLTK + EKI/Ekilex
+- [docs/LEXICAL_PLAN.md](docs/LEXICAL_PLAN.md) — combined FI + ET lexical layer architecture (Kotus + kaikki.org for FI; EstNLTK + EKI/Ekilex for ET; shared schema and source-priority resolver)
 
 Parser tooling:
 - [docs/PARSER_EVOLUTION.md](docs/PARSER_EVOLUTION.md) — chronological log of parser-quality measurements and what moved them

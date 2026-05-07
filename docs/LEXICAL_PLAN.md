@@ -189,46 +189,11 @@ Reference pages:
 
 ## Locked Decisions
 
-These were decided before implementation began.
-
-1. **Generated-table deployment.** The build/generation pipeline may run
-   local upstream analysers, but the repository ships neither analyser
-   blobs nor the derived factual tables. Upstream analyser blobs such as
-   `.vfst`, `.hfstol`, and `.hfst` and the JSON tables generated from
-   them all live under `localdata/lemmatizer-fi-et/`, which is
-   gitignored. The runtime loads tables from disk on `New()`.
-2. **Translations and definitions tables land now**, not after Sonaveeb
-   integration. The Finnish plan needs them; the Estonian plan benefits
-   from them; landing them once avoids two parallel solutions.
-3. **Production morphology tables are deferred.** The current committed
-   FI/ET tables are smoke fixtures. Broad runtime/eval claims wait until
-   production generated tables, provenance, and fresh baselines land.
-4. **Adapter packaging: separate `cmd/` binaries per rich source**, matching
-   the precedent set by `cmd/importekilex/` on main. New binaries:
-   `cmd/importkotus/` and `cmd/importvoikko/`. `cmd/importdict/` stays
-   the kaikki.org/Wiktionary importer. Each binary handles its own
-   input shape (XML, JSONL, generated lookups) and shares only the
-   schema bootstrap pattern. (Note: PRs [#67] and [#68] use a
-   `-source-key` flag inside `cmd/importdict/` instead — that work
-   predates `cmd/importekilex/` landing on main and will likely rebase
-   against the separate-binary pattern.)
-5. **Kotus data source: official Kotus distribution**
-   (https://kaino.kotus.fi/sanat/nykysuomi/), not Voikko's joukahainen
-   re-export. The official distribution is more likely to be maintained
-   and is the canonical authority for Kotus class assignments.
-6. **Schema migration: idempotent `ALTER TABLE` with duplicate-column
-   error tolerance** — the established codebase pattern (see
-   `EnsureDictionarySourceColumns` in `internal/store/db.go`, landed in
-   #67). Real migration framework deferred — see
-   [Migration Framework Plan](#migration-framework-plan) below. (The
-   original draft of this doc proposed `PRAGMA user_version`; aligning
-   with the existing convention is cleaner than introducing a parallel
-   mechanism.)
-7. **Wikisanakirja for monolingual FI definitions** (via kaikki.org's
-   Finnish edition extract). Kielitoimiston not in scope for alpha.
-8. **`feats` column not backfilled for existing kaikki.org form rows.**
-   Voikko-generated rows will fill in features at higher priority;
-   leaving kaikki rows with `feats=NULL` is acceptable.
+_Moved 2026-05-07 to [`docs/DECISIONS.md`](DECISIONS.md) (Decisions 7–14).
+DECISIONS.md is the canonical decision log; the lexical-layer locks are
+preserved there latest-first with their original 2026-05-06 dates and
+context. Cross-link from there back to this doc's Schema Delta /
+Adapters / Resolution Layer sections for implementation detail._
 
 ## Schema Delta
 
@@ -469,89 +434,21 @@ silently fall back to the wrong gloss source.
 
 ## Phasing
 
-Each phase ends in a working system; nothing is half-built across PR
-boundaries.
-
-- **Phase 1 — FI schema delta.** `paradigm_class` on `lemmas`, `feats`
-  on `forms`, new `translations` and `definitions` tables. No behavior
-  change. Shipped in #76 once #67 merged. Tests: schema migration
-  round-trip; parser eval baseline unchanged.
-- **Phase 2 — kaikki.org refactor.** Shipped 2026-05-06 across four
-  PRs. Move EN glosses to `translations` (#85 for kaikki, #89 for
-  Ekilex extending the same pattern to ET). Update enrichment to
-  read from `translations` with fallback to `lemmas.gloss` (#86).
-  Eval baseline unchanged on the post-#84 reference DB.
-  FI definitions (target_lang='FI') still pending an fi.wiktionary
-  import path; not blocking subsequent phases. See
-  [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) for the
-  measurement entry.
-- **Phase 3 — Kotus adapter.** Shipped 2026-05-06 across two PRs.
-  PR 3.1 ([#92](https://github.com/sagarinbabel/finnestdb/pull/92))
-  landed the `cmd/importkotus` binary against an assumed XML schema.
-  PR 3.2 replaced the parser with the real TSV format from the
-  official 2024 distribution
-  (`https://kaino.kotus.fi/lataa/nykysuomensanalista2024.txt`) and
-  fetched into the gitignored `localdata/kotus/` via `make setup-local`
-  (CC BY 4.0; see [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md)). After import,
-  ~49k FI lemmas carry a populated `paradigm_class`. Eval baseline
-  unchanged — Phase 3 is metadata enrichment; production generated
-  morphology tables are what make it pay off. See
-  [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) for the
-  measurement entry.
-- **Phase 3.5 — Voikko generator spike. (Done, 2026-05-06.)** Confirmed
-  that none of the candidate generation paths (`voikkospell --paradigm`,
-  `voikkogen`, libvoikko Python wrapper, libvoikko C API) actually
-  exposes a generator: the runtime is hardcoded analyzer-direction.
-  The Giellalt source-build path (HFST + lang-fin) does work and
-  produces correct paradigm forms, but the spike also surfaced a
-  better architecture overall — see Phases 4–5 below. Full report:
-  [experiments/2026-05-06-phase3.5-voikko-generator-spike.md](../experiments/2026-05-06-phase3.5-voikko-generator-spike.md).
-- **Phase 4 — Voikko seed.** Superseded. The planned committed
-  `data/voikko/fi-voikko-forms-<version>.jsonl.gz` seed is not the
-  shipping path.
-- **Phase 4 (replacement) — generated-table lemmatizer scaffold.**
-  New package `pkg/lemmatizer-fi-et/` reads generated factual tables
-  from `localdata/lemmatizer-fi-et/tables/` (gitignored) on `New()` and
-  exposes `Lemmatize(lang, word)`. The package also contains VFST/HFST
-  reader support for local generation, but no transducer blobs and no
-  derived tables are committed. Hand-authored unit-test fixtures live
-  under `testdata/lemmatizer/`. See
-  [docs/FST_LEMMATIZER.md](FST_LEMMATIZER.md).
-- **Phase 5 — Estonian via generated tables.** ET uses the same table
-  runtime. A production ET PR still needs a generated table from a local
-  Giellalt/HFST source plus provenance and fresh eval.
+_Moved 2026-05-07 to [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md)
+as dated entries. Phases 1–3 are the lexical-pipeline measurement
+events recorded there; Phase 3.5 (Voikko generator spike) is captured
+in [`experiments/2026-05-06-phase3.5-voikko-generator-spike.md`](../experiments/2026-05-06-phase3.5-voikko-generator-spike.md);
+Phase 4 (Voikko seed) was superseded by the FST runtime path
+(see [`docs/FST_LEMMATIZER.md`](FST_LEMMATIZER.md)); production
+ET-table generation is tracked in [`TODO.md`](../TODO.md) "Parser
+quality" section as the remaining piece._
 
 ## Migration Framework Plan
 
-For now, schema changes ride on the established codebase pattern: each
-migration is an idempotent `ALTER TABLE ... ADD COLUMN` (or
-`CREATE TABLE IF NOT EXISTS`) that tolerates the SQLite "duplicate
-column name" error on re-run. Grouped backfills get exported helpers
-named `EnsureXxx` in [`internal/store/db.go`](../internal/store/db.go),
-called by both the server's `ensureSchema` and any standalone importer
-that needs the same shape. See `EnsureDictionarySourceColumns` (from
-[#67]) and `EnsureLexicalEnrichmentColumns` (from Phase 1) as
-references. No `PRAGMA user_version` is used. This is acceptable while
-migrations are infrequent and append-only.
-
-A real migration framework is deferred until at least one of these is
-true:
-
-- We need a non-additive migration (column rename, backfill that
-  cannot be expressed as an idempotent `ALTER`, or a data
-  transformation that depends on prior state).
-- We have more than ~5 versioned migrations and the conditional-block
-  pattern starts producing merge conflicts.
-- We need rollback support.
-
-When that happens, the framework should:
-
-- Live under `internal/store/migrations/` as numbered SQL files
-  (`0001_initial.sql`, `0002_source_priority.sql`, ...).
-- Track applied versions in a `schema_migrations` table (or `PRAGMA
-  user_version`, decided at framework introduction).
-- Run forward-only at startup; rollback handled out-of-band by ops.
-- Be a single PR — not introduced lazily alongside a feature.
+_Moved 2026-05-07 to [`TODO.md`](../TODO.md) "What's not in main yet"
+as a research/engineering item. The current pattern (idempotent
+`ALTER TABLE` + `EnsureXxx` helpers) is captured in
+[Decision 12 in DECISIONS.md](DECISIONS.md) (2026-05-06)._
 
 ## Open Questions
 

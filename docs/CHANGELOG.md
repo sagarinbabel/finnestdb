@@ -6,6 +6,85 @@ product documentation. Code changes belong in git history, not here.
 Entries are reverse-chronological. Each entry links to the docs it
 introduced or modified so the docs index stays navigable.
 
+**Cross-reference convention:** CHANGELOG records what changed; [`DECISIONS.md`](DECISIONS.md)
+records why we chose to change it that way. Where the same event appears
+in both files, both entries cross-link.
+
+## 2026-05-07 PM — Docs restructure + LLM-friendly navigation
+
+Restructures the spine docs so a reader (human or LLM) can answer
+"what's shipped, what's next, what's open, why" without cross-doc
+detective work.
+
+- [`TODO.md`](../TODO.md) restructured 765 → 646 lines: replaced "Roadmap
+  Status" Phase 1–5 with explicit "What's in main" / "What's not in
+  main yet" / "Open PRs" / "Research Goals" / "Notes & historical"
+  sections. Implementation Backlog 1–19 distributed by area (Parser
+  quality, Learner experience, Self-improving feedback loop, etc.).
+  Critical Findings reframed as historical traceability.
+- [`docs/DECISIONS.md`](DECISIONS.md) reordered latest-first (995
+  lines): 4 new 2026-05-07 decisions added (Single-folder bootstrap
+  rule; FST as parallel scorer; ESTONIAN_LEXICAL_PLAN consolidation;
+  IMPLEMENTATION.md split). Absorbed 8 "Locked Decisions" from
+  LEXICAL_PLAN.md as Decisions 7–14 (2026-05-06). Header renamed to
+  "Decisions Log" (roadmap moved to TODO.md). Project Roadmap section
+  preserved as historical with status updated.
+- [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) trimmed: "Locked Decisions"
+  section moved to DECISIONS.md, "Phasing" section moved to
+  PARSER_EVOLUTION.md as historical entries, "Migration Framework
+  Plan" moved to TODO.md "What's not in main yet". Doc now focuses on
+  current architecture (schema, resolver, importer pattern,
+  per-language source choices) rather than mixing architecture + plan
+  + decisions.
+- [`README.md`](../README.md) Project Structure expanded with 5
+  previously-missing cmd binaries (`importkotus`, `importud`,
+  `scrapegutenberg`, `fetchfrequency`, `genlemmatizertables`) and the
+  `pkg/lemmatizer-fi-et` package. Custom parser description now
+  mentions FST candidate scoring (post-#127). `localdata/` bullet
+  expanded to enumerate every gitignored runtime artifact.
+
+**See also:** DECISIONS.md Decisions 17 (ESTONIAN_LEXICAL_PLAN consolidation)
+and 18 (IMPLEMENTATION.md split) — both also record the 2026-05-07 AM PR #135
+that did the first round of doc consolidation.
+
+## 2026-05-07 AM — Doc parity sweep + 07k baseline freeze (PR #135)
+
+Doc-parity sweep driven by an audit of all spine docs against the day's
+PRs (#127–#134). Plus the `2026-05-07k-T0944Z` baseline freeze
+(companion to the PARSER_EVOLUTION.md `2026-05-07k` row).
+
+- Date headers refreshed in [`ARCHITECTURE.md`](../ARCHITECTURE.md),
+  [`docs/FEATURES.md`](FEATURES.md),
+  [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md).
+- "FST step 5 fallback" description corrected (post-#127/#129) in
+  [`docs/PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md),
+  [`docs/SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md), and
+  [`ARCHITECTURE.md`](../ARCHITECTURE.md) Custom parser bullet.
+- [`ARCHITECTURE.md`](../ARCHITECTURE.md): removed obsolete
+  `data/voikko/...` Voikko-seed paragraph; updated FI lexical pipeline
+  status (Phases 1–3 shipped, Phase 4 superseded, Phase 5 partial);
+  removed stale "in flight as #78"; added `cmd/importkotus`,
+  `cmd/genlemmatizertables`, `cmd/fetchfrequency` to the cmd list.
+- [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md): broken
+  `FINNISH_LEXICAL_PLAN.md` link fixed to `LEXICAL_PLAN.md` (renamed
+  in #112); `data/kotus/` path fixed to `localdata/kotus/`.
+- [`docs/ESTONIAN_LEXICAL_PLAN.md`](LEXICAL_PLAN.md) merged into
+  [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) as the "Estonian-specific
+  source choices and adapter contract" section. Original file deleted.
+- [`docs/IMPLEMENTATION.md`](IMPLEMENTATION.md) split: "Suggest fix"
+  UX → new [`docs/PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md);
+  IMPLEMENTATION.md replaced with a redirect stub.
+- [`IMPLEMENTATION_ANALYSIS.md`](../IMPLEMENTATION_ANALYSIS.md) gained
+  a historical banner pointing readers to ARCHITECTURE.md and
+  DECISIONS.md Decision 1.
+- 2026-05-07k baseline freeze: 8 files under
+  `docs/baselines/2026-05-07k-T0944Z-*` (FI + ET, JSON reports +
+  summary markdown). `parsecore.ParserVersion` bumped to
+  `2026.05.07k`.
+
+**See also:** DECISIONS.md Decisions 16, 17, 18 (the three doc/code
+decisions this PR enforced).
+
 ## 2026-05-07 — Single-folder data root + ET UD gold materialized
 
 Consolidates every gitignored runtime data artifact under
