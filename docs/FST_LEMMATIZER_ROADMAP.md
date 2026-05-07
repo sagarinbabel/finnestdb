@@ -51,8 +51,29 @@ Adjacent inputs (committed, not under `pkg/`):
   via `NewFromDir`.
 - [`cmd/genlemmatizertables/wordlists/fi_smoke.txt`](../cmd/genlemmatizertables/wordlists/fi_smoke.txt) -
   seed word list for the current FI smoke generator run.
+- [`cmd/genlemmatizertables/wordlists/et_smoke.txt`](../cmd/genlemmatizertables/wordlists/et_smoke.txt) -
+  seed word list for the ET smoke generator run; mirrors the surface
+  forms in `testdata/lemmatizer/et_min.json` so a local run reproduces
+  fixture-shaped output.
 
 No `.vfst`, `.hfstol`, or `.hfst` files are committed.
+
+### Generator command coverage
+
+`cmd/genlemmatizertables` dispatches on `-lang`:
+
+- `-lang fi -vfst /path/to/mor.vfst` reads Voikko's VFST analyser via
+  `pkg/lemmatizer-fi-et/vfst` and normalises tags through
+  `pkg/lemmatizer-fi-et/voikkomap`.
+- `-lang et -hfstol /path/to/analyser-gt-desc.hfstol` reads Giellalt's
+  HFST optimised-lookup analyser via `pkg/lemmatizer-fi-et/hfstol` and
+  normalises tags through `pkg/lemmatizer-fi-et/giellaltmap`.
+
+Both branches emit the same JSON shape — a `map[string][]Analysis` keyed
+by surface form, where `Analysis` is `voikkomap.Analysis` (the runtime's
+shared structured type). The wrappers in
+[`Makefile`](../Makefile) are `make gen-lemmatizer-tables-fi
+VFST_PATH=...` and `make gen-lemmatizer-tables-et HFSTOL_PATH=...`.
 
 ## PR sequence after policy cleanup
 
@@ -99,6 +120,15 @@ automatically — no flag, no schema migration. The runtime composer at
 [`internal/store::featsFromFSTAnalysis`](../internal/store/dict.go)
 prefers the persisted field, so once production tables ship the
 parser will short-circuit the on-the-fly composition for direct hits.
+
+**2026-05-07 status**: ET generator wired. `cmd/genlemmatizertables`
+now accepts `-lang et -hfstol /path/to/analyser-gt-desc.hfstol` and
+emits an `et_min.json` table identical in shape to the FI output. The
+runtime path was already in place (PR #110); this completes the
+generator-side gap. Producing a real production ET table still
+requires a maintainer-local `analyser-gt-desc.hfstol` and a chosen
+production word list (the Ekilex 178k headwords are the obvious seed);
+neither of those is committed.
 
 ## Attribution
 

@@ -3,7 +3,7 @@
         import-ekilex-details-et import-dict-et-recommended import-kotus-fi import-dict-fi-recommended \
         fetch-ekilex-refresh fetch-ekilex-sample fetch-ekilex \
         reduce-ekilex \
-        gen-lemmatizer-tables-fi \
+        gen-lemmatizer-tables-fi gen-lemmatizer-tables-et \
         reimport-dict-fi reimport-dict-et reimport-dict verify-dict \
         setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et \
         import-ud-gold import-ud-gold-fi import-ud-gold-et \
@@ -66,7 +66,9 @@ doctor:
 #
 # Example:
 #   make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst
+#   make gen-lemmatizer-tables-et HFSTOL_PATH=/path/to/analyser-gt-desc.hfstol
 VFST_PATH ?=
+HFSTOL_PATH ?=
 gen-lemmatizer-tables-fi:
 	@if [ -z "$(VFST_PATH)" ]; then \
 		echo "VFST_PATH is required (local path to mor.vfst; do not commit)."; \
@@ -76,6 +78,20 @@ gen-lemmatizer-tables-fi:
 	go run ./cmd/genlemmatizertables -lang fi -vfst "$(VFST_PATH)" \
 	  -wordlist cmd/genlemmatizertables/wordlists/fi_smoke.txt \
 	  -out localdata/lemmatizer-fi-et/tables/fi_min.json
+
+# Estonian: same policy as FI. Source analyser is Giellalt's
+# lang-est-x-utee analyser-gt-desc.hfstol, kept locally; the generated
+# table goes into localdata/lemmatizer-fi-et/tables/et_min.json and is
+# not committed.
+gen-lemmatizer-tables-et:
+	@if [ -z "$(HFSTOL_PATH)" ]; then \
+		echo "HFSTOL_PATH is required (local path to analyser-gt-desc.hfstol; do not commit)."; \
+		exit 1; \
+	fi
+	@mkdir -p localdata/lemmatizer-fi-et/tables
+	go run ./cmd/genlemmatizertables -lang et -hfstol "$(HFSTOL_PATH)" \
+	  -wordlist cmd/genlemmatizertables/wordlists/et_smoke.txt \
+	  -out localdata/lemmatizer-fi-et/tables/et_min.json
 
 # ── Dictionary import targets ──────────────────────────────────────────────────
 # First-time import: skips if the table already has rows for that lang.
