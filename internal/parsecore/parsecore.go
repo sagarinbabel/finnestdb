@@ -28,7 +28,7 @@ const MaxTextChars = 300_000
 // §2026-05-07j). For the SemVer-style `parser-vN` scheme used in
 // docs/SYSTEM_VERSIONING.md, see that doc — they are the same idea expressed
 // at different granularities, and SYSTEM_VERSIONING.md tracks the mapping.
-const ParserVersion = "2026.05.07j"
+const ParserVersion = "2026.05.07k"
 
 const omorfiCommandEnv = "FINNESTDB_OMORFI_CMD"
 const estnltkCommandEnv = "FINNESTDB_ESTNLTK_CMD"

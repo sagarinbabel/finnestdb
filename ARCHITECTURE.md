@@ -1,6 +1,6 @@
 # FinEstDB Architecture
 
-_Current as of 2026-05-06 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
+_Current as of 2026-05-07 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
 
 Role-aware Finnish and Estonian reading app focused on dictionary-backed
 lemmatization, deck creation, review, parser feedback, and parser evaluation.
@@ -342,9 +342,16 @@ Files:
 - `cmd/importekilexdetails/` — loads the reduced Ekilex data drop
   (`localdata/ekilex/{definitions,forms}/`) into the dictionary tables;
   ~178k lemmas + ~6.2M form rows
+- `cmd/importkotus/` — Kotus sanalista TSV → SQLite, populates `paradigm_class`
 - `cmd/fetchekilex/` — resumable Ekilex `/api/word/details` scraper
 - `cmd/reduceekilex/` — reduces raw payloads into sharded JSONL + TSV
   artifacts, with golden tests covering all 41 Estonian inflection classes
+- `cmd/genlemmatizertables/` — generates the FI lemmatizer JSON tables
+  under `localdata/lemmatizer-fi-et/tables/` from a local libvoikko
+  `mor.vfst` (no transducer blob committed)
+- `cmd/fetchfrequency/` — downloads public FI/ET frequency baselines
+  (OpenSubtitles + UD treebanks) into `localdata/frequency/` for
+  comparison against user-aggregated frequency
 
 Responsibilities:
 
@@ -510,15 +517,20 @@ Estonian (live):
 - Ekilex API path (smaller queries, on-demand): `cmd/importdict
   -source-key ekilex` against the `/api/word/details` endpoint
 
-Finnish (Phase 1 shipped, Phases 2–5 staged):
+Finnish (Phases 1–3 shipped, Phase 4 superseded by FST runtime, Phase 5 partially shipped):
 
 - analyzer baseline: Omorfi adapter slot
-- planned lexical sources: kaikki.org (priority 10) + Kotus sanalista
-  (priority 10, fills `paradigm_class`) + Voikko-generated paradigms
-  (priority 30, fills `feats`)
-- Voikko runs once offline to produce
-  `data/voikko/fi-voikko-forms-<version>.jsonl.gz`; runtime imports
-  read it like any other JSONL source — no libvoikko at runtime
+- lexical sources: kaikki.org (priority 20) + Kotus sanalista (priority 10,
+  fills `paradigm_class`)
+- generated morphology tables: `pkg/lemmatizer-fi-et/` reads JSON tables
+  from `localdata/lemmatizer-fi-et/tables/` (gitignored per
+  `docs/ARTIFACT_POLICY.md`); production tables generated locally by
+  `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst` from a
+  user-installed libvoikko. Smoke-fixture tables ship under
+  `testdata/lemmatizer/` for tests; runtime falls back to dict-only when
+  production tables are absent.
+- post-#127/#129/#130 the FST is a parallel scorer in dict step 1 with
+  candidate-merge FEATS enrichment, no longer a step-5 fallback.
 
 ## Parser Modes and Baselines
 
@@ -531,10 +543,13 @@ Finnish (Phase 1 shipped, Phases 2–5 staged):
 
 - `custom`
   - Rust parse
-  - dictionary lookup
+  - dictionary lookup with parallel-FST candidate scoring (post-#127)
+    and FST candidate-merge FEATS enrichment (post-#129)
   - Finnish possessive stripping
   - Finnish/Estonian compound splitting
   - Finnish/Estonian case-suffix fallback rules
+  - case-suffix grammar-label stopgap on dict hits (`attachCaseLabelIfStemMatches`,
+    transitional until production FST tables emit FEATS for direct hits)
 
 ### Evaluation-only baseline path
 
@@ -583,9 +598,15 @@ Finnish (Phase 1 shipped, Phases 2–5 staged):
 - Omorfi and EstNLTK are not bundled into normal app startup; they are
   external adapter paths used only by the evaluation CLI.
 - The evaluation pipeline is now a first-class architectural component.
-- The Finnish lexical pipeline is staged but not loaded:
-  `paradigm_class`, `feats`, `translations`, `definitions` exist as
-  empty/null columns and tables until Phases 2–5 of the FI plan land.
+- The Finnish lexical pipeline columns are populated:
+  `paradigm_class` is set on FI lemmas by `cmd/importkotus` (Phase 3),
+  `forms.feats` is populated by `cmd/importekilexdetails` (ET, via Ekilex
+  morph_code) and by FST candidate merge in `BatchLookupForms` (post-#129),
+  `translations` and `definitions` are populated by `cmd/importdict`
+  (kaikki) and `cmd/importekilexdetails` (Ekilex) per Phase 2.
+  Production FI lemmatizer tables (the local `localdata/lemmatizer-fi-et/`
+  artifact) are generated locally by users; the runtime falls back to
+  dict-only when they are absent.
 
 ## Near-Term Direction
 
@@ -596,11 +617,16 @@ The intended sequence from the current codebase is:
 3. use eval regressions and observability metrics to drive targeted parser fixes
 4. compare custom rules against the Omorfi (FI) and EstNLTK (ET) baselines
 5. continue the lexical pipelines:
-   - **ET**: load the reduced Ekilex artifacts from `localdata/ekilex/` into
-     the dictionary tables (in flight as
-     [#78](https://github.com/sagarinbabel/finnestdb/pull/78))
-   - **FI**: execute Phases 2–5 of
-     [`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md) —
-     kaikki refactor → Kotus adapter → Voikko offline seed →
+   - **ET**: production Estonian lemmatizer-table generator — analogous
+     to `cmd/genlemmatizertables` for FI, sourcing local Giellalt/HFST
+     analyses. Until then, ET FST is disabled at runtime (dict-only path
+     runs).
+   - **FI**: production FI lemmatizer-table generation against a real
+     word list (current `cmd/genlemmatizertables/wordlists/fi_smoke.txt`
+     ships as a smoke fixture). Phases 1–3 of
+     [`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md) shipped (Kotus,
+     translations migration, kaikki tagging). Phase 4 (Voikko offline
+     seed) was superseded by the FST runtime path; Phase 5 (production
+     ET tables) is the remaining work →
      resolution priority flip
 6. return later to known-word tracking and review-flow polish
