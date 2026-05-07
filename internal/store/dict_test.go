@@ -2,6 +2,8 @@ package store
 
 import (
 	"database/sql"
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -50,6 +52,23 @@ func seedLemmas(t *testing.T, db *DB, rows [][4]string) {
 			t.Fatalf("seedLemmas: %v", err)
 		}
 	}
+}
+
+func installTestLemmatizerTable(t *testing.T, lang string, table map[string][]lemmatizer.Analysis) {
+	t.Helper()
+	dir := t.TempDir()
+	name := "fi_min.json"
+	if lang == "ET" {
+		name = "et_min.json"
+	}
+	b, err := json.MarshalIndent(table, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal lemmatizer table: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), append(b, '\n'), 0o644); err != nil {
+		t.Fatalf("write lemmatizer table: %v", err)
+	}
+	t.Setenv("LEMMATIZER_TABLES_DIR", dir)
 }
 
 // assertResolution is a test helper to check a FormResolution from the result map.
@@ -640,6 +659,125 @@ func TestBatchLookupForms_AttachCaseLabelLemmaMismatchSkips(t *testing.T) {
 	}
 	if r.Source != "dict" {
 		t.Errorf("linnas: source got %q, want plain 'dict'", r.Source)
+	}
+}
+
+func TestBatchLookupForms_FSTMergesLaterSameLemmaAnalysis(t *testing.T) {
+	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
+		"talossa": {
+			{Lemma: "tala", UPOS: "NOUN", GrammarLabel: "adessive", Number: "Sing", Raw: "different-lemma-first"},
+			{Lemma: "talo", UPOS: "NOUN", GrammarLabel: "inessive", Number: "Sing", Raw: "matching-lemma-second"},
+		},
+	})
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"talossa", "talo", "NOUN", "FI"},
+	})
+
+	got := db.BatchLookupForms([]string{"talossa"}, "FI", "custom")
+
+	r := got["talossa"]
+	if r.Lemma != "talo" || r.POS != "NOUN" {
+		t.Fatalf("talossa: got {%q %q}, want {talo NOUN}", r.Lemma, r.POS)
+	}
+	if r.GrammarLabel != "inessive" {
+		t.Errorf("talossa: grammar label got %q, want inessive", r.GrammarLabel)
+	}
+	if r.Feats != "Case=Ine|Number=Sing" {
+		t.Errorf("talossa: feats got %q, want Case=Ine|Number=Sing", r.Feats)
+	}
+	if r.Source != "dict+fst_feats" {
+		t.Errorf("talossa: source got %q, want dict+fst_feats", r.Source)
+	}
+}
+
+func TestBatchLookupForms_FSTCanCorrectWeakDictLemmaPOS(t *testing.T) {
+	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
+		"korjasin": {
+			{Lemma: "korjata", UPOS: "VERB", Number: "Sing", Mood: "Ind", Tense: "Past", Person: "1", Raw: "generated-table"},
+		},
+	})
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"korjasin", "korja", "NOUN", "FI"},
+	})
+
+	got := db.BatchLookupForms([]string{"korjasin"}, "FI", "custom")
+
+	r := got["korjasin"]
+	if r.Lemma != "korjata" || r.POS != "VERB" {
+		t.Fatalf("korjasin: got {%q %q}, want {korjata VERB}", r.Lemma, r.POS)
+	}
+	if r.Feats != "Number=Sing|Mood=Ind|Tense=Past|Person=1" {
+		t.Errorf("korjasin: feats got %q", r.Feats)
+	}
+	if r.Source != "fst" {
+		t.Errorf("korjasin: source got %q, want fst", r.Source)
+	}
+}
+
+func TestBatchLookupForms_StrongDictResistsDisagreeingFST(t *testing.T) {
+	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
+		"pankki": {
+			{Lemma: "pankkia", UPOS: "VERB", Number: "Sing", Mood: "Ind", Tense: "Pres", Person: "3", Raw: "generated-table"},
+		},
+	})
+	db := newTestDB(t)
+	if _, err := db.db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority) VALUES (?, ?, ?, ?, ?, ?)`,
+		"pankki", "pankki", "NOUN", "FI", "kaikki", 10,
+	); err != nil {
+		t.Fatalf("seed prioritized form: %v", err)
+	}
+
+	got := db.BatchLookupForms([]string{"pankki"}, "FI", "custom")
+
+	r := got["pankki"]
+	if r.Lemma != "pankki" || r.POS != "NOUN" {
+		t.Fatalf("pankki: got {%q %q}, want {pankki NOUN}", r.Lemma, r.POS)
+	}
+	if r.Source != "dict" {
+		t.Errorf("pankki: source got %q, want dict", r.Source)
+	}
+}
+
+func TestBatchLookupForms_FSTOnlyPropagatesFeats(t *testing.T) {
+	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
+		"olen": {
+			{Lemma: "olla", UPOS: "VERB", Number: "Sing", Mood: "Ind", Tense: "Pres", Person: "1", Raw: "generated-table"},
+		},
+	})
+	db := newTestDB(t)
+
+	got := db.BatchLookupForms([]string{"olen"}, "FI", "custom")
+
+	r := got["olen"]
+	if r.Lemma != "olla" || r.POS != "VERB" {
+		t.Fatalf("olen: got {%q %q}, want {olla VERB}", r.Lemma, r.POS)
+	}
+	if r.Feats != "Number=Sing|Mood=Ind|Tense=Pres|Person=1" {
+		t.Errorf("olen: feats got %q", r.Feats)
+	}
+	if r.Source != "fst" {
+		t.Errorf("olen: source got %q, want fst", r.Source)
+	}
+}
+
+func TestBatchLookupForms_MissingFSTTablesKeepsDictPath(t *testing.T) {
+	t.Setenv("LEMMATIZER_TABLES_DIR", t.TempDir())
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"talo", "talo", "NOUN", "FI"},
+	})
+
+	got := db.BatchLookupForms([]string{"talo"}, "FI", "custom")
+
+	r := got["talo"]
+	if r.Lemma != "talo" || r.POS != "NOUN" {
+		t.Fatalf("talo: got {%q %q}, want {talo NOUN}", r.Lemma, r.POS)
+	}
+	if r.Source != "dict" {
+		t.Errorf("talo: source got %q, want dict", r.Source)
 	}
 }
 

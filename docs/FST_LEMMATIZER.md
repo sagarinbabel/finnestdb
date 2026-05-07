@@ -101,6 +101,37 @@ hasn't generated tables yet), `internal/store` logs a single warning
 and falls back to the dict + case-suffix path. No transducer blob is
 opened at runtime.
 
+### Store-level candidate merge
+
+`internal/store.BatchLookupForms` uses generated FST tables in two
+places when `parserMode == "custom"`:
+
+1. **Direct dictionary hits.** The store now treats dictionary rows and
+   generated-table FST analyses as one candidate set for the surface
+   form. Candidates are keyed by `(lemma, POS)`.
+2. **Fallback misses.** If dictionary, possessive, compound, and
+   suffix-strip paths all miss, the FST table can still provide a
+   standalone resolution.
+
+The direct-hit merge is deliberately conservative:
+
+- When dictionary and FST agree on `(lemma, POS)`, the dictionary
+  candidate remains the resolution and the FST analysis enriches it
+  with `Feats` and the legacy `GrammarLabel` projection.
+- When dictionary and FST disagree, the dictionary candidate normally
+  wins. A disagreeing FST candidate can win only when the dictionary row
+  is weak legacy data (no source priority and no morphology) and the FST
+  has stronger case/POS/morphology evidence.
+- If local FST tables are missing, behavior degrades to the dictionary
+  path plus the existing case-suffix label stopgap.
+
+FST morphology is projected into UD-style FEATS before it leaves the
+store. For example, `GrammarLabel=inessive` plus `Number=Sing` becomes
+`Case=Ine|Number=Sing`; verb analyses can carry
+`Number=Sing|Mood=Ind|Tense=Pres|Person=1`. The legacy
+`GrammarLabel` field remains for older grammar-label metrics, and is
+back-projected from `Case=` when possible.
+
 ## Offline generation
 
 The Finnish generator:

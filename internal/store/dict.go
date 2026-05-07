@@ -37,25 +37,23 @@ type FormResolution struct {
 // BatchLookupForms resolves a slice of surface forms to their canonical
 // (lemma, pos) pairs for the given language.
 //
-// Fallback chain (each step only runs if previous steps missed):
+// Resolution chain:
 //
-//	Step 1: Direct dictionary lookup (lowercase form in forms table)
+//	Step 1: Direct dictionary lookup (lowercase form in forms table), merged
+//	        with FI/ET FST analyses in custom mode when local tables exist.
 //	Step 2: [FI only] Possessive suffix strip → re-lookup in forms table
 //	Step 3: [FI + ET] Compound split → both halves in forms table
 //	Step 4: [FI + ET] Case suffix strip → lemma-candidate lookup in lemmas table
-//	Step 5: [FI only] VFST morphological analysis (libvoikko mor.vfst)
+//	Step 5: [FI + ET] FST morphological analysis from generated local tables
 //	Step 6: Not resolved → absent from map → caller falls back to stub
 //
-// In "custom" mode, after step 1 succeeds we lazily attach a GrammarLabel
-// (case name) to the dict result when the dict didn't supply a label/FEATS:
-// the FST is consulted first (FI/ET only, gated on best.GrammarLabel == ""
-// AND best.Feats == ""), and the case-suffix matcher acts as a fallback when
-// the FST didn't fire, didn't agree on the lemma, or returned an empty label.
-// The forms table only stores (lemma, pos) for many entries, so without this
-// pass every dict hit without FEATS would carry an empty grammar label and
-// grammar-accuracy would be 0% on those tokens. This is a stopgap until the
-// FST runtime (PRs #106/#107) emits FEATS natively — see docs/DECISIONS.md
-// for the rationale on not extending the suffix table further.
+// In "custom" mode, step 1 is a candidate merge rather than a strict
+// short-circuit. Dictionary rows and FI/ET generated-table FST analyses are
+// ranked together. A same (lemma, POS) FST analysis enriches the dictionary
+// candidate with FEATS/GrammarLabel; a disagreeing FST analysis can win only
+// when the dictionary candidate is weak and the FST candidate has better
+// case/POS/morphology evidence. If no FST table is available, this degrades
+// to the SQLite dictionary path and the case-suffix label stopgap.
 //
 // Returns a map from form → FormResolution.
 // Forms that cannot be resolved are absent from the map.
@@ -96,32 +94,17 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		// surface form can have multiple (lemma, pos) candidates; rank them
 		// against the original-case surface so PROPN homonyms don't beat
 		// common-noun lemmas on lowercase surfaces.
-		if best, ok := lookupBestForm(stmtFormsAll, form, lower, lang); ok {
-			// Lazy attach inside the dict-hit branch when the dict didn't
-			// supply a label/FEATS. Two paths, in priority order:
-			//   1. FST analysis (FI/ET only) — only run when both
-			//      best.GrammarLabel == "" AND best.Feats == "" so we
-			//      don't pay the per-token FST cost when the dict already
-			//      back-projected a label from FEATS or carries any FEATS
-			//      string at all (a labeled FEATS path is preferable to
-			//      an FST guess). The lemma-equality guard prevents
-			//      attaching a label that belongs to a different word.
-			//   2. Case-suffix stopgap — only when FST didn't fire,
-			//      didn't agree on the lemma, or returned an empty label.
-			if parserMode == "custom" && best.GrammarLabel == "" {
-				attached := false
-				if best.Feats == "" && (lang == "FI" || lang == "ET") {
+		if dictCandidates, ok := lookupFormCandidates(stmtFormsAll, lower, lang); ok {
+			best := formResolutionFromCandidate(pickBestFormCandidate(form, dictCandidates))
+			if parserMode == "custom" {
+				var analyses []lemmatizer.Analysis
+				if lang == "FI" || lang == "ET" {
 					if lem := d.fstLemmatizer(); lem != nil {
-						if a, ok := pickFirstFSTAnalysis(lem.Lemmatize(lang, lower)); ok {
-							if a.Lemma == best.Lemma && a.GrammarLabel != "" {
-								best.GrammarLabel = a.GrammarLabel
-								best.Source = best.Source + "+fst_label"
-								attached = true
-							}
-						}
+						analyses = lem.Lemmatize(lang, lower)
 					}
 				}
-				if !attached {
+				best = mergeAndRankDictFSTCandidates(form, dictCandidates, analyses)
+				if strings.HasPrefix(best.Source, "dict") && best.GrammarLabel == "" && best.Feats == "" {
 					best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
 				}
 			}
@@ -179,46 +162,30 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 
 // tryFSTAnalyze runs the unified Lemmatizer against lower for the
 // given lang and returns the highest-priority FormResolution if any
-// analysis exists. The merge logic (VFST > Giellalt for FI; Giellalt
-// only for ET; non-compound > compound) lives in pkg/lemmatizer-fi-et;
-// this helper just picks the first valid analysis it returns.
+// analysis exists. Source ordering (VFST > Giellalt for FI; Giellalt only
+// for ET; non-compound > compound) lives in pkg/lemmatizer-fi-et; this helper
+// applies the store-level case/POS scoring and projects native FST morphology
+// into FEATS for downstream display/eval.
 func tryFSTAnalyze(lem *lemmatizer.Lemmatizer, lang, lower string) (FormResolution, bool) {
-	a, ok := pickFirstFSTAnalysis(lem.Lemmatize(lang, lower))
+	a, ok := pickBestFSTAnalysis(lower, lem.Lemmatize(lang, lower))
 	if !ok {
 		return FormResolution{}, false
 	}
-	return FormResolution{
-		Lemma:        a.Lemma,
-		POS:          a.UPOS,
-		GrammarLabel: a.GrammarLabel,
-		Feats:        "",
-		Source:       "fst",
-	}, true
+	return formResolutionFromFSTAnalysis(a, "fst"), true
 }
 
-// pickFirstFSTAnalysis returns the best analysis with non-empty
-// (Lemma, UPOS) — preferring any analysis that also carries a non-empty
-// GrammarLabel, falling back to the first valid analysis when none does.
-// Used both by tryFSTAnalyze (when dict missed) and by the lazy
-// label-attach path in BatchLookupForms (when dict hit and we want to
-// attach a grammar_label). The label-preference protects against
-// dropping a labeled reading when an unlabeled one happens to come first
-// in Lemmatize's output ordering.
-func pickFirstFSTAnalysis(analyses []lemmatizer.Analysis) (lemmatizer.Analysis, bool) {
-	var firstValid lemmatizer.Analysis
-	found := false
+func pickBestFSTAnalysis(surface string, analyses []lemmatizer.Analysis) (lemmatizer.Analysis, bool) {
+	valid := make([]lemmatizer.Analysis, 0, len(analyses))
 	for _, a := range analyses {
 		if a.Lemma == "" || a.UPOS == "" {
 			continue
 		}
-		if a.GrammarLabel != "" {
-			return a, true
-		}
-		if !found {
-			firstValid, found = a, true
-		}
+		valid = append(valid, a)
 	}
-	return firstValid, found
+	if len(valid) == 0 {
+		return lemmatizer.Analysis{}, false
+	}
+	return pickBestVFSTAnalysis(surface, valid), true
 }
 
 // pickBestVFSTAnalysis ranks VFST analyses against the original surface
@@ -281,13 +248,29 @@ type formCandidate struct {
 	Feats          string
 }
 
+type resolutionCandidate struct {
+	res            FormResolution
+	sourcePriority int
+	hasDict        bool
+	hasFST         bool
+	fstOrder       int
+}
+
 // lookupBestForm runs the multi-row form lookup and ranks the candidates.
 // Returns the best FormResolution and true if any candidate exists, else
 // false. The original (uncased) surface is needed for case-match scoring.
 func lookupBestForm(stmt *sql.Stmt, surface, lowerSurface, lang string) (FormResolution, bool) {
+	candidates, ok := lookupFormCandidates(stmt, lowerSurface, lang)
+	if !ok {
+		return FormResolution{}, false
+	}
+	return formResolutionFromCandidate(pickBestFormCandidate(surface, candidates)), true
+}
+
+func lookupFormCandidates(stmt *sql.Stmt, lowerSurface, lang string) ([]formCandidate, bool) {
 	rows, err := stmt.Query(lowerSurface, lang)
 	if err != nil {
-		return FormResolution{}, false
+		return nil, false
 	}
 	defer rows.Close()
 
@@ -295,23 +278,213 @@ func lookupBestForm(stmt *sql.Stmt, surface, lowerSurface, lang string) (FormRes
 	for rows.Next() {
 		var c formCandidate
 		if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority, &c.Feats); err != nil {
-			return FormResolution{}, false
+			return nil, false
 		}
 		candidates = append(candidates, c)
 	}
 	if len(candidates) == 0 {
-		return FormResolution{}, false
+		return nil, false
 	}
+	return candidates, true
+}
 
-	best := pickBestFormCandidate(surface, candidates)
-	res := FormResolution{Lemma: best.Lemma, POS: best.POS, Feats: best.Feats, Source: "dict"}
+func formResolutionFromCandidate(c formCandidate) FormResolution {
+	res := FormResolution{Lemma: c.Lemma, POS: c.POS, Feats: c.Feats, Source: "dict"}
 	// Project Case= from Feats to GrammarLabel for back-compat with the
 	// case-only metric. New code should consume Feats directly; the
 	// projection lets the existing eval keep working unchanged.
-	if best.Feats != "" {
-		res.GrammarLabel = caseFromFeats(best.Feats)
+	if c.Feats != "" {
+		res.GrammarLabel = caseFromFeats(c.Feats)
 	}
-	return res, true
+	return res
+}
+
+func mergeAndRankDictFSTCandidates(surface string, dictCandidates []formCandidate, analyses []lemmatizer.Analysis) FormResolution {
+	candidates := make([]resolutionCandidate, 0, len(dictCandidates)+len(analyses))
+	byKey := make(map[string]int, len(dictCandidates))
+	for _, c := range dictCandidates {
+		idx := len(candidates)
+		candidates = append(candidates, resolutionCandidate{
+			res:            formResolutionFromCandidate(c),
+			sourcePriority: c.SourcePriority,
+			hasDict:        true,
+			fstOrder:       len(analyses) + idx,
+		})
+		byKey[lemmaPOSKey(c.Lemma, c.POS)] = idx
+	}
+
+	for order, a := range analyses {
+		if a.Lemma == "" || a.UPOS == "" {
+			continue
+		}
+		fstRes := formResolutionFromFSTAnalysis(a, "fst")
+		key := lemmaPOSKey(fstRes.Lemma, fstRes.POS)
+		if idx, ok := byKey[key]; ok {
+			candidates[idx].hasFST = true
+			candidates[idx].fstOrder = min(candidates[idx].fstOrder, order)
+			candidates[idx].res = enrichResolutionWithFST(candidates[idx].res, fstRes)
+			continue
+		}
+		candidates = append(candidates, resolutionCandidate{
+			res:      fstRes,
+			hasFST:   true,
+			fstOrder: order,
+		})
+	}
+
+	if len(candidates) == 0 {
+		return FormResolution{}
+	}
+	return pickBestResolutionCandidate(surface, candidates).res
+}
+
+func lemmaPOSKey(lemma, pos string) string {
+	return lemma + "\x00" + pos
+}
+
+func enrichResolutionWithFST(dictRes, fstRes FormResolution) FormResolution {
+	if dictRes.Feats == "" && fstRes.Feats != "" {
+		dictRes.Feats = fstRes.Feats
+		dictRes.GrammarLabel = caseFromFeats(fstRes.Feats)
+		if dictRes.GrammarLabel == "" && fstRes.GrammarLabel != "" {
+			dictRes.GrammarLabel = fstRes.GrammarLabel
+		}
+		dictRes.Source = appendSourceTag(dictRes.Source, "fst_feats")
+		return dictRes
+	}
+	if dictRes.GrammarLabel == "" && fstRes.GrammarLabel != "" {
+		dictRes.GrammarLabel = fstRes.GrammarLabel
+		dictRes.Source = appendSourceTag(dictRes.Source, "fst_label")
+	}
+	return dictRes
+}
+
+func appendSourceTag(source, tag string) string {
+	if source == "" {
+		return tag
+	}
+	if strings.Contains(source, "+"+tag) || source == tag {
+		return source
+	}
+	return source + "+" + tag
+}
+
+func pickBestResolutionCandidate(surface string, candidates []resolutionCandidate) resolutionCandidate {
+	if len(candidates) == 1 {
+		return candidates[0]
+	}
+	scored := make([]resolutionCandidate, len(candidates))
+	copy(scored, candidates)
+	sort.SliceStable(scored, func(i, j int) bool {
+		ci, cj := scored[i], scored[j]
+		ciCase, ciPOS := caseMatchScore(surface, ci.res.Lemma), posSanityScore(surface, ci.res.POS)
+		cjCase, cjPOS := caseMatchScore(surface, cj.res.Lemma), posSanityScore(surface, cj.res.POS)
+		if ciCase != cjCase {
+			return ciCase > cjCase
+		}
+		if ciPOS != cjPOS {
+			return ciPOS > cjPOS
+		}
+		if fstBeatsWeakDict(ci, cj) {
+			return true
+		}
+		if fstBeatsWeakDict(cj, ci) {
+			return false
+		}
+		if supportScore(ci) != supportScore(cj) {
+			return supportScore(ci) > supportScore(cj)
+		}
+		if morphologyScore(ci.res) != morphologyScore(cj.res) {
+			return morphologyScore(ci.res) > morphologyScore(cj.res)
+		}
+		if ci.sourcePriority != cj.sourcePriority {
+			return ci.sourcePriority > cj.sourcePriority
+		}
+		if ci.fstOrder != cj.fstOrder {
+			return ci.fstOrder < cj.fstOrder
+		}
+		if ci.res.Source != cj.res.Source {
+			return ci.res.Source < cj.res.Source
+		}
+		if ci.res.Lemma != cj.res.Lemma {
+			return ci.res.Lemma < cj.res.Lemma
+		}
+		return ci.res.POS < cj.res.POS
+	})
+	return scored[0]
+}
+
+func supportScore(c resolutionCandidate) int {
+	switch {
+	case c.hasDict && c.hasFST:
+		return 4
+	case c.hasDict:
+		return 3
+	case c.hasFST:
+		return 2
+	default:
+		return 0
+	}
+}
+
+func fstBeatsWeakDict(candidate, other resolutionCandidate) bool {
+	return candidate.hasFST &&
+		!candidate.hasDict &&
+		morphologyScore(candidate.res) > 0 &&
+		other.hasDict &&
+		!other.hasFST &&
+		other.sourcePriority <= 0 &&
+		morphologyScore(other.res) == 0
+}
+
+func morphologyScore(res FormResolution) int {
+	score := 0
+	if res.GrammarLabel != "" {
+		score++
+	}
+	if res.Feats != "" {
+		score += 2
+		score += strings.Count(res.Feats, "|")
+	}
+	return score
+}
+
+func formResolutionFromFSTAnalysis(a lemmatizer.Analysis, source string) FormResolution {
+	feats := featsFromFSTAnalysis(a)
+	label := ""
+	if feats != "" {
+		label = caseFromFeats(feats)
+	}
+	if label == "" && a.GrammarLabel != "nominative" {
+		label = a.GrammarLabel
+	}
+	return FormResolution{
+		Lemma:        a.Lemma,
+		POS:          a.UPOS,
+		GrammarLabel: label,
+		Feats:        feats,
+		Source:       source,
+	}
+}
+
+func featsFromFSTAnalysis(a lemmatizer.Analysis) string {
+	pairs := make([]string, 0, 5)
+	if udCase, ok := legacyLabelToUDCase[a.GrammarLabel]; ok {
+		pairs = append(pairs, "Case="+udCase)
+	}
+	if a.Number != "" {
+		pairs = append(pairs, "Number="+a.Number)
+	}
+	if a.Mood != "" {
+		pairs = append(pairs, "Mood="+a.Mood)
+	}
+	if a.Tense != "" {
+		pairs = append(pairs, "Tense="+a.Tense)
+	}
+	if a.Person != "" {
+		pairs = append(pairs, "Person="+a.Person)
+	}
+	return strings.Join(pairs, "|")
 }
 
 // caseFromFeats extracts the Case= attribute from a UD FEATS string and
@@ -361,6 +534,26 @@ var udCaseToLegacyLabel = map[string]string{
 	"Ter": "terminative",
 	"Acc": "accusative",
 	"Voc": "vocative",
+}
+
+var legacyLabelToUDCase = map[string]string{
+	"nominative":  "Nom",
+	"genitive":    "Gen",
+	"partitive":   "Par",
+	"illative":    "Ill",
+	"inessive":    "Ine",
+	"elative":     "Ela",
+	"allative":    "All",
+	"adessive":    "Ade",
+	"ablative":    "Abl",
+	"essive":      "Ess",
+	"translative": "Tra",
+	"instructive": "Ins",
+	"abessive":    "Abe",
+	"comitative":  "Com",
+	"terminative": "Ter",
+	"accusative":  "Acc",
+	"vocative":    "Voc",
 }
 
 // pickBestFormCandidate ranks candidates for a surface form. Ranking, higher
