@@ -76,6 +76,18 @@ descriptions when two docs sound similar.
   correction loop, inflected-form-aware frequency). Notes about
   autoresearch are post-live ideas, not current roadmap.
 
+- [`docs/USER_FLOWS.md`](USER_FLOWS.md) — screen-by-screen consumer
+  alpha spec with ASCII wireframes. Anonymous landing → sign-up hook
+  → dashboard → parse → results → save/add-to-existing deck → review.
+  Includes the recommended correction-flow design (flag-only path,
+  ✎ entry point) and the open questions on translation, register
+  picker, and cold-start.
+
+- [`docs/DESIGN_AI_PROMPTS.md`](DESIGN_AI_PROMPTS.md) — system prompt
+  + per-screen prompt templates for handing FinEstDB screens to v0,
+  Lovable, Bolt, Cursor, or Figma Make without losing the existing
+  type/colour system.
+
 ### Status and planning
 
 - [`../TODO.md`](../TODO.md) — single repo-level task list. **What's in

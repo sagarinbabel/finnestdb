@@ -25,6 +25,7 @@ Other status lives elsewhere:
 - [Notes & historical](#notes--historical)
   - [Critical Findings (PRD review, 2026-04-29)](#critical-findings-prd-review-2026-04-29)
   - [Consumer alpha execution plan (2026-04-29)](#consumer-alpha-execution-plan-2026-04-29)
+  - [Consumer flow review (2026-05-07)](#consumer-flow-review-2026-05-07)
 
 ## What's in main
 
@@ -579,6 +580,40 @@ for up-to-date open work.**
     - Currently each unresolved form triggers up to N×2 SQLite queries for split-point attempts
     - A Bloom filter over the forms table could eliminate most impossible splits without DB queries
     - Only implement if profiling shows compound splitting as a bottleneck (>10% of parse time)
+
+### Consumer flow review (2026-05-07)
+
+Companion docs:
+
+- [`docs/USER_FLOWS.md`](docs/USER_FLOWS.md) — screen-by-screen consumer alpha spec with wireframes and the recommended correction-flow design
+- [`docs/DESIGN_AI_PROMPTS.md`](docs/DESIGN_AI_PROMPTS.md) — prompt templates for v0 / Lovable / Bolt / Cursor that respect the existing token system
+- [`experiments/2026-05-07-top-1000-inflected-forms.md`](experiments/2026-05-07-top-1000-inflected-forms.md) — research plan for the cold-start seed deck
+
+New work surfaced by the review (not yet broken into sequenced PRs):
+
+- [ ] **Anonymous parse path**. Reverse the alpha "Parse is sign-in only" decision; add ephemeral `/api/parse` for unauth callers. Pairs with the rate-limiting work already on this list. See `docs/USER_FLOWS.md` §1.
+- [ ] **Live stats strip under the textarea**. Detected language, char count, token count, unique-form count, number count — debounced. Drives the language-mismatch banner. See `docs/USER_FLOWS.md` §1.
+- [ ] **Anki .apkg upload**. Front-field extraction client-side, dropped into the textarea. New file-upload type alongside `.txt` / `.md` / `.epub`.
+- [ ] **Carry-forward of anonymous parses on sign-up**. Last-N parses held in `localStorage`, POSTed and persisted after account creation so the user doesn't lose what they just did.
+- [ ] **Google OAuth**. Adds `auth_provider`, `auth_provider_uid` columns; `password_hash` becomes nullable for OAuth accounts. Email+password path stays the default. See `docs/USER_FLOWS.md` §3.
+- [ ] **`first_name` on the user profile**. Required at signup; used for greeting copy on the dashboard.
+- [ ] **"Add to existing deck" save path**. Results-page save panel gains a radio for new-deck vs. add-to-existing; merge by `(lemma, pos)` with `deck_lemma_stats` accumulation. New verb on the deck-import API. See `docs/USER_FLOWS.md` §6.
+- [ ] **Per-parse opt-out toggle**. "Don't save this one" checkbox on the signed-in parse form, producing an ephemeral parse without writing `parse_sessions`. Different framing of the existing TODO entry — opt-out per parse rather than an opt-in feature flag.
+- [ ] **Parse-history UI**. Already on this list; flows doc spells out the bulk-delete and per-row delete-from-server affordances.
+- [ ] **Correction flow lighter entry point**. Replace the per-row correction button with a hover/focus-revealed `✎ Wrong?` link. Add a "flag-only" radio path so users who notice a wrong parse but don't know the right answer can still submit signal. Backend: `parse_feedback.proposed_lemma`/`proposed_pos` become nullable; add `flag_only` boolean. See `docs/USER_FLOWS.md` §10.
+- [ ] **Sentence translation endpoint**. `POST /api/translate-sentence` backed by Sonnet 4.6 with prompt caching, results cached in a new `sentence_translations` table keyed on `hash(text)`. Wires into the review-card back and the deck-detail rows. Companion to `docs/ideas.md` "Making it AI native" Phase 1.
+- [ ] **Cold-start "Top 1000" CTA**. Dashboard empty state and a `/decks/top-1000-{lang}` route that creates a private deck seeded from the baseline TSV. Gated on the research project shipping.
+- [ ] **First-run register picker**. Once on first sign-in, ask "What kinds of texts do you want to read most? Conversation / News & books / Mixed." Persists to `user_language_settings`. Drives which top-1000 register the cold-start uses, and may later weight new-card ranking.
+- [ ] **Account deletion**. Cascade through parses, decks, known-word lists, sessions. Profile page is otherwise out of scope for the first version, but deletion is privacy-table-stakes.
+- [ ] **Privacy chip on the parse form**. Persistent visible signifier ("Saved to your account. [Manage]") under the signed-in parse textarea. Replaces the doc-only privacy commitment in `FEATURES.md`.
+
+Already on this list and just confirmed by the review:
+
+- EPUB and file upload support — extend to anonymous parse, not just `POST /api/import/decks`
+- FSRS migration — the public review surface should not ship the hand-rolled scheduler
+- Comprehension prediction per deck — wireframe is in `docs/USER_FLOWS.md` §8
+- Rate limiting on `/api/parse` — gated on the anonymous-parse path
+- Highest-leverage study ordering across decks — recommended UX gate is "user has 2+ decks", not always-on
 
 ## Notes
 
