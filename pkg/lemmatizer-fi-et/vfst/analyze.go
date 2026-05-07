@@ -1,6 +1,9 @@
 package vfst
 
-import "strings"
+import (
+	"log"
+	"strings"
+)
 
 // configuration holds the state of one Analyze traversal. A fresh
 // configuration is allocated per Analyze call, so concurrent Analyze
@@ -68,7 +71,11 @@ func (t *Transducer) Analyze(input string) []string {
 	}
 	var out []string
 	for {
-		s, ok := t.next(cfg)
+		s, ok, truncated := t.next(cfg)
+		if truncated {
+			log.Printf("vfst: analysis traversal hit maxLoopCount=%d for %q; results may be incomplete", maxLoopCount, input)
+			break
+		}
 		if !ok {
 			break
 		}
@@ -101,7 +108,7 @@ func (t *Transducer) prepare(cfg *configuration, input []rune) bool {
 	return allKnown
 }
 
-func (t *Transducer) next(cfg *configuration) (string, bool) {
+func (t *Transducer) next(cfg *configuration) (string, bool, bool) {
 	for loop := 0; loop < maxLoopCount; loop++ {
 		stateIdx := cfg.stateIndexStack[cfg.stackDepth]
 		currentIdx := cfg.currentTransitionStack[cfg.stackDepth]
@@ -121,7 +128,7 @@ func (t *Transducer) next(cfg *configuration) (string, bool) {
 				if cfg.inputDepth == cfg.inputLength {
 					out := t.emitOutput(cfg)
 					cfg.currentTransitionStack[cfg.stackDepth] = currentIdx + 1
-					return out, true
+					return out, true, false
 				}
 				// not all input consumed; keep searching
 				currentIdx++
@@ -158,7 +165,7 @@ func (t *Transducer) next(cfg *configuration) (string, bool) {
 
 		// no further transitions in this state — backtrack
 		if cfg.stackDepth == 0 {
-			return "", false
+			return "", false, false
 		}
 		cfg.stackDepth--
 		prev := t.decodeTransitionAtIndex(cfg.currentTransitionStack[cfg.stackDepth])
@@ -171,7 +178,7 @@ func (t *Transducer) next(cfg *configuration) (string, bool) {
 		}
 		cfg.currentTransitionStack[cfg.stackDepth]++
 	}
-	return "", false
+	return "", false, true
 }
 
 func (t *Transducer) emitOutput(cfg *configuration) string {
