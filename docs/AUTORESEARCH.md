@@ -1,5 +1,11 @@
 # Autoresearch — Automated Rule Tuning
 
+> **Status: parked post-live idea.** This document preserves an experiment for
+> after FinEstDB is shipped and live. Do not treat `cmd/autoresearch` as active
+> roadmap work, do not prioritize fixes here, and do not block unrelated parser
+> or product changes on autoresearch behavior unless a user explicitly asks for
+> autoresearch in the current task.
+
 Inspired by Karpathy's [autoresearch](https://github.com/karpathy/autoresearch),
 `cmd/autoresearch` is a small loop that mechanically asks the question:
 *"what happens to parser accuracy if I change this rule?"*
@@ -21,7 +27,7 @@ Manual rule tuning has two failure modes:
 A tireless loop that runs 100 experiments overnight finds insights that 5
 careful experiments cannot.
 
-## Quick start
+## Quick start for later
 
 ```bash
 make parser  # build the Rust shared library
@@ -67,7 +73,7 @@ Currently implemented:
   a time. Reveals which rules are actually firing, and which are
   covered by other paths or never trigger.
 
-Planned (not yet implemented; PRs welcome):
+Parked future ideas (do not implement before go-live unless explicitly asked):
 
 - **`reorder`** — swap two entries in a longest-first list to find
   ordering-sensitive bugs.
@@ -76,8 +82,9 @@ Planned (not yet implemented; PRs welcome):
 - **`tighten-min-stem-length`** — vary the `len(stem) < 3` guard in
   `tryCaseSuffixStrip` to find the optimal cut-off.
 
-To add a strategy: extend `findCandidateLines` and `commentOutLine` with
-a new mutation type, and dispatch on a new `-strategy` flag.
+If this work is explicitly resumed later, add a strategy by extending
+`findCandidateLines` and `commentOutLine` with a new mutation type, and
+dispatching on a new `-strategy` flag.
 
 ## Reading the log
 

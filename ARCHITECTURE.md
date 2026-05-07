@@ -435,8 +435,8 @@ Files:
   into our parser-eval gold JSON; drives Plan C / PR 1 corpus expansion
 - `cmd/corpusmine/main.go` — mines cleaned corpus text for
   disagreement-heavy gold candidates
-- `cmd/autoresearch/main.go` — automated rule-ablation loop driven by
-  parser-eval; logs accepted/rejected mutations to JSONL
+- `cmd/autoresearch/main.go` — parked post-live idea for automated
+  rule-ablation loops; not active alpha scope
 - `scripts/fetch-and-import-ud.sh` — clone UD treebanks and run importud
 - `scripts/parser-comparison.sh` · `scripts/parser-comparison-et.sh` —
   always include the analyzer baseline (omorfi/estnltk); fail fast when

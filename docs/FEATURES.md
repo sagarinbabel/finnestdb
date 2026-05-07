@@ -153,9 +153,10 @@ FinEstDB is positioned around four technical bets:
 - **User correction loop**: real users submit parser corrections from
   inspect and deck-detail result rows; admins triage them; accepted corrections feed
   live quality metrics and future parser improvements.
-- **Future autoresearch**: the dictionary/lemma layer is designed so
-  that new sources of evidence can be merged into a single canonical
-  lexical knowledge graph over time. See `AUTORESEARCH.md`.
+- **Post-live improvement ideas**: once the app is shipped and live, the
+  dictionary/lemma layer can absorb new sources of evidence into a
+  canonical lexical knowledge graph over time. `AUTORESEARCH.md` is an
+  idea parking lot, not current product scope.
 - **Inflected-form-aware frequency and comprehension prediction**:
   unlike most public Finnish/Estonian frequency lists (which rank
   lemmas), FinEstDB measures inflected-form frequency directly,

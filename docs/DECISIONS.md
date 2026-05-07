@@ -785,6 +785,11 @@ not intuition.
 
 ### Future: Automatic Improvement
 
+**Status:** parked post-live idea. This section is historical context and
+should not be treated as active roadmap work before FinEstDB is shipped and
+live. Do not block parser or product changes on autoresearch behavior unless a
+user explicitly asks for it.
+
 Inspired by [karpathy/autoresearch](https://github.com/karpathy/autoresearch), we plan
 to build an automated improvement loop:
 
@@ -991,7 +996,7 @@ _Questions are date-tagged with the date they were first recorded._
 | B2 | Baseline Benchmark — record current accuracy/speed | Shipped |
 | B3 | Rule Consolidation — all rules in one file | Shipped |
 | B4 | Omorfi Comparison — side-by-side accuracy measurement | Shipped |
-| B5 | Auto-Improvement Loop — autoresearch-style experiments | See TODO.md |
+| B5 | Auto-Improvement Loop — autoresearch-style experiments | Parked post-live idea |
 
 ### Track C: Estonian (Parallel Path)
 

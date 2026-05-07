@@ -45,6 +45,21 @@ parser silently runs in degraded mode because something didn't fetch".
   startup but matches no rows once applied. Surfaced as a WARN in
   `make doctor` until a server start has run the migration.
 
+## 2026-05-07 PM — Park autoresearch as post-live idea
+
+Clarifies that autoresearch is an idea parking lot for after the app is shipped
+and live, not active roadmap work.
+
+- Added root [`AGENTS.md`](../AGENTS.md) with LLM-facing instructions:
+  ignore autoresearch unless the user explicitly asks for it, and do not block
+  unrelated parser/product work on `cmd/autoresearch` behavior.
+- Added the same guardrail to [`docs/INDEX.md`](INDEX.md) and
+  [`docs/AUTORESEARCH.md`](AUTORESEARCH.md).
+- Relabeled top-level references in [`README.md`](../README.md),
+  [`ARCHITECTURE.md`](../ARCHITECTURE.md), [`TODO.md`](../TODO.md),
+  [`docs/FEATURES.md`](FEATURES.md), and [`docs/DECISIONS.md`](DECISIONS.md)
+  so autoresearch reads as deferred post-live exploration.
+
 ## 2026-05-07 PM — Docs restructure + LLM-friendly navigation
 
 Restructures the spine docs so a reader (human or LLM) can answer
@@ -441,9 +456,10 @@ correction loop, and dual evaluation tracks.
   "2026-04-29 — Consumer alpha execution plan" section.
 - Added [`docs/FEATURES.md`](FEATURES.md): user-perspective product
   description, learn-before-reading framing, leverage/comprehension
-  concept, mobile direction, and the four technology differentiators
-  (fast parser, benchmarked quality, user correction loop, future
-  autoresearch).
+  concept, mobile direction, and the technology differentiators as
+  described at the time. The autoresearch idea mentioned in that round
+  was later parked as post-live exploration; see the 2026-05-07 PM
+  guardrail entry above.
 - Added [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md):
   how Finnish and Estonian improve together via shared infrastructure,
   shared evaluation, and a shared error taxonomy without copying
