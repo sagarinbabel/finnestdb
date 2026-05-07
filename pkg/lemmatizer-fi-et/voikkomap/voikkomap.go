@@ -117,10 +117,6 @@ func Parse(fstOutput string) Analysis {
 						a.VerbForm = "Fin"
 					}
 				}
-				if pf := partFormFromMood(body); pf != "" {
-					a.VerbForm = "Part"
-					a.PartForm = pf
-				}
 			case strings.HasPrefix(tag, "A"):
 				if tense := tenseToUD(tag[1:]); tense != "" {
 					a.Tense = tense
@@ -129,19 +125,15 @@ func Parse(fstOutput string) Analysis {
 				if person := tag[1:]; len(person) == 1 && person[0] >= '1' && person[0] <= '4' {
 					a.Person = person
 				}
-			case strings.HasPrefix(tag, "D"):
-				if deg := degreeToUD(tag[1:]); deg != "" {
-					a.Degree = deg
-				}
+			case strings.HasPrefix(tag, "R"):
+				applyParticiple(&a, tag[1:])
+			case strings.HasPrefix(tag, "C"):
+				applyComparison(&a, tag[1:])
 			case strings.HasPrefix(tag, "O"):
 				applyPossessive(&a, tag[1:])
 			case strings.HasPrefix(tag, "F"):
 				if cl := cliticToUD(tag[1:]); cl != "" {
 					a.Clitic = udfeats.AppendSortedValue(a.Clitic, cl)
-				}
-			case strings.HasPrefix(tag, "C"):
-				if tag[1:] == "n" {
-					a.Connegative = "Yes"
 				}
 			}
 
@@ -296,18 +288,6 @@ func tenseToUD(body string) string {
 	return ""
 }
 
-func degreeToUD(body string) string {
-	switch body {
-	case "p":
-		return "Pos"
-	case "c":
-		return "Cmp"
-	case "s":
-		return "Sup"
-	}
-	return ""
-}
-
 func infFormFromMood(body string) string {
 	switch body {
 	case "n1":
@@ -324,18 +304,46 @@ func infFormFromMood(body string) string {
 	return ""
 }
 
-func partFormFromMood(body string) string {
+// applyParticiple handles [R*] tags — Voikko's participle/derivation
+// family. Sets VerbForm, PartForm, and Voice where the tag implies
+// active vs. passive.
+func applyParticiple(a *Analysis, body string) {
 	switch body {
-	case "v":
-		return "Pres" // VA-participle (present participle)
-	case "u":
-		return "Past" // NUT-participle (past participle)
-	case "g":
-		return "Agt" // agent participle (MA-participle)
-	case "w":
-		return "Neg" // negative participle (MATON-participle)
+	case "v": // VA-participle (active present)
+		a.VerbForm = "Part"
+		a.PartForm = "Pres"
+	case "u": // NUT-participle (active past)
+		a.VerbForm = "Part"
+		a.PartForm = "Past"
+	case "t": // TU-participle (passive past)
+		a.VerbForm = "Part"
+		a.PartForm = "Past"
+		a.Voice = "Pass"
+	case "a": // TAVA-participle (passive present)
+		a.VerbForm = "Part"
+		a.PartForm = "Pres"
+		a.Voice = "Pass"
+	case "m": // MA-participle (agent)
+		a.VerbForm = "Part"
+		a.PartForm = "Agt"
+	case "e": // MATON-participle (negative/caritive)
+		a.VerbForm = "Part"
+		a.PartForm = "Neg"
 	}
-	return ""
+}
+
+// applyComparison handles [C*] tags — degree of comparison AND
+// connegative. In Voikko FSTOUTPUT, [Cc]=comparative, [Cs]=superlative,
+// [Cn]=connegative. Positive degree is unmarked (no tag emitted).
+func applyComparison(a *Analysis, body string) {
+	switch body {
+	case "c":
+		a.Degree = "Cmp"
+	case "s":
+		a.Degree = "Sup"
+	case "n":
+		a.Connegative = "Yes"
+	}
 }
 
 func numTypeFromClass(body string) string {

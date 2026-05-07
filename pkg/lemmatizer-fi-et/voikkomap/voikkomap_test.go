@@ -117,7 +117,7 @@ func TestParse_Adjective(t *testing.T) {
 }
 
 func TestParse_DegreeComparative(t *testing.T) {
-	a := Parse("[Ll][Dc][Xp]suuri[X]suure[Sn][Ny]mpi")
+	a := Parse("[Ll][Xp]suuri[X]suure[Sn][Ny][Cc]mpi")
 	if a.Degree != "Cmp" {
 		t.Errorf("degree=%q want Cmp", a.Degree)
 	}
@@ -127,7 +127,7 @@ func TestParse_DegreeComparative(t *testing.T) {
 }
 
 func TestParse_DegreeSuperlative(t *testing.T) {
-	a := Parse("[Ll][Ds][Xp]suuri[X]suuri[Sp][Ny]nta")
+	a := Parse("[Ll][Xp]suuri[X]suuri[Sp][Ny][Cs]nta")
 	if a.Degree != "Sup" {
 		t.Errorf("degree=%q want Sup", a.Degree)
 	}
@@ -151,30 +151,50 @@ func TestParse_InfForm3(t *testing.T) {
 }
 
 func TestParse_PresentParticiple(t *testing.T) {
-	a := Parse("[Lt][Tv][Xp]puhua[X]puhu[Sn][Ny]va")
+	a := Parse("[Lt][Rv][Xp]puhua[X]puhu[Sn][Ny]va")
 	if a.VerbForm != "Part" || a.PartForm != "Pres" {
 		t.Errorf("verbform=%q partform=%q want Part/Pres", a.VerbForm, a.PartForm)
 	}
 }
 
 func TestParse_PastParticiple(t *testing.T) {
-	a := Parse("[Lt][Tu][Xp]puhua[X]puhu[Sn][Ny]nut")
+	a := Parse("[Lt][Ru][Xp]puhua[X]puhu[Sn][Ny]nut")
 	if a.VerbForm != "Part" || a.PartForm != "Past" {
 		t.Errorf("verbform=%q partform=%q want Part/Past", a.VerbForm, a.PartForm)
 	}
 }
 
 func TestParse_AgentParticiple(t *testing.T) {
-	a := Parse("[Lt][Tg][Xp]tehdä[X]teke[Sn][Ny]mä")
+	a := Parse("[Lt][Rm][Xp]tehdä[X]teke[Sn][Ny]mä")
 	if a.VerbForm != "Part" || a.PartForm != "Agt" {
 		t.Errorf("verbform=%q partform=%q want Part/Agt", a.VerbForm, a.PartForm)
 	}
 }
 
 func TestParse_NegParticiple(t *testing.T) {
-	a := Parse("[Lt][Tw][Xp]tehdä[X]teke[Sn][Ny]mätön")
+	a := Parse("[Lt][Re][Xp]tehdä[X]teke[Sn][Ny]mätön")
 	if a.VerbForm != "Part" || a.PartForm != "Neg" {
 		t.Errorf("verbform=%q partform=%q want Part/Neg", a.VerbForm, a.PartForm)
+	}
+}
+
+func TestParse_PassivePastParticiple(t *testing.T) {
+	a := Parse("[Lt][Rt][Xp]puhua[X]puhu[Sn][Ny]ttu")
+	if a.VerbForm != "Part" || a.PartForm != "Past" {
+		t.Errorf("verbform=%q partform=%q want Part/Past", a.VerbForm, a.PartForm)
+	}
+	if a.Voice != "Pass" {
+		t.Errorf("voice=%q want Pass", a.Voice)
+	}
+}
+
+func TestParse_PassivePresentParticiple(t *testing.T) {
+	a := Parse("[Lt][Ra][Xp]puhua[X]puhu[Sn][Ny]ttava")
+	if a.VerbForm != "Part" || a.PartForm != "Pres" {
+		t.Errorf("verbform=%q partform=%q want Part/Pres", a.VerbForm, a.PartForm)
+	}
+	if a.Voice != "Pass" {
+		t.Errorf("voice=%q want Pass", a.Voice)
 	}
 }
 
@@ -246,7 +266,7 @@ func TestParse_FeatsComposition(t *testing.T) {
 	}{
 		{
 			"comparative adjective",
-			"[Ll][Dc][Xp]suuri[X]suure[Sn][Ny]mpi",
+			"[Ll][Xp]suuri[X]suure[Sn][Ny][Cc]mpi",
 			"Degree=Cmp|Number=Sing",
 		},
 		{
@@ -256,7 +276,7 @@ func TestParse_FeatsComposition(t *testing.T) {
 		},
 		{
 			"past participle",
-			"[Lt][Tu][Xp]puhua[X]puhu[Sn][Ny]nut",
+			"[Lt][Ru][Xp]puhua[X]puhu[Sn][Ny]nut",
 			"Number=Sing|PartForm=Past|VerbForm=Part",
 		},
 		{
