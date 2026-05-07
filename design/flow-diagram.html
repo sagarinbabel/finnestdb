@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="ink">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>finnest — user flow diagram</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        oklch(0.165 0.008 250);
+    --bg-deep:   oklch(0.125 0.008 250);
+    --bg-raise:  oklch(0.21 0.008 250);
+    --bg-hover:  oklch(0.25 0.010 250);
+    --line:      oklch(0.30 0.010 250);
+    --line-soft: oklch(0.24 0.008 250);
+    --ink:       oklch(0.96 0.005 90);
+    --ink-soft:  oklch(0.78 0.008 90);
+    --ink-mute:  oklch(0.55 0.010 90);
+    --accent:    oklch(0.72 0.19 38);
+    --known:     oklch(0.78 0.13 145);
+    --learning:  oklch(0.80 0.14 85);
+    --new:       oklch(0.72 0.19 38);
+    --fi:        oklch(0.78 0.13 200);
+    --et:        oklch(0.74 0.16 320);
+
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --font-sans: "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif;
+    --font-disp: "Fraunces", "Times New Roman", serif;
+
+    --r-sm: 2px;
+    --r-md: 4px;
+    --r-lg: 8px;
+    --topbar: 56px;
+  }
+  [data-theme="paper"] {
+    --bg:        oklch(0.97 0.005 85);
+    --bg-deep:   oklch(0.94 0.005 85);
+    --bg-raise:  oklch(1 0 0);
+    --bg-hover:  oklch(0.92 0.005 85);
+    --line:      oklch(0.82 0.008 85);
+    --line-soft: oklch(0.88 0.005 85);
+    --ink:       oklch(0.18 0.008 250);
+    --ink-soft:  oklch(0.40 0.010 250);
+    --ink-mute:  oklch(0.58 0.010 250);
+    --accent:    oklch(0.55 0.19 35);
+    --known:     oklch(0.55 0.13 145);
+    --learning:  oklch(0.62 0.14 80);
+    --new:       oklch(0.55 0.19 35);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "ss01", "cv11";
+    min-height: 100vh;
+  }
+  ::selection { background: var(--accent); color: var(--bg-deep); }
+
+  .topbar {
+    height: var(--topbar);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 24px;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .brand {
+    font-family: var(--font-disp);
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .brand .dot { color: var(--accent); }
+  .crumb {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .topbar-spacer { flex: 1; }
+  .topbar-actions { display: flex; gap: 6px; align-items: center; }
+  .icon-btn {
+    all: unset;
+    cursor: pointer;
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    color: var(--ink-soft);
+    font-size: 12px;
+    font-family: var(--font-sans);
+    transition: all 0.08s;
+  }
+  .icon-btn:hover { border-color: var(--ink-mute); color: var(--ink); }
+  .icon-btn.active { background: var(--ink); color: var(--bg-deep); border-color: var(--ink); }
+
+  .page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+  .page-head { margin-bottom: 32px; }
+  .page-head h1 {
+    font-family: var(--font-disp);
+    font-weight: 600;
+    font-size: 42px;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
+    margin-bottom: 8px;
+  }
+  .page-head .lede {
+    color: var(--ink-mute);
+    font-size: 14px;
+    max-width: 720px;
+  }
+  .page-head .lede a { color: var(--accent); text-decoration: none; }
+  .page-head .lede a:hover { text-decoration: underline; }
+
+  .section { margin-top: 56px; }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .section-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .section-title {
+    font-family: var(--font-disp);
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: -0.01em;
+  }
+  .section-sub {
+    color: var(--ink-mute);
+    font-size: 13px;
+    margin-bottom: 24px;
+    max-width: 680px;
+  }
+
+  .panel {
+    background: var(--bg-deep);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+    padding: 32px;
+    overflow: auto;
+  }
+  .panel.compact { padding: 20px; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-top: 16px;
+    font-size: 11.5px;
+    font-family: var(--font-mono);
+    color: var(--ink-mute);
+  }
+  .legend .swatch {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    margin-right: 6px;
+    vertical-align: -1px;
+    border-radius: 2px;
+  }
+  .legend .anon  .swatch { background: oklch(from var(--learning) l c h / 0.35); border: 1px solid var(--learning); }
+  .legend .hub   .swatch { background: oklch(from var(--fi) l c h / 0.25); border: 1px solid var(--fi); }
+  .legend .gated .swatch { background: var(--bg-raise); border: 1px dashed var(--ink-mute); }
+  .legend .new   .swatch { background: oklch(from var(--accent) l c h / 0.25); border: 1px solid var(--accent); }
+
+  /* Mermaid container styling — we let Mermaid render SVG, then apply font tweaks */
+  .mermaid {
+    font-family: var(--font-sans) !important;
+    text-align: center;
+  }
+  .mermaid svg { max-width: 100%; height: auto; }
+
+  footer {
+    margin-top: 96px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-mute);
+    font-size: 12px;
+    font-family: var(--font-mono);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  footer a { color: var(--ink-soft); text-decoration: none; }
+  footer a:hover { color: var(--accent); }
+
+  @media (max-width: 720px) {
+    .page { padding: 32px 16px 80px; }
+    .page-head h1 { font-size: 32px; }
+    .panel { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="brand">finnest<span class="dot">.</span></span>
+  <span class="crumb">User Flow · 2026-05-07</span>
+  <span class="topbar-spacer"></span>
+  <div class="topbar-actions">
+    <button class="icon-btn active" data-theme-set="ink">INK</button>
+    <button class="icon-btn" data-theme-set="paper">PAPER</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1>User flow — consumer alpha</h1>
+    <p class="lede">
+      Two diagrams from <a href="https://github.com/sagarinbabel/finnestdb/pull/152">PR #152</a> /
+      <code>docs/USER_FLOWS.md</code>. The macro flow shows every path
+      through the product; the correction flow shows the cross-cutting
+      "Wrong?" path. Toggle INK / PAPER above.
+    </p>
+  </div>
+
+  <section class="section">
+    <div class="section-head">
+      <span class="section-num">01 / Macro flow</span>
+      <span class="section-title">Anonymous → auth → main loop</span>
+    </div>
+    <p class="section-sub">
+      Anonymous parse drops the user into a results table with a
+      sign-up ribbon. After auth, the dashboard is the hub; the parse
+      → results → save → deck → review inner loop carries most of the
+      session time. Cold-start branches off the dashboard for
+      brand-new accounts.
+    </p>
+
+    <div class="panel">
+      <pre class="mermaid">
+flowchart TD
+    L["Landing<br/>finne.st"]
+    AR["Anonymous results<br/>+ sign-up ribbon"]
+    SU["Create account<br/>email+pw or Google"]
+    SI["Sign in<br/>email+pw or Google"]
+
+    L -->|"paste · upload · sample"| AR
+    L -->|"Sign in"| SI
+    AR -->|"Save these words"| SU
+
+    SU -.->|"carry forward<br/>anonymous parses"| D
+    SI --> D
+
+    D["Dashboard"]
+    P["Parse<br/>+ recent · history"]
+    EPH["Ephemeral parse<br/>(opt-out toggle)"]
+    R["Results table<br/>+ POS filter · CSV"]
+    SP{"Save as…"}
+    DL["Decks list<br/>+ known-words panel"]
+    DD["Deck detail<br/>+ comprehension"]
+    REV["Review session<br/>FSRS scoring"]
+    REVALL["Review all due<br/>cross-deck"]
+
+    D --> P
+    D --> DL
+    D --> REVALL
+
+    P -->|"parse"| R
+    P -.->|"opt-out"| EPH
+    EPH --> R
+    R --> SP
+    SP -->|"new deck"| DD
+    SP -->|"add to existing"| DD
+
+    DL -->|"click deck"| DD
+    DL -->|"+ New from text"| P
+    DL -->|"Review all"| REVALL
+    DD -->|"Review this deck"| REV
+    REVALL --> REV
+    REV -->|"done"| D
+
+    D -.->|"first time<br/>0 decks"| CS["Cold start"]
+    CS -->|"Paste a text"| P
+    CS -->|"Import known words"| KW["Known-words<br/>import"]
+    CS -.->|"gated"| TOP["Top-1000<br/>seed deck"]
+    KW --> DL
+    TOP --> DD
+
+    classDef anon fill:#fef3c7,stroke:#92400e,color:#1a1a1a
+    classDef gated fill:transparent,stroke:#9ca3af,stroke-dasharray:5 5,color:#9ca3af
+    classDef hub fill:#dbeafe,stroke:#1e40af,color:#1a1a1a
+    class L,AR,SU,SI anon
+    class TOP,EPH gated
+    class D,DD hub
+      </pre>
+    </div>
+
+    <div class="legend">
+      <span class="anon"><span class="swatch"></span>anonymous-only</span>
+      <span class="hub"><span class="swatch"></span>high-traffic hub</span>
+      <span class="gated"><span class="swatch"></span>not yet built</span>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <span class="section-num">02 / Correction flow</span>
+      <span class="section-title">Cross-cutting · ✎ Wrong?</span>
+    </div>
+    <p class="section-sub">
+      Triggerable from any results row, deck-detail row, or review
+      card. The new <em>flag-only</em> path captures users who notice
+      a wrong parse but can't articulate the fix — signal we lose
+      today.
+    </p>
+
+    <div class="panel">
+      <pre class="mermaid">
+flowchart LR
+    A["Any results row<br/>or review card"]
+    M{"Correction modal"}
+    F["parse_feedback row<br/>flag_only=true"]
+    FX["parse_feedback row<br/>+ proposed_lemma · pos<br/>+ optional grammar · notes"]
+    T["Submitted ✓ toast"]
+    Q["Admin triage<br/>/admin/feedback"]
+
+    A -->|"✎ Wrong?<br/>(hover · focus)"| M
+    M -->|"◉ I don't know<br/>the right answer"| F
+    M -->|"○ Right answer is …"| FX
+    F --> T
+    FX --> T
+    T -->|"return to source row"| A
+    F -.->|"flag-only filter"| Q
+    FX -.->|"default queue"| Q
+
+    classDef new fill:#fef3c7,stroke:#92400e,color:#1a1a1a
+    class F new
+      </pre>
+    </div>
+
+    <div class="legend">
+      <span class="new"><span class="swatch"></span>new path (flag-only)</span>
+    </div>
+  </section>
+
+  <footer>
+    <span>finnestdb · consumer flow · 2026-05-07</span>
+    <span>
+      <a href="wireframe-clickthrough.html">→ wireframe click-through</a>
+      &nbsp;·&nbsp;
+      <a href="https://github.com/sagarinbabel/finnestdb/pull/152">PR #152</a>
+    </span>
+  </footer>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  // Read computed CSS vars so Mermaid theme tracks INK/PAPER
+  function cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
+  function buildMermaidTheme() {
+    const isPaper = document.documentElement.dataset.theme === 'paper';
+    return {
+      startOnLoad: false,
+      theme: 'base',
+      flowchart: {
+        curve: 'basis',
+        padding: 20,
+        nodeSpacing: 50,
+        rankSpacing: 60,
+        htmlLabels: true,
+      },
+      themeVariables: {
+        fontFamily: cssVar('--font-sans'),
+        fontSize: '13px',
+        primaryColor: cssVar('--bg-raise'),
+        primaryTextColor: cssVar('--ink'),
+        primaryBorderColor: cssVar('--line'),
+        secondaryColor: cssVar('--bg-deep'),
+        tertiaryColor: cssVar('--bg'),
+        lineColor: cssVar('--ink-mute'),
+        textColor: cssVar('--ink-soft'),
+        edgeLabelBackground: cssVar('--bg'),
+        clusterBkg: cssVar('--bg-deep'),
+        clusterBorder: cssVar('--line'),
+        // Decision (rhombus) nodes
+        nodeBorder: cssVar('--line'),
+        mainBkg: cssVar('--bg-raise'),
+      },
+    };
+  }
+
+  async function renderAll() {
+    mermaid.initialize(buildMermaidTheme());
+    const blocks = document.querySelectorAll('pre.mermaid');
+    blocks.forEach(b => { b.removeAttribute('data-processed'); });
+    // Save original source, replace each block
+    blocks.forEach((b, i) => {
+      if (!b.dataset.src) b.dataset.src = b.textContent;
+      b.textContent = b.dataset.src;
+    });
+    await mermaid.run({ querySelector: 'pre.mermaid' });
+  }
+
+  // Theme toggle
+  document.querySelectorAll('[data-theme-set]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const t = btn.dataset.themeSet;
+      document.documentElement.dataset.theme = t;
+      document.querySelectorAll('[data-theme-set]').forEach(b => {
+        b.classList.toggle('active', b.dataset.themeSet === t);
+      });
+      renderAll();
+    });
+  });
+
+  renderAll();
+</script>
+</body>
+</html>

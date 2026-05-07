@@ -20,10 +20,11 @@ The current design source of truth is:
   kept around for reference but **not** the current visual direction.
 - [`docs/USER_FLOWS.md`](USER_FLOWS.md) — screen-by-screen behaviour
   spec.
-- A local, gitignored `design/` folder also exists on the maintainer's
-  machine with HTML and JSX directions (`finnest v2.html`, `v2-*.jsx`,
-  etc.). The Design v2 OKLCH values in `web/styles.css` come from
-  that direction.
+- [`design/`](../design/) — checked-in design directions: HTML
+  prototypes (`finnest v2.html`, `flow-diagram.html`,
+  `wireframe-clickthrough.html`, …) and JSX views (`v2-*.jsx`,
+  `view-*.jsx`). The Design v2 OKLCH values in `web/styles.css` come
+  from this direction.
 
 When prompting a design AI, attach `web/index.html`, `web/styles.css`,
 and `docs/USER_FLOWS.md` if the tool accepts file context. Otherwise,

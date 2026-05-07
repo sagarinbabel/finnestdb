@@ -86,7 +86,6 @@ data/
 experiments/test*.jsonl
 experiments/autoresearch.jsonl
 
-# Local notes and design scratch
+# Local notes scratch
 .obsidian/
-design/
 How the Finnish & Estonian Parsers can learn from each other.md
