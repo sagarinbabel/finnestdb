@@ -59,8 +59,10 @@ Canonical form going forward:
 docs/baselines/YYYY-MM-DD<rev>-T<HHMM>Z-<dataset>.<ext>
 ```
 
-— matching the `2026-05-07k-T1118Z-fi-core.json` style introduced with
-the [#140](https://github.com/sagarinbabel/finnestdb/pull/140) baseline. Older tagged-style files
+— matching the `2026-05-07k-T1118Z-fi-core.json` logical baseline name
+introduced with the [#140](https://github.com/sagarinbabel/finnestdb/pull/140)
+baseline. Raw JSON files are now stored with a `.gz` suffix to keep repository
+line counts manageable. Older tagged-style files
 (`2026-05-06-final-*`, `2026-05-07-feats-rich-*`, etc.) are left as-is —
 renaming them would break PR/commit cross-references the
 [#141](https://github.com/sagarinbabel/finnestdb/pull/141) append-only history section was meant to
@@ -69,7 +71,7 @@ preserve.
 - New [`scripts/freeze-baseline.sh`](../scripts/freeze-baseline.sh)
   takes the comparison-script `RUN_TS`, reads the parser-version letter
   from `parsecore.ParserVersion`, derives the date + UTC HHMM, and
-  copies per-dataset JSONs + cross-language summaries from
+  compresses per-dataset JSONs and copies cross-language summaries from
   `reports/parser-eval/` into `docs/baselines/` under the canonical
   name. **Refuses to overwrite** an existing target file — append-only
   is enforced mechanically, not just by convention. Override the

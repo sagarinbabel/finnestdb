@@ -382,7 +382,7 @@ PR 4 of the four-PR FST stack ([#107](https://github.com/sagarinbabel/finnestdb/
 
 **Net effect** (vs. 2026-05-06h):
 
-- Per-dataset numbers held identical to PR3 head on every dataset PR3 measured. Cleanup commits between PR3 head and PR4 merge did not move metrics — verified file-by-file against `2026-05-06-post-pr3-*.json` and `2026-05-06-post-pr2-hfstol-fi-*.json`.
+- Per-dataset numbers held identical to PR3 head on every dataset PR3 measured. Cleanup commits between PR3 head and PR4 merge did not move metrics — verified file-by-file against `2026-05-06-post-pr3-*.json.gz` and `2026-05-06-post-pr2-hfstol-fi-*.json.gz`.
 - **First FST-stack measurement of `fi-manual-v1` (22 cases): lemma 81.4 → 82.9 (+1.4pp), grammar 0.0 → 13.3 (+13.3pp), coverage 91.2 → 96.9 (+5.7pp).** This is the FST stack's largest accuracy lift on a non-trivial Finnish set — the v2 (4-case) set used at PR1/PR2 didn't have headroom.
 
 **Open issues this surfaced**:
@@ -662,7 +662,7 @@ previous entry surfaced.
 ### 2026-05-05 — estnltk ceiling on Estonian
 
 **Commit**: [`af111c2`][c-2026-05-05]
-**Detail**: [`baselines/2026-05-05-et-grammar-estnltk.json`](baselines/2026-05-05-et-grammar-estnltk.json), [`baselines/2026-05-05-et-manual-estnltk.json`](baselines/2026-05-05-et-manual-estnltk.json)
+**Detail**: [`baselines/2026-05-05-et-grammar-estnltk.json.gz`](baselines/2026-05-05-et-grammar-estnltk.json.gz), [`baselines/2026-05-05-et-manual-estnltk.json.gz`](baselines/2026-05-05-et-manual-estnltk.json.gz)
 
 First measurement with the `estnltk` external adapter (EstNLTK / Vabamorf) as a parser. **Sets the ceiling** that `custom` should approach for Estonian once full lexical enrichment lands, and is the analogue of what `custom` should reach for Finnish once Voikko (Phase 4) lands.
 

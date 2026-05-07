@@ -106,10 +106,10 @@ Reading this:
 
 ## Files
 
-- `2026-05-06-fi-core-v1.json`
-- `2026-05-06-fi-manual-v1.json`
-- `2026-05-06-fi-manual-v2.json`
-- `2026-05-06-fi-grammar-v1.json`
+- `2026-05-06-fi-core-v1.json.gz`
+- `2026-05-06-fi-manual-v1.json.gz`
+- `2026-05-06-fi-manual-v2.json.gz`
+- `2026-05-06-fi-grammar-v1.json.gz`
 
 ## Reproduction
 

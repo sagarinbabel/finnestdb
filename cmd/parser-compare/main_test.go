@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"math"
 	"math/rand"
@@ -263,6 +264,30 @@ func TestLoadBaselineDir_UsesGeneratedAtNotMtime(t *testing.T) {
 	}
 }
 
+func TestLoadBaselineDir_ReadsCompressedJSON(t *testing.T) {
+	dir := t.TempDir()
+	report := &eval.Report{
+		Generated: "2026-05-07T11:18:00Z",
+		Dataset:   eval.ReportDataset{Name: "fi-core", CaseCount: 1},
+		Summary: map[string]eval.ParserSummary{
+			"custom": {LemmaAccuracy: 0.95},
+		},
+	}
+	writeGzipReport(t, filepath.Join(dir, "2026-05-07k-T1118Z-fi-core.json.gz"), report)
+
+	reports, err := loadBaselineDir(dir)
+	if err != nil {
+		t.Fatalf("loadBaselineDir: %v", err)
+	}
+	got := reports["fi-core"]
+	if got == nil {
+		t.Fatal("missing fi-core")
+	}
+	if got.Summary["custom"].LemmaAccuracy != 0.95 {
+		t.Fatalf("summary=%#v", got.Summary["custom"])
+	}
+}
+
 func writeReport(t *testing.T, path string, r *eval.Report) {
 	t.Helper()
 	data, err := json.Marshal(r)
@@ -271,6 +296,31 @@ func writeReport(t *testing.T, path string, r *eval.Report) {
 	}
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		t.Fatalf("write %s: %v", path, err)
+	}
+}
+
+func writeGzipReport(t *testing.T, path string, r *eval.Report) {
+	t.Helper()
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("create %s: %v", path, err)
+	}
+	zw, err := gzip.NewWriterLevel(f, gzip.BestCompression)
+	if err != nil {
+		t.Fatalf("gzip writer: %v", err)
+	}
+	if _, err := zw.Write(data); err != nil {
+		t.Fatalf("gzip write: %v", err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("gzip close: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("close %s: %v", path, err)
 	}
 }
 

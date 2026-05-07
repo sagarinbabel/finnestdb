@@ -106,7 +106,7 @@ bash scripts/parser-comparison.sh
 The bundled `parser-comparison.sh` discovers every `testdata/parser-eval/fi/gold/*.json`
 not matching `-dev-v` (held-out test discipline). With omorfi at ~400 ms/case
 the four UD test sets together take ~50 min for a single timed pass. The
-committed UD JSON reports (`docs/baselines/2026-05-07-post-fst-ud-fi-*-test.json`)
+committed UD JSON reports (`docs/baselines/2026-05-07-post-fst-ud-fi-*-test.json.gz`)
 are summary-stripped — `cases[]` per-case detail is omitted to keep file sizes
 proportional to the existing curated baselines (~250 KB instead of ~35 MB).
 Re-running locally produces the full `cases[]` array; `dataset.case_count` and

@@ -3,8 +3,8 @@
 **Parser version stamp**: `2026.05.07k` (`parsecore.ParserVersion` to be bumped on land)
 
 **Detail JSONs**:
-- FI: [`2026-05-07-feats-rich-fi-core.json`](2026-05-07-feats-rich-fi-core.json), [`2026-05-07-feats-rich-fi-grammar.json`](2026-05-07-feats-rich-fi-grammar.json), [`2026-05-07-feats-rich-fi-manual-v1.json`](2026-05-07-feats-rich-fi-manual-v1.json), [`2026-05-07-feats-rich-fi-manual-v2.json`](2026-05-07-feats-rich-fi-manual-v2.json)
-- ET: [`2026-05-07-feats-rich-et-grammar.json`](2026-05-07-feats-rich-et-grammar.json), [`2026-05-07-feats-rich-et-manual.json`](2026-05-07-feats-rich-et-manual.json)
+- FI: [`2026-05-07-feats-rich-fi-core.json.gz`](2026-05-07-feats-rich-fi-core.json.gz), [`2026-05-07-feats-rich-fi-grammar.json.gz`](2026-05-07-feats-rich-fi-grammar.json.gz), [`2026-05-07-feats-rich-fi-manual-v1.json.gz`](2026-05-07-feats-rich-fi-manual-v1.json.gz), [`2026-05-07-feats-rich-fi-manual-v2.json.gz`](2026-05-07-feats-rich-fi-manual-v2.json.gz)
+- ET: [`2026-05-07-feats-rich-et-grammar.json.gz`](2026-05-07-feats-rich-et-grammar.json.gz), [`2026-05-07-feats-rich-et-manual.json.gz`](2026-05-07-feats-rich-et-manual.json.gz)
 
 **Reproduce**:
 ```bash

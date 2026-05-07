@@ -223,15 +223,15 @@ scripts/freeze-baseline.sh "$RUN_TS"
 ```
 
 The script reads the parser-version letter from `parsecore.ParserVersion`,
-derives the date + UTC HHMM from `RUN_TS`, and writes per-dataset JSONs
-and cross-language summaries to `docs/baselines/` under the canonical
+derives the date + UTC HHMM from `RUN_TS`, and writes compressed per-dataset
+JSONs plus cross-language summaries to `docs/baselines/` under the canonical
 filename:
 
 ```
 docs/baselines/YYYY-MM-DD<rev>-T<HHMM>Z-<dataset>.<ext>
 ```
 
-— for example `docs/baselines/2026-05-07k-T1118Z-fi-core.json`. **Append-only**:
+— for example `docs/baselines/2026-05-07k-T1118Z-fi-core.json.gz`. **Append-only**:
 the script refuses to overwrite existing targets, so older baselines stay
 referenceable forever (cross-references like "see `2026-05-06-final-fi-core`"
 in old PR descriptions remain valid). Filename spec, examples, and rationale:

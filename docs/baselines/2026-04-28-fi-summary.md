@@ -46,9 +46,9 @@ dictionary imported (12.2M forms, 145K lemmas).
 
 ## Files
 
-- `2026-04-28-fi-core-v1.json` — raw report
-- `2026-04-28-fi-manual-v1.json` — raw report
-- `2026-04-28-fi-grammar-v1.json` — raw report
+- `2026-04-28-fi-core-v1.json.gz` — raw report
+- `2026-04-28-fi-manual-v1.json.gz` — raw report
+- `2026-04-28-fi-grammar-v1.json.gz` — raw report
 
 ## Reproduction
 

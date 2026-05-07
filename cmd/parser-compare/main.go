@@ -1,6 +1,7 @@
 // cmd/parser-compare reads one or more parser-eval report JSON files and emits
-// a markdown comparison table to stdout. Designed to be paired with cmd/parsertest
-// to produce side-by-side parser comparisons (custom vs analyzer baseline).
+// a markdown comparison table to stdout. Reports may be raw .json or compressed
+// .json.gz. Designed to be paired with cmd/parsertest to produce side-by-side
+// parser comparisons (custom vs analyzer baseline).
 //
 // Default report shape (no -baseline-dir):
 //
@@ -39,9 +40,11 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"math"
 	"math/rand"
 	"os"
@@ -69,7 +72,7 @@ func main() {
 
 	paths := flag.Args()
 	if len(paths) == 0 {
-		fmt.Fprintln(os.Stderr, "usage: parser-compare [-title T] [-baseline-dir D] [-main-parser custom] [-bootstrap N] report1.json [report2.json ...]")
+		fmt.Fprintln(os.Stderr, "usage: parser-compare [-title T] [-baseline-dir D] [-main-parser custom] [-bootstrap N] report1.json[.gz] [report2.json[.gz] ...]")
 		os.Exit(2)
 	}
 
@@ -199,7 +202,7 @@ func hasDuplicateDatasetParser(reports []*eval.Report) bool {
 	return false
 }
 
-// loadReports reads each JSON path into an eval.Report.
+// loadReports reads each JSON or JSON.GZ path into an eval.Report.
 func loadReports(paths []string) ([]*eval.Report, error) {
 	reports := make([]*eval.Report, 0, len(paths))
 	for _, p := range paths {
@@ -212,10 +215,10 @@ func loadReports(paths []string) ([]*eval.Report, error) {
 	return reports, nil
 }
 
-// loadReport reads a single JSON path. Errors are wrapped with the path so
+// loadReport reads a single JSON or JSON.GZ path. Errors are wrapped with the path so
 // failures point at the offending file.
 func loadReport(path string) (*eval.Report, error) {
-	data, err := os.ReadFile(path)
+	data, err := readReportBytes(path)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", path, err)
 	}
@@ -224,6 +227,23 @@ func loadReport(path string) (*eval.Report, error) {
 		return nil, fmt.Errorf("parse %s: %w", path, err)
 	}
 	return &r, nil
+}
+
+func readReportBytes(path string) ([]byte, error) {
+	if !strings.HasSuffix(path, ".gz") {
+		return os.ReadFile(path)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	zr, err := gzip.NewReader(f)
+	if err != nil {
+		return nil, err
+	}
+	defer zr.Close()
+	return io.ReadAll(zr)
 }
 
 // loadBaselineDir scans a directory for JSON reports and returns them keyed
@@ -239,7 +259,7 @@ func loadBaselineDir(dir string) (map[string]*eval.Report, error) {
 	out := make(map[string]*eval.Report)
 	selectedKeys := make(map[string]string)
 	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+		if e.IsDir() || !isReportJSONName(e.Name()) {
 			continue
 		}
 		path := filepath.Join(dir, e.Name())
@@ -260,6 +280,10 @@ func loadBaselineDir(dir string) (map[string]*eval.Report, error) {
 		selectedKeys[r.Dataset.Name] = key
 	}
 	return out, nil
+}
+
+func isReportJSONName(name string) bool {
+	return strings.HasSuffix(name, ".json") || strings.HasSuffix(name, ".json.gz")
 }
 
 func baselineSelectionKey(r *eval.Report, filename string) string {
