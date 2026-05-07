@@ -76,6 +76,9 @@ func TestPerCaseStats(t *testing.T) {
 		if s.lemmaCorrect != 8 {
 			t.Errorf("case %d lemma: got %d, want 8", i, s.lemmaCorrect)
 		}
+		if s.lemmaPOSCorrect != 8 {
+			t.Errorf("case %d lemmaPOS: got %d, want 8", i, s.lemmaPOSCorrect)
+		}
 		if s.grammarEligible != 10 {
 			t.Errorf("case %d grammarEligible: got %d, want 10", i, s.grammarEligible)
 		}
@@ -88,6 +91,54 @@ func TestPerCaseStats(t *testing.T) {
 		if s.resolvedTokens != 10 {
 			t.Errorf("case %d resolved: got %d, want 10", i, s.resolvedTokens)
 		}
+	}
+}
+
+// TestLemmaPOSDisplay_FallbackForOldBaselines: a report that pre-dates the
+// LemmaPOSAccuracy field stores zero in the summary but still has correct
+// per-case data. The fallback recomputes from cases so the headline
+// before/after diff doesn't read a missing field as a 100-point regression.
+func TestLemmaPOSDisplay_FallbackForOldBaselines(t *testing.T) {
+	r := fakeReport("custom", 5, 10, 0.8)
+	s := r.Summary["custom"]
+	s.LemmaPOSAccuracy = 0 // simulate pre-PR baseline
+	r.Summary["custom"] = s
+
+	got := lemmaPOSDisplay(s, r, "custom")
+	if got < 0.79 || got > 0.81 {
+		t.Errorf("fallback recompute: got %.3f, want ~0.8 from per-case data", got)
+	}
+}
+
+// TestLemmaPOSDisplay_PreservesGenuineZero: when both Lemma and POS marginals
+// are zero, the metric is genuinely zero — fallback must not mask this as
+// missing data.
+func TestLemmaPOSDisplay_PreservesGenuineZero(t *testing.T) {
+	r := fakeReport("custom", 5, 10, 0.0) // every token wrong
+	s := r.Summary["custom"]
+	got := lemmaPOSDisplay(s, r, "custom")
+	if got != 0 {
+		t.Errorf("genuine zero accuracy: got %.3f, want 0", got)
+	}
+}
+
+// TestMetricFromReport_LemmaPOSUsesFallback verifies the headline before/after
+// table goes through the per-case fallback for Lemma+POS specifically.
+func TestMetricFromReport_LemmaPOSUsesFallback(t *testing.T) {
+	r := fakeReport("custom", 5, 10, 0.8)
+	s := r.Summary["custom"]
+	s.LemmaPOSAccuracy = 0
+	r.Summary["custom"] = s
+
+	got := metricFromReport(r, "custom", metricLemmaPOS)
+	if got < 0.79 || got > 0.81 {
+		t.Errorf("Lemma+POS via metricFromReport: got %.3f, want ~0.8", got)
+	}
+
+	// Other metrics still read from the summary and are not fallback-recomputed.
+	gotLemma := metricFromReport(r, "custom", metricLemma)
+	if gotLemma != 0.8 {
+		t.Errorf("Lemma metric: got %.3f, want 0.8 (from summary)", gotLemma)
 	}
 }
 

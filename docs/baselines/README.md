@@ -19,8 +19,9 @@ Each `YYYY-MM-DD-<dataset>.json` is the raw report emitted by
 | `expected_tokens` | Total annotated tokens in the dataset |
 | `lemma_accuracy`  | Fraction with correct lemma |
 | `pos_accuracy`    | Fraction with correct POS |
+| `lemma_pos_accuracy` | Fraction where lemma AND POS *both* match — the dictionary-entry attachment metric. First-class for language-learning quality (entries are keyed by `(lemma, POS)`). Added 2026-05-07; baselines older than that have this field at 0 in JSON, but `cmd/parser-compare` recomputes it from per-case data when comparing against an older baseline directory. See [`../PARSER_EVAL_METHODOLOGY.md`](../PARSER_EVAL_METHODOLOGY.md) for the framing |
 | `grammar_accuracy`| Fraction with correct grammar_label (only counts cases where gold has a label) |
-| `full_accuracy`   | Fraction with all of lemma + POS + grammar correct |
+| `full_accuracy`   | Fraction with all of lemma + POS + grammar + every gold FEATS attribute correct |
 | `resolved_coverage` | Fraction of input tokens the parser resolved to a dictionary entry |
 | `avg/p50/p95_case_duration_ms` | Per-case latency in milliseconds, sub-ms float (PR #103: nanosecond-precision timer) |
 | `words_per_second` / `chars_per_second` | Aggregate throughput across the dataset (sum of non-PUNCT tokens or runes, divided by total wall time across all repeats; PR #103) |

@@ -99,6 +99,9 @@ func TestSummaryAccumulator_FullAndCoverage(t *testing.T) {
 	if got.POSAccuracy != 1.0 {
 		t.Fatalf("pos_accuracy=%v want 1.0", got.POSAccuracy)
 	}
+	if got.LemmaPOSAccuracy != 0.5 {
+		t.Fatalf("lemma_pos_accuracy=%v want 0.5", got.LemmaPOSAccuracy)
+	}
 	if got.FullAccuracy != 0.5 {
 		t.Fatalf("full_accuracy=%v want 0.5", got.FullAccuracy)
 	}
@@ -147,6 +150,47 @@ func TestSummaryAccumulator_FullAndCoverage(t *testing.T) {
 	}
 	if math.Abs(got.CharsPerSecond-wantCharsPerSec) > 1e-6 {
 		t.Fatalf("chars_per_second=%v want %v", got.CharsPerSecond, wantCharsPerSec)
+	}
+}
+
+// TestSummaryAccumulator_LemmaPOSIsJoint guards against the easy mistake of
+// reading "dictionary entry attachment" as the marginal product of
+// LemmaAccuracy and POSAccuracy. With one token having (lemma=ok, POS=wrong)
+// and another (lemma=wrong, POS=ok), each marginal is 50% but joint
+// attachment is 0% — there is no token where both fields match. A learner
+// would land on the right dictionary entry zero times, even though both
+// marginals look mediocre-but-passable.
+func TestSummaryAccumulator_LemmaPOSIsJoint(t *testing.T) {
+	acc := &summaryAccumulator{}
+	parsed := &parsecore.ParseResult{
+		TotalTokens: 2,
+		Sentences: []parsecore.SentenceResult{
+			{Tokens: []parsecore.TokenResult{
+				{Form: "a", Lemma: "a", POS: "NOUN", Resolved: true},
+				{Form: "b", Lemma: "b", POS: "NOUN", Resolved: true},
+			}},
+		},
+	}
+	comparisons := []TokenCompare{
+		{
+			Expected: TokenExpected{Lemma: "a", POS: "NOUN"},
+			Match:    TokenMatch{Lemma: true, POS: false},
+		},
+		{
+			Expected: TokenExpected{Lemma: "b", POS: "NOUN"},
+			Match:    TokenMatch{Lemma: false, POS: true},
+		},
+	}
+	acc.consume(parsed, comparisons, []int64{1_000_000}, 2)
+	got := acc.finish()
+	if got.LemmaAccuracy != 0.5 {
+		t.Errorf("lemma_accuracy=%v want 0.5", got.LemmaAccuracy)
+	}
+	if got.POSAccuracy != 0.5 {
+		t.Errorf("pos_accuracy=%v want 0.5", got.POSAccuracy)
+	}
+	if got.LemmaPOSAccuracy != 0 {
+		t.Errorf("lemma_pos_accuracy=%v want 0 (no token has BOTH lemma and POS correct)", got.LemmaPOSAccuracy)
 	}
 }
 
