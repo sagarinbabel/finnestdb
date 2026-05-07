@@ -149,11 +149,24 @@ make setup-omorfi
 ```
 
 Creates `.venv-omorfi/` and downloads the HFST models to `~/.cache/omorfi/`.
-`scripts/parser-comparison.sh` auto-detects the venv + adapter and
-constructs `FINNESTDB_OMORFI_CMD` for itself, so no env vars need to be
-exported. omorfi 0.9.12 dropped the `hfst` C library in favour of
-`pyhfst` (pure Python) so this no longer requires HFST C builds on
+No environment variables need to be exported: `scripts/parser-comparison.sh`
+auto-detects the venv + adapter and constructs `FINNESTDB_OMORFI_CMD` for
+itself, and `internal/parsecore/parsecore.go::runExternalOmorfi` independently
+discovers `.venv-omorfi/bin/python` at runtime (symmetric with the
+`.venv-estnltk` discovery), so direct callers like `cmd/parsertest` and
+`cmd/enrichgoldfeats` work without any export either. The repo-local venv is
+the default because system Python on macOS Homebrew enforces PEP 668
+(`externally-managed-environment`), which would otherwise block
+`pip install omorfi`. omorfi 0.9.12 dropped the `hfst` C library in favour
+of `pyhfst` (pure Python) so this no longer requires HFST C builds on
 macOS arm64.
+
+If you must override the venv (different python version, alternative omorfi
+fork), set:
+
+```
+export FINNESTDB_OMORFI_CMD="$(pwd)/.venv-omorfi/bin/python $(pwd)/scripts/omorfi_adapter_example.py"
+```
 
 **Estonian (estnltk via EstNLTK):**
 
@@ -224,7 +237,7 @@ Full schema: [`baselines/README.md`](baselines/README.md).
 Test sets and dev sets are split:
 
 - `gold/<name>-test-v*.json` — committed baselines run on these. They are the headline.
-- `gold/<name>-dev-v*.json` — committed baselines **skip** these (filtered by the comparison scripts via `grep -v -- '-dev-v'`). Use them for per-commit "watch" eval (`-dataset` explicitly), so test-set numbers stay honest.
+- `gold/<name>-dev-v*.json` — committed baselines **skip** these (filtered by the comparison scripts via `grep -v -- '-dev-v'`, and by `make eval` via the same case match). Use them for per-commit "watch" eval — either `make eval-watch` (test + dev sweep) or `cmd/parsertest -dataset <dev-set>` explicitly — so test-set numbers stay honest.
 - `gold-train/` — UD train splits, gitignored regardless of license. Used only for OOV/coverage analysis, never for accuracy claims.
 
 Don't tune against test sets. If you find yourself iterating on a fix until
@@ -259,15 +272,23 @@ Open follow-ups (not blockers):
 **Filename collision on `fi-manual` v1/v2 — fixed 2026-05-07.** Both gold sets
 have `dataset.name == "fi-manual"`. Pre-fix, the comparison script slugified
 the JSON `name` field, so two datasets collapsed to one report path and v2
-overwrote v1 silently. Now `scripts/parser-comparison{,-et}.sh` slug from the
-input *file basename* (which is unique by definition), so `fi-manual-v1.json`
-and `fi-manual-v2.json` produce distinct report files.
+overwrote v1 silently. The same collision reached `make eval` because
+`cmd/parsertest`'s default report path also slugified `dataset.name`. Now
+`scripts/parser-comparison{,-et}.sh` slug from the input *file basename*
+(which is unique by definition), and `cmd/parsertest` derives its default
+slug from the input filename via `EvaluateOptions.RunIDSlug`, so
+`fi-manual-v1.json` and `fi-manual-v2.json` produce distinct report files
+through every code path.
 
 **`omorfi` adapter dispatch on macOS arm64 — fixed 2026-05-07.**
 `scripts/parser-comparison.sh` now mirrors the EstNLTK side: when
 `.venv-omorfi/bin/python` and `scripts/omorfi_adapter_example.py` both
-exist, `FINNESTDB_OMORFI_CMD` is auto-constructed. `make setup-omorfi`
-also creates `.venv-omorfi/` symmetrically with `make setup-estnltk`'s
+exist, `FINNESTDB_OMORFI_CMD` is auto-constructed.
+`internal/parsecore/parsecore.go::runExternalOmorfi` independently
+auto-discovers `.venv-omorfi/bin/python` at runtime (symmetric with the
+existing `.venv-estnltk` discovery), so direct callers like `cmd/parsertest`
+also work without an `FINNESTDB_OMORFI_CMD` export. `make setup-omorfi`
+creates `.venv-omorfi/` symmetrically with `make setup-estnltk`'s
 `.venv-estnltk/`, instead of pip-installing into the active interpreter.
 
 **FST table size mismatch with FINAL baselines.** The 2026-05-06i FINAL

@@ -476,8 +476,16 @@ func runExternalOmorfi(lang, text string) (*parserffi.AnalysisResult, error) {
 		//   2. <repo>/scripts/omorfi_adapter_example.py where <repo> is
 		//      walked up from the test executable / cwd looking for go.mod
 		//   3. <executable-dir>/scripts/omorfi_adapter_example.py
+		//
+		// When a sibling .venv-omorfi/bin/python exists (created by
+		// `make setup-omorfi`), prefer it over the system python3 — same
+		// pattern as estnltk + .venv-estnltk. This is the canonical install
+		// path on macOS (system python3 hits PEP 668 on `pip install omorfi`).
 		if py, err := exec.LookPath("python3"); err == nil {
 			if path, ok := findOmorfiAdapter(); ok {
+				if venvPy, ok := findSiblingVenvPython(path, ".venv-omorfi"); ok {
+					py = venvPy
+				}
 				cmdSpec = py + " " + path
 			}
 		}

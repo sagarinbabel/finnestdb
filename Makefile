@@ -5,7 +5,7 @@
         reduce-ekilex \
         gen-lemmatizer-tables-fi \
         reimport-dict-fi reimport-dict-et reimport-dict verify-dict \
-        setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et \
+        setup-omorfi setup-estnltk eval eval-watch eval-check compare-parsers compare-parsers-et \
         import-ud-gold import-ud-gold-fi import-ud-gold-et \
         scrape-gutenberg-fi \
         fetch-frequency-baselines \
@@ -281,8 +281,11 @@ verify-dict:
 #     go run ./cmd/parsertest -dataset DS.json -parsers basic,custom,omorfi
 #
 # parser-comparison.sh and the `enrich-gold-feats` target both auto-detect
-# the venv at .venv-omorfi/ and construct FINNESTDB_OMORFI_CMD from it,
-# so no env vars need to be exported when the venv is in place.
+# the venv at .venv-omorfi/ and construct FINNESTDB_OMORFI_CMD from it.
+# internal/parsecore/parsecore.go::runExternalOmorfi also auto-discovers
+# .venv-omorfi/bin/python at runtime (symmetric with the .venv-estnltk
+# discovery), so direct callers like `go run ./cmd/parsertest` work
+# without any env vars exported once the venv is in place.
 
 OMORFI_VERSION := 0.9.12
 OMORFI_CACHE   := $(HOME)/.cache/omorfi
@@ -378,10 +381,35 @@ import-ud-gold-et:
 
 import-ud-gold: import-ud-gold-fi import-ud-gold-et
 
-# Run the standard local parser eval sweep without requiring external baselines.
-# Globs both the committed gold (testdata/parser-eval/) and any local-only
-# gold a fresh setup-local.sh has produced (localdata/parser-eval/).
+# ── Local parser eval sweeps ──────────────────────────────────────────────────
+#
+# Two flavors:
+#
+#   make eval        — held-out test sets only (baseline discipline). Skips
+#                      gold/<name>-dev-v*.json files the same way
+#                      `make compare-parsers{,-et}` do. This is the right
+#                      target for CI and "is my change ready to land" checks.
+#
+#   make eval-watch  — test + dev splits. Use this in the per-commit watch
+#                      loop while iterating on a fix; dev sets are noisier
+#                      but catch regressions earlier. Don't quote numbers
+#                      from this in PR bodies — they include unfrozen dev
+#                      data.
+#
+# Both glob the committed gold under testdata/parser-eval/ and any local-only
+# gold a fresh setup-local.sh has produced under localdata/parser-eval/. See
+# docs/PARSER_EVAL_METHODOLOGY.md "Held-out discipline" for why dev/test are
+# split.
 eval: parser
+	@export LD_LIBRARY_PATH="$$(pwd)/parser/target/release:$${LD_LIBRARY_PATH:-}"; \
+	for ds in testdata/parser-eval/*/gold/*.json localdata/parser-eval/*/gold/*.json; do \
+		[ -f "$$ds" ] || continue; \
+		case "$$ds" in *-dev-v*.json) continue ;; esac; \
+		echo "== $$ds =="; \
+		go run ./cmd/parsertest -dataset "$$ds" -parsers basic,custom -warmup 1 -repeat 3; \
+	done
+
+eval-watch: parser
 	@export LD_LIBRARY_PATH="$$(pwd)/parser/target/release:$${LD_LIBRARY_PATH:-}"; \
 	for ds in testdata/parser-eval/*/gold/*.json localdata/parser-eval/*/gold/*.json; do \
 		[ -f "$$ds" ] || continue; \
@@ -389,7 +417,8 @@ eval: parser
 		go run ./cmd/parsertest -dataset "$$ds" -parsers basic,custom -warmup 1 -repeat 3; \
 	done
 
-# CI-friendly alias for the same eval sweep documented in the alpha checklist.
+# CI-friendly alias. Matches `eval` (test-only) so a green CI run never
+# depends on dev-set numbers.
 eval-check: eval
 
 # ── Silver corpus scraping (Plan C / PR 3) ───────────────────────────────────
