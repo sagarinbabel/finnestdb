@@ -7,7 +7,8 @@
         reimport-dict-fi reimport-dict-et reimport-dict verify-dict \
         setup-omorfi setup-estnltk eval eval-check compare-parsers compare-parsers-et \
         import-ud-gold import-ud-gold-fi import-ud-gold-et \
-        scrape-gutenberg-fi
+        scrape-gutenberg-fi \
+        fetch-frequency-baselines
 
 # Default target
 all: build
@@ -369,3 +370,10 @@ scrape-gutenberg-fi:
 	    -target-tokens $(TARGET_TOKENS) \
 	    -out localdata/silver-fi/raw \
 	    -manifest localdata/silver-fi/manifest.jsonl
+
+# Fetch public Finnish/Estonian frequency baselines into localdata/frequency/.
+# Hermit Dave OpenSubtitles 2018 (CC BY-SA 4.0) + UD-FI-TDT (CC BY-SA 4.0) +
+# UD-ET-EDT (CC BY-NC-SA 4.0). Idempotent: skip files that exist.
+# Methodology, coverage curves, and license attribution: docs/FREQUENCY_BASELINES.md.
+fetch-frequency-baselines:
+	go run ./cmd/fetchfrequency
