@@ -65,12 +65,12 @@ normalization layer.
 
 ## Current FinEstDB Contract
 
-Set:
-
-```bash
-export OMORFI_ANALYSE_HFST="/absolute/path/to/omorfi.analyse.hfst"
-export FINNESTDB_OMORFI_CMD="/absolute/path/to/adapter-command"
-```
+The recommended path is `make setup-omorfi`, which creates a repo-local
+`.venv-omorfi/`, installs `omorfi==0.9.12` into it, and downloads the HFST
+models into `~/.cache/omorfi/`. After that, no environment variables need to
+be exported — `internal/parsecore/parsecore.go::runExternalOmorfi`
+auto-discovers `.venv-omorfi/bin/python` next to the bundled adapter at
+`scripts/omorfi_adapter_example.py`.
 
 Then run:
 
@@ -78,6 +78,14 @@ Then run:
 go run ./cmd/parsertest \
   -dataset ./testdata/parser-eval/fi-gold-small.json \
   -parsers basic,custom,omorfi
+```
+
+If you need to override (different python version, alternative omorfi fork,
+non-default model path), set:
+
+```bash
+export OMORFI_ANALYSE_HFST="/absolute/path/to/omorfi.analyse.hfst"
+export FINNESTDB_OMORFI_CMD="/absolute/path/to/adapter-command"
 ```
 
 The adapter command must:
@@ -90,11 +98,11 @@ The adapter command must:
 The subprocess timeout defaults to `5s` and can be overridden with a Go
 duration string in `FINNESTDB_OMORFI_TIMEOUT` (e.g. `30s`, `1m`).
 
-Current local example:
+Override example (rarely needed once `make setup-omorfi` has run):
 
 ```bash
-export OMORFI_ANALYSE_HFST="/Users/sagar/Downloads/projects/finnestdb/.cache/omorfi/omorfi.analyse.hfst"
-export FINNESTDB_OMORFI_CMD="/Users/sagar/Downloads/projects/finnestdb/.venv-omorfi/bin/python /Users/sagar/Downloads/projects/finnestdb/scripts/omorfi_adapter_example.py"
+export OMORFI_ANALYSE_HFST="$(pwd)/.cache/omorfi/omorfi.analyse.hfst"
+export FINNESTDB_OMORFI_CMD="$(pwd)/.venv-omorfi/bin/python $(pwd)/scripts/omorfi_adapter_example.py"
 ```
 
 ## Practical Recommendation

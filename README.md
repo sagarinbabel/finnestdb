@@ -467,17 +467,26 @@ Available parser names:
 - `omorfi`
 - `estnltk`
 
-`omorfi` is an external-adapter slot for a third Finnish baseline. To enable it,
-set `FINNESTDB_OMORFI_CMD` to a command that reads source text from stdin and
-returns JSON in the same token/sentence shape as the Rust FFI parser.
-
-Example:
+`omorfi` is the external-analyzer slot for a third Finnish baseline. The
+recommended path is:
 
 ```bash
-export FINNESTDB_OMORFI_CMD="/path/to/omorfi-adapter"
+make setup-omorfi
 go run ./cmd/parsertest \
   -dataset ./testdata/parser-eval/fi-gold-small.json \
   -parsers basic,custom,omorfi
+```
+
+That target creates a repo-local `.venv-omorfi/` (matching `.venv-estnltk/`),
+installs `omorfi==0.9.12`, and downloads the HFST models into
+`~/.cache/omorfi/`. The runtime auto-discovers the venv next to the bundled
+adapter at `scripts/omorfi_adapter_example.py`, so no environment variables
+need to be exported. To override (different python, alternative adapter), set
+`FINNESTDB_OMORFI_CMD` to a command that reads source text from stdin and
+returns JSON in the same token/sentence shape as the Rust FFI parser:
+
+```bash
+export FINNESTDB_OMORFI_CMD="/path/to/omorfi-adapter"
 ```
 
 `estnltk` is the equivalent external-adapter slot for Estonian. To enable it:

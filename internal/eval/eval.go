@@ -42,6 +42,13 @@ type EvaluateOptions struct {
 	GitCommit  string
 	WarmupRuns int
 	RepeatRuns int
+	// RunIDSlug overrides the trailing slug in RunID (and therefore the
+	// default report filename). When empty, falls back to slugify(dataset.Name).
+	// Callers should set this from the input file basename so reports for
+	// gold sets that share a name but live in different files
+	// (fi-manual-v1.json vs fi-manual-v2.json, both with name="fi-manual")
+	// don't collide in reports/parser-eval/.
+	RunIDSlug string
 }
 
 type Report struct {
@@ -231,7 +238,7 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 		options.WarmupRuns = 0
 	}
 
-	runID := fmt.Sprintf("%s-%s", time.Now().UTC().Format("20060102T150405Z"), slugify(dataset.Name))
+	runID := fmt.Sprintf("%s-%s", time.Now().UTC().Format("20060102T150405Z"), resolveRunIDSlug(options, dataset))
 	report := &Report{
 		RunID:     runID,
 		Generated: time.Now().UTC().Format(time.RFC3339),
@@ -300,6 +307,17 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 	}
 	report.PriorityRegressions = computePriorityRegressions(report)
 	return report, nil
+}
+
+// resolveRunIDSlug returns the slug used in RunID. options.RunIDSlug wins
+// when non-empty so callers that have the input filename can disambiguate
+// gold files that share dataset.Name (fi-manual-v1.json vs fi-manual-v2.json).
+// Both branches pass through slugify() so the result is filesystem-safe.
+func resolveRunIDSlug(options EvaluateOptions, dataset *Dataset) string {
+	if strings.TrimSpace(options.RunIDSlug) != "" {
+		return slugify(options.RunIDSlug)
+	}
+	return slugify(dataset.Name)
 }
 
 func DefaultReportPath(rootDir string, report *Report) string {

@@ -42,6 +42,11 @@ func main() {
 		GitCommit:  gitCommit(),
 		WarmupRuns: *warmupRuns,
 		RepeatRuns: *repeatRuns,
+		// Slug from the input filename so the default report path is unique
+		// per gold file. dataset.Name alone collides for gold sets that share
+		// a name across versioned files (e.g. fi-manual-v1.json and
+		// fi-manual-v2.json both carry name="fi-manual").
+		RunIDSlug: datasetSlug(*datasetPath),
 	})
 	if err != nil {
 		log.Fatalf("evaluate: %v", err)
@@ -123,6 +128,14 @@ func formatRate(rate float64) string {
 	default:
 		return fmt.Sprintf("%.0f", rate)
 	}
+}
+
+func datasetSlug(path string) string {
+	base := filepath.Base(path)
+	if ext := filepath.Ext(base); strings.EqualFold(ext, ".json") {
+		base = strings.TrimSuffix(base, ext)
+	}
+	return base
 }
 
 func parseParsers(raw string) []string {
