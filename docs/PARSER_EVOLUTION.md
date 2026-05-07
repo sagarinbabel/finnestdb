@@ -23,6 +23,10 @@ once Voikko-equivalent enrichment lands for FI.
 
 | Date | Commit | FI fi-manual-v1 lemma | ET et-grammar-v1 lemma | FI grammar | ET grammar | ET coverage |
 |---|---|---:|---:|---:|---:|---:|
+| 2026-05-06i (FST PR 4/4 ships, full suite re-measured) | [`91fecbf`][c-2026-05-06i] | **82.9** | 88.6 | **1.4** | **2.0** | 100.0 |
+| 2026-05-06h (FST PR 3/4: Giellalt ET) | [`5944733`][c-2026-05-06h] | — | 88.6 | — | **2.0** | **100.0** |
+| 2026-05-06g (FST PR 2/4: Giellalt FI HFST) | [`7d5cafd`][c-2026-05-06g] | — | — | 1.4 | — | — |
+| 2026-05-06f (FST PR 1/4: Voikko VFST) | [`d9937c0`][c-2026-05-06f] | — | — | **1.4** | — | — |
 | 2026-05-06d (Phase 3 ships) | (PR 3.2 head) | 81.4 | 88.6 | 0.0 | 0.0 | 100.0 |
 | 2026-05-06c (Phase 2 ships) | [`615556e`][c-2026-05-06c] | 81.4 | 88.6 | 0.0 | 0.0 | 100.0 |
 | 2026-05-06b (post-priority-fix) | [`b327d4f`][c-2026-05-06b] | **81.4** | **88.6** | 0.0 | 0.0 | **100.0** |
@@ -31,6 +35,10 @@ once Voikko-equivalent enrichment lands for FI.
 | 2026-05-05 (estnltk ceiling) | [`af111c2`][c-2026-05-05] | — | **98.1** | — | **92.2** | 100.0 |
 | 2026-04-28 | [`bb744ba`][c-2026-04-28] | 72.9 | 87.6 | 0.0 | 2.0 | 94.6 |
 
+[c-2026-05-06i]: https://github.com/sagarinbabel/finnestdb/commit/91fecbf
+[c-2026-05-06h]: https://github.com/sagarinbabel/finnestdb/commit/5944733
+[c-2026-05-06g]: https://github.com/sagarinbabel/finnestdb/commit/7d5cafd
+[c-2026-05-06f]: https://github.com/sagarinbabel/finnestdb/commit/d9937c0
 [c-2026-05-06c]: https://github.com/sagarinbabel/finnestdb/commit/615556e
 [c-2026-05-06b]: https://github.com/sagarinbabel/finnestdb/commit/b327d4f
 [c-2026-05-06]: https://github.com/sagarinbabel/finnestdb/commit/46d8b77
@@ -38,6 +46,146 @@ once Voikko-equivalent enrichment lands for FI.
 [c-2026-04-28]: https://github.com/sagarinbabel/finnestdb/commit/bb744ba
 
 ## Entries
+
+### 2026-05-06i — FST PR 4/4 ships: change document + final eval freeze
+
+**Commit**: [`91fecbf`][c-2026-05-06i] (PR [#112](https://github.com/sagarinbabel/finnestdb/pull/112))
+**Detail**: [`baselines/2026-05-06-final-fi.md`](baselines/2026-05-06-final-fi.md), [`baselines/2026-05-06-final-et.md`](baselines/2026-05-06-final-et.md)
+
+PR 4 of the four-PR FST stack ([#107](https://github.com/sagarinbabel/finnestdb/pull/107) → [#108](https://github.com/sagarinbabel/finnestdb/pull/108) → [#110](https://github.com/sagarinbabel/finnestdb/pull/110) → [#112](https://github.com/sagarinbabel/finnestdb/pull/112)). Documentation-only: ships [`docs/FST_LEMMATIZER.md`](FST_LEMMATIZER.md) (the per-package architecture doc), [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md) (no upstream `.vfst`/`.hfstol` blobs in git; derived factual tables only), and the bilingual lexical-architecture section of [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md). Re-runs the full eval suite to confirm post-PR3 numbers held after merge cleanup; first run that measures **fi-manual-v1 (22 cases)** under the full FST stack.
+
+**Headline numbers** (custom parser):
+
+| Dataset (cases) | Lemma | POS | Grammar | Full | Coverage |
+|---|---:|---:|---:|---:|---:|
+| fi-grammar (80) | 97.4 | 98.7 | 1.4 | 51.9 | 100.0 |
+| fi-core (6) | 85.0 | 90.0 | 0.0 | 35.0 | 100.0 |
+| fi-manual-v1 (22) | **82.9** | 87.1 | **13.3** | 62.9 | 96.9 |
+| fi-manual-v2 (4) | 88.9 | 100.0 | 0.0 | 55.6 | 100.0 |
+| et-grammar (50) | 88.6 | 96.2 | 2.0 | 42.9 | 100.0 |
+| et-manual (4) | 88.9 | 77.8 | 16.7 | 22.2 | 100.0 |
+
+**Changes since 2026-05-06h**: docs only. No code paths affected.
+
+**Net effect** (vs. 2026-05-06h):
+
+- Per-dataset numbers held identical to PR3 head on every dataset PR3 measured. Cleanup commits between PR3 head and PR4 merge did not move metrics — verified file-by-file against `2026-05-06-post-pr3-*.json` and `2026-05-06-post-pr2-hfstol-fi-*.json`.
+- **First FST-stack measurement of `fi-manual-v1` (22 cases): lemma 81.4 → 82.9 (+1.4pp), grammar 0.0 → 13.3 (+13.3pp), coverage 91.2 → 96.9 (+5.7pp).** This is the FST stack's largest accuracy lift on a non-trivial Finnish set — the v2 (4-case) set used at PR1/PR2 didn't have headroom.
+
+**Open issues this surfaced**:
+
+- Grammar accuracy still low across all sets (1.4–16.7%). The FST analysers produce UD FEATS but `internal/store/dict.go` doesn't yet consume Number/Tense/Mood/Person from FST output beyond the Voikko grammar-label heuristic. Tracked as the FEATS-migration follow-up (was [#118](https://github.com/sagarinbabel/finnestdb/pull/118), to be cherry-picked onto the cleaned base).
+- Tracked tables `pkg/lemmatizer-fi-et/tables/{fi_min.json,fi_wordlist.txt,et_min.json}` are derived data and should move under `localdata/` per the new artifact policy. Pending the artifact-policy cleanup PR.
+
+---
+
+### 2026-05-06h — FST PR 3/4 ships: Giellalt ET HFST analyser
+
+**Commit**: [`5944733`][c-2026-05-06h] (PR [#110](https://github.com/sagarinbabel/finnestdb/pull/110))
+**Detail**: [`baselines/2026-05-06-post-pr3-et.md`](baselines/2026-05-06-post-pr3-et.md)
+
+Plugs Giellalt's `lang-est` HFST analyser into Step 5 for ET via the `pkg/lemmatizer-fi-et/hfstol/` runtime that PR2 introduced for FI. Extends `pkg/lemmatizer-fi-et/giellaltmap/` with ET-specific Giellalt tag mappings. `internal/store/dict.go` Step 5 dispatches to ET FST analyses when `lang=ET`.
+
+**Headline numbers** (custom parser, ET only — PR3 didn't re-measure FI):
+
+| Dataset (cases) | Lemma | POS | Grammar | Full | Coverage |
+|---|---:|---:|---:|---:|---:|
+| et-grammar (50) | 88.6 | 96.2 | 2.0 | 42.9 | **100.0** |
+| et-manual (4) | **88.9** | 77.8 | **16.7** | 22.2 | **100.0** |
+
+**Changes since 2026-05-06g**:
+
+- [#110](https://github.com/sagarinbabel/finnestdb/pull/110) — `giellaltmap` ET tag table; `pkg/lemmatizer-fi-et/lemmatizer.go` extended to dispatch `Lemmatize(ET, …)`; Step 5 wired for ET in `internal/store/dict.go`; generated factual table at `pkg/lemmatizer-fi-et/tables/et_min.json`.
+
+**Net effect** (vs. 2026-05-06g, ET-only):
+
+- **et-manual: lemma 77.8 → 88.9 (+11.1pp), grammar 0.0 → 16.7 (+16.7pp), coverage 91.7 → 100.0 (+8.3pp)** — single largest stage-attributable lift in the FST stack. Closes the long-standing ET gold-set coverage gap that 2026-04-28's first frozen baseline flagged.
+- et-grammar: +1.1pp coverage; lemma/grammar/POS held. The remaining headroom (vs. estnltk's 98.1 lemma / 92.2 grammar at the 2026-05-05 ceiling) is on contextual-disambiguation cases the analyser doesn't disambiguate either.
+- FI numbers carried unchanged from PR2 (PR3 was ET-only by design).
+
+**Open issues this surfaced**:
+
+- et-grammar grammar accuracy stuck at 2.0%. Same FEATS-consumer gap as FI; unblocks via the FEATS-migration follow-up.
+- `pickBestVFSTAnalysis` in `internal/store/dict.go` is FI-named but is also chosen for ET tie-breaking. Cosmetic — not a behavior bug — but worth renaming when the FEATS migration touches the same code.
+
+---
+
+### 2026-05-06g — FST PR 2/4 ships: Giellalt FI HFST analyser
+
+**Commit**: [`7d5cafd`][c-2026-05-06g] (PR [#108](https://github.com/sagarinbabel/finnestdb/pull/108))
+**Detail**: [`baselines/2026-05-06-post-pr2-hfstol-fi.md`](baselines/2026-05-06-post-pr2-hfstol-fi.md)
+
+Adds a pure-Go HFST optimised-lookup runtime (`pkg/lemmatizer-fi-et/hfstol/`) and plugs Giellalt's `lang-fin` FI analyser into Step 5 alongside Voikko's VFST. The two analysers run in priority order: Voikko VFST first (its case-disambiguation heuristics are stronger on common Finnish), Giellalt HFST as a fallback that fills the lookup gaps VFST misses.
+
+**Headline numbers** (custom parser, FI only — PR2 didn't re-measure ET):
+
+| Dataset (cases) | Lemma | POS | Grammar | Full | Coverage |
+|---|---:|---:|---:|---:|---:|
+| fi-grammar (80) | 97.4 | 98.7 | 1.4 | 51.9 | 100.0 |
+| fi-core (6) | 85.0 | 90.0 | 0.0 | 35.0 | **100.0** |
+| fi-manual (v2, 4) | 88.9 | 100.0 | 0.0 | 55.6 | 100.0 |
+
+**Changes since 2026-05-06f**:
+
+- [#108](https://github.com/sagarinbabel/finnestdb/pull/108) — `pkg/lemmatizer-fi-et/hfstol/{transducer,analyze}.go` (HFST optimised-lookup format reader, pure Go); `pkg/lemmatizer-fi-et/giellaltmap/` (Giellalt tag → `Analysis`); `lemmatizer.go` extended to dispatch to both VFST and HFST tables for FI.
+
+**Net effect** (vs. 2026-05-06f):
+
+- **fi-core coverage: 95.7 → 100.0 (+4.3pp).** Pure recall lift — Giellalt HFST produces a lemma for surface forms VFST didn't cover. No accuracy movement on grammar/manual sets, which were already coverage-saturated.
+- No FI lemma/POS change vs PR1 — when both VFST and HFST resolve a form, VFST wins per the analyser priority, so existing rankings are preserved.
+- ET unchanged (PR2 is FI-only).
+
+**Open issues this surfaced**:
+
+- fi-grammar grammar accuracy plateaus at 1.4%. The HFST analyser produces UD-style FEATS but `internal/store/dict.go` only consumes lemma + POS today. Same FEATS-consumer gap that bites ET at PR3.
+- fi-manual-v1 (the 22-case real-world Finnish set) wasn't re-measured at this stage; first measurement under the FST stack happens at PR4 (see 2026-05-06i).
+
+---
+
+### 2026-05-06f — FST PR 1/4 ships: Voikko VFST runtime (FI)
+
+**Commit**: [`d9937c0`][c-2026-05-06f] (PR [#107](https://github.com/sagarinbabel/finnestdb/pull/107))
+**Detail**: [`baselines/2026-05-06-post-pr1-vfst-fi.md`](baselines/2026-05-06-post-pr1-vfst-fi.md); pre-FST floor at [`baselines/2026-05-06-pre-fst-comparison-fi.md`](baselines/2026-05-06-pre-fst-comparison-fi.md), [`baselines/2026-05-06-pre-fst-comparison-et.md`](baselines/2026-05-06-pre-fst-comparison-et.md)
+
+First step of the FST stack. Adds `pkg/lemmatizer-fi-et/vfst/` — a pure-Go port of libvoikko's `UnweightedTransducer` reading Voikko's `.vfst` binary directly — and `pkg/lemmatizer-fi-et/voikkomap/` to translate Voikko's FSTOUTPUT (`[Ln][Ica][Xp]talo[X]talo[Sn][Ny]`) into a structured `Analysis{Lemma, UPOS, GrammarLabel, Number, Tense, Mood, Person}`. Wires Step 5 into `internal/store/dict.go::BatchLookupForms` so unresolved tokens (or ambiguous multi-lemma resolutions) get a VFST analysis after the dict steps fail to nail a single answer.
+
+**Pre-FST floor** (custom parser, the immediate predecessor — frozen on main as `2026-05-06-pre-fst-*`):
+
+| Dataset (cases) | Lemma | POS | Grammar | Full | Coverage |
+|---|---:|---:|---:|---:|---:|
+| fi-grammar (80) | 96.8 | 98.1 | 0.0 | 51.3 | 99.7 |
+| fi-core (6) | 85.0 | 90.0 | 0.0 | 35.0 | 95.7 |
+| fi-manual-v1 (22) | 81.4 | 85.7 | 0.0 | 62.9 | 91.2 |
+| fi-manual (v2, 4) | 88.9 | 100.0 | 0.0 | 55.6 | 100.0 |
+| et-grammar (50) | 88.6 | 96.2 | 2.0 | 42.9 | 98.9 |
+| et-manual (4) | 77.8 | 77.8 | 0.0 | 11.1 | 91.7 |
+
+**Headline numbers post-PR1** (custom parser, FI only — PR1 didn't measure ET):
+
+| Dataset (cases) | Lemma | POS | Grammar | Full | Coverage |
+|---|---:|---:|---:|---:|---:|
+| fi-grammar (80) | **97.4** | **98.7** | **1.4** | 51.9 | **100.0** |
+| fi-core (6) | 85.0 | 90.0 | 0.0 | 35.0 | 95.7 |
+| fi-manual (v2, 4) | 88.9 | 100.0 | 0.0 | 55.6 | 100.0 |
+
+**Changes since 2026-05-06d** (= the pre-FST baseline parser; 2026-05-06b/c/d differ only in dictionary state, not parser code on this path):
+
+- [#107](https://github.com/sagarinbabel/finnestdb/pull/107) — `pkg/lemmatizer-fi-et/{vfst,voikkomap,lemmatizer}` packages; `internal/store/dict.go` Step 5 added for FI; generated factual table `pkg/lemmatizer-fi-et/tables/fi_min.json` (derived offline from upstream Voikko `mor.vfst` via `cmd/genlemmatizertables`); [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md) introduced (forbids upstream transducer blobs in git).
+
+**Net effect** (vs. pre-FST baseline above):
+
+- **fi-grammar: lemma 96.8 → 97.4 (+0.6pp), POS 98.1 → 98.7 (+0.6pp), grammar 0.0 → 1.4 (+1.4pp), coverage 99.7 → 100.0 (+0.3pp).** First non-zero grammar reading any FI dataset has produced — VFST emits Number/Tense/Mood/Person on surface analyses where the dict couldn't.
+- fi-core unchanged at 95.7% coverage (the gap is on words VFST also misses; closes in PR2).
+- fi-manual unchanged (the 4-case smoke set was already at 100% coverage and 88.9% lemma; no headroom for VFST to move it).
+- ET not re-measured at this step (PR1 is FI-only).
+
+**Open issues this surfaced**:
+
+- VFST analyses sometimes return multiple readings; `pickBestVFSTAnalysis` picks one heuristically (lowercase-surface prefers lowercase lemma, demote PROPN on lowercase, FST priority order on tie). Edge cases pinned in `internal/store/dict_test.go::TestPickBestVFSTAnalysis_*`.
+- VFST's Voikko-specific tag schema differs from Giellalt's HFST schema — addressed in PR2 by the parallel `voikkomap` / `giellaltmap` design.
+- VFST covers ~95% of contemporary Finnish surface forms; the long tail (compounds, proper nouns, technical vocabulary) is what PR2's Giellalt HFST is designed to fill.
+
+---
 
 ### 2026-05-06d — Phase 3 ships Kotus paradigm classes for FI
 
