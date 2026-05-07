@@ -9,9 +9,12 @@ workbench.
 - [What makes this parser special](#what-makes-this-parser-special)
 - [How to Run & Test](#how-to-run--test)
   - [Prerequisites](#prerequisites)
-  - [Build & Start](#build--start)
+  - [Quick start](#quick-start)
+    - [A — You got a `finnestdb-bootstrap.tgz`](#a--you-got-a-finnestdb-bootstraptgz-from-a-teammate)
+    - [B — Setting up from scratch](#b--setting-up-from-scratch)
+    - [C — Compile only, no data](#c--compile-only-no-data-import)
   - [Frontend Build](#frontend-build)
-  - [Dictionary import](#dictionary-import)
+  - [Refreshing dictionary data](#refreshing-dictionary-data)
     - [Refreshing the Ekilex data](#refreshing-ekilex-data)
   - [Testing the Parse Feature](#testing-the-parse-feature)
   - [Language Validation](#language-validation)
@@ -109,32 +112,75 @@ you submit:
 
 ### Prerequisites
 
-| Tool | Version | Check |
-|------|---------|-------|
-| Go   | 1.21+   | `go version` |
-| Rust | stable  | `cargo --version` |
+| Tool      | Version | Check                | Why |
+|-----------|---------|----------------------|-----|
+| Go        | 1.21+   | `go version`         | Server + import tooling |
+| Rust      | stable  | `cargo --version`    | Tokenizer (built once via `make parser`) |
+| `curl`    | any     | `curl --version`     | Fetches Kotus + Ekilex during setup |
+| `sqlite3` | any     | `sqlite3 --version`  | Used by import targets to check DB state |
 
-SQLite is bundled via `go-sqlite3` — no separate install needed.
+The Go server uses `go-sqlite3` (bundled), so the `sqlite3` CLI is only needed
+during dev/setup, not at runtime.
 
-> **Note:** You cannot open `web/index.html` directly in the browser.
-> The app makes API calls to the Go server, so the server must be running first.
+> **Note:** You cannot open `web/index.html` directly in the browser. The app
+> makes API calls to the Go server, so the server must be running first.
 
-### Build & Start
+### Quick start
+
+Pick whichever path matches your situation. Each leaves you with a server on
+**http://localhost:8080**.
+
+#### A — You got a `finnestdb-bootstrap.tgz` from a teammate
+
+The tarball contains the populated `finnestdb.db` and the fetched/reduced data
+under `localdata/`. Untar next to the repo and you skip every fetch and import:
 
 ```bash
 git clone https://github.com/sagarinbabel/finnestdb.git
 cd finnestdb
+tar xzf path/to/finnestdb-bootstrap.tgz   # extracts localdata/ + finnestdb.db
 make run
 ```
 
-Then open **http://localhost:8080** in your browser.
-
-If you want a one-command **first local run** that also imports the required
-dictionaries (takes a while; downloads a lot of data), use:
+#### B — Setting up from scratch
 
 ```bash
-make run-local
+git clone https://github.com/sagarinbabel/finnestdb.git
+cd finnestdb
+bash scripts/setup-local.sh   # builds parser, fetches data, populates finnestdb.db
+make run
 ```
+
+`scripts/setup-local.sh` is the single bootstrap entry point — see
+[`docs/ARTIFACT_POLICY.md`](docs/ARTIFACT_POLICY.md) for what data lives where.
+It is idempotent: re-running skips already-fetched content. Knobs:
+
+- **No `EKILEX_API_KEY`**: the script auto-skips the multi-hour Ekilex
+  `/api/word/details` scrape. The parser still works; Estonian coverage is
+  reduced. Get a free key at <https://ekilex.ee/> and re-run when you want
+  the full enrichment.
+- **`SKIP_UD=1`**: skip the ~50 MB × 6 UD treebank clones (parser-eval only).
+- **`SKIP_SILVER=1`**: skip the Gutenberg-FI silver scrape (parser-eval only).
+- **`SKIP_EKILEX_DETAILS=1`**: force-skip Ekilex details even with API key.
+
+If you only need the dictionary lookup path running, the fast variant is:
+
+```bash
+SKIP_UD=1 SKIP_SILVER=1 bash scripts/setup-local.sh
+```
+
+#### C — Compile only, no data import
+
+```bash
+make build       # builds Rust parser + Go server binary
+go test ./...    # runs the test suite
+```
+
+Use this when you're hacking on parser code and don't need a populated DB.
+`./finnestdb` will start but the parse page returns zero matches until you
+populate the DB via path A or B.
+
+---
 
 The app opens to the public landing page. Sign in with an email address and
 password (8+ chars) to use Parse, Decks, and Review. The current auth flow is
@@ -156,27 +202,33 @@ npm run build
 
 `npm install` is only needed the first time or after dependency changes.
 
-### Dictionary import
+### Refreshing dictionary data
 
-The first time you run the app, you need to import the kaikki.org dictionary.
-This is a one-time operation (~5 minutes per language):
+> **Most contributors don't need this section.** `scripts/setup-local.sh`
+> (path B above) chains every relevant import target end-to-end. Read on
+> only if you're refreshing one language without re-running the full
+> bootstrap, or debugging a specific import step.
+
+Per-language import targets (one-time, ~5 min per language):
 
 ```bash
 make import-dict-fi             # Finnish  (~12-20M forms, downloads ~200MB)
-make import-dict-et             # Estonian (optional)
-make import-ekilex-et           # Estonian EKI 2026 public headwords (tracked snapshot)
+make import-dict-et             # Estonian (kaikki.org base)
+make import-ekilex-et           # Estonian EKI 2026 public headwords (from localdata/)
 make import-ekilex-details-et   # Estonian Ekilex full reduced drop (~178k lemmas, ~6.2M forms)
 make import-dict-et-ekilex      # (optional) Estonian Ekilex API smoke import (requires EKILEX_API_KEY; not recommended for full runs)
 ```
 
-Recommended Estonian import (reliable, offline, fast at import time):
+Recommended Estonian import (reliable, fast at import time, assumes
+`localdata/ekilex/` is populated):
 
 ```bash
 make import-dict-et-recommended
 ```
 
-`make run` does **not** auto-import — import once manually, then `make run`
-every subsequent time. The data persists in `finnestdb.db`.
+`make run` does **not** auto-import — import once via path A, B, or one of
+the targets above, then `make run` every subsequent time. The data persists
+in `finnestdb.db`.
 
 Imported rows carry a `source` and `source_priority`, so multiple sources can
 coexist deterministically (kaikki=10, ekilex=20, custom=100). Higher-priority

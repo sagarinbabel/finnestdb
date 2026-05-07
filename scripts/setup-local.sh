@@ -53,6 +53,24 @@ command -v curl    >/dev/null || fail "curl not found in PATH"
 command -v sqlite3 >/dev/null || fail "sqlite3 not found in PATH"
 command -v cargo   >/dev/null || fail "cargo not found in PATH (needed for the Rust parser)"
 
+# ── plan summary (so the user knows what's about to happen) ───────────────────
+log "── plan ────────────────────────────────────────────────────────────────"
+log "Will fetch into ./localdata/ (gitignored), populate ./finnestdb.db."
+if [[ -n "${EKILEX_API_KEY:-}" ]]; then
+    log "  EKILEX_API_KEY: set    → full Ekilex /api/word/details scrape (multi-hour)."
+else
+    log "  EKILEX_API_KEY: unset  → skipping Ekilex details. Server still runs;"
+    log "                          ET coverage reduced. Get a free key at"
+    log "                          https://ekilex.ee/ and re-run when ready."
+fi
+[[ -n "${SKIP_EKILEX_DETAILS:-}" ]] && log "  SKIP_EKILEX_DETAILS=1  → forced-skip Ekilex details."
+[[ -n "${SKIP_UD:-}"             ]] && log "  SKIP_UD=1              → skipping UD treebanks (parser-eval only)."
+[[ -n "${SKIP_SILVER:-}"         ]] && log "  SKIP_SILVER=1          → skipping Gutenberg-FI silver (parser-eval only)."
+log ""
+log "Tip: if you only need the dictionary path running and don't care about"
+log "     parser-eval datasets, re-run with: SKIP_UD=1 SKIP_SILVER=1"
+log "──────────────────────────────────────────────────────────────────────────"
+
 # ── 1. build Rust parser ──────────────────────────────────────────────────────
 log "Building Rust parser…"
 make parser
@@ -79,13 +97,13 @@ if [[ -f "$EKILEX_QUEUE" ]]; then
     log "Ekilex public-word snapshot already present — skipping refresh."
 else
     log "Fetching Ekilex public-word snapshot (ET, /api/public_word/eki)…"
-    if [[ -z "${EKILEX_API_KEY:-}" ]]; then
-        warn "EKILEX_API_KEY not set; trying without (some endpoints may 401)."
-    fi
-    make fetch-ekilex-refresh || warn "fetch-ekilex-refresh exited non-zero — continuing without."
+    # Note: the no-key path is announced up front in the plan header. If the
+    # endpoint rejects an unauthenticated request we just skip — the parser
+    # still works without ET enrichment.
+    make fetch-ekilex-refresh || true
     if [[ ! -f "$EKILEX_QUEUE" ]]; then
-        warn "Ekilex public-word snapshot is still missing at $EKILEX_QUEUE."
-        warn "   ET setup will skip Ekilex public-word enrichment this run."
+        warn "Ekilex public-word snapshot not retrieved (this is expected without"
+        warn "  EKILEX_API_KEY). Setup continues; ET headword enrichment is skipped."
     fi
 fi
 
