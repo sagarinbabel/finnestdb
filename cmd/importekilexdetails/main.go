@@ -532,16 +532,6 @@ func joinTranslationData(d *lemmaPOSData) string {
 	return strings.Join(out, "; ")
 }
 
-// joinTranslations is kept for tests that exercise the per-entry path.
-func joinTranslations(entry definitionEntry) string {
-	tmp := lemmaPOSMap{}
-	tmp.add("_", "_", collectTranslations(entry))
-	if d, ok := tmp["_"]["_"]; ok {
-		return joinTranslationData(d)
-	}
-	return ""
-}
-
 // morphFormClass categorises an Ekilex morph_code as verbal, nominal, or
 // unknown so we can attribute each form to the right POS when a lemma has
 // multiple homonyms (e.g. ET "jooma" is both VERB drink and NOUN
