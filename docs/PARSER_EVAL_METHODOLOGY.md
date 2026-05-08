@@ -207,11 +207,12 @@ bash scripts/parser-comparison.sh -o reports/parser-eval/$(date +%Y-%m-%d)-fi.md
 bash scripts/parser-comparison-et.sh -o reports/parser-eval/$(date +%Y-%m-%d)-et.md
 ```
 
-Default discovery: every `testdata/parser-eval/{fi,et}/gold/*.json` not matching
-`-dev-v` (held-out test discipline — dev sets are for per-commit "watch" eval,
-not committed baselines). Each dataset gets its own JSON report under
-`reports/parser-eval/${RUN_TS}-${name}.json`. The markdown summary aggregates
-them.
+Default discovery: every `.json` or `.json.gz` dataset under
+`testdata/parser-eval/{fi,et}/gold/` and `localdata/parser-eval/{fi,et}/gold/`
+not matching `-dev-v` (held-out test discipline — dev sets are for per-commit
+"watch" eval, not committed baselines). Each dataset gets its own JSON report
+under `reports/parser-eval/${RUN_TS}-${name}.json`. The markdown summary
+aggregates them.
 
 ### 5. Freeze a baseline
 
@@ -259,8 +260,8 @@ Full schema: [`baselines/README.md`](baselines/README.md).
 
 Test sets and dev sets are split:
 
-- `gold/<name>-test-v*.json` — committed baselines run on these. They are the headline.
-- `gold/<name>-dev-v*.json` — committed baselines **skip** these (filtered by the comparison scripts via `grep -v -- '-dev-v'`, and by `make eval` via the same case match). Use them for per-commit "watch" eval — either `make eval-watch` (test + dev sweep) or `cmd/parsertest -dataset <dev-set>` explicitly — so test-set numbers stay honest.
+- `gold/<name>-test-v*.json[.gz]` — committed baselines run on these. They are the headline.
+- `gold/<name>-dev-v*.json[.gz]` — committed baselines **skip** these (filtered by the comparison scripts via `grep -v -- '-dev-v'`, and by `make eval` via the same case match). Use them for per-commit "watch" eval — either `make eval-watch` (test + dev sweep) or `cmd/parsertest -dataset <dev-set>` explicitly — so test-set numbers stay honest.
 - `gold-train/` — UD train splits, gitignored regardless of license. Used only for OOV/coverage analysis, never for accuracy claims.
 
 Don't tune against test sets. If you find yourself iterating on a fix until

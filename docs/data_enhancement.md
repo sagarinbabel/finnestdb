@@ -46,12 +46,12 @@ locations are auto-discovered by `scripts/parser-comparison{,-et}.sh`.
 | `fi-grammar-v1` | hand-authored, project | (project) | 80 | 156 | `testdata/parser-eval/fi/gold/fi-grammar-v1.json` | early (pre-Plan-C) | 2026-05-07 (UD FEATS via `cmd/enrichgoldfeats`) |
 | `fi-manual-v1` | hand-authored, project | (project) | 22 | 70 | `testdata/parser-eval/fi/gold/fi-manual-v1.json` | early (pre-Plan-C) | 2026-05-07 (UD FEATS via `cmd/enrichgoldfeats`) |
 | `fi-manual-v2` | hand-authored, project | (project) | 4 | 9 | `testdata/parser-eval/fi/gold/fi-manual-v2.json` | early (pre-Plan-C) | 2026-05-07 (UD FEATS via `cmd/enrichgoldfeats`) |
-| `ud-fi-tdt-dev-v1` | UD\_Finnish-TDT (Turku Dependency Treebank) | CC BY-SA 4.0 | 1,358 | 15,588 | `testdata/parser-eval/fi/gold/ud-fi-tdt-dev-v1.json` | 2026-05-06 (PR #113) | 2026-05-07 |
-| `ud-fi-tdt-test-v1` | UD\_Finnish-TDT | CC BY-SA 4.0 | 1,554 | 17,951 | `testdata/parser-eval/fi/gold/ud-fi-tdt-test-v1.json` | 2026-05-06 (PR #113) | 2026-05-07 |
-| `ud-fi-ftb-dev-v1` | UD\_Finnish-FTB (FinnTreeBank, Helsinki) | CC BY 4.0 | 1,875 | 13,536 | `testdata/parser-eval/fi/gold/ud-fi-ftb-dev-v1.json` | 2026-05-06 (PR #113) | 2026-05-07 |
-| `ud-fi-ftb-test-v1` | UD\_Finnish-FTB | CC BY 4.0 | 1,867 | 13,973 | `testdata/parser-eval/fi/gold/ud-fi-ftb-test-v1.json` | 2026-05-06 (PR #113) | 2026-05-07 |
-| `ud-fi-pud-test-v1` | UD\_Finnish-PUD (Parallel UD test set) | CC BY-SA 3.0 | 1,000 | 13,474 | `testdata/parser-eval/fi/gold/ud-fi-pud-test-v1.json` | 2026-05-06 (PR #113) | 2026-05-07 |
-| `ud-fi-ood-test-v1` | UD\_Finnish-OOD (out-of-domain — poetry/dialogue) | CC BY-SA 4.0 | 2,106 | 16,151 | `testdata/parser-eval/fi/gold/ud-fi-ood-test-v1.json` | 2026-05-06 (PR #113) | 2026-05-07 |
+| `ud-fi-tdt-dev-v1` | UD\_Finnish-TDT (Turku Dependency Treebank) | CC BY-SA 4.0 | 1,358 | 15,588 | `testdata/parser-eval/fi/gold/ud-fi-tdt-dev-v1.json.gz` | 2026-05-06 (PR #113) | 2026-05-07 |
+| `ud-fi-tdt-test-v1` | UD\_Finnish-TDT | CC BY-SA 4.0 | 1,554 | 17,951 | `testdata/parser-eval/fi/gold/ud-fi-tdt-test-v1.json.gz` | 2026-05-06 (PR #113) | 2026-05-07 |
+| `ud-fi-ftb-dev-v1` | UD\_Finnish-FTB (FinnTreeBank, Helsinki) | CC BY 4.0 | 1,875 | 13,536 | `testdata/parser-eval/fi/gold/ud-fi-ftb-dev-v1.json.gz` | 2026-05-06 (PR #113) | 2026-05-07 |
+| `ud-fi-ftb-test-v1` | UD\_Finnish-FTB | CC BY 4.0 | 1,867 | 13,973 | `testdata/parser-eval/fi/gold/ud-fi-ftb-test-v1.json.gz` | 2026-05-06 (PR #113) | 2026-05-07 |
+| `ud-fi-pud-test-v1` | UD\_Finnish-PUD (Parallel UD test set) | CC BY-SA 3.0 | 1,000 | 13,474 | `testdata/parser-eval/fi/gold/ud-fi-pud-test-v1.json.gz` | 2026-05-06 (PR #113) | 2026-05-07 |
+| `ud-fi-ood-test-v1` | UD\_Finnish-OOD (out-of-domain — poetry/dialogue) | CC BY-SA 4.0 | 2,106 | 16,151 | `testdata/parser-eval/fi/gold/ud-fi-ood-test-v1.json.gz` | 2026-05-06 (PR #113) | 2026-05-07 |
 | **FI gold subtotal (committed)** | | | **9,872** | **90,928** | | | |
 
 Re-pull on 2026-05-07 produced byte-identical outputs to what's already

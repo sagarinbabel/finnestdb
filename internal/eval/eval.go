@@ -1,8 +1,10 @@
 package eval
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -197,7 +199,7 @@ type PriorityRegression struct {
 }
 
 func LoadDataset(path string) (*Dataset, error) {
-	b, err := os.ReadFile(path)
+	b, err := readDatasetBytes(path)
 	if err != nil {
 		return nil, err
 	}
@@ -226,6 +228,23 @@ func LoadDataset(path string) (*Dataset, error) {
 		}
 	}
 	return &dataset, nil
+}
+
+func readDatasetBytes(path string) ([]byte, error) {
+	if !strings.HasSuffix(strings.ToLower(path), ".gz") {
+		return os.ReadFile(path)
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	zr, err := gzip.NewReader(f)
+	if err != nil {
+		return nil, err
+	}
+	defer zr.Close()
+	return io.ReadAll(zr)
 }
 
 func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report, error) {

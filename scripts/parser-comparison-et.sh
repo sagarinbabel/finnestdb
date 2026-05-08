@@ -40,15 +40,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ ${#DATASETS[@]} -eq 0 ]]; then
-    # Default discovery: every et/gold/*.json EXCEPT dev splits (held-out
+    # Default discovery: every et/gold/*.json or *.json.gz EXCEPT dev splits (held-out
     # discipline — see scripts/parser-comparison.sh comment). Globs both
     # testdata/parser-eval/et/gold/ (committed ET gold — manual + grammar
     # only) and localdata/parser-eval/et/gold/ (the NC-licensed UD-ET
     # dev/test files written by scripts/fetch-and-import-ud.sh). Without
     # the localdata glob, fresh clones would only see ~50 ET cases.
     while IFS= read -r f; do DATASETS+=("$f"); done \
-        < <(ls testdata/parser-eval/et/gold/*.json localdata/parser-eval/et/gold/*.json 2>/dev/null \
-            | grep -v -- '-dev-v' | sort)
+        < <(ls \
+            testdata/parser-eval/et/gold/*.json testdata/parser-eval/et/gold/*.json.gz \
+            localdata/parser-eval/et/gold/*.json localdata/parser-eval/et/gold/*.json.gz \
+            2>/dev/null | grep -v -- '-dev-v' | sort)
 fi
 
 if [[ ${#DATASETS[@]} -eq 0 ]]; then
@@ -109,7 +111,9 @@ fi
 for ds in "${DATASETS[@]}"; do
     # Slug from the dataset *filename* (not the JSON `name` field) —
     # see scripts/parser-comparison.sh for the rationale.
-    base="$(basename "$ds" .json)"
+    base="$(basename "$ds")"
+    base="${base%.json.gz}"
+    base="${base%.json}"
     slug="$(printf '%s' "$base" | python3 -c "
 import re, sys
 raw = sys.stdin.read().strip()

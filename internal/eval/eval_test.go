@@ -1,11 +1,57 @@
 package eval
 
 import (
+	"compress/gzip"
+	"encoding/json"
 	"math"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"finnestdb/internal/parsecore"
 )
+
+func TestLoadDatasetReadsGzip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "dataset.json.gz")
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	zw := gzip.NewWriter(f)
+	data, err := json.Marshal(Dataset{
+		Name:     "fi-smoke",
+		Language: "FI",
+		Cases: []DatasetCase{{
+			ID:   "c1",
+			Text: "Kissa.",
+			Tokens: []ExpectedTokenRef{{
+				Surface: "Kissa",
+				Lemma:   "kissa",
+				POS:     "NOUN",
+			}},
+		}},
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if _, err := zw.Write(data); err != nil {
+		t.Fatalf("gzip write: %v", err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("gzip close: %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	got, err := LoadDataset(path)
+	if err != nil {
+		t.Fatalf("LoadDataset: %v", err)
+	}
+	if got.Name != "fi-smoke" || got.Language != "FI" || len(got.Cases) != 1 {
+		t.Fatalf("dataset=%+v", got)
+	}
+}
 
 func TestResolveRunIDSlug_OptionWinsAndDistinguishesSameNameFiles(t *testing.T) {
 	// Both gold files carry name="fi-manual" by historical accident — they

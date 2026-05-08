@@ -133,7 +133,7 @@ have a comparable source for.
 
 ## 2026-05-07 — UD-TDT (1,554 cases) showed real-world lemma accuracy is 53.4%, not 97%
 
-**Source:** integration test, ud-fi-tdt-test-v1.json (Plan C / PR 1
+**Source:** integration test, ud-fi-tdt-test-v1.json.gz (Plan C / PR 1
 ingest, ~21k tokens).
 
 **The numbers:**

@@ -18,8 +18,8 @@
 #
 # Output:
 #
-#   testdata/parser-eval/fi/gold/ud-fi-<treebank>-<split>-v1.json   (committed; CC BY / CC BY-SA)
-#   localdata/parser-eval/et/gold/ud-et-<treebank>-<split>-v1.json  (gitignored; CC BY-NC-SA)
+#   testdata/parser-eval/fi/gold/ud-fi-<treebank>-<split>-v1.json.gz (committed; CC BY / CC BY-SA)
+#   localdata/parser-eval/et/gold/ud-et-<treebank>-<split>-v1.json   (gitignored; CC BY-NC-SA)
 #
 # Train splits and the cloned UD treebank cache live entirely under
 # localdata/ — see docs/ARTIFACT_POLICY.md and docs/data_enhancement.md.
@@ -101,14 +101,21 @@ import_split() {
     # ud-fi-tdt-test-v1.json
     local name="ud-${lang_lower}-$(echo "$suffix" | tr '[:upper:]' '[:lower:]')-${split}-v1"
     local outfile="$outdir/$name.json"
+    local final_out="$outfile"
+    if [[ "$outdir" == "testdata/parser-eval/fi/gold" ]]; then
+        final_out="$outfile.gz"
+    fi
     mkdir -p "$outdir"
-    echo ">> import $infile → $outfile" >&2
+    echo ">> import $infile → $final_out" >&2
     go run ./cmd/importud \
         -input "$infile" \
         -output "$outfile" \
         -name "$name" \
         -version v1 \
         -lang "$lang"
+    if [[ "$final_out" != "$outfile" ]]; then
+        gzip -n -9 -f "$outfile"
+    fi
 }
 
 import_fi() {
