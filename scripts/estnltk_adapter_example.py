@@ -168,7 +168,7 @@ def main() -> int:
     try:
         sentences = analyse_text(text)
     except ImportError:
-        print("estnltk is not installed. Run `make setup-estnltk`.", file=sys.stderr)
+        print("estnltk is not installed. Run `make setup-nlp`.", file=sys.stderr)
         return 2
 
     print(json.dumps({"sentences": sentences}, ensure_ascii=False))

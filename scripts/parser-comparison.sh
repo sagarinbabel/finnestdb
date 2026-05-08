@@ -6,7 +6,7 @@
 #
 # Omorfi is **required by default** — every Finnish baseline report must show
 # the analyzer column so dict-only numbers are never read in isolation. Run
-# `make setup-omorfi` once on a fresh machine to install it. To bypass on a
+# `make setup-nlp` once on a fresh machine to install it. To bypass on a
 # machine where omorfi cannot be installed, pass --allow-missing-baseline
 # (intended for ad-hoc local experiments only — never for committed reports).
 #
@@ -101,7 +101,7 @@ Every committed FI baseline must include the omorfi column so dict-only
 numbers (basic/custom) are never read without the analyzer upper bound.
 
 To install:
-    make setup-omorfi
+    make setup-nlp
 
 If you genuinely need a dict-only run for local experimentation, pass:
     --allow-missing-baseline

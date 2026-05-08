@@ -8,21 +8,20 @@ the academic-quality FST baseline, and where the gaps are.
 ## One-time setup
 
 ```bash
-make setup-omorfi
+make setup-nlp
 ```
 
 This target:
 
-1. Installs the Helsinki Finite-State Transducer (HFST) toolkit and
-   Python bindings via `apt-get` (where available)
-2. `pip install`s the `omorfi` Python package
+1. Creates the unified `.venv/` for NLP tooling
+2. `pip install`s the `omorfi` and `estnltk` Python packages
 3. Downloads the omorfi v0.9.12 HFST model (~26 MB compressed,
    ~120 MB uncompressed) into `~/.cache/omorfi/`
 
 After it completes, the omorfi parser is callable end-to-end with
-no environment variables to set — `cmd/parsertest`, `cmd/server`,
-and the comparison script all auto-detect the model and the
-bundled adapter at `scripts/omorfi_adapter_example.py`.
+no environment variables to set. `cmd/parsertest` and the comparison
+script auto-detect `.venv/bin/python`, the model, and the bundled
+adapter at `scripts/omorfi_adapter_example.py`.
 
 ## Run a comparison
 
@@ -76,7 +75,7 @@ benchmark, not a deprecation plan.
 | Layer | Lookup |
 |---|---|
 | `scripts/omorfi_adapter_example.py` | `$OMORFI_ANALYSE_HFST` → `./.cache/omorfi/` → `~/.cache/omorfi/` |
-| `internal/evalparsers` (`runExternalOmorfi`) | `$FINNESTDB_OMORFI_CMD` → `python3 scripts/omorfi_adapter_example.py` if the script is present |
+| `internal/evalparsers` (`runExternalOmorfi`) | `$FINNESTDB_OMORFI_CMD` → `.venv/bin/python scripts/omorfi_adapter_example.py` when available → `python3 scripts/omorfi_adapter_example.py` |
 | `scripts/parser-comparison.sh` | Sets `parsers=basic,custom,omorfi` if any of those candidates is satisfied |
 
 Override any layer by exporting the matching env var explicitly.

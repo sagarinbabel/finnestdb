@@ -58,7 +58,7 @@ def find_model() -> Path:
 
     1. $OMORFI_ANALYSE_HFST (explicit override)
     2. ./.cache/omorfi/omorfi.analyse.hfst (repo-local cache, gitignored)
-    3. ~/.cache/omorfi/omorfi.analyse.hfst (user-level cache, populated by `make setup-omorfi`)
+    3. ~/.cache/omorfi/omorfi.analyse.hfst (user-level cache, populated by `make setup-nlp`)
     """
     candidates = []
     env = os.environ.get("OMORFI_ANALYSE_HFST", "").strip()
@@ -72,7 +72,7 @@ def find_model() -> Path:
     raise FileNotFoundError(
         "Omorfi analyser model not found. Looked in: "
         + ", ".join(str(c) for c in candidates)
-        + ". Run `make setup-omorfi` to download it."
+        + ". Run `make setup-nlp` to download it."
     )
 
 

@@ -169,17 +169,16 @@ records the dict state it was measured against.
 **Finnish (omorfi 0.9.12, pure-Python via `pyhfst` since 2026-05):**
 
 ```
-make setup-omorfi
+make setup-nlp
 ```
 
-Creates `.venv-omorfi/` and downloads the HFST models to `~/.cache/omorfi/`.
-No environment variables need to be exported: `scripts/parser-comparison.sh`
-auto-detects the venv + adapter and constructs `FINNESTDB_OMORFI_CMD` for
-itself, and `internal/evalparsers` independently discovers
-`.venv-omorfi/bin/python` at runtime (symmetric with the `.venv-estnltk`
-discovery), so direct callers like `cmd/parsertest` work without any export
-either. The repo-local venv is
-the default because system Python on macOS Homebrew enforces PEP 668
+Creates `.venv/`, installs both omorfi and estnltk, and downloads the HFST
+models to `~/.cache/omorfi/`. No environment variables need to be exported:
+`scripts/parser-comparison.sh` auto-detects the venv + adapter and constructs
+`FINNESTDB_OMORFI_CMD` for itself, and `internal/evalparsers` independently
+discovers `.venv/bin/python` at runtime, so direct callers like
+`cmd/parsertest` work without any export either. The repo-local venv is the
+default because system Python on macOS Homebrew enforces PEP 668
 (`externally-managed-environment`), which would otherwise block
 `pip install omorfi`. omorfi 0.9.12 dropped the `hfst` C library in favour
 of `pyhfst` (pure Python) so this no longer requires HFST C builds on
@@ -189,16 +188,16 @@ If you must override the venv (different python version, alternative omorfi
 fork), set:
 
 ```
-export FINNESTDB_OMORFI_CMD="$(pwd)/.venv-omorfi/bin/python $(pwd)/scripts/omorfi_adapter_example.py"
+export FINNESTDB_OMORFI_CMD="$(pwd)/.venv/bin/python $(pwd)/scripts/omorfi_adapter_example.py"
 ```
 
 **Estonian (estnltk via EstNLTK):**
 
 ```
-make setup-estnltk
+make setup-nlp
 ```
 
-Creates `.venv-estnltk/` and downloads `nltk_data` to `.cache/nltk_data/`.
+Uses the same `.venv/` and downloads `nltk_data` to `.cache/nltk_data/`.
 First call after install can take 30s+ as NLTK builds its font cache.
 
 ### 4. Run the comparison scripts
@@ -306,14 +305,12 @@ through every code path.
 
 **`omorfi` adapter dispatch on macOS arm64 — fixed 2026-05-07.**
 `scripts/parser-comparison.sh` now mirrors the EstNLTK side: when
-`.venv-omorfi/bin/python` and `scripts/omorfi_adapter_example.py` both
-exist, `FINNESTDB_OMORFI_CMD` is auto-constructed.
-`internal/evalparsers` independently auto-discovers `.venv-omorfi/bin/python`
-at runtime (symmetric with the existing `.venv-estnltk` discovery), so direct
-callers like `cmd/parsertest` also work without an `FINNESTDB_OMORFI_CMD`
-export. `make setup-omorfi`
-creates `.venv-omorfi/` symmetrically with `make setup-estnltk`'s
-`.venv-estnltk/`, instead of pip-installing into the active interpreter.
+`.venv/bin/python` and `scripts/omorfi_adapter_example.py` both exist,
+`FINNESTDB_OMORFI_CMD` is auto-constructed. `internal/evalparsers`
+independently auto-discovers `.venv/bin/python` at runtime, so direct callers
+like `cmd/parsertest` also work without an `FINNESTDB_OMORFI_CMD` export.
+`make setup-nlp` creates the shared `.venv/` instead of pip-installing into
+the active interpreter.
 
 **FST table size mismatch with FINAL baselines.** The 2026-05-06i FINAL
 baselines were measured with locally-regenerated `fi_min.json` / `et_min.json`

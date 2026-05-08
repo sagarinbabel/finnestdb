@@ -325,7 +325,7 @@ export FINNESTDB_ESTNLTK_CMD="/path/to/python /path/to/scripts/estnltk_adapter_e
 Default discovery:
 
 - `scripts/estnltk_adapter_example.py`
-- `.venv-estnltk/bin/python` when created by `make setup-estnltk`
+- `.venv/bin/python` when created by `make setup-nlp`
 - nearest repo root containing `go.mod`
 - executable directory fallback
 
@@ -340,7 +340,7 @@ export FINNESTDB_ESTNLTK_TIMEOUT=1m
 Setup:
 
 ```bash
-make setup-estnltk
+make setup-nlp
 ```
 
 Evaluation:
