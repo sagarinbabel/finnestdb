@@ -35,7 +35,7 @@ fn normalize_text(text: &str) -> String {
 fn is_punct(c: char) -> bool {
     matches!(
         c,
-        '„' | '.'
+        '„' | '‚' | '.'
             | ','
             | ';'
             | ':'
@@ -64,7 +64,7 @@ fn is_punct(c: char) -> bool {
 
 /// Check if a character is opening punctuation (space suppressed after it).
 fn is_opening_punct(c: char) -> bool {
-    matches!(c, '(' | '[' | '{' | '«' | '„' | '\u{201C}' | '\u{2018}')
+    matches!(c, '(' | '[' | '{' | '«' | '„' | '‚' | '\u{201C}' | '\u{2018}')
 }
 
 /// Split text into sentences using improved heuristics.
@@ -626,6 +626,12 @@ mod tests {
     fn test_tokenize_low_double_quote() {
         let tokens = forms("„tervetuloa”");
         assert_eq!(tokens, vec!["„", "tervetuloa", "”"]);
+    }
+
+    #[test]
+    fn test_tokenize_low_single_quote() {
+        let tokens = forms("‚tervetuloa’");
+        assert_eq!(tokens, vec!["‚", "tervetuloa", "’"]);
     }
 
     #[test]
