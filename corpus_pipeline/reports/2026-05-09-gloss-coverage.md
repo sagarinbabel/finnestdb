@@ -102,13 +102,63 @@ By source:
   ~212k tokens remain in the bucket, all of them entries where Ekilex carries
   neither EN translations nor ET definitions (mostly POS=X invariables and
   abbreviations).
-- The `definitions` table, previously empty, now holds 326,349 sense-level
-  Estonian-language definition rows. Available for downstream consumers
-  (the user-friendly wordlist export, future glossary tools).
+- The `definitions` table, previously empty, now holds 319,609 sense-level
+  Estonian-language definition rows (initial audit logged 326,349; the
+  per-meaning POS attribution fix in the re-audit pass below dropped that
+  to 319,609 by removing cross-POS leakage). Available for downstream
+  consumers (the user-friendly wordlist export, future glossary tools).
 
 The "not in dict" bucket (21.42% of ET tokens, 95.12% of pairs) is unchanged —
 that gap requires new sources or compound decomposition, both out of scope
 for this PR.
+
+## Re-audit — post code-review fixes (T0054Z)
+
+After the second pass of code-review fixes landed three importer changes:
+
+1. **Per-meaning POS attribution** — translations and definitions are now
+   bucketed by the POS of their own meaning, not flattened across the
+   whole entry. Entries whose meanings span multiple parts of speech
+   (e.g. `aastatagune` ADJ + NOUN) no longer cross-pollinate.
+2. **Same-source ekilex gloss refresh** — pre-INSERT refresh keyed on
+   `source = 'ekilex'` rewrites `lemmas.gloss` for already-Ekilex-owned
+   rows on every reimport, so it can't drift from the wipe-and-rebuilt
+   `translations` / `definitions` tables.
+3. **Word-class fallback for meaningless entries** — entries that arrive
+   with zero meanings (or only unmappable ones) but a known
+   `word_class` get an empty `(lemma, upos)` row keyed off
+   `word_class`, so the form-import path can still attribute the lemma's
+   forms.
+
+Re-running `cmd/importekilexdetails` against the same `localdata/ekilex`
+data on a DB seeded with the previous import produced:
+
+```
+180,630 unique (lemma, pos) entries        (was 178,032; +2,598 from word_class fallback)
+  2,598 lemma rows touched (inserted/upgraded)
+159,092 gloss fills (pre-INSERT refresh + post-INSERT empty fill)
+186,494 translation rows
+319,609 definition rows                     (down from 326,349 — cross-POS leakage removed)
+ 78,813 form rows touched
+```
+
+By dictionary source after the rerun:
+
+| Source | Lemma rows | With gloss | Coverage |
+|--------|-----------:|-----------:|---------:|
+| ekilex | 180,630    | 161,277    | 89.29%   |
+| kaikki | 175,763    |   6,205    |  3.53%   |
+
+Snapshots: `reports/2026-05-09-coverage-{fi,et}-after-T0054Z.json`.
+
+> The corpus-side pair/token totals in those snapshots reflect the
+> currently-checked-out wordlist (`localdata/{fi,et}-corpus/_derived/wordlist.tsv`),
+> which has since been re-aggregated under the **smoke** profile (40 ET
+> surfaces / 47 FI surfaces). The ratios from the original (full-profile)
+> audit above still apply to the production wordlist; reproducing them
+> apples-to-apples requires re-aggregating the corpus to the same profile
+> before joining. The `by_dict_source` rows are wordlist-independent and
+> are the reliable post-fix delta.
 
 ## Reproducing the After Run
 

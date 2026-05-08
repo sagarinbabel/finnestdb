@@ -17,10 +17,16 @@
 // Each meaning is attributed to its own POS only — an entry whose meanings
 // span multiple parts of speech (e.g. ADJ + NOUN) does not cross-pollinate.
 // Lemmas with no EN translations fall back to the first matching ET
-// definition with a `[ET] ` prefix (cap glossFallbackMaxLen runes). Higher-
-// priority custom or kaikki glosses are preserved on conflict; same-source
-// Ekilex `[ET]` fallbacks refresh on reimport so a later EN translation or
-// changed definition isn't masked by stale text.
+// definition with a `[ET] ` prefix (cap glossFallbackMaxLen runes). Entries
+// with zero meanings (or only unmappable ones) get an empty (lemma, upos)
+// row keyed by entry-level word_class so the form-import path can still
+// attribute forms to them.
+//
+// Higher-priority rows (custom_overrides at priority 100) are preserved on
+// conflict. Pre-existing rows already owned by `source = 'ekilex'` get
+// their gloss refreshed from the current Ekilex content on every reimport,
+// so lemmas.gloss can't drift from the per-meaning translations and
+// definitions tables that are wipe-and-rebuilt by Pass 2.5 / 2.6.
 //
 // Usage:
 //
@@ -403,6 +409,21 @@ func aggregateDefinitions(dir string) (lemmaPOSMap, *aggregateStats, error) {
 					lemmaPOS.add(lemma, upos, m.TranslationsEN, m.DefinitionsET)
 				}
 			}
+
+			// Entry-level fallback for entries with zero meanings (or where
+			// every meaning failed to resolve a POS): write an empty
+			// (lemma, upos) row keyed by word_class so the form-import path
+			// can still attribute forms to this lemma. Real Ekilex carries
+			// ~19k such fallback-importable lemmas (e.g. verbs like
+			// "alajahtuma") whose definitions/forms files split — meanings
+			// often live in a paired entry while forms still need a target
+			// (lemma, pos) to attach to.
+			if !hasAnyPOS {
+				if upos, ok := wordClassFallback[entry.WordClass]; ok {
+					lemmaPOS.add(lemma, upos, nil, nil)
+					hasAnyPOS = true
+				}
+			}
 			if !hasAnyPOS {
 				stats.noPOS++
 				continue
@@ -427,14 +448,45 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	}
 	defer tx.Rollback()
 
+	// Pre-INSERT refresh: rewrite the gloss on rows already owned by
+	// `ekilex` BEFORE the upsert below has a chance to source-upgrade
+	// anything. This is the bookkeeping that lets us tell "row was already
+	// Ekilex-owned at the start of this run" apart from "row will be
+	// Ekilex-owned after the upgrade fires" — once stmtInsert has run, the
+	// two are indistinguishable from the source column alone.
+	//
+	// Why: lemmas.gloss is a denormalized cache of the (lemma, pos) entry
+	// that wordlist consumers join on directly. Pass 2.5 / 2.6 wipe-and-
+	// rebuild translations and definitions per source, so an Ekilex run
+	// where the EN translation changed, was removed, or fell back to an ET
+	// definition would otherwise leave lemmas.gloss pointing at stale text
+	// even though the structured tables had moved on.
+	//
+	// Higher-priority rows (custom_overrides at priority 100) and rows
+	// owned by a different lower-priority source (e.g. kaikki) are
+	// untouched — only `source = 'ekilex'` rows match. Kaikki bootstrap
+	// glosses preserved through a previous Ekilex source-upgrade keep
+	// their text on the *first* same-source reimport, but a second one
+	// will replace them with the current Ekilex output: that's the price
+	// of keeping translations/definitions and lemmas.gloss consistent.
+	stmtRefreshEkilexGloss, err := tx.Prepare(
+		`UPDATE lemmas SET gloss = ?
+		 WHERE lemma = ? AND pos = ? AND lang = 'ET' AND source = 'ekilex'`,
+	)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer stmtRefreshEkilexGloss.Close()
+
 	// Upsert: insert a fresh row, or upgrade an existing row's source /
 	// source_priority when this import is *strictly stronger* (higher
 	// priority). `<` instead of `<=` so same-priority self-conflicts during
 	// a single import don't fire no-op updates — keeps RowsAffected
 	// honestly counting "rows whose source actually changed plus rows newly
-	// inserted." Gloss is intentionally not part of the conflict update;
-	// the gloss-fill / ekilex-fallback-refresh statement below handles
-	// merging on top.
+	// inserted." Gloss is intentionally not part of the conflict update —
+	// the pre-INSERT refresh above handles already-ekilex-owned rows; the
+	// post-INSERT empty-gloss fill below handles freshly-upgraded rows
+	// whose gloss column was empty.
 	stmtInsert, err := tx.Prepare(
 		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
 		 VALUES (?, ?, ?, 'ET', 'ekilex', 20)
@@ -448,31 +500,15 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	}
 	defer stmtInsert.Close()
 
-	// Gloss fill / Ekilex-fallback refresh.
-	//
-	//   1. Fill when the existing row has no gloss — protects pre-existing
-	//      kaikki rows that came in without a translation list yet preserves
-	//      the slot for downstream consumers.
-	//   2. Refresh when the existing row is ekilex-owned AND its gloss is a
-	//      `[ET] `-prefixed fallback. Same-source reimports must replace
-	//      stale fallbacks: a lemma that previously had only definitions_et
-	//      and later gains an EN translation, or whose ET definition itself
-	//      changed upstream, would otherwise leave lemmas.gloss pointing at
-	//      stale `[ET] ...` text after translations/definitions had already
-	//      been rebuilt by Pass 2.5/2.6.
-	//
-	// Higher-priority rows (custom_overrides at priority 100, or anything
-	// non-ekilex carrying an `[ET]` gloss) are not refreshed — the
-	// `source = 'ekilex'` guard binds the refresh to rows we own. Kaikki
-	// glosses preserved on a prior Ekilex source-upgrade keep their text
-	// because they don't carry the `[ET] ` prefix.
+	// Empty-gloss fill: protect non-ekilex rows that arrived empty (e.g.
+	// a pre-existing kaikki row created before glosses were threaded
+	// through the importer). Once the upsert above has source-upgraded
+	// such a row to ekilex, this fills the gloss slot from the current
+	// Ekilex content. Non-empty glosses on non-ekilex sources are left
+	// alone; the pre-INSERT refresh has already handled the ekilex case.
 	stmtFillGloss, err := tx.Prepare(
 		`UPDATE lemmas SET gloss = ? WHERE lemma = ? AND pos = ? AND lang = 'ET'
-		   AND (
-		     gloss IS NULL
-		     OR gloss = ''
-		     OR (substr(gloss, 1, 5) = '[ET] ' AND source = 'ekilex')
-		   )`,
+		   AND (gloss IS NULL OR gloss = '')`,
 	)
 	if err != nil {
 		return 0, 0, err
@@ -484,6 +520,15 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	for lemma, byPOS := range lemmaPOS {
 		for upos, data := range byPOS {
 			gloss := joinTranslationData(data)
+			if gloss != "" {
+				res, err := stmtRefreshEkilexGloss.Exec(gloss, lemma, upos)
+				if err != nil {
+					return inserted, glossFilled, fmt.Errorf("refresh ekilex gloss %q %s: %w", lemma, upos, err)
+				}
+				if n, _ := res.RowsAffected(); n == 1 {
+					glossFilled++
+				}
+			}
 			res, err := stmtInsert.Exec(lemma, upos, gloss)
 			if err != nil {
 				return inserted, glossFilled, fmt.Errorf("insert %q %s: %w", lemma, upos, err)
