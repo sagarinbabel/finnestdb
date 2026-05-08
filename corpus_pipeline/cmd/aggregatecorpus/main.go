@@ -778,6 +778,13 @@ func (s *state) Phase4Write(derived string, runStart time.Time) error {
 		}
 		return s.wordlistRows[i].analysisRank < s.wordlistRows[j].analysisRank
 	})
+	// Canonical wordlist.tsv carries one row per analysis. example_ref_type
+	// and example_ref_id point at the canonical sentence/poem id; the
+	// example body itself is recoverable via JOIN against sentences.tsv or
+	// poems.tsv on that id. example_text is no longer denormalized into
+	// every row — at full FI scale it accounted for ~80% of wordlist.tsv
+	// bytes (4M rows × ~400 chars). The user-friendly export below carries
+	// the example_ref pair too; downstream consumers join when needed.
 	if err := writeTSV(filepath.Join(derived, "wordlist.tsv"),
 		[]string{
 			"surface", "surface_count_prose", "surface_count_poetry", "surface_count_total",
@@ -785,12 +792,12 @@ func (s *state) Phase4Write(derived string, runStart time.Time) error {
 			"lang", "lemma", "pos", "feats",
 			"analysis_sources", "analysis_rank", "is_parser_choice",
 			"parser_version", "fst_tables_sha", "dict_fingerprint",
-			"example_ref_type", "example_ref_id", "example_text",
+			"example_ref_type", "example_ref_id",
 		},
 		func(yield func([]string)) {
 			for _, r := range s.wordlistRows {
 				ss := s.surfaces[r.surface]
-				exType, exID, exText := s.exampleFor(ss)
+				exType, exID := s.exampleRefFor(ss)
 				srcJSON, _ := json.Marshal(ss.sourceCount)
 				yield([]string{
 					r.surface,
@@ -800,10 +807,18 @@ func (s *state) Phase4Write(derived string, runStart time.Time) error {
 					s.langLower, r.lemma, r.pos, r.feats,
 					strings.Join(r.analysisSources, ";"), itoa(r.analysisRank), boolStr(r.isParserChoice),
 					s.parserVersion, s.fstTablesSHA, s.dictFingerprint,
-					exType, exID, exText,
+					exType, exID,
 				})
 			}
 		}); err != nil {
+		return err
+	}
+
+	// User-friendly wordlist: one row per parser-choice analysis with the
+	// fields a learner-facing UI needs. Joins lemmas.gloss for meaning;
+	// splits FEATS into named morphology columns; carries the example_ref
+	// pair for downstream sentence-text rendering.
+	if err := s.writeUserFriendlyWordlist(filepath.Join(derived, "wordlist_user_friendly.tsv")); err != nil {
 		return err
 	}
 
@@ -917,29 +932,21 @@ func (s *state) Phase4Write(derived string, runStart time.Time) error {
 	return nil
 }
 
-func (s *state) exampleFor(ss *surfaceStats) (string, string, string) {
+// exampleRefFor returns the (example_ref_type, example_ref_id) pair for a
+// surface. The canonical wordlist no longer denormalizes example_text into
+// every row — readers reconstruct the example body by joining
+// example_ref_id against sentences.tsv (or poems.tsv when the type is
+// "poem"). Returns "" / "" when the surface has no captured example.
+func (s *state) exampleRefFor(ss *surfaceStats) (string, string) {
 	if ss.exampleHash != "" {
 		if rec, ok := s.sentences[ss.exampleHash]; ok && rec.id > 0 {
-			return "sentence", itoa(rec.id), truncateExample(rec.text)
+			return "sentence", itoa(rec.id)
 		}
 	}
-	return "", "", ""
-}
-
-// truncateExample caps example_text at ~400 chars so wordlist.tsv stays
-// reasonable. Source data (sentences.tsv) keeps full text — no information
-// loss, just denormalized convenience field gets bounded.
-const exampleTextMaxRunes = 400
-
-func truncateExample(s string) string {
-	count := 0
-	for i := range s {
-		if count >= exampleTextMaxRunes {
-			return s[:i] + "…"
-		}
-		count++
+	if ss.examplePoem > 0 {
+		return "poem", itoa(ss.examplePoem)
 	}
-	return s
+	return "", ""
 }
 
 func (s *state) writeQAReport(path string, runStart time.Time) error {

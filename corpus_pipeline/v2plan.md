@@ -180,7 +180,14 @@ localdata/{fi,et}-corpus/_derived/
 - ✅ Phase 4 deterministic ID assignment after sort key
 - ✅ TSV via encoding/csv with Comma='\t' (handles tab/quote escaping)
 - ✅ Wordlist surface_count_prose / _poetry / _total trio (poetry contributes, doesn't dominate)
-- ✅ example_ref_type / example_ref_id / example_text triple (no dangling refs)
+- ✅ example_ref_type / example_ref_id / example_text triple (no dangling refs).
+  *Updated 2026-05-09 (PR #2 of roadmap):* `example_text` removed from
+  canonical `wordlist.tsv` and the mining TSVs. The pair
+  `example_ref_type` + `example_ref_id` is the durable reference; readers
+  recover the example body by joining against `sentences.tsv` (or
+  `poems.tsv` when the type is `poem`). The user-friendly export
+  `wordlist_user_friendly.tsv` carries the same ref pair plus meaning,
+  parsed morphology, and the standard count/provenance columns.
 
 ## Near-term tracked PR roadmap
 
