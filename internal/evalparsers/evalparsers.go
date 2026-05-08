@@ -35,9 +35,6 @@ func SupportedParsers() []string {
 }
 
 func Analyze(db *store.DB, lang, text, parserName string) (*parsecore.ParseResult, error) {
-	if err := parsecore.ValidateInput(lang, text); err != nil {
-		return nil, err
-	}
 	if parserName == "" {
 		parserName = "basic"
 	}
@@ -61,6 +58,9 @@ func Analyze(db *store.DB, lang, text, parserName string) (*parsecore.ParseResul
 			Rules:   defaultExternalAnalyzerRules(),
 		})
 	default:
+		if err := parsecore.ValidateInput(lang, text); err != nil {
+			return nil, err
+		}
 		return nil, fmt.Errorf("unsupported parser %q", parserName)
 	}
 }

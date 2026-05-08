@@ -2,6 +2,7 @@ package evalparsers
 
 import (
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -49,6 +50,16 @@ func TestSupportedParsersList(t *testing.T) {
 	want := []string{"basic", "custom", "estnltk", "omorfi"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("supported parsers=%v want %v", got, want)
+	}
+}
+
+func TestAnalyzeUnsupportedParserKeepsValidationPrecedence(t *testing.T) {
+	if _, err := Analyze(nil, "SV", "kissa", "bogus"); err == nil || err.Error() != "language must be FI or ET" {
+		t.Fatalf("invalid lang error=%v want language validation", err)
+	}
+
+	if _, err := Analyze(nil, "FI", "kissa", "bogus"); err == nil || !strings.Contains(err.Error(), `unsupported parser "bogus"`) {
+		t.Fatalf("unsupported parser error=%v", err)
 	}
 }
 
