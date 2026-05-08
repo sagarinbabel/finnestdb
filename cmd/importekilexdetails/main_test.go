@@ -15,7 +15,9 @@ import (
 
 func joinTranslations(entry definitionEntry) string {
 	tmp := lemmaPOSMap{}
-	tmp.add("_", "_", collectTranslations(entry), collectDefinitionsET(entry))
+	for _, m := range entry.Meanings {
+		tmp.add("_", "_", m.TranslationsEN, m.DefinitionsET)
+	}
 	if d, ok := tmp["_"]["_"]; ok {
 		return joinTranslationData(d)
 	}
@@ -1133,5 +1135,257 @@ func TestWriteTranslations_NoTranslationsETOnlyEntry(t *testing.T) {
 	}
 	if written != 0 {
 		t.Errorf("ET-only entry: got %d rows, want 0", written)
+	}
+}
+
+// TestAggregateDefinitions_AttributesMeaningsPerPOS guards against the codex
+// finding: when one Ekilex entry carries meanings under multiple POS
+// (e.g. aastatagune has an ADJ meaning followed by NOUN meanings),
+// translations and definitions must be attributed to the meaning's own POS,
+// not flattened across the whole entry. Cross-POS leakage would write ADJ
+// content into the NOUN row and vice versa.
+func TestAggregateDefinitions_AttributesMeaningsPerPOS(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	if err := writeAll(defDir, "a.jsonl",
+		`{"word_id":1,"lemma":"aastatagune","homonym_nr":1,"word_class":"noomen",`+
+			`"meanings":[`+
+			`{"pos":["adj"],"definitions_et":["adj-def"],"translations_en":["yearly"]},`+
+			`{"pos":["s"],"definitions_et":["noun-def-1"],"translations_en":["yearling"]},`+
+			`{"pos":["s"],"definitions_et":["noun-def-2"]}`+
+			`]}`+"\n",
+	); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+
+	adj, ok := lemmaPOS["aastatagune"]["ADJ"]
+	if !ok {
+		t.Fatalf("expected ADJ entry for aastatagune")
+	}
+	if !equalStringSlices(adj.definitionsET, []string{"adj-def"}) {
+		t.Errorf("ADJ definitionsET = %v, want [adj-def] (NOUN defs leaked in)",
+			adj.definitionsET)
+	}
+	adjT := sortedTranslations(adj)
+	if !equalStringSlices(adjT, []string{"yearly"}) {
+		t.Errorf("ADJ translations = %v, want [yearly] (NOUN translations leaked in)", adjT)
+	}
+
+	noun, ok := lemmaPOS["aastatagune"]["NOUN"]
+	if !ok {
+		t.Fatalf("expected NOUN entry for aastatagune")
+	}
+	if !equalStringSlices(noun.definitionsET, []string{"noun-def-1", "noun-def-2"}) {
+		t.Errorf("NOUN definitionsET = %v, want [noun-def-1 noun-def-2] (ADJ defs leaked in or order wrong)",
+			noun.definitionsET)
+	}
+	nounT := sortedTranslations(noun)
+	if !equalStringSlices(nounT, []string{"yearling"}) {
+		t.Errorf("NOUN translations = %v, want [yearling] (ADJ translations leaked in)", nounT)
+	}
+}
+
+// TestAggregateDefinitions_PerMeaningWordClassFallback guards the per-meaning
+// fallback path: a meaning whose own pos is unmappable should fall back to
+// the entry-level word_class, but only for that meaning. A sibling meaning
+// with a mappable pos must still land on its own POS, not on the fallback.
+func TestAggregateDefinitions_PerMeaningWordClassFallback(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	if err := writeAll(defDir, "x.jsonl",
+		`{"word_id":1,"lemma":"x","homonym_nr":1,"word_class":"noomen",`+
+			`"meanings":[`+
+			`{"pos":["adj"],"definitions_et":["adj-def"]},`+
+			`{"pos":["WEIRD"],"definitions_et":["fallback-def"]}`+
+			`]}`+"\n",
+	); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+
+	if adj, ok := lemmaPOS["x"]["ADJ"]; !ok {
+		t.Errorf("expected ADJ entry from mappable meaning")
+	} else if !equalStringSlices(adj.definitionsET, []string{"adj-def"}) {
+		t.Errorf("ADJ definitionsET = %v, want [adj-def]", adj.definitionsET)
+	}
+
+	if noun, ok := lemmaPOS["x"]["NOUN"]; !ok {
+		t.Errorf("expected NOUN entry from word_class fallback")
+	} else if !equalStringSlices(noun.definitionsET, []string{"fallback-def"}) {
+		t.Errorf("NOUN definitionsET = %v, want [fallback-def] (cross-meaning leak?)",
+			noun.definitionsET)
+	}
+}
+
+// TestWriteLemmas_RefreshesETFallbackOnReimport guards against the codex
+// finding: when the first import wrote an `[ET] ` fallback into lemmas.gloss
+// because no EN translation was available, a subsequent import that DOES
+// have an EN translation (or a different ET definition) must replace the
+// fallback. Without the refresh, lemmas.gloss stays stale even though the
+// translations and definitions tables were rebuilt by Pass 2.5/2.6.
+func TestWriteLemmas_RefreshesETFallbackOnReimport(t *testing.T) {
+	tmp := t.TempDir()
+	defDir1 := filepath.Join(tmp, "defs-1")
+	defDir2 := filepath.Join(tmp, "defs-2")
+	defDir3 := filepath.Join(tmp, "defs-3")
+	// Pass 1: only ET definition. Gloss should be `[ET] old-def`.
+	if err := writeAll(defDir1, "a.jsonl",
+		`{"word_id":1,"lemma":"aabits","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"definitions_et":["old-def"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write 1: %v", err)
+	}
+	// Pass 2: EN translation now available. Gloss should refresh to "primer".
+	if err := writeAll(defDir2, "a.jsonl",
+		`{"word_id":1,"lemma":"aabits","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["primer"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write 2: %v", err)
+	}
+	// Pass 3: still no EN, but ET definition changed upstream. Gloss should
+	// refresh from `[ET] old-def` to `[ET] new-def`.
+	if err := writeAll(defDir3, "a.jsonl",
+		`{"word_id":1,"lemma":"refresh-et","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"definitions_et":["new-def"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write 3: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	// Pre-seed a separate (lemma, pos) with an `[ET] new-def` row so
+	// pass-3's import path exercises the refresh against an existing
+	// `[ET] old-def` row.
+	lp1, _, err := aggregateDefinitions(defDir1)
+	if err != nil {
+		t.Fatalf("aggregate 1: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lp1); err != nil {
+		t.Fatalf("writeLemmas 1: %v", err)
+	}
+	var gloss1 string
+	if err := db.QueryRow(
+		`SELECT gloss FROM lemmas WHERE lemma='aabits' AND pos='NOUN' AND lang='ET'`,
+	).Scan(&gloss1); err != nil {
+		t.Fatalf("query 1: %v", err)
+	}
+	if gloss1 != "[ET] old-def" {
+		t.Fatalf("after import 1: gloss = %q, want %q", gloss1, "[ET] old-def")
+	}
+
+	// Reimport with EN translation: gloss must refresh, not stay stale.
+	lp2, _, err := aggregateDefinitions(defDir2)
+	if err != nil {
+		t.Fatalf("aggregate 2: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lp2); err != nil {
+		t.Fatalf("writeLemmas 2: %v", err)
+	}
+	var gloss2 string
+	if err := db.QueryRow(
+		`SELECT gloss FROM lemmas WHERE lemma='aabits' AND pos='NOUN' AND lang='ET'`,
+	).Scan(&gloss2); err != nil {
+		t.Fatalf("query 2: %v", err)
+	}
+	if gloss2 != "primer" {
+		t.Errorf("after EN reimport: gloss = %q, want %q (stale [ET] fallback was not refreshed)",
+			gloss2, "primer")
+	}
+
+	// Now also exercise the `[ET] x` → `[ET] y` refresh path. Seed a row
+	// directly with an old `[ET] old-def` gloss tagged source=ekilex,
+	// then import a different ET definition.
+	if _, err := db.Exec(
+		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+		 VALUES ('refresh-et', 'NOUN', '[ET] old-def', 'ET', 'ekilex', 20)`,
+	); err != nil {
+		t.Fatalf("seed [ET] row: %v", err)
+	}
+	lp3, _, err := aggregateDefinitions(defDir3)
+	if err != nil {
+		t.Fatalf("aggregate 3: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lp3); err != nil {
+		t.Fatalf("writeLemmas 3: %v", err)
+	}
+	var gloss3 string
+	if err := db.QueryRow(
+		`SELECT gloss FROM lemmas WHERE lemma='refresh-et' AND pos='NOUN' AND lang='ET'`,
+	).Scan(&gloss3); err != nil {
+		t.Fatalf("query 3: %v", err)
+	}
+	if gloss3 != "[ET] new-def" {
+		t.Errorf("after [ET] reimport: gloss = %q, want %q (changed ET definition was not refreshed)",
+			gloss3, "[ET] new-def")
+	}
+}
+
+// TestWriteLemmas_DoesNotRefreshNonEkilexETPrefixedGloss guards against an
+// over-eager refresh: a `[ET] ...` gloss carried by a higher-priority source
+// (e.g. someone bulk-edited custom_overrides with an Estonian definition)
+// must not be replaced by the Ekilex importer. The source-guard on the
+// fallback-refresh statement binds the refresh to ekilex-owned rows only.
+func TestWriteLemmas_DoesNotRefreshNonEkilexETPrefixedGloss(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	if err := writeAll(defDir, "x.jsonl",
+		`{"word_id":1,"lemma":"override","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["new-en"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	// Pre-seed a custom-overrides row that happens to have an `[ET] ...`
+	// gloss. The Ekilex import must not overwrite it.
+	if _, err := db.Exec(
+		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+		 VALUES ('override', 'NOUN', '[ET] custom-et-text', 'ET', 'custom_overrides', 100)`,
+	); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaPOS); err != nil {
+		t.Fatalf("writeLemmas: %v", err)
+	}
+
+	var gloss, source string
+	if err := db.QueryRow(
+		`SELECT gloss, source FROM lemmas WHERE lemma='override' AND pos='NOUN' AND lang='ET'`,
+	).Scan(&gloss, &source); err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if gloss != "[ET] custom-et-text" {
+		t.Errorf("custom_overrides [ET] gloss clobbered: got %q, want %q",
+			gloss, "[ET] custom-et-text")
+	}
+	if source != "custom_overrides" {
+		t.Errorf("custom_overrides source downgraded: got %q, want custom_overrides", source)
 	}
 }
