@@ -106,7 +106,7 @@ func main() {
 // ── analyzer interface + detection ────────────────────────────────────
 
 type analyzer struct {
-	label       string
+	label        string
 	analyzeBatch func(surfaces []string) (map[string]externalAnalysis, error)
 }
 
@@ -235,135 +235,6 @@ func makePythonBatch(py, scriptRel string) func([]string) (map[string]externalAn
 				POS:    fields[2],
 				Feats:  fields[3],
 				Source: filepath.Base(scriptPath),
-			}
-		}
-		c.Wait()
-		return out, nil
-	}
-}
-
-// makeOmorfiBatch returns a closure that pipes surfaces through a
-// long-lived omorfi-disamb-cmdline subprocess.
-func makeOmorfiBatch(cmd string) func([]string) (map[string]externalAnalysis, error) {
-	return func(surfaces []string) (map[string]externalAnalysis, error) {
-		c := exec.Command(cmd)
-		stdin, err := c.StdinPipe()
-		if err != nil {
-			return nil, err
-		}
-		stdout, err := c.StdoutPipe()
-		if err != nil {
-			return nil, err
-		}
-		c.Stderr = os.Stderr
-		if err := c.Start(); err != nil {
-			return nil, fmt.Errorf("start %s: %w", cmd, err)
-		}
-		// Feed surfaces, read output. omorfi-disamb-cmdline expects
-		// whitespace-tokenized input on stdin, emits analyses on stdout
-		// in CONLLU-ish format. Implementation: just feed each surface
-		// on its own line, parse output back. This is best-effort —
-		// omorfi versions vary.
-		go func() {
-			w := bufio.NewWriter(stdin)
-			for _, s := range surfaces {
-				w.WriteString(s)
-				w.WriteByte('\n')
-			}
-			w.Flush()
-			stdin.Close()
-		}()
-		out := map[string]externalAnalysis{}
-		scanner := bufio.NewScanner(stdout)
-		scanner.Buffer(make([]byte, 1<<20), 4<<20)
-		var current string
-		for scanner.Scan() {
-			line := scanner.Text()
-			if line == "" {
-				continue
-			}
-			fields := strings.Split(line, "\t")
-			// Heuristic: if line has 10 columns, it's CONLLU. Column 1
-			// is index, column 2 is form, column 3 lemma, column 4 UPOS,
-			// column 6 feats.
-			if len(fields) >= 6 {
-				surface := fields[1]
-				if existing, ok := out[surface]; !ok {
-					out[surface] = externalAnalysis{
-						Lemma:  fields[2],
-						POS:    fields[3],
-						Feats:  fields[5],
-						Count:  1,
-						Source: "omorfi",
-					}
-				} else {
-					existing.Count++
-					out[surface] = existing
-				}
-				current = surface
-			}
-		}
-		_ = current
-		if err := c.Wait(); err != nil {
-			fmt.Fprintf(os.Stderr, "[omorfi] subprocess exited with: %v (partial results kept)\n", err)
-		}
-		return out, nil
-	}
-}
-
-// makeEstnltkBatch invokes a persistent Python subprocess using a small
-// embedded script that loads estnltk once and reads/writes JSON-line.
-func makeEstnltkBatch() func([]string) (map[string]externalAnalysis, error) {
-	return func(surfaces []string) (map[string]externalAnalysis, error) {
-		scriptPath := filepath.Join(filepath.Dir(os.Args[0]), "..", "..", "scripts", "estnltk-batch.py")
-		// Try a few path resolutions
-		if _, err := os.Stat(scriptPath); err != nil {
-			// Look from cwd
-			scriptPath = "scripts/estnltk-batch.py"
-			if _, err := os.Stat(scriptPath); err != nil {
-				return nil, fmt.Errorf("estnltk batch script not found at %s", scriptPath)
-			}
-		}
-		c := exec.Command("python3", scriptPath)
-		stdin, err := c.StdinPipe()
-		if err != nil {
-			return nil, err
-		}
-		stdout, err := c.StdoutPipe()
-		if err != nil {
-			return nil, err
-		}
-		c.Stderr = os.Stderr
-		if err := c.Start(); err != nil {
-			return nil, fmt.Errorf("start estnltk: %w", err)
-		}
-		go func() {
-			w := bufio.NewWriter(stdin)
-			for _, s := range surfaces {
-				w.WriteString(s)
-				w.WriteByte('\n')
-			}
-			w.Flush()
-			stdin.Close()
-		}()
-		out := map[string]externalAnalysis{}
-		scanner := bufio.NewScanner(stdout)
-		scanner.Buffer(make([]byte, 1<<20), 4<<20)
-		for scanner.Scan() {
-			line := scanner.Text()
-			if line == "" {
-				continue
-			}
-			// Format: surface\tlemma\tPOS\tfeats\tcount
-			fields := strings.Split(line, "\t")
-			if len(fields) < 5 {
-				continue
-			}
-			out[fields[0]] = externalAnalysis{
-				Lemma:  fields[1],
-				POS:    fields[2],
-				Feats:  fields[3],
-				Source: "estnltk",
 			}
 		}
 		c.Wait()

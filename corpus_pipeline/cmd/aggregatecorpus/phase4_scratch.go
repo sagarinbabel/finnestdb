@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -53,6 +52,9 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 		fos = append(fos, f)
 	}
 	rows.Close()
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("first-occurrence scan: %w", err)
+	}
 	sort.Slice(fos, func(i, j int) bool {
 		if fos[i].source != fos[j].source {
 			return fos[i].source < fos[j].source
@@ -387,26 +389,26 @@ func (s *state) writeQAReportScratch(path string, runStart time.Time, sentencesU
 		"dict_fingerprint": s.dictFingerprint,
 		"scratch_mode":     true,
 		"totals": map[string]any{
-			"sources":                       len(s.manifests),
-			"documents":                     docCount,
-			"sentences_unique":              sentencesUnique,
-			"sentences_total_occurrences":   occCount,
-			"tokens_total":                  tokensProse + tokensPoetry,
-			"tokens_prose":                  tokensProse,
-			"tokens_poetry":                 tokensPoetry,
-			"unique_surfaces":               len(s.surfaces),
-			"unique_surfaces_prose":         uniqProse,
-			"unique_surfaces_poetry":        uniqPoetry,
-			"poetry_only_surfaces":          poetryOnly,
-			"prose_only_surfaces":           proseOnly,
-			"unresolved_surfaces_total":     unresolvedProse + unresolvedPoetry,
-			"unresolved_rate_total":         rateOf(unresolvedProse+unresolvedPoetry, len(s.surfaces)),
-			"unresolved_surfaces_prose":     unresolvedProse,
-			"unresolved_rate_prose":         rateOf(unresolvedProse, uniqProse),
-			"unresolved_surfaces_poetry":    unresolvedPoetry,
-			"unresolved_rate_poetry":        rateOf(unresolvedPoetry, uniqPoetry),
-			"ambiguous_surfaces":            len(s.miningAmbiguous),
-			"poems":                         0,
+			"sources":                     len(s.manifests),
+			"documents":                   docCount,
+			"sentences_unique":            sentencesUnique,
+			"sentences_total_occurrences": occCount,
+			"tokens_total":                tokensProse + tokensPoetry,
+			"tokens_prose":                tokensProse,
+			"tokens_poetry":               tokensPoetry,
+			"unique_surfaces":             len(s.surfaces),
+			"unique_surfaces_prose":       uniqProse,
+			"unique_surfaces_poetry":      uniqPoetry,
+			"poetry_only_surfaces":        poetryOnly,
+			"prose_only_surfaces":         proseOnly,
+			"unresolved_surfaces_total":   unresolvedProse + unresolvedPoetry,
+			"unresolved_rate_total":       rateOf(unresolvedProse+unresolvedPoetry, len(s.surfaces)),
+			"unresolved_surfaces_prose":   unresolvedProse,
+			"unresolved_rate_prose":       rateOf(unresolvedProse, uniqProse),
+			"unresolved_surfaces_poetry":  unresolvedPoetry,
+			"unresolved_rate_poetry":      rateOf(unresolvedPoetry, uniqPoetry),
+			"ambiguous_surfaces":          len(s.miningAmbiguous),
+			"poems":                       0,
 		},
 	}
 	return writeJSON(path, report)
@@ -434,6 +436,3 @@ func streamWriteTSV(path string, header []string, stream func(yield func([]strin
 	w.Flush()
 	return w.Error()
 }
-
-// keep imports happy
-var _ = sql.ErrNoRows

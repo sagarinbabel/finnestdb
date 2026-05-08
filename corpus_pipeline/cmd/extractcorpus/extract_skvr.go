@@ -181,6 +181,3 @@ func (p *poemBuilder) finalize(sourceSlug, fileName string) *poemRecord {
 		Text:       strings.Join(p.lines, "\n"),
 	}
 }
-
-// keep unused imports happy in case we conditionally enable features later
-var _ = sources.Manifest{}

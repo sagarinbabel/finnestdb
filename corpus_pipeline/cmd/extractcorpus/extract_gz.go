@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"compress/gzip"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,6 +101,5 @@ func extractGZ(dir string, m sources.Manifest) error {
 		}
 	}
 	fmt.Fprintf(os.Stderr, "[extract_gz] %s: %d lines across %d pseudo-docs\n", m.Slug, totalLines, docIdx)
-	_ = io.EOF // keep import alive
 	return nil
 }

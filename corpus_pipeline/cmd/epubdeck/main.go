@@ -10,10 +10,7 @@
 package main
 
 import (
-	"crypto/sha256"
-	"database/sql"
 	"encoding/csv"
-	"encoding/hex"
 	"flag"
 	"fmt"
 	"log"
@@ -314,8 +311,3 @@ func slugifyEPUB(s string) string {
 	}
 	return strings.Trim(out, "-")
 }
-
-// suppress unused
-var _ = sha256.Sum256
-var _ = hex.EncodeToString
-var _ sql.DB

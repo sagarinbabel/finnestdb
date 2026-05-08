@@ -129,8 +129,8 @@ func filterSources(in []sources.Manifest, slug string) []sources.Manifest {
 // ── State ─────────────────────────────────────────────────────────────────
 
 type surfaceStats struct {
-	prose       int
-	poetry      int
+	prose  int
+	poetry int
 	// docCountProse / docCountPoetry: distinct doc count, computed via
 	// last-seen-doc tracking instead of set membership (saves ~5 KB per
 	// frequent surface at scale).
@@ -191,10 +191,10 @@ type disagreementRow struct {
 // consensusRow captures a surface where basic + custom + FST top hit
 // all agree on (lemma, pos). Useful prioritization signal — NOT silver.
 type consensusRow struct {
-	surface     string
-	agreedLemma string
-	agreedPOS   string
-	agreedFeats string
+	surface       string
+	agreedLemma   string
+	agreedPOS     string
+	agreedFeats   string
 	agreementKind string // "basic+custom+fst"
 }
 
@@ -556,8 +556,8 @@ func (s *state) enrichSurface(surface string) []wordlistRow {
 	if customLemma != "" && basicLemma != "" &&
 		(customLemma != basicLemma || customPOS != basicPOS) {
 		s.miningDisagreements = append(s.miningDisagreements, disagreementRow{
-			surface:     surface,
-			basicLemma:  basicLemma, basicPOS: basicPOS, basicFeats: basicFeats,
+			surface:    surface,
+			basicLemma: basicLemma, basicPOS: basicPOS, basicFeats: basicFeats,
 			customLemma: customLemma, customPOS: customPOS, customFeats: customFeats,
 		})
 	}
@@ -644,13 +644,6 @@ func (s *state) Phase3Mining() {
 			s.miningAmbiguous = append(s.miningAmbiguous, wordlistRow{surface: surface})
 		}
 	}
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 // ── Phase 4: write everything with deterministic IDs ──
@@ -976,26 +969,26 @@ func (s *state) writeQAReport(path string, runStart time.Time) error {
 		"fst_tables_sha":   s.fstTablesSHA,
 		"dict_fingerprint": s.dictFingerprint,
 		"totals": map[string]any{
-			"sources":                       len(s.manifests),
-			"documents":                     len(s.documents),
-			"sentences_unique":              len(s.sentences),
-			"sentences_total_occurrences":   len(s.occurrences),
-			"tokens_total":                  tokensProse + tokensPoetry,
-			"tokens_prose":                  tokensProse,
-			"tokens_poetry":                 tokensPoetry,
-			"unique_surfaces":               len(s.surfaces),
-			"unique_surfaces_prose":         uniqProse,
-			"unique_surfaces_poetry":        uniqPoetry,
-			"poetry_only_surfaces":          poetryOnly,
-			"prose_only_surfaces":           proseOnly,
-			"unresolved_surfaces_total":     unresolvedProse + unresolvedPoetry,
-			"unresolved_rate_total":         rateOf(unresolvedProse+unresolvedPoetry, len(s.surfaces)),
-			"unresolved_surfaces_prose":     unresolvedProse,
-			"unresolved_rate_prose":         rateOf(unresolvedProse, uniqProse),
-			"unresolved_surfaces_poetry":    unresolvedPoetry,
-			"unresolved_rate_poetry":        rateOf(unresolvedPoetry, uniqPoetry),
-			"ambiguous_surfaces":            len(s.miningAmbiguous),
-			"poems":                         0,
+			"sources":                     len(s.manifests),
+			"documents":                   len(s.documents),
+			"sentences_unique":            len(s.sentences),
+			"sentences_total_occurrences": len(s.occurrences),
+			"tokens_total":                tokensProse + tokensPoetry,
+			"tokens_prose":                tokensProse,
+			"tokens_poetry":               tokensPoetry,
+			"unique_surfaces":             len(s.surfaces),
+			"unique_surfaces_prose":       uniqProse,
+			"unique_surfaces_poetry":      uniqPoetry,
+			"poetry_only_surfaces":        poetryOnly,
+			"prose_only_surfaces":         proseOnly,
+			"unresolved_surfaces_total":   unresolvedProse + unresolvedPoetry,
+			"unresolved_rate_total":       rateOf(unresolvedProse+unresolvedPoetry, len(s.surfaces)),
+			"unresolved_surfaces_prose":   unresolvedProse,
+			"unresolved_rate_prose":       rateOf(unresolvedProse, uniqProse),
+			"unresolved_surfaces_poetry":  unresolvedPoetry,
+			"unresolved_rate_poetry":      rateOf(unresolvedPoetry, uniqPoetry),
+			"ambiguous_surfaces":          len(s.miningAmbiguous),
+			"poems":                       0,
 		},
 	}
 	return writeJSON(path, report)
@@ -1029,7 +1022,7 @@ func writeJSON(path string, v any) error {
 	return os.WriteFile(path, append(data, '\n'), 0o644)
 }
 
-func itoa(n int) string  { return fmt.Sprintf("%d", n) }
+func itoa(n int) string { return fmt.Sprintf("%d", n) }
 func boolStr(b bool) string {
 	if b {
 		return "1"
