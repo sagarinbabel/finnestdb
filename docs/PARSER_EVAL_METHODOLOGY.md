@@ -175,10 +175,10 @@ make setup-omorfi
 Creates `.venv-omorfi/` and downloads the HFST models to `~/.cache/omorfi/`.
 No environment variables need to be exported: `scripts/parser-comparison.sh`
 auto-detects the venv + adapter and constructs `FINNESTDB_OMORFI_CMD` for
-itself, and `internal/parsecore/parsecore.go::runExternalOmorfi` independently
-discovers `.venv-omorfi/bin/python` at runtime (symmetric with the
-`.venv-estnltk` discovery), so direct callers like `cmd/parsertest` and
-`cmd/enrichgoldfeats` work without any export either. The repo-local venv is
+itself, and `internal/evalparsers` independently discovers
+`.venv-omorfi/bin/python` at runtime (symmetric with the `.venv-estnltk`
+discovery), so direct callers like `cmd/parsertest` work without any export
+either. The repo-local venv is
 the default because system Python on macOS Homebrew enforces PEP 668
 (`externally-managed-environment`), which would otherwise block
 `pip install omorfi`. omorfi 0.9.12 dropped the `hfst` C library in favour
@@ -308,10 +308,10 @@ through every code path.
 `scripts/parser-comparison.sh` now mirrors the EstNLTK side: when
 `.venv-omorfi/bin/python` and `scripts/omorfi_adapter_example.py` both
 exist, `FINNESTDB_OMORFI_CMD` is auto-constructed.
-`internal/parsecore/parsecore.go::runExternalOmorfi` independently
-auto-discovers `.venv-omorfi/bin/python` at runtime (symmetric with the
-existing `.venv-estnltk` discovery), so direct callers like `cmd/parsertest`
-also work without an `FINNESTDB_OMORFI_CMD` export. `make setup-omorfi`
+`internal/evalparsers` independently auto-discovers `.venv-omorfi/bin/python`
+at runtime (symmetric with the existing `.venv-estnltk` discovery), so direct
+callers like `cmd/parsertest` also work without an `FINNESTDB_OMORFI_CMD`
+export. `make setup-omorfi`
 creates `.venv-omorfi/` symmetrically with `make setup-estnltk`'s
 `.venv-estnltk/`, instead of pip-installing into the active interpreter.
 

@@ -22,7 +22,7 @@ These are documentation starting points, not claims that the systems are stable.
 
 | System | Current version | Notes |
 |--------|-----------------|-------|
-| Parser behavior | `parser-v1` (= dated tag `2026.05.07k`, see [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md)) | `basic`, `custom`, evaluation-only `omorfi`/`estnltk` wired through `parsecore`. The constant `parsecore.ParserVersion` carries the dated tag and is stamped into every eval JSON report's `parser_version` field. |
+| Parser behavior | `parser-v1` (= dated tag `2026.05.07k`, see [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md)) | Production `basic`/`custom` parser modes live in `parsecore`; evaluation-only `omorfi`/`estnltk` live in `internal/evalparsers`. The constant `parsecore.ParserVersion` carries the dated tag and is stamped into every eval JSON report's `parser_version` field. |
 | Parser evaluation baseline | `parser-baseline-2026-05-07-k-T1118Z` (latest; see "Parser evaluation baseline history" below) | Latest k freeze; full history of baselines is preserved in the dedicated section below this table and as a row-per-event trend in [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md). The wall-clock `THHMMZ` suffix is part of the baseline ID — multiple baselines on the same parser-behavior version are distinguished by run-start UTC time. |
 | Deck review system | `review-v0` | Backend and UI scaffolding exist, but review scheduling is not yet a locked production contract. |
 | API contract | `api-v0` | Alpha API surface; parse is the most mature contract. |

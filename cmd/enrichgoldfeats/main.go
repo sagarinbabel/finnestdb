@@ -16,13 +16,13 @@
 //
 //	go run ./cmd/enrichgoldfeats -all
 //
-// Adapters are resolved from the same env vars parsecore uses:
+// Adapters are resolved from the same env vars as the eval parser adapters:
 //
 //	FINNESTDB_OMORFI_CMD   — full command, e.g.
 //	                          "$(pwd)/.venv-omorfi/bin/python $(pwd)/scripts/omorfi_adapter_example.py"
 //	FINNESTDB_ESTNLTK_CMD  — same shape; if unset, tool auto-discovers
 //	                          .venv-estnltk/bin/python next to the
-//	                          repo root (matches parsecore convention).
+//	                          repo root.
 //
 // The diff report flags tokens where:
 //   - the adapter returned no analysis for the surface,
@@ -224,8 +224,7 @@ func enrichOne(inPath, outPath, lang, diffPath string) error {
 }
 
 // resolveAdapter parses the command from FINNESTDB_OMORFI_CMD /
-// FINNESTDB_ESTNLTK_CMD or auto-discovers the local venv layout
-// (matches parsecore.findSiblingVenvPython for estnltk).
+// FINNESTDB_ESTNLTK_CMD or auto-discovers the local venv layout.
 func resolveAdapter(lang string) ([]string, error) {
 	switch lang {
 	case "FI":

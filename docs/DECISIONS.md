@@ -831,7 +831,7 @@ committed FI cases via UD treebank ingestion (Plan C / PR 1) — see
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │  Go Parse Core (internal/parsecore/parsecore.go)                │
-│  - Parser registry (basic, custom, omorfi)                      │
+│  - Production parser registry (basic, custom)                   │
 │  - Dictionary resolution                                        │
 │  - Enrichment rules (possessive, compound, case suffix)         │
 │  - Gloss lookup                                                 │
@@ -846,13 +846,19 @@ committed FI cases via UD treebank ingestion (Plan C / PR 1) — see
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+Eval-only baselines live in `internal/evalparsers`, which registers
+`omorfi`/`estnltk`, owns adapter subprocess discovery and timeouts, and feeds
+the normalized FFI-shaped result through parsecore's external-analyzer result
+builder. The server-facing parser registry does not expose those lab modes.
+
 ### Parser Modes
 
 | Mode | Description | Use Case |
 |------|-------------|----------|
 | `basic` | Dictionary lookup only, no enrichment | Speed baseline |
 | `custom` | Dictionary + possessive/compound/case rules | Production parser |
-| `omorfi` | External adapter for comparison | Evaluation only |
+| `omorfi` | External FI adapter for comparison | Evaluation only |
+| `estnltk` | External ET adapter for comparison | Evaluation only |
 
 ### Enrichment Rules (in `custom` mode)
 

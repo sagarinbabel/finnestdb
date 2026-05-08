@@ -76,7 +76,7 @@ benchmark, not a deprecation plan.
 | Layer | Lookup |
 |---|---|
 | `scripts/omorfi_adapter_example.py` | `$OMORFI_ANALYSE_HFST` → `./.cache/omorfi/` → `~/.cache/omorfi/` |
-| `internal/parsecore/parsecore.go` (`runExternalOmorfi`) | `$FINNESTDB_OMORFI_CMD` → `python3 scripts/omorfi_adapter_example.py` if the script is present |
+| `internal/evalparsers` (`runExternalOmorfi`) | `$FINNESTDB_OMORFI_CMD` → `python3 scripts/omorfi_adapter_example.py` if the script is present |
 | `scripts/parser-comparison.sh` | Sets `parsers=basic,custom,omorfi` if any of those candidates is satisfied |
 
 Override any layer by exporting the matching env var explicitly.
