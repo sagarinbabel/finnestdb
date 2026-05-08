@@ -88,3 +88,37 @@ outside `localdata/`.
 
 The old local-only copy under `localdata/corpus_pipeline/` should be treated as
 legacy once the tracked folder is in use.
+
+## 2026-05-08 - PRs Must Carry Rationale
+
+### Decision
+
+Every corpus-pipeline PR should include a clear **Why** section and should
+update the tracked roadmap or schema docs when it changes generated artifacts.
+
+Near-term corpus pipeline work is tracked in
+[`PR_ROADMAP.md`](PR_ROADMAP.md). That roadmap is the durable handoff between
+Codex, Claude, and humans reviewing the pipeline.
+
+### Why
+
+The corpus files are large, generated, and easy to misread from filenames alone.
+For example, `wordlist.tsv` is a canonical parser/corpus evidence table, while
+the planned `wordlist_user_friendly.tsv` is a learner-facing export. Reviewers
+need the reason for each split and schema change in the PR itself, otherwise
+future sessions have to reconstruct intent from chat transcripts.
+
+This also keeps the translation-assist idea grounded: morphology plus meanings
+can support an interlinear learner explanation layer, but that is a follow-up
+built on cleaner user-facing exports rather than a reason to overload the
+canonical corpus evidence files.
+
+### Operational Consequences
+
+- PRs should state the artifact impact and any reconstruction path for removed
+  denormalized columns.
+- Reports stay append-only under `corpus_pipeline/reports/`.
+- Schema changes should update `corpus_pipeline/schemas/README.md` or the
+  roadmap before implementation PRs land.
+- The translation-assist idea remains a tracked follow-up, not a blocker for
+  corpus cleanup.
