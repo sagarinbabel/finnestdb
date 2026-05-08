@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"finnestdb/corpus_pipeline/internal/textfilter"
 )
 
 // phase4WriteScratch is the SQLite-backed phase 4. Streams data from
@@ -109,6 +111,19 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 		func(yield func([]string)) error {
 			for _, ih := range idHashes {
 				yield([]string{itoa(ih.id), s.langLower, hashToText[ih.h]})
+			}
+			return nil
+		}); err != nil {
+		return err
+	}
+	if err := streamWriteTSV(filepath.Join(derived, "sentences_user_friendly.tsv"),
+		[]string{"id", "lang", "text"},
+		func(yield func([]string)) error {
+			for _, ih := range idHashes {
+				text := hashToText[ih.h]
+				if textfilter.IsUserFriendlySentence(text) {
+					yield([]string{itoa(ih.id), s.langLower, text})
+				}
 			}
 			return nil
 		}); err != nil {

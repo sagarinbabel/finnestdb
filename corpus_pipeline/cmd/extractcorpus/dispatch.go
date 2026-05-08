@@ -19,6 +19,10 @@ func extract(dir string, m sources.Manifest, force bool) error {
 			return nil
 		}
 	}
+	// TODO: most extractors only use force to bypass the top-level freshness
+	// check above. EPUB also passes force down because it owns per-book caches.
+	// Add extractor-specific force handling when another format grows internal
+	// cache files.
 	switch m.Format {
 	case "fixture":
 		return extractFixture(dir, m)
@@ -27,7 +31,7 @@ func extract(dir string, m sources.Manifest, force bool) error {
 	case "md_lingq_parallel":
 		return extractMDLingQ(dir, m)
 	case "epub":
-		return extractEPUB(dir, m)
+		return extractEPUB(dir, m, force)
 	case "gz":
 		return extractGZ(dir, m)
 	case "csv", "tsv":
