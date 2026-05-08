@@ -61,6 +61,25 @@ reports/**
 !reports/
 !reports/**/
 !reports/parser-eval/audit-*.md
+
+# Tracked corpus-pipeline source lives at corpus_pipeline/. Runtime data and
+# large generated outputs remain local-only under localdata/ or ignored here.
+!corpus_pipeline/reports/
+!corpus_pipeline/reports/**
+corpus_pipeline/.venv/
+corpus_pipeline/omorfi-data/
+corpus_pipeline/corpusverify
+corpus_pipeline/smoke-test/
+corpus_pipeline/**/_scratch.db
+corpus_pipeline/**/*.tsv
+corpus_pipeline/**/*.tsv.gz
+corpus_pipeline/**/*.sqlite
+corpus_pipeline/**/*.sqlite3
+corpus_pipeline/**/*.parquet
+corpus_pipeline/**/*.zip
+corpus_pipeline/**/*.gz
+corpus_pipeline/**/*.bz2
+corpus_pipeline/**/*.epub
 .cache/
 .venv-omorfi/
 .venv-estnltk
