@@ -12,3 +12,6 @@ Large generated artifacts stay out of Git:
 
 Use reports here for durable, human-readable run summaries that both Codex and
 Claude can read without copying context between tools.
+
+See `../docs/DECISIONS.md` for why the pipeline source is tracked while corpus
+artifacts remain local-only.

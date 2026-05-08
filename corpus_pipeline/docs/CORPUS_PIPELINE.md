@@ -4,6 +4,10 @@ Reference card for the corpus pipeline that lives at
 `corpus_pipeline/`. All paths are relative to the main
 finnestdb repo's `localdata/` directory.
 
+The pipeline source is tracked so agents and humans share one reproducible
+implementation. Corpus data remains local-only under `localdata/`. See
+`docs/DECISIONS.md` for the rationale and report policy.
+
 ---
 
 ## Architecture in 30 seconds
