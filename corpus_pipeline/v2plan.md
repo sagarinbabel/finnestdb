@@ -188,42 +188,27 @@ The detailed PR sequence lives in
 exists, what generated artifacts change, and how downstream code reconstructs
 any denormalized data that is removed.
 
-Planned order:
+Planned work (three practical chunks, not six tiny PRs):
 
-1. **Drop denormalized `example_text` from canonical outputs.**
-   - **Why deferred:** Needs a schema/docs PR first so consumers know to join
-     `example_ref_id` to `sentences.tsv` or `poems.tsv`.
-   - **Effort:** ~1 hour.
+1. **Canonical cleanup + user-friendly wordlist.**
+   Drop `example_text` from canonical outputs, document reconstruction via
+   `example_ref_id` joins, and add `wordlist_user_friendly.tsv` with meanings
+   from the existing dictionary DB — all in one PR.
+   - **Effort:** ~3-5 hours.
    - **Trigger:** Next implementation PR after this roadmap lands.
-2. **Add `wordlist_user_friendly.tsv`.**
-   - **Why deferred:** Canonical `wordlist.tsv` is parser evidence; the
-     learner-facing export needs meaning, lemma, POS, and morphology first.
-   - **Effort:** ~2-4 hours using current DB gloss/translation tables.
-   - **Trigger:** User-facing word-list inspection or app import needs a
-     readable table.
-3. **Add `sentences_user_friendly.tsv`.**
-   - **Why deferred:** Canonical sentences should remain auditable, while the
-     UX needs filtered examples.
-   - **Effort:** ~2-3 hours.
+2. **Sentence export + EPUB extraction cleanup.**
+   Improve `extract_epub` to skip nav/front-matter junk and add
+   `sentences_user_friendly.tsv` as a filtered derived export. These are coupled
+   because better extraction reduces what the sentence filter has to catch.
+   - **Effort:** ~4-6 hours.
    - **Trigger:** Sentence-bank examples are consumed by the app or by manual
      quality review.
-4. **Improve EPUB extraction cleanup.**
-   - **Why deferred:** Better to do after the user-facing sentence export shape
-     is documented, so extraction and export filters can share criteria.
-   - **Effort:** ~2-4 hours.
-   - **Trigger:** Next extractor-quality PR; user has approved this direction.
-5. **Research better meaning sources.**
-   - **Why deferred:** Raw corpora do not carry English meanings; current
-     meanings come from the dictionary DB.
-   - **Effort:** ~4-8 hours.
-   - **Trigger:** DB gloss coverage is visibly inadequate for
-     `wordlist_user_friendly.tsv`.
-6. **Prototype translation-assist / interlinear glossing.**
-   - **Why deferred:** Needs the user-friendly wordlist and cleaner sentences
-     first.
-   - **Effort:** ~8-16 hours for a local prototype.
-   - **Trigger:** Inspect/review cards need morphology-aware learner
-     explanations beyond lemma + meaning.
+3. **Later: meaning sources + interlinear prototype.**
+   Investigation/prototype work, not a normal shipping PR. Research external
+   meaning sources and prototype an interlinear glossing tool.
+   - **Effort:** ~12-24 hours (spike + prototype).
+   - **Trigger:** DB gloss coverage is visibly inadequate, or the app needs
+     morphology-aware learner explanations beyond lemma + meaning.
 
 ## Deferred to v2 — with triggers
 
