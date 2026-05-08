@@ -188,26 +188,32 @@ The detailed PR sequence lives in
 exists, what generated artifacts change, and how downstream code reconstructs
 any denormalized data that is removed.
 
-Planned work (three practical chunks, not six tiny PRs):
+Planned work (four items — first three are active, fourth is a later spike):
 
-1. **Canonical cleanup + user-friendly wordlist.**
+1. **Meaning sources research** (ACTIVE — prerequisite for item 2).
+   Audit DB gloss coverage, identify external meaning sources (Wiktionary,
+   Kielitoimiston sanakirja, Ekilex public data), record license constraints,
+   and build/extend an import path so meanings reach the dictionary DB.
+   - **Effort:** ~6-10 hours.
+   - **Trigger:** Next implementation PR after this roadmap lands.
+2. **Canonical cleanup + user-friendly wordlist** (depends on item 1).
    Drop `example_text` from canonical outputs, document reconstruction via
    `example_ref_id` joins, and add `wordlist_user_friendly.tsv` with meanings
-   from the existing dictionary DB — all in one PR.
+   from the dictionary DB.
    - **Effort:** ~3-5 hours.
-   - **Trigger:** Next implementation PR after this roadmap lands.
-2. **Sentence export + EPUB extraction cleanup.**
+   - **Trigger:** After item 1 delivers adequate gloss coverage.
+3. **Sentence export + EPUB extraction cleanup** (independent).
    Improve `extract_epub` to skip nav/front-matter junk and add
    `sentences_user_friendly.tsv` as a filtered derived export. These are coupled
    because better extraction reduces what the sentence filter has to catch.
    - **Effort:** ~4-6 hours.
    - **Trigger:** Sentence-bank examples are consumed by the app or by manual
      quality review.
-3. **Later: meaning sources + interlinear prototype.**
-   Investigation/prototype work, not a normal shipping PR. Research external
-   meaning sources and prototype an interlinear glossing tool.
-   - **Effort:** ~12-24 hours (spike + prototype).
-   - **Trigger:** DB gloss coverage is visibly inadequate, or the app needs
+4. **Later: interlinear glossing prototype.**
+   Investigation/prototype work, not a normal shipping PR. Prototype a tool
+   that takes a sentence and emits lemma/gloss/FEATS rows per surface.
+   - **Effort:** ~8-16 hours (spike + prototype).
+   - **Trigger:** Items 2 and 3 are complete, and the app needs
      morphology-aware learner explanations beyond lemma + meaning.
 
 ## Deferred to v2 — with triggers
