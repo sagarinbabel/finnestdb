@@ -6,7 +6,9 @@ finnestdb repo's `localdata/` directory.
 
 The pipeline source is tracked so agents and humans share one reproducible
 implementation. Corpus data remains local-only under `localdata/`. See
-`docs/DECISIONS.md` for the rationale and report policy.
+`docs/DECISIONS.md` for the rationale and report policy. See
+`docs/PR_ROADMAP.md` for the near-term PR sequence and the reason each
+planned schema/export change exists.
 
 ---
 
@@ -108,8 +110,8 @@ silent reverts and pipeline drift.
 
 ## Cleanliness invariant
 
-`/Users/sagar/Downloads/projects/finnestdb/` (main repo) is gitignore-only
-for this work. After every session:
+`corpus_pipeline/` is tracked source. Runtime corpus data is gitignore-only
+under `localdata/`. After every session:
 
 ```sh
 cd /Users/sagar/Downloads/projects/finnestdb
@@ -117,8 +119,9 @@ git status --porcelain | grep -v '^?? localdata/' | grep -v '^?? design/'
 # expect: empty
 ```
 
-The corpus pipeline never modifies tracked files. Pre-existing unrelated
-state (`design/*` untracked, etc.) is fine — only the *delta* matters.
+The corpus pipeline should not create new tracked changes outside
+`corpus_pipeline/` unless a PR explicitly says why. Pre-existing unrelated
+state (`design/*` untracked, etc.) is fine — only the intended delta matters.
 
 ---
 
@@ -192,7 +195,8 @@ These are the v1 decisions baked into the code. Don't change them lightly:
 ## What's not yet built
 
 See [`v2plan.md`](../v2plan.md) for the full deferred-items list with
-trigger conditions. Highlights:
+trigger conditions, and [`PR_ROADMAP.md`](PR_ROADMAP.md) for the planned PR
+sequence. Highlights:
 
 - SQLite scratch DB + concurrent worker pool (v2.4) — needed when full
   corpus aggregation OOMs in-memory. Pilot probably fits.

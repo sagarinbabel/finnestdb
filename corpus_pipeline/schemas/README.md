@@ -30,6 +30,16 @@ multiple rows when it has multiple analyses.
 | `example_ref_id` | ID in `sentences.tsv` or `poems.tsv`. |
 | `example_text` | Denormalized, truncated example text; removable because it can be rejoined by ID. |
 
+Planned change: `example_text` should be removed from canonical outputs in a
+follow-up PR. Reconstruct it by joining `example_ref_id` to `sentences.tsv.id`
+when `example_ref_type=sentence`, or to `poems.tsv.id` when
+`example_ref_type=poem`.
+
+Planned human-facing export: `wordlist_user_friendly.tsv` should be generated
+as a separate derived file with `surface`, `meaning`, lemma, POS, morphology,
+counts, and example reference fields. Meanings come from dictionary/translation
+tables or future external meaning sources, not from raw corpus documents.
+
 ## `wordlist-enriched.tsv`
 
 One row per unique surface after external analyzer enrichment.
@@ -53,6 +63,10 @@ One row per unique reconstructed sentence text.
 | `id` | Deterministic sentence ID within this aggregate. |
 | `lang` | `fi` or `et`; redundant while files remain separate. |
 | `text` | Deduplicated sentence text. |
+
+Planned human-facing export: `sentences_user_friendly.tsv` should filter
+title-only, name-only, front-matter, and other extraction residue while leaving
+canonical `sentences.tsv` auditable.
 
 ## `sentence_occurrences.tsv`
 

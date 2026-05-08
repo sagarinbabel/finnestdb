@@ -1,9 +1,10 @@
 # Corpus pipeline — v2 follow-ups + v1 handoff notes
 
-This file is the durable local-only record of what's done, what's deferred,
-and the trigger conditions for picking each item back up. Per the plan
-(v1plan.md §"v2 follow-ups"), this lives at
-`corpus_pipeline/v2plan.md` (gitignored under `localdata/`).
+This file is the durable record of what's done, what's deferred, and the
+trigger conditions for picking each item back up. Per the plan (v1plan.md
+§"v2 follow-ups"), this now lives in tracked source at
+`corpus_pipeline/v2plan.md` so Codex, Claude, and human reviewers can share the
+same roadmap. Runtime corpus data stays local-only under `localdata/`.
 
 ## v1 status snapshot — 2026-05-08 (updated 2026-05-08 evening)
 
@@ -179,6 +180,50 @@ localdata/{fi,et}-corpus/_derived/
 - ✅ TSV via encoding/csv with Comma='\t' (handles tab/quote escaping)
 - ✅ Wordlist surface_count_prose / _poetry / _total trio (poetry contributes, doesn't dominate)
 - ✅ example_ref_type / example_ref_id / example_text triple (no dangling refs)
+
+## Near-term tracked PR roadmap
+
+The detailed PR sequence lives in
+[`docs/PR_ROADMAP.md`](docs/PR_ROADMAP.md). Each PR should explain **why** it
+exists, what generated artifacts change, and how downstream code reconstructs
+any denormalized data that is removed.
+
+Planned order:
+
+1. **Drop denormalized `example_text` from canonical outputs.**
+   - **Why deferred:** Needs a schema/docs PR first so consumers know to join
+     `example_ref_id` to `sentences.tsv` or `poems.tsv`.
+   - **Effort:** ~1 hour.
+   - **Trigger:** Next implementation PR after this roadmap lands.
+2. **Add `wordlist_user_friendly.tsv`.**
+   - **Why deferred:** Canonical `wordlist.tsv` is parser evidence; the
+     learner-facing export needs meaning, lemma, POS, and morphology first.
+   - **Effort:** ~2-4 hours using current DB gloss/translation tables.
+   - **Trigger:** User-facing word-list inspection or app import needs a
+     readable table.
+3. **Add `sentences_user_friendly.tsv`.**
+   - **Why deferred:** Canonical sentences should remain auditable, while the
+     UX needs filtered examples.
+   - **Effort:** ~2-3 hours.
+   - **Trigger:** Sentence-bank examples are consumed by the app or by manual
+     quality review.
+4. **Improve EPUB extraction cleanup.**
+   - **Why deferred:** Better to do after the user-facing sentence export shape
+     is documented, so extraction and export filters can share criteria.
+   - **Effort:** ~2-4 hours.
+   - **Trigger:** Next extractor-quality PR; user has approved this direction.
+5. **Research better meaning sources.**
+   - **Why deferred:** Raw corpora do not carry English meanings; current
+     meanings come from the dictionary DB.
+   - **Effort:** ~4-8 hours.
+   - **Trigger:** DB gloss coverage is visibly inadequate for
+     `wordlist_user_friendly.tsv`.
+6. **Prototype translation-assist / interlinear glossing.**
+   - **Why deferred:** Needs the user-friendly wordlist and cleaner sentences
+     first.
+   - **Effort:** ~8-16 hours for a local prototype.
+   - **Trigger:** Inspect/review cards need morphology-aware learner
+     explanations beyond lemma + meaning.
 
 ## Deferred to v2 — with triggers
 
@@ -503,16 +548,18 @@ When picking this up in a future session, start with:
 1. `cd corpus_pipeline && make corpus-promote-fi corpus-promote-et`
    to confirm the smoke gate is still green (validates nothing rotted).
 2. Read `v2plan.md` (this file) to pick the next item by trigger.
-3. Implement the item locally (no commits, no PRs — local-only policy).
+3. Implement the item on a scoped branch and open a draft PR when the change
+   affects tracked pipeline source, schemas, docs, or reports.
 4. Add a "✅ done <date>" note to its section here.
 
 ## Cleanliness invariant
 
 After every session, `git status --porcelain` from
 `/Users/sagar/Downloads/projects/finnestdb/` (main repo) should show
-**no new deltas outside `localdata/`** vs. the pre-session snapshot.
+**no unintended deltas outside `corpus_pipeline/` or `localdata/`** vs. the
+pre-session snapshot.
 Pre-existing unrelated state (e.g. `design/*.jsx` untracked files) is
 fine — only the delta matters.
 
-The `corpus_pipeline/` folder + everything under
+The `corpus_pipeline/` folder is tracked source. Everything under
 `localdata/{fi,et}-corpus/` is gitignored and stays purely local.
