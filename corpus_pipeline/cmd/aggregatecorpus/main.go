@@ -37,6 +37,7 @@ import (
 
 	"finnestdb/corpus_pipeline/internal/cli"
 	"finnestdb/corpus_pipeline/internal/sources"
+	"finnestdb/corpus_pipeline/internal/textfilter"
 )
 
 func main() {
@@ -695,6 +696,18 @@ func (s *state) Phase4Write(derived string, runStart time.Time) error {
 			for _, fo := range hashes {
 				rec := s.sentences[fo.hash]
 				yield([]string{itoa(rec.id), s.langLower, rec.text})
+			}
+		}); err != nil {
+		return err
+	}
+	if err := writeTSV(filepath.Join(derived, "sentences_user_friendly.tsv"),
+		[]string{"id", "lang", "text"},
+		func(yield func([]string)) {
+			for _, fo := range hashes {
+				rec := s.sentences[fo.hash]
+				if textfilter.IsUserFriendlySentence(rec.text) {
+					yield([]string{itoa(rec.id), s.langLower, rec.text})
+				}
 			}
 		}); err != nil {
 		return err

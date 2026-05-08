@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"finnestdb/corpus_pipeline/internal/sources"
+	"finnestdb/corpus_pipeline/internal/textfilter"
 )
 
 // extractEPUB walks <dir>/raw/*.epub, extracts plain text from each book's
@@ -20,9 +21,9 @@ import (
 //   - <dir>/text.txt — concatenated, one paragraph per line, blank line = book boundary
 //   - <dir>/documents.jsonl — one record per book
 //
-// Idempotent: skips books whose per-book/<slug>.txt already exists and is
-// non-empty.
-func extractEPUB(dir string, m sources.Manifest) error {
+// Idempotent unless force is true: reuses books whose per-book/<slug>.txt
+// already exists and is non-empty.
+func extractEPUB(dir string, m sources.Manifest, force bool) error {
 	rawDir := filepath.Join(dir, "raw")
 	perBookDir := filepath.Join(dir, "per-book")
 	if err := os.MkdirAll(perBookDir, 0o755); err != nil {
@@ -62,15 +63,19 @@ func extractEPUB(dir string, m sources.Manifest) error {
 		slug := slugify(strings.TrimSuffix(name, filepath.Ext(name)))
 		perBookPath := filepath.Join(perBookDir, slug+".txt")
 
-		// Idempotency: skip books already extracted.
-		if fi, err := os.Stat(perBookPath); err == nil && fi.Size() > 0 {
-			data, _ := os.ReadFile(perBookPath)
-			textW.Write(data)
-			textW.WriteByte('\n')
-			textW.WriteByte('\n')
-			writeDocJSONL(docsW, m.Slug+":"+slug, slug, "", rawPath)
-			processed++
-			continue
+		// Idempotency: reuse books already extracted unless forced. Clean the
+		// cached text while rebuilding text.txt so line-level filters still
+		// apply after heuristic changes.
+		if !force {
+			if fi, err := os.Stat(perBookPath); err == nil && fi.Size() > 0 {
+				data, _ := os.ReadFile(perBookPath)
+				textW.WriteString(textfilter.CleanEPUBText(string(data)))
+				textW.WriteByte('\n')
+				textW.WriteByte('\n')
+				writeDocJSONL(docsW, m.Slug+":"+slug, slug, "", rawPath)
+				processed++
+				continue
+			}
 		}
 
 		bookText, err := extractEPUBBook(rawPath)
@@ -124,6 +129,9 @@ func extractEPUBBook(epubPath string) (string, error) {
 
 	var sb strings.Builder
 	for _, d := range docs {
+		if textfilter.ShouldSkipEPUBResource(d.name, nil) {
+			continue
+		}
 		rc, err := d.f.Open()
 		if err != nil {
 			continue
@@ -133,7 +141,10 @@ func extractEPUBBook(epubPath string) (string, error) {
 		if err != nil {
 			continue
 		}
-		text := stripXHTML(string(raw))
+		if textfilter.ShouldSkipEPUBResource(d.name, raw) {
+			continue
+		}
+		text := textfilter.CleanEPUBText(stripXHTML(string(raw)))
 		if strings.TrimSpace(text) == "" {
 			continue
 		}

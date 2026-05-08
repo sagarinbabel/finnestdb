@@ -23,12 +23,12 @@ import (
 )
 
 type gateResult struct {
-	Lang          string                 `json:"lang"`
-	Profile       string                 `json:"profile"`
-	UTC           string                 `json:"utc"`
-	HardFailures  []string               `json:"hard_failures"`
-	SoftWarnings  []string               `json:"soft_warnings"`
-	Stats         map[string]any         `json:"stats,omitempty"`
+	Lang         string         `json:"lang"`
+	Profile      string         `json:"profile"`
+	UTC          string         `json:"utc"`
+	HardFailures []string       `json:"hard_failures"`
+	SoftWarnings []string       `json:"soft_warnings"`
+	Stats        map[string]any `json:"stats,omitempty"`
 }
 
 func main() {
@@ -67,7 +67,7 @@ func main() {
 	// Hard gate: required output files
 	derived := sources.DerivedDir(roots.DataRoot, langLower)
 	required := []string{
-		"wordlist.tsv", "sentences.tsv", "sentence_occurrences.tsv",
+		"wordlist.tsv", "sentences.tsv", "sentences_user_friendly.tsv", "sentence_occurrences.tsv",
 		"poems.tsv", "documents.tsv", "manifest.tsv",
 		"build_metadata.json", "qa-report.json",
 		"mining/unresolved.tsv", "mining/poetry-unresolved.tsv",
@@ -103,6 +103,7 @@ func main() {
 		res.HardFailures = append(res.HardFailures, fmt.Sprintf("sentence_occurrences (%d) < sentences (%d)", occCount, sentCount))
 	}
 	res.Stats["sentences"] = sentCount
+	res.Stats["sentences_user_friendly"] = countTSVRows(filepath.Join(derived, "sentences_user_friendly.tsv"))
 	res.Stats["sentence_occurrences"] = occCount
 	res.Stats["wordlist_rows"] = countTSVRows(filepath.Join(derived, "wordlist.tsv"))
 
@@ -293,12 +294,12 @@ func appendErrorHistory(derived string, res gateResult) {
 	defer f.Close()
 	for _, hf := range res.HardFailures {
 		entry := map[string]any{
-			"utc":           res.UTC,
-			"profile":       res.Profile,
-			"stage":         "verify",
-			"error_class":   classifyError(hf),
-			"message":       hf,
-			"file_refs":     []string{"qa-gate.json"},
+			"utc":         res.UTC,
+			"profile":     res.Profile,
+			"stage":       "verify",
+			"error_class": classifyError(hf),
+			"message":     hf,
+			"file_refs":   []string{"qa-gate.json"},
 		}
 		b, _ := json.Marshal(entry)
 		f.Write(b)

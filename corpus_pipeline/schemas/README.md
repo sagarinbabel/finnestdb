@@ -64,9 +64,18 @@ One row per unique reconstructed sentence text.
 | `lang` | `fi` or `et`; redundant while files remain separate. |
 | `text` | Deduplicated sentence text. |
 
-Planned human-facing export: `sentences_user_friendly.tsv` should filter
-title-only, name-only, front-matter, and other extraction residue while leaving
-canonical `sentences.tsv` auditable.
+## `sentences_user_friendly.tsv`
+
+A filtered, learner-facing subset of `sentences.tsv`. The canonical
+`sentences.tsv` remains auditable and keeps every deduped sentence-like unit,
+while this export omits title-only, name-only, front-matter, URL/ISBN, and other
+obvious extraction-residue rows.
+
+| Column | Meaning |
+|---|---|
+| `id` | The matching deterministic `sentences.tsv.id`. |
+| `lang` | `fi` or `et`; redundant while files remain separate. |
+| `text` | Sentence text suitable for learner-facing examples or manual review. |
 
 ## `sentence_occurrences.tsv`
 

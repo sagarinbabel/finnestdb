@@ -26,6 +26,7 @@ extract ───────►│
 
 aggregate ─────►_derived/wordlist.tsv               (giant inflected-form list, one row per analysis)
                 _derived/sentences.tsv              (text-only, deduped, deterministic IDs)
+                _derived/sentences_user_friendly.tsv (filtered learner-facing sentence bank)
                 _derived/sentence_occurrences.tsv   (full provenance)
                 _derived/poems.tsv                  (line breaks preserved)
                 _derived/documents.tsv
@@ -60,7 +61,7 @@ and no-suffix (= both) variants.
 | `make fetch-corpus[-fi/-et]` | Download all registered sources to `raw/` | When sources change or you want a refresh | ~2-30 min depending on registry size | `<source>/raw/*` + `.sha256` sidecars |
 | `make fetch-corpus-dry-run` | HEAD probe each URL without downloading | Verifying URLs before a real fetch | <1 min | stderr report |
 | `make extract-corpus[-fi/-et]` | Walk all sources, run format-specific extractor | After fetch, or when extractors change | ~1-5 min for all | `<source>/text.txt` (prose) or `poems.jsonl` (poetry) + `documents.jsonl` |
-| `make aggregate-corpus[-fi/-et]` | 4-phase aggregation → all derived TSVs + QA report | After extract | ~minutes for smoke, ~hours for full | `_derived/*.tsv` + `_derived/mining/*.tsv` + JSON metadata |
+| `make aggregate-corpus[-fi/-et]` | 4-phase aggregation → canonical and user-facing derived TSVs + QA report | After extract | ~minutes for smoke, ~hours for full | `_derived/*.tsv` + `_derived/mining/*.tsv` + JSON metadata |
 | `make corpus-verify[-fi/-et] PROFILE=…` | Hard/soft gate check, exit nonzero on fail | After aggregate | <5 s | `_derived/qa-gate.json` (+ `errors/` on fail) |
 | `make corpus-promote[-fi/-et] PROFILE=…` | Chain extract→aggregate→verify; smoke→pilot→full ladder | When advancing through profiles | depends on profile | promotion-state.json updated |
 | `make corpus-cache-clear` | Wipe `_derived/cache/` (when v2.4 caching lands) | After parser/dict changes | <1 s | clears cache |

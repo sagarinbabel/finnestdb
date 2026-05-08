@@ -151,6 +151,7 @@ The vertical slice is validated:
 localdata/{fi,et}-corpus/_derived/
 ├── wordlist.tsv                     # 20 columns including 3-way counts
 ├── sentences.tsv                    # deduped, deterministic IDs
+├── sentences_user_friendly.tsv      # filtered learner-facing sentence bank
 ├── sentence_occurrences.tsv         # full provenance
 ├── poems.tsv                        # empty in v1 (no poetry sources active)
 ├── documents.tsv

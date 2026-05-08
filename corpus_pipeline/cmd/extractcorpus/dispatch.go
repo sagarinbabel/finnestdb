@@ -27,7 +27,7 @@ func extract(dir string, m sources.Manifest, force bool) error {
 	case "md_lingq_parallel":
 		return extractMDLingQ(dir, m)
 	case "epub":
-		return extractEPUB(dir, m)
+		return extractEPUB(dir, m, force)
 	case "gz":
 		return extractGZ(dir, m)
 	case "csv", "tsv":
