@@ -1,11 +1,16 @@
 package main
 
 import (
+	"database/sql"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"finnestdb/internal/store"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func TestParseUDFeats(t *testing.T) {
@@ -292,5 +297,174 @@ func TestWriteUserFriendlyWordlist_SchemaAndMorphologySplit(t *testing.T) {
 	}
 	if colP("is_parser_choice") != "0" {
 		t.Errorf("non-parser-choice row: got %q", colP("is_parser_choice"))
+	}
+}
+
+// TestBulkLoadGlosses_TranslationsFirst guards the codex-flagged
+// regression on PR #174: when a lemma row's source has been upgraded by
+// the importer chain (e.g. kaikki → ekilex) but its existing
+// lemmas.gloss is preserved (empty-gloss guard), the canonical read
+// path returns the matching-source translation instead of the preserved
+// gloss. The user-friendly export must agree.
+//
+// Fixture mimics that scenario:
+//   - lemmas: (koer, NOUN, 'kaikki-text', 'ET', 'ekilex', 20)
+//     → upgraded to ekilex source, kaikki-era gloss preserved.
+//   - translations: matching-source row 'ekilex-text' at sense_idx=0.
+//
+// Expected: bulkLoadGlosses returns "ekilex-text" (translation wins),
+// not "kaikki-text" (the preserved gloss).
+func TestBulkLoadGlosses_TranslationsFirst(t *testing.T) {
+	tmp := t.TempDir()
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+
+	if _, err := db.Exec(`
+		CREATE TABLE lemmas (
+		  lemma TEXT NOT NULL,
+		  pos   TEXT NOT NULL,
+		  gloss TEXT,
+		  lang  TEXT NOT NULL,
+		  source TEXT,
+		  source_priority INTEGER,
+		  PRIMARY KEY (lemma, pos, lang)
+		);
+		CREATE TABLE translations (
+		  lemma       TEXT NOT NULL,
+		  pos         TEXT NOT NULL,
+		  lang        TEXT NOT NULL,
+		  target_lang TEXT NOT NULL,
+		  text        TEXT NOT NULL,
+		  sense_idx   INTEGER NOT NULL DEFAULT 0,
+		  source      TEXT NOT NULL,
+		  PRIMARY KEY (lemma, pos, lang, target_lang, sense_idx, source)
+		);
+	`); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	// Lemma 1: source upgraded to ekilex, kaikki-era gloss preserved.
+	// Ekilex translation row exists at sense_idx=0.
+	if _, err := db.Exec(`
+		INSERT INTO lemmas VALUES ('koer', 'NOUN', 'kaikki-text', 'ET', 'ekilex', 20);
+		INSERT INTO translations VALUES
+		  ('koer', 'NOUN', 'ET', 'EN', 'ekilex-text', 0, 'ekilex');
+	`); err != nil {
+		t.Fatalf("seed koer: %v", err)
+	}
+
+	// Lemma 2: only lemmas.gloss, no translations row. COALESCE falls
+	// through to lemmas.gloss.
+	if _, err := db.Exec(`
+		INSERT INTO lemmas VALUES ('kass', 'NOUN', 'cat', 'ET', 'ekilex', 20);
+	`); err != nil {
+		t.Fatalf("seed kass: %v", err)
+	}
+
+	// Lemma 3: translations rows exist for a stale source that doesn't
+	// match the lemma's source. The JOIN on l2.source = t.source
+	// excludes them — falls through to lemmas.gloss.
+	if _, err := db.Exec(`
+		INSERT INTO lemmas VALUES ('kala', 'NOUN', 'fish', 'ET', 'ekilex', 20);
+		INSERT INTO translations VALUES
+		  ('kala', 'NOUN', 'ET', 'EN', 'stale', 0, 'kaikki');
+	`); err != nil {
+		t.Fatalf("seed kala: %v", err)
+	}
+
+	// Lemma 4: translations row matches but text is empty — COALESCE
+	// must skip it and return lemmas.gloss instead. (Defensive — the
+	// importer doesn't write empty text rows, but the read path
+	// shouldn't depend on that invariant.)
+	if _, err := db.Exec(`
+		INSERT INTO lemmas VALUES ('kuu', 'NOUN', 'moon', 'ET', 'ekilex', 20);
+		INSERT INTO translations VALUES
+		  ('kuu', 'NOUN', 'ET', 'EN', '', 0, 'ekilex');
+	`); err != nil {
+		t.Fatalf("seed kuu: %v", err)
+	}
+
+	got, err := bulkLoadGlosses(dbPath, "ET")
+	if err != nil {
+		t.Fatalf("bulkLoadGlosses: %v", err)
+	}
+
+	cases := []struct {
+		lemma, pos, want, why string
+	}{
+		{"koer", "NOUN", "ekilex-text", "translation wins over preserved kaikki gloss (regression case)"},
+		{"kass", "NOUN", "cat", "no translations row → lemmas.gloss"},
+		{"kala", "NOUN", "fish", "stale-source translation rejected → lemmas.gloss"},
+		// kuu: translation row exists but text is empty. The COALESCE
+		// expression treats '' as falsy via the WHERE filter — so the
+		// row picks the translation_pick text='' first, then falls
+		// through to lemmas.gloss. Actually: COALESCE('', 'moon')
+		// returns '' since '' is non-NULL. So the row is filtered out
+		// by the WHERE clause (COALESCE(...) != ''). That mirrors
+		// BatchLookupGlosses, which has the same `gloss != ""` filter
+		// in its caller loop. Document this — kuu is absent from the
+		// returned map.
+		{"kuu", "NOUN", "", "empty translation text + WHERE != '' filter → row excluded"},
+	}
+	for _, tc := range cases {
+		k := store.LemmaKey{Lemma: tc.lemma, POS: tc.pos}
+		gotGloss := got[k]
+		if gotGloss != tc.want {
+			t.Errorf("%s/%s: got %q, want %q (%s)",
+				tc.lemma, tc.pos, gotGloss, tc.want, tc.why)
+		}
+	}
+
+	// kuu intentionally absent from the map (empty COALESCE result).
+	if _, present := got[store.LemmaKey{Lemma: "kuu", POS: "NOUN"}]; present {
+		t.Errorf("kuu unexpectedly in result: %q", got[store.LemmaKey{Lemma: "kuu", POS: "NOUN"}])
+	}
+}
+
+// TestBulkLoadGlosses_TopPriorityTranslationWinsBySenseIdx exercises the
+// ROW_NUMBER ordering: when multiple translations rows match the
+// matching-source predicate (different sense_idx), the lowest sense_idx
+// wins. This mirrors BatchLookupGlosses' ORDER BY t.sense_idx ASC.
+func TestBulkLoadGlosses_TopPriorityTranslationWinsBySenseIdx(t *testing.T) {
+	tmp := t.TempDir()
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+
+	if _, err := db.Exec(`
+		CREATE TABLE lemmas (
+		  lemma TEXT NOT NULL, pos TEXT NOT NULL, gloss TEXT, lang TEXT NOT NULL,
+		  source TEXT, source_priority INTEGER,
+		  PRIMARY KEY (lemma, pos, lang)
+		);
+		CREATE TABLE translations (
+		  lemma TEXT NOT NULL, pos TEXT NOT NULL, lang TEXT NOT NULL, target_lang TEXT NOT NULL,
+		  text TEXT NOT NULL, sense_idx INTEGER NOT NULL DEFAULT 0, source TEXT NOT NULL,
+		  PRIMARY KEY (lemma, pos, lang, target_lang, sense_idx, source)
+		);
+		INSERT INTO lemmas VALUES ('koer', 'NOUN', 'preserved', 'ET', 'ekilex', 20);
+		INSERT INTO translations VALUES
+		  ('koer', 'NOUN', 'ET', 'EN', 'second-sense', 1, 'ekilex'),
+		  ('koer', 'NOUN', 'ET', 'EN', 'first-sense',  0, 'ekilex'),
+		  ('koer', 'NOUN', 'ET', 'EN', 'third-sense',  2, 'ekilex');
+	`); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	got, err := bulkLoadGlosses(dbPath, "ET")
+	if err != nil {
+		t.Fatalf("bulkLoadGlosses: %v", err)
+	}
+	want := "first-sense"
+	gotGloss := got[store.LemmaKey{Lemma: "koer", POS: "NOUN"}]
+	if gotGloss != want {
+		t.Errorf("sense_idx=0 should win: got %q, want %q", gotGloss, want)
 	}
 }

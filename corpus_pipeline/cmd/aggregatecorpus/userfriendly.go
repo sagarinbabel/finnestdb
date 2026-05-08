@@ -98,37 +98,37 @@ func (s *state) writeUserFriendlyWordlistWithExampleResolver(
 	})
 }
 
-// bulkLoadGlosses reads every (lemma, pos, gloss) row for the target
-// language in a single SELECT and returns it as a map keyed by
-// (lemma, pos). The map is consulted per wordlist row at write time, so
+// bulkLoadGlosses returns one gloss per (lemma, pos) for the target
+// language. The map is consulted per wordlist row at write time, so
 // per-row gloss lookup costs a hash probe rather than a SQL round-trip.
+//
+// Semantics mirror store.BatchLookupGlosses exactly so the user-friendly
+// export agrees with the server's read path for the same (lemma, pos):
+//
+//	COALESCE(
+//	  matching-source translation at lowest sense_idx,
+//	  lemmas.gloss,
+//	  ''
+//	)
+//
+// "Matching-source" means: the translations row whose source equals the
+// lemmas row's source for the same (lemma, pos, lang). That coupling
+// matters because cmd/importekilexdetails can upgrade a lemma's source
+// to 'ekilex' without overwriting an older kaikki gloss (the empty-gloss
+// guard preserves richer existing text). When that happens, lemmas.gloss
+// is still the kaikki text but the canonical read path returns the
+// ekilex translation instead — and the user-friendly export must agree.
 //
 // Why bulk vs. per-key: store.BatchLookupGlosses is a "batch" only by
 // API shape — internally it issues one prepared QueryRow per LemmaKey.
 // At FI-full scale (~5M wordlist rows, ~260k distinct dict rows) that
-// is ~260k SQL calls in phase 4, against a ~30-minute total wall clock.
-// Bulk-loading the entire dict for the language is one query, ~260k row
-// scan, and a single Go map allocation — measurably cheaper and removes
-// SQL latency from the writer's hot path.
+// is ~260k SQL calls in phase 4. The query below runs once and
+// LEFT JOINs a CTE that picks the top-priority translation per
+// (lemma, pos, lang). One scan, one Go map allocation, no per-row SQL.
 //
-// The translations-table priority logic that BatchLookupGlosses applies
-// is intentionally not duplicated here: the importers already merge
-// translations into lemmas.gloss with the same source-priority ladder,
-// so reading lemmas.gloss alone is the same answer for the typical case
-// (kaikki + ekilex). The few cases where a custom override modified
-// lemmas.gloss but not translations are correctly handled — we read
-// lemmas.gloss directly. The cases where richer translations text exists
-// but lemmas.gloss is blank are exactly the cases this returns no
-// meaning for; that's a dict-data shortcoming for a future PR (e.g.
-// surfacing translations.text into the user-friendly path), not a
-// regression on the BatchLookupGlosses behavior.
-//
-// The connection is opened read-only + immutable for two reasons:
-//   - WAL recovery is unnecessary; the aggregator never writes to the
-//     dict DB.
-//   - The state already holds a write-mode connection (s.dictDB);
-//     opening a second read-only handle here lets the writer query
-//     without serializing on that connection's lock.
+// The connection is opened read-only + immutable: the aggregator never
+// writes to the dict DB, and a separate read-only handle (independent
+// of state.dictDB's write-mode handle) avoids lock contention.
 func bulkLoadGlosses(dbPath, langUpper string) (map[store.LemmaKey]string, error) {
 	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&immutable=1")
 	if err != nil {
@@ -136,10 +136,39 @@ func bulkLoadGlosses(dbPath, langUpper string) (map[store.LemmaKey]string, error
 	}
 	defer db.Close()
 
-	rows, err := db.Query(
-		`SELECT lemma, pos, gloss FROM lemmas
-		 WHERE lang = ? AND gloss IS NOT NULL AND TRIM(gloss) != ''`,
-		langUpper)
+	// translation_pick: per (lemma, pos, lang), the translation row whose
+	// source matches the lemmas-table source, picked by source_priority
+	// DESC then sense_idx ASC (rn=1 wins). The ROW_NUMBER mirrors
+	// BatchLookupGlosses' ORDER BY clause; the JOIN to lemmas l2 on
+	// source = t.source is the source-coupling that ties each translation
+	// to its co-written lemma row.
+	//
+	// Outer query LEFT JOINs translation_pick into lemmas, then COALESCE
+	// falls back to lemmas.gloss when no matching translation exists.
+	// The final WHERE drops empties so the returned map only contains
+	// non-empty meanings.
+	rows, err := db.Query(`
+		WITH translation_pick AS (
+		  SELECT t.lemma, t.pos, t.lang, t.text,
+		    ROW_NUMBER() OVER (
+		      PARTITION BY t.lemma, t.pos, t.lang
+		      ORDER BY l2.source_priority DESC, t.sense_idx ASC
+		    ) AS rn
+		  FROM translations t
+		  JOIN lemmas l2
+		    ON l2.lemma = t.lemma AND l2.pos = t.pos
+		    AND l2.lang = t.lang AND l2.source = t.source
+		  WHERE t.lang = ? AND t.target_lang = 'EN'
+		)
+		SELECT l.lemma, l.pos,
+		  COALESCE(tp.text, l.gloss, '') AS gloss
+		FROM lemmas l
+		LEFT JOIN translation_pick tp
+		  ON tp.lemma = l.lemma AND tp.pos = l.pos
+		  AND tp.lang = l.lang AND tp.rn = 1
+		WHERE l.lang = ?
+		  AND COALESCE(tp.text, l.gloss, '') != ''
+	`, langUpper, langUpper)
 	if err != nil {
 		return nil, fmt.Errorf("query: %w", err)
 	}
