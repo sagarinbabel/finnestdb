@@ -3,6 +3,8 @@
 # scripts/freeze-baseline.sh — copy a parser-eval run from
 # reports/parser-eval/ into docs/baselines/ under the canonical filename
 # convention and PARSER_EVOLUTION.md/SYSTEM_VERSIONING.md cross-reference.
+# Per-dataset JSON reports are gzip-compressed to keep docs diffs and line
+# counts readable while preserving the raw machine-readable artifact.
 #
 # Filename produced:
 #   docs/baselines/YYYY-MM-DD<rev>-THHMMZ-<dataset>.<ext>
@@ -15,6 +17,7 @@
 #   <dataset> the gold-set slug each report was produced under (matches
 #             scripts/parser-comparison{,-et}.sh's slug-from-file-basename
 #             post-PR #146)
+#   <ext>     .json.gz for per-dataset raw reports; .md for summaries
 #
 # **Append-only.** This script REFUSES to overwrite an existing target
 # file in docs/baselines/. Older baselines stay valid cross-references
@@ -86,17 +89,18 @@ echo ">> Freezing reports/parser-eval/${RUN_TS}-* → docs/baselines/${PREFIX}-*
 shopt -s nullglob
 copied=0
 
-# Per-dataset JSONs.
+# Per-dataset JSONs. Compress with `-n` so gzip headers do not bake in local
+# mtimes or filenames; the committed bytes stay stable across machines.
 for f in "reports/parser-eval/${RUN_TS}"-*.json; do
     base="$(basename "$f")"
     dataset="${base#${RUN_TS}-}"             # strip RUN_TS prefix
-    out="docs/baselines/${PREFIX}-${dataset}"
+    out="docs/baselines/${PREFIX}-${dataset}.gz"
     if [[ -e "$out" ]]; then
         echo "fatal: $out already exists; baselines are append-only." >&2
         echo "       Re-run the comparison with a fresh RUN_TS instead." >&2
         exit 1
     fi
-    cp "$f" "$out"
+    gzip -n -9 -c "$f" > "$out"
     echo "   $out" >&2
     copied=$((copied + 1))
 done

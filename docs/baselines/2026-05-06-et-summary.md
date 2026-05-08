@@ -125,8 +125,8 @@ cases it is also the noisiest dataset.
 
 ## Files
 
-- `2026-05-06-et-grammar-v1.json`
-- `2026-05-06-et-manual-v1.json`
+- `2026-05-06-et-grammar-v1.json.gz`
+- `2026-05-06-et-manual-v1.json.gz`
 
 ## Reproduction
 

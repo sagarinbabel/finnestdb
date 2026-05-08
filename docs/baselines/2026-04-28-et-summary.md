@@ -70,4 +70,4 @@ go run ./cmd/parsertest \
 
 ## Companion files
 
-- `2026-04-28-et-grammar-v1.json` — raw eval report
+- `2026-04-28-et-grammar-v1.json.gz` — raw eval report

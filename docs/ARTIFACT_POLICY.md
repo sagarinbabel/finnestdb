@@ -61,9 +61,11 @@ or `corpora/`.
   for parser/reducer tests are fine; full grammar baselines are fine
   (they're our measurement output, not third-party content).
 - **Eval baseline reports** under [`docs/baselines/`](baselines/). These
-  are our measurement output (`cmd/parsertest` → JSON). They're frozen
-  per-PR for regression detection — see [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md)
-  for the cross-PR narrative.
+  are our measurement output (`cmd/parsertest` → `.json.gz`, plus markdown
+  summaries). They're frozen per-PR for regression detection without keeping
+  pretty-printed raw JSON as hundreds of thousands of docs lines — see
+  [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) for the cross-PR
+  narrative.
 
 ## Reproducibility workflow
 

@@ -1,5 +1,5 @@
 > **Provenance.** Snapshot taken on the head of `claude/pr2-hfstol-go-runtime` before merge to main, capturing the FST stack at "PR 2/4 (Giellalt FI HFST analyser) just landed on top of PR1." Restored to main on 2026-05-07 from git via `git show 777168c^:docs/baselines/<file>` so the FST stack lift is attributable per-PR — see [`../PARSER_EVOLUTION.md`](../PARSER_EVOLUTION.md) §2026-05-06g.
-> Cleanup commits between this snapshot and PR4 merge did not change measured numbers (verified against `2026-05-06-final-*.json`).
+> Cleanup commits between this snapshot and PR4 merge did not change measured numbers (verified against `2026-05-06-final-*.json.gz`).
 
 # Parser comparison (20260506T203804Z, parsers: basic,custom)
 

@@ -25,24 +25,24 @@ Field-by-field:
 | `<rev>` | The single-letter parser-version stamp at measurement time, from [`internal/parsecore/parsecore.go`](../../internal/parsecore/parsecore.go)'s `ParserVersion` (e.g. `2026.05.07k` → `k`). Bumped manually when the *parser* changes; the time component disambiguates same-`<rev>` re-measures. | `k` |
 | `-T<HHMM>Z-` | UTC hour+minute of run-start, dashes around | `-T1118Z-` |
 | `<dataset>` | Gold-set name. For per-dataset JSONs: the slug derived from the input file basename ([`scripts/parser-comparison.sh`](../../scripts/parser-comparison.sh) post-PR [#146](https://github.com/sagarinbabel/finnestdb/pull/146) — earlier the JSON `name` field was used and v1/v2 collided). For cross-language summaries: `fi` or `et`. | `fi-grammar`, `ud-fi-tdt-test`, `fi`, `et` |
-| `<ext>` | `.json` for the raw `cmd/parsertest` reports; `.md` for the cross-language wide-format summaries | `.json` / `.md` |
+| `<ext>` | `.json.gz` for the raw `cmd/parsertest` reports; `.md` for the cross-language wide-format summaries | `.json.gz` / `.md` |
 
 Full examples:
 
 ```
-2026-05-07k-T1118Z-fi-core.json          ← per-dataset raw report
-2026-05-07k-T1118Z-ud-fi-tdt-test.json   ← per-dataset on UD test split
+2026-05-07k-T1118Z-fi-core.json.gz       ← per-dataset raw report
+2026-05-07k-T1118Z-ud-fi-tdt-test.json.gz ← per-dataset on UD test split
 2026-05-07k-T1118Z-fi.md                 ← cross-language FI summary
 2026-05-07k-T1118Z-et.md                 ← cross-language ET summary
 ```
 
-**Append-only.** Older baselines are never renamed or deleted, even when the
-convention drifts. This is what keeps "see `2026-05-06-final-fi-core`" in old
-PR descriptions and commit messages resolvable forever. Tagged-style names
-(`-final-`, `-feats-rich-`, `-post-fst-`) committed before this convention
-landed are left as-is and continue to be valid baseline references; new
-freezes use the canonical form. The cross-reference of every baseline ID is
-maintained in [`SYSTEM_VERSIONING.md` § Parser evaluation baseline history](../SYSTEM_VERSIONING.md), which is also append-only ([#141](https://github.com/sagarinbabel/finnestdb/pull/141)).
+**Append-only at the baseline-ID level.** Older baseline IDs are never
+renamed or removed from the history. Raw per-dataset JSON reports are stored as
+`.json.gz` so the repo does not carry hundreds of thousands of pretty-printed
+JSON lines in normal docs diffs. Tagged-style names (`-final-`,
+`-feats-rich-`, `-post-fst-`) committed before the canonical convention landed
+are left as-is apart from the `.gz` compression suffix. The cross-reference of
+every baseline ID is maintained in [`SYSTEM_VERSIONING.md` § Parser evaluation baseline history](../SYSTEM_VERSIONING.md), which is also append-only ([#141](https://github.com/sagarinbabel/finnestdb/pull/141)).
 
 **Why time, not just date.** Multiple baselines on the same day at the same
 parser-version `<rev>` happen routinely — first measure pre-change, second
@@ -60,8 +60,15 @@ convention).
 
 ## How to read a baseline file
 
-Each baseline JSON is the raw report emitted by `cmd/parsertest`. The keys
-you care about are under `summary.<parser>`:
+Each baseline `.json.gz` is the raw report emitted by `cmd/parsertest`,
+compressed with deterministic gzip headers. `cmd/parser-compare` reads both
+`.json` and `.json.gz`, and shell inspection works with `gunzip -c`:
+
+```bash
+gunzip -c docs/baselines/2026-05-07k-T1118Z-fi-core.json.gz | jq '.summary.custom'
+```
+
+The keys you care about are under `summary.<parser>`:
 
 | Field | Meaning |
 |---|---|
@@ -124,11 +131,9 @@ so the canonical filename convention (above) is applied automatically:
 scripts/freeze-baseline.sh "$RUN_TS"
 ```
 
-The script copies each per-dataset JSON and the cross-language summaries
-into `docs/baselines/` under the canonical name and refuses to overwrite
-an existing target (append-only). Older baselines are **never** renamed
-or deleted — that's the property that keeps cross-references in PR
-descriptions and `PARSER_EVOLUTION.md` valid forever.
+The script compresses each per-dataset JSON into `.json.gz` and copies the
+cross-language summaries into `docs/baselines/` under the canonical name. It
+refuses to overwrite an existing target, so baseline IDs remain append-only.
 
 ## Current reference set
 
