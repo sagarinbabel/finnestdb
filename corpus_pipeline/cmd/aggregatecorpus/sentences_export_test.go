@@ -1,11 +1,16 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/csv"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"finnestdb/corpus_pipeline/internal/cli"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func TestPhase4WriteSentencesUserFriendly(t *testing.T) {
@@ -13,7 +18,7 @@ func TestPhase4WriteSentencesUserFriendly(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(derived, "mining"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	s := testSentenceExportState()
+	s := testSentenceExportState(t)
 	if err := s.Phase4Write(derived, time.Unix(0, 0).UTC()); err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +42,7 @@ func TestPhase4WriteScratchSentencesUserFriendly(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(derived, "mining"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	s := testSentenceExportState()
+	s := testSentenceExportState(t)
 	if err := s.openScratch(derived); err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +68,8 @@ func TestPhase4WriteScratchSentencesUserFriendly(t *testing.T) {
 	})
 }
 
-func testSentenceExportState() *state {
+func testSentenceExportState(t *testing.T) *state {
+	t.Helper()
 	sentences := []string{
 		"See on hea eestikeelne näitelause.",
 		"Sisukord",
@@ -72,10 +78,36 @@ func testSentenceExportState() *state {
 	}
 	s := &state{
 		langLower: "et",
+		langUpper: "ET",
 		surfaces:  map[string]*surfaceStats{},
 		sentences: map[string]*sentenceRec{},
 		documents: map[string]*documentRec{},
 	}
+	// Phase4Write now also calls writeUserFriendlyWordlist, which loads
+	// glosses from the dict DB. Provide a minimal lemmas+translations
+	// schema so bulkLoadGlosses can run; we don't seed any rows because
+	// these tests have no wordlist rows.
+	dbPath := filepath.Join(t.TempDir(), "dict.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`
+		CREATE TABLE lemmas (
+		  lemma TEXT NOT NULL, pos TEXT NOT NULL, gloss TEXT, lang TEXT NOT NULL,
+		  source TEXT, source_priority INTEGER,
+		  PRIMARY KEY (lemma, pos, lang)
+		);
+		CREATE TABLE translations (
+		  lemma TEXT NOT NULL, pos TEXT NOT NULL, lang TEXT NOT NULL, target_lang TEXT NOT NULL,
+		  text TEXT NOT NULL, sense_idx INTEGER NOT NULL DEFAULT 0, source TEXT NOT NULL,
+		  PRIMARY KEY (lemma, pos, lang, target_lang, sense_idx, source)
+		);
+	`); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	s.roots = cli.Roots{DBPath: dbPath}
 	for i, text := range sentences {
 		hash := sentenceHash(text)
 		s.sentences[hash] = &sentenceRec{hash: hash, text: text}

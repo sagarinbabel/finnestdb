@@ -88,6 +88,7 @@ func main() {
 	res.Stats["sentences_user_friendly"] = countTSVRows(filepath.Join(derived, "sentences_user_friendly.tsv"))
 	res.Stats["sentence_occurrences"] = occCount
 	res.Stats["wordlist_rows"] = countTSVRows(filepath.Join(derived, "wordlist.tsv"))
+	res.Stats["wordlist_user_friendly_rows"] = countTSVRows(filepath.Join(derived, "wordlist_user_friendly.tsv"))
 
 	// Hard gate: fixture probes (smoke profile only)
 	if *profile == "smoke" {
@@ -135,7 +136,8 @@ func main() {
 
 func requiredDerivedFiles() []string {
 	return []string{
-		"wordlist.tsv", "sentences.tsv", "sentences_user_friendly.tsv", "sentence_occurrences.tsv",
+		"wordlist.tsv", "wordlist_user_friendly.tsv",
+		"sentences.tsv", "sentences_user_friendly.tsv", "sentence_occurrences.tsv",
 		"poems.tsv", "documents.tsv", "manifest.tsv",
 		"build_metadata.json", "qa-report.json",
 		"mining/unresolved.tsv", "mining/poetry-unresolved.tsv",

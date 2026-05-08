@@ -24,7 +24,8 @@ extract ───────►│
                 └─── <source>/poems.jsonl           (poetry, line breaks preserved)
                 └─── <source>/documents.jsonl       (per-doc metadata)
 
-aggregate ─────►_derived/wordlist.tsv               (giant inflected-form list, one row per analysis)
+aggregate ─────►_derived/wordlist.tsv               (canonical: one row per analysis, raw FEATS, example_ref pair only)
+                _derived/wordlist_user_friendly.tsv (learner-facing: meaning + parsed morphology + example_ref)
                 _derived/sentences.tsv              (text-only, deduped, deterministic IDs)
                 _derived/sentences_user_friendly.tsv (filtered learner-facing sentence bank)
                 _derived/sentence_occurrences.tsv   (full provenance)
@@ -177,6 +178,43 @@ tail -n +2 localdata/fi-corpus/_derived/wordlist.tsv | head -100
 ```sh
 head -50 localdata/fi-corpus/_derived/mining/unresolved.tsv
 ```
+
+### Recover an example sentence from the canonical wordlist
+
+`wordlist.tsv` carries `example_ref_type` + `example_ref_id` only — the
+example body is recoverable by joining against `sentences.tsv` (or
+`poems.tsv` when `example_ref_type=poem`). The user-friendly export at
+`wordlist_user_friendly.tsv` works the same way.
+
+```sh
+# Look up the example for a row whose example_ref_id is, say, 42
+awk -F'\t' 'NR==1||$1=="42"' localdata/fi-corpus/_derived/sentences.tsv
+```
+
+Older wordlists shipped a denormalized `example_text` column; that was
+removed because at full FI scale it accounted for the majority of
+`wordlist.tsv` size for very little additional information.
+
+### User-friendly wordlist (learner-facing)
+
+`wordlist_user_friendly.tsv` is a derived export with the columns a UI
+needs:
+
+```
+surface, meaning, lang, lemma, pos,
+case, number, mood, tense, person, voice, verbform, feats,
+surface_count_*, doc_count_*, source_counts_json,
+analysis_sources, analysis_rank, is_parser_choice,
+parser_version, fst_tables_sha, dict_fingerprint,
+example_ref_type, example_ref_id
+```
+
+`meaning` is the dictionary gloss for `(lemma, pos)`. Empty when the
+dictionary doesn't list the headword (~21% of FI tokens, ~21% of ET
+tokens after the meaning-sources work). The morphology columns (case,
+number, mood, etc.) are split out from `feats` so consumers don't have to
+parse the pipe-delimited string themselves; `feats` itself remains for
+completeness.
 
 ---
 

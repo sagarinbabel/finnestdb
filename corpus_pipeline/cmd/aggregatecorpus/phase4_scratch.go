@@ -207,20 +207,20 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 		return s.wordlistRows[i].analysisRank < s.wordlistRows[j].analysisRank
 	})
 
-	// Resolve example_text via in-memory hash→id and hash→text maps.
-	resolveExample := func(hash string) (refType, refID, text string) {
-		if hash == "" {
-			return "", "", ""
+	// Resolve example_ref pair from in-memory hash→id map. Scratch mode
+	// drops example_text from canonical wordlist.tsv too; downstream
+	// consumers join example_ref_id against sentences.tsv to recover the
+	// example body.
+	resolveExampleRef := func(ss *surfaceStats) (refType, refID string) {
+		if ss.exampleHash != "" {
+			if id, ok := hashToID[ss.exampleHash]; ok {
+				return "sentence", itoa(id)
+			}
 		}
-		id, ok := hashToID[hash]
-		if !ok {
-			return "", "", ""
+		if ss.examplePoem > 0 {
+			return "poem", itoa(ss.examplePoem)
 		}
-		t, ok := hashToText[hash]
-		if !ok {
-			return "", "", ""
-		}
-		return "sentence", itoa(id), truncateExample(t)
+		return "", ""
 	}
 
 	if err := writeTSV(filepath.Join(derived, "wordlist.tsv"),
@@ -230,12 +230,12 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 			"lang", "lemma", "pos", "feats",
 			"analysis_sources", "analysis_rank", "is_parser_choice",
 			"parser_version", "fst_tables_sha", "dict_fingerprint",
-			"example_ref_type", "example_ref_id", "example_text",
+			"example_ref_type", "example_ref_id",
 		},
 		func(yield func([]string)) {
 			for _, r := range s.wordlistRows {
 				ss := s.surfaces[r.surface]
-				exType, exID, exText := resolveExample(ss.exampleHash)
+				exType, exID := resolveExampleRef(ss)
 				srcJSON, _ := json.Marshal(ss.sourceCount)
 				yield([]string{
 					r.surface,
@@ -245,10 +245,21 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 					s.langLower, r.lemma, r.pos, r.feats,
 					strings.Join(r.analysisSources, ";"), itoa(r.analysisRank), boolStr(r.isParserChoice),
 					s.parserVersion, s.fstTablesSHA, s.dictFingerprint,
-					exType, exID, exText,
+					exType, exID,
 				})
 			}
 		}); err != nil {
+		return err
+	}
+
+	// User-friendly wordlist (scratch path uses the same writer with a
+	// scratch-aware example resolver). Lives next to the canonical
+	// wordlist.tsv; one row per parser-choice analysis with the fields a
+	// learner-facing UI needs.
+	if err := s.writeUserFriendlyWordlistWithExampleResolver(
+		filepath.Join(derived, "wordlist_user_friendly.tsv"),
+		resolveExampleRef,
+	); err != nil {
 		return err
 	}
 

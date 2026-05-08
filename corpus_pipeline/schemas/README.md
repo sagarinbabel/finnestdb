@@ -4,8 +4,9 @@ The TSVs are written with Go `encoding/csv` using tab as the delimiter.
 
 ## `wordlist.tsv`
 
-One row per distinct `(surface, lemma, pos, feats)` analysis. A surface can have
-multiple rows when it has multiple analyses.
+Canonical parser-evidence export. One row per distinct
+`(surface, lemma, pos, feats)` analysis; a surface can have multiple rows
+when it has multiple analyses.
 
 | Column | Meaning |
 |---|---|
@@ -28,17 +29,67 @@ multiple rows when it has multiple analyses.
 | `dict_fingerprint` | Dictionary DB fingerprint used during aggregate. |
 | `example_ref_type` | `sentence` or `poem`, when an example was resolved. |
 | `example_ref_id` | ID in `sentences.tsv` or `poems.tsv`. |
-| `example_text` | Denormalized, truncated example text; removable because it can be rejoined by ID. |
 
-Planned change: `example_text` should be removed from canonical outputs in a
-follow-up PR. Reconstruct it by joining `example_ref_id` to `sentences.tsv.id`
-when `example_ref_type=sentence`, or to `poems.tsv.id` when
-`example_ref_type=poem`.
+`example_text` was previously the 20th column but was removed on
+2026-05-09 — at full FI scale it accounted for the majority of
+`wordlist.tsv` size for information already available elsewhere.
+Reconstruct example bodies by joining `example_ref_id` against
+`sentences.tsv.id` when `example_ref_type=sentence`, or against
+`poems.tsv.id` when `example_ref_type=poem`. The user-friendly export
+documented below carries the same `example_ref` pair.
 
-Planned human-facing export: `wordlist_user_friendly.tsv` should be generated
-as a separate derived file with `surface`, `meaning`, lemma, POS, morphology,
-counts, and example reference fields. Meanings come from dictionary/translation
-tables or future external meaning sources, not from raw corpus documents.
+## `wordlist_user_friendly.tsv`
+
+Learner-facing export. One row per analysis (same row count as
+`wordlist.tsv`). Adds the dictionary gloss and splits the UD FEATS string
+into named morphology columns so a UI doesn't need to parse the
+pipe-delimited string itself.
+
+The `meaning` column mirrors the precedence used by the runtime read path
+(`store.BatchLookupGlosses`):
+
+1. The translation row in `translations` whose `source` matches the
+   `lemmas` row's `source` for the same `(lemma, pos, lang)`, picked by
+   `lemmas.source_priority DESC, translations.sense_idx ASC`.
+2. `lemmas.gloss`, when no matching-source translation exists for the
+   `(lemma, pos, lang)`.
+3. Empty, when neither is populated.
+
+Source coupling matters: `cmd/importekilexdetails` can upgrade an
+existing kaikki lemma to `source='ekilex'` while preserving the older
+kaikki gloss (the empty-gloss guard). The user-friendly export then
+correctly returns the matching ekilex translation, not the preserved
+kaikki gloss — same answer the server's read path returns.
+
+| Column | Meaning |
+|---|---|
+| `surface` | Exact token form. |
+| `meaning` | Dictionary gloss for `(lemma, pos, lang)`. Resolved by the precedence above. Empty when the dictionary doesn't list the headword and no translation exists. |
+| `lang` | `fi` or `et`. |
+| `lemma` | Dictionary/base form for this analysis. |
+| `pos` | Part of speech. |
+| `case` | UD `Case` value, or empty. |
+| `number` | UD `Number` value, or empty. |
+| `mood` | UD `Mood` value, or empty. |
+| `tense` | UD `Tense` value, or empty. |
+| `person` | UD `Person` value, or empty. |
+| `voice` | UD `Voice` value, or empty. |
+| `verbform` | UD `VerbForm` value, or empty. |
+| `feats` | Full UD FEATS string preserved for completeness. |
+| `surface_count_prose` | Same as canonical wordlist. |
+| `surface_count_poetry` | Same as canonical wordlist. |
+| `surface_count_total` | Same as canonical wordlist. |
+| `doc_count_prose` | Same as canonical wordlist. |
+| `doc_count_poetry` | Same as canonical wordlist. |
+| `source_counts_json` | Per-source occurrence counts as JSON. |
+| `analysis_sources` | Same as canonical wordlist. |
+| `analysis_rank` | Rank among analyses for the same surface. |
+| `is_parser_choice` | `1` when this is the parser-selected analysis. |
+| `parser_version` | Same as canonical wordlist. |
+| `fst_tables_sha` | Same as canonical wordlist. |
+| `dict_fingerprint` | Same as canonical wordlist. |
+| `example_ref_type` | `sentence` or `poem`, when an example was resolved. |
+| `example_ref_id` | ID in `sentences.tsv` or `poems.tsv`. |
 
 ## `wordlist-enriched.tsv`
 
