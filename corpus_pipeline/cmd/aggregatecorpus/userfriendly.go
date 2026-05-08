@@ -1,7 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -47,16 +49,18 @@ func (s *state) writeUserFriendlyWordlist(path string) error {
 //
 // The wordlist rows are already sorted (by descending prose count, then
 // surface, then analysis rank) by the caller, so this writer streams in
-// that order. Meanings come from a single batch lookup so we don't fire
-// one query per row at FI-full scale (~5M rows).
+// that order. Meanings come from a single bulk SELECT against `lemmas`
+// — see bulkLoadGlosses below — so per-row gloss lookup is a hash hit,
+// not a SQL round-trip. Critical at FI-full scale where the wordlist
+// has ~5M rows.
 func (s *state) writeUserFriendlyWordlistWithExampleResolver(
 	path string,
 	resolveExample userFriendlyExampleResolver,
 ) error {
-	// Single batch lookup: collect every distinct (lemma, pos) once, hit
-	// the dict DB once, reuse the map for all wordlist rows.
-	keys := s.distinctLemmaKeys()
-	glosses := s.dictDB.BatchLookupGlosses(keys, s.langUpper)
+	glosses, err := bulkLoadGlosses(s.roots.DBPath, s.langUpper)
+	if err != nil {
+		return fmt.Errorf("bulk-load glosses: %w", err)
+	}
 
 	header := []string{
 		"surface", "meaning",
@@ -94,21 +98,65 @@ func (s *state) writeUserFriendlyWordlistWithExampleResolver(
 	})
 }
 
-// distinctLemmaKeys collects each unique (lemma, pos) seen in
-// s.wordlistRows. The order isn't significant — BatchLookupGlosses
-// returns a map. Pre-allocates assuming most rows have distinct
-// (lemma, pos), which is true at FI-full scale (5M rows ≈ 5M distinct
-// pairs because the FST emits a different lemma per analysis).
-func (s *state) distinctLemmaKeys() []store.LemmaKey {
-	seen := make(map[store.LemmaKey]struct{}, len(s.wordlistRows))
-	for _, r := range s.wordlistRows {
-		seen[store.LemmaKey{Lemma: r.lemma, POS: r.pos}] = struct{}{}
+// bulkLoadGlosses reads every (lemma, pos, gloss) row for the target
+// language in a single SELECT and returns it as a map keyed by
+// (lemma, pos). The map is consulted per wordlist row at write time, so
+// per-row gloss lookup costs a hash probe rather than a SQL round-trip.
+//
+// Why bulk vs. per-key: store.BatchLookupGlosses is a "batch" only by
+// API shape — internally it issues one prepared QueryRow per LemmaKey.
+// At FI-full scale (~5M wordlist rows, ~260k distinct dict rows) that
+// is ~260k SQL calls in phase 4, against a ~30-minute total wall clock.
+// Bulk-loading the entire dict for the language is one query, ~260k row
+// scan, and a single Go map allocation — measurably cheaper and removes
+// SQL latency from the writer's hot path.
+//
+// The translations-table priority logic that BatchLookupGlosses applies
+// is intentionally not duplicated here: the importers already merge
+// translations into lemmas.gloss with the same source-priority ladder,
+// so reading lemmas.gloss alone is the same answer for the typical case
+// (kaikki + ekilex). The few cases where a custom override modified
+// lemmas.gloss but not translations are correctly handled — we read
+// lemmas.gloss directly. The cases where richer translations text exists
+// but lemmas.gloss is blank are exactly the cases this returns no
+// meaning for; that's a dict-data shortcoming for a future PR (e.g.
+// surfacing translations.text into the user-friendly path), not a
+// regression on the BatchLookupGlosses behavior.
+//
+// The connection is opened read-only + immutable for two reasons:
+//   - WAL recovery is unnecessary; the aggregator never writes to the
+//     dict DB.
+//   - The state already holds a write-mode connection (s.dictDB);
+//     opening a second read-only handle here lets the writer query
+//     without serializing on that connection's lock.
+func bulkLoadGlosses(dbPath, langUpper string) (map[store.LemmaKey]string, error) {
+	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&immutable=1")
+	if err != nil {
+		return nil, fmt.Errorf("open ro: %w", err)
 	}
-	keys := make([]store.LemmaKey, 0, len(seen))
-	for k := range seen {
-		keys = append(keys, k)
+	defer db.Close()
+
+	rows, err := db.Query(
+		`SELECT lemma, pos, gloss FROM lemmas
+		 WHERE lang = ? AND gloss IS NOT NULL AND TRIM(gloss) != ''`,
+		langUpper)
+	if err != nil {
+		return nil, fmt.Errorf("query: %w", err)
 	}
-	return keys
+	defer rows.Close()
+
+	out := make(map[store.LemmaKey]string)
+	for rows.Next() {
+		var lemma, pos, gloss string
+		if err := rows.Scan(&lemma, &pos, &gloss); err != nil {
+			return nil, fmt.Errorf("scan: %w", err)
+		}
+		out[store.LemmaKey{Lemma: lemma, POS: pos}] = gloss
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iter: %w", err)
+	}
+	return out, nil
 }
 
 // parseUDFeats splits a pipe-delimited UD FEATS string into a flat map of
