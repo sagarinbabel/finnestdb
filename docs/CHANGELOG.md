@@ -10,6 +10,32 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-05-09 — Architecture and corpus documentation audit
+
+Refreshes the living docs after the corpus pipeline and baseline-compression
+PRs landed, while leaving historical reports and frozen baselines
+append-only.
+
+- Modified: [`ARCHITECTURE.md`](../ARCHITECTURE.md) — updated the current
+  product surface, Mermaid diagram, layer responsibilities, data flows,
+  localdata/FST boundaries, and near-term direction to include the corpus
+  pipeline.
+- Modified: [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) —
+  replaced stale future-work wording with built-vs-deferred status, refreshed
+  profile guidance, and corrected FST-table troubleshooting.
+- Modified: [`corpus_pipeline/docs/PR_ROADMAP.md`](../corpus_pipeline/docs/PR_ROADMAP.md),
+  [`corpus_pipeline/v2plan.md`](../corpus_pipeline/v2plan.md), and
+  [`corpus_pipeline/Makefile`](../corpus_pipeline/Makefile) — aligned roadmap
+  statuses and profile help text with the landed corpus PRs.
+- Modified: [`docs/FST_LEMMATIZER.md`](FST_LEMMATIZER.md) — documented the
+  ET generated-table command and remaining production-promotion conditions.
+- Modified: [`docs/INDEX.md`](INDEX.md), [`README.md`](../README.md),
+  [`TODO.md`](../TODO.md), and [`finnestdb-prd-alpha.md`](../finnestdb-prd-alpha.md) —
+  refreshed canonical navigation, PR state, and the historical PRD's
+  implementation snapshot.
+- Added: [`docs/qa-reports/2026-05-08T2229Z-doc-architecture-corpus-audit.md`](qa-reports/2026-05-08T2229Z-doc-architecture-corpus-audit.md) —
+  timestamped full-doc audit and Git/GitHub branch-state report.
+
 ## 2026-05-09 — Typographic quote tokenization docs (PR #171)
 
 Documents the current Rust parser contract after PR

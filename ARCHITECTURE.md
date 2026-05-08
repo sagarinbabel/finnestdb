@@ -1,6 +1,6 @@
 # FinEstDB Architecture
 
-_Current as of 2026-05-07 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
+_Current as of 2026-05-09 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
 
 Role-aware Finnish and Estonian reading app focused on dictionary-backed
 lemmatization, deck creation, review, parser feedback, and parser evaluation.
@@ -48,6 +48,14 @@ Current product surface on `main`:
   surface form (e.g. ET `joon` = noun "line" + 1Sg of `jooma`) maps to
   multiple `(lemma, pos)` candidates; deck ingest emits one card per
   candidate
+- tracked corpus pipeline under `corpus_pipeline/` for fetching,
+  extracting, aggregating, verifying, promoting, enriching, and per-book
+  EPUB deck generation; runtime corpus data remains gitignored under
+  `localdata/{fi,et}-corpus/`
+- learner-facing corpus exports:
+  `wordlist_user_friendly.tsv`, `sentences_user_friendly.tsv`,
+  `sentence_occurrences.tsv`, parser-improvement mining files, and
+  gloss-coverage reports
 - Playwright coverage for parse/results, POS filtering, language switching, file upload, and mobile nav
 
 Important distinction:
@@ -57,8 +65,11 @@ Important distinction:
   points, but not as browser buttons
 - The Finnish lexical pipeline (Kotus + generated morphology tables +
   kaikki.org) is documented in [`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md).
-  `cmd/importkotus` is present; production generated FI/ET morphology
-  tables are still deferred beyond the current smoke fixtures.
+  `cmd/importkotus` is present; FI/ET generated morphology table
+  generators exist, but production tables are local runtime artifacts
+  under `localdata/lemmatizer-fi-et/tables/`, not committed files.
+  Smoke fixtures under `testdata/lemmatizer/` are only unit-test ground
+  truth.
 
 ## High-Level Architecture
 
@@ -96,6 +107,17 @@ flowchart TB
     Store["SQLite store"]
     Dict["multi-source dictionary import (kaikki, Ekilex, custom)"]
     Feedback["parse feedback"]
+    LocalData["localdata: DB inputs, FST tables, corpus artifacts"]
+  end
+
+  subgraph CorpusPipeline["Corpus pipeline (tracked code, localdata data)"]
+    Fetch["fetchcorpus / scrapers"]
+    Extract["extractcorpus"]
+    Aggregate["aggregatecorpus"]
+    Verify["corpusverify / corpuspromote"]
+    EnrichCorpus["enrichcorpus"]
+    EpubDeck["epubdeck"]
+    CorpusExports["wordlists, sentence banks, mining TSVs, reports"]
   end
 
   Inspect -->|"POST /api/parse"| Handlers
@@ -109,6 +131,8 @@ flowchart TB
   ParserModes --> RustParser
   ParserModes --> Enrichment
   Enrichment --> Store
+  LocalData --> Enrichment
+  LocalData --> Dict
   Dict --> Store
   ParserEval --> ParseCore
   ParserEval --> GoldData
@@ -122,144 +146,22 @@ flowchart TB
   Handlers --> Feedback
   Feedback --> Store
 
+  Fetch --> LocalData
+  LocalData --> Extract
+  Extract --> Aggregate
+  Aggregate --> ParseCore
+  Aggregate --> Store
+  Aggregate --> CorpusExports
+  EnrichCorpus --> ParserModes
+  EnrichCorpus --> CorpusExports
+  EpubDeck --> Aggregate
+  Verify --> CorpusExports
+  CorpusExports --> LocalData
+
   classDef versioned fill:#eef6ff,stroke:#2b6cb0,color:#102a43
   classDef data fill:#f7f7f7,stroke:#666,color:#222
-  class ParserSystem,DeckReviewSystem versioned
+  class ParserSystem,DeckReviewSystem,CorpusPipeline versioned
   class Data data
-```
-
-```text
-CURRENT
-
-+--------------------------------------------------------------------------------+
-| Browser UI                                                                     |
-| web/index.html + web/app.ts                                                    |
-|                                                                                |
-| - Workbench nav shell                                                          |
-| - Parse Text page                                                              |
-| - Parser buttons: basic, custom                                                |
-| - Language auto-switch, warning, and file load                                 |
-| - Results table, POS filter chips                                              |
-| - Coverage gauge and parse duration                                            |
-+-----------------------------------+--------------------------------------------+
-                                    |
-                                    | POST /api/parse
-                                    v
-+--------------------------------------------------------------------------------+
-| Go HTTP Server                                                                 |
-| cmd/server + internal/api                                                      |
-|                                                                                |
-| Active user-facing flow:                                                       |
-| - serve static frontend                                                        |
-| - validate parse request                                                       |
-| - call parsecore.Analyze(...)                                                  |
-| - return JSON parse result plus parse stats                                    |
-|                                                                                |
-| Real auth surface (internal/auth):                                             |
-| - /api/auth/register, login, logout                                            |
-| - sliding sessions in user_sessions                                            |
-| - /admin/users management                                                      |
-|                                                                                |
-| Partial / not current UI focus:                                                |
-| - /api/decks                                                                   |
-| - review scheduling endpoints                                                  |
-+-----------------------------------+--------------------------------------------+
-                                    |
-                                    | parsecore.Analyze(db, lang, text, parser)
-                                    v
-+--------------------------------------------------------------------------------+
-| Parse Core                                                                     |
-| internal/parsecore                                                             |
-|                                                                                |
-| Shared parser orchestration layer:                                             |
-| - request validation                                                           |
-| - parser registry                                                              |
-| - parser definitions                                                           |
-| - sentence/token conversion                                                    |
-| - dictionary resolution                                                        |
-| - gloss lookup                                                                 |
-| - word aggregation                                                             |
-| - parse-stage observability metrics                                            |
-|                                                                                |
-| Parsers currently wired in:                                                    |
-| - basic   -> Rust analyzer + direct dictionary lookup                          |
-| - custom  -> Rust analyzer + fallback enrichment rules                         |
-| - omorfi  -> external Finnish adapter slot + override rules                    |
-| - estnltk -> external Estonian adapter (EstNLTK / Vabamorf)                    |
-+--------------------------+--------------------------+--------------------------+
-                           |                          |
-                           | FFI                      | forms/lemmas/glosses
-                           v                          v
-+--------------------------------+      +----------------------------------------+
-| Rust Parser Library            |      | SQLite + Dictionary Data               |
-| parser/src/lib.rs              |      | internal/store                         |
-|                                |      |                                        |
-| - NFC normalization            |      | - forms / lemmas (source priority,     |
-| - sentence splitting           |      |   paradigm_class, feats)               |
-| - tokenization                 |      | - translations / definitions           |
-| - heuristic POS guessing       |      | - dict_metadata (per-source provenance)|
-|                                |      | - users / user_sessions                |
-|                                |      | - decks / sentences / occurrence       |
-|                                |      | - cards / card_state                   |
-+--------------------------------+      +----------------------------------------+
-
-
-CURRENT EVALUATION PATH
-
-+--------------------------------------------------------------------------------+
-| Parser Evaluation CLI                                                          |
-| cmd/parsertest                                                                 |
-|                                                                                |
-| - load dataset JSON                                                            |
-| - choose parsers (basic, custom, omorfi, estnltk)                              |
-| - run warmup/timed evaluation                                                  |
-| - write JSON report under reports/parser-eval                                  |
-+-----------------------------------+--------------------------------------------+
-                                    |
-                                    v
-+--------------------------------------------------------------------------------+
-| Evaluation Engine                                                              |
-| internal/eval                                                                  |
-|                                                                                |
-| - dataset loading and validation                                               |
-| - token-by-token comparison                                                    |
-| - lemma/POS/grammar/full accuracy                                              |
-| - resolved coverage                                                            |
-| - timing summaries                                                             |
-| - parse-stage stats in case reports and summaries                              |
-| - priority regression detection                                                |
-+-----------------------------------+--------------------------------------------+
-                                    |
-                                    v
-+--------------------------------------------------------------------------------+
-| Evaluation Data                                                                |
-| testdata/parser-eval                                                           |
-|                                                                                |
-| - Finnish gold sets                                                            |
-| - Estonian gold sets                                                           |
-| - annotation notes                                                             |
-+--------------------------------------------------------------------------------+
-
-
-FUTURE / PLANNED
-
-.................................... parser quality loop ........................
-. annotated datasets                                                          .
-. stronger parser scoring                                                     .
-. easier local regression checks                                              .
-...............................................................................
-
-.................................... lexical knowledge layer ...................
-. self-improving dictionary / provenance-aware lexical store                  .
-. richer lexical relations and better definition maintenance                  .
-...............................................................................
-
-.................................... later product work ........................
-. accounts                                                                    .
-. known-word tracking                                                         .
-. dashboard and review scheduling                                             .
-. learning flows built on stronger parser output                              .
-...............................................................................
 ```
 
 ## Responsibilities By Layer
@@ -275,9 +177,10 @@ Files:
 
 Responsibilities:
 
-- render the workbench nav shell and mobile menu
+- render the role-aware app shell and mobile menu
 - collect text and selected language
-- choose between `basic` and `custom`
+- expose learner flows for Inspect, Decks, Review, Results, and known words
+- expose admin workbench controls for `basic` and `custom`
 - submit parse requests to `/api/parse`
 - render parser metadata, coverage gauge, POS filters, and sortable results
 - explain coverage score and timing
@@ -295,7 +198,7 @@ Responsibilities:
 
 - start the HTTP server with `Cache-Control: no-store` on static assets
 - initialize SQLite-backed store
-- expose parse, deck, review, and parse-feedback endpoints
+- expose parse, deck, review, known-word, import, and parse-feedback endpoints
 - expose real password-based auth (`/api/auth/register`, login, logout)
   with Argon2id hashing and DB-backed sliding sessions (7-day expiry)
 - pass parse work into `internal/parsecore`
@@ -364,9 +267,8 @@ Responsibilities:
 - resolve forms to lemma/POS (multi-lemma aware via the
   `(form, lang, lemma, pos)` PK), applying Finnish possessive stripping
   and language-specific case-suffix fallbacks
-- supply glosses (today from `lemmas.gloss`; Phase 2 of the FI plan
-  moves them into `translations` and `definitions`)
-- maintain Finnish-specific lexical-enrichment columns
+- supply glosses from `lemmas.gloss`, `translations`, and `definitions`
+- maintain language-specific lexical-enrichment columns
   (`lemmas.paradigm_class`, `forms.feats`) and the new `translations` /
   `definitions` tables
 - store deck/sentence/occurrence/review data; deck ingest expands a
@@ -424,7 +326,44 @@ importer disambiguates by classifying the morph code: codes prefixed
 VERB; codes prefixed `Sg/Pl` (and the invariant marker `ID`) are nominal
 and only attribute to non-VERB POSes.
 
-### 6. Evaluation Stack
+### 6. Corpus Pipeline
+
+Files:
+
+- `corpus_pipeline/cmd/fetchcorpus/` — source registry downloads into
+  `localdata/{fi,et}-corpus/<source>/raw/`
+- `corpus_pipeline/cmd/extractcorpus/` — format-specific text extraction
+  for EPUB, VRT, Leipzig, CSV, HTML, Hugging Face, Markdown, SKVR, gzip,
+  fixtures, and miscellaneous text sources
+- `corpus_pipeline/cmd/aggregatecorpus/` — deterministic aggregation into
+  canonical and learner-facing TSV exports
+- `corpus_pipeline/cmd/corpusverify/` and
+  `corpus_pipeline/cmd/corpuspromote/` — smoke/pilot/full QA gates and
+  promotion state
+- `corpus_pipeline/cmd/enrichcorpus/` — analyzer-agreement enrichment for
+  silver parser-improvement candidates
+- `corpus_pipeline/cmd/epubdeck/` — per-book wordlist/deck export
+- `corpus_pipeline/cmd/glosscoverage/` — dictionary gloss-coverage audit
+- `corpus_pipeline/docs/CORPUS_PIPELINE.md`
+
+Responsibilities:
+
+- keep corpus implementation tracked while keeping bulk corpus data out of git
+- fetch and extract source material into `localdata/{fi,et}-corpus/`
+- aggregate wordlists, sentence banks, sentence occurrences, poems,
+  document metadata, QA metadata, and mining TSVs
+- produce learner-facing exports with meanings, parsed morphology, source
+  counts, analysis provenance, parser/FST fingerprints, and example refs
+- verify hard/soft QA gates before promotion between smoke, pilot, and full
+- generate silver candidates only from `enrichcorpus` analyzer agreement
+- preserve append-only repair/error history under `_derived/errors/`
+
+The corpus pipeline is not a runtime dependency of the browser app today.
+It is the offline path for better learner material, better frequency lists,
+and parser-improvement candidates. The app can consume promoted artifacts
+later without changing the parser/eval contracts.
+
+### 7. Evaluation Stack
 
 Files:
 
@@ -451,8 +390,11 @@ Files:
   dev/test) and for splits we just don't want auto-discovered (FI/ET
   UD train splits, used for OOV/coverage only). All under localdata/
   per the single-folder bootstrap rule.
-- `localdata/silver-fi/` — Plan C silver-tier corpus (Gutenberg-FI raw text
-  + JSONL manifest); morphological annotation deferred to PR 4
+- `localdata/silver-fi/` — legacy Plan C silver-tier corpus
+  (Gutenberg-FI raw text + JSONL manifest)
+- `localdata/{fi,et}-corpus/_derived/mining/` — corpus-pipeline mining outputs such
+  as unresolved, ambiguous, parser-disagreement, internal-consensus, and
+  silver-candidate TSVs
 - `docs/baselines/` — frozen baseline reports per parser/language
 - `docs/PARSER_EVAL_DATASETS.md`
 - `docs/OMORFI_ADAPTER.md` · `docs/OMORFI_COMPARISON.md`
@@ -517,8 +459,13 @@ Estonian (live):
   homonym disambiguation and `(lemma, pos)` gloss merging)
 - Ekilex API path (smaller queries, on-demand): `cmd/importdict
   -source-key ekilex` against the `/api/word/details` endpoint
+- generated morphology tables: `make gen-lemmatizer-tables-et
+  HFSTOL_PATH=/path/to/analyser-gt-desc.hfstol` writes
+  `localdata/lemmatizer-fi-et/tables/et_min.json`; production promotion
+  still needs a production wordlist, provenance notes, row counts, and
+  eval gate
 
-Finnish (Phases 1–3 shipped, Phase 4 superseded by FST runtime, Phase 5 partially shipped):
+Finnish (live):
 
 - analyzer baseline: Omorfi adapter slot
 - lexical sources: kaikki.org (priority 10) + Kotus sanalista (priority 10,
@@ -582,6 +529,18 @@ Finnish (Phases 1–3 shipped, Phase 4 superseded by FST runtime, Phase 5 partia
 8. API returns parse JSON and parse-stage stats to the browser.
 9. Frontend renders summary stats, coverage gauge, POS-filtered rows, and sortable output.
 
+### Deck and review flow
+
+1. A learner saves inspected text into a deck or imports deck material.
+2. API handlers persist decks, sentences, token occurrences, cards, and
+   card state in SQLite.
+3. Multi-lemma dictionary candidates produce distinct occurrence/card rows
+   keyed by `(deck_id, sentence_id, token_ix, lemma, pos)`.
+4. Review endpoints select due cards, accept learner answers, and update
+   review state separately from parser behavior.
+5. Known-word endpoints track learner vocabulary state without changing
+   parser baselines.
+
 ### Evaluation flow
 
 1. Developer runs `go run ./cmd/parsertest ...`.
@@ -590,15 +549,32 @@ Finnish (Phases 1–3 shipped, Phase 4 superseded by FST runtime, Phase 5 partia
 4. Output is compared against expected token annotations.
 5. Accuracy, coverage, and parse-stage observability metrics are written to a report JSON file.
 
+### Corpus pipeline flow
+
+1. Operators run `cd corpus_pipeline && make fetch-corpus[-fi|-et]` or place
+   folder-driven material under `localdata/{fi,et}-corpus/<source>/raw/`.
+2. `extractcorpus` normalizes formats into `text.txt`, `poems.jsonl`, and
+   `documents.jsonl`.
+3. `aggregatecorpus` builds canonical exports and learner-facing exports,
+   using parser/FST/dictionary evidence for analysis and provenance.
+4. `corpusverify` checks hard and soft gates; `corpuspromote` walks
+   smoke -> pilot -> full and records promotion state.
+5. `enrichcorpus`, `epubdeck`, and `glosscoverage` add silver candidates,
+   per-book learner wordlists, and meaning-source coverage reports.
+
 ## Current Boundaries and Caveats
 
 - The browser UI is still centered on `basic` and `custom`.
-- The nav shell is intentionally limited to the parser workbench surface.
-- Auth is real (Argon2id + DB-backed sessions), but the review/scheduling
-  flows on top still have partial scaffolding.
+- `omorfi` and `estnltk` are not browser choices; they are eval and corpus
+  enrichment baselines.
+- Auth is real (Argon2id + DB-backed sessions). Public exposure still needs
+  the remaining go-live hardening called out in
+  [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md).
 - Omorfi and EstNLTK are not bundled into normal app startup; they are
-  external adapter paths used only by the evaluation CLI.
-- The evaluation pipeline is now a first-class architectural component.
+  external adapter paths used by evaluation and offline enrichment.
+- The evaluation pipeline and corpus pipeline are first-class
+  architectural components, but corpus bulk data and generated analyzer
+  tables remain local artifacts under `localdata/`.
 - The Finnish lexical pipeline columns are populated:
   `paradigm_class` is set on FI lemmas by `cmd/importkotus` (Phase 3),
   `forms.feats` is populated by `cmd/importdict` (FI/ET kaikki, via
@@ -612,28 +588,23 @@ Finnish (Phases 1–3 shipped, Phase 4 superseded by FST runtime, Phase 5 partia
   The shared composer `pkg/lemmatizer-fi-et/udfeats::Compose` is the
   canonical FEATS-string assembler; FST analyses persist `Analysis.Feats`
   at parse time so generated tables are self-describing on disk.
-  Production FI lemmatizer tables (the local `localdata/lemmatizer-fi-et/`
-  artifact) are generated locally by users; the runtime falls back to
-  dict-only when they are absent.
+  Production FI and ET lemmatizer tables (the local
+  `localdata/lemmatizer-fi-et/` artifact) are generated locally by users;
+  the runtime falls back to dict-only for a language when that language's
+  table is absent.
 
 ## Near-Term Direction
 
 The intended sequence from the current codebase is:
 
-1. narrow or remove non-parser backend stubs that do not match the workbench product focus
-2. strengthen parser evaluation with more reviewed Finnish and Estonian gold data
-3. use eval regressions and observability metrics to drive targeted parser fixes
-4. compare custom rules against the Omorfi (FI) and EstNLTK (ET) baselines
-5. continue the lexical pipelines:
-   - **ET**: production Estonian lemmatizer table generation now uses
-     `cmd/genlemmatizertables -lang et -hfstol ...`; the remaining work is
-     a production wordlist, provenance notes, row counts, and eval gate.
-   - **FI**: production FI lemmatizer-table generation against a real
-     word list (current `cmd/genlemmatizertables/wordlists/fi_smoke.txt`
-     ships as a smoke fixture). Phases 1–3 of
-     [`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md) shipped (Kotus,
-     translations migration, kaikki tagging). Phase 4 (Voikko offline
-     seed) was superseded by the FST runtime path; Phase 5 (production
-     ET tables) is the remaining work →
-     resolution priority flip
-6. return later to known-word tracking and review-flow polish
+1. harden auth/session/abuse controls and retention before public go-live
+2. keep parser improvements tied to frozen baselines, stratified reports,
+   and analyzer columns (`omorfi` for FI, `estnltk` for ET)
+3. improve dictionary-entry attachment, especially bulk-scale homonym
+   ranking surfaced by the Ekilex import
+4. promote production FI/ET FST table generation with row counts,
+   provenance notes, and eval gates
+5. use the corpus pipeline to feed learner-facing frequency artifacts,
+   sentence banks, and parser-improvement candidates
+6. polish learner flows around Inspect -> Decks -> Review -> known words
+   once parser output and corpus artifacts are trustworthy

@@ -22,11 +22,13 @@ Reports and decisions should stay append-only. When a run produces new numbers,
 add a new timestamped report under `corpus_pipeline/reports/` instead of
 rewriting old reports.
 
-## Planned Work
+## Tracked Work
 
 ### 1. Meaning Sources Research
 
-**Status:** ACTIVE — prerequisite for the user-friendly wordlist.
+**Status:** DONE — merged as PR #173
+(`claude/meaning-sources-research`). This remains here as the rationale
+record for the user-friendly wordlist dependency.
 
 **Why:** the dictionary DB (`lemmas.gloss`) gives partial gloss coverage, but
 the user-friendly wordlist needs reliable meanings for every lemma. This work
@@ -44,17 +46,20 @@ shipping empty gloss columns.
   the wordlist exporter can join on.
 - Deliver a coverage report showing before/after gloss rates.
 
-**Trigger:** next implementation PR after this roadmap lands.
+**Result:** ET meaning coverage work landed and is summarized in the
+timestamped corpus reports. Future meaning-source changes should add a new
+dated report rather than rewriting those results.
 
 ### 2. Canonical Cleanup + User-Friendly Wordlist
+
+**Status:** DONE — merged as PR #174 (`claude/user-friendly-wordlist`).
 
 **Why:** `example_text` repeats sentence or poem text on millions of wordlist
 rows, bloating canonical files. Meanwhile `wordlist.tsv` is parser evidence, not
 a learner-facing export. These are one unit of work: normalize the canonical
 data and ship the user-facing replacement together.
 
-**Depends on:** item 1 (meaning sources) — meanings must be available in the DB
-before the user-friendly export can include them.
+**Dependency:** item 1 supplied the meaning coverage needed for this export.
 
 **Scope:**
 
@@ -69,9 +74,13 @@ before the user-friendly export can include them.
 `example_ref_id` to `sentences.tsv.id` (when `example_ref_type=sentence`) or
 `poems.tsv.id` (when `example_ref_type=poem`).
 
-**Trigger:** after item 1 delivers adequate gloss coverage.
+**Result:** canonical exports keep example references; learner-facing exports
+carry meaning, parsed morphology, counts, provenance, parser/FST fingerprints,
+and example refs.
 
 ### 3. Sentence Export + EPUB Extraction Cleanup
+
+**Status:** DONE — merged as PR #170 (`codex/sentence-export-epub-cleanup`).
 
 **Why:** canonical `sentences.tsv` keeps every deduped sentence-like unit the
 extractor emitted — including navigation pages, title pages, ISBN markers, and
@@ -87,8 +96,9 @@ user-friendly sentence export catches whatever remains.
   name-only, front-matter, and extraction residue rows.
 - Keep canonical `sentences.tsv` and `sentence_occurrences.tsv` auditable.
 
-**Trigger:** sentence-bank examples are consumed by the app or by manual quality
-review. Independent of items 1–2.
+**Result:** `sentences_user_friendly.tsv` exists as a filtered sentence bank
+while canonical `sentences.tsv` and `sentence_occurrences.tsv` remain
+auditable.
 
 ### 4. Later: Interlinear Glossing Prototype
 
@@ -104,5 +114,5 @@ This is investigation/prototype work, not a normal shipping PR.
   the wordlist, and emits lemma/gloss/FEATS rows.
 - Evaluate whether the output is useful enough to ship as a user-facing feature.
 
-**Trigger:** items 2 and 3 are complete, and the app needs morphology-aware
-learner explanations beyond lemma + meaning.
+**Trigger:** items 2 and 3 are complete, so this can be picked up when the app
+needs morphology-aware learner explanations beyond lemma + meaning.

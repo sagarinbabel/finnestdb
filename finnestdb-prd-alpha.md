@@ -41,16 +41,24 @@ critical dependency for almost everything else:
 Because of that, the project focus shifted from “finish the full learning app”
 to “build a parser workbench and evaluation loop first.”
 
-## Current State on `main`
+## Implementation Snapshot
 
-The current shipped product surface is:
+The README and ARCHITECTURE are the current source of truth. As of
+2026-05-09, `main` has moved beyond the earlier parse-only workbench:
 
-- parse Finnish or Estonian text
-- compare two parser modes: `basic` and `custom`
-- inspect sortable results with definitions, grammar labels, token counts, and example sentences
-- see parser mode, coverage proxy score, and parse duration
+- public landing/about/sign-in routes
+- password auth with Argon2id hashes and DB-backed sliding sessions
+- authenticated dashboard, Inspect, Decks, Review, Results, and known-word
+  surfaces
+- admin-only parser workbench and parser-feedback routes
+- learner APIs for deck, known-word, review, import, and parse-feedback work
+- parser evaluation CLI with `basic`, `custom`, `omorfi`, and `estnltk`
+  columns
+- offline corpus pipeline under `corpus_pipeline/` for source fetch,
+  extraction, aggregation, verification, enrichment, EPUB deck export, and
+  gloss-coverage audit
 
-Current parser modes:
+Browser parser modes remain:
 
 - **Basic parser**
   - Rust tokenization and heuristic lemma/POS fallback
@@ -58,14 +66,17 @@ Current parser modes:
 
 - **Custom parser**
   - the same Rust parser output
-  - plus enrichment rules for possessives, compounds, and case suffixes
+  - dictionary lookup with FST candidate scoring/FEATS enrichment when local
+    tables exist
+  - enrichment rules for possessives, compounds, and case suffixes
 
 Current text limit:
 
 - **300,000 Unicode characters**
 
-This is the current product reality. It is intentionally narrower than the
-earlier end-to-end language-learning plan.
+The product is now a language-learning app with a parser workbench inside it,
+not only a workbench. Parser quality, dictionary-entry attachment, and corpus
+material quality are still the gating concerns for a polished public alpha.
 
 ## Current Main Focus: Parser Quality
 

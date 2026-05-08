@@ -205,10 +205,28 @@ must not be committed.
 `VFST_PATH` is set, it generates; otherwise it skips with a warning
 and the FST step in custom-mode parsing is disabled until tables exist.
 
-The ET production path still needs a matching generated-table command
-for a local Giellalt/HFST analyser. Until that exists and a production
-word list is selected, the ET FST is disabled at runtime (no
-`et_min.json` under `localdata/`).
+The Estonian generator:
+
+```sh
+make gen-lemmatizer-tables-et HFSTOL_PATH=/absolute/path/to/analyser-gt-desc.hfstol
+```
+
+That target runs:
+
+```sh
+mkdir -p localdata/lemmatizer-fi-et/tables
+go run ./cmd/genlemmatizertables \
+  -lang et \
+  -hfstol "$HFSTOL_PATH" \
+  -wordlist cmd/genlemmatizertables/wordlists/et_smoke.txt \
+  -out localdata/lemmatizer-fi-et/tables/et_min.json
+```
+
+`HFSTOL_PATH` must point to a local Giellalt-style optimized lookup
+analyzer. The analyzer file itself must not be committed. The current
+Make targets use smoke wordlists; production promotion still needs a
+production wordlist, provenance notes, row counts, and eval gate before
+any accuracy claim is made from those local tables.
 
 ## What the test fixtures prove
 
