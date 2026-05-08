@@ -70,6 +70,10 @@ and no-suffix (= both) variants.
 The `PROFILE` Makefile variable defaults to `smoke`. Override with
 `PROFILE=pilot` or `PROFILE=full`.
 
+Migration note: `corpus-verify` requires `_derived/sentences_user_friendly.tsv`.
+Existing `_derived/` directories built before that export existed must rerun
+`make aggregate-corpus[-fi|-et]` before verify will pass.
+
 ---
 
 ## Profiles

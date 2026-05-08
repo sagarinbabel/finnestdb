@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 var resourceSkipNames = map[string]bool{
@@ -22,46 +23,63 @@ var resourceSkipNames = map[string]bool{
 	"navigation":      true,
 	"pagelist":        true,
 	"sisallys":        true,
+	"sisukord":        true,
 	"tableofcontents": true,
+	"tiitelleht":      true,
 	"title":           true,
 	"titlepage":       true,
 	"toc":             true,
 }
 
-var residueFragments = []string{
-	"all rights reserved",
-	"calibre",
-	"copyright",
-	"cover design",
-	"e-isbn",
-	"http://",
-	"https://",
-	"isbn",
-	"www.",
-	"©",
-	"alkuteos",
-	"jacket design",
-	"julkaisija",
-	"kaikki oikeudet",
-	"kansi:",
-	"kustantaja",
-	"painettu",
-	"painopaikka",
-	"suomentanut",
-	"tekijänoikeus",
+var metadataLinePrefixes = []struct {
+	words   int
+	compact string
+}{
+	{3, "allrightsreserved"},
+	{3, "koikoigusedkaitstud"},
+	{2, "kaikkioikeudet"},
+	{2, "coverdesign"},
+	{2, "jacketdesign"},
+	{1, "alkuteos"},
+	{1, "autorioigus"},
+	{1, "autorioigused"},
+	{1, "calibre"},
+	{1, "copyright"},
+	{1, "julkaisija"},
+	{1, "kansi"},
+	{1, "kirjastus"},
+	{1, "kustantaja"},
+	{1, "originaal"},
+	{1, "painettu"},
+	{1, "painopaikka"},
+	{1, "suomentanut"},
+	{1, "tekijanoikeus"},
+	{1, "tolge"},
+	{1, "tolkinud"},
 }
 
 var headingPrefixes = map[string]bool{
-	"chapter":    true,
-	"contents":   true,
-	"epilogue":   true,
-	"esipuhe":    true,
-	"jalkisanat": true,
-	"luku":       true,
-	"osa":        true,
-	"prologue":   true,
-	"prologi":    true,
-	"sisallys":   true,
+	"chapter":        true,
+	"contents":       true,
+	"eessona":        true,
+	"epilogue":       true,
+	"epiloog":        true,
+	"esipuhe":        true,
+	"jalkisanat":     true,
+	"jarelsana":      true,
+	"jarelsona":      true,
+	"luku":           true,
+	"osa":            true,
+	"peatukk":        true,
+	"prologue":       true,
+	"prologi":        true,
+	"proloog":        true,
+	"sissejuhatus":   true,
+	"sisallys":       true,
+	"sisukord":       true,
+	"tanuavaldused":  true,
+	"tanuavaldus":    true,
+	"tunnustussonad": true,
 }
 
 // ShouldSkipEPUBResource returns true for EPUB HTML resources that are very
@@ -150,17 +168,15 @@ func shouldSkipSentenceLikeText(text string) bool {
 	if strings.Contains(lower, "&nbsp;") || strings.Contains(lower, "&amp;") {
 		return true
 	}
-	for _, fragment := range residueFragments {
-		if strings.Contains(lower, fragment) {
-			return true
-		}
-	}
 	if strings.Contains(text, "....") || strings.Contains(text, "····") {
 		return true
 	}
 
 	words := wordTokens(text)
 	if len(words) == 0 {
+		return true
+	}
+	if hasMetadataResidue(text, lower, words) {
 		return true
 	}
 	if len(words) <= 3 && allNumericOrRoman(words) {
@@ -186,7 +202,10 @@ func looksHeadingLike(text string, words []string) bool {
 	if hasSentenceTerminal(text) {
 		return false
 	}
-	if len(words) <= 8 && startsUpperOrDigit(text) {
+	if len(words) <= 8 && startsDigit(text) {
+		return true
+	}
+	if len(words) <= 8 && (isAllCapsText(text) || titleCaseRatio(words) >= 0.5) {
 		return true
 	}
 	return len(words) <= 4 && !hasLowercase(text)
@@ -249,6 +268,14 @@ func compactForMatch(s string) string {
 			r = 'o'
 		case 'å':
 			r = 'a'
+		case 'õ':
+			r = 'o'
+		case 'ü':
+			r = 'u'
+		case 'š':
+			r = 's'
+		case 'ž':
+			r = 'z'
 		}
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			b.WriteRune(r)
@@ -258,12 +285,12 @@ func compactForMatch(s string) string {
 }
 
 func hasSentenceTerminal(s string) bool {
-	for i := len(s); i > 0; {
-		r, size := rune(s[i-1]), 1
-		if r >= 0x80 {
-			r, size = lastRune(s[:i])
+	for len(s) > 0 {
+		r, size := utf8.DecodeLastRuneInString(s)
+		if r == utf8.RuneError && size == 0 {
+			return false
 		}
-		i -= size
+		s = s[:len(s)-size]
 		if unicode.IsSpace(r) || strings.ContainsRune("\"'”’»)]}", r) {
 			continue
 		}
@@ -272,22 +299,12 @@ func hasSentenceTerminal(s string) bool {
 	return false
 }
 
-func lastRune(s string) (rune, int) {
-	var last rune
-	var size int
-	for i, r := range s {
-		last = r
-		size = len(s) - i
-	}
-	return last, size
-}
-
-func startsUpperOrDigit(s string) bool {
+func startsDigit(s string) bool {
 	for _, r := range s {
 		if unicode.IsSpace(r) {
 			continue
 		}
-		return unicode.IsUpper(r) || unicode.IsDigit(r)
+		return unicode.IsDigit(r)
 	}
 	return false
 }
@@ -361,4 +378,97 @@ func digitHeavy(s string) bool {
 		}
 	}
 	return digits > 0 && digits >= letters
+}
+
+func hasMetadataResidue(text, lower string, words []string) bool {
+	if strings.Contains(lower, "http://") || strings.Contains(lower, "https://") || strings.Contains(lower, "www.") {
+		return true
+	}
+	compact := compactForMatch(text)
+	if strings.Contains(compact, "isbn") && containsDigit(text) {
+		return true
+	}
+	if strings.Contains(text, "©") && (containsDigit(text) || len(words) <= 8) {
+		return true
+	}
+	if strings.Contains(compact, "allrightsreserved") ||
+		strings.Contains(compact, "kaikkioikeudet") ||
+		strings.Contains(compact, "koikoigusedkaitstud") ||
+		strings.Contains(compact, "generatedbycalibre") {
+		return true
+	}
+	for _, prefix := range metadataLinePrefixes {
+		if len(words) < prefix.words {
+			continue
+		}
+		if leadingCompact(words, prefix.words) != prefix.compact {
+			continue
+		}
+		if metadataLikeLine(text, words) {
+			return true
+		}
+	}
+	return false
+}
+
+func metadataLikeLine(text string, words []string) bool {
+	if strings.ContainsAny(text, ":©") {
+		return true
+	}
+	if !hasSentenceTerminal(text) {
+		return true
+	}
+	return containsDigit(text) && len(words) <= 8
+}
+
+func leadingCompact(words []string, n int) string {
+	var b strings.Builder
+	for i := 0; i < n && i < len(words); i++ {
+		b.WriteString(compactForMatch(words[i]))
+	}
+	return b.String()
+}
+
+func containsDigit(s string) bool {
+	for _, r := range s {
+		if unicode.IsDigit(r) {
+			return true
+		}
+	}
+	return false
+}
+
+func titleCaseRatio(words []string) float64 {
+	if len(words) == 0 {
+		return 0
+	}
+	titleWords := 0
+	letterWords := 0
+	for _, word := range words {
+		if allNumericOrRoman([]string{word}) {
+			continue
+		}
+		letterWords++
+		if startsUpper(word) || isInitial(word) {
+			titleWords++
+		}
+	}
+	if letterWords == 0 {
+		return 0
+	}
+	return float64(titleWords) / float64(letterWords)
+}
+
+func isAllCapsText(s string) bool {
+	hasLetter := false
+	for _, r := range s {
+		if !unicode.IsLetter(r) {
+			continue
+		}
+		hasLetter = true
+		if unicode.IsLower(r) {
+			return false
+		}
+	}
+	return hasLetter
 }

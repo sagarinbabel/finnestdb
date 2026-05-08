@@ -66,25 +66,7 @@ func main() {
 
 	// Hard gate: required output files
 	derived := sources.DerivedDir(roots.DataRoot, langLower)
-	required := []string{
-		"wordlist.tsv", "sentences.tsv", "sentences_user_friendly.tsv", "sentence_occurrences.tsv",
-		"poems.tsv", "documents.tsv", "manifest.tsv",
-		"build_metadata.json", "qa-report.json",
-		"mining/unresolved.tsv", "mining/poetry-unresolved.tsv",
-		"mining/parser-disagreements.tsv", "mining/high-frequency-ambiguous.tsv",
-		"mining/internal-consensus-candidates.tsv",
-	}
-	for _, f := range required {
-		p := filepath.Join(derived, f)
-		fi, err := os.Stat(p)
-		if err != nil {
-			res.HardFailures = append(res.HardFailures, "missing_required: "+f)
-			continue
-		}
-		if fi.Size() == 0 {
-			res.HardFailures = append(res.HardFailures, "empty_required: "+f)
-		}
-	}
+	res.HardFailures = append(res.HardFailures, checkRequiredFiles(derived)...)
 
 	// silver-candidates.tsv: presence + content is fine when enrichcorpus
 	// has run. The anti-circular concern (aggregator writing silver) is
@@ -149,6 +131,33 @@ func main() {
 	} else {
 		fmt.Fprintln(os.Stderr)
 	}
+}
+
+func requiredDerivedFiles() []string {
+	return []string{
+		"wordlist.tsv", "sentences.tsv", "sentences_user_friendly.tsv", "sentence_occurrences.tsv",
+		"poems.tsv", "documents.tsv", "manifest.tsv",
+		"build_metadata.json", "qa-report.json",
+		"mining/unresolved.tsv", "mining/poetry-unresolved.tsv",
+		"mining/parser-disagreements.tsv", "mining/high-frequency-ambiguous.tsv",
+		"mining/internal-consensus-candidates.tsv",
+	}
+}
+
+func checkRequiredFiles(derived string) []string {
+	var failures []string
+	for _, f := range requiredDerivedFiles() {
+		p := filepath.Join(derived, f)
+		fi, err := os.Stat(p)
+		if err != nil {
+			failures = append(failures, "missing_required: "+f)
+			continue
+		}
+		if fi.Size() == 0 {
+			failures = append(failures, "empty_required: "+f)
+		}
+	}
+	return failures
 }
 
 func countTSVRows(path string) int {
