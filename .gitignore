@@ -81,8 +81,8 @@ corpus_pipeline/**/*.gz
 corpus_pipeline/**/*.bz2
 corpus_pipeline/**/*.epub
 .cache/
+.venv/
 .venv-omorfi/
-.venv-estnltk
 .venv-estnltk/
 
 # Single root for every gitignored runtime artifact: dictionary corpora,

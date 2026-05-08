@@ -19,10 +19,9 @@
 // Adapters are resolved from the same env vars as the eval parser adapters:
 //
 //	FINNESTDB_OMORFI_CMD   — full command, e.g.
-//	                          "$(pwd)/.venv-omorfi/bin/python $(pwd)/scripts/omorfi_adapter_example.py"
+//	                          "$(pwd)/.venv/bin/python $(pwd)/scripts/omorfi_adapter_example.py"
 //	FINNESTDB_ESTNLTK_CMD  — same shape; if unset, tool auto-discovers
-//	                          .venv-estnltk/bin/python next to the
-//	                          repo root.
+//	                          .venv/bin/python next to the repo root.
 //
 // The diff report flags tokens where:
 //   - the adapter returned no analysis for the surface,
@@ -230,22 +229,31 @@ func resolveAdapter(lang string) ([]string, error) {
 	case "FI":
 		raw := os.Getenv("FINNESTDB_OMORFI_CMD")
 		if raw == "" {
-			return nil, fmt.Errorf("FINNESTDB_OMORFI_CMD must be set; e.g. \"$(pwd)/.venv-omorfi/bin/python $(pwd)/scripts/omorfi_adapter_example.py\"")
+			// Auto-discover: prefer unified .venv, fall back to legacy .venv-omorfi.
+			for _, candidate := range []string{".venv/bin/python", ".venv-omorfi/bin/python"} {
+				if abs, err := filepath.Abs(candidate); err == nil {
+					if _, err := os.Stat(abs); err == nil {
+						adapterAbs, _ := filepath.Abs("scripts/omorfi_adapter_example.py")
+						return []string{abs, adapterAbs}, nil
+					}
+				}
+			}
+			return nil, fmt.Errorf("FINNESTDB_OMORFI_CMD must be set or .venv must exist; run `make setup-nlp`")
 		}
 		return strings.Fields(raw), nil
 	case "ET":
 		if raw := os.Getenv("FINNESTDB_ESTNLTK_CMD"); raw != "" {
 			return strings.Fields(raw), nil
 		}
-		// Auto-discover: prefer .venv-estnltk in CWD or repo root.
-		for _, candidate := range []string{".venv-estnltk/bin/python"} {
+		// Auto-discover: prefer unified .venv, fall back to legacy .venv-estnltk.
+		for _, candidate := range []string{".venv/bin/python", ".venv-estnltk/bin/python"} {
 			if abs, err := filepath.Abs(candidate); err == nil {
 				if _, err := os.Stat(abs); err == nil {
 					return []string{abs, "scripts/estnltk_adapter_example.py"}, nil
 				}
 			}
 		}
-		return nil, fmt.Errorf("estnltk venv not found; symlink .venv-estnltk into the worktree or set FINNESTDB_ESTNLTK_CMD")
+		return nil, fmt.Errorf("estnltk venv not found; run `make setup-nlp` or set FINNESTDB_ESTNLTK_CMD")
 	default:
 		return nil, fmt.Errorf("unsupported language %q", lang)
 	}

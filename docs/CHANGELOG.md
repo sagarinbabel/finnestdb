@@ -100,7 +100,7 @@ parser silently runs in degraded mode because something didn't fetch".
 
 - New [`make doctor`](../cmd/doctor/main.go) reports DB presence + per-
   source row counts, FST table presence, analyzer venv presence
-  (`.venv-omorfi`, `.venv-estnltk`), Ekilex shard presence, UD cache,
+  (`.venv`), Ekilex shard presence, UD cache,
   frequency baselines, and the Rust parser shared library. Each missing
   piece carries a one-line hint and a "go to" target. Returns 0 unless
   the DB or the FI/ET dictionary is missing entirely; everything else is
@@ -114,11 +114,11 @@ parser silently runs in degraded mode because something didn't fetch".
   declared `name="fi-manual"` and silently overwrote each other in
   `reports/parser-eval/`. Fix called out in
   [`docs/PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) §pitfalls.
-- `make setup-omorfi` now creates `.venv-omorfi/` symmetrically with
-  `make setup-estnltk`'s `.venv-estnltk/` instead of pip-installing into
-  the active interpreter. `parser-comparison.sh` auto-constructs
-  `FINNESTDB_OMORFI_CMD` from the venv when present, mirroring the
-  existing EstNLTK auto-detection. Closes the open issue noted in
+- `make setup-nlp` creates a unified `.venv/` containing both omorfi and
+  estnltk instead of pip-installing into the active interpreter.
+  `parser-comparison.sh` auto-constructs `FINNESTDB_OMORFI_CMD` from
+  the venv when present, matching the EstNLTK auto-detection. Closes the
+  open issue noted in
   [`docs/PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) §pitfalls
   about asymmetric venv discovery.
 - New `BackfillLegacyKaikkiProvenance` migration in

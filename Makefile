@@ -286,35 +286,41 @@ verify-dict:
 		echo "(empty)"; \
 	fi
 
-# ── Omorfi comparison setup ────────────────────────────────────────────────────
+# ── NLP tool setup (unified venv) ─────────────────────────────────────────────
 #
-# Installs the Helsinki Finite-State Transducer toolkit and the omorfi
-# Python package into a dedicated `.venv-omorfi/` (parallel to the
-# `.venv-estnltk/` setup-estnltk creates), and downloads the analyser
-# model into ~/.cache/omorfi/. After this target completes, omorfi is
-# available end-to-end:
+# Installs omorfi (Finnish morphological analyzer) and EstNLTK (Estonian
+# Vabamorf-backed analyzer) into a single shared `.venv/` at the project
+# root, plus downloads the omorfi HFST models into ~/.cache/omorfi/.
 #
+# After `make setup-nlp`:
 #     go run ./cmd/parsertest -dataset DS.json -parsers basic,custom,omorfi
+#     go run ./cmd/parsertest -dataset DS.json -parsers basic,custom,estnltk
 #
-# parser-comparison.sh and the `enrich-gold-feats` target both auto-detect
-# the venv at .venv-omorfi/ and construct FINNESTDB_OMORFI_CMD from it.
-# internal/evalparsers owns the same auto-discovery for eval-only parser
-# modes, so direct callers like `go run ./cmd/parsertest` work without any
-# env vars exported once the venv is in place.
+# evalparsers.go auto-discovers .venv/bin/python at runtime, so no env vars
+# are needed. Legacy .venv-omorfi/ and .venv-estnltk/ names are also
+# checked for backward compat.
 
+NLP_VENV       := .venv
 OMORFI_VERSION := 0.9.12
 OMORFI_CACHE   := $(HOME)/.cache/omorfi
 OMORFI_MODEL   := $(OMORFI_CACHE)/omorfi.analyse.hfst
-OMORFI_VENV    := .venv-omorfi
 
-setup-omorfi: $(OMORFI_MODEL)
-	@if [ ! -x $(OMORFI_VENV)/bin/python ]; then \
-		echo "Creating $(OMORFI_VENV)/ …"; \
-		python3 -m venv $(OMORFI_VENV); \
-		$(OMORFI_VENV)/bin/python -m pip install --quiet --upgrade pip; \
+setup-nlp: $(OMORFI_MODEL)
+	@if [ ! -x $(NLP_VENV)/bin/python ]; then \
+		echo "Creating $(NLP_VENV)/ …"; \
+		python3 -m venv $(NLP_VENV); \
+		$(NLP_VENV)/bin/python -m pip install --quiet --upgrade pip; \
 	fi
-	@$(OMORFI_VENV)/bin/python -m pip install --quiet omorfi
-	@$(OMORFI_VENV)/bin/python -c "from omorfi import Omorfi; o = Omorfi(); o.load_analyser('$(OMORFI_MODEL)'); print('omorfi: OK')"
+	@echo "Installing omorfi + estnltk …"
+	@$(NLP_VENV)/bin/python -m pip install --quiet omorfi estnltk
+	@mkdir -p .cache/nltk_data .cache/matplotlib
+	@NLTK_DATA="$$(pwd)/.cache/nltk_data" $(NLP_VENV)/bin/python -m nltk.downloader -d .cache/nltk_data punkt_tab >/dev/null
+	@$(NLP_VENV)/bin/python -c "from omorfi import Omorfi; o = Omorfi(); o.load_analyser('$(OMORFI_MODEL)'); print('omorfi: OK')"
+	@NLTK_DATA="$$(pwd)/.cache/nltk_data" MPLCONFIGDIR="$$(pwd)/.cache/matplotlib" $(NLP_VENV)/bin/python -c "from estnltk import Text; t = Text('Poes ootasin sõpra.'); t.tag_layer(['words', 'morph_analysis']); print('estnltk: OK')"
+
+# Legacy aliases — point at the unified venv.
+setup-omorfi: setup-nlp
+setup-estnltk: setup-nlp
 
 $(OMORFI_MODEL):
 	@echo "Installing HFST + omorfi model cache…"
@@ -336,24 +342,6 @@ $(OMORFI_MODEL):
 compare-parsers: parser
 	@bash scripts/parser-comparison.sh
 
-# ── Estonian analyzer comparison setup ────────────────────────────────────────
-#
-# Installs EstNLTK, which provides Vabamorf-backed Estonian morphological
-# analysis. After this target completes, the estnltk parser is available:
-#
-#     go run ./cmd/parsertest -dataset testdata/parser-eval/et/gold/et-manual-v1.json -parsers basic,custom,estnltk
-#
-# The bundled adapter at scripts/estnltk_adapter_example.py is auto-discovered,
-# or can be overridden with FINNESTDB_ESTNLTK_CMD.
-
-setup-estnltk:
-	@python3 -m venv .venv-estnltk
-	@.venv-estnltk/bin/python -m pip install --quiet --upgrade pip
-	@.venv-estnltk/bin/python -m pip install --quiet estnltk
-	@mkdir -p .cache/nltk_data .cache/matplotlib
-	@NLTK_DATA="$$(pwd)/.cache/nltk_data" .venv-estnltk/bin/python -m nltk.downloader -d .cache/nltk_data punkt_tab >/dev/null
-	@NLTK_DATA="$$(pwd)/.cache/nltk_data" MPLCONFIGDIR="$$(pwd)/.cache/matplotlib" .venv-estnltk/bin/python -c "from estnltk import Text; t = Text('Poes ootasin sõpra.'); t.tag_layer(['words', 'morph_analysis']); print('estnltk: OK')"
-
 compare-parsers-et: parser
 	@bash scripts/parser-comparison-et.sh
 
@@ -368,11 +356,10 @@ compare-parsers-et: parser
 # Re-runnable: existing FEATS are overwritten, so this is the single source
 # of truth for refreshing FEATS after improvements to the adapters or maps.
 #
-# Requires both venvs: `make setup-omorfi setup-estnltk` first.
+# Requires the unified NLP venv: `make setup-nlp` first.
 
 enrich-gold-feats: parser
-	@FINNESTDB_OMORFI_CMD="$$(pwd)/.venv-omorfi/bin/python $$(pwd)/scripts/omorfi_adapter_example.py" \
-	    go run ./cmd/enrichgoldfeats -all
+	@go run ./cmd/enrichgoldfeats -all
 
 # ── UD treebank gold-set ingest (Plan C / PR 1) ──────────────────────────────
 #

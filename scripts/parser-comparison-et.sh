@@ -6,7 +6,7 @@
 #
 # EstNLTK/Vabamorf is **required by default** — every Estonian baseline must
 # show the analyzer column so dict-only numbers are never read in isolation.
-# Run `make setup-estnltk` once on a fresh machine. To bypass on a machine
+# Run `make setup-nlp` once on a fresh machine. To bypass on a machine
 # where estnltk cannot be installed, pass --allow-missing-baseline (ad-hoc
 # local use only — never commit reports produced this way).
 #
@@ -60,6 +60,8 @@ PARSERS="basic,custom"
 estnltk_available=false
 if [[ -n "${FINNESTDB_ESTNLTK_CMD:-}" ]]; then
     estnltk_available=true
+elif [[ -x .venv/bin/python && -f scripts/estnltk_adapter_example.py ]]; then
+    estnltk_available=true
 elif [[ -x .venv-estnltk/bin/python && -f scripts/estnltk_adapter_example.py ]]; then
     estnltk_available=true
 fi
@@ -78,7 +80,7 @@ Every committed ET baseline must include the estnltk column so dict-only
 numbers (basic/custom) are never read without the Vabamorf upper bound.
 
 To install:
-    make setup-estnltk
+    make setup-nlp
 
 If you genuinely need a dict-only run for local experimentation, pass:
     --allow-missing-baseline

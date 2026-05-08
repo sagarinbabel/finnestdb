@@ -356,11 +356,11 @@ func findHFSTOL() string {
 }
 
 func checkOmorfi() check {
-	venvPy := ".venv-omorfi/bin/python"
 	adapter := "scripts/omorfi_adapter_example.py"
 	model := filepath.Join(homeDir(), ".cache/omorfi/omorfi.analyse.hfst")
 
-	hasVenv := fileExists(venvPy)
+	// Prefer the unified .venv, fall back to legacy .venv-omorfi.
+	hasVenv := fileExists(".venv/bin/python") || fileExists(".venv-omorfi/bin/python")
 	hasAdapter := fileExists(adapter)
 	hasModel := fileExists(model) || fileExists(".cache/omorfi/omorfi.analyse.hfst")
 
@@ -368,12 +368,12 @@ func checkOmorfi() check {
 		return check{
 			name:   "Omorfi analyzer (FI baseline)",
 			level:  levelOK,
-			detail: ".venv-omorfi + adapter + model present; parser-comparison.sh auto-wires FINNESTDB_OMORFI_CMD",
+			detail: ".venv + adapter + model present; parser-comparison.sh auto-wires FINNESTDB_OMORFI_CMD",
 		}
 	}
 	missing := []string{}
 	if !hasVenv {
-		missing = append(missing, ".venv-omorfi/")
+		missing = append(missing, ".venv/")
 	}
 	if !hasAdapter {
 		missing = append(missing, adapter)
@@ -385,27 +385,27 @@ func checkOmorfi() check {
 		name:   "Omorfi analyzer (FI baseline)",
 		level:  levelWarn,
 		detail: "missing: " + strings.Join(missing, ", "),
-		hint:   "`make setup-omorfi` (without it, `make compare-parsers` refuses to run unless --allow-missing-baseline)",
+		hint:   "`make setup-nlp` (without it, `make compare-parsers` refuses to run unless --allow-missing-baseline)",
 	}
 }
 
 func checkEstNLTK() check {
-	venvPy := ".venv-estnltk/bin/python"
 	adapter := "scripts/estnltk_adapter_example.py"
 
-	hasVenv := fileExists(venvPy)
+	// Prefer the unified .venv, fall back to legacy .venv-estnltk.
+	hasVenv := fileExists(".venv/bin/python") || fileExists(".venv-estnltk/bin/python")
 	hasAdapter := fileExists(adapter)
 
 	if hasVenv && hasAdapter {
 		return check{
 			name:   "EstNLTK analyzer (ET baseline)",
 			level:  levelOK,
-			detail: ".venv-estnltk + adapter present; parser-comparison-et.sh auto-detects",
+			detail: ".venv + adapter present; parser-comparison-et.sh auto-detects",
 		}
 	}
 	missing := []string{}
 	if !hasVenv {
-		missing = append(missing, ".venv-estnltk/")
+		missing = append(missing, ".venv/")
 	}
 	if !hasAdapter {
 		missing = append(missing, adapter)
@@ -414,7 +414,7 @@ func checkEstNLTK() check {
 		name:   "EstNLTK analyzer (ET baseline)",
 		level:  levelWarn,
 		detail: "missing: " + strings.Join(missing, ", "),
-		hint:   "`make setup-estnltk`",
+		hint:   "`make setup-nlp`",
 	}
 }
 

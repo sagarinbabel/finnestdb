@@ -70,11 +70,11 @@ normalization layer.
 
 ## Current FinEstDB Contract
 
-The recommended path is `make setup-omorfi`, which creates a repo-local
-`.venv-omorfi/`, installs `omorfi==0.9.12` into it, and downloads the HFST
-models into `~/.cache/omorfi/`. After that, no environment variables need to
-be exported — `internal/evalparsers` auto-discovers `.venv-omorfi/bin/python`
-next to the bundled adapter at
+The recommended path is `make setup-nlp`, which creates a unified `.venv/`
+at the project root containing both omorfi and estnltk, and downloads the
+HFST models into `~/.cache/omorfi/`. After that, no environment variables
+need to be exported — `internal/evalparsers` auto-discovers
+`.venv/bin/python` next to the bundled adapter at
 `scripts/omorfi_adapter_example.py`.
 
 Then run:
@@ -103,11 +103,11 @@ The adapter command must:
 The subprocess timeout defaults to `5s` and can be overridden with a Go
 duration string in `FINNESTDB_OMORFI_TIMEOUT` (e.g. `30s`, `1m`).
 
-Override example (rarely needed once `make setup-omorfi` has run):
+Override example (rarely needed once `make setup-nlp` has run):
 
 ```bash
 export OMORFI_ANALYSE_HFST="$(pwd)/.cache/omorfi/omorfi.analyse.hfst"
-export FINNESTDB_OMORFI_CMD="$(pwd)/.venv-omorfi/bin/python $(pwd)/scripts/omorfi_adapter_example.py"
+export FINNESTDB_OMORFI_CMD="$(pwd)/.venv/bin/python $(pwd)/scripts/omorfi_adapter_example.py"
 ```
 
 ## Practical Recommendation
@@ -143,7 +143,7 @@ export FINNESTDB_ESTNLTK_CMD="/absolute/path/to/python /absolute/path/to/scripts
 or run:
 
 ```bash
-make setup-estnltk
+make setup-nlp
 ```
 
 Then compare:
