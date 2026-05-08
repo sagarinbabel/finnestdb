@@ -114,7 +114,7 @@ silent reverts and pipeline drift.
 under `localdata/`. After every session:
 
 ```sh
-cd /Users/sagar/Downloads/projects/finnestdb
+# from the repo root:
 git status --porcelain | grep -v '^?? localdata/' | grep -v '^?? design/'
 # expect: empty
 ```
@@ -148,29 +148,28 @@ state (`design/*` untracked, etc.) is fine — only the intended delta matters.
 ### Add an EPUB to the existing FI corpus
 
 ```sh
-cp ~/some-book.epub /Users/sagar/Downloads/projects/finnestdb/localdata/fi-corpus/epub/raw/
-cd /Users/sagar/Downloads/projects/finnestdb/corpus_pipeline
+cp ~/some-book.epub localdata/fi-corpus/epub/raw/
+cd corpus_pipeline
 make extract-corpus-fi aggregate-corpus-fi corpus-verify-fi
 ```
 
 ### Inspect the wordlist for a specific surface
 
 ```sh
-awk -F'\t' '$1=="tulen"' /Users/sagar/Downloads/projects/finnestdb/localdata/fi-corpus/_derived/wordlist.tsv
+awk -F'\t' '$1=="tulen"' localdata/fi-corpus/_derived/wordlist.tsv
 ```
 
 ### Top-N most-frequent prose surfaces
 
 ```sh
 # (header is row 1, sort is by surface_count_prose desc)
-tail -n +2 /Users/sagar/Downloads/projects/finnestdb/localdata/fi-corpus/_derived/wordlist.tsv \
-  | head -100
+tail -n +2 localdata/fi-corpus/_derived/wordlist.tsv | head -100
 ```
 
 ### Find unresolved high-frequency surfaces (parser-improvement priorities)
 
 ```sh
-head -50 /Users/sagar/Downloads/projects/finnestdb/localdata/fi-corpus/_derived/mining/unresolved.tsv
+head -50 localdata/fi-corpus/_derived/mining/unresolved.tsv
 ```
 
 ---

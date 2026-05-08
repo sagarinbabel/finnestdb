@@ -554,8 +554,7 @@ When picking this up in a future session, start with:
 
 ## Cleanliness invariant
 
-After every session, `git status --porcelain` from
-`/Users/sagar/Downloads/projects/finnestdb/` (main repo) should show
+After every session, `git status --porcelain` from the repo root should show
 **no unintended deltas outside `corpus_pipeline/` or `localdata/`** vs. the
 pre-session snapshot.
 Pre-existing unrelated state (e.g. `design/*.jsx` untracked files) is
