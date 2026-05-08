@@ -12,9 +12,21 @@
 // allows ambiguous surface forms to map to multiple homonyms — see
 // internal/store EnsureMultiLemmaSchema.
 //
-// Glosses come from the union of EN translations across a lemma's meanings,
-// deduplicated case-insensitively and joined with "; ". Lemmas with no EN
-// translations don't overwrite an existing kaikki gloss (empty-gloss guard).
+// Glosses come from the union of EN translations across the meanings that
+// share a (lemma, pos), deduplicated case-insensitively and joined with "; ".
+// Each meaning is attributed to its own POS only — an entry whose meanings
+// span multiple parts of speech (e.g. ADJ + NOUN) does not cross-pollinate.
+// Lemmas with no EN translations fall back to the first matching ET
+// definition with a `[ET] ` prefix (cap glossFallbackMaxLen runes). Entries
+// with zero meanings (or only unmappable ones) get an empty (lemma, upos)
+// row keyed by entry-level word_class so the form-import path can still
+// attribute forms to them.
+//
+// Higher-priority rows (custom_overrides at priority 100) are preserved on
+// conflict. Pre-existing rows already owned by `source = 'ekilex'` get
+// their gloss refreshed from the current Ekilex content on every reimport,
+// so lemmas.gloss can't drift from the per-meaning translations and
+// definitions tables that are wipe-and-rebuilt by Pass 2.5 / 2.6.
 //
 // Usage:
 //
@@ -168,6 +180,18 @@ func main() {
 	}
 	log.Printf("  wrote %d translation rows", translationsWritten)
 
+	// Pass 2.6: write per-meaning Estonian-language definitions. The
+	// definitions table is the structured source-language counterpart of
+	// translations. Wipe-and-rebuild for the same reason translations
+	// does — a re-import after upstream Ekilex pruned senses must not
+	// leave stale rows behind.
+	log.Println("Pass 2.6: writing Estonian definition rows")
+	definitionsWritten, err := writeDefinitions(db, lemmaPOS)
+	if err != nil {
+		log.Fatalf("definitions: %v", err)
+	}
+	log.Printf("  wrote %d definition rows", definitionsWritten)
+
 	// Pass 3: walk forms and write (form, lemma, pos, lang) rows. Tuples
 	// the importer actually emits is the count we care about (an Ekilex
 	// duplicate, e.g. PtsPtIps + PtsPtIpsNeg both yielding "joodud" for
@@ -183,8 +207,8 @@ func main() {
 		log.Printf("warn: dict_metadata: %v", err)
 	}
 
-	fmt.Printf("\nDone. %d unique (lemma, pos) Ekilex entries; %d lemma rows touched; %d gloss fills; %d translation rows; %d form rows touched (data: %s).\n",
-		countLemmaPOS(lemmaPOS), lemmaInserted, glossFilled, translationsWritten, formInserted, *dataDir)
+	fmt.Printf("\nDone. %d unique (lemma, pos) Ekilex entries; %d lemma rows touched; %d gloss fills; %d translation rows; %d definition rows; %d form rows touched (data: %s).\n",
+		countLemmaPOS(lemmaPOS), lemmaInserted, glossFilled, translationsWritten, definitionsWritten, formInserted, *dataDir)
 }
 
 // lemmaPOSMap maps a lemma to a set of POS values, each carrying the
@@ -204,9 +228,20 @@ type lemmaPOSData struct {
 	// toward the proper-noun / acronym reading, which is the common
 	// reason the same word appears with different cases in Ekilex.
 	translationsByKey map[string]string
+
+	// definitionsET holds Estonian-language definitions accumulated across
+	// every meaning entry that contributed to this (lemma, pos) pair.
+	// Order is insertion-order-stable — duplicates are dropped (case-
+	// sensitive match, since Estonian definitions don't have the same
+	// case-collision pattern that EN translations do). The gloss-fallback
+	// path uses the first entry as a `[ET] `-prefixed gloss when no EN
+	// translation is available; the full slice writes one row per sense
+	// into the definitions table.
+	definitionsET    []string
+	definitionsETSet map[string]struct{}
 }
 
-func (m lemmaPOSMap) add(lemma, upos string, translations []string) {
+func (m lemmaPOSMap) add(lemma, upos string, translations, definitionsET []string) {
 	posMap, ok := m[lemma]
 	if !ok {
 		posMap = make(map[string]*lemmaPOSData)
@@ -214,7 +249,10 @@ func (m lemmaPOSMap) add(lemma, upos string, translations []string) {
 	}
 	d, ok := posMap[upos]
 	if !ok {
-		d = &lemmaPOSData{translationsByKey: make(map[string]string)}
+		d = &lemmaPOSData{
+			translationsByKey: make(map[string]string),
+			definitionsETSet:  make(map[string]struct{}),
+		}
 		posMap[upos] = d
 	}
 	for _, t := range translations {
@@ -229,6 +267,17 @@ func (m lemmaPOSMap) add(lemma, upos string, translations []string) {
 			continue
 		}
 		d.translationsByKey[key] = chooseCasing(existing, t)
+	}
+	for _, def := range definitionsET {
+		def = strings.TrimSpace(def)
+		if def == "" {
+			continue
+		}
+		if _, dup := d.definitionsETSet[def]; dup {
+			continue
+		}
+		d.definitionsETSet[def] = struct{}{}
+		d.definitionsET = append(d.definitionsET, def)
 	}
 }
 
@@ -331,30 +380,53 @@ func aggregateDefinitions(dir string) (lemmaPOSMap, *aggregateStats, error) {
 				continue
 			}
 
-			// Collect distinct POSes this entry contributes. A single
-			// definition entry can have meanings with different pos codes;
-			// we attribute the entry's translations to each of them.
-			posSet := make(map[string]struct{})
+			// Attribute meanings per-POS, not per whole entry. A single
+			// Ekilex entry can carry meanings under different parts of speech
+			// (e.g. aastatagune has an ADJ meaning followed by NOUN meanings);
+			// flattening would write ADJ definitions into the NOUN row and
+			// vice versa. Each meaning's translations and definitions go
+			// only to the POSes that meaning resolves to. The entry-level
+			// word_class is the per-meaning fallback when a meaning's own
+			// pos field is empty or unmappable.
+			hasAnyPOS := false
 			for _, m := range entry.Meanings {
+				meaningPOS := make(map[string]struct{})
 				for _, raw := range m.POS {
 					if upos, ok := posMap[raw]; ok {
-						posSet[upos] = struct{}{}
+						meaningPOS[upos] = struct{}{}
 					}
 				}
-			}
-			if len(posSet) == 0 {
-				if upos, ok := wordClassFallback[entry.WordClass]; ok {
-					posSet[upos] = struct{}{}
+				if len(meaningPOS) == 0 {
+					if upos, ok := wordClassFallback[entry.WordClass]; ok {
+						meaningPOS[upos] = struct{}{}
+					}
+				}
+				if len(meaningPOS) == 0 {
+					continue
+				}
+				hasAnyPOS = true
+				for upos := range meaningPOS {
+					lemmaPOS.add(lemma, upos, m.TranslationsEN, m.DefinitionsET)
 				}
 			}
-			if len(posSet) == 0 {
+
+			// Entry-level fallback for entries with zero meanings (or where
+			// every meaning failed to resolve a POS): write an empty
+			// (lemma, upos) row keyed by word_class so the form-import path
+			// can still attribute forms to this lemma. Real Ekilex carries
+			// ~19k such fallback-importable lemmas (e.g. verbs like
+			// "alajahtuma") whose definitions/forms files split — meanings
+			// often live in a paired entry while forms still need a target
+			// (lemma, pos) to attach to.
+			if !hasAnyPOS {
+				if upos, ok := wordClassFallback[entry.WordClass]; ok {
+					lemmaPOS.add(lemma, upos, nil, nil)
+					hasAnyPOS = true
+				}
+			}
+			if !hasAnyPOS {
 				stats.noPOS++
 				continue
-			}
-
-			translations := collectTranslations(entry)
-			for upos := range posSet {
-				lemmaPOS.add(lemma, upos, translations)
 			}
 		}
 		return scanner.Err()
@@ -376,13 +448,54 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	}
 	defer tx.Rollback()
 
+	// Pre-INSERT refresh: rewrite the gloss on rows already owned by
+	// `ekilex` BEFORE the upsert below has a chance to source-upgrade
+	// anything. This is the bookkeeping that lets us tell "row was already
+	// Ekilex-owned at the start of this run" apart from "row will be
+	// Ekilex-owned after the upgrade fires" — once stmtInsert has run, the
+	// two are indistinguishable from the source column alone.
+	//
+	// Why: lemmas.gloss is a denormalized cache of the (lemma, pos) entry
+	// that wordlist consumers join on directly. Pass 2.5 / 2.6 wipe-and-
+	// rebuild translations and definitions per source, so an Ekilex run
+	// where the EN translation changed, was removed, fell back to an ET
+	// definition, or disappeared entirely (the (lemma, pos) is now reached
+	// only via the word_class fallback) would otherwise leave lemmas.gloss
+	// pointing at stale text. The refresh fires unconditionally — empty
+	// new gloss is allowed and clears the cache to match the now-empty
+	// translations / definitions tables.
+	//
+	// `COALESCE(gloss, '') <> ?` keeps the RowsAffected counter honest:
+	// rows where the value would not change (existing gloss already matches
+	// the new gloss, including the empty-to-empty case) are filtered out
+	// by the WHERE clause and don't inflate `glossFilled`.
+	//
+	// Higher-priority rows (custom_overrides at priority 100) and rows
+	// owned by a different lower-priority source (e.g. kaikki) are
+	// untouched — only `source = 'ekilex'` rows match. Kaikki bootstrap
+	// glosses preserved through a previous Ekilex source-upgrade keep
+	// their text on the *first* same-source reimport, but a second one
+	// will replace them with the current Ekilex output: that's the price
+	// of keeping translations/definitions and lemmas.gloss consistent.
+	stmtRefreshEkilexGloss, err := tx.Prepare(
+		`UPDATE lemmas SET gloss = ?
+		 WHERE lemma = ? AND pos = ? AND lang = 'ET' AND source = 'ekilex'
+		   AND COALESCE(gloss, '') <> ?`,
+	)
+	if err != nil {
+		return 0, 0, err
+	}
+	defer stmtRefreshEkilexGloss.Close()
+
 	// Upsert: insert a fresh row, or upgrade an existing row's source /
 	// source_priority when this import is *strictly stronger* (higher
 	// priority). `<` instead of `<=` so same-priority self-conflicts during
 	// a single import don't fire no-op updates — keeps RowsAffected
 	// honestly counting "rows whose source actually changed plus rows newly
-	// inserted." Gloss is intentionally not part of the conflict update;
-	// the empty-gloss guard below handles gloss merging.
+	// inserted." Gloss is intentionally not part of the conflict update —
+	// the pre-INSERT refresh above handles already-ekilex-owned rows; the
+	// post-INSERT empty-gloss fill below handles freshly-upgraded rows
+	// whose gloss column was empty.
 	stmtInsert, err := tx.Prepare(
 		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
 		 VALUES (?, ?, ?, 'ET', 'ekilex', 20)
@@ -396,9 +509,12 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	}
 	defer stmtInsert.Close()
 
-	// Empty-gloss guard: only fill when the existing row has no gloss.
-	// Avoids clobbering richer kaikki glosses with Ekilex's (sometimes
-	// empty) translation set.
+	// Empty-gloss fill: protect non-ekilex rows that arrived empty (e.g.
+	// a pre-existing kaikki row created before glosses were threaded
+	// through the importer). Once the upsert above has source-upgraded
+	// such a row to ekilex, this fills the gloss slot from the current
+	// Ekilex content. Non-empty glosses on non-ekilex sources are left
+	// alone; the pre-INSERT refresh has already handled the ekilex case.
 	stmtFillGloss, err := tx.Prepare(
 		`UPDATE lemmas SET gloss = ? WHERE lemma = ? AND pos = ? AND lang = 'ET'
 		   AND (gloss IS NULL OR gloss = '')`,
@@ -413,7 +529,14 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	for lemma, byPOS := range lemmaPOS {
 		for upos, data := range byPOS {
 			gloss := joinTranslationData(data)
-			res, err := stmtInsert.Exec(lemma, upos, gloss)
+			res, err := stmtRefreshEkilexGloss.Exec(gloss, lemma, upos, gloss)
+			if err != nil {
+				return inserted, glossFilled, fmt.Errorf("refresh ekilex gloss %q %s: %w", lemma, upos, err)
+			}
+			if n, _ := res.RowsAffected(); n == 1 {
+				glossFilled++
+			}
+			res, err = stmtInsert.Exec(lemma, upos, gloss)
 			if err != nil {
 				return inserted, glossFilled, fmt.Errorf("insert %q %s: %w", lemma, upos, err)
 			}
@@ -494,16 +617,70 @@ func writeTranslations(db *sql.DB, lemmaPOS lemmaPOSMap) (int, error) {
 	return written, nil
 }
 
-// collectTranslations flattens an entry's per-meaning EN translations to a
-// single slice (no dedup yet — dedup happens in lemmaPOSMap.add since
-// aggregation crosses entries).
-func collectTranslations(entry definitionEntry) []string {
-	out := make([]string, 0)
-	for _, m := range entry.Meanings {
-		out = append(out, m.TranslationsEN...)
+// writeDefinitions writes per-(lemma, pos) sense-level Estonian definitions
+// into the definitions table. The translations table holds target-language
+// (EN) glosses; this is the source-language (ET) counterpart, used by:
+//
+//   - the user-friendly wordlist exporter when an EN gloss is unavailable —
+//     so the row carries a meaning, even if it's in Estonian.
+//   - future glossary tools that want the original EKI definitions (longer,
+//     more nuanced than EN translations) for advanced learners.
+//
+// sense_idx preserves Ekilex's per-meaning ordering as definitions arrive
+// from the JSONL — entries earlier in `meanings[]` get lower sense_idx.
+// Wipe-and-rebuild within a transaction so a re-import after upstream
+// pruning doesn't leave stale rows behind.
+func writeDefinitions(db *sql.DB, lemmaPOS lemmaPOSMap) (int, error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
 	}
-	return out
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`DELETE FROM definitions WHERE lang = 'ET' AND source = 'ekilex'`); err != nil {
+		return 0, err
+	}
+
+	stmt, err := tx.Prepare(
+		`INSERT INTO definitions (lemma, pos, lang, sense_idx, text, source)
+		 VALUES (?, ?, 'ET', ?, ?, 'ekilex')
+		 ON CONFLICT (lemma, pos, lang, sense_idx, source) DO UPDATE SET
+		   text = excluded.text`,
+	)
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+
+	written := 0
+	for lemma, byPOS := range lemmaPOS {
+		for pos, data := range byPOS {
+			for senseIdx, def := range data.definitionsET {
+				if _, err := stmt.Exec(lemma, pos, senseIdx, def); err != nil {
+					return written, fmt.Errorf("write definition %q %s sense=%d: %w", lemma, pos, senseIdx, err)
+				}
+				written++
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return written, err
+	}
+	return written, nil
 }
+
+// glossFallbackPrefix marks a gloss derived from a `definitions_et` entry
+// rather than from an English translation. Downstream renderers (e.g. the
+// user-friendly wordlist export) can detect the prefix and surface it
+// distinctly — the gloss is in the source language, not English.
+const glossFallbackPrefix = "[ET] "
+
+// glossFallbackMaxLen caps the prefixed-fallback length so that ET
+// definitions, which can run multiple hundred characters, don't bloat the
+// gloss column past sensible UI lengths. Full definitions land in the
+// definitions table without truncation.
+const glossFallbackMaxLen = 240
 
 // sortedTranslations returns the deduplicated translations sorted by their
 // original-cased value. Used both for the lemmas.gloss `; `-joined cache
@@ -524,12 +701,53 @@ func sortedTranslations(d *lemmaPOSData) []string {
 
 // joinTranslationData sorts the deduplicated translations and joins with
 // "; " for the gloss column. Sorting keeps output byte-stable across runs.
+//
+// When no EN translations are available for a (lemma, pos), the first
+// Estonian-language definition is returned with the `[ET] ` prefix as a
+// fallback — better to ship "[ET] kuke kujutis varasema aja aabitsa kaanel"
+// than an empty gloss, since the empty case is what the user-friendly
+// wordlist would otherwise render as a blank meaning. The prefix lets
+// downstream renderers tell EN translations apart from ET fallbacks and
+// style them differently (or hide the fallback when EN-only is needed).
 func joinTranslationData(d *lemmaPOSData) string {
 	out := sortedTranslations(d)
-	if len(out) == 0 {
+	if len(out) > 0 {
+		return strings.Join(out, "; ")
+	}
+	if d == nil || len(d.definitionsET) == 0 {
 		return ""
 	}
-	return strings.Join(out, "; ")
+	def := d.definitionsET[0]
+	if utf8RuneCount(def) > glossFallbackMaxLen {
+		def = utf8Truncate(def, glossFallbackMaxLen) + "…"
+	}
+	return glossFallbackPrefix + def
+}
+
+// utf8RuneCount returns the rune count without allocating a []rune slice for
+// the common short-string case.
+func utf8RuneCount(s string) int {
+	n := 0
+	for range s {
+		n++
+	}
+	return n
+}
+
+// utf8Truncate returns the prefix of s containing the first n runes,
+// preserving rune boundaries. Used to cap ET-definition fallback glosses.
+func utf8Truncate(s string, n int) string {
+	if n <= 0 {
+		return ""
+	}
+	count := 0
+	for i := range s {
+		if count == n {
+			return s[:i]
+		}
+		count++
+	}
+	return s
 }
 
 // morphFormClass categorises an Ekilex morph_code as verbal, nominal, or
