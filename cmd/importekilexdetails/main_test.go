@@ -1538,6 +1538,117 @@ func TestWriteLemmas_RefreshesEkilexENtoETFallbackOnReimport(t *testing.T) {
 	}
 }
 
+// TestWriteLemmas_ClearsEkilexGlossWhenUpstreamWentEmpty guards the codex
+// finding: when upstream Ekilex no longer has any EN translation OR ET
+// definition for an existing source='ekilex' row (so the (lemma, pos) is
+// reached only via the word_class fallback path, with `gloss = ""`),
+// lemmas.gloss must be cleared to match. Otherwise Pass 2.5 / 2.6 wipe
+// the now-empty translations and definitions tables but lemmas.gloss
+// keeps showing the stale EN/ET text from the previous run.
+func TestWriteLemmas_ClearsEkilexGlossWhenUpstreamWentEmpty(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	if err := writeAll(defDir, "g.jsonl",
+		// Empty meanings + verb word_class — exercises the word_class
+		// fallback path where joinTranslationData returns "".
+		`{"word_id":1,"lemma":"ghost","homonym_nr":1,"word_class":"verb","meanings":[]}`+"\n",
+	); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	// Pre-seed an ekilex-owned row whose previous run left a stale gloss.
+	if _, err := db.Exec(
+		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+		 VALUES ('ghost', 'VERB', 'old-stale-en', 'ET', 'ekilex', 20)`,
+	); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaPOS); err != nil {
+		t.Fatalf("writeLemmas: %v", err)
+	}
+
+	var gloss string
+	if err := db.QueryRow(
+		`SELECT COALESCE(gloss, '') FROM lemmas WHERE lemma='ghost' AND pos='VERB' AND lang='ET'`,
+	).Scan(&gloss); err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if gloss != "" {
+		t.Errorf("ekilex gloss not cleared on empty reimport: got %q, want \"\" (translations/definitions tables were wiped, lemmas.gloss must follow)",
+			gloss)
+	}
+}
+
+// TestWriteLemmas_DoesNotClearNonEkilexGlossOnEmptyReimport guards the
+// flip side of the above: an empty Ekilex reimport for a (lemma, pos)
+// where the row is owned by a different source (kaikki, custom_overrides)
+// must NOT clear that row's gloss. The pre-INSERT refresh is keyed on
+// `source = 'ekilex'` precisely so non-ekilex rows are unaffected.
+func TestWriteLemmas_DoesNotClearNonEkilexGlossOnEmptyReimport(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	if err := writeAll(defDir, "g.jsonl",
+		`{"word_id":1,"lemma":"ghost","homonym_nr":1,"word_class":"verb","meanings":[]}`+"\n",
+	); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	// Pre-seed a custom_overrides row that must survive an empty Ekilex run.
+	if _, err := db.Exec(
+		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+		 VALUES ('ghost', 'VERB', 'custom-keep-this', 'ET', 'custom_overrides', 100)`,
+	); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaPOS); err != nil {
+		t.Fatalf("writeLemmas: %v", err)
+	}
+
+	var gloss, source string
+	if err := db.QueryRow(
+		`SELECT gloss, source FROM lemmas WHERE lemma='ghost' AND pos='VERB' AND lang='ET'`,
+	).Scan(&gloss, &source); err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	if gloss != "custom-keep-this" {
+		t.Errorf("non-ekilex gloss clobbered by empty Ekilex run: got %q, want %q",
+			gloss, "custom-keep-this")
+	}
+	if source != "custom_overrides" {
+		t.Errorf("source unexpectedly changed: got %q, want custom_overrides", source)
+	}
+}
+
 // TestWriteLemmas_PreservesKaikkiGlossOnFirstEkilexImport guards the
 // first-run preservation contract: a non-ekilex row (kaikki bootstrap or
 // pre-source-tracking row) should keep its English gloss across the very

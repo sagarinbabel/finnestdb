@@ -160,6 +160,45 @@ Snapshots: `reports/2026-05-09-coverage-{fi,et}-after-T0054Z.json`.
 > before joining. The `by_dict_source` rows are wordlist-independent and
 > are the reliable post-fix delta.
 
+## Re-audit — round-4 fix (T0105Z)
+
+A fourth code-review pass tightened the same-source refresh:
+
+4. **Empty-clear path** — the pre-INSERT refresh used to skip rows
+   whose new gloss was empty, leaving `lemmas.gloss` showing stale
+   text after the wipe-and-rebuild of translations / definitions
+   produced no replacement (the (lemma, pos) only reached lemmaPOS
+   via the word_class fallback). The refresh now fires
+   unconditionally — empty new gloss is a valid update target — and
+   the WHERE clause adds `COALESCE(gloss, '') <> ?` so the
+   `glossFilled` counter only ticks when the value actually changes.
+
+Re-running the importer on the post-T0054Z DB:
+
+```
+180,630 unique (lemma, pos) entries
+      0 lemma rows touched (no new entries; idempotent on the prior run)
+     27 gloss fills (clears + actual rewrites — no-op same-value updates filtered)
+186,494 translation rows
+319,609 definition rows
+      0 form rows touched
+```
+
+`by_dict_source` after the re-run:
+
+| Source | Lemma rows | With gloss | Coverage |
+|--------|-----------:|-----------:|---------:|
+| ekilex | 180,630    | 161,252    | 89.27%   |
+| kaikki | 175,763    |   6,205    |  3.53%   |
+
+The 25-row drop in ekilex `with_gloss` (161,277 → 161,252) is the
+empty-clear path firing for rows where the previous import had
+preserved a gloss that the current ekilex data no longer supports.
+Those rows now correctly show empty `lemmas.gloss`, matching the
+empty rows in `translations` and `definitions`.
+
+Snapshots: `reports/2026-05-09-coverage-{fi,et}-after-T0105Z.json`.
+
 ## Reproducing the After Run
 
 ```sh

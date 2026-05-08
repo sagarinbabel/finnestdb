@@ -458,9 +458,17 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	// Why: lemmas.gloss is a denormalized cache of the (lemma, pos) entry
 	// that wordlist consumers join on directly. Pass 2.5 / 2.6 wipe-and-
 	// rebuild translations and definitions per source, so an Ekilex run
-	// where the EN translation changed, was removed, or fell back to an ET
-	// definition would otherwise leave lemmas.gloss pointing at stale text
-	// even though the structured tables had moved on.
+	// where the EN translation changed, was removed, fell back to an ET
+	// definition, or disappeared entirely (the (lemma, pos) is now reached
+	// only via the word_class fallback) would otherwise leave lemmas.gloss
+	// pointing at stale text. The refresh fires unconditionally — empty
+	// new gloss is allowed and clears the cache to match the now-empty
+	// translations / definitions tables.
+	//
+	// `COALESCE(gloss, '') <> ?` keeps the RowsAffected counter honest:
+	// rows where the value would not change (existing gloss already matches
+	// the new gloss, including the empty-to-empty case) are filtered out
+	// by the WHERE clause and don't inflate `glossFilled`.
 	//
 	// Higher-priority rows (custom_overrides at priority 100) and rows
 	// owned by a different lower-priority source (e.g. kaikki) are
@@ -471,7 +479,8 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	// of keeping translations/definitions and lemmas.gloss consistent.
 	stmtRefreshEkilexGloss, err := tx.Prepare(
 		`UPDATE lemmas SET gloss = ?
-		 WHERE lemma = ? AND pos = ? AND lang = 'ET' AND source = 'ekilex'`,
+		 WHERE lemma = ? AND pos = ? AND lang = 'ET' AND source = 'ekilex'
+		   AND COALESCE(gloss, '') <> ?`,
 	)
 	if err != nil {
 		return 0, 0, err
@@ -520,16 +529,14 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	for lemma, byPOS := range lemmaPOS {
 		for upos, data := range byPOS {
 			gloss := joinTranslationData(data)
-			if gloss != "" {
-				res, err := stmtRefreshEkilexGloss.Exec(gloss, lemma, upos)
-				if err != nil {
-					return inserted, glossFilled, fmt.Errorf("refresh ekilex gloss %q %s: %w", lemma, upos, err)
-				}
-				if n, _ := res.RowsAffected(); n == 1 {
-					glossFilled++
-				}
+			res, err := stmtRefreshEkilexGloss.Exec(gloss, lemma, upos, gloss)
+			if err != nil {
+				return inserted, glossFilled, fmt.Errorf("refresh ekilex gloss %q %s: %w", lemma, upos, err)
 			}
-			res, err := stmtInsert.Exec(lemma, upos, gloss)
+			if n, _ := res.RowsAffected(); n == 1 {
+				glossFilled++
+			}
+			res, err = stmtInsert.Exec(lemma, upos, gloss)
 			if err != nil {
 				return inserted, glossFilled, fmt.Errorf("insert %q %s: %w", lemma, upos, err)
 			}
