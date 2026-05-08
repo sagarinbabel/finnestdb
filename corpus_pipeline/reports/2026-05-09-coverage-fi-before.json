@@ -1,0 +1,36 @@
+{
+  "lang": "fi",
+  "generated_at": "2026-05-08T21:10:42Z",
+  "wordlist": "/Users/sagar/Downloads/projects/finnestdb/localdata/fi-corpus/_derived/wordlist.tsv",
+  "db": "/Users/sagar/Downloads/projects/finnestdb/finnestdb.db",
+  "unique_surfaces": 7505796,
+  "unique_parser_choice_rows": 7505647,
+  "unique_lemma_pos_pairs": 5057506,
+  "total_tokens": 267130363,
+  "pairs": {
+    "total": 5057506,
+    "with_gloss": 154574,
+    "in_dict_no_gloss": 0,
+    "not_in_dict": 4902932,
+    "with_gloss_pct": 3.06,
+    "in_dict_no_gloss_pct": 0,
+    "not_in_dict_pct": 96.94
+  },
+  "tokens": {
+    "total": 267130363,
+    "with_gloss": 210085306,
+    "in_dict_no_gloss": 0,
+    "not_in_dict": 57045057,
+    "with_gloss_pct": 78.65,
+    "in_dict_no_gloss_pct": 0,
+    "not_in_dict_pct": 21.35
+  },
+  "by_dict_source": [
+    {
+      "source": "kaikki",
+      "rows": 259145,
+      "with_gloss": 259137,
+      "coverage_pct": "100.00%"
+    }
+  ]
+}

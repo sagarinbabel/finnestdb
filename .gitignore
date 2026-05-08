@@ -69,6 +69,7 @@ reports/**
 corpus_pipeline/.venv/
 corpus_pipeline/omorfi-data/
 corpus_pipeline/corpusverify
+corpus_pipeline/glosscoverage
 corpus_pipeline/smoke-test/
 corpus_pipeline/**/_scratch.db
 corpus_pipeline/**/*.tsv

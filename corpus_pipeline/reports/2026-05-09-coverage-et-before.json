@@ -1,0 +1,42 @@
+{
+  "lang": "et",
+  "generated_at": "2026-05-08T21:11:01Z",
+  "wordlist": "/Users/sagar/Downloads/projects/finnestdb/localdata/et-corpus/_derived/wordlist.tsv",
+  "db": "/Users/sagar/Downloads/projects/finnestdb/finnestdb.db",
+  "unique_surfaces": 3352756,
+  "unique_parser_choice_rows": 3352696,
+  "unique_lemma_pos_pairs": 2328080,
+  "total_tokens": 96090526,
+  "pairs": {
+    "total": 2328080,
+    "with_gloss": 51186,
+    "in_dict_no_gloss": 62362,
+    "not_in_dict": 2214532,
+    "with_gloss_pct": 2.2,
+    "in_dict_no_gloss_pct": 2.68,
+    "not_in_dict_pct": 95.12
+  },
+  "tokens": {
+    "total": 96090526,
+    "with_gloss": 71054502,
+    "in_dict_no_gloss": 4450819,
+    "not_in_dict": 20585205,
+    "with_gloss_pct": 73.95,
+    "in_dict_no_gloss_pct": 4.63,
+    "not_in_dict_pct": 21.42
+  },
+  "by_dict_source": [
+    {
+      "source": "ekilex",
+      "rows": 178032,
+      "with_gloss": 67367,
+      "coverage_pct": "37.84%"
+    },
+    {
+      "source": "kaikki",
+      "rows": 176199,
+      "with_gloss": 6207,
+      "coverage_pct": "3.52%"
+    }
+  ]
+}

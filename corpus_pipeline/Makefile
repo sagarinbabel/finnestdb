@@ -210,3 +210,24 @@ enrich-corpus-fi:
 
 enrich-corpus-et:
 	go run ./cmd/enrichcorpus -lang et
+
+# ─── glosscoverage (lexical-source audit) ─────────────────────────────
+#
+# Joins the corpus wordlist against the dictionary DB and emits a
+# pair/token coverage breakdown. Used before/after meaning-source imports
+# to track gloss coverage. Output is a JSON file under reports/ stamped
+# with the date.
+
+.PHONY: gloss-coverage gloss-coverage-fi gloss-coverage-et
+
+REPORT_DATE ?= $(shell date +%Y-%m-%d)
+
+gloss-coverage: gloss-coverage-fi gloss-coverage-et
+
+gloss-coverage-fi:
+	mkdir -p reports
+	go run ./cmd/glosscoverage -lang fi -out reports/$(REPORT_DATE)-coverage-fi.json
+
+gloss-coverage-et:
+	mkdir -p reports
+	go run ./cmd/glosscoverage -lang et -out reports/$(REPORT_DATE)-coverage-et.json

@@ -15,7 +15,7 @@ import (
 
 func joinTranslations(entry definitionEntry) string {
 	tmp := lemmaPOSMap{}
-	tmp.add("_", "_", collectTranslations(entry))
+	tmp.add("_", "_", collectTranslations(entry), collectDefinitionsET(entry))
 	if d, ok := tmp["_"]["_"]; ok {
 		return joinTranslationData(d)
 	}
@@ -126,9 +126,9 @@ func TestLemmaPOSMap_CaseTiebreakDeterministic(t *testing.T) {
 	// Same dedup result regardless of input order — guards against
 	// last-write-wins regressions.
 	a := lemmaPOSMap{}
-	a.add("kalvados", "NOUN", []string{"calvados", "Calvados"})
+	a.add("kalvados", "NOUN", []string{"calvados", "Calvados"}, nil)
 	b := lemmaPOSMap{}
-	b.add("kalvados", "NOUN", []string{"Calvados", "calvados"})
+	b.add("kalvados", "NOUN", []string{"Calvados", "calvados"}, nil)
 
 	if joinTranslationData(a["kalvados"]["NOUN"]) != "Calvados" {
 		t.Errorf("a: got %q, want \"Calvados\"", joinTranslationData(a["kalvados"]["NOUN"]))
@@ -855,6 +855,244 @@ func TestWriteTranslations_PreservesOtherSourcesTranslations(t *testing.T) {
 	}
 	if ekilexText != "dog" {
 		t.Errorf("ekilex written: got %q, want %q", ekilexText, "dog")
+	}
+}
+
+// TestJoinTranslationData_FallsBackToETDefinition guards the new fallback
+// path — when no EN translations are present for a (lemma, pos), the gloss
+// column gets a `[ET] `-prefixed Estonian definition instead of an empty
+// string. The user-friendly wordlist export depends on this so its
+// `meaning` column is non-empty for the ~4.6% of ET tokens that ekilex
+// covers with a definition but no translation.
+func TestJoinTranslationData_FallsBackToETDefinition(t *testing.T) {
+	tmp := lemmaPOSMap{}
+	tmp.add("aabitsakukk", "NOUN",
+		nil,
+		[]string{"kuke kujutis varasema aja aabitsa kaanel või esilehel"})
+	gloss := joinTranslationData(tmp["aabitsakukk"]["NOUN"])
+	want := "[ET] kuke kujutis varasema aja aabitsa kaanel või esilehel"
+	if gloss != want {
+		t.Errorf("ET fallback gloss: got %q, want %q", gloss, want)
+	}
+}
+
+// TestJoinTranslationData_PrefersENTranslationOverETDefinition guards
+// against the fallback firing when an EN translation IS available — the
+// user-friendly path only wants `[ET] ` glosses as a last resort.
+func TestJoinTranslationData_PrefersENTranslationOverETDefinition(t *testing.T) {
+	tmp := lemmaPOSMap{}
+	tmp.add("koer", "NOUN",
+		[]string{"dog"},
+		[]string{"koduloom"})
+	gloss := joinTranslationData(tmp["koer"]["NOUN"])
+	want := "dog"
+	if gloss != want {
+		t.Errorf("EN preferred over ET: got %q, want %q", gloss, want)
+	}
+}
+
+// TestJoinTranslationData_TruncatesLongETDefinition guards against
+// pathologically long EKI definitions bloating the gloss column. The full
+// definition still lands in the definitions table.
+func TestJoinTranslationData_TruncatesLongETDefinition(t *testing.T) {
+	long := strings.Repeat("õ", glossFallbackMaxLen+50)
+	tmp := lemmaPOSMap{}
+	tmp.add("x", "NOUN", nil, []string{long})
+	gloss := joinTranslationData(tmp["x"]["NOUN"])
+	if !strings.HasPrefix(gloss, glossFallbackPrefix) {
+		t.Errorf("missing ET prefix: %q", gloss[:20])
+	}
+	if !strings.HasSuffix(gloss, "…") {
+		t.Errorf("missing truncation marker: %q", gloss[len(gloss)-10:])
+	}
+	// Prefix + glossFallbackMaxLen runes + ellipsis. Counting runes since
+	// each "õ" is 2 bytes in UTF-8.
+	got := utf8RuneCount(gloss)
+	want := utf8RuneCount(glossFallbackPrefix) + glossFallbackMaxLen + 1
+	if got != want {
+		t.Errorf("rune count: got %d, want %d", got, want)
+	}
+}
+
+// TestWriteDefinitions_BasicWrite guards the new definitions-table writer
+// path — every Estonian-language definition lands as one row per sense,
+// in the order they arrive from the JSONL.
+func TestWriteDefinitions_BasicWrite(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	if err := writeAll(defDir, "a.jsonl",
+		`{"word_id":1,"lemma":"aade","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"definitions_et":["mõte","plaan"],"translations_en":["idea"]},{"pos":["s"],"definitions_et":["unistus"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write defs: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaPOS); err != nil {
+		t.Fatalf("writeLemmas: %v", err)
+	}
+
+	written, err := writeDefinitions(db, lemmaPOS)
+	if err != nil {
+		t.Fatalf("writeDefinitions: %v", err)
+	}
+	if written != 3 {
+		t.Errorf("definitions written = %d, want 3", written)
+	}
+
+	rows, err := db.Query(
+		`SELECT sense_idx, text, source FROM definitions
+		 WHERE lemma='aade' AND pos='NOUN' AND lang='ET' ORDER BY sense_idx`)
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	defer rows.Close()
+	got := []string{}
+	for rows.Next() {
+		var idx int
+		var text, src string
+		if err := rows.Scan(&idx, &text, &src); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		got = append(got, fmt.Sprintf("%d:%s/%s", idx, text, src))
+	}
+	want := []string{"0:mõte/ekilex", "1:plaan/ekilex", "2:unistus/ekilex"}
+	if !equalStringSlices(got, want) {
+		t.Errorf("definitions: got %v, want %v", got, want)
+	}
+}
+
+// TestWriteDefinitions_DedupesAcrossHomonyms guards that two Ekilex
+// homonyms that collapse into the same (lemma, pos) (e.g. aste#1 + aste#2,
+// both NOUN) merge their definition sets case-sensitively without dropping
+// distinct senses or duplicating identical phrases.
+func TestWriteDefinitions_DedupesAcrossHomonyms(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	if err := writeAll(defDir, "a.jsonl",
+		`{"word_id":1,"lemma":"aste","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"definitions_et":["samm","aste1-def"]}]}`+"\n"+
+			`{"word_id":2,"lemma":"aste","homonym_nr":2,"word_class":"noomen","meanings":[{"pos":["s"],"definitions_et":["samm","aste2-def"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregate: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaPOS); err != nil {
+		t.Fatalf("writeLemmas: %v", err)
+	}
+	if _, err := writeDefinitions(db, lemmaPOS); err != nil {
+		t.Fatalf("writeDefinitions: %v", err)
+	}
+
+	rows, err := db.Query(
+		`SELECT text FROM definitions
+		 WHERE lemma='aste' AND pos='NOUN' AND lang='ET' ORDER BY sense_idx`)
+	if err != nil {
+		t.Fatalf("query: %v", err)
+	}
+	defer rows.Close()
+	got := []string{}
+	for rows.Next() {
+		var text string
+		if err := rows.Scan(&text); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		got = append(got, text)
+	}
+	// "samm" appears once (deduped); "aste1-def" and "aste2-def" both
+	// preserved. Order is insertion order across the homonym entries.
+	want := []string{"samm", "aste1-def", "aste2-def"}
+	if !equalStringSlices(got, want) {
+		t.Errorf("definitions: got %v, want %v", got, want)
+	}
+}
+
+// TestWriteDefinitions_RewriteRemovesOrphanedSenses mirrors
+// TestWriteTranslations_RewriteRemovesOrphanedSenses. Shrinking a
+// definition list upstream must not leave stale rows.
+func TestWriteDefinitions_RewriteRemovesOrphanedSenses(t *testing.T) {
+	tmp := t.TempDir()
+	defDirA := filepath.Join(tmp, "defs-a")
+	defDirB := filepath.Join(tmp, "defs-b")
+	if err := writeAll(defDirA, "a.jsonl",
+		`{"word_id":1,"lemma":"x","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"definitions_et":["a","b","c"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write A: %v", err)
+	}
+	if err := writeAll(defDirB, "a.jsonl",
+		`{"word_id":1,"lemma":"x","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"definitions_et":["a"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write B: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	lemmaA, _, err := aggregateDefinitions(defDirA)
+	if err != nil {
+		t.Fatalf("aggregate A: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaA); err != nil {
+		t.Fatalf("writeLemmas A: %v", err)
+	}
+	if _, err := writeDefinitions(db, lemmaA); err != nil {
+		t.Fatalf("writeDefinitions A: %v", err)
+	}
+	var n int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM definitions WHERE lemma='x'`).Scan(&n); err != nil {
+		t.Fatalf("count A: %v", err)
+	}
+	if n != 3 {
+		t.Fatalf("after A: got %d, want 3", n)
+	}
+
+	lemmaB, _, err := aggregateDefinitions(defDirB)
+	if err != nil {
+		t.Fatalf("aggregate B: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaB); err != nil {
+		t.Fatalf("writeLemmas B: %v", err)
+	}
+	if _, err := writeDefinitions(db, lemmaB); err != nil {
+		t.Fatalf("writeDefinitions B: %v", err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM definitions WHERE lemma='x'`).Scan(&n); err != nil {
+		t.Fatalf("count B: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("after B: got %d, want 1 (orphan senses should be removed)", n)
 	}
 }
 

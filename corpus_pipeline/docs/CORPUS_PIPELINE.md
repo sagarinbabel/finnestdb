@@ -65,6 +65,7 @@ and no-suffix (= both) variants.
 | `make corpus-promote[-fi/-et] PROFILE=…` | Chain extract→aggregate→verify; smoke→pilot→full ladder | When advancing through profiles | depends on profile | promotion-state.json updated |
 | `make corpus-cache-clear` | Wipe `_derived/cache/` (when v2.4 caching lands) | After parser/dict changes | <1 s | clears cache |
 | `make bootstrap-tarball` | 3-way split tarball (code, fi, et) | Before handoff to another machine | ~5-30 min depending on data size | `finnestdb-bootstrap-{code,fi,et}.tgz` in repo root |
+| `make gloss-coverage[-fi/-et]` | Audit dict-DB gloss coverage against the wordlist (pair + token-weighted) | Before/after a meaning-source import | <30 s | `reports/<date>-coverage-{lang}.json` |
 
 The `PROFILE` Makefile variable defaults to `smoke`. Override with
 `PROFILE=pilot` or `PROFILE=full`.
