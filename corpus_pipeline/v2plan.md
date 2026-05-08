@@ -196,33 +196,19 @@ The detailed PR sequence lives in
 exists, what generated artifacts change, and how downstream code reconstructs
 any denormalized data that is removed.
 
-Planned work (four items — first three are active, fourth is a later spike):
+Status update — 2026-05-09:
 
-1. **Meaning sources research** (ACTIVE — prerequisite for item 2).
-   Audit DB gloss coverage, identify external meaning sources (Wiktionary,
-   Kielitoimiston sanakirja, Ekilex public data), record license constraints,
-   and build/extend an import path so meanings reach the dictionary DB.
-   - **Effort:** ~6-10 hours.
-   - **Trigger:** Next implementation PR after this roadmap lands.
-2. **Canonical cleanup + user-friendly wordlist** (depends on item 1).
-   Drop `example_text` from canonical outputs, document reconstruction via
-   `example_ref_id` joins, and add `wordlist_user_friendly.tsv` with meanings
-   from the dictionary DB.
-   - **Effort:** ~3-5 hours.
-   - **Trigger:** After item 1 delivers adequate gloss coverage.
-3. **Sentence export + EPUB extraction cleanup** (independent).
-   Improve `extract_epub` to skip nav/front-matter junk and add
-   `sentences_user_friendly.tsv` as a filtered derived export. These are coupled
-   because better extraction reduces what the sentence filter has to catch.
-   - **Effort:** ~4-6 hours.
-   - **Trigger:** Sentence-bank examples are consumed by the app or by manual
-     quality review.
-4. **Later: interlinear glossing prototype.**
-   Investigation/prototype work, not a normal shipping PR. Prototype a tool
-   that takes a sentence and emits lemma/gloss/FEATS rows per surface.
-   - **Effort:** ~8-16 hours (spike + prototype).
-   - **Trigger:** Items 2 and 3 are complete, and the app needs
-     morphology-aware learner explanations beyond lemma + meaning.
+1. **Meaning sources research** — DONE via PR #173. Keep adding new
+   timestamped coverage reports for future meaning-source changes.
+2. **Canonical cleanup + user-friendly wordlist** — DONE via PR #174.
+   Canonical exports keep example refs; `wordlist_user_friendly.tsv`
+   carries meaning, parsed morphology, counts, provenance, parser/FST
+   fingerprints, and example refs.
+3. **Sentence export + EPUB extraction cleanup** — DONE via PR #170.
+   `sentences_user_friendly.tsv` exists as the filtered sentence bank.
+4. **Later: interlinear glossing prototype** — still parked. Items 2 and 3
+   are complete, so this can be picked up when the app needs morphology-aware
+   learner explanations beyond lemma + meaning.
 
 ## Deferred to v2 — with triggers
 
@@ -294,12 +280,9 @@ Still deferred (was originally ~25 sources per language):
 - **Stubbed**: `vrt` (Yle Kielipankki — needs zip+VRT-format walker, not in active source list),
   `wiki` (MediaWiki XML — relies on OPUS-Wikipedia .txt.gz instead which uses `gz`).
   Both stubs return nil (no error) so the pipeline keeps working when registry includes them.
-- **Missing**: `vrt` (Yle Kielipankki), `leipzig` (tar+TSV),
-  `wiki` (MediaWiki XML — needs wikiextractor or pure-Go port),
-  `csv` (Eduskunta), `skvr` (XML), `html` (polite scrape),
-  `huggingface` (parquet/jsonl — needs HF hub or direct API),
-  `riigikogu` (HTML scrape), `erab` (TXT/XML),
-  `eeva` (HTML scrape with prose/poetry routing).
+- **Remaining specialized extractors**: `vrt` (Yle Kielipankki) and
+  `wiki` (MediaWiki XML). The other formats in the original list now have
+  working implementations or documented delegating paths.
 - **Trigger**: Each individual extractor's trigger is "we want this
   source ingested." Easy to do one-at-a-time.
 

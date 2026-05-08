@@ -23,7 +23,7 @@ descriptions when two docs sound similar.
 
 - **Entry point:** [`../README.md`](../README.md) (what the project is, how to run, project structure, doc index)
 - **Setup verifier:** [`make doctor`](../cmd/doctor/main.go) — single-screen report on DB sources, FST tables, analyzer venvs, Ekilex shards, UD cache, frequency baselines
-- **System architecture:** [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (current), [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) (lexical-layer detail)
+- **System architecture:** [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (current), [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) (lexical-layer detail), [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) (offline corpus pipeline)
 - **Product framing:** [`docs/FEATURES.md`](FEATURES.md) (user-facing), [`docs/DESIGN_REVIEW.md`](DESIGN_REVIEW.md) (design folder audit + TODO)
 - **What's done / what's next:** [`../TODO.md`](../TODO.md) (the only doc you need for status)
 - **Why we made choices:** [`docs/DECISIONS.md`](DECISIONS.md) (latest-first, 18 decisions)
@@ -43,6 +43,7 @@ descriptions when two docs sound similar.
 | What changed when (per-PR doc impact) | [`docs/CHANGELOG.md`](CHANGELOG.md) |
 | How the system is wired together | [`ARCHITECTURE.md`](../ARCHITECTURE.md) |
 | How the lexical layer works | [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) |
+| How corpora become wordlists, sentence banks, and mining files | [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) |
 | What the product is from a learner's view | [`docs/FEATURES.md`](FEATURES.md) |
 | Design audit + open TODO | [`docs/DESIGN_REVIEW.md`](DESIGN_REVIEW.md) |
 | How parser quality has moved over time | [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) |
@@ -66,6 +67,10 @@ descriptions when two docs sound similar.
   schema, source priority semantics, multi-lemma surface forms,
   FST↔dict boundary, importer pattern, FI source choices, ET source
   choices (consolidated from the deleted `ESTONIAN_LEXICAL_PLAN.md`).
+- [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) —
+  operator manual for the tracked offline corpus pipeline: fetch,
+  extract, aggregate, verify, promote, enrich, EPUB deck export, and
+  gloss-coverage audit. Bulk corpus data stays under `localdata/`.
 - [`architecture.md`](architecture.md) — redirect stub pointing at
   `ARCHITECTURE.md` (kept so old links resolve).
 
@@ -120,7 +125,8 @@ descriptions when two docs sound similar.
   dataset structure, how new cases are annotated, how draft sets get
   promoted.
 - [`docs/baselines/`](baselines/) — frozen per-PR eval reports (FI +
-  ET, JSON + summary markdown). Latest is `2026-05-07k-T0944Z`.
+  ET, compressed JSON + summary markdown). Latest logical reference set
+  is `2026-05-07k-T1118Z`.
   See [`docs/baselines/README.md`](baselines/README.md) for the
   baseline schema.
 - [`docs/SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) — how parser
@@ -178,6 +184,9 @@ descriptions when two docs sound similar.
   schema for "Suggest fix" parse-feedback flow. Admin queue triage,
   always-attach-parse-session rule, planned writeback to `custom_overrides`
   lexical rows.
+- [`../corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) —
+  corpus operations manual and architecture map for public-source corpus
+  artifacts under `localdata/{fi,et}-corpus/`.
 
 ### Process and operations
 
@@ -208,7 +217,8 @@ descriptions when two docs sound similar.
 
 - [`docs/qa-reports/`](qa-reports/) — dated QA reports (E2E doc
   behavior, numeric-hyphen tokenization regression check). Each is a
-  one-off; safe to read for history but not maintained.
+  one-off; safe to read for history but not maintained. Latest doc-state
+  audit: [`2026-05-08T2229Z-doc-architecture-corpus-audit.md`](qa-reports/2026-05-08T2229Z-doc-architecture-corpus-audit.md).
 - [`docs/baselines/`](baselines/) — frozen eval reports per PR (see
   Parser quality section above).
 - [`../experiments/`](../experiments/) — dated spike reports and

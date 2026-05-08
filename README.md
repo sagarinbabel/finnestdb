@@ -614,6 +614,8 @@ will close most of the long tail.
 /parser                   Rust tokenizer / sentence splitter (heuristic, with R1–R4
                           numeric-hyphen rules — see DECISIONS.md Decision 6)
 /pkg/lemmatizer-fi-et     Generated-table FST runtime (loads from localdata/)
+/corpus_pipeline          Offline corpus fetch/extract/aggregate/verify/promote
+                          tooling and learner-facing corpus exports
 /web                      Frontend (HTML, CSS, TypeScript)
 /localdata                Single-folder bootstrap root (gitignored). Populated by
                           `scripts/setup-local.sh`: Ekilex CC BY 4.0 shards,
@@ -640,6 +642,7 @@ Architecture and ops:
 - [Architecture](ARCHITECTURE.md) and [docs/SYSTEM_VERSIONING.md](docs/SYSTEM_VERSIONING.md)
 - [docs/ARTIFACT_POLICY.md](docs/ARTIFACT_POLICY.md) — what's allowed in git, what lives under `localdata/`
 - [docs/data_enhancement.md](docs/data_enhancement.md) — ledger of every external corpus pulled in
+- [corpus_pipeline/docs/CORPUS_PIPELINE.md](corpus_pipeline/docs/CORPUS_PIPELINE.md) — offline corpus fetch/extract/aggregate/verify/promote/enrich pipeline, learner exports, and QA gates
 - [Documentation Changelog](docs/CHANGELOG.md) · [Decisions Log](docs/DECISIONS.md)
 - [Go-Live Checklist](docs/GO_LIVE_CHECKLIST.md)
 - [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) — redirect stub (split across README, PARSER_FEEDBACK_LOOP, ARCHITECTURE)

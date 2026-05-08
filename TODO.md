@@ -175,7 +175,8 @@ Snapshot. Refresh by running:
 gh pr list --state open --json number,title,headRefName --jq '.[] | "- #\(.number) `\(.headRefName)` — \(.title)"'
 ```
 
-Currently none open as of 2026-05-07 PM (PR #135 merge).
+Currently none open as of 2026-05-09 01:29 +0300. Recent cleanup PRs
+#165 and #166 have merged into `origin/main`.
 
 ## Research Goals
 

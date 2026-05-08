@@ -3,9 +3,9 @@
 # Operate from this directory:
 #   cd corpus_pipeline && make <target>
 #
-# Every target has -fi, -et, and no-suffix (= both) variants per the plan's
-# language conventions. Smoke profile is what's wired in v1; pilot and full
-# need fetcher driving (deferred to next session).
+# Core targets have -fi, -et, and no-suffix (= both) variants per the plan's
+# language conventions. Smoke is the default profile; pilot/full are selected
+# with PROFILE=pilot or PROFILE=full when the local corpus state supports them.
 
 .PHONY: help build smoke pilot full \
         extract-corpus extract-corpus-fi extract-corpus-et \
@@ -23,7 +23,7 @@ help:
 	@echo "  make extract-corpus[-fi|-et]   - run extractcorpus"
 	@echo "  make aggregate-corpus[-fi|-et] - run aggregatecorpus"
 	@echo "  make corpus-verify[-fi|-et]    - run corpusverify (PROFILE=smoke|pilot|full)"
-	@echo "  make corpus-promote[-fi|-et]   - run corpuspromote (PROFILE=smoke for now)"
+	@echo "  make corpus-promote[-fi|-et]   - run corpuspromote (PROFILE=smoke|pilot|full)"
 	@echo "  make corpus-cache-clear        - wipe _derived/cache/"
 
 build:

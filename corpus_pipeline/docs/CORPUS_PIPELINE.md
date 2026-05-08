@@ -6,55 +6,42 @@ finnestdb repo's `localdata/` directory.
 
 The pipeline source is tracked so agents and humans share one reproducible
 implementation. Corpus data remains local-only under `localdata/`. See
-`docs/DECISIONS.md` for the rationale and report policy. See
-`docs/PR_ROADMAP.md` for the near-term PR sequence and the reason each
-planned schema/export change exists.
+[`DECISIONS.md`](DECISIONS.md) for the rationale and report policy. See
+[`PR_ROADMAP.md`](PR_ROADMAP.md) for the near-term PR sequence and the
+reason each planned schema/export change exists.
 
 ---
 
 ## Architecture in 30 seconds
 
-```
-                ┌─── localdata/{fi,et}-corpus/<source>/raw/   (downloads)
-fetch ─────────►│
-                └─── <source>/manifest.json                    (per-source metadata)
-
-                ┌─── <source>/text.txt              (prose, paragraph per line)
-extract ───────►│
-                └─── <source>/poems.jsonl           (poetry, line breaks preserved)
-                └─── <source>/documents.jsonl       (per-doc metadata)
-
-aggregate ─────►_derived/wordlist.tsv               (canonical: one row per analysis, raw FEATS, example_ref pair only)
-                _derived/wordlist_user_friendly.tsv (learner-facing: meaning + parsed morphology + example_ref)
-                _derived/sentences.tsv              (text-only, deduped, deterministic IDs)
-                _derived/sentences_user_friendly.tsv (filtered learner-facing sentence bank)
-                _derived/sentence_occurrences.tsv   (full provenance)
-                _derived/poems.tsv                  (line breaks preserved)
-                _derived/documents.tsv
-                _derived/manifest.tsv
-                _derived/build_metadata.json
-                _derived/qa-report.json
-                _derived/mining/                    (parser-improvement candidates)
-                  ├── unresolved.tsv                (prose-first sort)
-                  ├── poetry-unresolved.tsv         (count_poetry≥10 AND ≥5×prose)
-                  ├── parser-disagreements.tsv      (basic vs custom)
-                  ├── high-frequency-ambiguous.tsv  (≥2 FST analyses)
-                  ├── internal-consensus-candidates.tsv (basic+custom+FST agree)
-                  └── silver-candidates.tsv         (ONLY by enrichcorpus, omorfi/estnltk agreement)
-
-verify ────────►_derived/qa-gate.json               (hard/soft gate results, exit nonzero on hard fail)
-
-promote ───────►runs the smoke→pilot→full ladder, stops on first hard fail,
-                writes _derived/promotion-state.json + errors/error_report.txt
-                + appends to errors/error-history.jsonl
+```mermaid
+flowchart TB
+  Source["Source registry or folder-driven raw data"] --> Fetch["fetchcorpus and scrapers"]
+  Fetch --> Raw["localdata/{fi,et}-corpus/<source>/raw/ and manifest.json"]
+  Raw --> Extract["extractcorpus"]
+  Extract --> Text["text.txt, poems.jsonl, documents.jsonl"]
+  Text --> Aggregate["aggregatecorpus"]
+  Aggregate --> Canonical["wordlist.tsv, sentences.tsv, sentence_occurrences.tsv, poems.tsv, documents.tsv, manifest.tsv"]
+  Aggregate --> Learner["wordlist_user_friendly.tsv and sentences_user_friendly.tsv"]
+  Aggregate --> Mining["mining TSVs: unresolved, ambiguous, disagreements, consensus"]
+  Aggregate --> Metadata["build_metadata.json and qa-report.json"]
+  Mining --> Enrich["enrichcorpus"]
+  Enrich --> Silver["silver-candidates.tsv from analyzer agreement only"]
+  Canonical --> Verify["corpusverify"]
+  Learner --> Verify
+  Verify --> Gate["qa-gate.json and append-only errors/ history"]
+  Gate --> Promote["corpuspromote smoke -> pilot -> full"]
+  Learner --> Epub["epubdeck per-book learner wordlists"]
 ```
 
 ---
 
 ## Quick reference — every make target
 
-Run from `cd corpus_pipeline/`. Every target has `-fi`, `-et`,
-and no-suffix (= both) variants.
+Run from `cd corpus_pipeline/`. The core fetch/extract/aggregate/verify/
+promote/enrich/gloss targets have `-fi`, `-et`, and no-suffix (= both)
+variants. Source-specific helpers such as `scrape-riigikogu` document
+their own language scope.
 
 | Target | What | When to run | Wall clock | Outputs |
 |---|---|---|---|---|
@@ -65,7 +52,7 @@ and no-suffix (= both) variants.
 | `make aggregate-corpus[-fi/-et]` | 4-phase aggregation → canonical and user-facing derived TSVs + QA report | After extract | ~minutes for smoke, ~hours for full | `_derived/*.tsv` + `_derived/mining/*.tsv` + JSON metadata |
 | `make corpus-verify[-fi/-et] PROFILE=…` | Hard/soft gate check, exit nonzero on fail | After aggregate | <5 s | `_derived/qa-gate.json` (+ `errors/` on fail) |
 | `make corpus-promote[-fi/-et] PROFILE=…` | Chain extract→aggregate→verify; smoke→pilot→full ladder | When advancing through profiles | depends on profile | promotion-state.json updated |
-| `make corpus-cache-clear` | Wipe `_derived/cache/` (when v2.4 caching lands) | After parser/dict changes | <1 s | clears cache |
+| `make corpus-cache-clear` | Wipe `_derived/cache/` when present | After parser/dict changes or cache experiments | <1 s | clears cache if it exists |
 | `make bootstrap-tarball` | 3-way split tarball (code, fi, et) | Before handoff to another machine | ~5-30 min depending on data size | `finnestdb-bootstrap-{code,fi,et}.tgz` in repo root |
 | `make gloss-coverage[-fi/-et]` | Audit dict-DB gloss coverage against the wordlist (pair + token-weighted) | Before/after a meaning-source import | <30 s | `reports/<date>-coverage-{lang}.json` |
 
@@ -82,9 +69,9 @@ Existing `_derived/` directories built before that export existed must rerun
 
 | Profile | Data slice | Purpose |
 |---|---|---|
-| `smoke` | Hand-authored fixture (`testdata/corpus-fixtures/{fi,et}/`) + tiny real source. Probes verify FI `Tulen→tulla/VERB`, FI `Talossa→talo/Ine`, FI `Kuusen→kuusi/Gen`, ET `joon` produces ≥2 analyses including `jooma/VERB`. | Fast architecture validation. Run after any code change. |
-| `pilot` | ~500 MB per language (currently 4 small OPUS sources per lang) | Full pipeline shape on real data, not toy fixtures. |
-| `full` | Everything from the source registry | The actual corpus build. ~10 GB per language. ~10-12 hours wall clock. |
+| `smoke` | Hand-authored fixture (`testdata/corpus-fixtures/{fi,et}/`) + tiny real source. Probes verify FI `Tulen -> tulla/VERB`, FI `Talossa -> talo/Ine`, FI `Kuusen -> kuusi/Gen`, ET `joon` produces at least 2 analyses including `jooma/VERB`. | Fast architecture validation. Run after any code change. |
+| `pilot` | Real-source slice. The 2026-05-08 pilot run covered 14 FI sources and 13 ET sources; see [`../reports/2026-05-08-pilot-complete.md`](../reports/2026-05-08-pilot-complete.md). | Full pipeline shape on real data, not toy fixtures. |
+| `full` | Everything from the source registry and local folder-driven sources. | The actual corpus build. Expect large disk use and multi-hour wall clock; use pilot reports to estimate on the current machine. |
 
 ---
 
@@ -235,21 +222,42 @@ These are the v1 decisions baked into the code. Don't change them lightly:
 
 ---
 
-## What's not yet built
+## Built vs deferred
 
-See [`v2plan.md`](../v2plan.md) for the full deferred-items list with
-trigger conditions, and [`PR_ROADMAP.md`](PR_ROADMAP.md) for the planned PR
-sequence. Highlights:
+See [`../v2plan.md`](../v2plan.md) for the deferred-items ledger with
+trigger conditions, and [`PR_ROADMAP.md`](PR_ROADMAP.md) for the PR
+sequence. The living status as of 2026-05-09:
 
-- SQLite scratch DB + concurrent worker pool (v2.4) — needed when full
-  corpus aggregation OOMs in-memory. Pilot probably fits.
-- `cmd/enrichcorpus` (v2.6) — omorfi/estnltk batch adapters for true
-  silver labels.
-- `cmd/epubdeck` (v2.7) — per-book wordlist extractor.
-- 11 more format extractors (v2.3) — vrt, leipzig, wiki, csv, skvr,
-  html, huggingface, riigikogu, erab, eeva, plus the parliament csv.
-- More OPUS / Yle / parliament sources in the registry (v2.2).
-- ET parity: Riigikogu, ERR, ERAB, EEVA (v2.12).
+Built:
+
+- Source fetching, source manifests, checksum sidecars, and dry-run URL probes.
+- Extractors for fixture, gzip/plain text, EPUB, VRT, Leipzig, CSV, SKVR,
+  HTML, Hugging Face, Markdown, and miscellaneous text sources, plus the
+  Riigikogu scraper path.
+- Canonical and learner-facing exports:
+  `wordlist.tsv`, `wordlist_user_friendly.tsv`, `sentences.tsv`,
+  `sentences_user_friendly.tsv`, `sentence_occurrences.tsv`, poems,
+  documents, manifest, build metadata, and QA report.
+- Mining exports for unresolved surfaces, poetry-heavy unresolved forms,
+  parser disagreements, high-frequency ambiguous forms, and internal
+  consensus candidates.
+- `cmd/enrichcorpus`, `cmd/epubdeck`, and `cmd/glosscoverage`.
+- Smoke/pilot/full promotion machinery with hard/soft QA gates and
+  append-only error history.
+
+Still deferred or trigger-gated:
+
+- SQLite scratch DB + concurrent worker pool. Add this when full corpus
+  aggregation OOMs or memory profiling shows the in-memory aggregator is
+  the blocker.
+- More production source expansion and source-specific polish. Add sources
+  when a license, format, and learner value are clear.
+- App ingestion of promoted corpus artifacts. The exports are designed for
+  it, but the browser app still treats the corpus pipeline as offline data
+  production.
+- Scheduled refresh/retention policy for user-generated corpus material.
+  This belongs with go-live privacy and abuse-control work, not with the
+  offline public-source pilot.
 
 ---
 
@@ -262,12 +270,22 @@ preflight.fst.missing: /…/localdata/lemmatizer-fi-et/tables/fi_min.json
 ```
 
 The FST tables aren't in the expected path. Either:
-- The main repo's `make parser` was never run, OR
+- The table generator was never run for that language, OR
 - `localdata/lemmatizer-fi-et/tables/` got moved/deleted, OR
 - `LEMMATIZER_TABLES_DIR` env var override is wrong.
 
-Fix: `cd <repo-root> && make parser` and confirm
-`localdata/lemmatizer-fi-et/tables/{fi,et}_min.json` exist non-empty.
+Fix: generate the missing local table from a local analyzer, then confirm
+`localdata/lemmatizer-fi-et/tables/{fi,et}_min.json` exists and is
+non-empty:
+
+```sh
+cd <repo-root>
+make gen-lemmatizer-tables-fi VFST_PATH=/absolute/path/to/mor.vfst
+make gen-lemmatizer-tables-et HFSTOL_PATH=/absolute/path/to/analyser-gt-desc.hfstol
+```
+
+`make parser` still matters for the Rust tokenizer shared library, but it
+does not create production FST tables.
 
 ### "preflight.dict.missing_or_empty" hard fail
 
