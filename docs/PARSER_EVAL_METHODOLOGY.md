@@ -232,7 +232,7 @@ filename:
 docs/baselines/YYYY-MM-DD<rev>-T<HHMM>Z-<dataset>.<ext>
 ```
 
-— for example `docs/baselines/2026-05-07k-T1118Z-fi-core.json`. **Append-only**:
+— for example `docs/baselines/2026-05-07k-T1118Z-fi-core.json.gz`. **Append-only**:
 the script refuses to overwrite existing targets, so older baselines stay
 referenceable forever (cross-references like "see `2026-05-06-final-fi-core`"
 in old PR descriptions remain valid). Filename spec, examples, and rationale:
@@ -261,8 +261,8 @@ Full schema: [`baselines/README.md`](baselines/README.md).
 
 Test sets and dev sets are split:
 
-- `gold/<name>-test-v*.json` — committed baselines run on these. They are the headline.
-- `gold/<name>-dev-v*.json` — committed baselines **skip** these (filtered by the comparison scripts via `grep -v -- '-dev-v'`, and by `make eval` via the same case match). Use them for per-commit "watch" eval — either `make eval-watch` (test + dev sweep) or `cmd/parsertest -dataset <dev-set>` explicitly — so test-set numbers stay honest.
+- `gold/<name>-test-v*.json[.gz]` — committed baselines run on these. They are the headline.
+- `gold/<name>-dev-v*.json[.gz]` — committed baselines **skip** these (filtered by the comparison scripts via `grep -v -- '-dev-v'`, and by `make eval` via the same case match). Use them for per-commit "watch" eval — either `make eval-watch` (test + dev sweep) or `cmd/parsertest -dataset <dev-set>` explicitly — so test-set numbers stay honest.
 - `gold-train/` — UD train splits, gitignored regardless of license. Used only for OOV/coverage analysis, never for accuracy claims.
 
 Don't tune against test sets. If you find yourself iterating on a fix until
