@@ -359,8 +359,7 @@ compare-parsers-et: parser
 # Requires the unified NLP venv: `make setup-nlp` first.
 
 enrich-gold-feats: parser
-	@FINNESTDB_OMORFI_CMD="$$(pwd)/.venv/bin/python $$(pwd)/scripts/omorfi_adapter_example.py" \
-	    go run ./cmd/enrichgoldfeats -all
+	@go run ./cmd/enrichgoldfeats -all
 
 # ── UD treebank gold-set ingest (Plan C / PR 1) ──────────────────────────────
 #

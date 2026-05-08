@@ -195,7 +195,7 @@ make doctor
 ```
 
 Reports DB presence + per-source row counts, FST table presence, analyzer
-venv presence (`.venv-omorfi`, `.venv-estnltk`), Ekilex shard presence,
+venv presence (`.venv`), Ekilex shard presence,
 UD cache, frequency baselines, and the Rust parser shared library — each
 with a one-line hint for the missing pieces. Returns `0` unless the DB
 or the FI/ET dictionary is missing entirely; everything else is
@@ -471,28 +471,28 @@ Available parser names:
 recommended path is:
 
 ```bash
-make setup-omorfi
+make setup-nlp
 go run ./cmd/parsertest \
   -dataset ./testdata/parser-eval/fi-gold-small.json \
   -parsers basic,custom,omorfi
 ```
 
-That target creates a repo-local `.venv-omorfi/` (matching `.venv-estnltk/`),
-installs `omorfi==0.9.12`, and downloads the HFST models into
-`~/.cache/omorfi/`. The runtime auto-discovers the venv next to the bundled
-adapter at `scripts/omorfi_adapter_example.py`, so no environment variables
-need to be exported. To override (different python, alternative adapter), set
-`FINNESTDB_OMORFI_CMD` to a command that reads source text from stdin and
-returns JSON in the same token/sentence shape as the Rust FFI parser:
+That target creates a unified `.venv/` at the project root containing both
+`omorfi` and `estnltk`, and downloads the HFST models into
+`~/.cache/omorfi/`. The runtime auto-discovers `.venv/bin/python` next to the
+bundled adapter at `scripts/omorfi_adapter_example.py`, so no environment
+variables need to be exported. To override (different python, alternative
+adapter), set `FINNESTDB_OMORFI_CMD` to a command that reads source text from
+stdin and returns JSON in the same token/sentence shape as the Rust FFI parser:
 
 ```bash
 export FINNESTDB_OMORFI_CMD="/path/to/omorfi-adapter"
 ```
 
-`estnltk` is the equivalent external-adapter slot for Estonian. To enable it:
+`estnltk` is the equivalent external-adapter slot for Estonian. It is
+installed alongside omorfi by `make setup-nlp`. To run:
 
 ```bash
-make setup-estnltk
 go run ./cmd/parsertest \
   -dataset ./testdata/parser-eval/et/gold/et-manual-v1.json \
   -parsers basic,custom,estnltk
