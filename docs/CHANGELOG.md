@@ -10,6 +10,16 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-05-09 — Typographic quote tokenization docs (PR #171)
+
+Documents the current Rust parser contract after PR
+[#171](https://github.com/sagarinbabel/finnestdb/pull/171): leading/trailing
+punctuation cleanup includes common typographic quote marks, and opening
+punctuation labels are part of sentence-text spacing reconstruction.
+
+- Modified: [`README.md`](../README.md) — clarified the known-limitations
+  summary for tokenizer punctuation and opening-quote spacing behavior.
+
 ## 2026-05-07 — Voikko `[P4]` Voice + participle field cleanup (PR #158)
 
 Closes the Voice accuracy gap flagged in the parser audit (FI custom

@@ -527,7 +527,9 @@ Unknown-language warnings are advisory only, so you can still parse. Detected Fi
 The current Rust parser is still a **heuristic stub**. It does:
 - NFC normalization
 - sentence splitting with simple punctuation heuristics
-- tokenization that separates leading/trailing punctuation
+- tokenization that separates leading/trailing punctuation, including common
+  typographic quote marks, and labels opening punctuation for sentence-text
+  spacing reconstruction
 - rough POS guessing from word endings
 
 The two parser modes differ only in how much enrichment happens after that:
