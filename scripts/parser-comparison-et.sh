@@ -60,6 +60,8 @@ PARSERS="basic,custom"
 estnltk_available=false
 if [[ -n "${FINNESTDB_ESTNLTK_CMD:-}" ]]; then
     estnltk_available=true
+elif [[ -x .venv/bin/python && -f scripts/estnltk_adapter_example.py ]]; then
+    estnltk_available=true
 elif [[ -x .venv-estnltk/bin/python && -f scripts/estnltk_adapter_example.py ]]; then
     estnltk_available=true
 fi

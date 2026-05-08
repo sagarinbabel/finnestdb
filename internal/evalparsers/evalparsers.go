@@ -182,13 +182,15 @@ func runExternalOmorfi(lang, text string) (*parserffi.AnalysisResult, error) {
 		//      walked up from the test executable / cwd looking for go.mod
 		//   3. <executable-dir>/scripts/omorfi_adapter_example.py
 		//
-		// When a sibling .venv-omorfi/bin/python exists (created by
-		// `make setup-omorfi`), prefer it over the system python3 — same
-		// pattern as estnltk + .venv-estnltk. This is the canonical install
-		// path on macOS (system python3 hits PEP 668 on `pip install omorfi`).
+		// When a sibling .venv/bin/python exists (created by
+		// `make setup-nlp`), prefer it over the system python3. Falls back
+		// to the legacy .venv-omorfi/ name for backward compat. This is the
+		// canonical install path on macOS (system python3 hits PEP 668).
 		if py, err := exec.LookPath("python3"); err == nil {
 			if path, ok := findOmorfiAdapter(); ok {
-				if venvPy, ok := findSiblingVenvPython(path, ".venv-omorfi"); ok {
+				if venvPy, ok := findSiblingVenvPython(path, ".venv"); ok {
+					py = venvPy
+				} else if venvPy, ok := findSiblingVenvPython(path, ".venv-omorfi"); ok {
 					py = venvPy
 				}
 				cmdSpec = py + " " + path
@@ -196,7 +198,7 @@ func runExternalOmorfi(lang, text string) (*parserffi.AnalysisResult, error) {
 		}
 	}
 	if cmdSpec == "" {
-		return nil, fmt.Errorf("omorfi parser is not configured; set %s or run `make setup-omorfi`", omorfiCommandEnv)
+		return nil, fmt.Errorf("omorfi parser is not configured; set %s or run `make setup-nlp`", omorfiCommandEnv)
 	}
 	return runExternalCommand(cmdSpec, lang, text, "omorfi", omorfiTimeoutEnv, omorfiDefaultTimeout)
 }
@@ -206,7 +208,9 @@ func runExternalEstNLTK(lang, text string) (*parserffi.AnalysisResult, error) {
 	if cmdSpec == "" {
 		if py, err := exec.LookPath("python3"); err == nil {
 			if path, ok := findEstNLTKAdapter(); ok {
-				if venvPy, ok := findSiblingVenvPython(path, ".venv-estnltk"); ok {
+				if venvPy, ok := findSiblingVenvPython(path, ".venv"); ok {
+					py = venvPy
+				} else if venvPy, ok := findSiblingVenvPython(path, ".venv-estnltk"); ok {
 					py = venvPy
 				}
 				cmdSpec = py + " " + path
@@ -214,7 +218,7 @@ func runExternalEstNLTK(lang, text string) (*parserffi.AnalysisResult, error) {
 		}
 	}
 	if cmdSpec == "" {
-		return nil, fmt.Errorf("estnltk parser is not configured; set %s or run `make setup-estnltk`", estnltkCommandEnv)
+		return nil, fmt.Errorf("estnltk parser is not configured; set %s or run `make setup-nlp`", estnltkCommandEnv)
 	}
 	return runExternalCommand(cmdSpec, lang, text, "estnltk", estnltkTimeoutEnv, estnltkDefaultTimeout)
 }

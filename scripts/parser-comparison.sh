@@ -64,15 +64,17 @@ PARSERS="basic,custom"
 
 # Auto-detect omorfi. Run modes the user might have configured:
 #   - $FINNESTDB_OMORFI_CMD set (explicit adapter override) — wins over everything
-#   - .venv-omorfi/bin/python + scripts/omorfi_adapter_example.py (the
-#     setup that `make setup-omorfi` produces; mirrors how
-#     scripts/parser-comparison-et.sh detects .venv-estnltk)
+#   - .venv/bin/python + scripts/omorfi_adapter_example.py (unified venv
+#     from `make setup-nlp`; falls back to legacy .venv-omorfi/)
 #   - $OMORFI_ANALYSE_HFST set and pointing at a real file (custom model
 #     location — the adapter itself looks here first)
 #   - Repo-local cache:   ./.cache/omorfi/omorfi.analyse.hfst
 #   - User-level cache:   ~/.cache/omorfi/omorfi.analyse.hfst
 omorfi_available=false
 if [[ -n "${FINNESTDB_OMORFI_CMD:-}" ]]; then
+    omorfi_available=true
+elif [[ -x .venv/bin/python && -f scripts/omorfi_adapter_example.py ]]; then
+    export FINNESTDB_OMORFI_CMD="$ROOT/.venv/bin/python $ROOT/scripts/omorfi_adapter_example.py"
     omorfi_available=true
 elif [[ -x .venv-omorfi/bin/python && -f scripts/omorfi_adapter_example.py ]]; then
     export FINNESTDB_OMORFI_CMD="$ROOT/.venv-omorfi/bin/python $ROOT/scripts/omorfi_adapter_example.py"
