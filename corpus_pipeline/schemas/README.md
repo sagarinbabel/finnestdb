@@ -45,10 +45,26 @@ Learner-facing export. One row per analysis (same row count as
 into named morphology columns so a UI doesn't need to parse the
 pipe-delimited string itself.
 
+The `meaning` column mirrors the precedence used by the runtime read path
+(`store.BatchLookupGlosses`):
+
+1. The translation row in `translations` whose `source` matches the
+   `lemmas` row's `source` for the same `(lemma, pos, lang)`, picked by
+   `lemmas.source_priority DESC, translations.sense_idx ASC`.
+2. `lemmas.gloss`, when no matching-source translation exists for the
+   `(lemma, pos, lang)`.
+3. Empty, when neither is populated.
+
+Source coupling matters: `cmd/importekilexdetails` can upgrade an
+existing kaikki lemma to `source='ekilex'` while preserving the older
+kaikki gloss (the empty-gloss guard). The user-friendly export then
+correctly returns the matching ekilex translation, not the preserved
+kaikki gloss — same answer the server's read path returns.
+
 | Column | Meaning |
 |---|---|
 | `surface` | Exact token form. |
-| `meaning` | Dictionary gloss for `(lemma, pos, lang)`. Empty when the dictionary doesn't list the headword. Sourced from `lemmas.gloss`. |
+| `meaning` | Dictionary gloss for `(lemma, pos, lang)`. Resolved by the precedence above. Empty when the dictionary doesn't list the headword and no translation exists. |
 | `lang` | `fi` or `et`. |
 | `lemma` | Dictionary/base form for this analysis. |
 | `pos` | Part of speech. |

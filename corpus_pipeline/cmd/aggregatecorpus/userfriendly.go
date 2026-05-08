@@ -126,11 +126,16 @@ func (s *state) writeUserFriendlyWordlistWithExampleResolver(
 // LEFT JOINs a CTE that picks the top-priority translation per
 // (lemma, pos, lang). One scan, one Go map allocation, no per-row SQL.
 //
-// The connection is opened read-only + immutable: the aggregator never
-// writes to the dict DB, and a separate read-only handle (independent
-// of state.dictDB's write-mode handle) avoids lock contention.
+// The connection is opened read-only (mode=ro) — not immutable. The
+// importers run finnestdb.db in WAL mode, and SQLite's immutable flag
+// makes the connection ignore the WAL file entirely. With another
+// connection still open (state.dictDB) the WAL has not necessarily
+// been checkpointed, so an immutable handle here would read a stale
+// snapshot — including, in the worst case, missing committed tables.
+// Plain mode=ro reads the WAL like any other reader, which is what we
+// want.
 func bulkLoadGlosses(dbPath, langUpper string) (map[store.LemmaKey]string, error) {
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&immutable=1")
+	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro")
 	if err != nil {
 		return nil, fmt.Errorf("open ro: %w", err)
 	}
