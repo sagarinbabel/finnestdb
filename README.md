@@ -617,6 +617,12 @@ will close most of the long tail.
 /corpus_pipeline          Offline corpus fetch/extract/aggregate/verify/promote
                           tooling and learner-facing corpus exports
 /web                      Frontend (HTML, CSS, TypeScript)
+/design                   Design prototypes and direction explorations: JSX/HTML
+                          mockups (Aalto direction, branding, app flows) +
+                          screenshot uploads. Tracked source — see PR #152.
+/Inclusive_Sans           Inclusive Sans variable + static font family used by
+                          the design prototypes. OFL-licensed (OFL.txt + README.txt
+                          ship with the family).
 /localdata                Single-folder bootstrap root (gitignored). Populated by
                           `scripts/setup-local.sh`: Ekilex CC BY 4.0 shards,
                           Kotus sanalista, Gutenberg-FI silver corpus, UD treebank
