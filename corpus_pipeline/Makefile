@@ -119,14 +119,31 @@ bootstrap-tarball-code:
 	  tar czf $(BOOTSTRAP_OUT)/finnestdb-bootstrap-code.tgz $$EXISTING
 	@echo "→ $(BOOTSTRAP_OUT)/finnestdb-bootstrap-code.tgz"
 
+# Transfer payload only: final derived artifacts + per-source provenance
+# (manifest.json + documents.jsonl). Excludes scratch DB/WAL/SHM, raw/
+# downloads, extracted text.txt, and per-book/deck derivatives — those
+# are large and reproducible-from-source, not "data we want to hand off."
+# A teammate can re-fetch raw/ via cmd/fetchcorpus if they need it.
+BOOTSTRAP_EXCLUDES := \
+	--exclude='_derived/_scratch.db' \
+	--exclude='_derived/_scratch.db-wal' \
+	--exclude='_derived/_scratch.db-shm' \
+	--exclude='_derived/cache' \
+	--exclude='raw' \
+	--exclude='text.txt' \
+	--exclude='per-book' \
+	--exclude='decks' \
+	--exclude='poems.jsonl' \
+	--exclude='.DS_Store'
+
 bootstrap-tarball-fi:
 	mkdir -p $(BOOTSTRAP_OUT)
-	cd $(REPO_ROOT) && tar czf $(BOOTSTRAP_OUT)/finnestdb-bootstrap-fi.tgz localdata/fi-corpus
+	cd $(REPO_ROOT) && tar czf $(BOOTSTRAP_OUT)/finnestdb-bootstrap-fi.tgz $(BOOTSTRAP_EXCLUDES) localdata/fi-corpus
 	@echo "→ $(BOOTSTRAP_OUT)/finnestdb-bootstrap-fi.tgz"
 
 bootstrap-tarball-et:
 	mkdir -p $(BOOTSTRAP_OUT)
-	cd $(REPO_ROOT) && tar czf $(BOOTSTRAP_OUT)/finnestdb-bootstrap-et.tgz localdata/et-corpus
+	cd $(REPO_ROOT) && tar czf $(BOOTSTRAP_OUT)/finnestdb-bootstrap-et.tgz $(BOOTSTRAP_EXCLUDES) localdata/et-corpus
 	@echo "→ $(BOOTSTRAP_OUT)/finnestdb-bootstrap-et.tgz"
 
 # ─── Gutenberg scraping (calls main repo's cmd/scrapegutenberg) ─────────

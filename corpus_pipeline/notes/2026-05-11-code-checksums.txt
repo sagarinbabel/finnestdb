@@ -1,0 +1,38 @@
+# Code-side artifacts (finnestdb.db + dict sources):
+20de4cabd02e676a52b92a76c26641e39c312bde5f751eb03038794cf57455fb  finnestdb.db
+
+# lemmatizer-fi-et/ (sorted file list + per-file sha256):
+76c53ac7dc18ab07145c10ac420209322632c0b1cdeb7e55f5166df918c17b86  localdata/lemmatizer-fi-et/tables/et_min.json
+908dae20fd643c92608b49c7b1ecd1d06208d05e6823512ec474505ef05376e3  localdata/lemmatizer-fi-et/tables/fi_min.json
+
+# ekilex/ (just file list + sizes — too many files to sha all):
+-rw-r--r--@ 1 sagar  staff  8196 May  7 17:38 localdata/ekilex/.DS_Store
+-rw-r--r--@ 1 sagar  staff  12177741 May  7 14:16 localdata/ekilex/forms/l.tsv
+-rw-r--r--@ 1 sagar  staff  14236028 May  7 14:16 localdata/ekilex/forms/m.tsv
+-rw-r--r--@ 1 sagar  staff  131720 May  7 14:16 localdata/ekilex/forms/z.tsv
+-rw-r--r--@ 1 sagar  staff  1228384 May  7 14:16 localdata/ekilex/forms/ä.tsv
+-rw-r--r--@ 1 sagar  staff  1971407 May  7 14:16 localdata/ekilex/forms/õ.tsv
+-rw-r--r--@ 1 sagar  staff  28953 May  7 14:16 localdata/ekilex/forms/x.tsv
+-rw-r--r--@ 1 sagar  staff  2998931 May  7 14:16 localdata/ekilex/forms/o.tsv
+-rw-r--r--@ 1 sagar  staff  6057675 May  7 14:16 localdata/ekilex/forms/n.tsv
+-rw-r--r--@ 1 sagar  staff  40204 May  7 14:16 localdata/ekilex/forms/y.tsv
+-rw-r--r--@ 1 sagar  staff  3274678 May  7 14:16 localdata/ekilex/forms/ü.tsv
+-rw-r--r--@ 1 sagar  staff  4411854 May  7 14:16 localdata/ekilex/forms/j.tsv
+-rw-r--r--@ 1 sagar  staff  31006144 May  7 14:16 localdata/ekilex/forms/k.tsv
+-rw-r--r--@ 1 sagar  staff  3847793 May  7 14:16 localdata/ekilex/forms/i.tsv
+-rw-r--r--@ 1 sagar  staff  6838405 May  7 14:16 localdata/ekilex/forms/h.tsv
+-rw-r--r--@ 1 sagar  staff  69077 May  7 14:16 localdata/ekilex/forms/_other.tsv
+-rw-r--r--@ 1 sagar  staff  376839 May  7 14:16 localdata/ekilex/forms/š.tsv
+-rw-r--r--@ 1 sagar  staff  6285562 May  7 14:16 localdata/ekilex/forms/e.tsv
+-rw-r--r--@ 1 sagar  staff  9759665 May  7 14:16 localdata/ekilex/forms/r.tsv
+-rw-r--r--@ 1 sagar  staff  18026327 May  7 14:16 localdata/ekilex/forms/s.tsv
+-rw-r--r--@ 1 sagar  staff  2755548 May  7 14:16 localdata/ekilex/forms/d.tsv
+-rw-r--r--@ 1 sagar  staff  272301 May  7 14:16 localdata/ekilex/forms/ö.tsv
+-rw-r--r--@ 1 sagar  staff  2281556 May  7 14:16 localdata/ekilex/forms/f.tsv
+-rw-r--r--@ 1 sagar  staff  27377 May  7 14:16 localdata/ekilex/forms/q.tsv
+-rw-r--r--@ 1 sagar  staff  20886810 May  7 14:16 localdata/ekilex/forms/p.tsv
+-rw-r--r--@ 1 sagar  staff  1640787 May  7 14:16 localdata/ekilex/forms/g.tsv
+-rw-r--r--@ 1 sagar  staff  17287621 May  7 14:16 localdata/ekilex/forms/t.tsv
+-rw-r--r--@ 1 sagar  staff  310918 May  7 14:16 localdata/ekilex/forms/c.tsv
+-rw-r--r--@ 1 sagar  staff  2200867 May  7 14:16 localdata/ekilex/forms/b.tsv
+-rw-r--r--@ 1 sagar  staff  2026476 May  7 14:16 localdata/ekilex/forms/u.tsv

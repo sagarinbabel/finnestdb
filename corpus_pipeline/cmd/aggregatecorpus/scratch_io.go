@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+
+	"finnestdb/corpus_pipeline/internal/textfilter"
 )
 
 // scratch_io.go: SQLite I/O for the aggregator's streaming mode.
@@ -23,7 +25,11 @@ func (s *state) flushSentencesToScratch() error {
 	}
 	defer tx.Rollback()
 
-	// Sentences: INSERT OR IGNORE
+	// Sentences: INSERT OR IGNORE. We track RowsAffected per insert so we
+	// can update the user-friendly-sentences byte estimate ONLY for rows
+	// that were actually new (i.e. globally unique across all previously-
+	// flushed sources). Phase 1 reads this estimate to decide when to stop
+	// ingesting additional sources.
 	stmtSent, err := tx.Prepare(`INSERT OR IGNORE INTO tmp_sentences(hash, text) VALUES(?, ?)`)
 	if err != nil {
 		return fmt.Errorf("prepare sentences: %w", err)
@@ -31,8 +37,20 @@ func (s *state) flushSentencesToScratch() error {
 	defer stmtSent.Close()
 	for _, hash := range s.sentenceOrder {
 		rec := s.sentences[hash]
-		if _, err := stmtSent.Exec(rec.hash, rec.text); err != nil {
+		res, err := stmtSent.Exec(rec.hash, rec.text)
+		if err != nil {
 			return fmt.Errorf("insert sentence: %w", err)
+		}
+		// RowsAffected==1 → the INSERT actually wrote. RowsAffected==0
+		// means a duplicate hash already exists in scratch and the row
+		// was ignored. Only count newly-inserted rows toward the
+		// budget estimate.
+		if n, err := res.RowsAffected(); err == nil && n == 1 {
+			if textfilter.IsUserFriendlySentence(rec.text) {
+				// Two-column TSV row: id\ttext\n + 4-byte slack.
+				// id digits ≤ 12 for any plausible corpus.
+				s.ufSentencesBytesEstimate += int64(len(rec.text)) + 12 + 4
+			}
 		}
 	}
 

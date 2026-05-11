@@ -1,13 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 
 	"finnestdb/corpus_pipeline/internal/textfilter"
@@ -29,7 +29,11 @@ import (
 //     etc.), so write from in-memory like the in-memory path. Resolve
 //     example_text via SELECT against tmp_sentences.
 func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
-	// --- Step 1+2: assign deterministic IDs ---
+	progress("phase4-scratch", "step 1: assigning deterministic sentence IDs")
+	// --- Step 1: compute first-occurrence per sentence hash and the
+	// deterministic sort order, then persist (hash, final_id) into
+	// tmp_sentence_id so subsequent writers can JOIN against it without
+	// keeping multi-GB hashToID / hashToText maps in RAM.
 	rows, err := s.scratch.Query(`
 		SELECT sentence_hash,
 		       MIN(source) AS first_source,
@@ -69,88 +73,147 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 		}
 		return fos[i].hash < fos[j].hash
 	})
-	hashToID := make(map[string]int, len(fos))
-	for i, f := range fos {
-		hashToID[f.hash] = i + 1
-	}
+	totalSentences := len(fos)
+	progress("phase4-scratch", fmt.Sprintf("step 2: %d unique sentences sorted, persisting IDs to tmp_sentence_id", totalSentences))
 
-	// Skip the UPDATE step — instead resolve hash→id at write time via the
-	// in-memory map. Avoids 9.5M individual SQL UPDATEs (the WAL bottleneck
-	// at scale; 100K UPDATEs/sec × 9.5M = ~95 min on a busy WAL).
-
-	// --- Step 3: stream sentences.tsv (sorted by final_id via slice walk) ---
-	// Build slice of (final_id, hash) sorted by final_id for stable iteration.
-	type idHash struct {
-		id int
-		h  string
+	// --- Step 2: bulk-INSERT (hash, final_id) into tmp_sentence_id.
+	// One transaction, prepared statement, batched commits every 200K rows
+	// to keep WAL bounded.
+	if _, err := s.scratch.Exec(`DELETE FROM tmp_sentence_id`); err != nil {
+		return fmt.Errorf("clear tmp_sentence_id: %w", err)
 	}
-	idHashes := make([]idHash, 0, len(hashToID))
-	for h, id := range hashToID {
-		idHashes = append(idHashes, idHash{id, h})
-	}
-	sort.Slice(idHashes, func(i, j int) bool { return idHashes[i].id < idHashes[j].id })
-
-	// Bulk-load all (hash, text) into memory. ~1.5 GB for 9.5M sentences,
-	// but avoids 9.5M individual SELECT round-trips.
-	hashToText := make(map[string]string, len(hashToID))
-	textRows, err := s.scratch.Query(`SELECT hash, text FROM tmp_sentences`)
+	const idFlushEvery = 200_000
+	tx, err := s.scratch.Begin()
 	if err != nil {
-		return fmt.Errorf("bulk text select: %w", err)
+		return fmt.Errorf("begin sentence_id tx: %w", err)
 	}
-	for textRows.Next() {
-		var h, t string
-		if err := textRows.Scan(&h, &t); err != nil {
-			textRows.Close()
-			return err
+	stmt, err := tx.Prepare(`INSERT INTO tmp_sentence_id(hash, final_id) VALUES(?, ?)`)
+	if err != nil {
+		_ = tx.Rollback()
+		return fmt.Errorf("prepare sentence_id insert: %w", err)
+	}
+	for i, f := range fos {
+		if _, err := stmt.Exec(f.hash, i+1); err != nil {
+			_ = stmt.Close()
+			_ = tx.Rollback()
+			return fmt.Errorf("insert sentence_id (%d): %w", i, err)
 		}
-		hashToText[h] = t
+		if (i+1)%idFlushEvery == 0 {
+			if err := stmt.Close(); err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+			if err := tx.Commit(); err != nil {
+				return fmt.Errorf("commit sentence_id batch: %w", err)
+			}
+			tx, err = s.scratch.Begin()
+			if err != nil {
+				return err
+			}
+			stmt, err = tx.Prepare(`INSERT INTO tmp_sentence_id(hash, final_id) VALUES(?, ?)`)
+			if err != nil {
+				_ = tx.Rollback()
+				return err
+			}
+		}
 	}
-	textRows.Close()
+	_ = stmt.Close()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit sentence_id final batch: %w", err)
+	}
+	// fos contains all sentence hashes (~80 B × 70 M = ~5.6 GB at FI
+	// scale). Drop it now that tmp_sentence_id holds the same data.
+	fos = nil
+
+	progress("phase4-scratch", "step 3: writing sentences.tsv (streaming JOIN)")
+	// --- Step 3: stream sentences.tsv via SQL JOIN. No in-memory
+	// hashToText map.
+	sentRows, err := s.scratch.Query(`
+		SELECT s.text, sid.final_id
+		FROM tmp_sentences s
+		JOIN tmp_sentence_id sid ON sid.hash = s.hash
+		ORDER BY sid.final_id`)
+	if err != nil {
+		return fmt.Errorf("sentences join: %w", err)
+	}
 	if err := streamWriteTSV(filepath.Join(derived, "sentences.tsv"),
 		[]string{"id", "lang", "text"},
 		func(yield func([]string)) error {
-			for _, ih := range idHashes {
-				yield([]string{itoa(ih.id), s.langLower, hashToText[ih.h]})
-			}
-			return nil
-		}); err != nil {
-		return err
-	}
-	if err := streamWriteTSV(filepath.Join(derived, "sentences_user_friendly.tsv"),
-		[]string{"id", "lang", "text"},
-		func(yield func([]string)) error {
-			for _, ih := range idHashes {
-				text := hashToText[ih.h]
-				if textfilter.IsUserFriendlySentence(text) {
-					yield([]string{itoa(ih.id), s.langLower, text})
+			defer sentRows.Close()
+			for sentRows.Next() {
+				var text string
+				var id int
+				if err := sentRows.Scan(&text, &id); err != nil {
+					return err
 				}
+				yield([]string{itoa(id), s.langLower, text})
 			}
-			return nil
+			return sentRows.Err()
 		}); err != nil {
 		return err
 	}
 
-	// --- Step 4: stream sentence_occurrences.tsv ---
-	// Walk all occurrences via SELECT, look up each one's final_id from the
-	// in-memory map, write. Sort happens at TSV-load time downstream if
-	// needed (we sort by hash within source naturally).
-	occRows, err := s.scratch.Query(`SELECT sentence_hash, source, document_id, sentence_ix, quality_flags FROM tmp_sentence_occurrences ORDER BY source, document_id, sentence_ix`)
+	progress("phase4-scratch", fmt.Sprintf("step 3': writing sentences_user_friendly.tsv (budget=%s, streaming JOIN)",
+		formatBytesOrUncapped(s.ufSentencesBudget)))
+	ufSentPath := filepath.Join(derived, "sentences_user_friendly.tsv")
+	ufSentW, err := newCappedTSVWriter(ufSentPath, []string{"id", "lang", "text"}, s.ufSentencesBudget)
 	if err != nil {
-		return fmt.Errorf("occurrences select: %w", err)
+		return fmt.Errorf("create sentences_user_friendly.tsv: %w", err)
+	}
+	ufRows, err := s.scratch.Query(`
+		SELECT s.text, sid.final_id
+		FROM tmp_sentences s
+		JOIN tmp_sentence_id sid ON sid.hash = s.hash
+		ORDER BY sid.final_id`)
+	if err != nil {
+		ufSentW.Close()
+		return fmt.Errorf("sentences uf join: %w", err)
+	}
+	for ufRows.Next() {
+		var text string
+		var id int
+		if err := ufRows.Scan(&text, &id); err != nil {
+			ufRows.Close()
+			ufSentW.Close()
+			return err
+		}
+		if !textfilter.IsUserFriendlySentence(text) {
+			continue
+		}
+		if !ufSentW.Write([]string{itoa(id), s.langLower, text}) {
+			break // budget hit
+		}
+	}
+	ufRows.Close()
+	ufSentBytes, ufSentCapHit, err := ufSentW.Close()
+	if err != nil {
+		return fmt.Errorf("close sentences_user_friendly.tsv: %w", err)
+	}
+	s.auditUFSentencesBytes = ufSentBytes
+	s.auditUFSentencesCapHit = ufSentCapHit
+	progress("phase4-scratch", fmt.Sprintf("  sentences_user_friendly.tsv: %s (cap-hit=%v, %d rows accepted, %d rejected)",
+		formatBytes(ufSentBytes), ufSentCapHit, ufSentW.rowsWritten, ufSentW.rowsRejected))
+
+	progress("phase4-scratch", "step 4: writing sentence_occurrences.tsv (streaming JOIN)")
+	// --- Step 4: stream sentence_occurrences.tsv via SQL JOIN against
+	// tmp_sentence_id. Memory cost: one SELECT cursor.
+	occRows, err := s.scratch.Query(`
+		SELECT sid.final_id, oc.source, oc.document_id, oc.sentence_ix, oc.quality_flags
+		FROM tmp_sentence_occurrences oc
+		JOIN tmp_sentence_id sid ON sid.hash = oc.sentence_hash
+		ORDER BY oc.source, oc.document_id, oc.sentence_ix`)
+	if err != nil {
+		return fmt.Errorf("occurrences join: %w", err)
 	}
 	if err := streamWriteTSV(filepath.Join(derived, "sentence_occurrences.tsv"),
 		[]string{"sentence_id", "source", "document_id", "sentence_ix", "quality_flags"},
 		func(yield func([]string)) error {
 			defer occRows.Close()
 			for occRows.Next() {
-				var hash, source, docID, flags string
-				var ix int
-				if err := occRows.Scan(&hash, &source, &docID, &ix, &flags); err != nil {
+				var source, docID, flags string
+				var id, ix int
+				if err := occRows.Scan(&id, &source, &docID, &ix, &flags); err != nil {
 					return err
-				}
-				id, ok := hashToID[hash]
-				if !ok {
-					continue // shouldn't happen
 				}
 				yield([]string{itoa(id), source, docID, itoa(ix), flags})
 			}
@@ -189,41 +252,96 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 		return err
 	}
 
-	// --- Step 6: wordlist + mining (in-memory rows enriched in phase 2) ---
-	// Need example_text resolution per row. With scratch, we look up text
-	// from tmp_sentences by hash. We have ss.exampleHash on each surface.
-	// Sort the wordlist (same logic as in-memory).
-	sort.Slice(s.wordlistRows, func(i, j int) bool {
-		si, sj := s.surfaces[s.wordlistRows[i].surface], s.surfaces[s.wordlistRows[j].surface]
-		if si.prose != sj.prose {
-			return si.prose > sj.prose
-		}
-		if si.prose+si.poetry != sj.prose+sj.poetry {
-			return si.prose+si.poetry > sj.prose+sj.poetry
-		}
-		if s.wordlistRows[i].surface != s.wordlistRows[j].surface {
-			return s.wordlistRows[i].surface < s.wordlistRows[j].surface
-		}
-		return s.wordlistRows[i].analysisRank < s.wordlistRows[j].analysisRank
-	})
+	progress("phase4-scratch", fmt.Sprintf("step 5: writing documents.tsv (%d docs)", len(s.docOrder)))
 
-	// Resolve example_ref pair from in-memory hash→id map. Scratch mode
-	// drops example_text from canonical wordlist.tsv too; downstream
-	// consumers join example_ref_id against sentences.tsv to recover the
-	// example body.
-	resolveExampleRef := func(ss *surfaceStats) (refType, refID string) {
-		if ss.exampleHash != "" {
-			if id, ok := hashToID[ss.exampleHash]; ok {
-				return "sentence", itoa(id)
+	// --- Step 5b: populate tmp_surface_order ---
+	//
+	// One row per surface, holding the sort keys (count_prose, count_total)
+	// and the example-ref columns. The wordlist writer JOINs against this
+	// table once per output (canonical and user-friendly) instead of doing
+	// per-surface SELECTs. After the INSERT loop we run a single
+	// UPDATE…FROM to fill in example_final_id from tmp_sentence_id —
+	// hash-join, not a correlated subquery, so it's O(N) on 18M surfaces.
+	progress("phase4-scratch", fmt.Sprintf("step 5b: populating tmp_surface_order (%d surfaces)", len(s.surfaces)))
+	if _, err := s.scratch.Exec(`DELETE FROM tmp_surface_order`); err != nil {
+		return fmt.Errorf("clear tmp_surface_order: %w", err)
+	}
+	const surfaceFlushEvery = 50_000
+	soTx, err := s.scratch.Begin()
+	if err != nil {
+		return fmt.Errorf("begin surface_order tx: %w", err)
+	}
+	soStmt, err := soTx.Prepare(`INSERT INTO tmp_surface_order(surface, count_prose, count_poetry, count_total, doc_count_prose, doc_count_poetry, example_hash, example_poem_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		_ = soTx.Rollback()
+		return fmt.Errorf("prepare surface_order insert: %w", err)
+	}
+	soPending := 0
+	for surface, ss := range s.surfaces {
+		if _, err := soStmt.Exec(
+			surface,
+			ss.prose, ss.poetry, ss.prose+ss.poetry,
+			ss.docCountProse, ss.docCountPoetry,
+			ss.exampleHash, ss.examplePoem,
+		); err != nil {
+			_ = soStmt.Close()
+			_ = soTx.Rollback()
+			return fmt.Errorf("insert surface_order: %w", err)
+		}
+		soPending++
+		if soPending >= surfaceFlushEvery {
+			if err := soStmt.Close(); err != nil {
+				_ = soTx.Rollback()
+				return err
 			}
+			if err := soTx.Commit(); err != nil {
+				return fmt.Errorf("commit surface_order batch: %w", err)
+			}
+			soTx, err = s.scratch.Begin()
+			if err != nil {
+				return err
+			}
+			soStmt, err = soTx.Prepare(`INSERT INTO tmp_surface_order(surface, count_prose, count_poetry, count_total, doc_count_prose, doc_count_poetry, example_hash, example_poem_id) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`)
+			if err != nil {
+				_ = soTx.Rollback()
+				return err
+			}
+			soPending = 0
 		}
-		if ss.examplePoem > 0 {
-			return "poem", itoa(ss.examplePoem)
-		}
-		return "", ""
+	}
+	_ = soStmt.Close()
+	if err := soTx.Commit(); err != nil {
+		return fmt.Errorf("commit surface_order final batch: %w", err)
 	}
 
-	if err := writeTSV(filepath.Join(derived, "wordlist.tsv"),
+	// Resolve example_final_id via UPDATE…FROM (SQLite ≥ 3.33). Hash-join
+	// runs in seconds on 18M surfaces; the previous correlated-subquery
+	// alternative would have taken hours.
+	progress("phase4-scratch", "step 5c: resolving example_final_id via UPDATE…FROM JOIN")
+	if _, err := s.scratch.Exec(`
+		UPDATE tmp_surface_order
+		SET example_final_id = sid.final_id
+		FROM tmp_sentence_id sid
+		WHERE sid.hash = tmp_surface_order.example_hash`); err != nil {
+		return fmt.Errorf("update example_final_id: %w", err)
+	}
+
+	// --- Step 6: write wordlist.tsv via streaming JOIN ---
+	progress("phase4-scratch", fmt.Sprintf("step 6: writing wordlist.tsv (streaming JOIN, %d surfaces)", len(s.surfaces)))
+	wlRows, err := s.scratch.Query(`
+		SELECT
+		  w.surface, w.lemma, w.pos, w.feats, w.analysis_sources, w.analysis_rank, w.is_parser_choice,
+		  o.count_prose, o.count_poetry, o.count_total,
+		  o.doc_count_prose, o.doc_count_poetry,
+		  o.example_final_id, o.example_poem_id
+		FROM tmp_wordlist w
+		JOIN tmp_surface_order o ON o.surface = w.surface
+		ORDER BY o.count_prose DESC, o.count_total DESC, w.surface ASC, w.analysis_rank ASC`)
+	if err != nil {
+		return fmt.Errorf("wordlist canonical join: %w", err)
+	}
+	wlRowCount := 0
+	if err := streamWriteTSV(filepath.Join(derived, "wordlist.tsv"),
 		[]string{
 			"surface", "surface_count_prose", "surface_count_poetry", "surface_count_total",
 			"doc_count_prose", "doc_count_poetry", "source_counts_json",
@@ -232,33 +350,46 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 			"parser_version", "fst_tables_sha", "dict_fingerprint",
 			"example_ref_type", "example_ref_id",
 		},
-		func(yield func([]string)) {
-			for _, r := range s.wordlistRows {
-				ss := s.surfaces[r.surface]
-				exType, exID := resolveExampleRef(ss)
+		func(yield func([]string)) error {
+			defer wlRows.Close()
+			for wlRows.Next() {
+				var surface, lemma, pos, feats, srcs string
+				var prose, poetry, total, docProse, docPoetry, rank, ipc int
+				var exFinalID sql.NullInt64
+				var exPoemID int
+				if err := wlRows.Scan(
+					&surface, &lemma, &pos, &feats, &srcs, &rank, &ipc,
+					&prose, &poetry, &total,
+					&docProse, &docPoetry,
+					&exFinalID, &exPoemID,
+				); err != nil {
+					return err
+				}
+				exType, exID := resolveExampleRefFromColumns(exFinalID, exPoemID)
+				ss := s.surfaces[surface]
 				srcJSON, _ := json.Marshal(ss.sourceCount)
 				yield([]string{
-					r.surface,
-					itoa(ss.prose), itoa(ss.poetry), itoa(ss.prose + ss.poetry),
-					itoa(ss.docCountProse), itoa(ss.docCountPoetry),
+					surface,
+					itoa(prose), itoa(poetry), itoa(total),
+					itoa(docProse), itoa(docPoetry),
 					string(srcJSON),
-					s.langLower, r.lemma, r.pos, r.feats,
-					strings.Join(r.analysisSources, ";"), itoa(r.analysisRank), boolStr(r.isParserChoice),
+					s.langLower, lemma, pos, feats,
+					srcs, itoa(rank), boolStr(ipc == 1),
 					s.parserVersion, s.fstTablesSHA, s.dictFingerprint,
 					exType, exID,
 				})
+				wlRowCount++
 			}
+			return wlRows.Err()
 		}); err != nil {
 		return err
 	}
+	progress("phase4-scratch", fmt.Sprintf("  wordlist.tsv: %d rows", wlRowCount))
 
-	// User-friendly wordlist (scratch path uses the same writer with a
-	// scratch-aware example resolver). Lives next to the canonical
-	// wordlist.tsv; one row per parser-choice analysis with the fields a
-	// learner-facing UI needs.
-	if err := s.writeUserFriendlyWordlistWithExampleResolver(
+	// User-friendly wordlist — same JOIN against tmp_surface_order, but
+	// with a learner-facing surface ordering + per-row budget cap.
+	if err := s.writeUserFriendlyWordlistFromScratch(
 		filepath.Join(derived, "wordlist_user_friendly.tsv"),
-		resolveExampleRef,
 	); err != nil {
 		return err
 	}
@@ -348,6 +479,24 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 	}
 
 	// build_metadata.json + qa-report.json
+	consumed := []string{}
+	for _, m := range s.manifests {
+		// A manifest is "consumed" if it wasn't on the budget-skip list.
+		skipped := false
+		for _, sk := range s.budgetSourcesSkipped {
+			if sk == m.Slug {
+				skipped = true
+				break
+			}
+		}
+		if !skipped {
+			consumed = append(consumed, m.Slug)
+		}
+	}
+	manifestSlugs := make([]string, 0, len(s.manifests))
+	for _, m := range s.manifests {
+		manifestSlugs = append(manifestSlugs, m.Slug)
+	}
 	if err := writeJSON(filepath.Join(derived, "build_metadata.json"), map[string]any{
 		"lang":             s.langLower,
 		"parser_version":   s.parserVersion,
@@ -359,6 +508,20 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 		"run_end_utc":      time.Now().UTC().Format(time.RFC3339),
 		"sources":          s.manifests,
 		"scratch_mode":     true,
+		"source_order_mode": s.sourceOrderMode,
+		"sources_ordered":   manifestSlugs,
+		"sources_consumed":  consumed,
+		"sources_skipped_by_budget": s.budgetSourcesSkipped,
+		"sources_partial_by_budget": s.budgetSourcePartial,
+		"user_friendly_budgets": map[string]any{
+			"sentences_bytes_budget":  s.ufSentencesBudget,
+			"sentences_bytes_actual":  s.auditUFSentencesBytes,
+			"sentences_cap_hit":       s.auditUFSentencesCapHit,
+			"sentences_bytes_estimate_phase1": s.ufSentencesBytesEstimate,
+			"wordlist_bytes_budget":   s.ufWordlistBudget,
+			"wordlist_bytes_actual":   s.auditUFWordlistBytes,
+			"wordlist_cap_hit":        s.auditUFWordlistCapHit,
+		},
 	}); err != nil {
 		return err
 	}
@@ -366,6 +529,23 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 		return err
 	}
 	return nil
+}
+
+// resolveExampleRefFromColumns translates the (example_final_id,
+// example_poem_id) pair from tmp_surface_order into the canonical
+// example_ref_type / example_ref_id strings that downstream consumers
+// expect.
+//
+// Precedence: a poem ID > 0 wins over a sentence ID. This matches the
+// in-memory `exampleRefFor` semantics.
+func resolveExampleRefFromColumns(exFinalID sql.NullInt64, exPoemID int) (string, string) {
+	if exPoemID > 0 {
+		return "poem", itoa(exPoemID)
+	}
+	if exFinalID.Valid && exFinalID.Int64 > 0 {
+		return "sentence", itoa(int(exFinalID.Int64))
+	}
+	return "", ""
 }
 
 // writeQAReportScratch is the same as writeQAReport except sentences_unique
@@ -414,6 +594,17 @@ func (s *state) writeQAReportScratch(path string, runStart time.Time, sentencesU
 		"fst_tables_sha":   s.fstTablesSHA,
 		"dict_fingerprint": s.dictFingerprint,
 		"scratch_mode":     true,
+		"source_order_mode":         s.sourceOrderMode,
+		"sources_skipped_by_budget": s.budgetSourcesSkipped,
+		"sources_partial_by_budget": s.budgetSourcePartial,
+		"user_friendly_budgets": map[string]any{
+			"sentences_bytes_budget": s.ufSentencesBudget,
+			"sentences_bytes_actual": s.auditUFSentencesBytes,
+			"sentences_cap_hit":      s.auditUFSentencesCapHit,
+			"wordlist_bytes_budget":  s.ufWordlistBudget,
+			"wordlist_bytes_actual":  s.auditUFWordlistBytes,
+			"wordlist_cap_hit":       s.auditUFWordlistCapHit,
+		},
 		"totals": map[string]any{
 			"sources":                     len(s.manifests),
 			"documents":                   docCount,
