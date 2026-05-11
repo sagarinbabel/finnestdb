@@ -601,12 +601,12 @@ function getDeckByID(deckID) {
     return state.decks.find(deck => deck.id === deckID);
 }
 function renderKnownWordsPanel() {
-    const langSelect = document.getElementById('known-words-lang');
+    const langToggle = bindBtnRadio('known-words-lang');
     const list = document.getElementById('known-words-list');
     const empty = document.getElementById('known-words-empty');
     const summary = document.getElementById('known-words-summary');
-    if (langSelect)
-        langSelect.value = state.knownWordsLang;
+    if (langToggle)
+        langToggle.value = state.knownWordsLang;
     if (!list || !empty)
         return;
     const words = state.knownWords;
@@ -774,8 +774,43 @@ function getLangWarningState(text, selectedLang) {
     }
     return { detected, message: null, canSwitch: false, blocksParse: false };
 }
+function bindBtnRadio(rootId) {
+    const root = document.getElementById(rootId);
+    if (!root)
+        return null;
+    const buttons = Array.from(root.querySelectorAll('button[data-value]'));
+    if (buttons.length === 0)
+        return null;
+    const apply = (v) => {
+        for (const b of buttons) {
+            const active = b.dataset.value === v;
+            b.setAttribute('aria-checked', active ? 'true' : 'false');
+            b.classList.toggle('is-active', active);
+        }
+        root.dataset.value = v;
+    };
+    apply(root.dataset.value || buttons[0].dataset.value);
+    if (root.dataset.btnRadioBound !== '1') {
+        root.dataset.btnRadioBound = '1';
+        for (const b of buttons) {
+            b.addEventListener('click', () => {
+                if (root.dataset.value === b.dataset.value)
+                    return;
+                apply(b.dataset.value);
+                root.dispatchEvent(new Event('change'));
+            });
+        }
+    }
+    return {
+        get value() { return root.dataset.value || ''; },
+        set value(v) { apply(v); },
+        addEventListener(type, listener) {
+            root.addEventListener(type, listener);
+        },
+    };
+}
 function getInspectEls() {
-    const lang = document.getElementById('inspect-lang');
+    const lang = bindBtnRadio('inspect-lang');
     const text = document.getElementById('inspect-text');
     const file = document.getElementById('inspect-file');
     const cc = document.getElementById('inspect-char-count');
@@ -786,7 +821,7 @@ function getInspectEls() {
     return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn };
 }
 function getWorkbenchEls() {
-    const lang = document.getElementById('parse-lang');
+    const lang = bindBtnRadio('parse-lang');
     const text = document.getElementById('parse-text');
     const file = document.getElementById('parse-file');
     const cc = document.getElementById('char-count');
@@ -1936,9 +1971,9 @@ function initDecksPage() {
     });
 }
 function initKnownWordsPanel() {
-    const langSelect = document.getElementById('known-words-lang');
-    langSelect?.addEventListener('change', async () => {
-        state.knownWordsLang = langSelect.value;
+    const langToggle = bindBtnRadio('known-words-lang');
+    langToggle?.addEventListener('change', async () => {
+        state.knownWordsLang = langToggle.value;
         const summary = document.getElementById('known-words-summary');
         if (summary)
             summary.textContent = '';

@@ -806,11 +806,11 @@ function getDeckByID(deckID: number): DeckSummary | undefined {
 }
 
 function renderKnownWordsPanel(): void {
-    const langSelect = document.getElementById('known-words-lang') as HTMLSelectElement | null;
+    const langToggle = bindBtnRadio('known-words-lang');
     const list = document.getElementById('known-words-list');
     const empty = document.getElementById('known-words-empty');
     const summary = document.getElementById('known-words-summary');
-    if (langSelect) langSelect.value = state.knownWordsLang;
+    if (langToggle) langToggle.value = state.knownWordsLang;
     if (!list || !empty) return;
 
     const words = state.knownWords;
@@ -983,10 +983,59 @@ function getLangWarningState(text: string, selectedLang: string): LangWarningSta
     return { detected, message: null, canSwitch: false, blocksParse: false };
 }
 
+// ── Reusable button-radio (segmented control) ─────────────────────────────
+//
+// Wraps a <div class="btn-radio" id="…" role="radiogroup"> containing
+// <button data-value="…">. Exposes a select-like API: a `.value` getter/setter
+// and `.addEventListener('change', …)`. Source of truth is the container's
+// data-value attribute, so multiple bindBtnRadio() calls on the same element
+// stay coherent (click handlers are attached only once).
+interface BtnRadioLike {
+    value: string;
+    addEventListener(type: 'change', listener: () => void): void;
+}
+
+function bindBtnRadio(rootId: string): BtnRadioLike | null {
+    const root = document.getElementById(rootId);
+    if (!root) return null;
+    const buttons = Array.from(root.querySelectorAll<HTMLButtonElement>('button[data-value]'));
+    if (buttons.length === 0) return null;
+
+    const apply = (v: string) => {
+        for (const b of buttons) {
+            const active = b.dataset.value === v;
+            b.setAttribute('aria-checked', active ? 'true' : 'false');
+            b.classList.toggle('is-active', active);
+        }
+        root.dataset.value = v;
+    };
+
+    apply(root.dataset.value || buttons[0].dataset.value!);
+
+    if (root.dataset.btnRadioBound !== '1') {
+        root.dataset.btnRadioBound = '1';
+        for (const b of buttons) {
+            b.addEventListener('click', () => {
+                if (root.dataset.value === b.dataset.value) return;
+                apply(b.dataset.value!);
+                root.dispatchEvent(new Event('change'));
+            });
+        }
+    }
+
+    return {
+        get value() { return root.dataset.value || ''; },
+        set value(v: string) { apply(v); },
+        addEventListener(type: 'change', listener: () => void) {
+            root.addEventListener(type, listener);
+        },
+    };
+}
+
 // ── Inspect form (user surface) ────────────────────────────────────────────
 
 interface ParseFormElements {
-    lang:        HTMLSelectElement;
+    lang:        BtnRadioLike;
     text:        HTMLTextAreaElement;
     file:        HTMLInputElement;
     charCount:   HTMLElement;
@@ -995,7 +1044,7 @@ interface ParseFormElements {
 }
 
 function getInspectEls(): ParseFormElements | null {
-    const lang     = document.getElementById('inspect-lang')         as HTMLSelectElement | null;
+    const lang     = bindBtnRadio('inspect-lang');
     const text     = document.getElementById('inspect-text')         as HTMLTextAreaElement | null;
     const file     = document.getElementById('inspect-file')         as HTMLInputElement | null;
     const cc       = document.getElementById('inspect-char-count');
@@ -1006,7 +1055,7 @@ function getInspectEls(): ParseFormElements | null {
 }
 
 function getWorkbenchEls(): ParseFormElements | null {
-    const lang  = document.getElementById('parse-lang')    as HTMLSelectElement | null;
+    const lang  = bindBtnRadio('parse-lang');
     const text  = document.getElementById('parse-text')    as HTMLTextAreaElement | null;
     const file  = document.getElementById('parse-file')    as HTMLInputElement | null;
     const cc    = document.getElementById('char-count');
@@ -2207,9 +2256,9 @@ function initDecksPage(): void {
 }
 
 function initKnownWordsPanel(): void {
-    const langSelect = document.getElementById('known-words-lang') as HTMLSelectElement | null;
-    langSelect?.addEventListener('change', async () => {
-        state.knownWordsLang = langSelect.value;
+    const langToggle = bindBtnRadio('known-words-lang');
+    langToggle?.addEventListener('change', async () => {
+        state.knownWordsLang = langToggle.value;
         const summary = document.getElementById('known-words-summary');
         if (summary) summary.textContent = '';
         renderKnownWordsUnresolved([]);

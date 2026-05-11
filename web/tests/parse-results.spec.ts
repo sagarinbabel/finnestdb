@@ -502,7 +502,7 @@ test('inspect lang mismatch warning blocks parse until switching languages', asy
   await mockMe(page, 'user');
   await page.goto('/#/inspect');
 
-  await page.locator('#inspect-lang').selectOption('ET');
+  await page.locator('#inspect-lang button[data-value="ET"]').click();
   await page.locator('#inspect-text').fill('Menin pankkiin tänään ja söin hyvää leipää.');
 
   await expect(page.locator('#inspect-lang-warning')).toContainText('looks like Finnish');
@@ -510,7 +510,7 @@ test('inspect lang mismatch warning blocks parse until switching languages', asy
   await expect(page.locator('#inspect-submit')).toBeDisabled();
 
   await page.getByRole('button', { name: 'Switch to Finnish' }).click();
-  await expect(page.locator('#inspect-lang')).toHaveValue('FI');
+  await expect(page.locator('#inspect-lang')).toHaveAttribute('data-value', 'FI');
   await expect(page.locator('#inspect-lang-warning')).toBeHidden();
   await expect(page.locator('#inspect-submit')).toBeEnabled();
 });
@@ -519,7 +519,7 @@ test('inspect paste auto-switches high-confidence language', async ({ page }) =>
   await mockMe(page, 'user');
   await page.goto('/#/inspect');
 
-  await page.locator('#inspect-lang').selectOption('ET');
+  await page.locator('#inspect-lang button[data-value="ET"]').click();
   const finnish = 'Menin pankkiin tänään ja söin hyvää leipää.';
   await page.locator('#inspect-text').evaluate((el, value) => {
     const input = el as HTMLTextAreaElement;
@@ -527,7 +527,7 @@ test('inspect paste auto-switches high-confidence language', async ({ page }) =>
     input.dispatchEvent(new Event('paste', { bubbles: true }));
   }, finnish);
 
-  await expect(page.locator('#inspect-lang')).toHaveValue('FI');
+  await expect(page.locator('#inspect-lang')).toHaveAttribute('data-value', 'FI');
   await expect(page.locator('#inspect-lang-warning')).toBeHidden();
   await expect(page.locator('#inspect-submit')).toBeEnabled();
 });
@@ -536,14 +536,14 @@ test('inspect file load auto-switches high-confidence language', async ({ page }
   await mockMe(page, 'user');
   await page.goto('/#/inspect');
 
-  await page.locator('#inspect-lang').selectOption('ET');
+  await page.locator('#inspect-lang button[data-value="ET"]').click();
   await page.locator('#inspect-file').setInputFiles({
     name: 'finnish.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('Menin pankkiin tänään ja söin hyvää leipää.'),
   });
 
-  await expect(page.locator('#inspect-lang')).toHaveValue('FI');
+  await expect(page.locator('#inspect-lang')).toHaveAttribute('data-value', 'FI');
   await expect(page.locator('#inspect-lang-warning')).toBeHidden();
   await expect(page.locator('#inspect-submit')).toBeEnabled();
 });

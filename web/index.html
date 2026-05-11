@@ -250,11 +250,11 @@
 
             <form id="inspect-form" class="inspect-form">
                 <div class="form-group">
-                    <label for="inspect-lang">Language</label>
-                    <select id="inspect-lang" name="lang" required>
-                        <option value="FI">Finnish</option>
-                        <option value="ET">Estonian</option>
-                    </select>
+                    <span class="form-group-label" id="inspect-lang-label">Language</span>
+                    <div class="btn-radio" id="inspect-lang" role="radiogroup" aria-labelledby="inspect-lang-label" data-value="FI">
+                        <button type="button" class="btn-radio-option is-active" role="radio" data-value="FI" aria-checked="true">Finnish</button>
+                        <button type="button" class="btn-radio-option" role="radio" data-value="ET" aria-checked="false">Estonian</button>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -304,11 +304,11 @@
                         <p class="known-words-lede">Import words you already know so deck coverage and review selection start from your real vocabulary.</p>
                     </div>
                     <div class="known-words-lang">
-                        <label for="known-words-lang">Language</label>
-                        <select id="known-words-lang">
-                            <option value="FI">Finnish</option>
-                            <option value="ET">Estonian</option>
-                        </select>
+                        <span class="form-group-label" id="known-words-lang-label">Language</span>
+                        <div class="btn-radio" id="known-words-lang" role="radiogroup" aria-labelledby="known-words-lang-label" data-value="FI">
+                            <button type="button" class="btn-radio-option is-active" role="radio" data-value="FI" aria-checked="true">Finnish</button>
+                            <button type="button" class="btn-radio-option" role="radio" data-value="ET" aria-checked="false">Estonian</button>
+                        </div>
                     </div>
                 </div>
                 <form id="known-words-form" class="known-words-form">
@@ -388,11 +388,11 @@
 
                 <form id="parse-form">
                     <div class="form-group">
-                        <label for="parse-lang">Language</label>
-                        <select id="parse-lang" name="lang" required>
-                            <option value="FI">Finnish (FI)</option>
-                            <option value="ET">Estonian (ET)</option>
-                        </select>
+                        <span class="form-group-label" id="parse-lang-label">Language</span>
+                        <div class="btn-radio" id="parse-lang" role="radiogroup" aria-labelledby="parse-lang-label" data-value="FI">
+                            <button type="button" class="btn-radio-option is-active" role="radio" data-value="FI" aria-checked="true">Finnish (FI)</button>
+                            <button type="button" class="btn-radio-option" role="radio" data-value="ET" aria-checked="false">Estonian (ET)</button>
+                        </div>
                     </div>
 
                     <div class="form-group">
