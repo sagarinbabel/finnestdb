@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>finnest — branding</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500;1,6..72,600&family=Inter+Tight:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Aalto palette */
+    --paper:    oklch(0.970 0.012 78);
+    --paper-2:  oklch(0.945 0.018 80);
+    --cream:    oklch(0.925 0.025 80);
+    --birch:    oklch(0.810 0.060 75);
+    --birch-3:  oklch(0.620 0.075 60);
+    --ink:      oklch(0.200 0.020 250);
+    --ink-2:    oklch(0.350 0.018 250);
+    --ink-mute: oklch(0.50 0.015 250);
+    --line:     oklch(0.84 0.020 75);
+    --line-soft:oklch(0.89 0.015 75);
+
+    /* Flag colors */
+    --fi-blue:  #003580;   /* Finnish flag blue */
+    --et-blue:  #0072CE;   /* Estonian flag blue */
+    --et-black: #000000;   /* Estonian flag black */
+
+    /* Soft Nordic blue (Aalto-restraint) */
+    --blue-soft: oklch(0.480 0.115 248);
+
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --font-sans: "Inter Tight", -apple-system, "Segoe UI", system-ui, sans-serif;
+    --font-disp: "Newsreader", "GT Sectra", "Times New Roman", serif;
+    --font-disp-alt: "Fraunces", "Times New Roman", serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    min-height: 100vh;
+  }
+
+  .topbar {
+    border-bottom: 3px solid var(--birch);
+    box-shadow: 0 1px 0 0 var(--birch-3) inset;
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .crumb {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  .page { max-width: 1280px; margin: 0 auto; padding: 56px 40px 96px; }
+
+  .page-head h1 {
+    font-family: var(--font-disp);
+    font-weight: 400;
+    font-size: 56px;
+    letter-spacing: -0.03em;
+    line-height: 1.0;
+    margin-bottom: 14px;
+  }
+  .page-head h1 em { font-style: italic; color: var(--blue-soft); font-weight: 400; }
+  .page-head .lede {
+    color: var(--ink-2);
+    font-size: 17px;
+    font-family: var(--font-disp);
+    max-width: 640px;
+    line-height: 1.5;
+  }
+
+  .section { margin-top: 64px; }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    margin-bottom: 24px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .section-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .section-title {
+    font-family: var(--font-disp);
+    font-weight: 500;
+    font-size: 26px;
+    letter-spacing: -0.015em;
+  }
+  .section-sub {
+    color: var(--ink-mute);
+    font-size: 13px;
+    margin-bottom: 28px;
+    max-width: 720px;
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  .grid.three { grid-template-columns: repeat(3, 1fr); }
+
+  .card {
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 56px 84px 56px 40px;
+    min-height: 240px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .card.dark {
+    background: oklch(0.180 0.025 250);
+    color: var(--paper);
+    border-color: oklch(0.30 0.022 250);
+  }
+  .card.cream { background: var(--cream); }
+  .card.birch-stripe::before {
+    content: "";
+    position: absolute; top: 0; left: 0; right: 0; height: 6px;
+    background-color: var(--birch);
+    background-image:
+      repeating-linear-gradient(90deg,
+        oklch(from var(--birch) calc(l - 0.10) c h / 0.4) 0 1px,
+        transparent 1px 9px,
+        oklch(from var(--birch) calc(l - 0.06) c h / 0.3) 9px 10px,
+        transparent 10px 28px
+      );
+  }
+  .card-label {
+    position: absolute;
+    top: 16px; left: 20px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .card.dark .card-label { color: oklch(0.65 0.02 240); }
+
+  /* ─── The FinnEst lockup ─── */
+  /* Pattern: <book>Finn<sup>fi</sup>Est<sup>et</sup></book>
+     - "Finn" + "Est" in Newsreader/Fraunces serif
+     - Est can take Estonian-blue color
+     - Superscripts are mono, smaller, in flag-blue tints
+     - Optional initial book glyph */
+  .lockup {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0;
+    font-family: var(--font-disp);
+    font-weight: 500;
+    line-height: 1;
+    position: relative;
+  }
+  /* The stems hold the floating superscripts off their top-right corner */
+  .lockup .finn, .lockup .est { position: relative; }
+  .lockup .book {
+    font-family: var(--font-mono);
+    font-weight: 400;
+    margin-right: 0.18em;
+    opacity: 0.55;
+    font-size: 0.5em;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    align-self: center;
+    transform: translateY(-0.05em);
+  }
+  .lockup .finn { color: var(--ink); }
+  .lockup .est  { color: var(--ink); }
+  /* Superscripts truly float off the top-right of the preceding stem's
+     last letter — absolute-positioned against the stem so they don't
+     consume horizontal space and don't sit on the baseline. */
+  .lockup .sup {
+    position: absolute;
+    left: 100%;
+    top: 0;
+    transform: translate(0.06em, -0.18em);
+    font-family: var(--font-mono);
+    font-style: normal;
+    font-weight: 400;
+    font-size: 0.32em;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  /* Push Est rightward enough to clear the floating fi superscript */
+  .lockup .est { margin-left: 0.55em; }
+  .lockup .sup.fi { color: var(--fi-blue); }
+  .lockup .sup.et { color: var(--et-blue); }
+
+  /* Variant tweaks per artboard */
+  .lockup.size-xl   { font-size: 92px; letter-spacing: -0.035em; }
+  .lockup.size-lg   { font-size: 64px; letter-spacing: -0.030em; }
+  .lockup.size-md   { font-size: 44px; letter-spacing: -0.025em; }
+  .lockup.size-sm   { font-size: 28px; letter-spacing: -0.020em; }
+
+  /* italic display variant */
+  .lockup.italic { font-style: italic; }
+  .lockup.italic .finn, .lockup.italic .est { font-style: italic; font-weight: 500; }
+
+  /* Estonian-blue Est variant */
+  .lockup.est-blue .est { color: var(--et-blue); }
+  /* Finnish-blue Finn variant */
+  .lockup.fi-blue .finn { color: var(--fi-blue); }
+  /* Both flag halves */
+  .lockup.dual .finn { color: var(--fi-blue); }
+  .lockup.dual .est  { color: var(--et-blue); }
+  /* Inverse for dark cards */
+  .card.dark .lockup .finn,
+  .card.dark .lockup .est { color: var(--paper); }
+  .card.dark .lockup.est-blue .est { color: oklch(0.72 0.13 245); }
+  .card.dark .lockup.fi-blue .finn { color: oklch(0.62 0.13 248); }
+  .card.dark .lockup.dual .finn { color: oklch(0.62 0.13 248); }
+  .card.dark .lockup.dual .est  { color: oklch(0.72 0.13 245); }
+
+  /* Fraunces alt variant */
+  .lockup.fraunces { font-family: var(--font-disp-alt); font-weight: 600; }
+
+  /* App icon */
+  .icon-tile {
+    width: 168px; height: 168px; border-radius: 36px;
+    overflow: hidden;
+    box-shadow: 0 18px 40px -22px oklch(0.20 0.02 250 / 0.40);
+    display: flex;
+    position: relative;
+  }
+  .icon-tile .h {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    color: var(--paper);
+    font-family: var(--font-disp);
+    font-weight: 500;
+    font-size: 92px;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    font-style: italic;
+  }
+  .icon-tile .h.fi { background: var(--fi-blue); }
+  .icon-tile .h.et { background: var(--et-blue); }
+  .icon-tile .h.ink { background: var(--ink); }
+  .icon-tile .h.birch { background: var(--birch); color: var(--ink); }
+
+  .icon-row { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
+
+  /* Wordmark in context */
+  .ctx-bar {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper);
+    border-radius: 14px;
+  }
+  .ctx-bar.dark {
+    background: oklch(0.180 0.025 250);
+    border-color: oklch(0.30 0.022 250);
+  }
+  .ctx-nav {
+    display: flex; gap: 4px;
+    font-size: 13px;
+    color: var(--ink-mute);
+  }
+  .ctx-nav a {
+    padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  }
+  .ctx-nav a.on { background: var(--cream); color: var(--ink); }
+  .card.dark .ctx-nav a.on { background: oklch(0.30 0.022 250); color: var(--paper); }
+  .ctx-spacer { flex: 1; }
+  .ctx-pill {
+    padding: 7px 14px; border-radius: 999px;
+    font-size: 12px; color: var(--paper); background: var(--ink);
+  }
+
+  /* Color spec strip */
+  .palette {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+  .sw {
+    aspect-ratio: 1.4 / 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 18px;
+    border-right: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+  }
+  .sw:last-child { border-right: none; }
+  .sw b { font-family: var(--font-disp); font-weight: 500; font-size: 15px; letter-spacing: -0.005em; display: block; margin-bottom: 4px; font-style: italic; }
+  .sw small { display: block; opacity: 0.7; margin-top: 2px; }
+  .sw.fi { background: var(--fi-blue); color: var(--paper); }
+  .sw.et { background: var(--et-blue); color: var(--paper); }
+  .sw.ink { background: var(--ink); color: var(--paper); }
+  .sw.paper { background: var(--paper); color: var(--ink); }
+  .sw.birch { background: var(--birch); color: var(--ink); }
+
+  /* Construction notes */
+  .construction {
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 28px 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+  }
+  .construction h3 {
+    font-family: var(--font-disp);
+    font-weight: 500;
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+  .construction p {
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.6;
+  }
+  .construction code {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    background: var(--paper);
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--line);
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <span class="crumb">finnest · branding · 2026</span>
+</header>
+
+<main class="page">
+  <div class="page-head">
+    <h1>The <em>FinnEst</em> mark.</h1>
+    <p class="lede">
+      A bilingual portmanteau, dressed in the Aalto palette with
+      Finnish + Estonian flag-blue accents. Lemma-style superscripts
+      <span style="color: var(--fi-blue); font-family: var(--font-mono); font-size: 11px; vertical-align: 2px;">fi</span>
+      and
+      <span style="color: var(--et-blue); font-family: var(--font-mono); font-size: 11px; vertical-align: 2px;">et</span>
+      let the wordmark advertise the product in a single glance.
+    </p>
+  </div>
+
+  <!-- ─────────────── 01 · Primary lockup ─────────────── -->
+  <section class="section">
+    <div class="section-head">
+      <span class="section-num">01 / Primary lockup</span>
+      <span class="section-title">Wordmark + flag superscripts</span>
+    </div>
+    <p class="section-sub">
+      Newsreader serif + IBM Plex Mono superscripts. Italic recommended
+      for hero placements; roman for body / favicon contexts.
+    </p>
+
+    <div class="grid">
+      <div class="card birch-stripe">
+        <span class="card-label">A · Italic · neutral</span>
+        <span class="lockup size-xl italic">
+          <span class="finn">Finn<sup class="sup fi">fi</sup></span><span class="est">Est<sup class="sup et">et</sup></span>
+        </span>
+      </div>
+
+      <div class="card birch-stripe">
+        <span class="card-label">B · Roman · neutral</span>
+        <span class="lockup size-xl">
+          <span class="finn">Finn<sup class="sup fi">fi</sup></span><span class="est">Est<sup class="sup et">et</sup></span>
+        </span>
+      </div>
+
+      <div class="card birch-stripe">
+        <span class="card-label">C · Est in Estonian blue</span>
+        <span class="lockup size-xl italic est-blue">
+          <span class="finn">Finn<sup class="sup fi">fi</sup></span><span class="est">Est<sup class="sup et">et</sup></span>
+        </span>
+      </div>
+
+      <div class="card birch-stripe">
+        <span class="card-label">D · Both halves coloured</span>
+        <span class="lockup size-xl italic dual">
+          <span class="finn">Finn<sup class="sup fi">fi</sup></span><span class="est">Est<sup class="sup et">et</sup></span>
+        </span>
+      </div>
+
+      <div class="card dark">
+        <span class="card-label">E · Sanatorium · italic</span>
+        <span class="lockup size-xl italic">
+          <span class="finn">Finn<sup class="sup fi">fi</sup></span><span class="est">Est<sup class="sup et">et</sup></span>
+        </span>
+      </div>
+
+      <div class="card dark">
+        <span class="card-label">F · Sanatorium · dual blues</span>
+        <span class="lockup size-xl italic dual">
+          <span class="finn">Finn<sup class="sup fi">fi</sup></span><span class="est">Est<sup class="sup et">et</sup></span>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── 02 · Size scale ─────────────── -->
+  <section class="section">
+    <div class="section-head">
+      <span class="section-num">02 / Size scale</span>
+      <span class="section-title">Hero → topbar → favicon</span>
+    </div>
+    <p class="section-sub">
+      Superscripts scale proportionally (0.32× of the wordmark size).
+      At ≤ 24px, drop the superscripts entirely — they become noise.
+    </p>
+
+    <div class="card cream" style="flex-direction: column; align-items: flex-start; gap: 36px; padding: 56px 56px;">
+      <span class="card-label">G · Scale</span>
+
+      <span class="lockup size-xl italic">
+        <span class="finn">Finn<sup class="sup fi">fi</sup></span><span class="est">Est<sup class="sup et">et</sup></span>
+      </span>
+      <span class="lockup size-lg italic">
+        <span class="finn">Finn<sup class="sup fi">fi</sup></span><span class="est">Est<sup class="sup et">et</sup></span>
+      </span>
+      <span class="lockup size-md italic">
+        <span class="finn">Finn<sup class="sup fi">fi</sup></span><span class="est">Est<sup class="sup et">et</sup></span>
+      </span>
+      <span class="lockup size-sm italic">
+        <span class="finn">Finn<sup class="sup fi">fi</sup></span><span class="est">Est<sup class="sup et">et</sup></span>
+      </span>
+      <span class="lockup italic" style="font-size: 18px; letter-spacing: -0.015em;">
+        <span class="finn">Finn<sup class="sup fi" style="font-size: 0.55em;">fi</sup></span><span class="est">Est<sup class="sup et" style="font-size: 0.55em;">et</sup></span>
+      </span>
+    </div>
+  </section>
+
+  <!-- ─────────────── 03 · App icons ─────────────── -->
+  <section class="section">
+    <div class="section-head">
+      <span class="section-num">03 / App icon</span>
+      <span class="section-title">Two-tone block lockup</span>
+    </div>
+    <p class="section-sub">
+      Split-tile with a single italic glyph per half. Three palette
+      directions: flag-pure, ink/birch warm, and Estonian-blue solo.
+    </p>
+
+    <div class="card cream" style="padding: 56px;">
+      <span class="card-label">H · App icon variants</span>
+      <div class="icon-row">
+        <div class="icon-tile">
+          <div class="h fi">F</div>
+          <div class="h et">E</div>
+        </div>
+        <div class="icon-tile">
+          <div class="h ink">F</div>
+          <div class="h birch">E</div>
+        </div>
+        <div class="icon-tile">
+          <div class="h ink">F</div>
+          <div class="h et">E</div>
+        </div>
+        <div class="icon-tile">
+          <div class="h fi">F</div>
+          <div class="h ink">E</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── 04 · In context ─────────────── -->
+  <section class="section">
+    <div class="section-head">
+      <span class="section-num">04 / In context</span>
+      <span class="section-title">Topbar replacement for finnest aalto</span>
+    </div>
+    <p class="section-sub">
+      How the lockup sits where <code>finnest.</code> currently lives in
+      the topbar. Both Paimio (light) and Sanatorium (dark) shown.
+    </p>
+
+    <div class="grid">
+      <div class="card" style="padding: 28px;">
+        <span class="card-label">I · Paimio topbar</span>
+        <div class="ctx-bar">
+          <span class="lockup italic" style="font-size: 26px; letter-spacing: -0.02em;">
+            <span class="finn">Finn<sup class="sup fi" style="font-size: 0.42em;">fi</sup></span><span class="est">Est<sup class="sup et" style="font-size: 0.42em;">et</sup></span>
+          </span>
+          <nav class="ctx-nav">
+            <a class="on">Parse</a><a>Decks</a><a>Review</a><a>Leverage</a>
+          </nav>
+          <span class="ctx-spacer"></span>
+          <span class="ctx-pill">Sign in</span>
+        </div>
+      </div>
+
+      <div class="card dark" style="padding: 28px;">
+        <span class="card-label">J · Sanatorium topbar</span>
+        <div class="ctx-bar dark">
+          <span class="lockup italic dual" style="font-size: 26px; letter-spacing: -0.02em;">
+            <span class="finn">Finn<sup class="sup fi" style="font-size: 0.42em;">fi</sup></span><span class="est">Est<sup class="sup et" style="font-size: 0.42em;">et</sup></span>
+          </span>
+          <nav class="ctx-nav">
+            <a class="on">Parse</a><a>Decks</a><a>Review</a><a>Leverage</a>
+          </nav>
+          <span class="ctx-spacer"></span>
+          <span class="ctx-pill">Sign in</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── 05 · Palette ─────────────── -->
+  <section class="section">
+    <div class="section-head">
+      <span class="section-num">05 / Palette</span>
+      <span class="section-title">Flag colours · Aalto neutrals</span>
+    </div>
+
+    <div class="palette">
+      <div class="sw fi"><b>Finnish blue</b>#003580<small>flag · superscript fi</small></div>
+      <div class="sw et"><b>Estonian blue</b>#0072CE<small>flag · superscript et · accent</small></div>
+      <div class="sw ink"><b>Ink</b>oklch(.20 .02 250)<small>wordmark default</small></div>
+      <div class="sw paper"><b>Paper</b>oklch(.97 .01 78)<small>warm off-white surface</small></div>
+      <div class="sw birch"><b>Birch</b>oklch(.81 .06 75)<small>wood accent</small></div>
+    </div>
+  </section>
+
+  <!-- ─────────────── 06 · Construction ─────────────── -->
+  <section class="section">
+    <div class="section-head">
+      <span class="section-num">06 / Construction</span>
+      <span class="section-title">How the lockup is built</span>
+    </div>
+
+    <div class="construction">
+      <div>
+        <h3>Anatomy</h3>
+        <p>
+          Two italic stems — <code>Finn</code> and <code>Est</code> — set in
+          Newsreader 500. After each stem, a smaller mono superscript
+          (<code>fi</code> / <code>et</code>) coloured to its respective
+          flag blue. The superscript reads as a lemma-tag, the same
+          syntax the parser uses on every word.
+        </p>
+      </div>
+      <div>
+        <h3>Proportions</h3>
+        <p>
+          Superscript = <code>0.32em</code> of wordmark size, baseline
+          shifted via <code>vertical-align: super</code>. Letter-spacing
+          tightens from <code>−0.020em</code> at small sizes to
+          <code>−0.035em</code> at hero. Below 24px the superscripts
+          are dropped — at favicon size, "FE" two-tone tile only.
+        </p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>
