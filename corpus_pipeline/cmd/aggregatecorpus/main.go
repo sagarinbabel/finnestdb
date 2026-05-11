@@ -14,6 +14,7 @@
 package main
 
 import (
+	"bufio"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/csv"
@@ -24,6 +25,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -40,16 +42,51 @@ import (
 	"finnestdb/corpus_pipeline/internal/textfilter"
 )
 
+// progress emits a timestamped, RSS-tagged status line to stderr. The
+// previous build was completely silent during multi-hour phase 1 runs,
+// which made it impossible to tell whether the process was wedged or
+// just chewing through 30 GB of input. Emit aggressively from each
+// phase + per-source so log tails show forward motion.
+func progress(phase, msg string) {
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+	fmt.Fprintf(os.Stderr, "[%s] [%s] %s (heap=%dMB sys=%dMB)\n",
+		time.Now().Format("15:04:05"),
+		phase,
+		msg,
+		ms.HeapAlloc>>20,
+		ms.Sys>>20,
+	)
+}
+
 func main() {
 	var (
-		dataRoot   = flag.String("data-root", "../localdata", "")
-		lang       = flag.String("lang", "fi", "")
-		dbPath     = flag.String("db", "", "path to finnestdb.db (default: <repoRoot>/finnestdb.db)")
-		onlySource = flag.String("only", "", "if set, aggregate only this source slug")
-		skipFlag   = flag.String("skip", "", "comma-separated source slugs to exclude (e.g. for memory-bounded runs)")
-		useScratch = flag.Bool("scratch", false, "use SQLite scratch DB for sentences/occurrences/wordlist (lower RSS, slightly slower)")
+		dataRoot     = flag.String("data-root", "../localdata", "")
+		lang         = flag.String("lang", "fi", "")
+		dbPath       = flag.String("db", "", "path to finnestdb.db (default: <repoRoot>/finnestdb.db)")
+		onlySource   = flag.String("only", "", "if set, aggregate only this source slug")
+		skipFlag     = flag.String("skip", "", "comma-separated source slugs to exclude (e.g. for memory-bounded runs)")
+		useScratch   = flag.Bool("scratch", true, "use SQLite scratch DB for sentences/occurrences/wordlist. Default true — bounded-memory by design. Pass -scratch=false only for tiny smoke fixtures where the in-memory path is faster.")
+		sourceOrder  = flag.String("source-order", "quality", "source ingest order: quality (tier asc, slug asc) | slug (slug asc, like discover)")
+		ufSentBytes  = flag.String("max-user-friendly-sentences-bytes", "", "byte cap for sentences_user_friendly.tsv (e.g. 6GB, 9GB). 0 / unset = uncapped")
+		ufWordBytes  = flag.String("max-user-friendly-wordlist-bytes", "", "byte cap for wordlist_user_friendly.tsv (e.g. 4GB, 6GB). 0 / unset = uncapped")
 	)
 	flag.Parse()
+
+	maxUFSentBudget, err := parseByteSize(*ufSentBytes)
+	if err != nil {
+		log.Fatalf("-max-user-friendly-sentences-bytes: %v", err)
+	}
+	maxUFWordBudget, err := parseByteSize(*ufWordBytes)
+	if err != nil {
+		log.Fatalf("-max-user-friendly-wordlist-bytes: %v", err)
+	}
+	switch *sourceOrder {
+	case "quality", "slug":
+		// ok
+	default:
+		log.Fatalf("-source-order: must be 'quality' or 'slug', got %q", *sourceOrder)
+	}
 
 	roots, err := cli.Resolve(*dataRoot, *dbPath)
 	if err != nil {
@@ -90,6 +127,11 @@ func main() {
 		log.Fatalf("no sources to aggregate (lang=%s)", langLower)
 	}
 
+	// Apply aggregation-only ordering. Quality mode puts hand-curated and
+	// broadcaster-news sources first, mined web parallel last; slug mode
+	// preserves Discover()'s deterministic-by-slug behavior.
+	manifests = sources.SortForAggregation(manifests, langLower, *sourceOrder)
+
 	derived := sources.DerivedDir(roots.DataRoot, langLower)
 	if err := os.MkdirAll(filepath.Join(derived, "mining"), 0o755); err != nil {
 		log.Fatalf("mkdir derived: %v", err)
@@ -101,6 +143,25 @@ func main() {
 		if err := state.openScratch(derived); err != nil {
 			log.Fatalf("open scratch db: %v", err)
 		}
+	}
+	state.sourceOrderMode = *sourceOrder
+	state.ufSentencesBudget = maxUFSentBudget
+	state.ufWordlistBudget = maxUFWordBudget
+
+	// Startup banner — operator gets ordered source list + budget settings
+	// up front so any "why didn't this source contribute" question has a
+	// log line to point at.
+	progress("startup", fmt.Sprintf("lang=%s scratch=%v source-order=%s",
+		langLower, *useScratch, *sourceOrder))
+	progress("startup", fmt.Sprintf("user-friendly budgets: sentences=%s wordlist=%s",
+		formatBytesOrUncapped(maxUFSentBudget), formatBytesOrUncapped(maxUFWordBudget)))
+	for i, m := range manifests {
+		tier, known := sources.QualityTier(langLower, m.Slug)
+		marker := ""
+		if !known {
+			marker = " (UNKNOWN tier)"
+		}
+		progress("startup", fmt.Sprintf("  [%2d] tier=%d slug=%s%s", i+1, tier, m.Slug, marker))
 	}
 
 	runStart := time.Now().UTC()
@@ -231,6 +292,55 @@ type state struct {
 	// occurrences / documents / wordlist all live on disk; surfaces stays
 	// in memory (it's compact and we hit it hot in phase 2).
 	scratch *sql.DB
+
+	// ── Source ordering + learner-artifact byte budgets ────────────────
+	//
+	// sourceOrderMode is "quality" or "slug" — recorded in metadata so
+	// future runs can reproduce or contrast.
+	sourceOrderMode string
+
+	// ufSentencesBudget / ufWordlistBudget cap the on-disk size of
+	// sentences_user_friendly.tsv / wordlist_user_friendly.tsv (in bytes).
+	// 0 = uncapped (legacy behavior). The aggregator filters by quality
+	// tier when these are set, and the writers stop accepting rows once
+	// the budget is hit.
+	ufSentencesBudget int64
+	ufWordlistBudget  int64
+
+	// ufSentencesBytesEstimate is Phase 1's running estimate of the bytes
+	// the user-friendly sentences TSV would consume given the sentences
+	// ingested so far. Updated inside flushSentencesToScratch when a
+	// scratch INSERT-OR-IGNORE actually inserts a new sentence (i.e. it
+	// was unique across all previously-ingested sources). Phase 1 stops
+	// ingesting more sources when this exceeds ufSentencesBudget.
+	ufSentencesBytesEstimate int64
+
+	// budgetSourcesSkipped records sources that Phase 1 chose not to
+	// ingest because the user-friendly sentence budget had already
+	// filled up. Recorded in metadata so the audit trail is visible.
+	budgetSourcesSkipped []string
+	// budgetSourcePartial records the slug of a source that was
+	// partially consumed before the budget hit (empty if none).
+	budgetSourcePartial string
+
+	// audit fields populated by phase 4 — actual on-disk size of each
+	// user-friendly TSV after writers close, plus whether each hit its
+	// configured cap. These flow into build_metadata.json + qa-report.json
+	// so the operator can see "did the cap actually constrain the run."
+	auditUFSentencesBytes  int64
+	auditUFSentencesCapHit bool
+	auditUFWordlistBytes   int64
+	auditUFWordlistCapHit  bool
+}
+
+// formatBytesOrUncapped returns "uncapped" for 0 (no budget) or a
+// human-readable size for positive budgets. Used by startup logs +
+// metadata so "no budget" doesn't show up as "0.00 B".
+func formatBytesOrUncapped(n int64) string {
+	if n <= 0 {
+		return "uncapped"
+	}
+	return formatBytes(n)
 }
 
 func newState(roots cli.Roots, langLower, langUpper string, manifests []sources.Manifest) *state {
@@ -305,13 +415,40 @@ func (s *state) openScratch(derived string) error {
 // ── Phase 1: tokenize via parserffi, count surfaces, dedup sentences ──
 
 func (s *state) Phase1() error {
-	for _, m := range s.manifests {
+	progress("phase1", fmt.Sprintf("starting, %d sources", len(s.manifests)))
+	for i, m := range s.manifests {
+		// Early stop: if the user-friendly sentence budget is set AND we've
+		// already gathered enough unique sentences to fill it, stop
+		// ingesting additional sources. The estimate is bytes-of-new-
+		// unique-sentences (after global INSERT-OR-IGNORE dedup in scratch),
+		// which strictly under-counts the final user-friendly TSV size
+		// (because IsUserFriendlySentence drops some rows). Treating the
+		// estimate as a soft early-stop keeps quality-first ordering
+		// honest: tier 0–4 sources land first, and tier 5–6 mined-web
+		// dumps only get ingested if there's room.
+		if s.ufSentencesBudget > 0 && s.ufSentencesBytesEstimate >= s.ufSentencesBudget {
+			progress("phase1", fmt.Sprintf("budget hit (estimated %s of unique sentences ≥ %s budget) — skipping remaining %d source(s) including %s",
+				formatBytes(s.ufSentencesBytesEstimate), formatBytes(s.ufSentencesBudget),
+				len(s.manifests)-i, m.Slug))
+			for ; i < len(s.manifests); i++ {
+				s.budgetSourcesSkipped = append(s.budgetSourcesSkipped, s.manifests[i].Slug)
+			}
+			break
+		}
 		dir := sources.SourceDir(s.roots.DataRoot, s.langLower, m.Slug)
+		t0 := time.Now()
+		surfBefore := len(s.surfaces)
+		bytesBefore := s.ufSentencesBytesEstimate
 		if err := s.ingestDocuments(dir, m); err != nil {
 			return fmt.Errorf("ingest documents %s: %w", m.Slug, err)
 		}
+		stopMidSource := false
 		if err := s.ingestText(dir, m); err != nil {
-			return fmt.Errorf("ingest text %s: %w", m.Slug, err)
+			if err == errBudgetReached {
+				stopMidSource = true
+			} else {
+				return fmt.Errorf("ingest text %s: %w", m.Slug, err)
+			}
 		}
 		// Streaming mode: flush per-source so in-memory stays bounded.
 		if s.scratch != nil {
@@ -319,21 +456,48 @@ func (s *state) Phase1() error {
 				return fmt.Errorf("flush %s to scratch: %w", m.Slug, err)
 			}
 		}
+		dt := time.Since(t0).Round(time.Second)
+		dBytes := s.ufSentencesBytesEstimate - bytesBefore
+		marker := ""
+		if stopMidSource {
+			marker = " [PARTIAL — budget reached mid-source]"
+		}
+		progress("phase1", fmt.Sprintf("[%d/%d] %s done in %s (+%d surfaces, +%s user-friendly, total surfaces=%d, uf-bytes-est=%s)%s",
+			i+1, len(s.manifests), m.Slug, dt,
+			len(s.surfaces)-surfBefore, formatBytes(dBytes), len(s.surfaces),
+			formatBytes(s.ufSentencesBytesEstimate), marker))
+		if stopMidSource {
+			// Mark all subsequent sources as skipped-by-budget and break.
+			for j := i + 1; j < len(s.manifests); j++ {
+				s.budgetSourcesSkipped = append(s.budgetSourcesSkipped, s.manifests[j].Slug)
+			}
+			break
+		}
 	}
+	progress("phase1", fmt.Sprintf("complete, %d unique surfaces, uf-bytes-est=%s",
+		len(s.surfaces), formatBytes(s.ufSentencesBytesEstimate)))
 	return nil
 }
 
+// ingestDocuments streams documents.jsonl line-by-line. The previous
+// implementation did os.ReadFile on the whole file then split on '\n' —
+// that allocated 2× the file size in memory before yielding the first
+// document, which spiked RSS by multiple GB on big sources.
 func (s *state) ingestDocuments(dir string, m sources.Manifest) error {
 	path := filepath.Join(dir, "documents.jsonl")
-	data, err := os.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
 		return err
 	}
-	for _, line := range strings.Split(string(data), "\n") {
-		if line == "" {
+	defer f.Close()
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 1<<20), 64<<20) // up to 64 MB lines (defensive)
+	for sc.Scan() {
+		line := sc.Bytes()
+		if len(line) == 0 {
 			continue
 		}
 		var d struct {
@@ -342,8 +506,8 @@ func (s *state) ingestDocuments(dir string, m sources.Manifest) error {
 			Author     string `json:"author,omitempty"`
 			RawPath    string `json:"raw_path,omitempty"`
 		}
-		if err := json.Unmarshal([]byte(line), &d); err != nil {
-			return fmt.Errorf("parse doc line %q: %w", line, err)
+		if err := json.Unmarshal(line, &d); err != nil {
+			return fmt.Errorf("parse doc line: %w", err)
 		}
 		if _, ok := s.documents[d.DocumentID]; !ok {
 			s.docOrder = append(s.docOrder, d.DocumentID)
@@ -356,37 +520,116 @@ func (s *state) ingestDocuments(dir string, m sources.Manifest) error {
 			rawPath: d.RawPath,
 		}
 	}
-	return nil
+	return sc.Err()
 }
 
+// errBudgetReached is the sentinel returned by ingestText when the
+// user-friendly sentence budget is exceeded mid-source. Phase 1 catches
+// it, marks the source as partially consumed, and breaks out of the
+// outer loop. Not a real error in the operator-visible sense — it's
+// just how the early-stop signal propagates up the call stack without
+// adding a separate return path.
+var errBudgetReached = fmt.Errorf("budget reached")
+
+// ingestText streams text.txt one paragraph at a time — paragraphs are
+// separated by blank lines (one or more empty input lines marks a doc
+// boundary). The previous implementation did os.ReadFile + Split("\n\n")
+// which loaded the entire file (up to 6.5 GB for OPUS opus-ccmatrix at
+// FI scale) into RAM before processing any paragraph. With per-source
+// inputs of 5–7 GB and 18 sources for FI, that produced multi-GB RSS
+// spikes that pushed the box into swap. Streaming caps the per-paragraph
+// memory at one paragraph (typically a few KB; 64 MB max as a safety
+// belt for pathological inputs).
+//
+// In scratch mode we also flush sentences/occurrences to SQLite every
+// flushSentencesEvery sentences within a single source, so sources with
+// 18 M sentences (Yle 2011-2018) don't accumulate the whole batch in
+// the in-memory occurrence slice.
+//
+// **Intra-source budget stop**: at every intra-source flush we check
+// whether the running user-friendly-sentences byte estimate has hit the
+// configured budget. If so, we mark this source as partially consumed
+// (`budgetSourcePartial`) and return errBudgetReached so Phase 1
+// stops iterating sources. This avoids the previous behavior where one
+// huge source could keep pulling text long after we'd already gathered
+// enough learner material.
 func (s *state) ingestText(dir string, m sources.Manifest) error {
 	textPath := filepath.Join(dir, "text.txt")
-	data, err := os.ReadFile(textPath)
+	f, err := os.Open(textPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
 		return err
 	}
+	defer f.Close()
+
 	isPoetry := m.Kind == "poetry"
-	// Split on blank-line document boundaries
-	docs := strings.Split(string(data), "\n\n")
+	const flushSentencesEvery = 200_000
+
+	sc := bufio.NewScanner(f)
+	sc.Buffer(make([]byte, 1<<20), 64<<20) // up to 64 MB lines
+
+	var paraBuf strings.Builder
 	docIx := 0
-	for _, docText := range docs {
-		docText = strings.TrimSpace(docText)
-		if docText == "" {
-			continue
+	sentencesAtLastFlush := len(s.sentenceOrder)
+
+	flushPara := func() error {
+		text := strings.TrimSpace(paraBuf.String())
+		paraBuf.Reset()
+		if text == "" {
+			return nil
 		}
 		docID := fmt.Sprintf("%s:doc-%d", m.Slug, docIx)
-		// If we have a per-source document already at this position, prefer
-		// that ID. Otherwise create a synthetic one.
 		if existing := s.findFirstDocFor(m.Slug, docIx); existing != "" {
 			docID = existing
 		}
 		docIx++
-		if err := s.tokenizeDoc(docText, m.Slug, docID, isPoetry); err != nil {
+		if err := s.tokenizeDoc(text, m.Slug, docID, isPoetry); err != nil {
 			return err
 		}
+		// Intra-source flush keeps the occurrence/sentence buffers bounded.
+		if s.scratch != nil && len(s.sentenceOrder)-sentencesAtLastFlush >= flushSentencesEvery {
+			progress("phase1", fmt.Sprintf("  %s: %d docs, %d sentences in this source — flushing to scratch",
+				m.Slug, docIx, len(s.sentenceOrder)))
+			if err := s.flushSentencesToScratch(); err != nil {
+				return err
+			}
+			sentencesAtLastFlush = 0 // sentenceOrder reset by flush
+			// Intra-source budget check — break out of this source if the
+			// learner-facing sentence budget is now exceeded.
+			if s.ufSentencesBudget > 0 && s.ufSentencesBytesEstimate >= s.ufSentencesBudget {
+				progress("phase1", fmt.Sprintf("  %s: budget hit (uf-bytes-est=%s ≥ %s) — stopping mid-source",
+					m.Slug, formatBytes(s.ufSentencesBytesEstimate), formatBytes(s.ufSentencesBudget)))
+				s.budgetSourcePartial = m.Slug
+				return errBudgetReached
+			}
+		}
+		return nil
+	}
+
+	for sc.Scan() {
+		line := sc.Text()
+		if line == "" {
+			if err := flushPara(); err != nil {
+				if err == errBudgetReached {
+					return err
+				}
+				return err
+			}
+			continue
+		}
+		if paraBuf.Len() > 0 {
+			paraBuf.WriteByte('\n')
+		}
+		paraBuf.WriteString(line)
+	}
+	if err := sc.Err(); err != nil {
+		return err
+	}
+	// Final partial paragraph
+	if err := flushPara(); err != nil {
+		return err
 	}
 	return nil
 }
@@ -468,15 +711,86 @@ func (s *state) getOrCreateSurface(surface string) *surfaceStats {
 }
 
 // ── Phase 2: enrich unique surfaces ──
+//
+// In scratch mode, enriched wordlist rows go straight to the tmp_wordlist
+// table via wordlistFlusher (50k rows per committed batch). Phase 3 reads
+// them back via SQL ORDER BY surface; Phase 4 reads them per-surface in
+// the canonical and user-friendly orderings.
+//
+// In in-memory mode (legacy / smoke fixtures only), rows accumulate in
+// s.wordlistRows like before. The split keeps the small-scale path
+// untouched and unmistakably bounded for fixtures.
 
 func (s *state) Phase2() error {
+	total := len(s.surfaces)
+	progress("phase2", fmt.Sprintf("starting, %d surfaces to enrich (scratch=%v)", total, s.scratch != nil))
+	t0 := time.Now()
+
+	if s.scratch != nil {
+		return s.phase2Scratch(total, t0)
+	}
+	return s.phase2InMemory(total, t0)
+}
+
+func (s *state) phase2InMemory(total int, t0 time.Time) error {
+	processed := 0
+	const logEvery = 100_000
 	for surface, ss := range s.surfaces {
 		rows := s.enrichSurface(surface)
 		ss.resolved = len(rows) > 0 && rows[0].lemma != ""
 		s.wordlistRows = append(s.wordlistRows, rows...)
+		processed++
+		if processed%logEvery == 0 {
+			rate := float64(processed) / time.Since(t0).Seconds()
+			eta := time.Duration(float64(total-processed)/rate) * time.Second
+			progress("phase2", fmt.Sprintf("%d/%d surfaces (%.0f/s, ETA %s)",
+				processed, total, rate, eta.Round(time.Second)))
+		}
 	}
+	progress("phase2", fmt.Sprintf("complete in %s, %d wordlist rows (in-memory)",
+		time.Since(t0).Round(time.Second), len(s.wordlistRows)))
 	return nil
 }
+
+func (s *state) phase2Scratch(total int, t0 time.Time) error {
+	flusher, err := newWordlistFlusher(s.scratch, phase2WordlistFlushEvery)
+	if err != nil {
+		return fmt.Errorf("phase 2: open wordlist flusher: %w", err)
+	}
+	defer flusher.Close()
+
+	processed := 0
+	const logEvery = 100_000
+	for surface, ss := range s.surfaces {
+		rows := s.enrichSurface(surface)
+		ss.resolved = len(rows) > 0 && rows[0].lemma != ""
+		for _, r := range rows {
+			if err := flusher.Add(r); err != nil {
+				return err
+			}
+		}
+		// Phase 2 doesn't keep s.wordlistRows in scratch mode — the
+		// flusher owns the rows via tmp_wordlist now.
+		processed++
+		if processed%logEvery == 0 {
+			rate := float64(processed) / time.Since(t0).Seconds()
+			eta := time.Duration(float64(total-processed)/rate) * time.Second
+			progress("phase2", fmt.Sprintf("%d/%d surfaces (%.0f/s, ETA %s, %d wl rows in scratch)",
+				processed, total, rate, eta.Round(time.Second), flusher.TotalRows()))
+		}
+	}
+	if err := flusher.Close(); err != nil {
+		return err
+	}
+	progress("phase2", fmt.Sprintf("complete in %s, %d wordlist rows in scratch",
+		time.Since(t0).Round(time.Second), flusher.TotalRows()))
+	return nil
+}
+
+// phase2WordlistFlushEvery sets the wordlist-row flush threshold. Values
+// in the 25k-100k range commit fast enough to keep the WAL bounded
+// while amortizing transaction-overhead cost.
+const phase2WordlistFlushEvery = 50_000
 
 func (s *state) enrichSurface(surface string) []wordlistRow {
 	type key struct{ lemma, pos, feats string }
@@ -609,8 +923,28 @@ func contains(xs []string, x string) bool {
 }
 
 // ── Phase 3: mining outputs ──
+//
+// Two paths:
+//   - In-memory: groups the in-memory s.wordlistRows by surface and
+//     classifies each group (unresolved / ambiguous / poetry-unresolved).
+//   - Scratch: streams `SELECT surface, lemma, pos FROM tmp_wordlist
+//     ORDER BY surface`, accumulates per-surface in a small slice, then
+//     classifies on each surface boundary. Memory is one surface group
+//     at a time (typically ≤ 5 rows).
 
 func (s *state) Phase3Mining() {
+	progress("phase3", fmt.Sprintf("starting mining classification (scratch=%v)", s.scratch != nil))
+	t0 := time.Now()
+	defer func() {
+		progress("phase3", fmt.Sprintf("complete in %s (unresolved=%d poetry-unresolved=%d ambiguous=%d disagreements=%d consensus=%d)",
+			time.Since(t0).Round(time.Second),
+			len(s.miningUnresolved), len(s.miningPoetryUnresol),
+			len(s.miningAmbiguous), len(s.miningDisagreements), len(s.miningConsensus)))
+	}()
+	if s.scratch != nil {
+		s.phase3MiningScratch()
+		return
+	}
 	// Group by surface — wordlist already has one or more rows per surface.
 	bySurface := map[string][]wordlistRow{}
 	for _, r := range s.wordlistRows {
@@ -647,9 +981,71 @@ func (s *state) Phase3Mining() {
 	}
 }
 
+// phase3MiningScratch streams tmp_wordlist ORDER BY surface and classifies
+// each surface group into the in-memory mining slices (unresolved /
+// poetry-unresolved / ambiguous). Memory cost: one surface group at a
+// time (typically 1–5 rows, ≪1 KB). The mining slices themselves are
+// bounded by the unique surface count (~7M for FI worst case → ~170 MB
+// total across all three slices, which is acceptable per the design
+// note in v2plan.md).
+func (s *state) phase3MiningScratch() {
+	rows, err := s.scratch.Query(`SELECT surface, lemma, pos FROM tmp_wordlist ORDER BY surface, analysis_rank`)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[phase3] scratch query failed: %v — mining outputs incomplete\n", err)
+		return
+	}
+	defer rows.Close()
+
+	type analysisLite struct{ lemma, pos string }
+	var (
+		curSurface  string
+		curHasReal  bool
+		curDistinct map[string]struct{}
+	)
+	emit := func() {
+		if curSurface == "" {
+			return
+		}
+		ss := s.surfaces[curSurface]
+		if !curHasReal {
+			s.miningUnresolved = append(s.miningUnresolved, wordlistRow{surface: curSurface})
+			if ss != nil && ss.poetry >= 10 && ss.poetry >= 5*max(ss.prose, 1) {
+				s.miningPoetryUnresol = append(s.miningPoetryUnresol, wordlistRow{surface: curSurface})
+			}
+		} else if len(curDistinct) >= 2 {
+			s.miningAmbiguous = append(s.miningAmbiguous, wordlistRow{surface: curSurface})
+		}
+	}
+	curDistinct = map[string]struct{}{}
+	for rows.Next() {
+		var a analysisLite
+		var surface string
+		if err := rows.Scan(&surface, &a.lemma, &a.pos); err != nil {
+			fmt.Fprintf(os.Stderr, "[phase3] scratch scan: %v\n", err)
+			continue
+		}
+		if surface != curSurface {
+			emit()
+			curSurface = surface
+			curHasReal = false
+			curDistinct = map[string]struct{}{}
+		}
+		if a.lemma != "" {
+			curHasReal = true
+			curDistinct[a.lemma+"|"+a.pos] = struct{}{}
+		}
+	}
+	emit()
+}
+
 // ── Phase 4: write everything with deterministic IDs ──
 
 func (s *state) Phase4Write(derived string, runStart time.Time) error {
+	progress("phase4", "starting writers")
+	t0 := time.Now()
+	defer func() {
+		progress("phase4", fmt.Sprintf("complete in %s", time.Since(t0).Round(time.Second)))
+	}()
 	if s.scratch != nil {
 		return s.phase4WriteScratch(derived, runStart)
 	}
@@ -700,18 +1096,32 @@ func (s *state) Phase4Write(derived string, runStart time.Time) error {
 		}); err != nil {
 		return err
 	}
-	if err := writeTSV(filepath.Join(derived, "sentences_user_friendly.tsv"),
+	// User-friendly sentences with byte budget (in-memory phase 4 path).
+	// Mirrors phase4_scratch.go's logic — same writer, same audit fields.
+	ufSentW, err := newCappedTSVWriter(
+		filepath.Join(derived, "sentences_user_friendly.tsv"),
 		[]string{"id", "lang", "text"},
-		func(yield func([]string)) {
-			for _, fo := range hashes {
-				rec := s.sentences[fo.hash]
-				if textfilter.IsUserFriendlySentence(rec.text) {
-					yield([]string{itoa(rec.id), s.langLower, rec.text})
-				}
-			}
-		}); err != nil {
-		return err
+		s.ufSentencesBudget)
+	if err != nil {
+		return fmt.Errorf("create sentences_user_friendly.tsv: %w", err)
 	}
+	for _, fo := range hashes {
+		rec := s.sentences[fo.hash]
+		if !textfilter.IsUserFriendlySentence(rec.text) {
+			continue
+		}
+		if !ufSentW.Write([]string{itoa(rec.id), s.langLower, rec.text}) {
+			break
+		}
+	}
+	ufSentBytesActual, ufSentCapHit, err := ufSentW.Close()
+	if err != nil {
+		return fmt.Errorf("close sentences_user_friendly.tsv: %w", err)
+	}
+	s.auditUFSentencesBytes = ufSentBytesActual
+	s.auditUFSentencesCapHit = ufSentCapHit
+	progress("phase4-mem", fmt.Sprintf("sentences_user_friendly.tsv: %s (cap-hit=%v, %d rows accepted, %d rejected)",
+		formatBytes(ufSentBytesActual), ufSentCapHit, ufSentW.rowsWritten, ufSentW.rowsRejected))
 
 	// Write sentence_occurrences.tsv
 	sort.Slice(s.occurrences, func(i, j int) bool {
@@ -910,17 +1320,44 @@ func (s *state) Phase4Write(derived string, runStart time.Time) error {
 	}
 	// silver-candidates.tsv NOT created (only enrichcorpus does)
 
-	// build_metadata.json
+	// build_metadata.json — same audit-trail shape as the scratch path
+	consumed := []string{}
+	skippedSet := map[string]bool{}
+	for _, sk := range s.budgetSourcesSkipped {
+		skippedSet[sk] = true
+	}
+	manifestSlugs := make([]string, 0, len(s.manifests))
+	for _, m := range s.manifests {
+		manifestSlugs = append(manifestSlugs, m.Slug)
+		if !skippedSet[m.Slug] {
+			consumed = append(consumed, m.Slug)
+		}
+	}
 	if err := writeJSON(filepath.Join(derived, "build_metadata.json"), map[string]any{
-		"lang":             s.langLower,
-		"parser_version":   s.parserVersion,
-		"fst_tables_sha":   s.fstTablesSHA,
-		"dict_fingerprint": s.dictFingerprint,
-		"db_path":          s.roots.DBPath,
-		"data_root":        s.roots.DataRoot,
-		"run_start_utc":    runStart.Format(time.RFC3339),
-		"run_end_utc":      time.Now().UTC().Format(time.RFC3339),
-		"sources":          s.manifests,
+		"lang":              s.langLower,
+		"parser_version":    s.parserVersion,
+		"fst_tables_sha":    s.fstTablesSHA,
+		"dict_fingerprint":  s.dictFingerprint,
+		"db_path":           s.roots.DBPath,
+		"data_root":         s.roots.DataRoot,
+		"run_start_utc":     runStart.Format(time.RFC3339),
+		"run_end_utc":       time.Now().UTC().Format(time.RFC3339),
+		"sources":           s.manifests,
+		"scratch_mode":      false,
+		"source_order_mode": s.sourceOrderMode,
+		"sources_ordered":   manifestSlugs,
+		"sources_consumed":  consumed,
+		"sources_skipped_by_budget": s.budgetSourcesSkipped,
+		"sources_partial_by_budget": s.budgetSourcePartial,
+		"user_friendly_budgets": map[string]any{
+			"sentences_bytes_budget":          s.ufSentencesBudget,
+			"sentences_bytes_actual":          s.auditUFSentencesBytes,
+			"sentences_cap_hit":               s.auditUFSentencesCapHit,
+			"sentences_bytes_estimate_phase1": s.ufSentencesBytesEstimate,
+			"wordlist_bytes_budget":           s.ufWordlistBudget,
+			"wordlist_bytes_actual":           s.auditUFWordlistBytes,
+			"wordlist_cap_hit":                s.auditUFWordlistCapHit,
+		},
 	}); err != nil {
 		return err
 	}
@@ -982,12 +1419,24 @@ func (s *state) writeQAReport(path string, runStart time.Time) error {
 		return float64(num) / float64(denom)
 	}
 	report := map[string]any{
-		"lang":             s.langLower,
-		"run_start_utc":    runStart.Format(time.RFC3339),
-		"run_end_utc":      time.Now().UTC().Format(time.RFC3339),
-		"parser_version":   s.parserVersion,
-		"fst_tables_sha":   s.fstTablesSHA,
-		"dict_fingerprint": s.dictFingerprint,
+		"lang":              s.langLower,
+		"run_start_utc":     runStart.Format(time.RFC3339),
+		"run_end_utc":       time.Now().UTC().Format(time.RFC3339),
+		"parser_version":    s.parserVersion,
+		"fst_tables_sha":    s.fstTablesSHA,
+		"dict_fingerprint":  s.dictFingerprint,
+		"scratch_mode":      false,
+		"source_order_mode": s.sourceOrderMode,
+		"sources_skipped_by_budget": s.budgetSourcesSkipped,
+		"sources_partial_by_budget": s.budgetSourcePartial,
+		"user_friendly_budgets": map[string]any{
+			"sentences_bytes_budget": s.ufSentencesBudget,
+			"sentences_bytes_actual": s.auditUFSentencesBytes,
+			"sentences_cap_hit":      s.auditUFSentencesCapHit,
+			"wordlist_bytes_budget":  s.ufWordlistBudget,
+			"wordlist_bytes_actual":  s.auditUFWordlistBytes,
+			"wordlist_cap_hit":       s.auditUFWordlistCapHit,
+		},
 		"totals": map[string]any{
 			"sources":                     len(s.manifests),
 			"documents":                   len(s.documents),

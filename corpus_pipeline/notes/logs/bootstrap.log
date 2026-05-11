@@ -1,0 +1,12 @@
+mkdir -p /Users/sagar/Downloads/projects/finnestdb/localdata/bootstraps
+cd /Users/sagar/Downloads/projects/finnestdb && \
+	  EXISTING="finnestdb.db"; \
+	  for d in localdata/lemmatizer-fi-et localdata/ekilex localdata/kaikki localdata/parser-eval corpus_pipeline; do \
+	    if [ -e "$d" ]; then EXISTING="$EXISTING $d"; fi; \
+	  done; \
+	  echo "Including: $EXISTING"; \
+	  tar czf /Users/sagar/Downloads/projects/finnestdb/localdata/bootstraps/finnestdb-bootstrap-code.tgz $EXISTING
+Including: finnestdb.db localdata/lemmatizer-fi-et localdata/ekilex localdata/kaikki corpus_pipeline
+make: make: *** wait: No child processes.  Stop.
+make: *** Waiting for unfinished jobs....
+make: *** wait: No child processes.  Stop.

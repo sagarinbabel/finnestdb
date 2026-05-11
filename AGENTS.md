@@ -75,6 +75,32 @@ make compare-parsers    # FI eval (needs setup-nlp + finnestdb.db)
 make compare-parsers-et # ET eval (needs setup-nlp + finnestdb.db)
 ```
 
+## Large corpus pipeline guardrails
+
+For scraping, extraction, aggregation, and corpus-pipeline work, use the
+`large-corpus-pipelines` Codex skill if available. The durable lessons from the
+full ET/FI corpus work are:
+
+- Keep fetch, extract, aggregate, and publish as separate stages.
+- Reuse existing `localdata/{lang}-corpus/<source>/text.txt` extraction outputs
+  unless extraction itself is wrong. Do not refetch or re-extract just because
+  aggregation logic changed.
+- Stream multi-GB inputs. Do not use whole-file `ReadFile`/split patterns for
+  corpus text.
+- Use scratch storage for high-volume intermediate state, and keep memory
+  bounded with explicit flush thresholds.
+- Budget final learner artifacts (`sentences_user_friendly.tsv`,
+  `wordlist_user_friendly.tsv`), not raw source text, scratch DBs, WAL files,
+  or occurrence tables.
+- Pair byte budgets with quality-ordered source ingestion. Deduped rows can
+  still be near-duplicate or low-value.
+- Enforce TSV caps at row boundaries using exact encoded bytes. Never truncate
+  a TSV mid-row to fit a budget.
+- Log long phases, source progress, flushes, heap/sys memory, scratch/WAL size,
+  budget estimates, and cap events before the job becomes hard to diagnose.
+- Record source order, consumed/skipped/partial sources, budgets, actual output
+  sizes, fingerprints, and phase durations in final metadata.
+
 ## Key paths
 
 | Path | What |
@@ -84,4 +110,3 @@ make compare-parsers-et # ET eval (needs setup-nlp + finnestdb.db)
 | `finnestdb.db` | 5+ GB SQLite dictionary database |
 | `localdata/` | Gitignored runtime artifacts, corpora, tables |
 | `corpus_pipeline/` | Tracked pipeline source (has its own `.venv/` — separate) |
-

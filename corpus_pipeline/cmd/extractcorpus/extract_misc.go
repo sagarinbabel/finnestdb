@@ -24,15 +24,4 @@ func extractEEVA(dir string, m sources.Manifest) error {
 	return extractHTML(dir, m)
 }
 
-// extractWiki handles MediaWiki XML.bz2 dumps. v1 implementation:
-// requires wikiextractor (Python) or our own parser. Defer to v2
-// when the Wikipedia source is added; gz/leipzig OPUS Wikipedia
-// already covers most usage.
-func extractWiki(dir string, m sources.Manifest) error {
-	// Stub: wiki XML extraction requires either wikiextractor (python)
-	// or a substantial pure-Go MediaWiki template stripper. v1 Wikipedia
-	// data comes from OPUS-Wikipedia (.txt.gz) instead, which uses
-	// extract_gz. Keep this as no-op so wiki-formatted sources don't
-	// error out the pipeline.
-	return nil
-}
+// extractWiki has moved to extract_wiki.go (real implementation).

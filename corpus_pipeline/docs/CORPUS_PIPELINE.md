@@ -53,7 +53,7 @@ their own language scope.
 | `make corpus-verify[-fi/-et] PROFILE=…` | Hard/soft gate check, exit nonzero on fail | After aggregate | <5 s | `_derived/qa-gate.json` (+ `errors/` on fail) |
 | `make corpus-promote[-fi/-et] PROFILE=…` | Chain extract→aggregate→verify; smoke→pilot→full ladder | When advancing through profiles | depends on profile | promotion-state.json updated |
 | `make corpus-cache-clear` | Wipe `_derived/cache/` when present | After parser/dict changes or cache experiments | <1 s | clears cache if it exists |
-| `make bootstrap-tarball` | 3-way split tarball (code, fi, et) | Before handoff to another machine | ~5-30 min depending on data size | `finnestdb-bootstrap-{code,fi,et}.tgz` in repo root |
+| `make bootstrap-tarball` | 3-way split tarball (code, fi, et) — lean recipe excludes raw/text/scratch/cache | Before handoff to another machine | ~30-45 min serial, less in parallel | `finnestdb-bootstrap-{code,fi,et}.tgz` in `localdata/bootstraps/` (~25 GB total compressed). See "Bootstrap tarballs" section below |
 | `make gloss-coverage[-fi/-et]` | Audit dict-DB gloss coverage against the wordlist (pair + token-weighted) | Before/after a meaning-source import | <30 s | `reports/<date>-coverage-{lang}.json` |
 
 The `PROFILE` Makefile variable defaults to `smoke`. Override with
@@ -202,6 +202,75 @@ tokens after the meaning-sources work). The morphology columns (case,
 number, mood, etc.) are split out from `feats` so consumers don't have to
 parse the pipe-delimited string themselves; `feats` itself remains for
 completeness.
+
+### Bootstrap tarballs (handoff to another machine)
+
+The Makefile builds three split tarballs into
+`localdata/bootstraps/`. They share a lean `BOOTSTRAP_EXCLUDES` list so
+the canonical artifacts ship and the reproducible-from-source intermediates
+don't:
+
+```sh
+cd corpus_pipeline
+make bootstrap-tarball              # all three
+make bootstrap-tarball-code         # finnestdb.db + dict sources + corpus_pipeline
+make bootstrap-tarball-fi           # localdata/fi-corpus minus excludes
+make bootstrap-tarball-et           # localdata/et-corpus minus excludes
+```
+
+**What ships** (intentional handoff payload):
+
+- `_derived/` — wordlist.tsv, wordlist_user_friendly.tsv, wordlist-enriched.tsv,
+  sentences.tsv, sentences_user_friendly.tsv, sentence_occurrences.tsv,
+  documents.tsv, manifest.tsv, poems.tsv
+- `_derived/mining/` — silver-candidates, parser-disagreements,
+  internal-consensus-candidates, high-frequency-ambiguous, unresolved,
+  poetry-unresolved
+- `_derived/build_metadata.json`, `qa-report.json`, `qa-gate.json`
+- Per-source `manifest.json` (~300 B each) and `documents.jsonl`
+  (provenance — needed to resolve `documents.tsv` rows back to their
+  raw source location)
+- The `code` tarball additionally ships `finnestdb.db`,
+  `localdata/lemmatizer-fi-et/`, `localdata/ekilex/`, `localdata/kaikki/`,
+  and the entire `corpus_pipeline/` Go module + scripts.
+
+**What's excluded** (large + reproducible from source):
+
+- `_derived/_scratch.db` + WAL/SHM (deleted after each aggregate; up to 36 GB during a run)
+- `_derived/cache/` (parser cache — auto-rebuilds)
+- per-source `raw/` (50+ GB FI; re-fetch via `cmd/fetchcorpus`)
+- per-source `text.txt` (regenerate via `cmd/extractcorpus`)
+- `epub/per-book/`, `epub/decks/` (EPUB-specific intermediates)
+- `<source>/poems.jsonl` (poetry sources — empty for FI/ET v1)
+- `.DS_Store`
+
+The exclude list lives in `Makefile` under the `BOOTSTRAP_EXCLUDES` variable.
+Update it there if a new intermediate gets added that shouldn't ship.
+
+**Sizing (post-2026-05-11 lean recipe):**
+
+| Tarball | Source size | Compressed |
+|---|---:|---:|
+| code | ~6.5 GB | ~2 GB |
+| fi | ~24 GB | ~10-15 GB |
+| et | ~22 GB | ~10-12 GB |
+| **Total** | **~52 GB** | **~25 GB** |
+
+Each tarball takes ~10-20 min to build serially. Run in parallel with
+`make -j3 bootstrap-tarball` if disk + CPU can absorb three concurrent
+gzip streams.
+
+**After building, record sha256 sidecars** so the receiving side can verify:
+
+```sh
+cd localdata/bootstraps
+for f in *.tgz; do shasum -a 256 "$f" > "$f.sha256"; done
+```
+
+A reference manifest with sha256/size/row-count for every derived artifact
+from the 2026-05-11 build is at
+`notes/2026-05-11-derived-artifacts-manifest.md` (with per-file dumps in
+sibling `*-checksums.txt`).
 
 ---
 

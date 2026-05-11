@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"finnestdb/internal/store"
@@ -47,12 +48,25 @@ func (s *state) writeUserFriendlyWordlist(path string) error {
 // (sentence-hash → sentence-id) resolves, which the resolver closure
 // captures.
 //
-// The wordlist rows are already sorted (by descending prose count, then
-// surface, then analysis rank) by the caller, so this writer streams in
-// that order. Meanings come from a single bulk SELECT against `lemmas`
-// — see bulkLoadGlosses below — so per-row gloss lookup is a hash hit,
-// not a SQL round-trip. Critical at FI-full scale where the wordlist
-// has ~5M rows.
+// Honors s.ufWordlistBudget when set: rows are written in user-facing
+// usefulness order (surface_count_total desc, is_parser_choice desc,
+// analysis_rank asc, surface asc, lemma asc, pos asc) and the writer
+// stops accepting rows once the configured byte cap is reached. The
+// audit fields s.auditUFWordlistBytes / s.auditUFWordlistCapHit are
+// populated so build_metadata.json + qa-report.json can show whether
+// the cap actually constrained the export.
+//
+// Note this writer re-sorts a *copy* of the wordlist row indices — it
+// doesn't mutate s.wordlistRows. The canonical wordlist.tsv has its own
+// sort (descending prose count) that the caller has already applied;
+// this learner-facing export wants a different ordering, and changing
+// s.wordlistRows would corrupt any subsequent mining writers that
+// consume it.
+//
+// Meanings come from a single bulk SELECT against `lemmas` — see
+// bulkLoadGlosses below — so per-row gloss lookup is a hash hit, not a
+// SQL round-trip. Critical at FI-full scale where the wordlist has
+// ~5M rows.
 func (s *state) writeUserFriendlyWordlistWithExampleResolver(
 	path string,
 	resolveExample userFriendlyExampleResolver,
@@ -73,29 +87,73 @@ func (s *state) writeUserFriendlyWordlistWithExampleResolver(
 		"parser_version", "fst_tables_sha", "dict_fingerprint",
 		"example_ref_type", "example_ref_id",
 	}
-	return writeTSV(path, header, func(yield func([]string)) {
-		for _, r := range s.wordlistRows {
-			ss := s.surfaces[r.surface]
-			exType, exID := resolveExample(ss)
-			srcJSON, _ := json.Marshal(ss.sourceCount)
-			feats := parseUDFeats(r.feats)
-			gloss := glosses[store.LemmaKey{Lemma: r.lemma, POS: r.pos}]
-			yield([]string{
-				r.surface, gloss,
-				s.langLower, r.lemma, r.pos,
-				feats["Case"], feats["Number"], feats["Mood"],
-				feats["Tense"], feats["Person"], feats["Voice"],
-				feats["VerbForm"],
-				r.feats,
-				itoa(ss.prose), itoa(ss.poetry), itoa(ss.prose + ss.poetry),
-				itoa(ss.docCountProse), itoa(ss.docCountPoetry),
-				string(srcJSON),
-				strings.Join(r.analysisSources, ";"), itoa(r.analysisRank), boolStr(r.isParserChoice),
-				s.parserVersion, s.fstTablesSHA, s.dictFingerprint,
-				exType, exID,
-			})
+
+	// Index-based usefulness sort. Avoids mutating s.wordlistRows so the
+	// canonical wordlist + mining writers see their own established order.
+	indices := make([]int, len(s.wordlistRows))
+	for i := range indices {
+		indices[i] = i
+	}
+	sort.SliceStable(indices, func(a, b int) bool {
+		ra, rb := s.wordlistRows[indices[a]], s.wordlistRows[indices[b]]
+		sa, sb := s.surfaces[ra.surface], s.surfaces[rb.surface]
+		ta, tb := sa.prose+sa.poetry, sb.prose+sb.poetry
+		if ta != tb {
+			return ta > tb // surface_count_total desc
 		}
+		if ra.isParserChoice != rb.isParserChoice {
+			return ra.isParserChoice // true (1) before false (0)
+		}
+		if ra.analysisRank != rb.analysisRank {
+			return ra.analysisRank < rb.analysisRank
+		}
+		if ra.surface != rb.surface {
+			return ra.surface < rb.surface
+		}
+		if ra.lemma != rb.lemma {
+			return ra.lemma < rb.lemma
+		}
+		return ra.pos < rb.pos
 	})
+
+	w, err := newCappedTSVWriter(path, header, s.ufWordlistBudget)
+	if err != nil {
+		return fmt.Errorf("create wordlist_user_friendly.tsv: %w", err)
+	}
+	for _, idx := range indices {
+		r := s.wordlistRows[idx]
+		ss := s.surfaces[r.surface]
+		exType, exID := resolveExample(ss)
+		srcJSON, _ := json.Marshal(ss.sourceCount)
+		feats := parseUDFeats(r.feats)
+		gloss := glosses[store.LemmaKey{Lemma: r.lemma, POS: r.pos}]
+		row := []string{
+			r.surface, gloss,
+			s.langLower, r.lemma, r.pos,
+			feats["Case"], feats["Number"], feats["Mood"],
+			feats["Tense"], feats["Person"], feats["Voice"],
+			feats["VerbForm"],
+			r.feats,
+			itoa(ss.prose), itoa(ss.poetry), itoa(ss.prose + ss.poetry),
+			itoa(ss.docCountProse), itoa(ss.docCountPoetry),
+			string(srcJSON),
+			strings.Join(r.analysisSources, ";"), itoa(r.analysisRank), boolStr(r.isParserChoice),
+			s.parserVersion, s.fstTablesSHA, s.dictFingerprint,
+			exType, exID,
+		}
+		if !w.Write(row) {
+			break // budget hit; stop walking — remaining rows wouldn't fit either
+		}
+	}
+	bytes, capHit, err := w.Close()
+	if err != nil {
+		return fmt.Errorf("close wordlist_user_friendly.tsv: %w", err)
+	}
+	s.auditUFWordlistBytes = bytes
+	s.auditUFWordlistCapHit = capHit
+	progress("phase4", fmt.Sprintf("  wordlist_user_friendly.tsv: %s (cap-hit=%v, %d rows accepted, %d rejected)",
+		formatBytes(bytes), capHit, w.rowsWritten, w.rowsRejected))
+	return nil
 }
 
 // bulkLoadGlosses returns one gloss per (lemma, pos) for the target
@@ -217,6 +275,113 @@ func parseUDFeats(feats string) map[string]string {
 		out[part[:eq]] = part[eq+1:]
 	}
 	return out
+}
+
+// writeUserFriendlyWordlistFromScratch is the bounded-memory writer for
+// `wordlist_user_friendly.tsv`. Single streaming JOIN against
+// `tmp_surface_order` (no per-surface SELECT loop, no in-memory wordlist
+// slice). Rows leave SQLite already in the desired learner ordering:
+//
+//	o.count_total DESC, w.is_parser_choice DESC, w.analysis_rank ASC,
+//	w.surface ASC, w.lemma ASC, w.pos ASC
+//
+// example_ref_type/example_ref_id come from the `example_final_id` /
+// `example_poem_id` columns that step 5c populated, so each output row
+// carries everything it needs without further lookups.
+func (s *state) writeUserFriendlyWordlistFromScratch(path string) error {
+	glosses, err := bulkLoadGlosses(s.roots.DBPath, s.langUpper)
+	if err != nil {
+		return fmt.Errorf("bulk-load glosses: %w", err)
+	}
+
+	header := []string{
+		"surface", "meaning",
+		"lang", "lemma", "pos",
+		"case", "number", "mood", "tense", "person", "voice", "verbform",
+		"feats",
+		"surface_count_prose", "surface_count_poetry", "surface_count_total",
+		"doc_count_prose", "doc_count_poetry", "source_counts_json",
+		"analysis_sources", "analysis_rank", "is_parser_choice",
+		"parser_version", "fst_tables_sha", "dict_fingerprint",
+		"example_ref_type", "example_ref_id",
+	}
+	w, err := newCappedTSVWriter(path, header, s.ufWordlistBudget)
+	if err != nil {
+		return fmt.Errorf("create wordlist_user_friendly.tsv: %w", err)
+	}
+
+	rows, err := s.scratch.Query(`
+		SELECT
+		  w.surface, w.lemma, w.pos, w.feats, w.analysis_sources, w.analysis_rank, w.is_parser_choice,
+		  o.count_prose, o.count_poetry, o.count_total,
+		  o.doc_count_prose, o.doc_count_poetry,
+		  o.example_final_id, o.example_poem_id
+		FROM tmp_wordlist w
+		JOIN tmp_surface_order o ON o.surface = w.surface
+		ORDER BY o.count_total DESC,
+		         w.is_parser_choice DESC,
+		         w.analysis_rank ASC,
+		         w.surface ASC,
+		         w.lemma ASC,
+		         w.pos ASC`)
+	if err != nil {
+		w.Close()
+		return fmt.Errorf("uf wordlist join: %w", err)
+	}
+	for rows.Next() {
+		var surface, lemma, pos, feats, srcs string
+		var prose, poetry, total, docProse, docPoetry, rank, ipc int
+		var exFinalID sql.NullInt64
+		var exPoemID int
+		if err := rows.Scan(
+			&surface, &lemma, &pos, &feats, &srcs, &rank, &ipc,
+			&prose, &poetry, &total,
+			&docProse, &docPoetry,
+			&exFinalID, &exPoemID,
+		); err != nil {
+			rows.Close()
+			w.Close()
+			return err
+		}
+		exType, exID := resolveExampleRefFromColumns(exFinalID, exPoemID)
+		gloss := glosses[store.LemmaKey{Lemma: lemma, POS: pos}]
+		fts := parseUDFeats(feats)
+		ss := s.surfaces[surface]
+		srcJSON, _ := json.Marshal(ss.sourceCount)
+		row := []string{
+			surface, gloss,
+			s.langLower, lemma, pos,
+			fts["Case"], fts["Number"], fts["Mood"],
+			fts["Tense"], fts["Person"], fts["Voice"],
+			fts["VerbForm"],
+			feats,
+			itoa(prose), itoa(poetry), itoa(total),
+			itoa(docProse), itoa(docPoetry),
+			string(srcJSON),
+			srcs, itoa(rank), boolStr(ipc == 1),
+			s.parserVersion, s.fstTablesSHA, s.dictFingerprint,
+			exType, exID,
+		}
+		if !w.Write(row) {
+			rows.Close()
+			break
+		}
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		w.Close()
+		return err
+	}
+	rows.Close()
+	bytes, capHit, err := w.Close()
+	if err != nil {
+		return fmt.Errorf("close wordlist_user_friendly.tsv: %w", err)
+	}
+	s.auditUFWordlistBytes = bytes
+	s.auditUFWordlistCapHit = capHit
+	progress("phase4-scratch", fmt.Sprintf("  wordlist_user_friendly.tsv: %s (cap-hit=%v, %d rows accepted, %d rejected)",
+		formatBytes(bytes), capHit, w.rowsWritten, w.rowsRejected))
+	return nil
 }
 
 // userFriendlyWordlistFilename is the canonical filename. Exported as a
