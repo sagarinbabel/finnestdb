@@ -536,6 +536,64 @@ func TestHandleParseSuppressesInflectedFormGlossWhenSurfaceHasLexicalCandidate(t
 	}
 }
 
+func TestFilterLowValueAlternativesKeepsLexicalGlossesWithLooseMarkers(t *testing.T) {
+	dict := map[string][]store.FormResolution{
+		"vana": {
+			{Lemma: "vana", POS: "ADJ"},
+			{Lemma: "vana", POS: "NOUN"},
+		},
+		"vanad": {
+			{Lemma: "vana", POS: "ADJ"},
+			{Lemma: "vana", POS: "NOUN"},
+		},
+		"oma": {
+			{Lemma: "oma", POS: "ADJ"},
+			{Lemma: "oma", POS: "NOUN"},
+		},
+	}
+	glosses := map[store.LemmaKey]string{
+		{Lemma: "vana", POS: "ADJ"}:  "old; out of order; past",
+		{Lemma: "vana", POS: "NOUN"}: "old person",
+		{Lemma: "oma", POS: "ADJ"}:   "own; one of a kind; singular",
+		{Lemma: "oma", POS: "NOUN"}:  "property",
+	}
+
+	got := filterLowValueAlternatives(dict, glosses)
+	for form, candidates := range got {
+		seen := map[string]bool{}
+		for _, candidate := range candidates {
+			seen[candidate.Lemma+"/"+candidate.POS] = true
+		}
+		switch form {
+		case "vana", "vanad":
+			if !seen["vana/ADJ"] || !seen["vana/NOUN"] {
+				t.Fatalf("%s candidates=%+v want both lexical ADJ and NOUN retained", form, candidates)
+			}
+		case "oma":
+			if !seen["oma/ADJ"] || !seen["oma/NOUN"] {
+				t.Fatalf("%s candidates=%+v want both lexical ADJ and NOUN retained", form, candidates)
+			}
+		default:
+			t.Fatalf("unexpected form %q", form)
+		}
+	}
+}
+
+func TestFilterLowValueAlternativesKeepsFormOfWhenNoLexicalCandidate(t *testing.T) {
+	dict := map[string][]store.FormResolution{
+		"olen": {{Lemma: "olen", POS: "VERB"}},
+	}
+	glosses := map[store.LemmaKey]string{
+		{Lemma: "olen", POS: "VERB"}: "first-person singular present indicative of olema",
+	}
+
+	got := filterLowValueAlternatives(dict, glosses)
+	candidates := got["olen"]
+	if len(candidates) != 1 || candidates[0].Lemma != "olen" || candidates[0].POS != "VERB" {
+		t.Fatalf("candidates=%+v want form-of candidate retained when no lexical base exists", candidates)
+	}
+}
+
 func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
 	api := newTestAPI(t)
 	parsed := &parsecore.ParseResult{
@@ -556,7 +614,7 @@ func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
 		},
 	}
 
-	got := api.expandParsedWords(parsed, dict)
+	got := api.expandParsedWords(parsed, dict, nil, nil)
 	if len(got) != 2 {
 		t.Fatalf("len=%d want 2: %+v", len(got), got)
 	}
@@ -565,6 +623,33 @@ func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
 	}
 	if got[1].Lemma != "joon" || got[1].POS != "VERB" {
 		t.Fatalf("second=%s/%s want joon/VERB: %+v", got[1].Lemma, got[1].POS, got)
+	}
+}
+
+func TestExpandParsedWordsUsesPreloadedGlosses(t *testing.T) {
+	api := newTestAPI(t)
+	parsed := &parsecore.ParseResult{
+		Lang: "ET",
+		Sentences: []parsecore.SentenceResult{
+			{
+				Text: "joon",
+				Tokens: []parsecore.TokenResult{
+					{Form: "joon", Lemma: "joon", POS: "NOUN"},
+				},
+			},
+		},
+	}
+	dict := map[string][]store.FormResolution{
+		"joon": {{Lemma: "joon", POS: "NOUN"}},
+	}
+	key := store.LemmaKey{Lemma: "joon", POS: "NOUN"}
+
+	got := api.expandParsedWords(parsed, dict, map[store.LemmaKey]string{key: "line"}, map[store.LemmaKey]struct{}{key: {}})
+	if len(got) != 1 {
+		t.Fatalf("len=%d want 1: %+v", len(got), got)
+	}
+	if got[0].Gloss != "line" {
+		t.Fatalf("gloss=%q want line", got[0].Gloss)
 	}
 }
 
