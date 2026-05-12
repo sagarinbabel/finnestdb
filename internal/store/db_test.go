@@ -240,3 +240,117 @@ func TestGetNextReviewCardRespectsDailyNewCardLimit(t *testing.T) {
 		t.Fatalf("expected no additional new card after daily limit, got %+v", next)
 	}
 }
+
+func TestGetDeckDetailsUsesBatchGlossEnrichment(t *testing.T) {
+	t.Run("ekilex override", func(t *testing.T) {
+		db := newTestDB(t)
+		user := createTestUser(t, db, "deck-ekilex@example.com")
+		seedBadEkilexSeeGloss(t, db)
+
+		deckID := createSingleTokenDeck(t, db, user.ID, "ET", "See.", "See", "see", "PRON")
+		details, err := db.GetDeckDetails(user.ID, deckID)
+		if err != nil {
+			t.Fatalf("GetDeckDetails: %v", err)
+		}
+
+		if gloss := deckGloss(details, "see", "PRON"); gloss != "this; that" {
+			t.Fatalf("deck see/PRON gloss=%q want this; that", gloss)
+		}
+	})
+
+	t.Run("custom gloss", func(t *testing.T) {
+		db := newTestDB(t)
+		user := createTestUser(t, db, "deck-custom@example.com")
+		seedLemmasFull(t, db, []struct {
+			lemma, pos, gloss, lang, source string
+			priority                        int
+		}{
+			{"see", "PRON", "domain-specific see", "ET", "custom", 100},
+		})
+		seedTranslations(t, db, []struct {
+			lemma, pos, lang, target, text, source string
+			senseIdx                               int
+		}{
+			{"see", "PRON", "ET", "EN", "here", "ekilex", 0},
+		})
+
+		deckID := createSingleTokenDeck(t, db, user.ID, "ET", "See.", "See", "see", "PRON")
+		details, err := db.GetDeckDetails(user.ID, deckID)
+		if err != nil {
+			t.Fatalf("GetDeckDetails: %v", err)
+		}
+
+		if gloss := deckGloss(details, "see", "PRON"); gloss != "domain-specific see" {
+			t.Fatalf("custom deck see/PRON gloss=%q want domain-specific see", gloss)
+		}
+	})
+}
+
+func TestGetNextReviewCardUsesBatchGlossEnrichment(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "review-ekilex@example.com")
+	seedBadEkilexSeeGloss(t, db)
+	createSingleTokenDeck(t, db, user.ID, "ET", "See.", "See", "see", "PRON")
+
+	card, err := db.GetNextReviewCard(user.ID, nil)
+	if err != nil {
+		t.Fatalf("GetNextReviewCard: %v", err)
+	}
+	if card == nil {
+		t.Fatal("GetNextReviewCard returned nil")
+	}
+	if card.Gloss != "this; that" {
+		t.Fatalf("review see/PRON gloss=%q want this; that", card.Gloss)
+	}
+}
+
+func createTestUser(t *testing.T, db *DB, email string) *User {
+	t.Helper()
+	user, err := db.GetOrCreateUser(email)
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+	return user
+}
+
+func seedBadEkilexSeeGloss(t *testing.T, db *DB) {
+	t.Helper()
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                        int
+	}{
+		{"see", "PRON", "here; it; this", "ET", "ekilex", 20},
+	})
+	seedTranslations(t, db, []struct {
+		lemma, pos, lang, target, text, source string
+		senseIdx                               int
+	}{
+		{"see", "PRON", "ET", "EN", "here", "ekilex", 0},
+		{"see", "PRON", "ET", "EN", "this", "ekilex", 1},
+	})
+}
+
+func createSingleTokenDeck(t *testing.T, db *DB, userID int64, lang, text, form, lemma, pos string) int64 {
+	t.Helper()
+	deckID, err := db.CreateDeckWithSentences(userID, "Test deck", lang, []DeckSentenceInput{
+		{
+			Text: text,
+			Tokens: []DeckTokenInput{
+				{TokenIx: 0, Form: form, Lemma: lemma, POS: pos},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDeckWithSentences: %v", err)
+	}
+	return deckID
+}
+
+func deckGloss(details *DeckDetails, lemma, pos string) string {
+	for _, item := range details.Lemmas {
+		if item.Lemma == lemma && item.POS == pos {
+			return item.Gloss
+		}
+	}
+	return ""
+}

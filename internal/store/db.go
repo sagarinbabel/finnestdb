@@ -1271,7 +1271,7 @@ func (d *DB) GetDeckDetails(userID, deckID int64) (*DeckDetails, error) {
 	defer rows.Close()
 
 	details.Lemmas = []DeckLemma{}
-	idx := map[LemmaKey]int{}
+	keys := make([]LemmaKey, 0)
 	for rows.Next() {
 		var item DeckLemma
 		var formsCSV string
@@ -1283,11 +1283,20 @@ func (d *DB) GetDeckDetails(userID, deckID int64) (*DeckDetails, error) {
 			sort.Strings(item.Forms)
 		}
 		details.TotalTokens += item.Count
-		idx[LemmaKey{Lemma: item.Lemma, POS: item.POS}] = len(details.Lemmas)
+		keys = append(keys, LemmaKey{Lemma: item.Lemma, POS: item.POS})
 		details.Lemmas = append(details.Lemmas, item)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
+	}
+
+	if glosses := d.BatchLookupGlosses(keys, details.Lang); len(glosses) > 0 {
+		for i := range details.Lemmas {
+			key := LemmaKey{Lemma: details.Lemmas[i].Lemma, POS: details.Lemmas[i].POS}
+			if gloss := glosses[key]; gloss != "" {
+				details.Lemmas[i].Gloss = gloss
+			}
+		}
 	}
 
 	return &details, nil
@@ -1709,6 +1718,11 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error)
 			return nil, nil
 		}
 		return nil, err
+	}
+	if glosses := d.BatchLookupGlosses([]LemmaKey{{Lemma: card.Lemma, POS: card.POS}}, card.Lang); len(glosses) > 0 {
+		if gloss := glosses[LemmaKey{Lemma: card.Lemma, POS: card.POS}]; gloss != "" {
+			card.Gloss = gloss
+		}
 	}
 
 	countRows, err := d.db.Query(
