@@ -849,6 +849,83 @@ func TestBatchLookupForms_StrongDictResistsDisagreeingFST(t *testing.T) {
 	}
 }
 
+func TestBatchLookupForms_SourcePriorityBeatsLowerPriorityFSTSupport(t *testing.T) {
+	// Regression guard for the Ekilex-vs-kaikki ranker boundary: once
+	// candidates are equal on case/POS sanity, row-level source priority is
+	// the dictionary authority signal. FST agreement with the lower-priority
+	// row can enrich a same (lemma, POS), but should not override a stronger
+	// source on a different lemma.
+	installTestLemmatizerTable(t, "ET", map[string][]lemmatizer.Analysis{
+		"mustris": {
+			{Lemma: "mustri", UPOS: "NOUN", GrammarLabel: "inessive", Number: "Sing", Raw: "generated-table"},
+		},
+	})
+	db := newTestDB(t)
+	seedFormsWithSource(t, db, []struct {
+		form, lemma, pos, lang, source string
+		priority                       int
+	}{
+		{"mustris", "muster", "NOUN", "ET", "ekilex", 20},
+		{"mustris", "mustri", "NOUN", "ET", "kaikki", 10},
+	})
+
+	got := db.BatchLookupForms([]string{"mustris"}, "ET", "custom")
+
+	r, ok := got["mustris"]
+	if !ok {
+		t.Fatal("mustris: expected resolution")
+	}
+	if r.Lemma != "muster" || r.POS != "NOUN" {
+		t.Fatalf("mustris: got {%q %q}, want {muster NOUN}", r.Lemma, r.POS)
+	}
+	if r.Source != "dict" {
+		t.Errorf("mustris: source got %q, want dict", r.Source)
+	}
+	if r.Feats != "" {
+		t.Errorf("mustris: feats got %q, want empty; losing FST-backed candidate must not enrich winner", r.Feats)
+	}
+}
+
+func TestBatchLookupForms_SourcePriorityBeatsLowerPriorityMorphology(t *testing.T) {
+	// Same source-priority boundary as the FST-support regression, but without
+	// any FST candidate: a lower-priority row's FEATS should not outrank a
+	// higher-priority source once case/POS sanity ties.
+	t.Setenv("LEMMATIZER_TABLES_DIR", t.TempDir())
+	db := newTestDB(t)
+	rows := []struct {
+		form, lemma, pos, lang, source, feats string
+		priority                              int
+	}{
+		{"x", "lemma-a", "NOUN", "ET", "ekilex", "", 20},
+		{"x", "lemma-b", "NOUN", "ET", "kaikki", "Case=Ine|Number=Sing", 10},
+	}
+	for _, r := range rows {
+		if _, err := db.db.Exec(
+			`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			r.form, r.lemma, r.pos, r.lang, r.source, r.priority, r.feats,
+		); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+
+	got := db.BatchLookupForms([]string{"x"}, "ET", "custom")
+
+	r, ok := got["x"]
+	if !ok {
+		t.Fatal("x: expected resolution")
+	}
+	if r.Lemma != "lemma-a" || r.POS != "NOUN" {
+		t.Fatalf("x: got {%q %q}, want {lemma-a NOUN}", r.Lemma, r.POS)
+	}
+	if r.Feats != "" {
+		t.Errorf("x: feats got %q, want empty from higher-priority Ekilex row", r.Feats)
+	}
+	if r.Source != "dict" {
+		t.Errorf("x: source got %q, want dict", r.Source)
+	}
+}
+
 func TestBatchLookupForms_FSTOnlyPropagatesFeats(t *testing.T) {
 	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
 		"olen": {
@@ -1755,10 +1832,10 @@ func TestIsBadDictLemma(t *testing.T) {
 	// Same lemmas on non-trap surfaces must NOT be blocked.
 	misses := []struct{ surface, lemma string }{
 		{"varsi", "varsi"},     // bare lemma lookup
-		{"vuo", "vuo"},          // bare lemma lookup
-		{"siittää", "siittää"},  // bare verb lookup
-		{"muuttaa", "muuttaa"},  // bare verb lookup
-		{"paljo", "paljo"},      // bare lemma lookup
+		{"vuo", "vuo"},         // bare lemma lookup
+		{"siittää", "siittää"}, // bare verb lookup
+		{"muuttaa", "muuttaa"}, // bare verb lookup
+		{"paljo", "paljo"},     // bare lemma lookup
 	}
 	for _, m := range misses {
 		if isBadDictLemma("FI", m.surface, m.lemma) {

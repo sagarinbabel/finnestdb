@@ -509,14 +509,14 @@ func pickBestResolutionCandidate(surface string, candidates []resolutionCandidat
 		if fstBeatsWeakDict(cj, ci) {
 			return false
 		}
+		if ci.sourcePriority != cj.sourcePriority {
+			return ci.sourcePriority > cj.sourcePriority
+		}
 		if supportScore(ci) != supportScore(cj) {
 			return supportScore(ci) > supportScore(cj)
 		}
 		if morphologyScore(ci.res) != morphologyScore(cj.res) {
 			return morphologyScore(ci.res) > morphologyScore(cj.res)
-		}
-		if ci.sourcePriority != cj.sourcePriority {
-			return ci.sourcePriority > cj.sourcePriority
 		}
 		if ci.fstOrder != cj.fstOrder {
 			return ci.fstOrder < cj.fstOrder
