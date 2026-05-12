@@ -25,7 +25,7 @@ also weren't tagged `NUM`.
 
 The user asked us to extend the same treatment to Finnish before any
 fix, since the Rust tokenizer is shared. Confirmation:
-[`parser/src/lib.rs:308`](../../parser/src/lib.rs:308) takes a `_lang`
+[`parser/src/lib.rs`](../../parser/src/lib.rs) takes a `_lang`
 parameter that is unused (note the underscore). All four parsers
 (`basic`, `custom`, `omorfi`, `estnltk`) tokenize through the same code,
 so Finnish has the identical bug for `65-vuotias`, `1990-luvulla`,

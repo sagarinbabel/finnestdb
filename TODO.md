@@ -1,6 +1,6 @@
 # FinEstDB TODO — Status & Action Items
 
-_Current as of 2026-05-07 PM — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
+_Current as of 2026-05-12 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
 
 ## Purpose
 
@@ -38,7 +38,9 @@ Snapshot of capabilities currently shipped on main, organized by area.
 - FST as parallel scorer in dict step 1 ([PR #127](https://github.com/sagarinbabel/finnestdb/pull/127))
 - FST candidate-merge FEATS enrichment ([PR #129](https://github.com/sagarinbabel/finnestdb/pull/129))
 - Per-attribute FEATS eval ([PR #130](https://github.com/sagarinbabel/finnestdb/pull/130))
-- Multi-source dictionary with row-level provenance and source priority ranker
+- Parser behavior stamp `parser-v2` / `2026.05.12a`
+- Lexical overlays, bad-lemma blocklists, MA/A-infinitive biasing, and low-value dict-alternative suppression from the 2026-05-12 parser-quality run
+- Multi-source dictionary with row-level provenance and source-priority-first ranker ([Decision 21](docs/DECISIONS.md))
 - Multi-lemma surface forms (`forms` PK = `(form, lang, lemma, pos)`)
 - Possessive suffix stripping (FI), compound splitting (FI/ET), case-suffix matcher (FI/ET)
 - Case-suffix grammar-label stopgap (`attachCaseLabelIfStemMatches`) — transitional
@@ -63,6 +65,7 @@ Snapshot of capabilities currently shipped on main, organized by area.
 - Real password auth (Argon2id, sliding sessions)
 - Role-aware: anonymous / user / admin
 - Routes: landing, sign-in, Inspect, Decks, Review, admin workbench, admin parse-feedback queue
+- Inspect/workbench `.txt`, `.md`, and `.epub` upload extraction via `POST /api/import/extract`
 - Deck CRUD, sentence/occurrence persistence, multi-lemma deck cards
 - Known-word import + delete + list (`POST /api/known-words`)
 - Parse feedback submission + admin triage (status only — no lexical writeback yet)
@@ -175,8 +178,9 @@ Snapshot. Refresh by running:
 gh pr list --state open --json number,title,headRefName --jq '.[] | "- #\(.number) `\(.headRefName)` — \(.title)"'
 ```
 
-Currently none open as of 2026-05-09 01:29 +0300. Recent cleanup PRs
-#165 and #166 have merged into `origin/main`.
+Currently open as of 2026-05-12:
+
+- [#182](https://github.com/sagarinbabel/finnestdb/pull/182) `codex/preserve-ekilex-translation-order` — draft: preserve Ekilex translation order.
 
 ## Research Goals
 
@@ -610,7 +614,7 @@ New work surfaced by the review (not yet broken into sequenced PRs):
 
 Already on this list and just confirmed by the review:
 
-- EPUB and file upload support — extend to anonymous parse, not just `POST /api/import/decks`
+- Anonymous parse should reuse the existing `.txt` / `.md` / `.epub` extraction path; signed-in Inspect/workbench upload support is already in main via `POST /api/import/extract`
 - FSRS migration — the public review surface should not ship the hand-rolled scheduler
 - Comprehension prediction per deck — wireframe is in `docs/USER_FLOWS.md` §8
 - Rate limiting on `/api/parse` — gated on the anonymous-parse path

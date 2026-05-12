@@ -1,8 +1,9 @@
 # Documentation Index
 
-_Created 2026-05-07 PM. Single map of every doc in this repo, organized
-by purpose. Designed to be cold-readable: any reader (human or LLM) should
-be able to find the right doc for their question in under a minute._
+_Created 2026-05-07 PM; refreshed 2026-05-12. Single map of every doc in
+this repo, organized by purpose. Designed to be cold-readable: any reader
+(human or LLM) should be able to find the right doc for their question in
+under a minute._
 
 If you're new to the repo, read in this order: [`../README.md`](../README.md) →
 [`../TODO.md`](../TODO.md) → [`../ARCHITECTURE.md`](../ARCHITECTURE.md) →
@@ -26,7 +27,7 @@ descriptions when two docs sound similar.
 - **System architecture:** [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (current), [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) (lexical-layer detail), [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) (offline corpus pipeline)
 - **Product framing:** [`docs/FEATURES.md`](FEATURES.md) (user-facing), [`docs/DESIGN_REVIEW.md`](DESIGN_REVIEW.md) (design folder audit + TODO)
 - **What's done / what's next:** [`../TODO.md`](../TODO.md) (the only doc you need for status)
-- **Why we made choices:** [`docs/DECISIONS.md`](DECISIONS.md) (latest-first, 19 decisions)
+- **Why we made choices:** [`docs/DECISIONS.md`](DECISIONS.md) (latest-first, 21 decisions)
 - **What changed when:** [`docs/CHANGELOG.md`](CHANGELOG.md) (latest-first, cross-linked to DECISIONS)
 - **Measured parser quality:** [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) (chronological log)
 - **ML roadmap:** [`docs/ML_IDEAS.md`](ML_IDEAS.md)
@@ -106,7 +107,7 @@ descriptions when two docs sound similar.
   main / What's not in main yet / Open PRs / Research Goals / Notes
   & historical**. The first thing to read if you want to do work.
 - [`docs/DECISIONS.md`](DECISIONS.md) — decisions log, latest-first.
-  18 entries with date, context, decision, reasoning, trade-off,
+  21 entries with date, context, decision, reasoning, trade-off,
   how-to-revisit. Cross-linked to CHANGELOG where the same event
   appears in both.
 - [`docs/CHANGELOG.md`](CHANGELOG.md) — documentation changelog,
