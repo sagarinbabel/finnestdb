@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"finnestdb/internal/auth"
 	"finnestdb/internal/parsecore"
@@ -724,10 +725,22 @@ func filterLowValueAlternatives(dict map[string][]store.FormResolution, glosses 
 	for form, candidates := range dict {
 		hasGlossedCandidate := false
 		hasLexicalCandidate := false
+		hasEnglishGlossCandidate := false
+		hasNonXEnglishCandidate := false
+		hasLowercaseUsefulCandidate := false
 		for _, c := range candidates {
 			gloss := glosses[store.LemmaKey{Lemma: c.Lemma, POS: c.POS}]
 			if gloss != "" {
 				hasGlossedCandidate = true
+				if !isDefinitionFallbackGloss(gloss) {
+					hasEnglishGlossCandidate = true
+					if c.POS != "X" {
+						hasNonXEnglishCandidate = true
+					}
+					if startsLower(c.Lemma) {
+						hasLowercaseUsefulCandidate = true
+					}
+				}
 				if !isInflectionalFormCandidate(form, c, gloss) {
 					hasLexicalCandidate = true
 				}
@@ -744,6 +757,15 @@ func filterLowValueAlternatives(dict map[string][]store.FormResolution, glosses 
 			if gloss == "" {
 				continue
 			}
+			if hasEnglishGlossCandidate && isDefinitionFallbackGloss(gloss) {
+				continue
+			}
+			if hasNonXEnglishCandidate && c.POS == "X" {
+				continue
+			}
+			if hasLowercaseUsefulCandidate && strings.EqualFold(strings.TrimSpace(form), strings.TrimSpace(c.Lemma)) && startsUpper(c.Lemma) {
+				continue
+			}
 			if hasLexicalCandidate && isInflectionalFormCandidate(form, c, gloss) {
 				continue
 			}
@@ -754,6 +776,24 @@ func filterLowValueAlternatives(dict map[string][]store.FormResolution, glosses 
 		}
 	}
 	return out
+}
+
+func isDefinitionFallbackGloss(gloss string) bool {
+	return strings.HasPrefix(strings.TrimSpace(gloss), "[ET]")
+}
+
+func startsLower(s string) bool {
+	for _, r := range s {
+		return unicode.IsLower(r)
+	}
+	return false
+}
+
+func startsUpper(s string) bool {
+	for _, r := range s {
+		return unicode.IsUpper(r)
+	}
+	return false
 }
 
 func isInflectionalFormCandidate(form string, candidate store.FormResolution, gloss string) bool {
@@ -937,8 +977,10 @@ func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][
 		}
 		if pe, ok := parserIndex[key]; ok {
 			entry.Gloss = pe.Gloss
-			entry.GrammarLabel = pe.GrammarLabel
-			entry.Feats = pe.Feats
+			if hasSingleNormalizedForm(e.forms) {
+				entry.GrammarLabel = pe.GrammarLabel
+				entry.Feats = pe.Feats
+			}
 			if pe.ExampleSentence != "" {
 				entry.ExampleSentence = pe.ExampleSentence
 			}
@@ -964,6 +1006,21 @@ func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][
 		return out[i].POS < out[j].POS
 	})
 	return out
+}
+
+func hasSingleNormalizedForm(forms []string) bool {
+	seen := map[string]struct{}{}
+	for _, form := range forms {
+		normalized := strings.ToLower(strings.TrimSpace(form))
+		if normalized == "" {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		if len(seen) > 1 {
+			return false
+		}
+	}
+	return len(seen) == 1
 }
 
 func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *AuthContext) {

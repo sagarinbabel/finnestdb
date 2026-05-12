@@ -376,8 +376,9 @@ func enrichWords(sentences []SentenceResult, glosses map[store.LemmaKey]string) 
 	counts := make(map[key]int)
 	formSets := make(map[key]map[string]struct{})
 	firstSentence := make(map[key]string)
-	grammarLabels := make(map[key]string)
-	feats := make(map[key]string)
+	grammarLabelSets := make(map[key]map[string]struct{})
+	featsSets := make(map[key]map[string]struct{})
+	normalizedFormSets := make(map[key]map[string]struct{})
 
 	for _, sent := range sentences {
 		for _, token := range sent.Tokens {
@@ -390,18 +391,24 @@ func enrichWords(sentences []SentenceResult, glosses map[store.LemmaKey]string) 
 				formSets[k] = make(map[string]struct{})
 			}
 			formSets[k][token.Form] = struct{}{}
+			if normalizedFormSets[k] == nil {
+				normalizedFormSets[k] = make(map[string]struct{})
+			}
+			normalizedFormSets[k][strings.ToLower(token.Form)] = struct{}{}
 			if _, seen := firstSentence[k]; !seen && sent.Text != "" {
 				firstSentence[k] = sent.Text
 			}
 			if token.GrammarLabel != "" {
-				if _, seen := grammarLabels[k]; !seen {
-					grammarLabels[k] = token.GrammarLabel
+				if grammarLabelSets[k] == nil {
+					grammarLabelSets[k] = make(map[string]struct{})
 				}
+				grammarLabelSets[k][token.GrammarLabel] = struct{}{}
 			}
 			if token.Feats != "" {
-				if _, seen := feats[k]; !seen {
-					feats[k] = token.Feats
+				if featsSets[k] == nil {
+					featsSets[k] = make(map[string]struct{})
 				}
+				featsSets[k][token.Feats] = struct{}{}
 			}
 		}
 	}
@@ -414,14 +421,15 @@ func enrichWords(sentences []SentenceResult, glosses map[store.LemmaKey]string) 
 		}
 		sort.Strings(forms)
 		lk := store.LemmaKey{Lemma: k.lemma, POS: k.pos}
+		grammarLabel, feats := aggregateMorphologyForWord(k.pos, normalizedFormSets[k], grammarLabelSets[k], featsSets[k])
 		words = append(words, WordEntry{
 			Lemma:           k.lemma,
 			POS:             k.pos,
 			Forms:           forms,
 			Count:           count,
 			Gloss:           glosses[lk],
-			GrammarLabel:    grammarLabels[k],
-			Feats:           feats[k],
+			GrammarLabel:    grammarLabel,
+			Feats:           feats,
 			ExampleSentence: firstSentence[k],
 		})
 	}
@@ -433,6 +441,32 @@ func enrichWords(sentences []SentenceResult, glosses map[store.LemmaKey]string) 
 		return words[i].Lemma < words[j].Lemma
 	})
 	return words
+}
+
+func aggregateMorphologyForWord(pos string, normalizedForms, grammarLabels, feats map[string]struct{}) (string, string) {
+	if len(normalizedForms) != 1 || !learnerMorphologyPOS(pos) {
+		return "", ""
+	}
+	return singleSetValue(grammarLabels), singleSetValue(feats)
+}
+
+func learnerMorphologyPOS(pos string) bool {
+	switch pos {
+	case "ADJ", "NOUN", "NUM", "PRON", "PROPN":
+		return true
+	default:
+		return false
+	}
+}
+
+func singleSetValue(values map[string]struct{}) string {
+	if len(values) != 1 {
+		return ""
+	}
+	for value := range values {
+		return value
+	}
+	return ""
 }
 
 func countTokens(words []WordEntry) int {

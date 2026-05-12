@@ -60,6 +60,46 @@ committed run.
 
 ## Entries
 
+### 2026-05-12a — Little Prince learner-row cleanup
+
+**Parser stamp**: `2026.05.12a`
+**Scope**: `internal/parsecore/`, `internal/api/`, `internal/store/`
+
+Fixed a gap between high token coverage and learner-visible row
+quality on the Estonian Little Prince browser parse. The parser had
+resolved nearly every token, but aggregate rows could still display
+misleading grammar labels and low-value dictionary alternatives.
+
+**What changed:**
+
+1. Aggregate grammar labels now survive only when every attached form
+   has one normalized form and learner-facing POS is appropriate for
+   row-level morphology. This suppresses misleading labels such as
+   `olema` showing an illative badge.
+
+2. High-impact Estonian learner gloss overrides correct known bad
+   primaries for `see/PRON` and `väike/ADJ` while preserving custom
+   gloss rows.
+
+3. Inspect expansion and low-value alternative filtering now avoid
+   copying grammar onto mixed-form expansions, suppress `[ET]`
+   fallback gloss alternatives when English glosses are available,
+   demote `X` alternatives, and remove uppercase acronym homonyms
+   such as `TA/NOUN` when a useful lowercase analysis exists.
+
+4. Deck details and review cards post-process glosses through the
+   same lookup path as parse results so the learner surfaces stay in
+   sync.
+
+**Verification**:
+
+- `go test ./...`
+- Little Prince ET API smoke on `localdata/et-corpus/epub/per-book/lilprince.txt`:
+  `11364` resolved tokens, `185` unresolved tokens, `3660` punctuation
+  tokens. Targeted bad rows (`TA/NOUN`, `Ta/X`, `ei INTJ/NOUN/X`) no
+  longer appeared; `olema`, `see`, and `väike` no longer carried the
+  reported bad learner display.
+
 ### 2026-05-12a — Analyser-quality, alternative filtering, and ranker fixes (PRs #183/#185/#187)
 
 **PRs**: [#183](https://github.com/sagarinbabel/finnestdb/pull/183), [#185](https://github.com/sagarinbabel/finnestdb/pull/185), [#187](https://github.com/sagarinbabel/finnestdb/pull/187)

@@ -1968,6 +1968,55 @@ func TestBatchLookupGlosses_LowerSenseIdxWinsWithinSameSource(t *testing.T) {
 	}
 }
 
+func TestBatchLookupGlosses_ETLearnerOverridesHighImpactBadPrimaries(t *testing.T) {
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                        int
+	}{
+		{"see", "PRON", "here; it; this", "ET", "ekilex", 20},
+		{"väike", "ADJ", "hardly sufficient; small", "ET", "ekilex", 20},
+	})
+	seedTranslations(t, db, []struct {
+		lemma, pos, lang, target, text, source string
+		senseIdx                               int
+	}{
+		{"see", "PRON", "ET", "EN", "here", "ekilex", 0},
+		{"see", "PRON", "ET", "EN", "this", "ekilex", 1},
+		{"väike", "ADJ", "ET", "EN", "hardly sufficient", "ekilex", 0},
+		{"väike", "ADJ", "ET", "EN", "small", "ekilex", 1},
+	})
+
+	got := db.BatchLookupGlosses([]LemmaKey{{"see", "PRON"}, {"väike", "ADJ"}}, "ET")
+	if got[LemmaKey{"see", "PRON"}] != "this; that" {
+		t.Errorf("see gloss=%q want this; that", got[LemmaKey{"see", "PRON"}])
+	}
+	if got[LemmaKey{"väike", "ADJ"}] != "small; little" {
+		t.Errorf("väike gloss=%q want small; little", got[LemmaKey{"väike", "ADJ"}])
+	}
+}
+
+func TestBatchLookupGlosses_ETLearnerOverridesDoNotBeatCustomGlosses(t *testing.T) {
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                        int
+	}{
+		{"see", "PRON", "domain-specific see", "ET", "custom", 100},
+	})
+	seedTranslations(t, db, []struct {
+		lemma, pos, lang, target, text, source string
+		senseIdx                               int
+	}{
+		{"see", "PRON", "ET", "EN", "here", "ekilex", 0},
+	})
+
+	got := db.BatchLookupGlosses([]LemmaKey{{"see", "PRON"}}, "ET")
+	if got[LemmaKey{"see", "PRON"}] != "domain-specific see" {
+		t.Errorf("custom gloss=%q want domain-specific see", got[LemmaKey{"see", "PRON"}])
+	}
+}
+
 // --- Lexical-overlay short-circuit tests ---
 
 // TestBatchLookupForms_LexOverlayBeatsDictTrap is the P1 regression for

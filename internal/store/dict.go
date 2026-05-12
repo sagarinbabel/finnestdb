@@ -1267,19 +1267,24 @@ func (d *DB) BatchLookupGlosses(lemmas []LemmaKey, lang string) map[LemmaKey]str
 	// matching translation row for the current lemmas.source); COALESCE
 	// then falls through to lemmas.gloss, then to '' if neither exists.
 	stmt, err := d.db.Prepare(`
-		SELECT COALESCE(
-		  (SELECT t.text
-		   FROM translations t
-		   JOIN lemmas l ON l.lemma = t.lemma
-		                AND l.pos   = t.pos
-		                AND l.lang  = t.lang
-		                AND l.source = t.source
+		WITH lemma_row AS (
+		  SELECT gloss, source
+		    FROM lemmas
+		   WHERE lemma = ? AND pos = ? AND lang = ?
+		),
+		primary_translation AS (
+		  SELECT t.text, t.source
+		    FROM translations t
+		    JOIN lemmas l ON l.lemma = t.lemma
+		                 AND l.pos   = t.pos
+		                 AND l.lang  = t.lang
+		                 AND l.source = t.source
 		   WHERE t.lemma = ? AND t.pos = ? AND t.lang = ? AND t.target_lang = 'EN'
 		   ORDER BY l.source_priority DESC, t.sense_idx ASC
-		   LIMIT 1),
-		  (SELECT gloss FROM lemmas WHERE lemma = ? AND pos = ? AND lang = ?),
-		  ''
-		)`,
+		   LIMIT 1
+		)
+		SELECT COALESCE((SELECT text FROM primary_translation), (SELECT gloss FROM lemma_row), ''),
+		       COALESCE((SELECT source FROM primary_translation), (SELECT source FROM lemma_row), '')`,
 	)
 	if err != nil {
 		return result
@@ -1288,11 +1293,31 @@ func (d *DB) BatchLookupGlosses(lemmas []LemmaKey, lang string) map[LemmaKey]str
 
 	for _, k := range lemmas {
 		var gloss string
-		if err := stmt.QueryRow(k.Lemma, k.POS, lang, k.Lemma, k.POS, lang).Scan(&gloss); err == nil && gloss != "" {
+		var source string
+		if err := stmt.QueryRow(k.Lemma, k.POS, lang, k.Lemma, k.POS, lang).Scan(&gloss, &source); err == nil && gloss != "" {
+			if override, ok := learnerGlossOverride(lang, k, source); ok {
+				gloss = override
+			}
 			result[k] = gloss
 		}
 	}
 	return result
+}
+
+var etLearnerGlossOverrides = map[LemmaKey]string{
+	{Lemma: "see", POS: "PRON"}:  "this; that",
+	{Lemma: "väike", POS: "ADJ"}: "small; little",
+}
+
+func learnerGlossOverride(lang string, key LemmaKey, source string) (string, bool) {
+	if strings.HasPrefix(source, "custom") {
+		return "", false
+	}
+	if lang == "ET" {
+		override, ok := etLearnerGlossOverrides[key]
+		return override, ok
+	}
+	return "", false
 }
 
 // Sense is one ranked gloss reading for a (lemma, pos) pair. Senses
