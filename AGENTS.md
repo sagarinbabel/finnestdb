@@ -52,13 +52,28 @@ All Go code (`evalparsers.go`, `enrichgoldfeats`, `doctor`) and shell scripts
 
 ### In worktrees
 
-The `.venv/` lives in the main repo root, not in worktrees. Symlink it in:
+The `.venv/` and `finnestdb.db` both live in the **main repo root**, not in
+worktrees. Always symlink them in — never copy or recreate them in a
+worktree:
 
 ```bash
 ln -s /path/to/finnestdb/.venv .venv
+ln -s /path/to/finnestdb/finnestdb.db finnestdb.db
 ```
 
-Same for `finnestdb.db` if the worktree needs the database.
+Why this matters for the DB:
+
+- `finnestdb.db` is 5+ GB. Copying wastes disk and goes stale fast.
+- SQLite runs in WAL mode, so its `-wal` and `-shm` sidecars live next to
+  the resolved (real) path. Multiple processes (main repo + worktrees +
+  tests) can read/write through the symlink concurrently without
+  corruption.
+- If you find a small (~100 KB) `finnestdb.db` sitting in a worktree, it
+  is a stub auto-created by some entry point that opened the path before
+  the symlink was set up. Delete it and create the symlink. Don't commit
+  it (`finnestdb.db` is gitignored anyway).
+- The Go test suite uses `t.TempDir()` for its own ephemeral SQLite
+  databases, so it does **not** touch the symlinked main DB.
 
 ### Do not
 

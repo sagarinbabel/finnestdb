@@ -203,7 +203,7 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 	}
 }
 
-func TestHandleParseCreatesParseSessionForAuthenticatedUser(t *testing.T) {
+func TestHandleParseDoesNotPersistForAuthenticatedUser(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
 		if parser == "" {
@@ -238,19 +238,11 @@ func TestHandleParseCreatesParseSessionForAuthenticatedUser(t *testing.T) {
 	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if resp.ParseID == nil || *resp.ParseID == 0 {
-		t.Fatalf("parse_id=%v want non-nil", resp.ParseID)
-	}
-
-	session, err := api.store.GetParseSession(*resp.ParseID)
-	if err != nil {
-		t.Fatalf("GetParseSession: %v", err)
-	}
-	if session.UserID == nil || *session.UserID == 0 {
-		t.Fatalf("expected parse session user_id to be recorded, got %+v", session.UserID)
-	}
-	if session.SourceText != "kissa" {
-		t.Fatalf("source_text=%q want kissa", session.SourceText)
+	// /api/parse is no longer persisting — feedback flow lazily creates the
+	// parse_session at submit time, deck save creates one too. A bare parse
+	// press should leave parse_sessions untouched.
+	if resp.ParseID != nil {
+		t.Fatalf("expected parse_id to be nil (parse is ephemeral), got %v", resp.ParseID)
 	}
 }
 
@@ -683,7 +675,7 @@ func TestExpandParsedWordsUsesPreloadedGlosses(t *testing.T) {
 func TestHandleParseMapsAnalyzerValidationErrorsToBadRequest(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, _, _, _ string) (*parsecore.ParseResult, error) {
-		return nil, fmt.Errorf("text exceeds 300000 character limit")
+		return nil, fmt.Errorf("text exceeds 1500000 character limit")
 	}
 	mux := newTestMux(t, api)
 
@@ -695,7 +687,7 @@ func TestHandleParseMapsAnalyzerValidationErrorsToBadRequest(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d want %d", rec.Code, http.StatusBadRequest)
 	}
-	if !strings.Contains(rec.Body.String(), "text exceeds 300000 character limit") {
+	if !strings.Contains(rec.Body.String(), "text exceeds 1500000 character limit") {
 		t.Fatalf("body=%q missing analyzer error", rec.Body.String())
 	}
 }
@@ -2323,6 +2315,92 @@ func TestParseFeedbackRejectsUnknownParseSession(t *testing.T) {
 	}
 }
 
+func TestParseFeedbackRejectsInlinePathWithoutSourceText(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "inline-empty@example.com")
+
+	// No parse_id AND no source_text → the handler can't create or attach
+	// a session, so it 400s with a clear message.
+	req := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(`{
+		"lang": "FI",
+		"parser": "custom",
+		"surface": "kissa",
+		"proposed_lemma": "kissa",
+		"proposed_pos": "NOUN"
+	}`))
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "source_text") {
+		t.Fatalf("expected error mentioning source_text, got %q", rec.Body.String())
+	}
+}
+
+func TestParseFeedbackLazilyCreatesParseSession(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin-lazy@example.com")
+
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	userCookies := loginAndReturnCookies(t, mux, "inline-lazy@example.com")
+	adminCookies := loginAndReturnCookies(t, mux, "admin-lazy@example.com")
+
+	body := `{
+		"lang": "FI",
+		"parser": "custom",
+		"source_text": "kissa juoksee",
+		"total_tokens": 2,
+		"unique_lemma_count": 2,
+		"surface": "kissa",
+		"original_lemma": "kissa",
+		"original_pos": "NOUN",
+		"proposed_lemma": "kissa",
+		"proposed_pos": "PROPN"
+	}`
+	req := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(body))
+	for _, c := range userCookies {
+		req.AddCookie(c)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
+	}
+
+	// Pull the feedback row via admin listing; the lazily-created session
+	// is referenced by parse_session_id. GetParseSession exposes its
+	// source_text so we can verify the inline text landed.
+	listReq := httptest.NewRequest(http.MethodGet, "/api/admin/parse-feedback?status=submitted", nil)
+	for _, c := range adminCookies {
+		listReq.AddCookie(c)
+	}
+	listRec := httptest.NewRecorder()
+	mux.ServeHTTP(listRec, listReq)
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("admin list status=%d body=%q", listRec.Code, listRec.Body.String())
+	}
+	var listResp ParseFeedbackListResponse
+	if err := json.NewDecoder(bytes.NewReader(listRec.Body.Bytes())).Decode(&listResp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(listResp.Feedback) != 1 {
+		t.Fatalf("feedback count = %d, want 1", len(listResp.Feedback))
+	}
+	sess, err := api.store.GetParseSession(listResp.Feedback[0].ParseSessionID)
+	if err != nil {
+		t.Fatalf("GetParseSession: %v", err)
+	}
+	if sess.SourceText != "kissa juoksee" {
+		t.Fatalf("lazy session source_text=%q, want %q", sess.SourceText, "kissa juoksee")
+	}
+}
+
 func TestParseFeedbackSubmissionAndAdminReview(t *testing.T) {
 	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
 
@@ -2347,28 +2425,15 @@ func TestParseFeedbackSubmissionAndAdminReview(t *testing.T) {
 	userCookies := loginAndReturnCookies(t, mux, "user@example.com")
 	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
 
-	parseReq := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"FI","text":"kissa","parser":"custom"}`))
-	for _, cookie := range userCookies {
-		parseReq.AddCookie(cookie)
-	}
-	parseRec := httptest.NewRecorder()
-	mux.ServeHTTP(parseRec, parseReq)
-	if parseRec.Code != http.StatusOK {
-		t.Fatalf("parse status=%d want %d body=%q", parseRec.Code, http.StatusOK, parseRec.Body.String())
-	}
-
-	var parseResp ParseResponse
-	if err := json.NewDecoder(bytes.NewReader(parseRec.Body.Bytes())).Decode(&parseResp); err != nil {
-		t.Fatalf("decode parse response: %v", err)
-	}
-	if parseResp.ParseID == nil || *parseResp.ParseID == 0 {
-		t.Fatalf("parse_id=%v want non-nil", parseResp.ParseID)
-	}
-
+	// /api/parse no longer persists, so the user submits feedback with the
+	// inline source_text path. The handler lazily creates a parse_session
+	// from it.
 	feedbackReq := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(`{
-		"parse_id": `+fmt.Sprintf("%d", *parseResp.ParseID)+`,
 		"lang": "FI",
 		"parser": "custom",
+		"source_text": "kissa",
+		"total_tokens": 2,
+		"unique_lemma_count": 1,
 		"surface": "kissa",
 		"occurrence": 1,
 		"original_lemma": "kissa",
@@ -2397,9 +2462,21 @@ func TestParseFeedbackSubmissionAndAdminReview(t *testing.T) {
 		t.Fatalf("status=%q want submitted", feedbackResp.Status)
 	}
 
+	// Seed a parse_session belonging to the original user, then verify a
+	// different authenticated user can't submit feedback referencing that
+	// session by ID (legacy parse_id path is still ownership-checked).
+	userOwner, err := api.store.GetUserByEmail("user@example.com")
+	if err != nil || userOwner == nil {
+		t.Fatalf("lookup owner: %v", err)
+	}
+	seededID, err := api.store.CreateParseSession(&userOwner.ID, "FI", "custom", "kissa", 2, 1)
+	if err != nil {
+		t.Fatalf("seed parse session: %v", err)
+	}
+
 	otherUserCookies := loginAndReturnCookies(t, mux, "other@example.com")
 	forbiddenReq := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(`{
-		"parse_id": `+fmt.Sprintf("%d", *parseResp.ParseID)+`,
+		"parse_id": `+fmt.Sprintf("%d", seededID)+`,
 		"lang": "FI",
 		"parser": "custom",
 		"surface": "kissa",
