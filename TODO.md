@@ -104,7 +104,7 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 
 - [ ] **Highest-leverage study ordering across decks**. Extend new-card ranking to consider comprehension gain across all study-list decks, not just `token_count` within a single source; user weighting (high/medium/low) for deck priority. Cross-deck variant of marginal gain.
 
-- [ ] **EPUB and file upload support**. Add EPUB text extraction to import pipeline (parse XHTML content documents, strip markup, concatenate chapter text); accept file upload in `POST /api/import/decks` alongside raw text; support `.txt` and `.epub` initially.
+- [x] **EPUB and file upload support**. Server-side extraction lives in `internal/epub` (zip walk + XHTML strip, ported from `corpus_pipeline/cmd/extractcorpus/extract_epub.go`). The inspect and workbench forms now accept `.txt`, `.md`, and `.epub`; `.epub` uploads are POSTed to `POST /api/import/extract` which returns plain text that lands in the textarea so the existing parse → save-deck flow handles books. Plain text continues to be read client-side. Auth-gated, 16 MiB upload cap, 300k-char return cap matching the textarea limit. The TODO originally named `POST /api/import/decks`; an extract-only primitive was chosen because the user flow goes through the existing `/api/decks` save path — a one-shot deck-from-file endpoint can be layered on later if needed.
 
 - [ ] **External vocabulary import (Anki, CSV)**. Design `POST /api/import/known-words` accepting list of known lemma+POS pairs; support Anki deck export (`.apkg` or exported `.txt`); support plain CSV/TSV. Map imported surface forms to known lemmas via existing dictionary lookup + fallback chain.
 
@@ -430,9 +430,9 @@ for up-to-date open work.**
    - [ ] Test with various feature changes
 
 11. **EPUB and file upload support**
-   - [ ] Add EPUB text extraction to the import pipeline (parse XHTML content documents, strip markup, concatenate chapter text)
-   - [ ] Accept file upload in `/api/import/decks` alongside raw text paste
-   - [ ] Support plain-text (.txt) and EPUB (.epub) as initial formats
+   - [x] Add EPUB text extraction to the import pipeline (parse XHTML content documents, strip markup, concatenate chapter text) — `internal/epub/extract.go`
+   - [x] Accept file upload alongside raw text — `POST /api/import/extract` returns extracted text; inspect/workbench forms route `.epub` through it
+   - [x] Support plain-text (.txt) and EPUB (.epub) as initial formats — `.txt`/`.md` read client-side, `.epub` via server endpoint
    - Surasura already does EPUB extraction for Japanese/Chinese; same approach applies to Finnish/Estonian content
    - Lowers friction for book-based learners who currently have to paste text manually
 

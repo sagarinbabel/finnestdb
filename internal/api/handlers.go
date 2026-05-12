@@ -1696,6 +1696,9 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	// Decks
 	mux.HandleFunc("/api/decks", a.HandleDecks)
 	mux.HandleFunc("/api/decks/", a.HandleDeckByID)
+
+	// Import (file upload → plain text)
+	mux.HandleFunc("/api/import/extract", a.HandleImportExtract)
 	mux.HandleFunc("/api/known-words", a.HandleKnownWords)
 	mux.HandleFunc("/api/lemma-state", a.HandleLemmaState)
 	mux.HandleFunc("/api/lemma-states", a.HandleLemmaStates)

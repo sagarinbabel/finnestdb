@@ -226,7 +226,31 @@ const state = {
     adminFeedbackStatus: 'submitted',
     knownWordsLang:     'FI',
     knownWords:         [] as KnownLemma[],
+    loadedEpub:         null as LoadedEpub | null,
 };
+
+// EPUB held in app state between upload and parse press. The full text is the
+// concatenation of chapter texts (what /api/parse will receive). Chapters keep
+// individual bodies so per-chapter parsing in a follow-up PR can reuse them
+// without a second upload.
+interface LoadedEpubChapter {
+    title: string;
+    text: string;
+    char_count: number;
+}
+interface LoadedEpub {
+    filename: string;
+    fullText: string;
+    chapters: LoadedEpubChapter[];
+    totalChars: number;
+}
+interface ImportExtractResponse {
+    text: string;
+    filename: string;
+    char_count: number;
+    truncated?: boolean;
+    chapters?: LoadedEpubChapter[];
+}
 
 const NOUN_POS = ['NOUN', 'PROPN'];
 const VERB_POS = ['VERB', 'AUX'];
@@ -992,6 +1016,9 @@ interface ParseFormElements {
     charCount:   HTMLElement;
     warning:     HTMLElement;
     switchBtn:   HTMLButtonElement;
+    dropzone:    HTMLElement;
+    loadedPill:  HTMLElement;
+    chapterList: HTMLElement;
 }
 
 function getInspectEls(): ParseFormElements | null {
@@ -1001,8 +1028,11 @@ function getInspectEls(): ParseFormElements | null {
     const cc       = document.getElementById('inspect-char-count');
     const warn     = document.getElementById('inspect-lang-warning');
     const swBtn    = document.getElementById('inspect-lang-switch') as HTMLButtonElement | null;
-    if (!lang || !text || !file || !cc || !warn || !swBtn) return null;
-    return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn };
+    const dz       = document.getElementById('inspect-dropzone');
+    const pill     = document.getElementById('inspect-loaded');
+    const chap     = document.getElementById('inspect-chapters');
+    if (!lang || !text || !file || !cc || !warn || !swBtn || !dz || !pill || !chap) return null;
+    return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn, dropzone: dz, loadedPill: pill, chapterList: chap };
 }
 
 function getWorkbenchEls(): ParseFormElements | null {
@@ -1012,8 +1042,11 @@ function getWorkbenchEls(): ParseFormElements | null {
     const cc    = document.getElementById('char-count');
     const warn  = document.getElementById('lang-warning');
     const swBtn = document.getElementById('lang-switch-btn') as HTMLButtonElement | null;
-    if (!lang || !text || !file || !cc || !warn || !swBtn) return null;
-    return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn };
+    const dz    = document.getElementById('parse-dropzone');
+    const pill  = document.getElementById('parse-loaded');
+    const chap  = document.getElementById('parse-chapters');
+    if (!lang || !text || !file || !cc || !warn || !swBtn || !dz || !pill || !chap) return null;
+    return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn, dropzone: dz, loadedPill: pill, chapterList: chap };
 }
 
 function updateCharCount(els: ParseFormElements): void {
@@ -1023,8 +1056,16 @@ function updateCharCount(els: ParseFormElements): void {
     els.charCount.classList.toggle('char-count-over', count >= MAX_CHARS);
 }
 
+// Text the parser will actually see — the held EPUB when one is loaded, else
+// whatever's in the textarea. Used for lang detection and submit gating.
+function effectiveSourceText(els: ParseFormElements): string {
+    if (state.loadedEpub) return state.loadedEpub.fullText;
+    return els.text.value;
+}
+
 function updateLangWarning(els: ParseFormElements, gateInspectButton: boolean): void {
-    if (els.text.value.trim().length < LANG_DETECT_MIN_CHARS) {
+    const source = effectiveSourceText(els);
+    if (source.trim().length < LANG_DETECT_MIN_CHARS) {
         els.warning.classList.add('hidden');
         els.switchBtn.classList.add('hidden');
         if (gateInspectButton) gateSubmit('inspect-submit', false);
@@ -1032,7 +1073,7 @@ function updateLangWarning(els: ParseFormElements, gateInspectButton: boolean): 
         return;
     }
 
-    const ws = getLangWarningState(els.text.value, els.lang.value);
+    const ws = getLangWarningState(source, els.lang.value);
     if (ws.message) {
         els.warning.textContent = ws.message;
         els.warning.classList.remove('hidden');
@@ -1056,24 +1097,236 @@ function gateSubmit(id: string, disabled: boolean): void {
     if (btn) btn.disabled = disabled;
 }
 
+// Upload an EPUB to /api/import/extract and return its parsed structure, or
+// null on failure (caller surfaces toast).
+async function uploadEpubForExtraction(file: File): Promise<ImportExtractResponse | null> {
+    const form = new FormData();
+    form.append('file', file);
+    try {
+        const resp = await fetch('/api/import/extract', {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: form,
+        });
+        if (!resp.ok) {
+            const msg = await resp.text();
+            showToast(msg || 'Failed to extract EPUB.', 'error');
+            return null;
+        }
+        return await resp.json() as ImportExtractResponse;
+    } catch (err: any) {
+        showToast(err?.message || 'EPUB upload failed.', 'error');
+        return null;
+    }
+}
+
+// Render the "EPUB loaded" pill above the textarea. Caller is responsible for
+// the loadedEpub being non-null on state.
+function renderLoadedPill(els: ParseFormElements, gateInspectButton: boolean): void {
+    const epub = state.loadedEpub;
+    if (!epub) {
+        els.loadedPill.classList.add('hidden');
+        els.loadedPill.innerHTML = '';
+        return;
+    }
+    const chapWord = epub.chapters.length === 1 ? 'chapter' : 'chapters';
+    els.loadedPill.innerHTML = `
+        <span class="loaded-icon" aria-hidden="true">📖</span>
+        <div class="loaded-meta">
+            <span class="loaded-filename">${escapeHtml(epub.filename)}</span>
+            <span class="loaded-sub">${epub.chapters.length} ${chapWord} · ${epub.totalChars.toLocaleString()} characters · ready to parse</span>
+        </div>
+        <button type="button" class="loaded-clear" aria-label="Clear loaded EPUB">Clear</button>
+    `;
+    els.loadedPill.classList.remove('hidden');
+    const clearBtn = els.loadedPill.querySelector('.loaded-clear') as HTMLButtonElement | null;
+    clearBtn?.addEventListener('click', () => clearLoadedEpub(els, gateInspectButton));
+}
+
+// Build a single-line "first 75 chars [...] last 75 chars" preview for a
+// chapter. Whitespace is collapsed so line breaks in the source don't waste
+// space. Short chapters (≤150 chars after collapse) are shown in full.
+function chapterPreviewSnippet(text: string): string {
+    const collapsed = text.replace(/\s+/g, ' ').trim();
+    if (collapsed.length <= 150) return collapsed;
+    const head = collapsed.slice(0, 75).trim();
+    const tail = collapsed.slice(-75).trim();
+    return `${head} [...] ${tail}`;
+}
+
+// Render the loaded EPUB's chapter list in place of the textarea. The chapter
+// list is scrollable so a 100-chapter book doesn't blow the layout.
+function renderChapterList(els: ParseFormElements): void {
+    const epub = state.loadedEpub;
+    if (!epub) {
+        els.chapterList.classList.add('hidden');
+        els.chapterList.innerHTML = '';
+        return;
+    }
+    els.chapterList.innerHTML = epub.chapters.map(ch => {
+        const snippet = chapterPreviewSnippet(ch.text);
+        return `
+            <li data-tooltip-snippet="${escapeHtml(snippet)}">
+                <span class="chapter-title">${escapeHtml(ch.title)}</span>
+                <span class="chapter-size">${ch.char_count.toLocaleString()} chars</span>
+            </li>
+        `;
+    }).join('');
+    els.chapterList.classList.remove('hidden');
+}
+
+function hideChapterList(els: ParseFormElements): void {
+    els.chapterList.classList.add('hidden');
+    els.chapterList.innerHTML = '';
+}
+
+// Drop the held EPUB and re-enable normal textarea editing.
+function clearLoadedEpub(els: ParseFormElements, gateInspectButton: boolean): void {
+    state.loadedEpub = null;
+    renderLoadedPill(els, gateInspectButton);
+    hideChapterList(els);
+    els.text.classList.remove('hidden');
+    els.text.disabled = false;
+    els.text.placeholder = els.text.dataset.originalPlaceholder || '';
+    els.text.value = '';
+    updateCharCount(els);
+    updateLangWarning(els, gateInspectButton);
+}
+
+// Load a user-uploaded file. .epub is uploaded to the server, held in state,
+// and surfaced as a pill — the textarea is left empty and disabled until the
+// user clears it. .txt/.md is read client-side and pasted into the textarea
+// (existing behavior).
+async function loadFileIntoForm(
+    els: ParseFormElements,
+    file: File,
+    gateInspectButton: boolean,
+): Promise<void> {
+    const lower = file.name.toLowerCase();
+
+    if (lower.endsWith('.epub')) {
+        const data = await uploadEpubForExtraction(file);
+        if (!data) return;
+        const chapters = data.chapters ?? [];
+        state.loadedEpub = {
+            filename: data.filename || file.name,
+            fullText: data.text,
+            chapters: chapters,
+            totalChars: data.char_count || data.text.length,
+        };
+        if (data.truncated) {
+            showToast(`EPUB is large — kept the first ${MAX_CHARS.toLocaleString()} characters for analysis.`, 'info');
+        }
+        // Hide the textarea entirely while a book is held and show the
+        // chapter list in its place. The pill's Clear button restores both.
+        if (els.text.dataset.originalPlaceholder === undefined) {
+            els.text.dataset.originalPlaceholder = els.text.placeholder;
+        }
+        els.text.value = '';
+        els.text.disabled = true;
+        els.text.classList.add('hidden');
+        renderChapterList(els);
+        renderLoadedPill(els, gateInspectButton);
+        updateCharCount(els);
+        // Auto-detect language from the first chapter body.
+        const sniff = chapters[0]?.text || data.text.slice(0, 4000);
+        runLangDetectOnText(els, sniff, gateInspectButton, 'file');
+        return;
+    }
+
+    // .txt / .md and unknown extensions — read client-side and populate the
+    // textarea, dropping any previously held EPUB.
+    if (state.loadedEpub) clearLoadedEpub(els, gateInspectButton);
+    try {
+        const raw = await file.text();
+        els.text.value = raw.slice(0, MAX_CHARS);
+        updateCharCount(els);
+        maybeAutoSwitchFromIngest(els, gateInspectButton, 'file');
+    } catch (err: any) {
+        showToast(err?.message || 'Could not read file.', 'error');
+    }
+}
+
+// Wire drag/drop on the dropzone wrapper. preventDefault on dragover is
+// unconditional — gating it on a types.includes('Files') check is unreliable
+// because some browsers (notably Firefox) hide types during dragover for
+// security and the drop event then never fires. The only thing we actually
+// need to gate is whether to process the dropped payload, which we do by
+// looking at e.dataTransfer.files at drop time.
+function wireDragDrop(els: ParseFormElements, gateInspectButton: boolean): void {
+    const zone = els.dropzone;
+
+    const setDragging = (on: boolean) => zone.classList.toggle('drag-over', on);
+
+    zone.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        setDragging(true);
+    });
+    zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+        setDragging(true);
+    });
+    zone.addEventListener('dragleave', (e) => {
+        // Only clear when the cursor actually leaves the dropzone — not when
+        // it crosses an internal child boundary (textarea → CTA, etc.).
+        // relatedTarget is where the cursor is going next; if it's still
+        // inside the zone, ignore.
+        const related = e.relatedTarget as Node | null;
+        if (related && zone.contains(related)) return;
+        setDragging(false);
+    });
+    zone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        setDragging(false);
+        const file = e.dataTransfer?.files?.[0];
+        if (!file) return;
+        await loadFileIntoForm(els, file, gateInspectButton);
+    });
+}
+
+// Page-level safety net: when a user drops a file anywhere on the page, the
+// browser's default is to navigate to (or download) the file, losing the
+// session. Run in CAPTURE phase so preventDefault fires before anything along
+// the dispatch path can act on the default. Each dropzone's own bubble-phase
+// drop handler still runs and processes the dropped file.
+function preventStrayFileDrops(): void {
+    const stop = (e: DragEvent) => {
+        if (e.type === 'drop' && !e.dataTransfer?.files?.length) return;
+        e.preventDefault();
+    };
+    document.addEventListener('dragenter', stop, true);
+    document.addEventListener('dragover', stop, true);
+    document.addEventListener('drop', stop, true);
+}
+
 function maybeAutoSwitchFromIngest(
     els: ParseFormElements,
     gateInspectButton: boolean,
     source: 'paste' | 'file',
 ): void {
-    const text = els.text.value;
-    if (text.trim().length < LANG_DETECT_MIN_CHARS) {
+    runLangDetectOnText(els, els.text.value, gateInspectButton, source);
+}
+
+// Same auto-switch logic as maybeAutoSwitchFromIngest, but operates on text
+// supplied by the caller — used when an EPUB is held in state and the textarea
+// is empty.
+function runLangDetectOnText(
+    els: ParseFormElements,
+    sourceText: string,
+    gateInspectButton: boolean,
+    source: 'paste' | 'file',
+): void {
+    if (sourceText.trim().length < LANG_DETECT_MIN_CHARS) {
         updateLangWarning(els, gateInspectButton);
         return;
     }
-
-    const detected = detectLang(text);
+    const detected = detectLang(sourceText);
     if (detected !== 'unknown' && detected !== els.lang.value) {
         els.lang.value = detected;
         const sourceLabel = source === 'paste' ? 'pasted text' : 'file content';
         showToast(`Switched to ${detected === 'FI' ? 'Finnish' : 'Estonian'} — detected from ${sourceLabel}`, 'info');
     }
-
     updateLangWarning(els, gateInspectButton);
 }
 
@@ -1095,7 +1348,7 @@ function initInspectForm(): void {
     els.lang.addEventListener('change', () => updateLangWarning(els, true));
 
     els.switchBtn.addEventListener('click', () => {
-        const ws = getLangWarningState(els.text.value, els.lang.value);
+        const ws = getLangWarningState(effectiveSourceText(els), els.lang.value);
         if (ws.canSwitch) {
             els.lang.value = ws.detected;
             updateLangWarning(els, true);
@@ -1106,11 +1359,10 @@ function initInspectForm(): void {
         const input = e.target as HTMLInputElement;
         const file = input.files?.[0];
         if (!file) return;
-        const text = await file.text();
-        els.text.value = text.slice(0, MAX_CHARS);
-        updateCharCount(els);
-        maybeAutoSwitchFromIngest(els, true, 'file');
+        await loadFileIntoForm(els, file, true);
     });
+
+    wireDragDrop(els, true);
 
     const form = document.getElementById('inspect-form') as HTMLFormElement | null;
     form?.addEventListener('submit', async (e) => {
@@ -1139,7 +1391,7 @@ function initWorkbenchForm(): void {
     els.lang.addEventListener('change', () => updateLangWarning(els, false));
 
     els.switchBtn.addEventListener('click', () => {
-        const ws = getLangWarningState(els.text.value, els.lang.value);
+        const ws = getLangWarningState(effectiveSourceText(els), els.lang.value);
         if (ws.canSwitch) {
             els.lang.value = ws.detected;
             updateLangWarning(els, false);
@@ -1150,11 +1402,10 @@ function initWorkbenchForm(): void {
         const input = e.target as HTMLInputElement;
         const file = input.files?.[0];
         if (!file) return;
-        const text = await file.text();
-        els.text.value = text.slice(0, MAX_CHARS);
-        updateCharCount(els);
-        maybeAutoSwitchFromIngest(els, false, 'file');
+        await loadFileIntoForm(els, file, false);
     });
+
+    wireDragDrop(els, false);
 
     const handle = (mode: ParserMode, btnId: string) => async (e: Event) => {
         e.preventDefault();
@@ -1179,7 +1430,11 @@ async function runParse(
     context: ResultsContext,
     activeBtnId: string,
 ): Promise<void> {
-    const text = els.text.value.trim();
+    const epub = state.loadedEpub;
+    // When an EPUB is held, parse its full text (chapter parsing is wired but
+    // results currently render only at the book level — per-chapter results
+    // are a follow-up). Otherwise fall back to the textarea.
+    const text = (epub ? epub.fullText : els.text.value).trim();
     const lang = els.lang.value;
     const ws = getLangWarningState(text, lang);
 
@@ -1213,7 +1468,8 @@ async function runParse(
         }
         const data: ParseResponse = await resp.json();
         state.currentSourceText = text;
-        showResults(data, text.slice(0, 60), parserMode, context);
+        const preview = epub ? epub.filename : text.slice(0, 60);
+        showResults(data, preview, parserMode, context);
     } catch (err: any) {
         alert(`Parse failed: ${err.message}`);
     } finally {
@@ -2307,13 +2563,29 @@ function ensurePortalTip(): HTMLElement {
     return portalTip;
 }
 
+// Single-line plain `data-tooltip` and multi-line `data-tooltip-snippet` both
+// route through this. Snippet wins when both are present.
+const TOOLTIP_SELECTOR = '[data-tooltip],[data-tooltip-snippet]';
+
 function showPortalTooltip(target: HTMLElement): void {
-    const text = target.getAttribute('data-tooltip');
-    if (!text) return;
+    const snippet = target.getAttribute('data-tooltip-snippet');
     const el = ensurePortalTip();
-    el.textContent = text;
     const rect = target.getBoundingClientRect();
-    el.style.left = `${rect.left + rect.width / 2}px`;
+    if (snippet) {
+        el.classList.add('rich');
+        // textContent + CSS white-space: pre-line preserves the \n separator
+        // without us hand-rolling HTML sanitization.
+        el.textContent = snippet;
+        // Left-aligned: tooltip's left edge sits at the trigger's left edge.
+        el.style.left = `${rect.left}px`;
+    } else {
+        const text = target.getAttribute('data-tooltip');
+        if (!text) return;
+        el.classList.remove('rich');
+        el.textContent = text;
+        // Plain variant: horizontally centered over the trigger.
+        el.style.left = `${rect.left + rect.width / 2}px`;
+    }
     el.style.top = `${rect.top - 6}px`;
     el.classList.add('visible');
 }
@@ -2330,20 +2602,20 @@ function initPortalTooltips(): void {
     // stuck. Combined with the explicit hidePortalTooltip() call from
     // renderResultsTable for the no-mouse-move case.
     document.addEventListener('mouseover', (e) => {
-        const t = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-tooltip]');
+        const t = (e.target as HTMLElement | null)?.closest<HTMLElement>(TOOLTIP_SELECTOR);
         if (t) showPortalTooltip(t);
         else hidePortalTooltip();
     });
     document.addEventListener('mouseout', (e) => {
-        const t = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-tooltip]');
+        const t = (e.target as HTMLElement | null)?.closest<HTMLElement>(TOOLTIP_SELECTOR);
         if (t) hidePortalTooltip();
     });
     document.addEventListener('focusin', (e) => {
-        const t = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-tooltip]');
+        const t = (e.target as HTMLElement | null)?.closest<HTMLElement>(TOOLTIP_SELECTOR);
         if (t) showPortalTooltip(t);
     });
     document.addEventListener('focusout', (e) => {
-        const t = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-tooltip]');
+        const t = (e.target as HTMLElement | null)?.closest<HTMLElement>(TOOLTIP_SELECTOR);
         if (t) hidePortalTooltip();
     });
     window.addEventListener('scroll', hidePortalTooltip, true);
@@ -2357,6 +2629,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSigninForm();
     initInspectForm();
     initWorkbenchForm();
+    preventStrayFileDrops();
     initCorrectionModal();
     initDecksPage();
     initKnownWordsPanel();
