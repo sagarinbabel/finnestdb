@@ -192,9 +192,18 @@ func applyTags(a *Analysis, tags []string) {
 			a.Tense = "Past"
 
 		// ── Voice ────────────────────────────────────────────
+		// Finnish (lang-fin) uses +Act / +Pass. Estonian
+		// (lang-est-x-utee) uses +Pers / +Impers for the same
+		// distinction on finite verbs, participles, and supine
+		// forms. +Pers is POS-ambiguous (it also marks personal
+		// pronouns), so its Voice branch is gated on UPOS=VERB and
+		// the PronType branch lives under the PronType section
+		// below.
 		case "Act":
 			a.Voice = "Act"
-		case "Pass":
+		case "Pass", "Impers":
+			// +Impers is only a voice marker in lang-est-x-utee; unlike
+			// +Pers, it is not reused by pronoun analyses.
 			a.Voice = "Pass"
 
 		// ── Mood (sets VerbForm=Fin as a side-effect) ────────
@@ -263,7 +272,15 @@ func applyTags(a *Analysis, tags []string) {
 		case "Indef":
 			setPronType(a, "Ind")
 		case "Pers":
-			setPronType(a, "Prs")
+			// lang-est-x-utee overloads +Pers: on verbs it marks
+			// personal (active) voice; on pronouns it marks the
+			// personal-pronoun type. Keep PronType gating in
+			// setPronType so this matches the adjacent branches.
+			if a.UPOS == "VERB" {
+				a.Voice = "Act"
+			} else {
+				setPronType(a, "Prs")
+			}
 		case "Refl":
 			setPronType(a, "Rfl")
 		case "Recipr":
