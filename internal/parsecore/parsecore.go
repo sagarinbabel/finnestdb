@@ -444,13 +444,17 @@ func enrichWords(sentences []SentenceResult, glosses map[store.LemmaKey]string) 
 }
 
 func aggregateMorphologyForWord(pos string, normalizedForms, grammarLabels, feats map[string]struct{}) (string, string) {
-	if len(normalizedForms) != 1 || !learnerMorphologyPOS(pos) {
+	if len(normalizedForms) != 1 {
 		return "", ""
 	}
-	return singleSetValue(grammarLabels), singleSetValue(feats)
+	grammarLabel := ""
+	if learnerGrammarLabelPOS(pos) {
+		grammarLabel = singleSetValue(grammarLabels)
+	}
+	return grammarLabel, singleSetValue(feats)
 }
 
-func learnerMorphologyPOS(pos string) bool {
+func learnerGrammarLabelPOS(pos string) bool {
 	switch pos {
 	case "ADJ", "NOUN", "NUM", "PRON", "PROPN":
 		return true

@@ -985,15 +985,25 @@ func TestExpandParsedWordsDoesNotCopyGrammarOntoMixedFormExpansion(t *testing.T)
 	}
 	dict := map[string][]store.FormResolution{
 		"Meile": {{Lemma: "me", POS: "PRON"}},
-		"ma":    {{Lemma: "me", POS: "PRON"}},
+		"ma": {
+			{Lemma: "mina", POS: "PRON"},
+			{Lemma: "me", POS: "PRON"},
+		},
 	}
 
 	got := api.expandParsedWords(parsed, dict, nil, nil)
-	if len(got) != 1 {
-		t.Fatalf("len=%d want 1: %+v", len(got), got)
+	var expanded *parsecore.WordEntry
+	for i := range got {
+		if got[i].Lemma == "me" && got[i].POS == "PRON" {
+			expanded = &got[i]
+			break
+		}
 	}
-	if got[0].GrammarLabel != "" || got[0].Feats != "" {
-		t.Fatalf("expanded grammar=(%q,%q), want empty because forms=%v mix cases", got[0].GrammarLabel, got[0].Feats, got[0].Forms)
+	if expanded == nil {
+		t.Fatalf("me/PRON missing from expanded words: %+v", got)
+	}
+	if expanded.GrammarLabel != "" || expanded.Feats != "" {
+		t.Fatalf("expanded grammar=(%q,%q), want empty because forms=%v mix cases", expanded.GrammarLabel, expanded.Feats, expanded.Forms)
 	}
 }
 

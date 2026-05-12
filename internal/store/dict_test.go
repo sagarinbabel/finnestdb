@@ -2017,6 +2017,27 @@ func TestBatchLookupGlosses_ETLearnerOverridesDoNotBeatCustomGlosses(t *testing.
 	}
 }
 
+func TestBatchLookupGlosses_ETLearnerOverridesOnlyApplyToEkilex(t *testing.T) {
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                        int
+	}{
+		{"see", "PRON", "curated see", "ET", "curated", 80},
+	})
+	seedTranslations(t, db, []struct {
+		lemma, pos, lang, target, text, source string
+		senseIdx                               int
+	}{
+		{"see", "PRON", "ET", "EN", "curated see translation", "curated", 0},
+	})
+
+	got := db.BatchLookupGlosses([]LemmaKey{{"see", "PRON"}}, "ET")
+	if got[LemmaKey{"see", "PRON"}] != "curated see translation" {
+		t.Errorf("curated gloss=%q want curated see translation", got[LemmaKey{"see", "PRON"}])
+	}
+}
+
 // --- Lexical-overlay short-circuit tests ---
 
 // TestBatchLookupForms_LexOverlayBeatsDictTrap is the P1 regression for

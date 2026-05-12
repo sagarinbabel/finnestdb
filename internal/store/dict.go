@@ -1304,16 +1304,17 @@ func (d *DB) BatchLookupGlosses(lemmas []LemmaKey, lang string) map[LemmaKey]str
 	return result
 }
 
+// etLearnerGlossOverrides is a temporary source-specific safety valve for
+// high-impact Ekilex primary-sense misses visible in learner decks. Keep this
+// small and remove entries once the upstream source or source-priority ranking
+// returns deck-quality English glosses for the same (lemma, POS).
 var etLearnerGlossOverrides = map[LemmaKey]string{
 	{Lemma: "see", POS: "PRON"}:  "this; that",
 	{Lemma: "väike", POS: "ADJ"}: "small; little",
 }
 
 func learnerGlossOverride(lang string, key LemmaKey, source string) (string, bool) {
-	if strings.HasPrefix(source, "custom") {
-		return "", false
-	}
-	if lang == "ET" {
+	if lang == "ET" && source == "ekilex" {
 		override, ok := etLearnerGlossOverrides[key]
 		return override, ok
 	}

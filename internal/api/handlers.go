@@ -12,6 +12,7 @@ import (
 	"unicode"
 
 	"finnestdb/internal/auth"
+	"finnestdb/internal/glossfallback"
 	"finnestdb/internal/parsecore"
 	"finnestdb/internal/store"
 )
@@ -779,7 +780,7 @@ func filterLowValueAlternatives(dict map[string][]store.FormResolution, glosses 
 }
 
 func isDefinitionFallbackGloss(gloss string) bool {
-	return strings.HasPrefix(strings.TrimSpace(gloss), "[ET]")
+	return glossfallback.HasETPrefix(gloss)
 }
 
 func startsLower(s string) bool {

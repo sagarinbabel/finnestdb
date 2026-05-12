@@ -95,6 +95,12 @@ func TestEnrichWordsSuppressesAmbiguousAggregateMorphology(t *testing.T) {
 				{Form: "majas", Lemma: "maja", POS: "NOUN", GrammarLabel: "inessive", Feats: "Case=Ine|Number=Sing"},
 			},
 		},
+		{
+			Text: "Joon vett.",
+			Tokens: []TokenResult{
+				{Form: "Joon", Lemma: "jooma", POS: "VERB", Feats: "Mood=Ind|Number=Sing|Person=1|Tense=Pres"},
+			},
+		},
 	}, nil)
 
 	byLemma := map[string]WordEntry{}
@@ -106,5 +112,8 @@ func TestEnrichWordsSuppressesAmbiguousAggregateMorphology(t *testing.T) {
 	}
 	if got := byLemma["maja"]; got.GrammarLabel != "inessive" || got.Feats != "Case=Ine|Number=Sing" {
 		t.Fatalf("maja aggregate morphology = (%q, %q), want stable inessive features", got.GrammarLabel, got.Feats)
+	}
+	if got := byLemma["jooma"]; got.GrammarLabel != "" || got.Feats != "Mood=Ind|Number=Sing|Person=1|Tense=Pres" {
+		t.Fatalf("jooma aggregate morphology = (%q, %q), want verb FEATS without a grammar label", got.GrammarLabel, got.Feats)
 	}
 }
