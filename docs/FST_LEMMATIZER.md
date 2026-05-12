@@ -279,7 +279,7 @@ and the FST step in custom-mode parsing is disabled until tables exist.
 The Estonian generator:
 
 ```sh
-make gen-lemmatizer-tables-et HFSTOL_PATH=/absolute/path/to/analyser-gt-desc.hfstol
+make gen-lemmatizer-tables-et
 ```
 
 That target runs:
@@ -293,11 +293,19 @@ go run ./cmd/genlemmatizertables \
   -out localdata/lemmatizer-fi-et/tables/et_min.json
 ```
 
-`HFSTOL_PATH` must point to a local Giellalt-style optimized lookup
-analyzer. The analyzer file itself must not be committed. The current
-Make targets use smoke wordlists; production promotion still needs a
-production wordlist, provenance notes, row counts, and eval gate before
-any accuracy claim is made from those local tables.
+By default, `HFSTOL_PATH` is
+`localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol`. Override it only
+when `make doctor` reports a noncanonical local copy, for example:
+
+```sh
+make gen-lemmatizer-tables-et HFSTOL_PATH=/absolute/path/to/analyser-gt-desc.hfstol
+```
+
+See [`docs/LOCAL_TOOLING.md`](LOCAL_TOOLING.md) before assuming the
+analyzer is absent. The analyzer file itself must not be committed. The
+current Make targets use smoke wordlists; production promotion still
+needs a production wordlist, provenance notes, row counts, and eval gate
+before any accuracy claim is made from those local tables.
 
 ## What the test fixtures prove
 

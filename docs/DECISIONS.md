@@ -591,16 +591,16 @@ rebase against the separate-binary pattern.
 
 The lemmatizer-fi-et package needs morphology tables to function. Generating
 production-scale FI/ET tables requires running upstream analysers
-(VFST/HFST) locally and committing the output. Smoke fixtures
+(VFST/HFST) locally and generating large derived outputs. Smoke fixtures
 (9 FI keys, 7 ET keys) are enough to prove the integration path.
 
 ### Decision
 
-The current committed FI/ET tables under
-[`pkg/lemmatizer-fi-et/tables/`](../pkg/lemmatizer-fi-et/tables/) and
-[`testdata/lemmatizer/`](../testdata/lemmatizer/) are smoke fixtures only.
-They prove the integration and the artifact policy, not production
-morphology coverage. Production tables are generated locally via
+The repository commits only smoke fixtures under
+[`testdata/lemmatizer/`](../testdata/lemmatizer/) plus focused package
+tests; it does not commit production FI/ET tables. These fixtures prove
+the integration and the artifact policy, not production morphology
+coverage. Production tables are generated locally via
 `make gen-lemmatizer-tables-fi VFST_PATH=...` and written to
 `localdata/lemmatizer-fi-et/tables/` (gitignored). Broad
 runtime/eval claims wait until production tables, provenance, and fresh
@@ -663,9 +663,8 @@ repository ships **neither** analyser blobs **nor** the derived factual
 tables. Both live under `localdata/lemmatizer-fi-et/` (gitignored).
 The runtime loads tables from disk on `New()`. Smoke fixtures (small
 hand-checked tables) live in
-[`testdata/lemmatizer/`](../testdata/lemmatizer/) and
-[`pkg/lemmatizer-fi-et/tables/`](../pkg/lemmatizer-fi-et/tables/) — those
-exist purely to prove the integration path and are 9–12 entries each.
+[`testdata/lemmatizer/`](../testdata/lemmatizer/) and focused package
+tests — those exist purely to prove the integration path and are tiny.
 
 See [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md) for the full policy.
 
@@ -697,7 +696,7 @@ parser during manual testing and noticed neither `65` nor `aastane` showed up
 as separate words. Pure numbers like `65` weren't tagged `NUM` either. The
 same construction is just as productive in Finnish (`65-vuotias`,
 `1990-luvulla`, etc.), and the tokenizer at
-[`parser/src/lib.rs:308`](../parser/src/lib.rs:308) takes an unused `_lang`
+[`parser/src/lib.rs`](../parser/src/lib.rs) takes an unused `_lang`
 parameter — Finnish was guaranteed to have the identical bug.
 
 ### Decision
@@ -1245,4 +1244,5 @@ _Questions are date-tagged with the date they were first recorded._
 | 2026-05-07 | Decision 18 added: IMPLEMENTATION.md split into PARSER_FEEDBACK_LOOP.md + README sections (PR #135) |
 | 2026-05-07 | Document reordered latest-first; roadmap moved to TODO.md (preserved here as historical) |
 | 2026-05-07 | Decision 5 amended (PR #139): case-suffix stopgap also projects UD `Case=` into `forms.feats` via `featsFromCaseLabel`; suffix table itself stays frozen. **Decision 14 (kaikki `feats` not backfilled) reversed**: `cmd/importdict/feats.go::kaikkiTagsToFeats` now projects Wiktionary tag arrays into UD FEATS at import time, populating `forms.feats` for every kaikki row |
+| 2026-05-12 | Decision 20 added: lexical-overlay short-circuit and curated bad-lemma blocklists (PR #183) |
 | 2026-05-12 | Decision 21 added: source priority outranks generic FST support and morphology ties in the merged dict+FST ranker (PR #187) |

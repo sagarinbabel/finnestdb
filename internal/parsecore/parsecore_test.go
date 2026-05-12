@@ -78,3 +78,42 @@ func TestComputeParseStatsCountsResolutionSourcesAndTimings(t *testing.T) {
 		t.Fatalf("total_ns=%d want 11_000_000", stats.Timings.TotalNs)
 	}
 }
+
+func TestEnrichWordsSuppressesAmbiguousAggregateMorphology(t *testing.T) {
+	words := enrichWords([]SentenceResult{
+		{
+			Text: "On olemas.",
+			Tokens: []TokenResult{
+				{Form: "On", Lemma: "olema", POS: "VERB", Feats: "Mood=Ind|Number=Sing|Person=3|Tense=Pres"},
+				{Form: "olemas", Lemma: "olema", POS: "VERB", GrammarLabel: "inessive", Feats: "Case=Ine|VerbForm=Sup"},
+			},
+		},
+		{
+			Text: "Majas.",
+			Tokens: []TokenResult{
+				{Form: "Majas", Lemma: "maja", POS: "NOUN", GrammarLabel: "inessive", Feats: "Case=Ine|Number=Sing"},
+				{Form: "majas", Lemma: "maja", POS: "NOUN", GrammarLabel: "inessive", Feats: "Case=Ine|Number=Sing"},
+			},
+		},
+		{
+			Text: "Joon vett.",
+			Tokens: []TokenResult{
+				{Form: "Joon", Lemma: "jooma", POS: "VERB", Feats: "Mood=Ind|Number=Sing|Person=1|Tense=Pres"},
+			},
+		},
+	}, nil)
+
+	byLemma := map[string]WordEntry{}
+	for _, word := range words {
+		byLemma[word.Lemma] = word
+	}
+	if got := byLemma["olema"]; got.GrammarLabel != "" || got.Feats != "" {
+		t.Fatalf("olema aggregate morphology = (%q, %q), want empty for mixed forms", got.GrammarLabel, got.Feats)
+	}
+	if got := byLemma["maja"]; got.GrammarLabel != "inessive" || got.Feats != "Case=Ine|Number=Sing" {
+		t.Fatalf("maja aggregate morphology = (%q, %q), want stable inessive features", got.GrammarLabel, got.Feats)
+	}
+	if got := byLemma["jooma"]; got.GrammarLabel != "" || got.Feats != "Mood=Ind|Number=Sing|Person=1|Tense=Pres" {
+		t.Fatalf("jooma aggregate morphology = (%q, %q), want verb FEATS without a grammar label", got.GrammarLabel, got.Feats)
+	}
+}

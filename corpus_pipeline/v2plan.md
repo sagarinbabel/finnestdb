@@ -6,7 +6,7 @@ trigger conditions for picking each item back up. Per the plan (v1plan.md
 `corpus_pipeline/v2plan.md` so Codex, Claude, and human reviewers can share the
 same roadmap. Runtime corpus data stays local-only under `localdata/`.
 
-## v1 status snapshot — 2026-05-08 (updated 2026-05-08 evening)
+## v1 status snapshot — 2026-05-08 (updated 2026-05-12)
 
 ### What landed in this session
 
@@ -140,6 +140,7 @@ The vertical slice is validated:
 - Wordlist collapsing on identical (lemma, pos, feats), separating ambiguous
 - Deterministic sentence IDs (sorted by source, document_id, sentence_ix, hash)
 - Mining outputs: unresolved, poetry-unresolved, high-frequency-ambiguous
+  plus parser-disagreements and internal-consensus candidates after v2.5
 - Anti-circularity: silver-candidates.tsv NOT written by aggregator
 - Hard preflight gates: FST tables + dict DB schema + dict counts
 - Soft gates: unresolved_rate threshold
@@ -164,9 +165,9 @@ localdata/{fi,et}-corpus/_derived/
 └── mining/
     ├── unresolved.tsv               # sorted by surface_count_prose desc
     ├── poetry-unresolved.tsv        # threshold: count_poetry≥10 AND ≥5×prose
-    ├── parser-disagreements.tsv     # header-only in v1 (basic-vs-custom comparison TODO)
+    ├── parser-disagreements.tsv     # populated by v2.5 basic-vs-custom comparison
     ├── high-frequency-ambiguous.tsv
-    └── internal-consensus-candidates.tsv  # header-only in v1 (TODO)
+    └── internal-consensus-candidates.tsv  # populated by v2.5 basic+custom+FST agreement
 ```
 
 ### Architecture decisions honored
@@ -370,101 +371,6 @@ Added Makefile targets `scrape-gutenberg-fi` / `scrape-gutenberg-et` that
 invoke it with `-out localdata/{lang}-corpus/gutenberg/raw/` and
 `-manifest localdata/{lang}-corpus/gutenberg/manifest.jsonl`. No new Go
 code. Honors the cleanliness invariant.
-
-### v2.4 — `cmd/aggregatecorpus` scale features — ✅ DONE 2026-05-08
-
-`-scratch` flag wires SQLite scratch DB for sentences + occurrences +
-documents (surfaces stay in-memory). Per-source flush in phase 1
-prevents RSS blow-up. Phase 4 reads via streaming SELECT cursors;
-sentences.tsv and occurrences.tsv built without loading all in memory
-at once (except a hash→id Go map, ~600 MB at full FI scale).
-
-Two empirical bottlenecks fixed during this work:
-1. **`docsProse map[string]struct{}` per surface** — replaced with
-   counter + last-seen-doc-id. Saved ~7 GB RSS at 3M surfaces.
-2. **9.5M individual UPDATE statements** to set final_id — replaced
-   with bulk-load of `(hash, text)` into a Go map and write-time
-   resolution via in-memory hash→id. Saved 20+ min wall-clock.
-
-Tested at scale: FI fixture + smoke. Full FI scratch run in flight
-(see "Pilot results" below for numbers).
-
-### v2.4 — `cmd/aggregatecorpus` scale features — original notes preserved
-
-- **Status**: Scaffolding written: `cmd/aggregatecorpus/scratch_db.go`
-  has the schema + `openScratch()` helper, ready to wire. Not yet used
-  by phases 1-4 — the in-memory implementation handles current pilot
-  (12 GB RSS for 2.8M sentences = ~4 KB/sentence empirical).
-- **Trigger fired**: tried to run FI expanded aggregate (22.7M lines
-  extracted from 14 sources). Estimated peak ~80-90 GB RSS on a 64 GB
-  machine without swap. **Won't fit.**
-- **Workaround in v1**: `-skip` flag added to aggregator. Aggregate
-  the smaller subset (skip opus-wikimatrix, opus-eubookshop, opus-finlex,
-  opus-opensubtitles, opus-paracrawl) for now. Captures ~750 MB FI
-  text instead of 2.4 GB.
-- **Real fix (v2.4 wiring)**:
-  - Replace `state.surfaces`, `state.sentences`, `state.occurrences`,
-    `state.documents`, `state.wordlistRows` maps/slices with SQL queries
-    against `_scratch.db`.
-  - Phase 1: `INSERT INTO tmp_*` per token / sentence / occurrence as
-    parserffi emits them. Single writer goroutine; N parser-workers.
-  - Phase 2: `SELECT DISTINCT surface FROM tmp_surfaces`, enrich each,
-    `INSERT INTO tmp_wordlist`.
-  - Phase 4: `SELECT ... ORDER BY ... ` to drive deterministic-ID
-    assignment + TSV writes.
-  - Surface-analyses cache: `cache/surface-analyses.tsv` keyed by
-    `(surface, lang, parser_version, fst_tables_sha, dict_fingerprint)`.
-- **Effort**: ~5-8 hours of careful refactor. Schema is ready; the
-  work is rewriting the four phase functions to use SQL instead of
-  in-memory maps.
-- **Trigger**: When user wants to aggregate the full source set
-  (including opus-opensubtitles 1.07 GB, opus-paracrawl 369 MB,
-  hf-err-newsroom 169 MB) without -skip.
-
-### v2.5 — Mining: parser-disagreements + internal-consensus
-
-- **Status**: Header-only TSVs written. No comparison logic.
-- **Missing**: For each surface, run `parsecore.Analyze(... "basic")`
-  alongside the `"custom"` call already in phase 2. Compare chosen
-  analyses; emit row when they disagree. Internal-consensus when basic
-  + custom + FST top hit all agree.
-- **Why deferred**: Smoke doesn't need them populated.
-- **Effort**: ~2 hours.
-- **Trigger**: When parser-improvement workflows want this signal.
-
-### v2.6 — `cmd/enrichcorpus` (omorfi + estnltk batch adapters)
-
-- **Status**: Not started.
-- **Missing**: Long-lived omorfi-disamb-cmdline subprocess (FI),
-  long-lived Python subprocess running `scripts/estnltk-batch.py` (ET),
-  JSON-line protocol over stdin/stdout, resumable cache. Reads
-  `wordlist.tsv`, emits `wordlist-enriched.tsv` + `mining/silver-candidates.tsv`.
-- **Why deferred**: User explicitly said "not part of the initial run.
-  Have it ready, I'll run it myself when I want richer FEATS."
-- **Effort**: ~7 hours.
-- **Trigger**: When user wants richer FEATS than the runtime parser
-  emits, OR when silver-tier parser-eval data is needed.
-
-### v2.7 — `cmd/epubdeck`
-
-- **Status**: Not started.
-- **Missing**: Per-book wordlist extractor. Reads
-  `localdata/{lang}-corpus/epub/per-book/<slug>.txt`, runs aggregator
-  logic scoped to one book, writes `epub/decks/<slug>.tsv`.
-- **Why deferred**: Smoke doesn't need it.
-- **Effort**: ~2 hours (mostly reuses aggregatecorpus internals,
-  scoped to one source).
-- **Trigger**: User wants per-book vocabulary deck for a specific EPUB.
-
-### v2.8 — `cmd/scrapegutenberg-corpus`
-
-- **Status**: Not started. Main repo's `cmd/scrapegutenberg/` exists for
-  FI but writes to wrong path and only does FI.
-- **Missing**: Local re-impl supporting both FI and ET, writing into
-  `localdata/{fi,et}-corpus/gutenberg/raw/`.
-- **Effort**: ~1 hour (mostly copy main repo's code, fix output path,
-  add ET search).
-- **Trigger**: When Gutenberg sources need to be in pilot/full.
 
 ### v2.9 — Pilot + full profile runs
 

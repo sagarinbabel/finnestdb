@@ -48,6 +48,7 @@ import (
 	"strings"
 	"unicode"
 
+	"finnestdb/internal/glossfallback"
 	"finnestdb/internal/store"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -670,12 +671,6 @@ func writeDefinitions(db *sql.DB, lemmaPOS lemmaPOSMap) (int, error) {
 	return written, nil
 }
 
-// glossFallbackPrefix marks a gloss derived from a `definitions_et` entry
-// rather than from an English translation. Downstream renderers (e.g. the
-// user-friendly wordlist export) can detect the prefix and surface it
-// distinctly — the gloss is in the source language, not English.
-const glossFallbackPrefix = "[ET] "
-
 // glossFallbackMaxLen caps the prefixed-fallback length so that ET
 // definitions, which can run multiple hundred characters, don't bloat the
 // gloss column past sensible UI lengths. Full definitions land in the
@@ -721,7 +716,7 @@ func joinTranslationData(d *lemmaPOSData) string {
 	if utf8RuneCount(def) > glossFallbackMaxLen {
 		def = utf8Truncate(def, glossFallbackMaxLen) + "…"
 	}
-	return glossFallbackPrefix + def
+	return glossfallback.ETPrefix + def
 }
 
 // utf8RuneCount returns the rune count without allocating a []rune slice for

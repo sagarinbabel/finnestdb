@@ -66,9 +66,10 @@ doctor:
 #
 # Example:
 #   make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst
+#   make gen-lemmatizer-tables-et
 #   make gen-lemmatizer-tables-et HFSTOL_PATH=/path/to/analyser-gt-desc.hfstol
 VFST_PATH ?=
-HFSTOL_PATH ?=
+HFSTOL_PATH ?= localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol
 FI_WORDLIST ?= localdata/lemmatizer-fi-et/wordlists/fi.txt
 gen-lemmatizer-wordlist-fi:
 	@if [ ! -f finnestdb.db ]; then \
@@ -97,8 +98,10 @@ gen-lemmatizer-tables-fi:
 # table goes into localdata/lemmatizer-fi-et/tables/et_min.json and is
 # not committed.
 gen-lemmatizer-tables-et:
-	@if [ -z "$(HFSTOL_PATH)" ]; then \
-		echo "HFSTOL_PATH is required (local path to analyser-gt-desc.hfstol; do not commit)."; \
+	@if [ -z "$(HFSTOL_PATH)" ] || [ ! -f "$(HFSTOL_PATH)" ]; then \
+		echo "HFSTOL_PATH must point to analyser-gt-desc.hfstol (local-only; do not commit)."; \
+		echo "Default checked: localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol"; \
+		echo "Run 'make doctor' and read docs/LOCAL_TOOLING.md before assuming the analyser is absent."; \
 		exit 1; \
 	fi
 	@mkdir -p localdata/lemmatizer-fi-et/tables

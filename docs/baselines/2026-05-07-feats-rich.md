@@ -26,7 +26,7 @@ bash scripts/parser-comparison-et.sh -o /tmp/feats-rich-out/et-summary.md
 
 The 6 manual gold files now carry full UD FEATS (~370 tokens), the `cmd/importdict` kaikki importer translates `Tags []string` to `feats` on every form row, the case-suffix-strip path projects `Case=` from its emitted `grammar_label`, the FST tables persist a `Feats` field via the new `pkg/lemmatizer-fi-et/udfeats` composer, and the EstNLTK adapter emits the same UD FEATS shape omorfi already did. Result: every layer of the pipeline that produces or consumes morphological information now speaks the same UD FEATS vocabulary.
 
-The eval framework's per-FEATS-attribute table at [parser-compare/main.go:270](../../cmd/parser-compare/main.go:270) was complete since [#130](https://github.com/sagarinbabel/finnestdb/pull/130) but had been silent on every committed baseline because no gold set carried FEATS to score against. This is the first baseline where it fires across every dataset.
+The eval framework's per-FEATS-attribute table in [`cmd/parser-compare/main.go`](../../cmd/parser-compare/main.go) was complete since [#130](https://github.com/sagarinbabel/finnestdb/pull/130) but had been silent on every committed baseline because no gold set carried FEATS to score against. This is the first baseline where it fires across every dataset.
 
 ## Headline FI numbers (custom parser, lemma/POS unchanged from `2026-05-07j`)
 
@@ -113,5 +113,5 @@ estnltk Case at 94.1% on et-grammar reflects 3 case-disagreement edge cases the 
 ## Open issues this surfaced
 
 - **Live DB lacks FEATS**: the production DB at `finnestdb.db` was last imported on 2026-05-05, before any of the FEATS mappers. Until re-import, the `custom` parser can't show FEATS in its output. The kaikki source JSONLs aren't on this machine — `make import-dict-fi` would need to re-fetch from kaikki.org first. Captured as runbook above.
-- **The fi-manual-v1/v2 collision is unfixed**: per the [reference_eval_setup memory](../../.claude/projects/-Users-sagar-Downloads-projects-finnestdb/memory/reference_eval_setup.md), `parser-comparison.sh` slugifies `dataset.name` and overwrites v1's report with v2's. This baseline worked around it by re-running v1 explicitly with `-out`. A fix would land alongside this PR or as a separate cleanup.
+- **The fi-manual-v1/v2 collision was still open at this baseline**: `parser-comparison.sh` slugified `dataset.name` and overwrote v1's report with v2's, so this baseline worked around it by re-running v1 explicitly with `-out`. Later scripts slug from the input file basename, so this is historical context rather than current open work.
 - **OOV compound nouns in fi-manual-v1** got Case= via the suffix-strip fallback in `cmd/enrichgoldfeats`, but Number= is not inferred — surface alone can't disambiguate Sg vs Pl for unanalysed compounds. Marked in [`fi-manual-v1.diff.md`](../../testdata/parser-eval/fi/gold/fi-manual-v1.diff.md) (16 tokens). A maintainer with FI fluency can manually disambiguate; for now the FEATS column is honestly empty for those rare tokens.

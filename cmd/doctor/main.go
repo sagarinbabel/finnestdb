@@ -1,7 +1,8 @@
 // doctor reports the health of a finnestdb working copy: which third-party
 // data has been fetched, which derived tables have been generated, and which
-// analyzer venvs are wired up. It is the single command a newcomer can run
-// to find out why the parser is slower or less accurate than they expect.
+// analyzer venvs and source analyzers are wired up. It is the single command
+// a newcomer can run to find out why the parser is slower or less accurate
+// than they expect.
 //
 // Exit code:
 //   - 0   the dictionary is present and provenance-tagged; everything else
@@ -25,6 +26,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -257,13 +259,7 @@ func checkFSTTables() check {
 
 // checkFIAnalyser reports whether libvoikko and its mor.vfst transducer
 // are available locally — the prerequisites for `make gen-lemmatizer-tables-fi`.
-// Only emits a check when the FI table is missing (otherwise the analyser
-// presence is moot).
 func checkFIAnalyser() []check {
-	if fileExists(filepath.Join("localdata/lemmatizer-fi-et/tables", "fi_min.json")) {
-		return nil
-	}
-
 	voikko, _ := exec.LookPath("voikkospell")
 	if voikko == "" {
 		hint := "`brew install libvoikko` (macOS)"
@@ -273,7 +269,7 @@ func checkFIAnalyser() []check {
 		return []check{{
 			name:   "FI morphological analyser (libvoikko)",
 			level:  levelWarn,
-			detail: "voikkospell not found on PATH — libvoikko is not installed",
+			detail: "voikkospell not found on PATH — FI table regeneration is unavailable",
 			hint:   hint + ", then `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst`",
 		}}
 	}
@@ -283,7 +279,7 @@ func checkFIAnalyser() []check {
 		return []check{{
 			name:   "FI morphological analyser (libvoikko)",
 			level:  levelWarn,
-			detail: "libvoikko installed (voikkospell on PATH) but mor.vfst not found in standard locations",
+			detail: "voikkospell on PATH but mor.vfst not found in standard locations",
 			hint:   "locate mor.vfst manually, then `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst`",
 		}}
 	}
@@ -320,17 +316,23 @@ func findVFST() string {
 // checkETAnalyser reports whether the Giellalt hfstol transducer is
 // present locally — the prerequisite for `make gen-lemmatizer-tables-et`.
 func checkETAnalyser() []check {
-	if fileExists(filepath.Join("localdata/lemmatizer-fi-et/tables", "et_min.json")) {
-		return nil
-	}
-
 	hfstolPath := findHFSTOL()
 	if hfstolPath == "" {
 		return []check{{
 			name:   "ET morphological analyser (Giellalt hfstol)",
 			level:  levelWarn,
-			detail: "analyser-gt-desc.hfstol not found under localdata/lemmatizer-fi-et/",
-			hint:   "download from Giellalt lang-est nightly, place at localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol, then `make gen-lemmatizer-tables-et HFSTOL_PATH=localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol`",
+			detail: "analyser-gt-desc.hfstol not found in canonical or known legacy local locations",
+			hint:   "place it at localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol, then `make gen-lemmatizer-tables-et`; see docs/LOCAL_TOOLING.md before assuming it is absent",
+		}}
+	}
+
+	canonical := "localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol"
+	if hfstolPath != canonical {
+		return []check{{
+			name:   "ET morphological analyser (Giellalt hfstol)",
+			level:  levelOK,
+			detail: "analyser-gt-desc.hfstol found at legacy/local path: " + hfstolPath + "\ncanonical path is " + canonical,
+			hint:   "`make gen-lemmatizer-tables-et HFSTOL_PATH=" + hfstolPath + "` or symlink/copy it into localdata/lemmatizer-fi-et/",
 		}}
 	}
 
@@ -338,21 +340,42 @@ func checkETAnalyser() []check {
 		name:   "ET morphological analyser (Giellalt hfstol)",
 		level:  levelOK,
 		detail: "analyser-gt-desc.hfstol at " + hfstolPath,
-		hint:   "`make gen-lemmatizer-tables-et HFSTOL_PATH=" + hfstolPath + "`",
+		hint:   "`make gen-lemmatizer-tables-et`",
 	}}
 }
 
-// findHFSTOL searches the expected localdata location for the ET hfstol transducer.
+// findHFSTOL searches canonical and known legacy locations for the ET hfstol
+// transducer. Canonical localdata wins, but old agent worktrees may still
+// contain local-only package-data copies that can be passed as HFSTOL_PATH.
 func findHFSTOL() string {
-	candidates := []string{
-		"localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol",
+	candidates := findHFSTOLCandidates()
+	if len(candidates) == 0 {
+		return ""
 	}
-	for _, p := range candidates {
-		if fileExists(p) {
-			return p
+	return candidates[0]
+}
+
+func findHFSTOLCandidates() []string {
+	ordered := []string{
+		"localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol",
+		"pkg/lemmatizer-fi-et/data/et/analyser-gt-desc.hfstol",
+		"data/lemmatizer-fi-et/analyser-gt-desc.hfstol",
+	}
+
+	if matches, err := filepath.Glob(".claude/worktrees/*/pkg/lemmatizer-fi-et/data/et/analyser-gt-desc.hfstol"); err == nil {
+		sort.Strings(matches)
+		ordered = append(ordered, matches...)
+	}
+
+	seen := map[string]bool{}
+	found := []string{}
+	for _, p := range ordered {
+		if !seen[p] && fileExists(p) {
+			found = append(found, p)
+			seen[p] = true
 		}
 	}
-	return ""
+	return found
 }
 
 func checkOmorfi() check {

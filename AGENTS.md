@@ -25,6 +25,23 @@ the current turn.
 If a PR touches `cmd/autoresearch` incidentally, review only for compile/test
 breakage. Do not make it a product-quality requirement.
 
+## Local Tooling Discovery
+
+Before declaring that an analyzer, model, generated table, DB, corpus cache, or
+local artifact is missing, run:
+
+```bash
+make doctor
+```
+
+Then read [`docs/LOCAL_TOOLING.md`](docs/LOCAL_TOOLING.md) for the canonical
+paths and known legacy fallback locations. If `make doctor` reports a usable
+path, use it instead of asking the user for the same file. This matters in
+particular for ET FST work: `analyser-gt-desc.hfstol` may already be present
+at `localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol` or in an older local
+worktree path that should be passed as `HFSTOL_PATH` or symlinked into
+`localdata/`.
+
 ## Python NLP tools (omorfi + estnltk)
 
 A **single shared venv** lives at `.venv/` in the project root. It contains

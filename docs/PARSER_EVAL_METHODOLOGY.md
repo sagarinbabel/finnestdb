@@ -288,7 +288,7 @@ Open follow-ups (not blockers):
 
 - **Stratify the eval report by token category.** A 53% headline on UD-TDT hides 90%+ open-class accuracy buried under maybe 20% on proper nouns and numerals. [`LEARNINGS.md` §2026-05-07](LEARNINGS.md) sketches the per-attribute eval that would surface this.
 - **~~Per-feature attribute eval~~ — landed 2026-05-07k.** Both gold and parser now carry FEATS end-to-end; the comparison script emits a per-attribute table, e.g. `Case 99.2% / Number 100% / Mood 100% / Tense 100% / Person 100% / VerbForm 100% / Voice 100%` for omorfi on `fi-grammar-v1`. See [`baselines/2026-05-07-feats-rich.md`](baselines/2026-05-07-feats-rich.md) for the methodology and the runbook for re-importing the live DB so `custom` picks up FEATS too.
-- **Silver-tier corpora.** [`scripts/scrape-gutenberg-fi`](../scripts/scrape-gutenberg-fi) builds a 500k-token Gutenberg silver-tier corpus for OOV/coverage measurement. Not yet wired into the eval comparison.
+- **Silver-tier corpora.** [`cmd/scrapegutenberg`](../cmd/scrapegutenberg/main.go) builds a 500k-token Gutenberg silver-tier corpus for OOV/coverage measurement via `make scrape-gutenberg-fi`. Not yet wired into the eval comparison.
 - **Versioning reconciliation.** [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) proposes `parser-baseline-YYYY-MM-DD-N`; [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) uses `YYYY-MM-DDx` (lowercase letter). Pick one and update both docs.
 
 ## Common pitfalls

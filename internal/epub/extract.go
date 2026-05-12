@@ -15,6 +15,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // Chapter is one extracted content document from an EPUB.
@@ -84,8 +86,11 @@ func ExtractChapters(r io.ReaderAt, size int64) ([]Chapter, error) {
 			continue
 		}
 		rawStr := string(raw)
-		text := stripXHTML(rawStr)
+		text := cleanExtractedText(stripXHTML(rawStr))
 		if strings.TrimSpace(text) == "" {
+			continue
+		}
+		if shouldSkipContentDoc(d.name, text) {
 			continue
 		}
 		chapters = append(chapters, Chapter{
@@ -377,11 +382,61 @@ func parseOPFMetadata(opf string) BookMetadata {
 	return out
 }
 
+var nonContentResourceNames = map[string]bool{
+	"about":           true,
+	"colophon":        true,
+	"contents":        true,
+	"copyright":       true,
+	"cover":           true,
+	"coverpage":       true,
+	"halftitle":       true,
+	"imprint":         true,
+	"landmarks":       true,
+	"legal":           true,
+	"legalnotice":     true,
+	"nav":             true,
+	"navigation":      true,
+	"pagelist":        true,
+	"sisallys":        true,
+	"sisukord":        true,
+	"tableofcontents": true,
+	"tiitelleht":      true,
+	"title":           true,
+	"titlepage":       true,
+	"toc":             true,
+}
+
 // isNonContentEPUBFile skips files that are HTML by extension but aren't
-// reading content — currently the iBooks DRM marker. Conservative: only known
-// patterns are filtered.
+// reading content, such as navigation, cover/title pages, and DRM metadata.
+// Conservative: only common EPUB packaging names are filtered.
 func isNonContentEPUBFile(lowerName string) bool {
-	return strings.Contains(lowerName, "rrownerinfo")
+	if strings.Contains(lowerName, "rrownerinfo") {
+		return true
+	}
+	base := lowerName
+	if i := strings.LastIndex(base, "/"); i >= 0 {
+		base = base[i+1:]
+	}
+	if i := strings.LastIndex(base, "."); i > 0 {
+		base = base[:i]
+	}
+	baseKey := compactForMatch(base)
+	if nonContentResourceNames[baseKey] ||
+		isNumberedResource(baseKey, "toc") ||
+		isNumberedResource(baseKey, "nav") ||
+		isNumberedResource(baseKey, "cover") ||
+		isNumberedResource(baseKey, "front") ||
+		isNumberedResource(baseKey, "frontmatter") ||
+		isNumberedResource(baseKey, "fm") {
+		return true
+	}
+	for _, segment := range strings.Split(lowerName, "/") {
+		key := compactForMatch(segment)
+		if key == "front" || key == "frontmatter" || key == "prelims" || key == "preliminary" {
+			return true
+		}
+	}
+	return false
 }
 
 // naturalLess compares two paths so embedded integer runs sort numerically.
@@ -494,4 +549,357 @@ func stripXHTML(s string) string {
 	s = reMultiSpace.ReplaceAllString(s, " ")
 	s = reMultiNewline.ReplaceAllString(s, "\n\n")
 	return strings.TrimSpace(s)
+}
+
+func cleanExtractedText(text string) string {
+	lines := strings.Split(text, "\n")
+	out := make([]string, 0, len(lines))
+	blankPending := false
+	for _, line := range lines {
+		line = normalizeInlineSpace(strings.TrimSpace(line))
+		if line == "" {
+			if len(out) > 0 && !blankPending {
+				out = append(out, "")
+				blankPending = true
+			}
+			continue
+		}
+		if shouldSkipResidueLine(line) {
+			continue
+		}
+		out = append(out, line)
+		blankPending = false
+	}
+	for len(out) > 0 && out[len(out)-1] == "" {
+		out = out[:len(out)-1]
+	}
+	return strings.TrimSpace(strings.Join(out, "\n"))
+}
+
+func shouldSkipContentDoc(name, text string) bool {
+	words := wordTokens(text)
+	if len(words) == 0 {
+		return true
+	}
+	if len(words) <= 3 && allNumericOrRoman(words) {
+		return true
+	}
+	runes := utf8.RuneCountInString(text)
+	if runes <= 700 && metadataSignalCount(text) >= 2 {
+		return true
+	}
+	lowerName := strings.ToLower(name)
+	if runes <= 1200 && (strings.Contains(lowerName, "front") || strings.Contains(lowerName, "title") ||
+		strings.Contains(lowerName, "copyright") || strings.Contains(lowerName, "imprint")) &&
+		metadataSignalCount(text) >= 1 {
+		return true
+	}
+	return false
+}
+
+var lineResidueKeys = map[string]bool{
+	"romaan": true,
+}
+
+func shouldSkipResidueLine(line string) bool {
+	line = normalizeInlineSpace(strings.TrimSpace(line))
+	if line == "" {
+		return true
+	}
+	if strings.Contains(line, "<") && strings.Contains(line, ">") {
+		return true
+	}
+	lower := strings.ToLower(line)
+	if strings.Contains(lower, "&nbsp;") || strings.Contains(lower, "&amp;") {
+		return true
+	}
+	if strings.Contains(line, "....") || strings.Contains(line, "····") {
+		return true
+	}
+	words := wordTokens(line)
+	if len(words) == 0 {
+		return true
+	}
+	if hasStrongMetadataPhrase(line) {
+		return true
+	}
+	if metadataSignalCount(line) > 0 && metadataLikeLine(line, words) {
+		return true
+	}
+	if len(words) <= 3 && allNumericOrRoman(words) {
+		return true
+	}
+	if len(words) <= 6 && isAllCapsText(line) {
+		return true
+	}
+	if len(words) <= 4 && !hasSentenceTerminal(line) && hasHeadingWord(words) {
+		return true
+	}
+	if lineResidueKeys[compactForMatch(line)] {
+		return true
+	}
+	if looksNameOnly(words) {
+		return true
+	}
+	return false
+}
+
+var strongMetadataCompacts = []string{
+	"originaalpealkiri",
+	"eraamatonilmunud",
+	"eraamatonskaneeritud",
+	"skaneeritudjakoostatud",
+	"kultuuriministeeriumiprogrammi",
+	"eestikirjandustoel",
+	"keeleliseltmuutmata",
+	"generatedbycalibre",
+}
+
+var metadataCompacts = []string{
+	"copyright",
+	"autorioigus",
+	"autorioigused",
+	"koikoigusedkaitstud",
+	"allrightsreserved",
+	"kaikkioikeudet",
+	"calibre",
+	"coverdesign",
+	"jacketdesign",
+	"isbn",
+	"kirjastus",
+	"kustantaja",
+	"julkaisija",
+	"rahvaraamat",
+}
+
+func hasStrongMetadataPhrase(text string) bool {
+	compact := compactForMatch(text)
+	for _, needle := range strongMetadataCompacts {
+		if strings.Contains(compact, needle) {
+			return true
+		}
+	}
+	return false
+}
+
+func metadataSignalCount(text string) int {
+	compact := compactForMatch(text)
+	signals := 0
+	lower := strings.ToLower(text)
+	if strings.Contains(lower, "http://") || strings.Contains(lower, "https://") || strings.Contains(lower, "www.") {
+		signals++
+	}
+	for _, needle := range strongMetadataCompacts {
+		if strings.Contains(compact, needle) {
+			signals++
+		}
+	}
+	for _, needle := range metadataCompacts {
+		if strings.Contains(compact, needle) {
+			signals++
+		}
+	}
+	if strings.Contains(text, "©") {
+		signals++
+	}
+	if containsDigit(text) && strings.ContainsAny(text, ":©") {
+		signals++
+	}
+	return signals
+}
+
+var headingPrefixes = map[string]bool{
+	"chapter":        true,
+	"contents":       true,
+	"eessona":        true,
+	"epilogue":       true,
+	"epiloog":        true,
+	"esipuhe":        true,
+	"jalkisanat":     true,
+	"jarelsana":      true,
+	"jarelsona":      true,
+	"luku":           true,
+	"osa":            true,
+	"peatukk":        true,
+	"prologue":       true,
+	"prologi":        true,
+	"proloog":        true,
+	"sissejuhatus":   true,
+	"sisallys":       true,
+	"sisukord":       true,
+	"tanuavaldused":  true,
+	"tanuavaldus":    true,
+	"tunnustussonad": true,
+}
+
+func hasHeadingWord(words []string) bool {
+	for _, word := range words {
+		if headingPrefixes[compactForMatch(word)] {
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeInlineSpace(s string) string {
+	return strings.Join(strings.Fields(s), " ")
+}
+
+func wordTokens(s string) []string {
+	return strings.FieldsFunc(s, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	})
+}
+
+func compactForMatch(s string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(s) {
+		switch r {
+		case 'ä':
+			r = 'a'
+		case 'ö':
+			r = 'o'
+		case 'å':
+			r = 'a'
+		case 'õ':
+			r = 'o'
+		case 'ü':
+			r = 'u'
+		case 'š':
+			r = 's'
+		case 'ž':
+			r = 'z'
+		}
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
+func isNumberedResource(key, prefix string) bool {
+	if key == prefix {
+		return true
+	}
+	if !strings.HasPrefix(key, prefix) {
+		return false
+	}
+	for _, r := range key[len(prefix):] {
+		if !unicode.IsDigit(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func allNumericOrRoman(words []string) bool {
+	for _, word := range words {
+		key := compactForMatch(word)
+		if key == "" {
+			return false
+		}
+		allDigit := true
+		for _, r := range key {
+			if !unicode.IsDigit(r) {
+				allDigit = false
+				break
+			}
+		}
+		if allDigit {
+			continue
+		}
+		if !isRomanNumeral(key) {
+			return false
+		}
+	}
+	return true
+}
+
+func isRomanNumeral(s string) bool {
+	if s == "" || len(s) > 12 {
+		return false
+	}
+	for _, r := range s {
+		if !strings.ContainsRune("ivxlcdm", r) {
+			return false
+		}
+	}
+	return true
+}
+
+func looksNameOnly(words []string) bool {
+	if len(words) < 2 || len(words) > 6 {
+		return false
+	}
+	for _, word := range words {
+		if allNumericOrRoman([]string{word}) {
+			continue
+		}
+		if !startsUpper(word) && !isInitial(word) {
+			return false
+		}
+	}
+	return true
+}
+
+func hasSentenceTerminal(s string) bool {
+	for len(s) > 0 {
+		r, size := utf8.DecodeLastRuneInString(s)
+		if r == utf8.RuneError && size == 0 {
+			return false
+		}
+		s = s[:len(s)-size]
+		if unicode.IsSpace(r) || strings.ContainsRune("\"'”’»)]}", r) {
+			continue
+		}
+		return r == '.' || r == '!' || r == '?' || r == '…'
+	}
+	return false
+}
+
+func startsUpper(s string) bool {
+	for _, r := range s {
+		if unicode.IsLetter(r) {
+			return unicode.IsUpper(r)
+		}
+	}
+	return false
+}
+
+func isInitial(s string) bool {
+	rs := []rune(s)
+	return len(rs) == 1 && unicode.IsUpper(rs[0])
+}
+
+func metadataLikeLine(text string, words []string) bool {
+	if strings.ContainsAny(text, ":©") {
+		return true
+	}
+	if !hasSentenceTerminal(text) {
+		return true
+	}
+	return containsDigit(text) && len(words) <= 8
+}
+
+func containsDigit(s string) bool {
+	for _, r := range s {
+		if unicode.IsDigit(r) {
+			return true
+		}
+	}
+	return false
+}
+
+func isAllCapsText(s string) bool {
+	hasLetter := false
+	for _, r := range s {
+		if !unicode.IsLetter(r) {
+			continue
+		}
+		hasLetter = true
+		if unicode.IsLower(r) {
+			return false
+		}
+	}
+	return hasLetter
 }

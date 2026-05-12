@@ -25,7 +25,7 @@ ad-hoc structure. `et-corpus/` doesn't exist. `cmd/scrapegutenberg` writes
 to a stale path (`localdata/silver-fi/raw`) that violates the single-folder
 bootstrap rule. There's no end-to-end fetch/extract/aggregate pipeline.
 
-Local-only by policy: per [`docs/ARTIFACT_POLICY.md`](docs/ARTIFACT_POLICY.md),
+Local-only by policy: per [`docs/ARTIFACT_POLICY.md`](../docs/ARTIFACT_POLICY.md),
 nothing in `localdata/` ships in the app or in git. Licensing is tracked
 for hygiene but not gated — no commercial/noncommercial allowlists.
 
@@ -354,7 +354,7 @@ This is simpler and safer than mixing `sync.Map` with SQLite. One
 writer, many readers/parsers.
 
 Writer: `encoding/csv` with `w.Comma = '\t'`, copying the pattern from
-[`cmd/corpusmine/main.go`](cmd/corpusmine/main.go) lines 262-299. The
+[`cmd/corpusmine/main.go`](../cmd/corpusmine/main.go) lines 262-299. The
 csv package handles tab-in-content escaping correctly (rare but possible),
 which is the safety belt for "TSV is fine as long as you use the library."
 

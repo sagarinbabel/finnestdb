@@ -864,6 +864,49 @@ func TestFilterLowValueAlternativesSuppressesSlashAndConnegativeFormOfAlternativ
 	}
 }
 
+func TestFilterLowValueAlternativesSuppressesDefinitionFallbackAndAcronymHomonyms(t *testing.T) {
+	dict := map[string][]store.FormResolution{
+		"ei": {
+			{Lemma: "ei", POS: "ADV"},
+			{Lemma: "ei", POS: "INTJ"},
+			{Lemma: "ei", POS: "NOUN"},
+			{Lemma: "ei", POS: "X"},
+		},
+		"ta": {
+			{Lemma: "ta", POS: "PRON"},
+			{Lemma: "TA", POS: "NOUN"},
+			{Lemma: "Ta", POS: "X"},
+		},
+		"ja": {
+			{Lemma: "ja", POS: "CCONJ"},
+			{Lemma: "ja", POS: "X"},
+		},
+	}
+	glosses := map[store.LemmaKey]string{
+		{Lemma: "ei", POS: "ADV"}:   "not; no",
+		{Lemma: "ei", POS: "INTJ"}:  "[ET] esineb rõõmu väljendavates lausetes",
+		{Lemma: "ei", POS: "NOUN"}:  "[ET] ei-sõna, ei-otsus",
+		{Lemma: "ei", POS: "X"}:     "[ET] kogu lause v öeldu kohta",
+		{Lemma: "ta", POS: "PRON"}:  "he; she",
+		{Lemma: "TA", POS: "NOUN"}:  "R&D",
+		{Lemma: "Ta", POS: "X"}:     "[ET] keemiline element",
+		{Lemma: "ja", POS: "CCONJ"}: "and",
+		{Lemma: "ja", POS: "X"}:     "and",
+	}
+
+	got := filterLowValueAlternatives(dict, glosses)
+	assertOnlyCandidate := func(form, lemma, pos string) {
+		t.Helper()
+		candidates := got[form]
+		if len(candidates) != 1 || candidates[0].Lemma != lemma || candidates[0].POS != pos {
+			t.Fatalf("%s candidates=%+v want only %s/%s", form, candidates, lemma, pos)
+		}
+	}
+	assertOnlyCandidate("ei", "ei", "ADV")
+	assertOnlyCandidate("ta", "ta", "PRON")
+	assertOnlyCandidate("ja", "ja", "CCONJ")
+}
+
 func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
 	api := newTestAPI(t)
 	parsed := &parsecore.ParseResult{
@@ -920,6 +963,47 @@ func TestExpandParsedWordsUsesPreloadedGlosses(t *testing.T) {
 	}
 	if got[0].Gloss != "line" {
 		t.Fatalf("gloss=%q want line", got[0].Gloss)
+	}
+}
+
+func TestExpandParsedWordsDoesNotCopyGrammarOntoMixedFormExpansion(t *testing.T) {
+	api := newTestAPI(t)
+	parsed := &parsecore.ParseResult{
+		Lang: "ET",
+		Sentences: []parsecore.SentenceResult{
+			{
+				Text: "Meile ja ma.",
+				Tokens: []parsecore.TokenResult{
+					{Form: "Meile", Lemma: "me", POS: "PRON"},
+					{Form: "ma", Lemma: "mina", POS: "PRON"},
+				},
+			},
+		},
+		Words: []parsecore.WordEntry{
+			{Lemma: "me", POS: "PRON", Forms: []string{"Meile"}, Count: 1, GrammarLabel: "allative", Feats: "Case=All|Number=Plur"},
+		},
+	}
+	dict := map[string][]store.FormResolution{
+		"Meile": {{Lemma: "me", POS: "PRON"}},
+		"ma": {
+			{Lemma: "mina", POS: "PRON"},
+			{Lemma: "me", POS: "PRON"},
+		},
+	}
+
+	got := api.expandParsedWords(parsed, dict, nil, nil)
+	var expanded *parsecore.WordEntry
+	for i := range got {
+		if got[i].Lemma == "me" && got[i].POS == "PRON" {
+			expanded = &got[i]
+			break
+		}
+	}
+	if expanded == nil {
+		t.Fatalf("me/PRON missing from expanded words: %+v", got)
+	}
+	if expanded.GrammarLabel != "" || expanded.Feats != "" {
+		t.Fatalf("expanded grammar=(%q,%q), want empty because forms=%v mix cases", expanded.GrammarLabel, expanded.Feats, expanded.Forms)
 	}
 }
 

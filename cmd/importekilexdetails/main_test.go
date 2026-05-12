@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"finnestdb/internal/glossfallback"
 	"finnestdb/internal/store"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -1025,7 +1026,7 @@ func TestJoinTranslationData_TruncatesLongETDefinition(t *testing.T) {
 	tmp := lemmaPOSMap{}
 	tmp.add("x", "NOUN", nil, []string{long})
 	gloss := joinTranslationData(tmp["x"]["NOUN"])
-	if !strings.HasPrefix(gloss, glossFallbackPrefix) {
+	if !strings.HasPrefix(gloss, glossfallback.ETPrefix) {
 		t.Errorf("missing ET prefix: %q", gloss[:20])
 	}
 	if !strings.HasSuffix(gloss, "…") {
@@ -1034,7 +1035,7 @@ func TestJoinTranslationData_TruncatesLongETDefinition(t *testing.T) {
 	// Prefix + glossFallbackMaxLen runes + ellipsis. Counting runes since
 	// each "õ" is 2 bytes in UTF-8.
 	got := utf8RuneCount(gloss)
-	want := utf8RuneCount(glossFallbackPrefix) + glossFallbackMaxLen + 1
+	want := utf8RuneCount(glossfallback.ETPrefix) + glossFallbackMaxLen + 1
 	if got != want {
 		t.Errorf("rune count: got %d, want %d", got, want)
 	}
