@@ -26,6 +26,32 @@ or no lexical-base alternative — are preserved as-is.
 - Added: [`docs/DECISIONS.md`](DECISIONS.md) §Decision 19 — context,
   structural detector, and false-positive reasoning behind the filter.
 
+## 2026-05-12 — Analyser-quality learnings from yle_subs (PR #183)
+
+Documents the parser/dict/ingest changes shipped in PR
+[#183](https://github.com/sagarinbabel/finnestdb/pull/183) — five
+runtime fixes that pull learner-quality corrections from
+`yle_subs` back into finnestdb's parser and dict layer.
+
+- Added: [`DECISIONS.md`](DECISIONS.md) Decision 20 — why the
+  lexical-overlay short-circuit runs at Step 0 of
+  `BatchLookupForms` (not inside `Lemmatize`), why it's
+  custom-mode-only, and why the bad-lemma blocklist is two-tiered
+  (never-legitimate fragments + (surface, lemma) pairs).
+- Added: [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) entry
+  2026-05-12 — describes the five-piece change set
+  (lexadverbs overlay, `NormalizeMaInfinitive`, MA-infinitive
+  ranking bias, bad-lemma blocklist, structural-gloss filter at
+  kaikki ingest, `BatchLookupSenses` API, FI+ET analyser-traps
+  gold fixtures) and reports the measurement against the new
+  gold sets (FI custom lemma=95.2%, ET 100%).
+- Modified: [`FST_LEMMATIZER.md`](FST_LEMMATIZER.md) "Store-level
+  candidate merge" section — documents the new Step 0
+  lex-overlay short-circuit, the MA-infinitive ranking bias, the
+  two-tier bad-lemma filter, and the documented residual on
+  `tarjoamaan` pending FST table regeneration with MA-infinitive
+  surfaces.
+
 ## 2026-05-09 — Architecture and corpus documentation audit
 
 Refreshes the living docs after the corpus pipeline and baseline-compression
