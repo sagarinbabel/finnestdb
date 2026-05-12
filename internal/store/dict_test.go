@@ -99,7 +99,7 @@ func TestBatchLookupAllForms_HomonymExpansion(t *testing.T) {
 		{"vesi", "vesi", "NOUN", "ET"},
 	})
 
-	got := db.BatchLookupAllForms([]string{"joon", "vesi", "missing"}, "ET")
+	got := db.BatchLookupAllForms([]string{"joon", "vesi", "missing"}, "ET", "custom")
 
 	cands, ok := got["joon"]
 	if !ok {
@@ -141,9 +141,70 @@ func TestBatchLookupAllForms_CaseFolding(t *testing.T) {
 		{"joon", "jooma", "VERB", "ET"},
 	})
 
-	got := db.BatchLookupAllForms([]string{"Joon"}, "ET")
+	got := db.BatchLookupAllForms([]string{"Joon"}, "ET", "custom")
 	if len(got["Joon"]) != 2 {
 		t.Errorf("sentence-initial Joon: got %d candidates, want 2", len(got["Joon"]))
+	}
+}
+
+func TestBatchLookupAllForms_LexOverlaySuppressesRawDictTrapsInCustomMode(t *testing.T) {
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"varsin", "varsi", "NOUN", "FI"},
+		{"vuotta", "vuo", "NOUN", "FI"},
+		{"välja", "väli", "NOUN", "ET"},
+		{"välja", "väljama", "VERB", "ET"},
+		{"peale", "pea", "NOUN", "ET"},
+		{"sisse", "siss", "NOUN", "ET"},
+		{"veel", "vesi", "NOUN", "ET"},
+		{"jaoks", "jagu", "NOUN", "ET"},
+		{"ta", "TA", "NOUN", "ET"},
+		{"ta", "Ta", "X", "ET"},
+		{"ta", "tema", "NOUN", "ET"},
+	})
+
+	assertOnly := func(got map[string][]FormResolution, form, wantLemma, wantPOS string) {
+		t.Helper()
+		candidates, ok := got[form]
+		if !ok {
+			t.Fatalf("%s: missing overlay candidate", form)
+		}
+		if len(candidates) != 1 {
+			t.Fatalf("%s: got %d candidates, want 1: %+v", form, len(candidates), candidates)
+		}
+		c := candidates[0]
+		if c.Lemma != wantLemma || c.POS != wantPOS || c.Source != "lex-overlay" {
+			t.Fatalf("%s: got %+v, want %s/%s from lex-overlay", form, c, wantLemma, wantPOS)
+		}
+	}
+
+	fi := db.BatchLookupAllForms([]string{"varsin", "Vuotta"}, "FI", "custom")
+	assertOnly(fi, "varsin", "varsin", "ADV")
+	assertOnly(fi, "Vuotta", "vuosi", "NOUN")
+
+	et := db.BatchLookupAllForms([]string{"välja", "peale", "sisse", "veel", "jaoks", "Ta"}, "ET", "custom")
+	assertOnly(et, "välja", "välja", "ADV")
+	assertOnly(et, "peale", "peale", "ADP")
+	assertOnly(et, "sisse", "sisse", "ADV")
+	assertOnly(et, "veel", "veel", "ADV")
+	assertOnly(et, "jaoks", "jaoks", "ADP")
+	assertOnly(et, "Ta", "tema", "PRON")
+}
+
+func TestBatchLookupAllForms_LexOverlayBasicModeNotAffected(t *testing.T) {
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"varsin", "varsi", "NOUN", "FI"},
+		{"välja", "väli", "NOUN", "ET"},
+	})
+
+	fi := db.BatchLookupAllForms([]string{"varsin"}, "FI", "basic")
+	if cands := fi["varsin"]; len(cands) != 1 || cands[0].Lemma != "varsi" || cands[0].POS != "NOUN" || cands[0].Source != "dict" {
+		t.Fatalf("basic FI candidates=%+v, want raw dict varsi/NOUN", cands)
+	}
+	et := db.BatchLookupAllForms([]string{"välja"}, "ET", "basic")
+	if cands := et["välja"]; len(cands) != 1 || cands[0].Lemma != "väli" || cands[0].POS != "NOUN" || cands[0].Source != "dict" {
+		t.Fatalf("basic ET candidates=%+v, want raw dict väli/NOUN", cands)
 	}
 }
 

@@ -990,7 +990,7 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 	// it has any candidates for a form, is treated as authoritative — the
 	// parser's pick is only used when the dict is silent.
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
-	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang)
+	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang, "custom")
 	dictCandidates, _, _ = a.filterLowValueDictAlternatives(dictCandidates, req.Lang)
 
 	sentences := make([]store.DeckSentenceInput, 0, len(parsed.Sentences))
@@ -1589,7 +1589,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	// so the import overview's unique-lemma count matches the count of the
 	// deck the user gets when saving. See expandParsedWords for details.
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
-	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang)
+	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang, parsed.Parser)
 	dictCandidates, dictGlosses, checkedGlossKeys := a.filterLowValueDictAlternatives(dictCandidates, req.Lang)
 	parsed.Words = a.expandParsedWords(parsed, dictCandidates, dictGlosses, checkedGlossKeys)
 

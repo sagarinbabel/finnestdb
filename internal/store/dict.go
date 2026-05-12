@@ -1028,17 +1028,20 @@ func uniqueNonEmptyStrings(values []string) []string {
 	return out
 }
 
-// BatchLookupAllForms returns every (lemma, pos) candidate the dictionary has
-// for each surface form — used at deck-ingest time to expand homonyms into one
+// BatchLookupAllForms returns every learner-facing (lemma, pos) candidate for
+// each surface form — used at deck-ingest time to expand homonyms into one
 // occurrence row per candidate (e.g. ET "joon" → both joon/NOUN and
-// jooma/VERB). Unlike BatchLookupForms this is a direct dictionary lookup
-// only; it does not run the possessive / compound / case-suffix fallback
-// chain, because those heuristics are designed to commit to a single
-// resolution and aren't authoritative for ambiguity.
+// jooma/VERB). In custom mode, lexical-overlay surfaces short-circuit to the
+// curated single reading because those entries are known raw-dict/analyzer
+// traps, not real ambiguity. Basic mode remains direct dictionary lookup to
+// match BatchLookupForms' baseline contract. Otherwise this does not run the
+// possessive / compound / case-suffix fallback chain, because those heuristics
+// are designed to commit to a single resolution and aren't authoritative for
+// ambiguity.
 //
 // Forms with no direct dict hit are absent from the result map. Each form's
 // slice is non-empty when present.
-func (d *DB) BatchLookupAllForms(forms []string, lang string) map[string][]FormResolution {
+func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string) map[string][]FormResolution {
 	result := make(map[string][]FormResolution, len(forms))
 	if len(forms) == 0 {
 		return result
@@ -1052,6 +1055,13 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string) map[string][]FormR
 
 	for _, form := range forms {
 		lower := strings.ToLower(form)
+		if parserMode == "custom" {
+			if res, ok := lookupLexOverlay(lang, lower); ok {
+				result[form] = []FormResolution{res}
+				continue
+			}
+		}
+
 		rows, err := stmt.Query(lower, lang)
 		if err != nil {
 			continue
