@@ -115,6 +115,7 @@ func TestLookupET_Hits(t *testing.T) {
 		{"veel", "veel", "ADV"},     // not vesi/NOUN/Case=Ade
 		{"peale", "peale", "ADP"},   // not pea/NOUN/Case=All
 		{"jaoks", "jaoks", "ADP"},   // not jagu/NOUN/Case=Tra
+		{"Ta", "tema", "PRON"},      // not TA/NOUN or Ta/X
 		{"lihtsalt", "lihtsalt", "ADV"}, // not lihtne/ADJ/Case=Abl
 		{"tegelikult", "tegelikult", "ADV"},
 		{"Tegelikult", "tegelikult", "ADV"},

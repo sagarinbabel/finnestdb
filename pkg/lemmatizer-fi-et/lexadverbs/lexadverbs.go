@@ -183,6 +183,12 @@ var etOverlay = map[string]Analysis{
 		Lemma: "sisse",
 		UPOS:  "ADV",
 	},
+	"ta": {
+		// `ta` is the high-frequency personal pronoun, not Ekilex's
+		// raw `TA`/NOUN or `Ta`/X alternatives.
+		Lemma: "tema",
+		UPOS:  "PRON",
+	},
 	"taga": {
 		Lemma: "taga",
 		UPOS:  "ADP",
