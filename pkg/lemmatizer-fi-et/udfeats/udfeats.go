@@ -212,6 +212,29 @@ var maInfinitiveEndings = map[string][2]string{
 	"Abe": {"matta", "mättä"},
 }
 
+// IsMaInfinitiveSurface reports whether a Finnish surface matches the
+// MA-infinitive case-marked suffix pattern (maan/mään/massa/mässä/
+// masta/mästä/malla/mällä/matta/mättä). Used by the dict-layer
+// ranker to demote the analyzer noun-cousin trap (e.g. `lähtemään`
+// emitted as `lähtemä`/NOUN/Case=Ill instead of the verb's
+// MA-infinitive illative) against any candidate VERB reading.
+//
+// This is a surface-only check: it does NOT confirm a verb reading
+// exists. Callers compose this with POS/feats checks on each
+// candidate to decide.
+func IsMaInfinitiveSurface(surface string) bool {
+	if surface == "" {
+		return false
+	}
+	lower := toLowerASCII(surface)
+	for _, pair := range maInfinitiveEndings {
+		if hasSuffix(lower, pair[0]) || hasSuffix(lower, pair[1]) {
+			return true
+		}
+	}
+	return false
+}
+
 // NormalizeMaInfinitive rewrites FEATS when (pos, surface, feats) match
 // the analyzer-noun-cousin trap for Finnish MA-infinitives.
 //
@@ -253,8 +276,10 @@ func NormalizeMaInfinitive(surface, pos, feats string) string {
 		return feats
 	}
 	// Strip the noun-cousin signature (Person=3, Number=Sing) and assert
-	// the MA-infinitive markers. Other features (Voice, Clitic, etc.)
-	// are preserved.
+	// the MA-infinitive markers. Other features (Clitic, etc.) are
+	// preserved. Voice=Act is added when no Voice attribute is present
+	// — MA-infinitives default to active voice in UD; passive MA
+	// forms would have arrived with Voice=Pass already.
 	if pairs["Person"] == "3" {
 		delete(pairs, "Person")
 	}
@@ -263,6 +288,9 @@ func NormalizeMaInfinitive(surface, pos, feats string) string {
 	}
 	pairs["VerbForm"] = "Inf"
 	pairs["InfForm"] = "Ma"
+	if pairs["Voice"] == "" {
+		pairs["Voice"] = "Act"
+	}
 	return ComposeMap(pairs)
 }
 

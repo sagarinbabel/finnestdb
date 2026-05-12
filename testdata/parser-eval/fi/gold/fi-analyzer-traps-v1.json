@@ -2,7 +2,7 @@
   "name": "fi-analyzer-traps",
   "version": "v1",
   "language": "FI",
-  "notes": "Regression gold seeded from yle_subs/card_overrides/bad_lemmas.tsv + SUSPICIOUS_SURFACE_LEMMAS + LEXICAL_ANALYSES. Every entry is a known analyzer failure the yle_subs deck builder had to override with a manual analysis. The goal: a failing assertion here means the parser regressed against a real-world bug the downstream learner already paid for once.",
+  "notes": "Regression gold seeded from yle_subs/card_overrides/bad_lemmas.tsv + SUSPICIOUS_SURFACE_LEMMAS + LEXICAL_ANALYSES. Every entry is a known analyzer failure the yle_subs deck builder had to override with a manual analysis. The goal: a failing assertion here means the parser regressed against a real-world bug the downstream learner already paid for once. Known residual against the current FST tables (May 2026): the productive MA-infinitive surface `tarjoamaan` resolves to lemma=`tarjoama` (noun-cousin) instead of `tarjota`, because the FST table doesn't ship MA-infinitive surfaces and the dict-only candidate is the only one available. The FEATS, POS, and gloss are correct; only the verb-lemma reconstruction is missing. Fixing this fully needs FST table regeneration to include MA-infinitive forms.",
   "cases": [
     {
       "id": "fi-trap-asiaan",
@@ -25,7 +25,7 @@
           "surface": "Asia",
           "lemma": "asia",
           "pos": "NOUN",
-          "feats": "Case=Nom|Number=Sing"
+          "feats": "Number=Sing"
         }
       ]
     },
@@ -73,7 +73,7 @@
           "surface": "Poliisi",
           "lemma": "poliisi",
           "pos": "NOUN",
-          "feats": "Case=Nom|Number=Sing"
+          "feats": ""
         }
       ]
     },

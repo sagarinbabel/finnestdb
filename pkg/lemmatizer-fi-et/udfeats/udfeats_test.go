@@ -85,55 +85,55 @@ func TestNormalizeMaInfinitive(t *testing.T) {
 			"illative MA noun-cousin trap (tarjoamaan)",
 			"tarjoamaan", "VERB",
 			"Case=Ill|Number=Sing|Person=3",
-			"Case=Ill|InfForm=Ma|VerbForm=Inf",
+			"Case=Ill|InfForm=Ma|VerbForm=Inf|Voice=Act",
 		},
 		{
 			"inessive MA in-progress (juomassa)",
 			"juomassa", "VERB",
 			"Case=Ine|Number=Sing|Person=3",
-			"Case=Ine|InfForm=Ma|VerbForm=Inf",
+			"Case=Ine|InfForm=Ma|VerbForm=Inf|Voice=Act",
 		},
 		{
 			"elative MA from-doing (juomasta)",
 			"juomasta", "VERB",
 			"Case=Ela|Number=Sing|Person=3",
-			"Case=Ela|InfForm=Ma|VerbForm=Inf",
+			"Case=Ela|InfForm=Ma|VerbForm=Inf|Voice=Act",
 		},
 		{
 			"adessive MA by-doing (tekemällä)",
 			"Tekemällä", "VERB",
 			"Case=Ade|Number=Sing|Person=3",
-			"Case=Ade|InfForm=Ma|VerbForm=Inf",
+			"Case=Ade|InfForm=Ma|VerbForm=Inf|Voice=Act",
 		},
 		{
 			"abessive MA without-doing (puhumatta)",
 			"puhumatta", "VERB",
 			"Case=Abe|Number=Sing|Person=3",
-			"Case=Abe|InfForm=Ma|VerbForm=Inf",
+			"Case=Abe|InfForm=Ma|VerbForm=Inf|Voice=Act",
 		},
 		{
 			"front-vowel harmony preserved (lähtemään)",
 			"lähtemään", "VERB",
 			"Case=Ill|Number=Sing|Person=3",
-			"Case=Ill|InfForm=Ma|VerbForm=Inf",
+			"Case=Ill|InfForm=Ma|VerbForm=Inf|Voice=Act",
 		},
 		{
 			"sentence-initial capital with umlaut (Lähtemään)",
 			"Lähtemään", "VERB",
 			"Case=Ill|Number=Sing|Person=3",
-			"Case=Ill|InfForm=Ma|VerbForm=Inf",
+			"Case=Ill|InfForm=Ma|VerbForm=Inf|Voice=Act",
 		},
 		{
-			"preserves Voice and other unrelated features",
-			"tarjoamaan", "VERB",
-			"Case=Ill|Number=Sing|Person=3|Voice=Act",
-			"Case=Ill|InfForm=Ma|VerbForm=Inf|Voice=Act",
+			"preserves explicit Voice=Pass without overwriting to Act",
+			"puhuttamaan", "VERB",
+			"Case=Ill|Number=Sing|Person=3|Voice=Pass",
+			"Case=Ill|InfForm=Ma|VerbForm=Inf|Voice=Pass",
 		},
 		{
 			"already correctly marked MA-infinitive: unchanged",
 			"tarjoamaan", "VERB",
-			"Case=Ill|InfForm=Ma|VerbForm=Inf",
-			"Case=Ill|InfForm=Ma|VerbForm=Inf",
+			"Case=Ill|InfForm=Ma|VerbForm=Inf|Voice=Act",
+			"Case=Ill|InfForm=Ma|VerbForm=Inf|Voice=Act",
 		},
 		{
 			"non-VERB pos: unchanged",
@@ -169,7 +169,7 @@ func TestNormalizeMaInfinitive(t *testing.T) {
 			"VERB illative on Number=Plur surface: still normalises (no Sing to strip)",
 			"tarjoamaan", "VERB",
 			"Case=Ill|Number=Plur|Person=3",
-			"Case=Ill|InfForm=Ma|Number=Plur|VerbForm=Inf",
+			"Case=Ill|InfForm=Ma|Number=Plur|VerbForm=Inf|Voice=Act",
 		},
 	}
 	for _, tc := range cases {
@@ -179,6 +179,44 @@ func TestNormalizeMaInfinitive(t *testing.T) {
 				tc.name, tc.surface, tc.pos, tc.in, got, tc.want)
 		}
 	}
+}
+
+func TestIsMaInfinitiveSurface(t *testing.T) {
+	hits := []string{
+		"tarjoamaan", "lähtemään", "Lähtemään",
+		"juomassa", "Juomassa",
+		"juomasta", "menemästä",
+		"tekemällä", "Tekemällä", "puhumalla",
+		"puhumatta", "ilman puhumatta", // partial: only the last token is what matters; suffix check
+	}
+	for _, s := range hits {
+		// Strip leading words to test just the surface
+		tok := s
+		if i := lastSpace(s); i >= 0 {
+			tok = s[i+1:]
+		}
+		if !IsMaInfinitiveSurface(tok) {
+			t.Errorf("IsMaInfinitiveSurface(%q) = false; want true", tok)
+		}
+	}
+	misses := []string{
+		"", "talo", "menen", "menemän", // -mä (no ending vowel match)
+		"talossa", "kirjassa", "hyvä",
+	}
+	for _, s := range misses {
+		if IsMaInfinitiveSurface(s) {
+			t.Errorf("IsMaInfinitiveSurface(%q) = true; want false", s)
+		}
+	}
+}
+
+func lastSpace(s string) int {
+	for i := len(s) - 1; i >= 0; i-- {
+		if s[i] == ' ' {
+			return i
+		}
+	}
+	return -1
 }
 
 func TestParseFeatsRoundTrip(t *testing.T) {

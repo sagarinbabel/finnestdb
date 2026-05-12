@@ -73,6 +73,17 @@ var fiOverlay = map[string]Analysis{
 		Number:       "Sing",
 		Feats:        "Case=Ess|Number=Sing",
 	},
+	"muuta": {
+		// Kaikki ships `muuta` keyed under the verb `muuttaa` (suspicious
+		// per yle_subs SUSPICIOUS_SURFACE_LEMMAS). The dominant reading
+		// is the partitive of the pronoun `muu` ("other"). Curate it.
+		Lemma:        "muu",
+		UPOS:         "PRON",
+		GrammarLabel: "partitive",
+		Number:       "Sing",
+		PronType:     "Ind",
+		Feats:        "Case=Par|Number=Sing|PronType=Ind",
+	},
 	"peräisin": {
 		Lemma: "peräisin",
 		UPOS:  "ADV",
@@ -80,6 +91,17 @@ var fiOverlay = map[string]Analysis{
 	"perillä": {
 		Lemma: "perillä",
 		UPOS:  "ADV",
+	},
+	"siitä": {
+		// Suspicious (siitä, siittää) per yle_subs — the analyzer ranks
+		// the verb `siittää` ("conceive") first. The dominant reading
+		// is the demonstrative pronoun in the elative.
+		Lemma:        "se",
+		UPOS:         "PRON",
+		GrammarLabel: "elative",
+		Number:       "Sing",
+		PronType:     "Dem",
+		Feats:        "Case=Ela|Number=Sing|PronType=Dem",
 	},
 	"sisään": {
 		Lemma: "sisään",
@@ -100,6 +122,16 @@ var fiOverlay = map[string]Analysis{
 	"varsin": {
 		Lemma: "varsin",
 		UPOS:  "ADV",
+	},
+	"vuotta": {
+		// Suspicious (vuotta, vuo) per yle_subs — the analyzer ranks a
+		// rare noun `vuo` first. The dominant reading is the partitive
+		// of `vuosi` ("year").
+		Lemma:        "vuosi",
+		UPOS:         "NOUN",
+		GrammarLabel: "partitive",
+		Number:       "Sing",
+		Feats:        "Case=Par|Number=Sing",
 	},
 	"yleensä": {
 		Lemma: "yleensä",
