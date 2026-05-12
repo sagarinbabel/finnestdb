@@ -147,6 +147,145 @@ func TestBatchLookupAllForms_CaseFolding(t *testing.T) {
 	}
 }
 
+// TestBatchLookupAllForms_FI_MaInfinitiveCorrectsNounCousin proves that
+// when kaikki has the buggy (lemma=tarjoama, pos=VERB) row for the
+// MA-infinitive surface `tarjoamaan`, the FI homonym-expansion path
+// drops it and substitutes the FST's correctly-stemmed verb headword
+// (lemma=tarjota). Without this the /api/parse `words` list and deck
+// creation would still expose tarjoama as the card headword even though
+// the sentence-level token resolved to tarjota.
+func TestBatchLookupAllForms_FI_MaInfinitiveCorrectsNounCousin(t *testing.T) {
+	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
+		"tarjoamaan": {
+			{
+				Lemma:    "tarjota",
+				UPOS:     "VERB",
+				Feats:    "Case=Ill|InfForm=3|Number=Sing|VerbForm=Inf",
+				Raw:      "generated-table",
+			},
+		},
+	})
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		// kaikki's noun-cousin trap: surface keyed under the deverbal -ma
+		// noun instead of the verb headword.
+		{"tarjoamaan", "tarjoama", "VERB", "FI"},
+	})
+
+	got := db.BatchLookupAllForms([]string{"tarjoamaan"}, "FI")
+
+	cands := got["tarjoamaan"]
+	if len(cands) != 1 {
+		t.Fatalf("tarjoamaan: got %d candidates, want 1: %+v", len(cands), cands)
+	}
+	if cands[0].Lemma != "tarjota" || cands[0].POS != "VERB" {
+		t.Errorf("tarjoamaan: got {%q %q}, want {tarjota VERB}",
+			cands[0].Lemma, cands[0].POS)
+	}
+}
+
+// TestBatchLookupAllForms_FI_AInfLongCorrectsSelfKey proves the A-long
+// homonym-expansion correction: kaikki's self-key (mennäkseen lemma
+// `mennäkseen`) is dropped and the FST's verb headword (mennä) is
+// substituted. ymmärtääkseen exercises the same path but for the
+// wrong-POS variant (kaikki tags it ADV with self-lemma).
+func TestBatchLookupAllForms_FI_AInfLongCorrectsSelfKey(t *testing.T) {
+	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
+		"mennäkseen": {
+			{
+				Lemma: "mennä",
+				UPOS:  "VERB",
+				Feats: "InfForm=1|Person[psor]=3|VerbForm=Inf",
+				Raw:   "generated-table",
+			},
+		},
+		"ymmärtääkseen": {
+			{
+				Lemma: "ymmärtää",
+				UPOS:  "VERB",
+				Feats: "InfForm=1|Person[psor]=3|VerbForm=Inf",
+				Raw:   "generated-table",
+			},
+		},
+	})
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"mennäkseen", "mennäkseen", "VERB", "FI"},      // self-key
+		{"ymmärtääkseen", "ymmärtääkseen", "ADV", "FI"}, // wrong-POS self-key
+	})
+
+	got := db.BatchLookupAllForms([]string{"mennäkseen", "ymmärtääkseen"}, "FI")
+
+	if c := got["mennäkseen"]; len(c) != 1 || c[0].Lemma != "mennä" || c[0].POS != "VERB" {
+		t.Errorf("mennäkseen: got %+v, want [{mennä VERB}]", c)
+	}
+	if c := got["ymmärtääkseen"]; len(c) != 1 || c[0].Lemma != "ymmärtää" || c[0].POS != "VERB" {
+		t.Errorf("ymmärtääkseen: got %+v, want [{ymmärtää VERB}]", c)
+	}
+}
+
+// TestBatchLookupAllForms_FI_PreservesGenuineHomonym proves the
+// correction path is conservative: when no candidate is demoted, the
+// raw dict list passes through unchanged (no FST consultation, no
+// unintended de-duplication). Uses a non-A/MA surface so neither bias
+// fires, plus a separate test for an A/MA surface whose only dict row
+// is already correct (verb stemmed, not noun-cousin) — the FST hint
+// must not double-count the same (lemma, pos).
+func TestBatchLookupAllForms_FI_PreservesGenuineHomonym(t *testing.T) {
+	// kuusi: real Finnish homonym (NOUN "spruce" / NOUN "six" / NUM "six").
+	// Surface doesn't match MA or A-long suffix so both biases are 0.
+	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
+		"kuusi": {
+			{Lemma: "kuusi", UPOS: "NOUN", Raw: "generated-table"},
+		},
+	})
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"kuusi", "kuusi", "NOUN", "FI"},
+		{"kuusi", "kuusi", "NUM", "FI"},
+	})
+
+	got := db.BatchLookupAllForms([]string{"kuusi"}, "FI")
+
+	cands := got["kuusi"]
+	if len(cands) != 2 {
+		t.Fatalf("kuusi: got %d candidates, want 2 (NOUN + NUM): %+v", len(cands), cands)
+	}
+	seen := map[string]bool{}
+	for _, c := range cands {
+		seen[c.POS] = true
+		if c.Lemma != "kuusi" {
+			t.Errorf("kuusi: candidate %+v has lemma != kuusi", c)
+		}
+	}
+	if !seen["NOUN"] || !seen["NUM"] {
+		t.Errorf("kuusi: missing expected POS in %+v", cands)
+	}
+}
+
+// TestBatchLookupAllForms_FI_NoFSTKeepsFilteredDict proves the fallback
+// behaviour when no FST table is installed: -1 candidates are still
+// dropped (kaikki self-keys are wrong regardless of whether we have a
+// replacement), but no substitute is added. The deck/parse path then
+// falls through to the parser's pick via expandTokenLemmas.
+func TestBatchLookupAllForms_FI_NoFSTKeepsFilteredDict(t *testing.T) {
+	// No installTestLemmatizerTable call — LEMMATIZER_TABLES_DIR stays empty.
+	t.Setenv("LEMMATIZER_TABLES_DIR", t.TempDir())
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"mennäkseen", "mennäkseen", "VERB", "FI"}, // sole entry: self-key bug
+	})
+
+	got := db.BatchLookupAllForms([]string{"mennäkseen"}, "FI")
+
+	// Without an FST to substitute the correct headword, returning the buggy
+	// self-key would be worse than returning nothing — expandTokenLemmas
+	// falls back to the parser's pick, which has its own FST-driven lemma.
+	if c, present := got["mennäkseen"]; present && len(c) > 0 {
+		t.Errorf("mennäkseen with no FST: expected dropped (absent or empty), got %+v", c)
+	}
+}
+
 // --- multi-lemma schema migration ---
 
 func TestEnsureMultiLemmaSchema_PreservesRowsAndAddsMultiLemmaSupport(t *testing.T) {

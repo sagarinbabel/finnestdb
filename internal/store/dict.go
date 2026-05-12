@@ -1081,6 +1081,17 @@ func uniqueNonEmptyStrings(values []string) []string {
 // chain, because those heuristics are designed to commit to a single
 // resolution and aren't authoritative for ambiguity.
 //
+// For Finnish, candidates also pass through the same MA-infinitive and
+// A-infinitive-long bias filters BatchLookupForms applies: dict rows that
+// the ranker would demote to -1 (kaikki's deverbal-noun noun-cousin trap
+// and self-keyed A-long surfaces) are dropped, and the FST's
+// verb-headword reading is substituted when one is available. Without
+// this, deck creation and the /api/parse `words` listing would still
+// show `tarjoamaan→tarjoama`, `mennäkseen→mennäkseen`, and
+// `ymmärtääkseen→ADV` even after BatchLookupForms picks the right
+// headword for the sentence-level token — see the discussion on the
+// MA/A-inf-long table-regen PR for the failure mode.
+//
 // Forms with no direct dict hit are absent from the result map. Each form's
 // slice is non-empty when present.
 func (d *DB) BatchLookupAllForms(forms []string, lang string) map[string][]FormResolution {
@@ -1112,11 +1123,84 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string) map[string][]FormR
 			candidates = append(candidates, FormResolution{Lemma: lemma, POS: pos, Source: "dict"})
 		}
 		rows.Close()
+		if lang == "FI" {
+			candidates = correctFICandidates(d, form, lower, candidates)
+		}
 		if len(candidates) > 0 {
 			result[form] = candidates
 		}
 	}
 	return result
+}
+
+// correctFICandidates is the BatchLookupAllForms-side analogue of the
+// MA/A-inf-long biases in pickBestResolutionCandidate. It runs on each
+// FI surface, drops dict candidates the biases would demote to -1, and
+// substitutes the FST's verb-headword reading when the surface matches
+// a non-finite paradigm slot. Returns the (possibly modified) candidate
+// list — nil when the corrected list is empty.
+//
+// The single-pick path (BatchLookupForms) handles the same gap via
+// pickBestResolutionCandidate's tie-breakers; this function makes the
+// homonym-expansion path (deck creation, /api/parse words) match. The
+// two paths must agree on the lemma a learner sees, or the headword on
+// their card won't match the headword for the sentence-level token.
+//
+// Negative pre-checks: if no candidate is demoted AND the surface
+// doesn't match a non-finite paradigm slot, this is a no-op — the
+// common case stays cheap.
+func correctFICandidates(d *DB, surface, lower string, candidates []FormResolution) []FormResolution {
+	if len(candidates) == 0 {
+		return candidates
+	}
+
+	// First pass: drop the -1 candidates. Track whether anything was dropped
+	// so we know whether to consult the FST for a replacement headword.
+	kept := candidates[:0]
+	droppedAny := false
+	for _, c := range candidates {
+		if maInfinitiveBias(surface, c) == -1 || aInfLongBias(surface, c) == -1 {
+			droppedAny = true
+			continue
+		}
+		kept = append(kept, c)
+	}
+
+	if !droppedAny {
+		// No dict row was demoted — homonym list is fine as-is. The common
+		// case (talossa, kissan, …) lands here.
+		return kept
+	}
+
+	// Something was dropped. Pull FST candidates that *score +1* on this
+	// surface (i.e. the correctly-stemmed verb headword) and merge them
+	// in. Dedupe against any surviving dict candidates by (lemma, pos) so
+	// we don't double-list a verb that kaikki happened to ship correctly
+	// alongside the buggy row.
+	lem := d.fstLemmatizer()
+	if lem == nil {
+		return kept
+	}
+	for _, a := range lem.Lemmatize("FI", lower) {
+		if a.Lemma == "" || a.UPOS == "" {
+			continue
+		}
+		res := formResolutionFromFSTAnalysis(lower, a, "fst")
+		if maInfinitiveBias(surface, res) != 1 && aInfLongBias(surface, res) != 1 {
+			continue
+		}
+		dup := false
+		for _, k := range kept {
+			if k.Lemma == res.Lemma && k.POS == res.POS {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			kept = append(kept, res)
+		}
+	}
+	return kept
 }
 
 // LemmaKey identifies a unique (lemma, pos) pair for use as a map key.
