@@ -129,9 +129,9 @@ func (l *Lemmatizer) Close() error {
 //     reading (`tarjoama` Case=Ill|Person=3|Number=Sing) is replaced
 //     by the verb's MA-infinitive shape (Case=Ill|VerbForm=Inf|InfForm=Ma).
 //     This rule is FI-only: Estonian -ma supine forms are already
-//     tagged VerbForm=Sup by the Ekilex-backed analyzer (see
-//     cmd/importdict/feats.go), so the noun-cousin trap doesn't
-//     arise the same way.
+//     tagged Case=Ill|VerbForm=Sup by the Ekilex-backed analyzer
+//     (see cmd/importekilexdetails/feats.go), so the noun-cousin
+//     trap doesn't arise the same way.
 func (l *Lemmatizer) Lemmatize(lang, word string) []Analysis {
 	if word == "" {
 		return nil
