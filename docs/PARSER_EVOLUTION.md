@@ -113,14 +113,14 @@ First end-to-end baseline that captures the 2026-05-12 PR cascade. Two FST table
 
 - **FI curated sets at ceiling** — already near-100% on lemma/POS/grammar; PR #188's non-finite coverage doesn't move them. fi-analyzer-traps reaches 100% (was 95.2% in #183's mini-baseline; PR #188's FST regen fixes the documented `tarjoamaan → tarjoama` residual).
 - **FI UD sets: small consistent positive Δ** across all four, on every metric. This is where PR #188's non-finite coverage shows up — `mennäkseen → mennä`, `tarjoamaan → tarjota`, etc. are naturally-distributed in UD test corpora but absent from curated grammar sets.
-- **ET grammar (50 cases, the statistically meaningful set) lifts on every metric** — Case 78.4 → 82.4 (+4.0pt), lemma 86.7 → 91.4 (+4.7pt). Improvements appear to come from PR #185/#187 dict-side ranking and lexadverbs overlay, not (yet) from PR #189 FEATS — that needs an Ekilex reimport.
-- **ET manual regresses by one verb token** (`peatus → peatu/ADJ` instead of `peatuma/VERB`). With only 9 tokens, one miss = 11% drop. Reproduces with both stale and fresh ET FST tables → root cause is dict-side, likely PR #187's source-priority-first ranking. See [`baselines/2026-05-12a-T1526Z-et.md`](baselines/2026-05-12a-T1526Z-et.md) for the trace.
-- **Per-FEATS-attribute table on et-grammar** shows Case +4.0pt (real fix) and a uniform −4.2pt across Mood/Tense/Voice/Person/VerbForm/etc. (one newly-misclassified verb token dragging down every verb-FEATS axis at once).
+- **ET grammar (50 cases / 105 scored tokens, the statistically meaningful set) lifts on every metric** — Case 78.4 → 82.4 (+4.0pt), lemma 86.7 → 91.4 (+4.7pt). Improvements appear to come from PR #185/#187 dict-side ranking and lexadverbs overlay, not (yet) from PR #189 FEATS — that needs an Ekilex reimport.
+- **ET manual regresses by one verb token** (`peatus → peatu/ADJ` instead of `peatuma/VERB`). With only 9 scored tokens, one miss = 11% drop. Reproduces with both stale and fresh ET FST tables → root cause is dict-side, likely PR #187's source-priority-first ranking. See [`baselines/2026-05-12a-T1526Z-et.md`](baselines/2026-05-12a-T1526Z-et.md) for the trace.
+- **Per-FEATS-attribute table on et-grammar** shows Case +4.0pt (real fix). The one-token drops on Mood/Tense/Voice and the net Person/VerbForm drops come from `naeris` changing from `naerma/VERB` to `naeris/NOUN`; existing `lugesid`/`läksid` Person misses and the pending `õppida` VerbForm miss remain unchanged.
 
 **Open issues this surfaced** (carried to follow-ups, not blocking this freeze):
 
 1. **`peatus → peatu/ADJ` regression** (et-manual) — kind of dictionary-entry attachment that matters for learners. Investigate PR #187 ranking interaction.
-2. **Verb/noun homograph picks** on ET — `joon` ("I drink" vs "line"), `naeris` ("laughed" vs "turnip"), `õuna`. FST table emits both readings; runtime tie-break is now picking NOUN where 2026-05-07k picked VERB.
+2. **Verb/noun/PROPN homograph picks** on ET — `joon` ("I drink" vs "line"), `naeris` ("laughed" vs "turnip"), and `Eestis`. FST table emits both verb/noun readings for the verb cases; runtime tie-break is now picking NOUN where 2026-05-07k picked VERB/PROPN. `õuna` remains the unchanged `õud/NOUN` lemma miss from 2026-05-07k.
 3. **Ekilex reimport pending** — PR #189's dict-side fix doesn't show up here; expected to fix `õppida` and friends. Run `make reduce-ekilex` + `make import-ekilex-details-et` and re-freeze.
 
 ### 2026-05-12a — Analyser-quality, alternative filtering, and ranker fixes (PRs #183/#185/#187)
