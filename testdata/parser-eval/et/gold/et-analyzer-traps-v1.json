@@ -1,0 +1,140 @@
+{
+  "name": "et-analyzer-traps",
+  "version": "v1",
+  "language": "ET",
+  "notes": "Regression gold for Estonian analyzer traps. Seeded from a corpus sweep that identified ~3,137 ET surfaces where an ADV reading exists but the Vabamorf parser's chosen analysis was a case-marked NOUN/ADJ (totalling ~38M occurrences in the working corpus). The 12 entries here are the highest-impact failures and the same closed-class forms that the lexadverbs overlay shadows in pkg/lemmatizer-fi-et/lexadverbs. A failing assertion means the parser regressed against a real-world frozen-form bug.",
+  "cases": [
+    {
+      "id": "et-trap-valja",
+      "text": "Ta läks välja minutiks.",
+      "tokens": [
+        {
+          "surface": "välja",
+          "lemma": "välja",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "et-trap-seal",
+      "text": "Mu vend elab seal terve elu.",
+      "tokens": [
+        {
+          "surface": "seal",
+          "lemma": "seal",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "et-trap-sisse",
+      "text": "Astu sisse, palun.",
+      "tokens": [
+        {
+          "surface": "sisse",
+          "lemma": "sisse",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "et-trap-veel",
+      "text": "Kas sa tahad veel teed?",
+      "tokens": [
+        {
+          "surface": "veel",
+          "lemma": "veel",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "et-trap-peale",
+      "text": "Pane raamat laua peale.",
+      "tokens": [
+        {
+          "surface": "peale",
+          "lemma": "peale",
+          "pos": "ADP",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "et-trap-jaoks",
+      "text": "Selle kingituse ostsin sinu jaoks.",
+      "tokens": [
+        {
+          "surface": "jaoks",
+          "lemma": "jaoks",
+          "pos": "ADP",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "et-trap-lihtsalt",
+      "text": "Ma ütlesin selle lihtsalt naljaks.",
+      "tokens": [
+        {
+          "surface": "lihtsalt",
+          "lemma": "lihtsalt",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "et-trap-tegelikult",
+      "text": "Tegelikult ei ole mul kiiret.",
+      "tokens": [
+        {
+          "surface": "Tegelikult",
+          "lemma": "tegelikult",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "et-trap-parast",
+      "text": "Helista mulle pärast koolitundi.",
+      "tokens": [
+        {
+          "surface": "pärast",
+          "lemma": "pärast",
+          "pos": "ADP",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "et-trap-eest",
+      "text": "Aitäh abi eest.",
+      "tokens": [
+        {
+          "surface": "eest",
+          "lemma": "eest",
+          "pos": "ADP",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "et-trap-taga",
+      "text": "Kass on maja taga.",
+      "tokens": [
+        {
+          "surface": "taga",
+          "lemma": "taga",
+          "pos": "ADP",
+          "feats": ""
+        }
+      ]
+    }
+  ]
+}

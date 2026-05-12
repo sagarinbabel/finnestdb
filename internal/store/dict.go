@@ -8,6 +8,7 @@ import (
 
 	"finnestdb/internal/parserules"
 	lemmatizer "finnestdb/pkg/lemmatizer-fi-et"
+	"finnestdb/pkg/lemmatizer-fi-et/lexadverbs"
 	"finnestdb/pkg/lemmatizer-fi-et/udfeats"
 )
 
@@ -95,12 +96,26 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		// and proper nouns resolve correctly.
 		lower := strings.ToLower(form)
 
+		// Step 0: Lexical-overlay short-circuit. lexadverbs catalogues
+		// surfaces where every other resolution path (dict + FST) has
+		// a known wrong answer the maintainer has already curated
+		// against. The overlay wins outright: skip the dict + FST
+		// merge for these surfaces. Gated to custom mode because the
+		// overlay is part of the "custom enhancements" suite; basic
+		// mode stays dict-only to keep its baselines stable.
+		if parserMode == "custom" {
+			if res, ok := lookupLexOverlay(lang, lower); ok {
+				result[form] = res
+				continue
+			}
+		}
+
 		// Step 1: Direct dictionary lookup. Multi-lemma rows mean a single
 		// surface form can have multiple (lemma, pos) candidates; rank them
 		// against the original-case surface so PROPN homonyms don't beat
 		// common-noun lemmas on lowercase surfaces.
 		if dictCandidates, ok := lookupFormCandidates(stmtFormsAll, lower, lang); ok {
-			best := formResolutionFromCandidate(pickBestFormCandidate(form, dictCandidates))
+			best := formResolutionFromCandidate(lower, pickBestFormCandidate(form, dictCandidates))
 			if parserMode == "custom" {
 				var analyses []lemmatizer.Analysis
 				if lang == "FI" || lang == "ET" {
@@ -176,7 +191,7 @@ func tryFSTAnalyze(lem *lemmatizer.Lemmatizer, lang, lower string) (FormResoluti
 	if !ok {
 		return FormResolution{}, false
 	}
-	return formResolutionFromFSTAnalysis(a, "fst"), true
+	return formResolutionFromFSTAnalysis(lower, a, "fst"), true
 }
 
 func pickBestFSTAnalysis(surface string, analyses []lemmatizer.Analysis) (lemmatizer.Analysis, bool) {
@@ -280,6 +295,9 @@ func lookupFormCandidates(stmt *sql.Stmt, lowerSurface, lang string) ([]formCand
 		if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority, &c.Feats); err != nil {
 			return nil, false
 		}
+		if isBadDictLemma(lang, lowerSurface, c.Lemma) {
+			continue
+		}
 		candidates = append(candidates, c)
 	}
 	if len(candidates) == 0 {
@@ -288,13 +306,87 @@ func lookupFormCandidates(stmt *sql.Stmt, lowerSurface, lang string) ([]formCand
 	return candidates, true
 }
 
-func formResolutionFromCandidate(c formCandidate) FormResolution {
-	res := FormResolution{Lemma: c.Lemma, POS: c.POS, Feats: c.Feats, Source: "dict"}
+// alwaysBadDictLemmasFI lists Finnish lemmas that are NEVER the right
+// answer because the "lemma" is a structural artifact rather than a
+// standalone word: short fragments kaikki ships as their own headword
+// (`as`, `taa`, `ku`), and compound-clip prefixes that only ever
+// appear as the left half of a compound (`sisä-`, `ylä-`). Filtering
+// these is safe regardless of which surface is being looked up — a
+// learner typing the surface `sisä-` is overwhelmingly likely to
+// want the compound it belongs to, not the bare prefix.
+//
+// Note this set is intentionally narrow. Lemmas like `varsi`
+// (a real noun "stalk") or `vuo` (archaic but real "stream") MUST
+// NOT live here: dropping them globally would break the legitimate
+// `varsi` → `varsi/NOUN` dictionary lookup. Those go in the
+// surface-keyed pair blocklist below.
+//
+// `poli` is a special case: kaikki ships it as the lemma for
+// `poliisi` inflected forms (a documented import bug). Treating
+// it as always-bad is defensible — no learner asking for the
+// surface `poli` is looking for the kaikki "poli" entry.
+var alwaysBadDictLemmasFI = map[string]struct{}{
+	"as":    {},
+	"taa":   {},
+	"poli":  {},
+	"sisä-": {},
+	"ylä-":  {},
+	"ku":    {},
+}
+
+// badSurfaceLemmaFI is the (surface, lemma) pair blocklist. Each
+// entry is a kaikki/analyser mapping that ranks first for the trap
+// surface but loses to the correct answer on every learner-facing
+// occurrence. The lemma is preserved for OTHER surfaces — `varsi`
+// is filtered out only for surface `varsin`, not for the bare
+// noun lookup `varsi`.
+//
+// Keyed by "surface\x00lemma" to avoid the struct-key allocation
+// cost on every dict candidate scan.
+//
+// Seeded from yle_subs/build_surface_target_decks.py's
+// SUSPICIOUS_SURFACE_LEMMAS.
+var badSurfaceLemmaFI = map[string]struct{}{
+	"varsin\x00varsi":     {},
+	"vuotta\x00vuo":       {},
+	"siitä\x00siittää":    {},
+	"muuta\x00muuttaa":    {},
+	"juuri\x00juuria":     {},
+	"mulla\x00mullah":     {},
+	"sulla\x00sullah":     {},
+	"kuulla\x00kuu":       {},
+	"paljon\x00paljo":     {},
+}
+
+func isBadDictLemma(lang, lowerSurface, lemma string) bool {
+	if lang != "FI" || lemma == "" {
+		return false
+	}
+	if _, blocked := alwaysBadDictLemmasFI[lemma]; blocked {
+		return true
+	}
+	if lowerSurface == "" {
+		return false
+	}
+	_, blocked := badSurfaceLemmaFI[lowerSurface+"\x00"+lemma]
+	return blocked
+}
+
+func formResolutionFromCandidate(surface string, c formCandidate) FormResolution {
+	// MA-infinitive normalisation runs on dict candidates too. Kaikki
+	// ships forms like `lähtemään` keyed under `lähteä`/VERB but with
+	// stale FEATS (Case=Ill|Person=3 instead of
+	// Case=Ill|InfForm=Ma|VerbForm=Inf). The same surface-tagged
+	// agreement rule that catches the FST noun-cousin trap rewrites
+	// the dict FEATS too, so the resolution returned to callers is
+	// consistent regardless of which source supplied the lemma.
+	feats := udfeats.NormalizeMaInfinitive(surface, c.POS, c.Feats)
+	res := FormResolution{Lemma: c.Lemma, POS: c.POS, Feats: feats, Source: "dict"}
 	// Project Case= from Feats to GrammarLabel for back-compat with the
 	// case-only metric. New code should consume Feats directly; the
 	// projection lets the existing eval keep working unchanged.
-	if c.Feats != "" {
-		res.GrammarLabel = caseFromFeats(c.Feats)
+	if feats != "" {
+		res.GrammarLabel = caseFromFeats(feats)
 	}
 	return res
 }
@@ -305,7 +397,7 @@ func mergeAndRankDictFSTCandidates(surface string, dictCandidates []formCandidat
 	for _, c := range dictCandidates {
 		idx := len(candidates)
 		candidates = append(candidates, resolutionCandidate{
-			res:            formResolutionFromCandidate(c),
+			res:            formResolutionFromCandidate(surface, c),
 			sourcePriority: c.SourcePriority,
 			hasDict:        true,
 			fstOrder:       len(analyses) + idx,
@@ -317,7 +409,7 @@ func mergeAndRankDictFSTCandidates(surface string, dictCandidates []formCandidat
 		if a.Lemma == "" || a.UPOS == "" {
 			continue
 		}
-		fstRes := formResolutionFromFSTAnalysis(a, "fst")
+		fstRes := formResolutionFromFSTAnalysis(surface, a, "fst")
 		key := lemmaPOSKey(fstRes.Lemma, fstRes.POS)
 		if idx, ok := byKey[key]; ok {
 			candidates[idx].hasFST = true
@@ -399,6 +491,18 @@ func pickBestResolutionCandidate(surface string, candidates []resolutionCandidat
 		if ciPOS != cjPOS {
 			return ciPOS > cjPOS
 		}
+		// MA-infinitive bias: on a surface that matches the
+		// MA-infinitive suffix pattern, prefer a VERB reading with
+		// InfForm=Ma over a NOUN noun-cousin reading. Kaikki ships
+		// many MA-surfaces (lähtemään, juomassa, tarjoamaan, ...) as
+		// forms of derived nouns (lähtemä, juoma, tarjoama) with
+		// Case=Ill|Person=3|Number=Sing; the FST returns the
+		// correct verb reading via NormalizeMaInfinitive but loses
+		// the supportScore tiebreak against dict. This bias overrides
+		// that for MA-surfaces only.
+		if mi, mj := maInfinitiveBias(surface, ci.res), maInfinitiveBias(surface, cj.res); mi != mj {
+			return mi > mj
+		}
 		if fstBeatsWeakDict(ci, cj) {
 			return true
 		}
@@ -441,6 +545,42 @@ func supportScore(c resolutionCandidate) int {
 	}
 }
 
+// maInfinitiveBias returns +1 for a VERB reading carrying InfForm=Ma
+// on a MA-infinitive-shaped surface, -1 for a NOUN reading whose
+// lemma ends in -ma/-mä on the same surface (the noun-cousin trap),
+// and 0 otherwise. Surfaces that don't match the MA-suffix pattern
+// always return 0, so this bias is a no-op for the common case.
+//
+// Why two bias levels and not just "verb wins": there ARE legitimate
+// noun readings of MA-suffix surfaces in compounds (`tarjouspakkaus`
+// shares no overlap, but uncovered edge cases would emerge if the
+// bias were unbounded). Capping at ±1 lets surface morphology
+// signal preference without overwhelming other ranking dimensions.
+func maInfinitiveBias(surface string, res FormResolution) int {
+	if !udfeats.IsMaInfinitiveSurface(surface) {
+		return 0
+	}
+	// Noun-cousin shape FIRST. Lemma ends in -ma/-mä on a MA-suffix
+	// surface is the trap regardless of POS or whether the FEATS
+	// already carry InfForm=Ma. The dict-side NormalizeMaInfinitive
+	// will have rewritten the feats to look like a real MA-infinitive
+	// (Case=X|InfForm=Ma|VerbForm=Inf|Voice=Act) for these noun-cousin
+	// candidates too — but the lemma is the part that's wrong. Demote
+	// on the lemma signal before granting the verb promotion below.
+	//
+	// Finnish verb 1st-infinitives end in -a/-ä (with -da/-ta/-la/-na
+	// preceding); a lemma ending in -ma/-mä on this surface is almost
+	// always the derived-noun reading. Counter-examples would be
+	// loanwords or proper nouns; surface this if/when we find one.
+	if strings.HasSuffix(res.Lemma, "ma") || strings.HasSuffix(res.Lemma, "mä") {
+		return -1
+	}
+	if res.POS == "VERB" && strings.Contains(res.Feats, "InfForm=Ma") {
+		return 1
+	}
+	return 0
+}
+
 func fstBeatsWeakDict(candidate, other resolutionCandidate) bool {
 	// Conservative displacement: an FST-only candidate may beat a dict-only
 	// candidate only when the dict row is legacy/weak (no source priority and
@@ -478,8 +618,44 @@ func morphologyScore(res FormResolution) int {
 	return 0
 }
 
-func formResolutionFromFSTAnalysis(a lemmatizer.Analysis, source string) FormResolution {
+// lookupLexOverlay returns the curated lexadverbs analysis as a
+// FormResolution when one exists for (lang, lower). The overlay
+// catalogues surfaces where the productive dict/FST analysis is a
+// known bug — `tuskin` (kaikki ships as form of `tuska`), `asiaan`
+// (form of bad lemma `as`), `vuotta` (form of bad lemma `vuo`),
+// `peale` (allative of `pea`), and so on. Each entry is asserted as
+// the right answer; this short-circuit ensures it actually wins the
+// resolution, instead of being merged with and outranked by the
+// dict candidate.
+//
+// Source tag is "lex-overlay" so eval reports can attribute hits to
+// this layer distinctly from dict/fst/dict+fst.
+func lookupLexOverlay(lang, lower string) (FormResolution, bool) {
+	var analyses []lemmatizer.Analysis
+	var ok bool
+	switch lang {
+	case "FI":
+		analyses, ok = lexadverbs.LookupFI(lower)
+	case "ET":
+		analyses, ok = lexadverbs.LookupET(lower)
+	default:
+		return FormResolution{}, false
+	}
+	if !ok || len(analyses) == 0 {
+		return FormResolution{}, false
+	}
+	return formResolutionFromFSTAnalysis(lower, analyses[0], "lex-overlay"), true
+}
+
+func formResolutionFromFSTAnalysis(surface string, a lemmatizer.Analysis, source string) FormResolution {
 	feats := featsFromFSTAnalysis(a)
+	// Rewrite MA-infinitive noun-cousin traps. This catches forms like
+	// `tarjoamaan` where the analyzer ranks the noun `tarjoama` first
+	// and emits Case=Ill|Number=Sing|Person=3 even though the form is
+	// the MA-infinitive illative of the verb `tarjota`. Surfaced-tagged
+	// agreement (suffix harmony + Case feature) lets udfeats rewrite
+	// the FEATS deterministically.
+	feats = udfeats.NormalizeMaInfinitive(surface, a.UPOS, feats)
 	label := ""
 	if feats != "" {
 		label = caseFromFeats(feats)
@@ -965,6 +1141,92 @@ func (d *DB) BatchLookupGlosses(lemmas []LemmaKey, lang string) map[LemmaKey]str
 		var gloss string
 		if err := stmt.QueryRow(k.Lemma, k.POS, lang, k.Lemma, k.POS, lang).Scan(&gloss); err == nil && gloss != "" {
 			result[k] = gloss
+		}
+	}
+	return result
+}
+
+// Sense is one ranked gloss reading for a (lemma, pos) pair. Senses
+// from the translations table arrive in priority+order: higher
+// SourcePriority comes first across sources, then lower SenseIdx
+// within the same source. The first element of the slice returned by
+// BatchLookupSenses is therefore the same string BatchLookupGlosses
+// returns — multi-sense callers can drop the first to get
+// "alternative meanings" without re-querying.
+type Sense struct {
+	Text           string // the gloss text (already trimmed; never empty)
+	SenseIdx       int    // sense_idx as written by importdict (flat counter across senses[].glosses[])
+	Source         string // source key (e.g. "kaikki", "ekilex", "custom")
+	SourcePriority int    // lemmas.source_priority for the source this sense came from
+}
+
+// BatchLookupSenses resolves a slice of LemmaKeys to their full ranked
+// list of glosses. Returns a map from LemmaKey → []Sense. Keys with no
+// translations row are absent from the map; the existing
+// lemmas.gloss fallback in BatchLookupGlosses does NOT participate
+// here because that field is a denormalised cache of the primary
+// translations row, not a separate authority worth ranking.
+//
+// Ranking order matches BatchLookupGlosses: source_priority DESC
+// (kaikki=10, EKI=20, custom=100), then sense_idx ASC (first sense
+// wins inside a source). Callers that want a richer ranking — e.g.
+// length-aware tiebreaks, or filtering by POS in context — should
+// compose that on top of this slice rather than mutate the storage
+// query.
+//
+// Target lang is hard-coded to 'EN' because both kaikki dumps for FI
+// and ET are en.wiktionary extractions. If we add FI-Wiktionary
+// monolingual glosses (target_lang='FI') the call signature would
+// gain a target lang parameter; today there's only one shape.
+//
+// Seeded by the yle_subs TODO at yle_subs/TODO.md (FinEstDB lemma-gloss
+// lookup), where the downstream deck builder wants multi-sense data
+// to render context-appropriate front cues for polysemous lemmas
+// (`pää` → "head" generally, "on top of" in `kirjoituspöydän päällä`).
+// The lookup itself is fast — sub-millisecond per key on an indexed
+// translations table — so callers are free to fetch many at once.
+func (d *DB) BatchLookupSenses(lemmas []LemmaKey, lang string) map[LemmaKey][]Sense {
+	result := make(map[LemmaKey][]Sense, len(lemmas))
+	if len(lemmas) == 0 {
+		return result
+	}
+
+	stmt, err := d.db.Prepare(`
+		SELECT t.text, t.sense_idx, t.source, l.source_priority
+		FROM translations t
+		JOIN lemmas l ON l.lemma = t.lemma
+		             AND l.pos   = t.pos
+		             AND l.lang  = t.lang
+		             AND l.source = t.source
+		WHERE t.lemma = ? AND t.pos = ? AND t.lang = ? AND t.target_lang = 'EN'
+		ORDER BY l.source_priority DESC, t.sense_idx ASC, t.source ASC
+	`)
+	if err != nil {
+		return result
+	}
+	defer stmt.Close()
+
+	for _, k := range lemmas {
+		rows, err := stmt.Query(k.Lemma, k.POS, lang)
+		if err != nil {
+			continue
+		}
+		var senses []Sense
+		for rows.Next() {
+			var s Sense
+			if err := rows.Scan(&s.Text, &s.SenseIdx, &s.Source, &s.SourcePriority); err != nil {
+				rows.Close()
+				senses = nil
+				break
+			}
+			if s.Text == "" {
+				continue
+			}
+			senses = append(senses, s)
+		}
+		rows.Close()
+		if len(senses) > 0 {
+			result[k] = senses
 		}
 	}
 	return result

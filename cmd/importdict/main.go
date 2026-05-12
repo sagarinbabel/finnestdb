@@ -548,14 +548,17 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 
 		pos := normalizePos(entry.POS)
 
-		// Extract first gloss from first sense for the lemmas.gloss cache.
-		// The full senses[].glosses[] data is also written to the
-		// translations table below — lemmas.gloss is the denormalized
-		// "primary translation" cache for the existing UI's fast paths.
-		gloss := ""
-		if len(entry.Senses) > 0 && len(entry.Senses[0].Glosses) > 0 {
-			gloss = entry.Senses[0].Glosses[0]
+		// Extract the primary gloss for the lemmas.gloss cache, skipping
+		// Wiktionary "form-of" restatements (e.g. "partitive singular of
+		// vuosi") in favour of the first real meaning gloss. The full
+		// senses[].glosses[] data is also written to the translations
+		// table below — lemmas.gloss is the denormalised "primary
+		// translation" cache for the existing UI's fast paths.
+		flatGlosses := make([][]string, len(entry.Senses))
+		for i, s := range entry.Senses {
+			flatGlosses[i] = s.Glosses
 		}
+		gloss := pickPrimaryGloss(flatGlosses)
 
 		// Insert lemma (the canonical headword form).
 		if _, err := stmtLemma.Exec(entry.Word, pos, gloss, dbLang, source.Name, source.Priority); err != nil {
@@ -569,11 +572,22 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 		// belong to the same sense" structure; if that becomes useful
 		// later we can add a sense_group_idx column without breaking the
 		// existing schema.
+		//
+		// Wiktionary "form-of" rows ("partitive singular of vuosi",
+		// "past active participle of olla", etc.) are skipped: they
+		// restate morphology the learner already sees on the card and
+		// would otherwise displace real meaning rows under the
+		// ORDER BY sense_idx ASC lookup in BatchLookupGlosses. The
+		// lemmas.gloss cache above already preferred the meaning gloss;
+		// the translations table needs the same discipline.
 		senseIdx := 0
 		for _, s := range entry.Senses {
 			for _, g := range s.Glosses {
 				g = strings.TrimSpace(g)
 				if g == "" {
+					continue
+				}
+				if isStructuralGloss(g) {
 					continue
 				}
 				if _, err := stmtTranslation.Exec(entry.Word, pos, dbLang, g, senseIdx, source.Name); err != nil {

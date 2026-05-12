@@ -1627,6 +1627,387 @@ func TestBatchLookupGlosses_LowerSenseIdxWinsWithinSameSource(t *testing.T) {
 	}
 }
 
+// --- Lexical-overlay short-circuit tests ---
+
+// TestBatchLookupForms_LexOverlayBeatsDictTrap is the P1 regression for
+// review feedback on PR #183: the lexadverbs overlay was firing
+// inside Lemmatize() but losing the supportScore tiebreak (dict=3 vs
+// FST=2) against the kaikki form rows for the same surfaces. With
+// the Step 0 short-circuit in BatchLookupForms, the overlay wins
+// outright.
+func TestBatchLookupForms_LexOverlayBeatsDictTrap(t *testing.T) {
+	db := newTestDB(t)
+
+	// Seed kaikki's bad readings for each overlay surface. Each row
+	// is what kaikki actually ships (verified against the production
+	// finnestdb.db on the review machine).
+	seedFormsWithSource(t, db, []struct {
+		form, lemma, pos, lang, source string
+		priority                       int
+	}{
+		{"tuskin", "tuska", "NOUN", "FI", "kaikki", 10},
+		{"asiaan", "as", "NOUN", "FI", "kaikki", 10},
+		{"vuotta", "vuo", "NOUN", "FI", "kaikki", 10},
+		{"varsin", "varsi", "NOUN", "FI", "kaikki", 10},
+		{"siitä", "siittää", "VERB", "FI", "kaikki", 10},
+		{"muuta", "muuttaa", "VERB", "FI", "kaikki", 10},
+	})
+
+	cases := []struct {
+		surface, wantLemma, wantPOS string
+	}{
+		{"tuskin", "tuskin", "ADV"},
+		{"asiaan", "asia", "NOUN"},
+		{"vuotta", "vuosi", "NOUN"},
+		{"varsin", "varsin", "ADV"},
+		{"siitä", "se", "PRON"},
+		{"muuta", "muu", "PRON"},
+		// Sentence-initial capitals must also short-circuit through
+		// the overlay (case-folded match before dict lookup).
+		{"Tuskin", "tuskin", "ADV"},
+		{"Vuotta", "vuosi", "NOUN"},
+	}
+	got := db.BatchLookupForms([]string{
+		"tuskin", "asiaan", "vuotta", "varsin", "siitä", "muuta",
+		"Tuskin", "Vuotta",
+	}, "FI", "custom")
+	for _, tc := range cases {
+		r, ok := got[tc.surface]
+		if !ok {
+			t.Errorf("%s: missing resolution", tc.surface)
+			continue
+		}
+		if r.Lemma != tc.wantLemma || r.POS != tc.wantPOS {
+			t.Errorf("%s: got (%s/%s), want (%s/%s)",
+				tc.surface, r.Lemma, r.POS, tc.wantLemma, tc.wantPOS)
+		}
+		if r.Source != "lex-overlay" {
+			t.Errorf("%s: got source=%q, want lex-overlay", tc.surface, r.Source)
+		}
+	}
+}
+
+// TestBatchLookupForms_BadLemmaFilterPreservesLegitimateLookup is
+// the P1 regression for review feedback on the bad-lemma blocklist:
+// dropping `varsi` globally also removed the legitimate noun lookup
+// for surface `varsi → varsi/NOUN` (a real Finnish noun meaning
+// "stalk"). The blocklist must be (surface, lemma)-keyed for these
+// non-fragment lemmas — only filter when the surface is the trap.
+func TestBatchLookupForms_BadLemmaFilterPreservesLegitimateLookup(t *testing.T) {
+	db := newTestDB(t)
+	seedFormsWithSource(t, db, []struct {
+		form, lemma, pos, lang, source string
+		priority                       int
+	}{
+		// Legitimate dict rows: the lemma matches its own surface.
+		{"varsi", "varsi", "NOUN", "FI", "kaikki", 10},
+		{"vuo", "vuo", "NOUN", "FI", "kaikki", 10},
+		{"siittää", "siittää", "VERB", "FI", "kaikki", 10},
+		{"muuttaa", "muuttaa", "VERB", "FI", "kaikki", 10},
+	})
+
+	// Each of these surfaces is the lemma form itself, NOT the trap
+	// surface. The blocklist must not strip it.
+	for _, tc := range []struct {
+		surface, wantLemma, wantPOS string
+	}{
+		{"varsi", "varsi", "NOUN"},
+		{"vuo", "vuo", "NOUN"},
+		{"siittää", "siittää", "VERB"},
+		{"muuttaa", "muuttaa", "VERB"},
+	} {
+		for _, mode := range []string{"basic", "custom"} {
+			got := db.BatchLookupForms([]string{tc.surface}, "FI", mode)
+			r, ok := got[tc.surface]
+			if !ok {
+				t.Errorf("%s [%s]: surface dropped (bad-lemma filter regression)",
+					tc.surface, mode)
+				continue
+			}
+			if r.Lemma != tc.wantLemma || r.POS != tc.wantPOS {
+				t.Errorf("%s [%s]: got (%s/%s), want (%s/%s)",
+					tc.surface, mode, r.Lemma, r.POS, tc.wantLemma, tc.wantPOS)
+			}
+		}
+	}
+}
+
+func TestIsBadDictLemma(t *testing.T) {
+	// Always-bad fragments: filtered regardless of surface.
+	for _, lemma := range []string{"as", "taa", "poli", "sisä-", "ylä-", "ku"} {
+		if !isBadDictLemma("FI", "anything", lemma) {
+			t.Errorf("always-bad %q: expected blocked, was not", lemma)
+		}
+	}
+	// Surface-keyed pairs: only the trap surface fires the block.
+	hits := []struct{ surface, lemma string }{
+		{"varsin", "varsi"},
+		{"vuotta", "vuo"},
+		{"siitä", "siittää"},
+		{"muuta", "muuttaa"},
+		{"paljon", "paljo"},
+	}
+	for _, h := range hits {
+		if !isBadDictLemma("FI", h.surface, h.lemma) {
+			t.Errorf("trap pair (%s, %s): expected blocked, was not", h.surface, h.lemma)
+		}
+	}
+	// Same lemmas on non-trap surfaces must NOT be blocked.
+	misses := []struct{ surface, lemma string }{
+		{"varsi", "varsi"},     // bare lemma lookup
+		{"vuo", "vuo"},          // bare lemma lookup
+		{"siittää", "siittää"},  // bare verb lookup
+		{"muuttaa", "muuttaa"},  // bare verb lookup
+		{"paljo", "paljo"},      // bare lemma lookup
+	}
+	for _, m := range misses {
+		if isBadDictLemma("FI", m.surface, m.lemma) {
+			t.Errorf("legitimate (%s, %s): expected NOT blocked, was blocked", m.surface, m.lemma)
+		}
+	}
+	// Non-FI languages are not filtered.
+	if isBadDictLemma("ET", "varsin", "varsi") {
+		t.Error("ET lang: blocklist is FI-only, should not fire")
+	}
+	// Empty values defensive.
+	if isBadDictLemma("FI", "", "") {
+		t.Error("empty: should not fire")
+	}
+	if isBadDictLemma("FI", "anything", "") {
+		t.Error("empty lemma: should not fire")
+	}
+}
+
+// TestBatchLookupForms_LexOverlayBasicModeNotAffected confirms the
+// overlay is gated to custom mode. Basic-mode eval baselines must
+// not shift because of this fix.
+func TestBatchLookupForms_LexOverlayBasicModeNotAffected(t *testing.T) {
+	db := newTestDB(t)
+	seedFormsWithSource(t, db, []struct {
+		form, lemma, pos, lang, source string
+		priority                       int
+	}{
+		{"tuskin", "tuska", "NOUN", "FI", "kaikki", 10},
+	})
+	got := db.BatchLookupForms([]string{"tuskin"}, "FI", "basic")
+	r, ok := got["tuskin"]
+	if !ok {
+		t.Fatal("tuskin (basic): missing resolution")
+	}
+	// Basic mode keeps the dict row's reading even though it's the
+	// known-wrong one; the overlay only activates in custom mode.
+	if r.Lemma != "tuska" || r.POS != "NOUN" {
+		t.Errorf("tuskin (basic): got (%s/%s), want dict (tuska/NOUN)",
+			r.Lemma, r.POS)
+	}
+}
+
+// TestPickBestResolutionCandidate_MaInfinitiveBias proves the
+// MA-infinitive bias picks the FST verb reading over the dict
+// noun-cousin reading. Constructed directly against
+// pickBestResolutionCandidate to avoid needing a populated FST table
+// fixture for lähtemään/juomassa/etc.
+func TestPickBestResolutionCandidate_MaInfinitiveBias(t *testing.T) {
+	dictNoun := resolutionCandidate{
+		res: FormResolution{
+			Lemma:  "lähtemä",
+			POS:    "NOUN",
+			Feats:  "Case=Ill|Number=Sing|Person=3",
+			Source: "dict",
+		},
+		sourcePriority: 10,
+		hasDict:        true,
+		fstOrder:       9999,
+	}
+	fstVerb := resolutionCandidate{
+		res: FormResolution{
+			Lemma:  "lähteä",
+			POS:    "VERB",
+			Feats:  "Case=Ill|InfForm=Ma|VerbForm=Inf",
+			Source: "fst",
+		},
+		hasFST:   true,
+		fstOrder: 0,
+	}
+	got := pickBestResolutionCandidate("lähtemään", []resolutionCandidate{dictNoun, fstVerb})
+	if got.res.Lemma != "lähteä" || got.res.POS != "VERB" {
+		t.Errorf("MA-infinitive bias: got (%s/%s), want (lähteä/VERB)",
+			got.res.Lemma, got.res.POS)
+	}
+	// The same surfaces in non-MA positions must NOT be biased.
+	dictNounOk := resolutionCandidate{
+		res:            FormResolution{Lemma: "talo", POS: "NOUN", Feats: "Case=Ine"},
+		sourcePriority: 10,
+		hasDict:        true,
+	}
+	fstVerbOddball := resolutionCandidate{
+		res:      FormResolution{Lemma: "tela", POS: "VERB", Feats: "Mood=Ind"},
+		hasFST:   true,
+		fstOrder: 0,
+	}
+	got = pickBestResolutionCandidate("talossa", []resolutionCandidate{dictNounOk, fstVerbOddball})
+	if got.res.Lemma != "talo" {
+		t.Errorf("non-MA surface: bias should not fire, got (%s/%s) want talo/NOUN",
+			got.res.Lemma, got.res.POS)
+	}
+}
+
+func TestMaInfinitiveBias(t *testing.T) {
+	cases := []struct {
+		surface string
+		res     FormResolution
+		want    int
+	}{
+		// MA-suffix surfaces: verb-with-Ma wins, noun-cousin loses.
+		{"lähtemään", FormResolution{POS: "VERB", Feats: "Case=Ill|InfForm=Ma"}, 1},
+		{"juomassa", FormResolution{POS: "VERB", Feats: "Case=Ine|InfForm=Ma|VerbForm=Inf"}, 1},
+		{"lähtemään", FormResolution{POS: "NOUN", Lemma: "lähtemä"}, -1},
+		{"juomassa", FormResolution{POS: "NOUN", Lemma: "juoma"}, -1},
+		// MA-suffix surface, lemma not ending in -ma/-mä: no NOUN penalty
+		// (could be an unrelated compound).
+		{"lähtemään", FormResolution{POS: "NOUN", Lemma: "lähtö"}, 0},
+		// Non-MA surfaces: no bias.
+		{"talossa", FormResolution{POS: "VERB", Feats: "Case=Ill|InfForm=Ma"}, 0},
+		{"talossa", FormResolution{POS: "NOUN", Lemma: "tala"}, 0},
+		// Empty surface: defensive.
+		{"", FormResolution{POS: "VERB"}, 0},
+	}
+	for _, tc := range cases {
+		got := maInfinitiveBias(tc.surface, tc.res)
+		if got != tc.want {
+			t.Errorf("maInfinitiveBias(%q, %+v) = %d, want %d", tc.surface, tc.res, got, tc.want)
+		}
+	}
+}
+
+// --- BatchLookupSenses tests ---
+
+func TestBatchLookupSenses_ReturnsAllSensesInOrder(t *testing.T) {
+	// All senses from the winning source, in sense_idx ASC order. The
+	// first sense is the same string BatchLookupGlosses returns — the
+	// two APIs must agree on "the primary gloss". The schema has one
+	// lemma row per (lemma, pos, lang); the JOIN in the senses query
+	// couples each translation row to that single source row.
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                        int
+	}{
+		{"pää", "NOUN", "head", "FI", "kaikki", 10},
+	})
+	seedTranslations(t, db, []struct {
+		lemma, pos, lang, target, text, source string
+		senseIdx                               int
+	}{
+		{"pää", "NOUN", "FI", "EN", "head (anatomical)", "kaikki", 0},
+		{"pää", "NOUN", "FI", "EN", "tip / end (of an object)", "kaikki", 1},
+		{"pää", "NOUN", "FI", "EN", "top (the upper part)", "kaikki", 2},
+		{"pää", "NOUN", "FI", "EN", "stalk / stem", "kaikki", 3},
+	})
+
+	got := db.BatchLookupSenses([]LemmaKey{{"pää", "NOUN"}}, "FI")
+	senses, ok := got[LemmaKey{"pää", "NOUN"}]
+	if !ok {
+		t.Fatal("pää: expected senses, got none")
+	}
+	if len(senses) != 4 {
+		t.Fatalf("pää: got %d senses, want 4", len(senses))
+	}
+	for i, want := range []string{
+		"head (anatomical)",
+		"tip / end (of an object)",
+		"top (the upper part)",
+		"stalk / stem",
+	} {
+		if senses[i].Text != want || senses[i].SenseIdx != i {
+			t.Errorf("senses[%d]: got (%q, sense_idx=%d), want (%q, %d)",
+				i, senses[i].Text, senses[i].SenseIdx, want, i)
+		}
+		if senses[i].Source != "kaikki" || senses[i].SourcePriority != 10 {
+			t.Errorf("senses[%d]: got source=%q priority=%d, want kaikki/10",
+				i, senses[i].Source, senses[i].SourcePriority)
+		}
+	}
+	// Verify the first sense's text matches what BatchLookupGlosses
+	// returns — the two APIs must agree on what "the primary gloss" is.
+	primary := db.BatchLookupGlosses([]LemmaKey{{"pää", "NOUN"}}, "FI")[LemmaKey{"pää", "NOUN"}]
+	if primary != senses[0].Text {
+		t.Errorf("primary disagreement: BatchLookupGlosses=%q, senses[0]=%q",
+			primary, senses[0].Text)
+	}
+}
+
+func TestBatchLookupSenses_HigherPrioritySourceWinsLemmaAndDictatesSenses(t *testing.T) {
+	// After ekilex takes over the lemma row (priority 20 > kaikki's 10),
+	// only ekilex's translation rows JOIN successfully. Stale kaikki
+	// translations are silently ignored — mirroring the documented
+	// BatchLookupGlosses behaviour. This guards the invariant that
+	// BatchLookupSenses NEVER surfaces senses whose source no longer
+	// owns the lemma row.
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                        int
+	}{
+		{"talo", "NOUN", "house-from-ekilex", "ET", "ekilex", 20},
+	})
+	seedTranslations(t, db, []struct {
+		lemma, pos, lang, target, text, source string
+		senseIdx                               int
+	}{
+		{"talo", "NOUN", "ET", "EN", "stale-kaikki-1", "kaikki", 0},
+		{"talo", "NOUN", "ET", "EN", "stale-kaikki-2", "kaikki", 1},
+		{"talo", "NOUN", "ET", "EN", "house", "ekilex", 0},
+		{"talo", "NOUN", "ET", "EN", "dwelling", "ekilex", 1},
+	})
+
+	got := db.BatchLookupSenses([]LemmaKey{{"talo", "NOUN"}}, "ET")
+	senses, ok := got[LemmaKey{"talo", "NOUN"}]
+	if !ok {
+		t.Fatal("talo: expected senses, got none")
+	}
+	if len(senses) != 2 {
+		t.Fatalf("talo: got %d senses, want 2 (kaikki rows must be stranded)", len(senses))
+	}
+	for i, want := range []string{"house", "dwelling"} {
+		if senses[i].Text != want || senses[i].Source != "ekilex" {
+			t.Errorf("senses[%d]: got (%q, %q), want (%q, ekilex)",
+				i, senses[i].Text, senses[i].Source, want)
+		}
+	}
+}
+
+func TestBatchLookupSenses_NoTranslationsRowsAbsentFromMap(t *testing.T) {
+	// A lemma that has only lemmas.gloss but no translations rows
+	// (legacy DB, or applyCustomGlosses path) returns no entry from
+	// BatchLookupSenses. That's the documented contract: this API is
+	// about the ranked sense list, not the cached primary.
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                        int
+	}{
+		{"legacy", "NOUN", "old gloss", "FI", "kaikki", 10},
+	})
+	// no translations seeded
+
+	got := db.BatchLookupSenses([]LemmaKey{{"legacy", "NOUN"}}, "FI")
+	if _, ok := got[LemmaKey{"legacy", "NOUN"}]; ok {
+		t.Errorf("legacy lemma with no translations should be absent; got %v", got)
+	}
+}
+
+func TestBatchLookupSenses_EmptyInput(t *testing.T) {
+	db := newTestDB(t)
+	got := db.BatchLookupSenses(nil, "FI")
+	if got == nil {
+		t.Error("nil input should return non-nil empty map")
+	}
+	if len(got) != 0 {
+		t.Errorf("nil input: got %d entries, want 0", len(got))
+	}
+}
+
 // TestPickBestVFSTAnalysis_PreservesSurfaceCase regression-tests the codex
 // review finding on PR #107: when libvoikko returns multiple analyses for
 // the lowercase form (e.g. `turku/NOUN` and `Turku/PROPN` for "turussa"),

@@ -1,0 +1,259 @@
+{
+  "name": "fi-analyzer-traps",
+  "version": "v1",
+  "language": "FI",
+  "notes": "Regression gold seeded from yle_subs/card_overrides/bad_lemmas.tsv + SUSPICIOUS_SURFACE_LEMMAS + LEXICAL_ANALYSES. Every entry is a known analyzer failure the yle_subs deck builder had to override with a manual analysis. The goal: a failing assertion here means the parser regressed against a real-world bug the downstream learner already paid for once. Known residual against the current FST tables (May 2026): the productive MA-infinitive surface `tarjoamaan` resolves to lemma=`tarjoama` (noun-cousin) instead of `tarjota`, because the FST table doesn't ship MA-infinitive surfaces and the dict-only candidate is the only one available. The FEATS, POS, and gloss are correct; only the verb-lemma reconstruction is missing. Fixing this fully needs FST table regeneration to include MA-infinitive forms.",
+  "cases": [
+    {
+      "id": "fi-trap-asiaan",
+      "text": "Mennään asiaan ilman muuta.",
+      "tokens": [
+        {
+          "surface": "asiaan",
+          "lemma": "asia",
+          "pos": "NOUN",
+          "grammar_label": "illative",
+          "feats": "Case=Ill|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-asia",
+      "text": "Asia on selvä.",
+      "tokens": [
+        {
+          "surface": "Asia",
+          "lemma": "asia",
+          "pos": "NOUN",
+          "feats": "Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-varsin",
+      "text": "Tämä on varsin hyvä idea.",
+      "tokens": [
+        {
+          "surface": "varsin",
+          "lemma": "varsin",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-yleensa",
+      "text": "Yleensä syön aamiaisen seitsemältä.",
+      "tokens": [
+        {
+          "surface": "Yleensä",
+          "lemma": "yleensä",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-sisaan",
+      "text": "Tule sisään ja sulje ovi.",
+      "tokens": [
+        {
+          "surface": "sisään",
+          "lemma": "sisään",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-poliisi",
+      "text": "Poliisi pidätti epäillyn aamulla.",
+      "tokens": [
+        {
+          "surface": "Poliisi",
+          "lemma": "poliisi",
+          "pos": "NOUN",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-tuskin",
+      "text": "Hän tuskin ehtii ajoissa.",
+      "tokens": [
+        {
+          "surface": "tuskin",
+          "lemma": "tuskin",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-enemman",
+      "text": "Tarvitsen enemmän aikaa tehtävään.",
+      "tokens": [
+        {
+          "surface": "enemmän",
+          "lemma": "paljon",
+          "pos": "ADV",
+          "feats": "Degree=Cmp"
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-tarpeeksi",
+      "text": "Onko meillä tarpeeksi rahaa?",
+      "tokens": [
+        {
+          "surface": "tarpeeksi",
+          "lemma": "tarpeeksi",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-perilla",
+      "text": "Olemme jo perillä asiasta.",
+      "tokens": [
+        {
+          "surface": "perillä",
+          "lemma": "perillä",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-peraisin",
+      "text": "Hän on peräisin Tampereelta.",
+      "tokens": [
+        {
+          "surface": "peräisin",
+          "lemma": "peräisin",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-kotona",
+      "text": "Lapset ovat kotona koulun jälkeen.",
+      "tokens": [
+        {
+          "surface": "Lapset",
+          "lemma": "lapsi",
+          "pos": "NOUN",
+          "feats": "Case=Nom|Number=Plur"
+        },
+        {
+          "surface": "kotona",
+          "lemma": "koti",
+          "pos": "NOUN",
+          "grammar_label": "essive",
+          "feats": "Case=Ess|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-vahingossa",
+      "text": "Suljin oven vahingossa lukkoon.",
+      "tokens": [
+        {
+          "surface": "vahingossa",
+          "lemma": "vahingossa",
+          "pos": "ADV",
+          "feats": ""
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-vuotta",
+      "text": "Hän on kahdenkymmenen vuotta vanha.",
+      "tokens": [
+        {
+          "surface": "vuotta",
+          "lemma": "vuosi",
+          "pos": "NOUN",
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-siita",
+      "text": "Hän puhui siitä eilen.",
+      "tokens": [
+        {
+          "surface": "siitä",
+          "lemma": "se",
+          "pos": "PRON",
+          "grammar_label": "elative",
+          "feats": "Case=Ela|Number=Sing|PronType=Dem"
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-muuta",
+      "text": "Mitään muuta en muista.",
+      "tokens": [
+        {
+          "surface": "muuta",
+          "lemma": "muu",
+          "pos": "PRON",
+          "grammar_label": "partitive",
+          "feats": "Case=Par|Number=Sing|PronType=Ind"
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-tarjoamaan-ma-infinitive",
+      "text": "Yritys alkoi tarjoamaan ilmaisia kursseja.",
+      "tokens": [
+        {
+          "surface": "tarjoamaan",
+          "lemma": "tarjota",
+          "pos": "VERB",
+          "feats": "Case=Ill|InfForm=Ma|VerbForm=Inf|Voice=Act"
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-lahtemaan-ma-infinitive",
+      "text": "Olen valmis lähtemään kotiin.",
+      "tokens": [
+        {
+          "surface": "lähtemään",
+          "lemma": "lähteä",
+          "pos": "VERB",
+          "feats": "Case=Ill|InfForm=Ma|VerbForm=Inf|Voice=Act"
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-juomassa-ma-infinitive",
+      "text": "He olivat juomassa kahvia kahvilassa.",
+      "tokens": [
+        {
+          "surface": "juomassa",
+          "lemma": "juoda",
+          "pos": "VERB",
+          "feats": "Case=Ine|InfForm=Ma|VerbForm=Inf|Voice=Act"
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-tekemalla-ma-infinitive",
+      "text": "Tekemällä työtä oppii parhaiten.",
+      "tokens": [
+        {
+          "surface": "Tekemällä",
+          "lemma": "tehdä",
+          "pos": "VERB",
+          "feats": "Case=Ade|InfForm=Ma|VerbForm=Inf|Voice=Act"
+        }
+      ]
+    }
+  ]
+}
