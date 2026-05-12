@@ -147,6 +147,34 @@ func TestFindHFSTOLUsesLocaldataPath(t *testing.T) {
 	}
 }
 
+func TestFindHFSTOLFallsBackToLegacyPackageDataPath(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	path := filepath.Join("pkg", "lemmatizer-fi-et", "data", "et", "analyser-gt-desc.hfstol")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("fixture"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := findHFSTOL(); got != path {
+		t.Errorf("findHFSTOL() = %q, want %q", got, path)
+	}
+
+	checks := checkETAnalyser()
+	if len(checks) != 1 {
+		t.Fatalf("expected one ET analyser check, got %d", len(checks))
+	}
+	got := checks[0].detail + "\n" + checks[0].hint
+	if !strings.Contains(got, path) {
+		t.Errorf("ET analyser check should surface legacy local path, got %q", got)
+	}
+	if !strings.Contains(got, "localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol") {
+		t.Errorf("ET analyser check should still name the canonical localdata path, got %q", got)
+	}
+}
+
 func TestFileExists(t *testing.T) {
 	dir := t.TempDir()
 	f := filepath.Join(dir, "x.txt")

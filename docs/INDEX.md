@@ -23,7 +23,7 @@ doc in 30 seconds; use ["By purpose"](#by-purpose) below for the longer
 descriptions when two docs sound similar.
 
 - **Entry point:** [`../README.md`](../README.md) (what the project is, how to run, project structure, doc index)
-- **Setup verifier:** [`make doctor`](../cmd/doctor/main.go) — single-screen report on DB sources, FST tables, analyzer venvs, Ekilex shards, UD cache, frequency baselines
+- **Setup verifier:** [`make doctor`](../cmd/doctor/main.go) plus [`docs/LOCAL_TOOLING.md`](LOCAL_TOOLING.md) — local tool/artifact inventory, canonical paths, and fallback lookup rules
 - **System architecture:** [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (current), [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) (lexical-layer detail), [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) (offline corpus pipeline)
 - **Product framing:** [`docs/FEATURES.md`](FEATURES.md) (user-facing), [`docs/DESIGN_REVIEW.md`](DESIGN_REVIEW.md) (design folder audit + TODO)
 - **What's done / what's next:** [`../TODO.md`](../TODO.md) (the only doc you need for status)
@@ -43,6 +43,7 @@ descriptions when two docs sound similar.
 | Why we made the choices we did | [`docs/DECISIONS.md`](DECISIONS.md) |
 | What changed when (per-PR doc impact) | [`docs/CHANGELOG.md`](CHANGELOG.md) |
 | How the system is wired together | [`ARCHITECTURE.md`](../ARCHITECTURE.md) |
+| Whether local analyzers, models, DBs, or FST tables are installed | [`make doctor`](../cmd/doctor/main.go) and [`docs/LOCAL_TOOLING.md`](LOCAL_TOOLING.md) |
 | How the lexical layer works | [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) |
 | How corpora become wordlists, sentence banks, and mining files | [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) |
 | What the product is from a learner's view | [`docs/FEATURES.md`](FEATURES.md) |
@@ -64,6 +65,10 @@ descriptions when two docs sound similar.
 - [`../ARCHITECTURE.md`](../ARCHITECTURE.md) — system architecture, layer
   responsibilities, data flow, parser modes (browser vs eval-only),
   baselines summary. Updated with each parser-affecting PR.
+- [`docs/LOCAL_TOOLING.md`](LOCAL_TOOLING.md) — local-only tool and artifact
+  inventory: `make doctor`, `.venv/`, omorfi, estnltk, Voikko, Giellalt
+  HFSTOL, FST tables, `finnestdb.db`, `localdata/`, and legacy fallback
+  paths agents must check before claiming something is missing.
 - [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) — lexical layer architecture:
   schema, source priority semantics, multi-lemma surface forms,
   FST↔dict boundary, importer pattern, FI source choices, ET source
