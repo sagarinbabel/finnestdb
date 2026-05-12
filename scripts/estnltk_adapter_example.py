@@ -149,29 +149,51 @@ def analyse_text(raw_text: str) -> list[dict]:
     return sentences
 
 
+def analysis_result(raw_text: str) -> dict:
+    if not raw_text:
+        return {"sentences": []}
+    return {"sentences": analyse_text(raw_text)}
+
+
+def run_server() -> int:
+    for line in sys.stdin:
+        try:
+            request = json.loads(line)
+            text = request.get("text", "")
+            if not isinstance(text, str):
+                raise ValueError("request text must be a string")
+            print(json.dumps(analysis_result(text), ensure_ascii=False), flush=True)
+        except ImportError:
+            response = {"error": "estnltk is not installed. Run `make setup-nlp`."}
+            print(json.dumps(response, ensure_ascii=False), flush=True)
+        except Exception as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), flush=True)
+    return 0
+
+
 def main() -> int:
     configure_local_caches()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--lang", required=True)
+    parser.add_argument("--server", action="store_true")
     args = parser.parse_args()
 
     if args.lang != "ET":
         print("adapter only supports ET", file=sys.stderr)
         return 2
 
-    text = sys.stdin.read()
-    if not text:
-        print(json.dumps({"sentences": []}))
-        return 0
+    if args.server:
+        return run_server()
 
+    text = sys.stdin.read()
     try:
-        sentences = analyse_text(text)
+        result = analysis_result(text)
     except ImportError:
         print("estnltk is not installed. Run `make setup-nlp`.", file=sys.stderr)
         return 2
 
-    print(json.dumps({"sentences": sentences}, ensure_ascii=False))
+    print(json.dumps(result, ensure_ascii=False))
     return 0
 
 

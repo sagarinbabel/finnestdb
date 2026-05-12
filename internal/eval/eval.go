@@ -293,6 +293,10 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 	for _, parser := range parsers {
 		summaries[parser] = &summaryAccumulator{}
 	}
+	parserRunner := evalparsers.NewRunner()
+	defer func() {
+		_ = parserRunner.Close()
+	}()
 
 	for _, c := range dataset.Cases {
 		caseReport := CaseReport{
@@ -304,7 +308,7 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 		}
 		for _, parser := range parsers {
 			for i := 0; i < options.WarmupRuns; i++ {
-				if _, err := evalparsers.Analyze(db, dataset.Language, c.Text, parser); err != nil {
+				if _, err := parserRunner.Analyze(db, dataset.Language, c.Text, parser); err != nil {
 					return nil, fmt.Errorf("case %s parser %s warmup: %w", c.ID, parser, err)
 				}
 			}
@@ -312,7 +316,7 @@ func Evaluate(db *store.DB, dataset *Dataset, options EvaluateOptions) (*Report,
 			var last *parsecore.ParseResult
 			samples := make([]int64, 0, options.RepeatRuns)
 			for i := 0; i < options.RepeatRuns; i++ {
-				parsed, err := evalparsers.Analyze(db, dataset.Language, c.Text, parser)
+				parsed, err := parserRunner.Analyze(db, dataset.Language, c.Text, parser)
 				if err != nil {
 					return nil, fmt.Errorf("case %s parser %s: %w", c.ID, parser, err)
 				}

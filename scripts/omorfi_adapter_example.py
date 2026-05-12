@@ -83,21 +83,7 @@ def load_model() -> Omorfi:
     return omorfi
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--lang", required=True)
-    args = parser.parse_args()
-
-    if args.lang != "FI":
-        print("adapter only supports FI", file=sys.stderr)
-        return 2
-
-    text = sys.stdin.read()
-    if not text:
-        print(json.dumps({"sentences": []}))
-        return 0
-
-    omorfi = load_model()
+def analyse_text(text: str, omorfi: Omorfi) -> list[dict]:
     out_sentences = []
     for sentence in split_sentences(text):
         out_tokens = []
@@ -143,8 +129,49 @@ def main() -> int:
                 }
             )
         out_sentences.append({"tokens": out_tokens})
+    return out_sentences
 
-    print(json.dumps({"sentences": out_sentences}, ensure_ascii=False))
+
+def analysis_result(text: str, omorfi: Omorfi) -> dict:
+    if not text:
+        return {"sentences": []}
+    return {"sentences": analyse_text(text, omorfi)}
+
+
+def run_server(omorfi: Omorfi) -> int:
+    for line in sys.stdin:
+        try:
+            request = json.loads(line)
+            text = request.get("text", "")
+            if not isinstance(text, str):
+                raise ValueError("request text must be a string")
+            print(json.dumps(analysis_result(text, omorfi), ensure_ascii=False), flush=True)
+        except Exception as exc:
+            print(json.dumps({"error": str(exc)}, ensure_ascii=False), flush=True)
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--lang", required=True)
+    parser.add_argument("--server", action="store_true")
+    args = parser.parse_args()
+
+    if args.lang != "FI":
+        print("adapter only supports FI", file=sys.stderr)
+        return 2
+
+    if args.server:
+        omorfi = load_model()
+        return run_server(omorfi)
+
+    text = sys.stdin.read()
+    if not text:
+        print(json.dumps({"sentences": []}))
+        return 0
+
+    omorfi = load_model()
+    print(json.dumps(analysis_result(text, omorfi), ensure_ascii=False))
     return 0
 
 
