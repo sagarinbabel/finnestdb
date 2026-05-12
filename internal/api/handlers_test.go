@@ -455,7 +455,7 @@ func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
 func TestHandleParseMapsAnalyzerValidationErrorsToBadRequest(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, _, _, _ string) (*parsecore.ParseResult, error) {
-		return nil, fmt.Errorf("text exceeds 300000 character limit")
+		return nil, fmt.Errorf("text exceeds 1500000 character limit")
 	}
 	mux := newTestMux(t, api)
 
@@ -467,7 +467,7 @@ func TestHandleParseMapsAnalyzerValidationErrorsToBadRequest(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d want %d", rec.Code, http.StatusBadRequest)
 	}
-	if !strings.Contains(rec.Body.String(), "text exceeds 300000 character limit") {
+	if !strings.Contains(rec.Body.String(), "text exceeds 1500000 character limit") {
 		t.Fatalf("body=%q missing analyzer error", rec.Body.String())
 	}
 }

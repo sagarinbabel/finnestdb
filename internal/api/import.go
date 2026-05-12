@@ -77,7 +77,7 @@ func (a *API) HandleImportExtract(w http.ResponseWriter, r *http.Request) {
 
 	// char_count reflects the source's ORIGINAL length, not the length of
 	// the (possibly truncated) returned text. The frontend uses this for
-	// the "X / 1,000,000" counter — if the book is bigger than the cap we
+	// the "X / 1,500,000" counter — if the book is bigger than the cap we
 	// still want the user to see the real number so the overflow state is
 	// honest. `truncated` tells the client the returned text was clipped.
 	originalCharCount := utf8.RuneCountInString(text)

@@ -673,9 +673,11 @@ test('correction submit posts the PR-53 /api/parse/feedback contract', async ({ 
   await expect(page.locator('#correction-modal')).toHaveClass(/hidden/);
 });
 
-test('correction modal disables submit when no parse_id is attached', async ({ page }) => {
+test('correction submit without parse_id sends source text for lazy attribution', async ({ page }) => {
   await mockMe(page, 'user');
-  // No parse_id (simulates anonymous-style parses or pre-PR-53 backend).
+  // No parse_id: current /api/parse results are ephemeral. Signed-in users
+  // can still submit feedback by sending enough source context for the
+  // backend to create a parse_session lazily at feedback-submit time.
   await page.route('**/api/parse', async (route) => {
     await route.fulfill({
       status: 200,
@@ -690,6 +692,15 @@ test('correction modal disables submit when no parse_id is attached', async ({ p
       }),
     });
   });
+  let captured: any = null;
+  await page.route('**/api/parse/feedback', async (route) => {
+    captured = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ feedback_id: 8, status: 'submitted' }),
+    });
+  });
 
   await page.goto('/#/inspect');
   await page.locator('#inspect-text').fill(mixedFinnishText);
@@ -697,8 +708,28 @@ test('correction modal disables submit when no parse_id is attached', async ({ p
   await expect(page.locator('#results-page')).toHaveClass(/active/);
 
   await page.locator('.correction-btn').first().click();
-  await expect(page.locator('#correction-auth-hint')).toBeVisible();
-  await expect(page.locator('#correction-submit')).toBeDisabled();
+  await expect(page.locator('#correction-auth-hint')).toBeHidden();
+  await expect(page.locator('#correction-submit')).toBeEnabled();
+  await page.locator('#correction-proposed-lemma').fill('laulaa');
+  await page.locator('#correction-proposed-pos').selectOption('VERB');
+  await page.locator('#correction-submit').click();
+
+  await expect.poll(() => captured).not.toBeNull();
+  expect(captured).not.toHaveProperty('parse_id');
+  expect(captured).toMatchObject({
+    lang:               'FI',
+    parser:             'custom',
+    source_text:        mixedFinnishText,
+    total_tokens:       2,
+    unique_lemma_count: 1,
+    surface:            'lauloi',
+    original_lemma:     'laulaa',
+    original_pos:       'VERB',
+    proposed_lemma:     'laulaa',
+    proposed_pos:       'VERB',
+  });
+  await expect(page.locator('.toast.success')).toContainText(/sent/i);
+  await expect(page.locator('#correction-modal')).toHaveClass(/hidden/);
 });
 
 // ── Mobile (375 px) ────────────────────────────────────────────────────────
