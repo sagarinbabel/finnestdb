@@ -40,6 +40,104 @@ is more enjoyable and comprehension is higher.
 
 ---
 
+## Decision 20: Lexical-overlay short-circuit and curated bad-lemma blocklists
+
+**Date:** 2026-05-12
+
+### Context
+
+PR #183 imported five learner-quality fixes from `yle_subs` (the
+downstream Anki-deck builder that consumes finnestdb's exports). Each
+fix targeted a specific recurring failure where the productive
+dictionary or FST analysis was defensibly wrong for a closed-class
+form, a frozen lexicalised adverb, or a known kaikki-import artefact.
+
+The first ship of the PR fired the overlay inside
+`Lemmatizer.Lemmatize` only — but `BatchLookupForms` consults the
+forms table BEFORE asking the FST, and the dict candidate won the
+merge-layer support-score tiebreak. The overlay was effectively
+dead code on every surface where kaikki had a row. Review feedback
+forced a re-think of where these corrections belong in the
+resolution flow.
+
+A subsequent review pass on the first cut of the bad-lemma blocklist
+found it also dropped legitimate `varsi → varsi/NOUN` dict lookups
+in basic mode because the flat lemma set treated `varsi` as always
+wrong. The fix needed a finer-grained distinction.
+
+### Decision
+
+Two design choices:
+
+1. **Lexical-overlay short-circuit runs at Step 0 of
+   `BatchLookupForms`, custom mode only.** Not inside
+   `Lemmatize()`. When the surface hits the overlay, the curated
+   analysis is returned outright and Steps 1 (dict) + 5 (FST) are
+   skipped. Source tag `lex-overlay` marks the path for eval
+   attribution. Custom-mode-only because the overlay is part of
+   the "custom enhancements" suite — basic-mode baselines stay
+   stable.
+
+2. **Bad-lemma blocklist is two-tiered**:
+   - `alwaysBadDictLemmasFI` for lemmas that are NEVER legitimate
+     standalone words. Short fragments (`as`, `taa`, `ku`),
+     compound-clip prefixes (`sisä-`, `ylä-`), and documented
+     kaikki-import bugs (`poli` as the lemma for poliisi inflected
+     forms). Filtered regardless of surface or parser mode — no
+     learner asks for the bare surface `sisä-` expecting that
+     prefix as the lemma.
+   - `badSurfaceLemmaFI` for (surface, lemma) pairs where the
+     lemma is legitimate elsewhere but wrong for the specific trap
+     surface (`(varsin, varsi)`, `(vuotta, vuo)`,
+     `(siitä, siittää)`, etc.). The lemma is preserved for
+     OTHER surfaces — `varsi → varsi/NOUN` keeps working in both
+     modes.
+
+### Reasoning
+
+**Why Step 0 over Lemmatize-internal short-circuit.** The dict
+layer's merge ranker (`pickBestResolutionCandidate`) prefers dict
+candidates over FST candidates on supportScore alone (dict=3 vs
+FST=2). An overlay analysis injected as an FST analysis loses that
+tiebreak even when it's right. A Step 0 short-circuit bypasses the
+ranking entirely for surfaces the maintainer has explicitly
+asserted are bugs.
+
+**Why custom-mode-only.** Basic-mode is the dict-only baseline we
+measure other parsers against. Adding overlay rewrites to basic
+mode would shift baselines for every comparison. Custom mode is
+the "what we ship to learners" path and the right place for
+curated enhancements.
+
+**Why two-tier blocklist instead of flat.** A single lemma set
+forces an all-or-nothing choice: either filter `varsi` everywhere
+(losing the legitimate noun lookup) or nowhere (keeping the trap
+on `varsin`). yle_subs's own
+`SUSPICIOUS_SURFACE_LEMMAS` is keyed on pairs for exactly this
+reason. The split keeps the never-legitimate fragments globally
+blocked (where there's no legitimate lookup to protect) and
+preserves the lemma on its real surfaces.
+
+**What the overlay does NOT do.** It does not generate cards, edit
+the user-friendly wordlist, or train any classifier. It is a
+runtime correction layer for a handful of catalogued surfaces
+(~14 FI entries, ~11 ET entries). Productive morphology stays in
+the FST tables.
+
+### Source
+
+PR [#183](https://github.com/sagarinbabel/finnestdb/pull/183). The
+yle_subs source files for each rule are referenced from code
+comments at the entry point in
+[`pkg/lemmatizer-fi-et/lexadverbs/lexadverbs.go`](../pkg/lemmatizer-fi-et/lexadverbs/lexadverbs.go)
+and the bad-lemma definitions in
+[`internal/store/dict.go`](../internal/store/dict.go).
+
+**See also:** [PARSER_EVOLUTION.md §2026-05-12](PARSER_EVOLUTION.md),
+[FST_LEMMATIZER.md "Store-level candidate merge"](FST_LEMMATIZER.md).
+
+---
+
 ## Decision 19: Filter low-value dict alternatives in deck/parse expansion
 
 **Date:** 2026-05-12

@@ -133,3 +133,42 @@ Do this next:
 3. Bias those annotations toward compounds, possessives, and case endings
 4. Run `basic` vs `custom`
 5. Keep adding only disagreement-heavy examples until the third parser lands
+
+
+## Regression Fixtures vs. Coverage Fixtures
+
+A regression fixture is a gold set whose purpose is to detect when a
+previously-fixed bug comes back. It is small, hand-picked, and every
+case is provably real — backed by a specific bug report, code
+comment, or downstream incident.
+
+Examples currently committed:
+
+- [`testdata/parser-eval/fi/gold/fi-analyzer-traps-v1.json`](../testdata/parser-eval/fi/gold/fi-analyzer-traps-v1.json)
+  — 20 Finnish cases seeded from `yle_subs/card_overrides/bad_lemmas.tsv`
+  and `SUSPICIOUS_SURFACE_LEMMAS`. Every entry is a kaikki/Vabamorf
+  analyser failure the downstream deck builder already had to patch
+  with a manual override. Lex-overlay surfaces (`tuskin`, `varsin`,
+  `vuotta`, `siitä`, `muuta`, ...), MA-infinitive noun-cousin traps
+  (`tarjoamaan`, `lähtemään`, `juomassa`, `Tekemällä`), and bare-lemma
+  surfaces where kaikki shipped a bad lemma (`Asia`, `Poliisi`).
+- [`testdata/parser-eval/et/gold/et-analyzer-traps-v1.json`](../testdata/parser-eval/et/gold/et-analyzer-traps-v1.json)
+  — 11 Estonian cases. Closed-class ADV/ADP forms read as productive
+  cases: `välja` (read as `väli`/illative), `seal` (as
+  `siga`/adessive), `peale` (as `pea`/allative), `jaoks` (as
+  `jagu`/translative), `lihtsalt` (as `lihtne`/ablative), and others.
+
+These files use the same JSON schema as the coverage fixtures
+(`fi-manual-v1`, `et-grammar-v1`, the UD-derived sets, etc.) and
+are picked up automatically by
+[`scripts/parser-comparison.sh`](../scripts/parser-comparison.sh)
+and
+[`scripts/parser-comparison-et.sh`](../scripts/parser-comparison-et.sh)
+via the `*.json` glob over `testdata/parser-eval/<lang>/gold/`. The
+versioned `-v1` suffix follows the same convention as the other
+gold sets — bump to `-v2` when adding new cases would break a
+landed baseline.
+
+When a fix lands that addresses one of these traps, the case stays
+in the regression fixture forever. The point is to catch the bug
+the second time, not just the first.

@@ -60,6 +60,104 @@ committed run.
 
 ## Entries
 
+### 2026-05-12 — Analyser-quality learnings from yle_subs (PR #183)
+
+**PR**: [#183](https://github.com/sagarinbabel/finnestdb/pull/183)
+**Scope**: `pkg/lemmatizer-fi-et/{lexadverbs,udfeats}`, `internal/store/dict.go`, `cmd/importdict/`, `testdata/parser-eval/{fi,et}/gold/`
+
+Pulled five analyser-quality fixes back into finnestdb from yle_subs
+— the downstream Anki-deck builder that consumes `wordlist.tsv` /
+`sentences_user_friendly.tsv`. Each fix was a real-world bug yle_subs
+had already patched at the deck-builder layer with a manual override;
+moving the rule into the parser/dict closes the leak for every
+consumer.
+
+**What changed:**
+
+1. **`pkg/lemmatizer-fi-et/lexadverbs`** — new package with FI + ET
+   overlay tables. When a surface like `tuskin`, `varsin`, `peale`,
+   `välja` is looked up in custom mode, the curated analysis
+   short-circuits at the top of `BatchLookupForms` (new Step 0)
+   before any dict or FST work. Source tag `lex-overlay`. The
+   overlay is custom-mode-only so basic baselines stay stable.
+
+2. **`udfeats.NormalizeMaInfinitive` + `IsMaInfinitiveSurface`** —
+   new exported helpers in
+   `pkg/lemmatizer-fi-et/udfeats/udfeats.go`. Rewrites FEATS on
+   Finnish verb surfaces ending in -maan/-mään/-massa/-mässä/
+   -masta/-mästä/-malla/-mällä/-matta/-mättä with a matching
+   `Case=` attribute: strips spurious `Person=3|Number=Sing` and
+   asserts `Case=X|InfForm=Ma|VerbForm=Inf|Voice=Act`. `Voice=Act`
+   is added only when no Voice attribute is present, preserving
+   explicit `Voice=Pass`.
+
+3. **MA-infinitive ranking bias** in
+   `pickBestResolutionCandidate`. Demotes any candidate whose
+   lemma ends in `-ma`/`-mä` on a MA-infinitive surface regardless
+   of POS (kaikki occasionally tags derived nouns as VERB);
+   promotes VERB candidates with `InfForm=Ma`. Paired with the
+   normaliser above so dict-supplied feats get rewritten via
+   `formResolutionFromCandidate` before ranking sees them.
+
+4. **Bad-lemma blocklist** (two tiers) in
+   `lookupFormCandidates`:
+   - `alwaysBadDictLemmasFI` — never-legitimate fragments
+     (`as`, `taa`, `ku`, `sisä-`, `ylä-`, `poli`). Filtered
+     regardless of surface.
+   - `badSurfaceLemmaFI` — (surface, lemma) pairs that are bad
+     for the trap surface but legitimate elsewhere
+     (`(varsin, varsi)`, `(vuotta, vuo)`, etc.). Bare-lemma
+     lookups like `varsi → varsi/NOUN` are preserved.
+
+5. **Structural-gloss filter at kaikki ingest** —
+   `cmd/importdict/structural.go` rejects Wiktionary "form-of"
+   restatements (`inflection of`, `partitive singular of X`,
+   `past active participle of`, `alternative form of`, etc.) as
+   the primary gloss. Two filter points in
+   `cmd/importdict/main.go`: `lemmas.gloss` cache picks the first
+   meaning gloss across senses; the `translations` table skips
+   structural rows entirely so they cannot displace real glosses
+   under `BatchLookupGlosses`' `ORDER BY sense_idx ASC`. Pattern
+   uses `\pL` (Unicode letter class) so non-ASCII headwords
+   (`ääni`, `õun`, `ümar`) match correctly.
+
+6. **`BatchLookupSenses` multi-sense API** in `internal/store/
+   dict.go` — sibling to `BatchLookupGlosses` returning the full
+   ranked sense list `[]Sense{Text, SenseIdx, Source,
+   SourcePriority}`. Same ranking order so the first element
+   matches `BatchLookupGlosses`. Unblocks downstream
+   contextual-gloss work on polysemous lemmas.
+
+7. **Analyser-traps gold fixtures** —
+   `testdata/parser-eval/fi/gold/fi-analyzer-traps-v1.json`
+   (20 cases) and `testdata/parser-eval/et/gold/
+   et-analyzer-traps-v1.json` (11 cases). Each entry is a known
+   yle_subs bug report. Auto-picked up by
+   `make compare-parsers{,-et}` via the `*.json` glob.
+
+**Measurement** (custom parser, against the new gold fixtures):
+
+| Dataset | Lemma | POS | Full |
+|---|---:|---:|---:|
+| fi-analyzer-traps-v1 | 95.2 | 100.0 | 95.2 |
+| et-analyzer-traps-v1 | 100.0 | 100.0 | 100.0 |
+
+The one documented FI residual is `tarjoamaan → tarjoama` instead
+of `tarjota`: production FST tables don't ship MA-infinitive
+surface entries at all (verified via direct lookup), so the
+dict-only candidate is the only one available and runtime lemma
+reconstruction would need a Finnish morphological generator.
+POS/FEATS/gloss are all correct; only the verb-lemma is missing.
+Closing this fully needs FST table regeneration with MA-infinitive
+inflected forms included — separate scope.
+
+**Design choices and provenance**: see Decision 20 in
+[`DECISIONS.md`](DECISIONS.md). The yle_subs source files are
+referenced from code comments at every fix point so future audits
+can trace each rule back to the learner-visible bug it patched.
+
+---
+
 ### 2026-05-07 — Voikko `[P4]` Voice + participle field cleanup (PR #158)
 
 **PR**: [#158](https://github.com/sagarinbabel/finnestdb/pull/158)

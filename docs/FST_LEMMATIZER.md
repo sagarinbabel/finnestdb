@@ -104,8 +104,22 @@ opened at runtime.
 ### Store-level candidate merge
 
 `internal/store.BatchLookupForms` uses generated FST tables in two
-places when `parserMode == "custom"`:
+places when `parserMode == "custom"`. Both are preceded by a small
+Step 0 short-circuit that catches the highest-frequency analyser
+traps before any general-purpose ranking runs.
 
+0. **Lexical-overlay short-circuit (PR #183).** Before the dict
+   lookup, the store checks `pkg/lemmatizer-fi-et/lexadverbs` for the
+   surface. The overlay catalogues forms whose productive analysis is
+   a known bug — Finnish `tuskin`/`varsin`/`yleensä` (closed-class
+   adverbs the parser keeps unfolding as productive case forms),
+   Finnish `vuotta`/`siitä`/`muuta` (kaikki-imported with bad
+   lemmas), and Estonian `peale`/`jaoks`/`seal`/`välja` (closed-class
+   adpositions/adverbs read as productive case). When the overlay
+   hits, the curated analysis is returned outright and Steps 1 and 5
+   are skipped. Source tag `lex-overlay` lets eval reports attribute
+   hits to this layer. The overlay is custom-mode-only: basic-mode
+   baselines stay stable.
 1. **Direct dictionary hits.** The store now treats dictionary rows and
    generated-table FST analyses as one candidate set for the surface
    form. Candidates are keyed by `(lemma, POS)`.
@@ -126,6 +140,63 @@ The direct-hit merge is deliberately conservative:
   authoritative for now, even if the FST analysis is richer.
 - If local FST tables are missing, behavior degrades to the dictionary
   path plus the existing case-suffix label stopgap.
+
+#### MA-infinitive bias (PR #183)
+
+Finnish MA-infinitive surfaces (-maan/-mään, -massa/-mässä,
+-masta/-mästä, -malla/-mällä, -matta/-mättä with a matching
+`Case=` attribute) trigger a ranking bias in
+`pickBestResolutionCandidate`. Kaikki ships many of these surfaces
+keyed under derived nouns (`tarjoamaan → tarjoama/NOUN/Case=Ill`)
+with stale FEATS (`Person=3|Number=Sing` instead of
+`InfForm=Ma|VerbForm=Inf`), which the productive merge would
+otherwise promote over the verb reading. The bias does two things:
+
+- Demotes any candidate whose lemma ends in `-ma`/`-mä` on a MA-
+  infinitive surface, regardless of POS. Lemma shape is a more
+  reliable signal of "noun-cousin trap" than POS, because kaikki
+  occasionally tags the derived noun as VERB.
+- Promotes any candidate whose POS is VERB with `InfForm=Ma`.
+
+In parallel, `udfeats.NormalizeMaInfinitive` runs on both FST output
+and dict candidates (via `formResolutionFromCandidate`), stripping
+the noun-cousin `Person=3|Number=Sing` signature and asserting
+`Case=X|InfForm=Ma|VerbForm=Inf|Voice=Act`. `Voice=Act` is added
+only when no Voice attribute is present (explicit `Voice=Pass` is
+preserved). This means the merged resolution carries the right
+FEATS regardless of which source supplied the lemma.
+
+A documented residual: when the FST tables ship no MA-infinitive
+surface entries at all (the current state — the production tables
+have verb headwords but not their MA-infinitive inflections), the
+dict-only candidate is the only option and the verb-lemma
+reconstruction (e.g. `tarjoamaan → tarjota`) is impossible at
+runtime. POS/FEATS/gloss come out right; only the lemma stays
+wrong. Closing this needs FST table regeneration with MA-infinitive
+forms included.
+
+#### Bad-lemma filter (PR #183)
+
+`lookupFormCandidates` filters dict candidates through a two-tier
+blocklist before merge:
+
+- **`alwaysBadDictLemmasFI`** — lemmas that are never legitimate
+  standalone words. Short fragments (`as`, `taa`, `ku`),
+  compound-clip prefixes (`sisä-`, `ylä-`), and documented
+  kaikki-import bugs (`poli` for `poliisi` inflected forms).
+  Filtered regardless of surface — no learner asks for the bare
+  surface `sisä-` expecting that prefix as the lemma.
+- **`badSurfaceLemmaFI`** — (surface, lemma) pairs where the lemma
+  is legitimate elsewhere but wrong for the specific trap surface.
+  `(varsin, varsi)`, `(vuotta, vuo)`, `(siitä, siittää)`, etc.
+  The bare-lemma lookup `varsi → varsi/NOUN` is preserved; only the
+  trap surface is filtered.
+
+Seeded from `yle_subs/card_overrides/bad_lemmas.tsv` +
+`SUSPICIOUS_SURFACE_LEMMAS`. When all candidates for a surface get
+filtered, the surface falls through to Steps 2-5 (possessive strip,
+compound split, case-suffix strip, FST). The lex-overlay above
+covers the common trap surfaces directly.
 
 FST morphology is projected into UD-style FEATS before it leaves the
 store. For example, `GrammarLabel=inessive` plus `Number=Sing` becomes
