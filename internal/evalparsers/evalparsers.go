@@ -35,33 +35,33 @@ func SupportedParsers() []string {
 }
 
 func Analyze(db *store.DB, lang, text, parserName string) (*parsecore.ParseResult, error) {
-	if parserName == "" {
-		parserName = "basic"
-	}
-	switch parserName {
-	case "basic", "custom":
-		return parsecore.Analyze(db, lang, text, parserName)
+	runner := NewRunner()
+	defer func() {
+		_ = runner.Close()
+	}()
+	return runner.Analyze(db, lang, text, parserName)
+}
+
+func externalAnalyzerConfig(name string, analyze parsecore.AnalyzerFunc) parsecore.ExternalAnalyzerConfig {
+	switch name {
 	case "omorfi":
-		return parsecore.AnalyzeWithExternalAnalyzer(db, lang, text, parsecore.ExternalAnalyzerConfig{
+		return parsecore.ExternalAnalyzerConfig{
 			Name:    "omorfi",
 			Lang:    "FI",
 			Source:  "analyzer:omorfi",
-			Analyze: runExternalOmorfi,
+			Analyze: analyze,
 			Rules:   defaultExternalAnalyzerRules(),
-		})
+		}
 	case "estnltk":
-		return parsecore.AnalyzeWithExternalAnalyzer(db, lang, text, parsecore.ExternalAnalyzerConfig{
+		return parsecore.ExternalAnalyzerConfig{
 			Name:    "estnltk",
 			Lang:    "ET",
 			Source:  "analyzer:estnltk",
-			Analyze: runExternalEstNLTK,
+			Analyze: analyze,
 			Rules:   defaultExternalAnalyzerRules(),
-		})
-	default:
-		if err := parsecore.ValidateInput(lang, text); err != nil {
-			return nil, err
 		}
-		return nil, fmt.Errorf("unsupported parser %q", parserName)
+	default:
+		return parsecore.ExternalAnalyzerConfig{Name: name, Analyze: analyze}
 	}
 }
 
@@ -168,7 +168,7 @@ func defaultExternalAnalyzerRules() []parsecore.ExternalAnalyzerRule {
 	}
 }
 
-func runExternalOmorfi(lang, text string) (*parserffi.AnalysisResult, error) {
+func resolveOmorfiCommandSpec() (string, error) {
 	cmdSpec := strings.TrimSpace(os.Getenv(omorfiCommandEnv))
 	if cmdSpec == "" {
 		// Auto-default: when the bundled adapter script and python3 are
@@ -198,12 +198,12 @@ func runExternalOmorfi(lang, text string) (*parserffi.AnalysisResult, error) {
 		}
 	}
 	if cmdSpec == "" {
-		return nil, fmt.Errorf("omorfi parser is not configured; set %s or run `make setup-nlp`", omorfiCommandEnv)
+		return "", fmt.Errorf("omorfi parser is not configured; set %s or run `make setup-nlp`", omorfiCommandEnv)
 	}
-	return runExternalCommand(cmdSpec, lang, text, "omorfi", omorfiTimeoutEnv, omorfiDefaultTimeout)
+	return cmdSpec, nil
 }
 
-func runExternalEstNLTK(lang, text string) (*parserffi.AnalysisResult, error) {
+func resolveEstNLTKCommandSpec() (string, error) {
 	cmdSpec := strings.TrimSpace(os.Getenv(estnltkCommandEnv))
 	if cmdSpec == "" {
 		if py, err := exec.LookPath("python3"); err == nil {
@@ -218,9 +218,9 @@ func runExternalEstNLTK(lang, text string) (*parserffi.AnalysisResult, error) {
 		}
 	}
 	if cmdSpec == "" {
-		return nil, fmt.Errorf("estnltk parser is not configured; set %s or run `make setup-nlp`", estnltkCommandEnv)
+		return "", fmt.Errorf("estnltk parser is not configured; set %s or run `make setup-nlp`", estnltkCommandEnv)
 	}
-	return runExternalCommand(cmdSpec, lang, text, "estnltk", estnltkTimeoutEnv, estnltkDefaultTimeout)
+	return cmdSpec, nil
 }
 
 func runExternalCommand(cmdSpec, lang, text, name, timeoutEnv string, defaultTimeout time.Duration) (*parserffi.AnalysisResult, error) {
