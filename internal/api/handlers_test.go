@@ -428,6 +428,199 @@ func TestHandleParseExpandsHomonyms(t *testing.T) {
 	}
 }
 
+func TestHandleParseSuppressesGlosslessAlternativeWhenSurfaceHasGlossedCandidate(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("liiga", "ADV", "too", "ET"); err != nil {
+		t.Fatalf("UpsertLemma liiga/ADV: %v", err)
+	}
+	if err := api.store.UpsertLemma("liiga", "X", "", "ET"); err != nil {
+		t.Fatalf("UpsertLemma liiga/X: %v", err)
+	}
+	for _, r := range [][4]string{
+		{"liiga", "liiga", "ADV", "ET"},
+		{"liiga", "liiga", "X", "ET"},
+	} {
+		if err := api.store.UpsertForm(r[0], r[1], r[2], r[3]); err != nil {
+			t.Fatalf("UpsertForm %v: %v", r, err)
+		}
+	}
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang:   lang,
+			Parser: "custom",
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "liiga",
+					Tokens: []parsecore.TokenResult{
+						{Form: "liiga", Lemma: "liiga", POS: "ADV", Resolved: true},
+					},
+				},
+			},
+			Words: []parsecore.WordEntry{
+				{Lemma: "liiga", POS: "ADV", Forms: []string{"liiga"}, Count: 1, Gloss: "too"},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"ET","text":"liiga","parser":"custom"}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
+	}
+
+	var resp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Words) != 1 {
+		t.Fatalf("len(words)=%d want 1; words=%+v", len(resp.Words), resp.Words)
+	}
+	if got := resp.Words[0]; got.Lemma != "liiga" || got.POS != "ADV" || got.Gloss != "too" {
+		t.Fatalf("word=%+v want liiga/ADV with gloss", got)
+	}
+}
+
+func TestHandleParseSuppressesInflectedFormGlossWhenSurfaceHasLexicalCandidate(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("olema", "VERB", "be", "ET"); err != nil {
+		t.Fatalf("UpsertLemma olema/VERB: %v", err)
+	}
+	if err := api.store.UpsertLemma("olen", "VERB", "first-person singular present indicative of olema", "ET"); err != nil {
+		t.Fatalf("UpsertLemma olen/VERB: %v", err)
+	}
+	for _, r := range [][4]string{
+		{"olen", "olema", "VERB", "ET"},
+		{"olen", "olen", "VERB", "ET"},
+	} {
+		if err := api.store.UpsertForm(r[0], r[1], r[2], r[3]); err != nil {
+			t.Fatalf("UpsertForm %v: %v", r, err)
+		}
+	}
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang:   lang,
+			Parser: "custom",
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "olen",
+					Tokens: []parsecore.TokenResult{
+						{Form: "olen", Lemma: "olema", POS: "VERB", Resolved: true},
+					},
+				},
+			},
+			Words: []parsecore.WordEntry{
+				{Lemma: "olema", POS: "VERB", Forms: []string{"olen"}, Count: 1, Gloss: "be"},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"ET","text":"olen","parser":"custom"}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
+	}
+
+	var resp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Words) != 1 {
+		t.Fatalf("len(words)=%d want 1; words=%+v", len(resp.Words), resp.Words)
+	}
+	if got := resp.Words[0]; got.Lemma != "olema" || got.POS != "VERB" || got.Gloss != "be" {
+		t.Fatalf("word=%+v want olema/VERB with lexical gloss", got)
+	}
+}
+
+func TestFilterLowValueAlternativesKeepsLexicalGlossesWithLooseMarkers(t *testing.T) {
+	dict := map[string][]store.FormResolution{
+		"vana": {
+			{Lemma: "vana", POS: "ADJ"},
+			{Lemma: "vana", POS: "NOUN"},
+		},
+		"vanad": {
+			{Lemma: "vana", POS: "ADJ"},
+			{Lemma: "vana", POS: "NOUN"},
+		},
+		"oma": {
+			{Lemma: "oma", POS: "ADJ"},
+			{Lemma: "oma", POS: "NOUN"},
+		},
+	}
+	glosses := map[store.LemmaKey]string{
+		{Lemma: "vana", POS: "ADJ"}:  "old; out of order; past",
+		{Lemma: "vana", POS: "NOUN"}: "old person",
+		{Lemma: "oma", POS: "ADJ"}:   "own; one of a kind; singular",
+		{Lemma: "oma", POS: "NOUN"}:  "property",
+	}
+
+	got := filterLowValueAlternatives(dict, glosses)
+	for form, candidates := range got {
+		seen := map[string]bool{}
+		for _, candidate := range candidates {
+			seen[candidate.Lemma+"/"+candidate.POS] = true
+		}
+		switch form {
+		case "vana", "vanad":
+			if !seen["vana/ADJ"] || !seen["vana/NOUN"] {
+				t.Fatalf("%s candidates=%+v want both lexical ADJ and NOUN retained", form, candidates)
+			}
+		case "oma":
+			if !seen["oma/ADJ"] || !seen["oma/NOUN"] {
+				t.Fatalf("%s candidates=%+v want both lexical ADJ and NOUN retained", form, candidates)
+			}
+		default:
+			t.Fatalf("unexpected form %q", form)
+		}
+	}
+}
+
+func TestFilterLowValueAlternativesKeepsFormOfWhenNoLexicalCandidate(t *testing.T) {
+	dict := map[string][]store.FormResolution{
+		"olen": {{Lemma: "olen", POS: "VERB"}},
+	}
+	glosses := map[store.LemmaKey]string{
+		{Lemma: "olen", POS: "VERB"}: "first-person singular present indicative of olema",
+	}
+
+	got := filterLowValueAlternatives(dict, glosses)
+	candidates := got["olen"]
+	if len(candidates) != 1 || candidates[0].Lemma != "olen" || candidates[0].POS != "VERB" {
+		t.Fatalf("candidates=%+v want form-of candidate retained when no lexical base exists", candidates)
+	}
+}
+
+func TestFilterLowValueAlternativesSuppressesSlashAndConnegativeFormOfAlternatives(t *testing.T) {
+	dict := map[string][]store.FormResolution{
+		"aega": {
+			{Lemma: "aeg", POS: "NOUN"},
+			{Lemma: "aega", POS: "NOUN"},
+		},
+		"menne": {
+			{Lemma: "mennä", POS: "VERB"},
+			{Lemma: "menne", POS: "VERB"},
+		},
+	}
+	glosses := map[store.LemmaKey]string{
+		{Lemma: "aeg", POS: "NOUN"}:   "time",
+		{Lemma: "aega", POS: "NOUN"}:  "genitive/partitive/illative singular of aeg",
+		{Lemma: "mennä", POS: "VERB"}: "go",
+		{Lemma: "menne", POS: "VERB"}: "connegative potential of mennä",
+	}
+
+	got := filterLowValueAlternatives(dict, glosses)
+	if candidates := got["aega"]; len(candidates) != 1 || candidates[0].Lemma != "aeg" || candidates[0].POS != "NOUN" {
+		t.Fatalf("aega candidates=%+v want only lexical aeg/NOUN", candidates)
+	}
+	if candidates := got["menne"]; len(candidates) != 1 || candidates[0].Lemma != "mennä" || candidates[0].POS != "VERB" {
+		t.Fatalf("menne candidates=%+v want only lexical mennä/VERB", candidates)
+	}
+}
+
 func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
 	api := newTestAPI(t)
 	parsed := &parsecore.ParseResult{
@@ -448,7 +641,7 @@ func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
 		},
 	}
 
-	got := api.expandParsedWords(parsed, dict)
+	got := api.expandParsedWords(parsed, dict, nil, nil)
 	if len(got) != 2 {
 		t.Fatalf("len=%d want 2: %+v", len(got), got)
 	}
@@ -457,6 +650,33 @@ func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
 	}
 	if got[1].Lemma != "joon" || got[1].POS != "VERB" {
 		t.Fatalf("second=%s/%s want joon/VERB: %+v", got[1].Lemma, got[1].POS, got)
+	}
+}
+
+func TestExpandParsedWordsUsesPreloadedGlosses(t *testing.T) {
+	api := newTestAPI(t)
+	parsed := &parsecore.ParseResult{
+		Lang: "ET",
+		Sentences: []parsecore.SentenceResult{
+			{
+				Text: "joon",
+				Tokens: []parsecore.TokenResult{
+					{Form: "joon", Lemma: "joon", POS: "NOUN"},
+				},
+			},
+		},
+	}
+	dict := map[string][]store.FormResolution{
+		"joon": {{Lemma: "joon", POS: "NOUN"}},
+	}
+	key := store.LemmaKey{Lemma: "joon", POS: "NOUN"}
+
+	got := api.expandParsedWords(parsed, dict, map[store.LemmaKey]string{key: "line"}, map[store.LemmaKey]struct{}{key: {}})
+	if len(got) != 1 {
+		t.Fatalf("len=%d want 1: %+v", len(got), got)
+	}
+	if got[0].Gloss != "line" {
+		t.Fatalf("gloss=%q want line", got[0].Gloss)
 	}
 }
 
@@ -1422,6 +1642,128 @@ func TestCreateDeckExpandsAmbiguousTokenIntoMultipleCards(t *testing.T) {
 	}
 	if stats[0].Unique != 4 {
 		t.Errorf("Unique=%d want 4 (mina, joon-noun, jooma-verb, vesi)", stats[0].Unique)
+	}
+}
+
+func TestCreateDeckSuppressesGlosslessAlternativeWhenSurfaceHasGlossedCandidate(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("liiga", "ADV", "too", "ET"); err != nil {
+		t.Fatalf("UpsertLemma liiga/ADV: %v", err)
+	}
+	if err := api.store.UpsertLemma("liiga", "X", "", "ET"); err != nil {
+		t.Fatalf("UpsertLemma liiga/X: %v", err)
+	}
+	for _, r := range [][4]string{
+		{"liiga", "liiga", "ADV", "ET"},
+		{"liiga", "liiga", "X", "ET"},
+	} {
+		if err := api.store.UpsertForm(r[0], r[1], r[2], r[3]); err != nil {
+			t.Fatalf("UpsertForm %v: %v", r, err)
+		}
+	}
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang:        lang,
+			Parser:      "custom",
+			TotalTokens: 1,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "liiga",
+					Tokens: []parsecore.TokenResult{
+						{Form: "liiga", Lemma: "liiga", POS: "ADV", Resolved: true},
+					},
+				},
+			},
+			Words: []parsecore.WordEntry{
+				{Lemma: "liiga", POS: "ADV", Forms: []string{"liiga"}, Count: 1, Gloss: "too"},
+			},
+		}, nil
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "liiga@example.com")
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Liiga","lang":"ET","text":"liiga"}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create deck status=%d body=%q", createRec.Code, createRec.Body.String())
+	}
+
+	auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
+	if err != nil || auth == nil {
+		t.Fatal("expected authenticated user")
+	}
+	cardCount, err := api.store.CountCards(auth.UserID, "ET")
+	if err != nil {
+		t.Fatalf("CountCards: %v", err)
+	}
+	if cardCount != 1 {
+		t.Fatalf("card_count=%d want 1; glossless X alternative should not create a card", cardCount)
+	}
+}
+
+func TestCreateDeckSuppressesInflectedFormGlossWhenSurfaceHasLexicalCandidate(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("olema", "VERB", "be", "ET"); err != nil {
+		t.Fatalf("UpsertLemma olema/VERB: %v", err)
+	}
+	if err := api.store.UpsertLemma("olen", "VERB", "first-person singular present indicative of olema", "ET"); err != nil {
+		t.Fatalf("UpsertLemma olen/VERB: %v", err)
+	}
+	for _, r := range [][4]string{
+		{"olen", "olema", "VERB", "ET"},
+		{"olen", "olen", "VERB", "ET"},
+	} {
+		if err := api.store.UpsertForm(r[0], r[1], r[2], r[3]); err != nil {
+			t.Fatalf("UpsertForm %v: %v", r, err)
+		}
+	}
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang:        lang,
+			Parser:      "custom",
+			TotalTokens: 1,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "olen",
+					Tokens: []parsecore.TokenResult{
+						{Form: "olen", Lemma: "olema", POS: "VERB", Resolved: true},
+					},
+				},
+			},
+			Words: []parsecore.WordEntry{
+				{Lemma: "olema", POS: "VERB", Forms: []string{"olen"}, Count: 1, Gloss: "be"},
+			},
+		}, nil
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "olen@example.com")
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Olen","lang":"ET","text":"olen"}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create deck status=%d body=%q", createRec.Code, createRec.Body.String())
+	}
+
+	auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
+	if err != nil || auth == nil {
+		t.Fatal("expected authenticated user")
+	}
+	cardCount, err := api.store.CountCards(auth.UserID, "ET")
+	if err != nil {
+		t.Fatalf("CountCards: %v", err)
+	}
+	if cardCount != 1 {
+		t.Fatalf("card_count=%d want 1; inflected-form gloss alternative should not create a card", cardCount)
 	}
 }
 

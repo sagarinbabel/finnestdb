@@ -646,6 +646,180 @@ func expandTokenLemmas(token parsecore.TokenResult, dict map[string][]store.Form
 	return []tokenLemma{{Lemma: lemma, POS: token.POS}}
 }
 
+func (a *API) filterLowValueDictAlternatives(dict map[string][]store.FormResolution, lang string) (map[string][]store.FormResolution, map[store.LemmaKey]string, map[store.LemmaKey]struct{}) {
+	keys := dictCandidateLemmaKeys(dict)
+	if len(keys) == 0 {
+		return dict, nil, nil
+	}
+	checkedKeys := lemmaKeySet(keys)
+	glosses := a.store.BatchLookupGlosses(keys, lang)
+	if len(glosses) == 0 {
+		return dict, glosses, checkedKeys
+	}
+	return filterLowValueAlternatives(dict, glosses), glosses, checkedKeys
+}
+
+func dictCandidateLemmaKeys(dict map[string][]store.FormResolution) []store.LemmaKey {
+	seen := map[store.LemmaKey]struct{}{}
+	keys := make([]store.LemmaKey, 0)
+	for _, candidates := range dict {
+		for _, c := range candidates {
+			if c.Lemma == "" || c.POS == "" {
+				continue
+			}
+			k := store.LemmaKey{Lemma: c.Lemma, POS: c.POS}
+			if _, ok := seen[k]; ok {
+				continue
+			}
+			seen[k] = struct{}{}
+			keys = append(keys, k)
+		}
+	}
+	return keys
+}
+
+func lemmaKeySet(keys []store.LemmaKey) map[store.LemmaKey]struct{} {
+	out := make(map[store.LemmaKey]struct{}, len(keys))
+	for _, k := range keys {
+		out[k] = struct{}{}
+	}
+	return out
+}
+
+// filterLowValueAlternatives keeps real ambiguity, but suppresses learner-facing
+// clutter: empty-gloss alternatives, and inflected-form glosses when a lexical
+// gloss for the same surface is available.
+func filterLowValueAlternatives(dict map[string][]store.FormResolution, glosses map[store.LemmaKey]string) map[string][]store.FormResolution {
+	out := make(map[string][]store.FormResolution, len(dict))
+	for form, candidates := range dict {
+		hasGlossedCandidate := false
+		hasLexicalCandidate := false
+		for _, c := range candidates {
+			gloss := glosses[store.LemmaKey{Lemma: c.Lemma, POS: c.POS}]
+			if gloss != "" {
+				hasGlossedCandidate = true
+				if !isInflectionalFormCandidate(form, c, gloss) {
+					hasLexicalCandidate = true
+				}
+			}
+		}
+		if !hasGlossedCandidate {
+			out[form] = candidates
+			continue
+		}
+
+		filtered := make([]store.FormResolution, 0, len(candidates))
+		for _, c := range candidates {
+			gloss := glosses[store.LemmaKey{Lemma: c.Lemma, POS: c.POS}]
+			if gloss == "" {
+				continue
+			}
+			if hasLexicalCandidate && isInflectionalFormCandidate(form, c, gloss) {
+				continue
+			}
+			filtered = append(filtered, c)
+		}
+		if len(filtered) > 0 {
+			out[form] = filtered
+		}
+	}
+	return out
+}
+
+func isInflectionalFormCandidate(form string, candidate store.FormResolution, gloss string) bool {
+	if strings.TrimSpace(form) == "" || !strings.EqualFold(strings.TrimSpace(form), strings.TrimSpace(candidate.Lemma)) {
+		return false
+	}
+	g := strings.ToLower(strings.TrimSpace(gloss))
+	if strings.ContainsAny(g, ";,") {
+		return false
+	}
+	before, target, ok := strings.Cut(g, " of ")
+	if !ok {
+		return false
+	}
+	target = strings.Trim(strings.TrimSpace(target), ".")
+	if target == "" || strings.Contains(target, " ") {
+		return false
+	}
+	before = strings.NewReplacer("-", " ", "/", " ").Replace(before)
+	parts := strings.Fields(before)
+	if len(parts) == 0 {
+		return false
+	}
+	hasMorphTerm := false
+	allowed := map[string]struct{}{
+		"abessive":    {},
+		"ablative":    {},
+		"active":      {},
+		"adessive":    {},
+		"allative":    {},
+		"comparative": {},
+		"comitative":  {},
+		"conditional": {},
+		"connegative": {},
+		"degree":      {},
+		"elative":     {},
+		"essive":      {},
+		"first":       {},
+		"form":        {},
+		"genitive":    {},
+		"gerund":      {},
+		"illative":    {},
+		"imperative":  {},
+		"indicative":  {},
+		"inessive":    {},
+		"infinitive":  {},
+		"inflected":   {},
+		"inflection":  {},
+		"nominative":  {},
+		"participle":  {},
+		"partitive":   {},
+		"passive":     {},
+		"past":        {},
+		"person":      {},
+		"plural":      {},
+		"potential":   {},
+		"present":     {},
+		"second":      {},
+		"singular":    {},
+		"superlative": {},
+		"terminative": {},
+		"third":       {},
+		"translative": {},
+	}
+	for _, part := range parts {
+		if _, ok := allowed[part]; !ok {
+			return false
+		}
+		if part != "form" {
+			hasMorphTerm = true
+		}
+	}
+	if hasMorphTerm {
+		return true
+	}
+	return len(parts) == 1 && parts[0] == "form"
+}
+
+func mergeGlosses(dst, src map[store.LemmaKey]string) map[store.LemmaKey]string {
+	if len(dst) == 0 {
+		dst = make(map[store.LemmaKey]string, len(src))
+	}
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
+}
+
+func hasCheckedLemmaKey(checked map[store.LemmaKey]struct{}, key store.LemmaKey) bool {
+	if checked == nil {
+		return false
+	}
+	_, ok := checked[key]
+	return ok
+}
+
 // expandParsedWords reapplies the same dict-driven homonym expansion that
 // handleCreateDeck runs, producing one WordEntry per (lemma, pos) candidate
 // the dictionary knows of for each token. The result mirrors the (lemma, pos)
@@ -657,7 +831,7 @@ func expandTokenLemmas(token parsecore.TokenResult, dict map[string][]store.Form
 // homonym alternatives the parser didn't pick, GrammarLabel stays empty;
 // ExampleSentence and Gloss are derived from the first matching token's
 // sentence and a dictionary lookup respectively.
-func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][]store.FormResolution) []parsecore.WordEntry {
+func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][]store.FormResolution, glosses map[store.LemmaKey]string, checkedGlossKeys map[store.LemmaKey]struct{}) []parsecore.WordEntry {
 	type aggKey struct {
 		lemma string
 		pos   string
@@ -707,12 +881,14 @@ func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][
 	for key := range agg {
 		pe, ok := parserIndex[key]
 		if !ok || pe.Gloss == "" {
-			missingGlossKeys = append(missingGlossKeys, store.LemmaKey{Lemma: key.lemma, POS: key.pos})
+			lookupKey := store.LemmaKey{Lemma: key.lemma, POS: key.pos}
+			if !hasCheckedLemmaKey(checkedGlossKeys, lookupKey) {
+				missingGlossKeys = append(missingGlossKeys, lookupKey)
+			}
 		}
 	}
-	glosses := map[store.LemmaKey]string{}
 	if len(missingGlossKeys) > 0 {
-		glosses = a.store.BatchLookupGlosses(missingGlossKeys, parsed.Lang)
+		glosses = mergeGlosses(glosses, a.store.BatchLookupGlosses(missingGlossKeys, parsed.Lang))
 	}
 
 	out := make([]parsecore.WordEntry, 0, len(agg))
@@ -803,6 +979,7 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 	// parser's pick is only used when the dict is silent.
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
 	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang)
+	dictCandidates, _, _ = a.filterLowValueDictAlternatives(dictCandidates, req.Lang)
 
 	sentences := make([]store.DeckSentenceInput, 0, len(parsed.Sentences))
 	for _, sent := range parsed.Sentences {
@@ -1401,7 +1578,8 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	// deck the user gets when saving. See expandParsedWords for details.
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
 	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang)
-	parsed.Words = a.expandParsedWords(parsed, dictCandidates)
+	dictCandidates, dictGlosses, checkedGlossKeys := a.filterLowValueDictAlternatives(dictCandidates, req.Lang)
+	parsed.Words = a.expandParsedWords(parsed, dictCandidates, dictGlosses, checkedGlossKeys)
 
 	auth, err := a.getCurrentUser(r)
 	if err != nil {

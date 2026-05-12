@@ -10,6 +10,22 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-05-12 — Deck/parse low-value dict-alternative filter (PR #185)
+
+Records the deck/parse expansion change in PR
+[#185](https://github.com/sagarinbabel/finnestdb/pull/185): when a surface
+form has multiple dict candidates and at least one has a non-empty gloss,
+empty-gloss alternatives and Wiktionary form-of alternatives are suppressed
+when a lexical-base alternative exists. Form-of detection is structural
+(`candidate.Lemma == form`, single-clause gloss with `<allowed morphology>
+of <single-word target>`), so common lexical glosses whose body text
+happens to mention grammatical terms (`vana/ADJ`, `oma/ADJ`, `mennä/VERB`)
+are not affected. Unresolved/gap surfaces — every candidate gloss empty,
+or no lexical-base alternative — are preserved as-is.
+
+- Added: [`docs/DECISIONS.md`](DECISIONS.md) §Decision 19 — context,
+  structural detector, and false-positive reasoning behind the filter.
+
 ## 2026-05-09 — Architecture and corpus documentation audit
 
 Refreshes the living docs after the corpus pipeline and baseline-compression
