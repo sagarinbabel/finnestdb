@@ -50,6 +50,67 @@ func TestParse_VerbPassive(t *testing.T) {
 	}
 }
 
+// Estonian (lang-est-x-utee) marks active voice on verbs with +Pers
+// instead of Finnish's +Act. The Voice value lands in the same UD slot.
+func TestParse_VerbPersonalET(t *testing.T) {
+	a := Parse("kirjutama+V+Pers+Ind+Prs+Sg3")
+	if a.Voice != "Act" {
+		t.Errorf("voice=%q want Act (Estonian +Pers on a verb is active voice)", a.Voice)
+	}
+	if a.PronType != "" {
+		t.Errorf("prontype=%q want empty (Pers on a verb is not a pronoun type)", a.PronType)
+	}
+	if a.Mood != "Ind" || a.Tense != "Pres" || a.Person != "3" || a.Number != "Sing" {
+		t.Errorf("got %+v", a)
+	}
+	if a.VerbForm != "Fin" {
+		t.Errorf("verbform=%q want Fin", a.VerbForm)
+	}
+}
+
+// +Impers is Estonian's impersonal/passive marker, used on finite verbs
+// (e.g. "kirjutatakse") and non-finite forms alike.
+func TestParse_VerbImpersonalET(t *testing.T) {
+	a := Parse("kirjutama+V+Impers+Ind+Prs")
+	if a.Voice != "Pass" {
+		t.Errorf("voice=%q want Pass (Estonian +Impers is impersonal/passive)", a.Voice)
+	}
+	if a.Mood != "Ind" || a.Tense != "Pres" {
+		t.Errorf("mood=%q tense=%q want Ind/Pres", a.Mood, a.Tense)
+	}
+	if a.VerbForm != "Fin" {
+		t.Errorf("verbform=%q want Fin", a.VerbForm)
+	}
+}
+
+// Past impersonal indicative (the "ti" / "kirjutati" reading).
+func TestParse_VerbImpersonalPastET(t *testing.T) {
+	a := Parse("kirjutama+V+Impers+Ind+Prt")
+	if a.Voice != "Pass" || a.Tense != "Past" || a.Mood != "Ind" {
+		t.Errorf("got %+v want Voice=Pass Tense=Past Mood=Ind", a)
+	}
+}
+
+// Estonian non-finite forms also carry Pers/Impers as the voice signal.
+// Ekilex's PtsPrPs / PtsPrIps / SupIps codes follow this same shape, so
+// the FST projection has to set Voice on participles and supine too.
+func TestParse_ParticipleImpersonalET(t *testing.T) {
+	a := Parse("kirjutama+V+Impers+PrfPrc")
+	if a.Voice != "Pass" || a.VerbForm != "Part" || a.PartForm != "Past" {
+		t.Errorf("got %+v want Voice=Pass VerbForm=Part PartForm=Past", a)
+	}
+}
+
+func TestParse_ParticiplePersonalET(t *testing.T) {
+	a := Parse("kirjutama+V+Pers+PrsPrc")
+	if a.Voice != "Act" || a.VerbForm != "Part" || a.PartForm != "Pres" {
+		t.Errorf("got %+v want Voice=Act VerbForm=Part PartForm=Pres", a)
+	}
+	if a.PronType != "" {
+		t.Errorf("prontype=%q want empty (Pers on a verb participle is not a pronoun type)", a.PronType)
+	}
+}
+
 func TestParse_Infinitive(t *testing.T) {
 	a := Parse("olla+V+Act+Inf")
 	if a.VerbForm != "Inf" {
@@ -136,8 +197,18 @@ func TestParse_EstonianSupine(t *testing.T) {
 	if a.GrammarLabel != "illative" {
 		t.Errorf("grammar=%q want illative", a.GrammarLabel)
 	}
-	if a.Feats != "Case=Ill|VerbForm=Sup" {
-		t.Errorf("feats=%q want Case=Ill|VerbForm=Sup", a.Feats)
+	if a.Feats != "Case=Ill|VerbForm=Sup|Voice=Act" {
+		t.Errorf("feats=%q want Case=Ill|VerbForm=Sup|Voice=Act", a.Feats)
+	}
+}
+
+func TestParse_EstonianImpersonalSupine(t *testing.T) {
+	a := Parse("minema+V+Impers+Sup")
+	if a.Voice != "Pass" || a.VerbForm != "Sup" {
+		t.Errorf("got %+v want Voice=Pass VerbForm=Sup", a)
+	}
+	if a.Feats != "VerbForm=Sup|Voice=Pass" {
+		t.Errorf("feats=%q want VerbForm=Sup|Voice=Pass", a.Feats)
 	}
 }
 
@@ -372,6 +443,16 @@ func TestParse_FeatsComposition(t *testing.T) {
 			"postposition",
 			"kanssa+Po",
 			"AdpType=Post",
+		},
+		{
+			"estonian personal verb (3sg present indicative active)",
+			"kirjutama+V+Pers+Ind+Prs+Sg3",
+			"Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act",
+		},
+		{
+			"estonian impersonal verb (present indicative passive)",
+			"kirjutama+V+Impers+Ind+Prs",
+			"Mood=Ind|Tense=Pres|VerbForm=Fin|Voice=Pass",
 		},
 	}
 	for _, tc := range cases {
