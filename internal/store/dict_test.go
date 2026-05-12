@@ -2240,7 +2240,7 @@ func TestPickBestResolutionCandidate_MaInfinitiveBias(t *testing.T) {
 		hasFST:   true,
 		fstOrder: 0,
 	}
-	got := pickBestResolutionCandidate("lähtemään", []resolutionCandidate{dictNoun, fstVerb})
+	got := pickBestResolutionCandidate("lähtemään", "FI", []resolutionCandidate{dictNoun, fstVerb})
 	if got.res.Lemma != "lähteä" || got.res.POS != "VERB" {
 		t.Errorf("MA-infinitive bias: got (%s/%s), want (lähteä/VERB)",
 			got.res.Lemma, got.res.POS)
@@ -2256,7 +2256,7 @@ func TestPickBestResolutionCandidate_MaInfinitiveBias(t *testing.T) {
 		hasFST:   true,
 		fstOrder: 0,
 	}
-	got = pickBestResolutionCandidate("talossa", []resolutionCandidate{dictNounOk, fstVerbOddball})
+	got = pickBestResolutionCandidate("talossa", "FI", []resolutionCandidate{dictNounOk, fstVerbOddball})
 	if got.res.Lemma != "talo" {
 		t.Errorf("non-MA surface: bias should not fire, got (%s/%s) want talo/NOUN",
 			got.res.Lemma, got.res.POS)
@@ -2349,7 +2349,7 @@ func TestPickBestResolutionCandidate_AInfLongBias(t *testing.T) {
 				hasFST:   true,
 				fstOrder: 0,
 			})
-			got := pickBestResolutionCandidate(tc.surface, cands)
+			got := pickBestResolutionCandidate(tc.surface, "FI", cands)
 			if got.res.Lemma != tc.wantLemma || got.res.POS != tc.wantPOS {
 				t.Errorf("got (%s/%s), want (%s/%s)",
 					got.res.Lemma, got.res.POS, tc.wantLemma, tc.wantPOS)
@@ -2370,10 +2370,86 @@ func TestPickBestResolutionCandidate_AInfLongBias(t *testing.T) {
 		hasFST:   true,
 		fstOrder: 0,
 	}
-	got := pickBestResolutionCandidate("talossa", []resolutionCandidate{dictNoun, fstOddball})
+	got := pickBestResolutionCandidate("talossa", "FI", []resolutionCandidate{dictNoun, fstOddball})
 	if got.res.Lemma != "talo" {
 		t.Errorf("non-A-long surface: bias should not fire, got (%s/%s) want talo/NOUN",
 			got.res.Lemma, got.res.POS)
+	}
+}
+
+// TestPickBestResolutionCandidate_EstonianVerbInflectionBias covers the
+// peatus → peatuma/VERB regression class. When the surface is also the
+// citation form of a competing noun (lemma == surface for the noun),
+// the inflected verb reading must win over both the noun-as-citation
+// and any non-verb derivation (e.g. peatu/ADJ inessive).
+func TestPickBestResolutionCandidate_EstonianVerbInflectionBias(t *testing.T) {
+	// peatus: VERB peatuma+Past+3Sg vs NOUN peatus (citation) vs ADJ peatu+Ine.
+	// Pre-bias, the binary morphologyScore tied all three and the
+	// fstOrder tiebreak picked peatu/ADJ (FST emits it earlier).
+	dictPeatuADJ := resolutionCandidate{
+		res:            FormResolution{Lemma: "peatu", POS: "ADJ", Feats: "Case=Ine|Number=Sing"},
+		sourcePriority: 20,
+		hasDict:        true,
+		hasFST:         true,
+		fstOrder:       1,
+	}
+	dictPeatumaVERB := resolutionCandidate{
+		res: FormResolution{
+			Lemma: "peatuma", POS: "VERB",
+			Feats: "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act",
+		},
+		sourcePriority: 20,
+		hasDict:        true,
+		hasFST:         true,
+		fstOrder:       3,
+	}
+	dictPeatusNOUN := resolutionCandidate{
+		res:            FormResolution{Lemma: "peatus", POS: "NOUN", Feats: "Case=Nom|Number=Sing"},
+		sourcePriority: 20,
+		hasDict:        true,
+		hasFST:         true,
+		fstOrder:       2,
+	}
+	got := pickBestResolutionCandidate("peatus", "ET", []resolutionCandidate{dictPeatuADJ, dictPeatumaVERB, dictPeatusNOUN})
+	if got.res.Lemma != "peatuma" || got.res.POS != "VERB" {
+		t.Errorf("peatus: got (%s/%s), want (peatuma/VERB)", got.res.Lemma, got.res.POS)
+	}
+
+	// Negative control: arstiks. NOUN candidate is INFLECTED (lemma=arst
+	// != surface=arstiks, translative case). Bias must not fire — verb
+	// arstima is the wrong answer (kaikki artifact). Falls through to
+	// the binary-morphologyScore-and-alphabetical chain that picks
+	// arst/NOUN.
+	dictArst := resolutionCandidate{
+		res:            FormResolution{Lemma: "arst", POS: "NOUN", Feats: "Case=Tra|Number=Sing"},
+		sourcePriority: 20,
+		hasDict:        true,
+	}
+	dictArstima := resolutionCandidate{
+		res:            FormResolution{Lemma: "arstima", POS: "VERB", Feats: "Mood=Cnd|Tense=Pres|VerbForm=Fin|Voice=Act"},
+		sourcePriority: 20,
+		hasDict:        true,
+	}
+	got = pickBestResolutionCandidate("arstiks", "ET", []resolutionCandidate{dictArst, dictArstima})
+	if got.res.Lemma != "arst" || got.res.POS != "NOUN" {
+		t.Errorf("arstiks negative control: bias must not fire, got (%s/%s), want (arst/NOUN)", got.res.Lemma, got.res.POS)
+	}
+
+	// FI surface must not trigger the ET-only bias even when shaped
+	// similarly. Use a hypothetical FI noun-citation-form configuration
+	// to confirm lang="FI" suppresses the bias.
+	got = pickBestResolutionCandidate("peatus", "FI", []resolutionCandidate{dictPeatuADJ, dictPeatumaVERB, dictPeatusNOUN})
+	if got.res.Lemma == "peatuma" {
+		t.Errorf("FI must not trigger ET verb bias: got (%s/%s)", got.res.Lemma, got.res.POS)
+	}
+
+	// Verb without Person= must not get the bias. Cover the gate so
+	// future edits don't accidentally drop it.
+	dictPeatumaNoPerson := dictPeatumaVERB
+	dictPeatumaNoPerson.res.Feats = "Mood=Cnd|Tense=Pres|VerbForm=Fin|Voice=Act"
+	got = pickBestResolutionCandidate("peatus", "ET", []resolutionCandidate{dictPeatuADJ, dictPeatumaNoPerson, dictPeatusNOUN})
+	if got.res.Lemma == "peatuma" {
+		t.Errorf("no-Person verb must not trigger bias: got (%s/%s)", got.res.Lemma, got.res.POS)
 	}
 }
 
