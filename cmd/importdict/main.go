@@ -120,11 +120,14 @@ const upsertLemmaSQL = `INSERT INTO lemmas (lemma, pos, gloss, lang, source, sou
 // refreshes feats too — re-importing the same source after the FEATS mapper
 // learns a new tag (or kaikki upstream flips a tag) propagates the change
 // instead of silently keeping the old NULL.
+//
+// Conflict target matches the post-EnsureMultiLemmaSchema PK
+// (form, lang, lemma, pos): two rows that differ only in lemma or pos
+// (homonyms like ET "joon" = noun "line" / 1Sg of jooma) are intentionally
+// kept as separate rows, not collapsed.
 const upsertFormSQL = `INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
 	VALUES (?, ?, ?, ?, ?, ?, ?)
-	ON CONFLICT(form, lang) DO UPDATE SET
-		lemma = excluded.lemma,
-		pos = excluded.pos,
+	ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET
 		source = excluded.source,
 		source_priority = excluded.source_priority,
 		feats = excluded.feats
@@ -798,6 +801,12 @@ func applyCustomGlosses(db *sql.DB, filePath, dbLang string) (int, error) {
 // don't exist. This allows the importer to run against a fresh database file
 // without needing to start the main server first. The dict_metadata schema is
 // delegated to internal/store so both paths stay in sync.
+//
+// The forms PRIMARY KEY matches the post-EnsureMultiLemmaSchema shape
+// directly so fresh importer-only DBs accept upserts that conflict on
+// (form, lang, lemma, pos). EnsureMultiLemmaSchema is also invoked to
+// migrate any legacy DB the importer is pointed at after the server has
+// not yet started against it.
 func ensureSchema(db *sql.DB) error {
 	if _, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS lemmas (
@@ -818,7 +827,7 @@ func ensureSchema(db *sql.DB) error {
 			source TEXT NOT NULL DEFAULT '',
 			source_priority INTEGER NOT NULL DEFAULT 0,
 			feats TEXT,
-			PRIMARY KEY (form, lang)
+			PRIMARY KEY (form, lang, lemma, pos)
 		);
 	`); err != nil {
 		return err
@@ -832,5 +841,8 @@ func ensureSchema(db *sql.DB) error {
 	if err := store.EnsureLexicalEnrichmentColumns(db); err != nil {
 		return err
 	}
-	return store.EnsureLexicalEntryTables(db)
+	if err := store.EnsureLexicalEntryTables(db); err != nil {
+		return err
+	}
+	return store.EnsureMultiLemmaSchema(db)
 }
