@@ -240,26 +240,50 @@ func IsMaInfinitiveSurface(surface string) bool {
 // suffix. The construction means "in order to V" / "for V-ing" and is
 // distinct from the basic A-infinitive (the citation form, e.g. `mennä`).
 //
-// All five suffix vowels are e/i — neutral in Finnish vowel harmony — so
-// the same five suffixes work for both back-harmony stems (tullakseen)
-// and front-harmony stems (mennäkseen). No harmony pair needed.
+// The discriminator is the vowel **immediately before** the `kse-` segment.
+// Finnish 1st-infinitives always end in -a/-ä (with -da/-ta/-la/-na
+// preceding), so an A-inf-long surface always carries -a- or -ä- right
+// before the translative+possessive complex. Restricting the check to
+// {a,ä}kse… excludes the much larger family of noun translative+possessive
+// surfaces (talokseen, kotikseen, hissukseen) and -s-stem noun illatives
+// (risteykseen, vastaukseen) that share the trailing `kseen` shape but
+// have a non-a/ä vowel before it.
 //
-// 3sg/3pl share `kseen` (Finnish 3rd-person possessive doesn't
-// distinguish singular and plural in this construction).
-var aInfLongSuffixes = [5]string{
-	"kseen", // 3 (sg/pl)
-	"kseni", // 1sg
-	"ksesi", // 2sg
-	"ksemme", // 1pl
-	"ksenne", // 2pl
+// 10 patterns = 5 possessive variants × 2 vowel harmonies. The suffix
+// vowels (e/i/u) inside the translative are neutral, so harmony only
+// shows up in the preceding stem vowel.
+var aInfLongSuffixes = [10]string{
+	// 3sg/3pl (kseen) — Finnish 3rd-person possessive doesn't distinguish
+	// singular and plural in this construction.
+	"akseen", "äkseen",
+	// 1sg (kseni)
+	"akseni", "äkseni",
+	// 2sg (ksesi)
+	"aksesi", "äksesi",
+	// 1pl (ksemme)
+	"aksemme", "äksemme",
+	// 2pl (ksenne)
+	"aksenne", "äksenne",
 }
 
 // IsAInfLongSurface reports whether a Finnish surface matches the
-// A-infinitive long suffix pattern (kseen/kseni/ksesi/ksemme/ksenne).
+// A-infinitive long suffix pattern: a 1st-infinitive verb stem (ending
+// in -a/-ä) followed by the translative+possessive complex
+// (-kseen / -kseni / -ksesi / -ksemme / -ksenne).
+//
 // Used by the dict-layer ranker analogously to IsMaInfinitiveSurface:
 // to demote kaikki's self-keyed entries (mennäkseen→mennäkseen) and
 // wrong-POS entries (ymmärtääkseen→ADV) when Voikko returns the
 // correctly-stemmed verb reading via the FST table.
+//
+// Counter-examples this deliberately does NOT match: nominal
+// translative+possessive surfaces where the stem vowel isn't a/ä
+// (luokseen, kotikseen, hissukseen, yksikseen, sikseen) and -s-stem
+// noun illatives where the `kse` is part of consonant gradation
+// (risteykseen, vastaukseen). The bias gate would still be safe on
+// these surfaces (FST returns NOUN, not VERB + InfForm=1 +
+// Person[psor]=), but matching them needlessly would risk a future
+// extension of the bias accidentally demoting legitimate lemmas.
 //
 // This is a surface-only check. Callers compose with FEATS-on-candidate
 // checks (VerbForm=Inf, InfForm=1, Person[psor]=N) to decide.

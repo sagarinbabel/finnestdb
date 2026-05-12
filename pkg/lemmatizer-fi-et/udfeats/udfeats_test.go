@@ -241,6 +241,15 @@ func TestIsAInfLongSurface(t *testing.T) {
 		"taloksi", "kotiksi",
 		// Possessive on a noun in inessive: must not match.
 		"talossani", "kotimme",
+		// Noun translative + 3sg/pl possessive where the stem vowel
+		// isn't a/ä — surface ends in -Vkseen but the V is u/i/o, so
+		// the {a,ä}-before-kse gate excludes these.
+		"hissukseen", "luokseen", "kotikseen", "yksikseen", "sikseen",
+		// -s-stem noun illative (consonant gradation): "kse" appears
+		// for a different reason. Surface ends in -ykseen/-ukseen.
+		"risteykseen", "vastaukseen", "varkaaseen",
+		// 3pl analogue of luokseen — same exclusion reason.
+		"luokseni", "luoksesi",
 	}
 	for _, s := range misses {
 		if IsAInfLongSurface(s) {
