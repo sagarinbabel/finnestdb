@@ -119,14 +119,19 @@ func (l *Lemmatizer) Close() error {
 // cheap:
 //
 //   - The lexadverbs overlay shadows known FST-output bugs with a
-//     curated analysis (e.g. `tuskin` returns ADV not the productive
-//     instructive of `tuska`). When an overlay hit fires, the FST
-//     readings are dropped entirely — the overlay asserts the correct
-//     answer.
+//     curated analysis (FI: `tuskin` returns ADV not the productive
+//     instructive of `tuska`; ET: `peale` returns ADP not the
+//     allative of `pea`). When an overlay hit fires, the FST
+//     readings are dropped entirely — the overlay asserts the
+//     correct answer.
 //   - The MA-infinitive normaliser rewrites Finnish FEATS on verb
 //     surfaces like `tarjoamaan` where the analyzer's noun-cousin
 //     reading (`tarjoama` Case=Ill|Person=3|Number=Sing) is replaced
 //     by the verb's MA-infinitive shape (Case=Ill|VerbForm=Inf|InfForm=Ma).
+//     This rule is FI-only: Estonian -ma supine forms are already
+//     tagged VerbForm=Sup by the Ekilex-backed analyzer (see
+//     cmd/importdict/feats.go), so the noun-cousin trap doesn't
+//     arise the same way.
 func (l *Lemmatizer) Lemmatize(lang, word string) []Analysis {
 	if word == "" {
 		return nil
@@ -145,6 +150,9 @@ func (l *Lemmatizer) Lemmatize(lang, word string) []Analysis {
 		}
 		return normaliseFI(word, raw)
 	case "ET":
+		if overlay, ok := lexadverbs.LookupET(word); ok {
+			return overlay
+		}
 		if l.et == nil || len(l.et) == 0 {
 			return nil
 		}

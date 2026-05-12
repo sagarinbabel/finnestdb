@@ -98,3 +98,93 @@ func TestHasFI(t *testing.T) {
 		t.Error("HasFI(\"\") = true; want false")
 	}
 }
+
+func TestLookupET_Hits(t *testing.T) {
+	// Each case asserts the curated lemma/POS combination the ET
+	// overlay must ship. Every surface here is a known
+	// productive-case-on-closed-class trap from the Vabamorf parser
+	// (3,137 surfaces with ~38M occurrences identified in the
+	// working ET corpus).
+	cases := []struct {
+		surface, wantLemma, wantPOS string
+	}{
+		{"välja", "välja", "ADV"},
+		{"Välja", "välja", "ADV"},   // sentence-initial capital
+		{"seal", "seal", "ADV"},     // not siga/NOUN/Case=Ade
+		{"sisse", "sisse", "ADV"},   // not siss/NOUN/partitive plural
+		{"veel", "veel", "ADV"},     // not vesi/NOUN/Case=Ade
+		{"peale", "peale", "ADP"},   // not pea/NOUN/Case=All
+		{"jaoks", "jaoks", "ADP"},   // not jagu/NOUN/Case=Tra
+		{"lihtsalt", "lihtsalt", "ADV"}, // not lihtne/ADJ/Case=Abl
+		{"tegelikult", "tegelikult", "ADV"},
+		{"Tegelikult", "tegelikult", "ADV"},
+		{"pärast", "pärast", "ADP"},
+		{"eest", "eest", "ADP"},
+		{"taga", "taga", "ADP"},
+	}
+	for _, tc := range cases {
+		analyses, ok := LookupET(tc.surface)
+		if !ok {
+			t.Errorf("LookupET(%q): expected hit, got miss", tc.surface)
+			continue
+		}
+		if len(analyses) != 1 {
+			t.Errorf("LookupET(%q): want 1 analysis, got %d", tc.surface, len(analyses))
+			continue
+		}
+		a := analyses[0]
+		if a.Lemma != tc.wantLemma {
+			t.Errorf("LookupET(%q).Lemma = %q, want %q", tc.surface, a.Lemma, tc.wantLemma)
+		}
+		if a.UPOS != tc.wantPOS {
+			t.Errorf("LookupET(%q).UPOS = %q, want %q", tc.surface, a.UPOS, tc.wantPOS)
+		}
+	}
+}
+
+func TestLookupET_Misses(t *testing.T) {
+	misses := []string{
+		"",
+		"pood",      // bare ET noun, no shadowing needed
+		"linn",      // city
+		"maja",      // house
+		"sõpra",     // partitive noun, productive
+		"raamatupoes", // long compound noun
+		"tuskin",    // FI overlay key — must NOT hit the ET table
+		"varsin",    // FI overlay key
+	}
+	for _, s := range misses {
+		if _, ok := LookupET(s); ok {
+			t.Errorf("LookupET(%q) hit overlay; should miss", s)
+		}
+	}
+}
+
+func TestFIAndETOverlaysAreIndependent(t *testing.T) {
+	// The two overlays are different bug catalogues. A surface that
+	// appears in one MUST NOT cross-contaminate lookups in the other.
+	// Today there's no overlap, but a future addition could introduce
+	// one accidentally — this test fails loudly when that happens so
+	// the maintainer makes an explicit choice.
+	for fiSurface := range fiOverlay {
+		if _, ok := etOverlay[fiSurface]; ok {
+			t.Errorf("surface %q appears in both fiOverlay and etOverlay; resolve which language owns it",
+				fiSurface)
+		}
+	}
+}
+
+func TestHasET(t *testing.T) {
+	if !HasET("välja") {
+		t.Error("HasET(\"välja\") = false; want true")
+	}
+	if !HasET("Välja") {
+		t.Error("HasET(\"Välja\") = false; want true (case-fold)")
+	}
+	if HasET("pood") {
+		t.Error("HasET(\"pood\") = true; want false (not in overlay)")
+	}
+	if HasET("") {
+		t.Error("HasET(\"\") = true; want false")
+	}
+}

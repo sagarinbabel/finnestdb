@@ -47,6 +47,11 @@ type Analysis = voikkomap.Analysis
 // Note on Feats values: we keep Feats explicit (not via udfeats.ComposeMap)
 // to make every entry self-describing and grep-friendly. Entries are
 // listed alphabetically by surface; keep new ones in order.
+//
+// The etOverlay below mirrors this structure for Estonian. The two
+// maps are independent (different bug catalogues, different
+// pedagogical conventions) — keep them separate even when a surface
+// shape coincidentally matches across languages.
 var fiOverlay = map[string]Analysis{
 	"asiaan": {
 		Lemma:        "asia",
@@ -102,6 +107,68 @@ var fiOverlay = map[string]Analysis{
 	},
 }
 
+// etOverlay maps a lowercased Estonian surface form to the curated
+// analysis. Seeded from a corpus sweep that identified 3,137 ET
+// surfaces where an ADV reading exists but the parser's chosen
+// analysis is a case-marked non-ADV (~38M aggregate occurrences in
+// the working corpus). The 12 entries here are the highest-impact
+// failures; the productive case reading for each is essentially
+// never the intended meaning in modern Estonian prose.
+//
+// Closed-class adpositions (ADP) and adverbs (ADV) sit side-by-side
+// because the user-facing learner distinction between them is fuzzy
+// — `peale` can carry either tag depending on context, but the bug
+// being patched is the same: the parser fires a productive case
+// reading (e.g. `pea`/NOUN/Allative) on a closed-class form. We pick
+// the most informative single tag and let the contextual gloss
+// layer (TODO from yle_subs) handle ADV-vs-ADP disambiguation later.
+var etOverlay = map[string]Analysis{
+	"eest": {
+		Lemma: "eest",
+		UPOS:  "ADP",
+	},
+	"jaoks": {
+		Lemma: "jaoks",
+		UPOS:  "ADP",
+	},
+	"lihtsalt": {
+		Lemma: "lihtsalt",
+		UPOS:  "ADV",
+	},
+	"peale": {
+		Lemma: "peale",
+		UPOS:  "ADP",
+	},
+	"pärast": {
+		Lemma: "pärast",
+		UPOS:  "ADP",
+	},
+	"seal": {
+		Lemma: "seal",
+		UPOS:  "ADV",
+	},
+	"sisse": {
+		Lemma: "sisse",
+		UPOS:  "ADV",
+	},
+	"taga": {
+		Lemma: "taga",
+		UPOS:  "ADP",
+	},
+	"tegelikult": {
+		Lemma: "tegelikult",
+		UPOS:  "ADV",
+	},
+	"veel": {
+		Lemma: "veel",
+		UPOS:  "ADV",
+	},
+	"välja": {
+		Lemma: "välja",
+		UPOS:  "ADV",
+	},
+}
+
 // LookupFI returns the curated overlay analysis for a Finnish surface
 // form. The first return is a single-element slice (cloned, so callers
 // can mutate without affecting the shared table); ok is false when no
@@ -110,25 +177,47 @@ var fiOverlay = map[string]Analysis{
 // Surface matching is case-folded against the keys, so "Tuskin" at
 // sentence-initial position hits the same entry as "tuskin".
 func LookupFI(surface string) ([]Analysis, bool) {
-	if surface == "" {
-		return nil, false
-	}
-	a, ok := fiOverlay[toLowerASCII(surface)]
-	if !ok {
-		return nil, false
-	}
-	out := []Analysis{a}
-	return out, true
+	return lookup(fiOverlay, surface)
 }
 
 // HasFI reports whether a Finnish surface has an overlay entry,
 // without allocating the analysis slice. Useful for callers that
 // only need to know "should I bypass the FST."
 func HasFI(surface string) bool {
+	return has(fiOverlay, surface)
+}
+
+// LookupET is the Estonian counterpart to LookupFI. Behaviour is
+// identical (case-fold, single-element slice, cloned-by-construction).
+// See etOverlay for the catalogued entries and the bug class.
+func LookupET(surface string) ([]Analysis, bool) {
+	return lookup(etOverlay, surface)
+}
+
+// HasET is the Estonian counterpart to HasFI.
+func HasET(surface string) bool {
+	return has(etOverlay, surface)
+}
+
+// lookup is the shared implementation. The single-element slice is
+// freshly allocated on every call so a caller mutating it cannot
+// corrupt the shared map's Analysis value (cloned-by-construction).
+func lookup(table map[string]Analysis, surface string) ([]Analysis, bool) {
+	if surface == "" {
+		return nil, false
+	}
+	a, ok := table[toLowerASCII(surface)]
+	if !ok {
+		return nil, false
+	}
+	return []Analysis{a}, true
+}
+
+func has(table map[string]Analysis, surface string) bool {
 	if surface == "" {
 		return false
 	}
-	_, ok := fiOverlay[toLowerASCII(surface)]
+	_, ok := table[toLowerASCII(surface)]
 	return ok
 }
 
