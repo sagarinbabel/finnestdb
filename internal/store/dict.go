@@ -123,7 +123,7 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 						analyses = lem.Lemmatize(lang, lower)
 					}
 				}
-				best = mergeAndRankDictFSTCandidates(form, dictCandidates, analyses)
+				best = mergeAndRankDictFSTCandidates(form, lang, dictCandidates, analyses)
 				if strings.HasPrefix(best.Source, "dict") && best.GrammarLabel == "" && best.Feats == "" {
 					best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
 				}
@@ -391,7 +391,7 @@ func formResolutionFromCandidate(surface string, c formCandidate) FormResolution
 	return res
 }
 
-func mergeAndRankDictFSTCandidates(surface string, dictCandidates []formCandidate, analyses []lemmatizer.Analysis) FormResolution {
+func mergeAndRankDictFSTCandidates(surface, lang string, dictCandidates []formCandidate, analyses []lemmatizer.Analysis) FormResolution {
 	candidates := make([]resolutionCandidate, 0, len(dictCandidates)+len(analyses))
 	byKey := make(map[string]int, len(dictCandidates))
 	for _, c := range dictCandidates {
@@ -439,7 +439,7 @@ func mergeAndRankDictFSTCandidates(surface string, dictCandidates []formCandidat
 	if len(candidates) == 0 {
 		return FormResolution{}
 	}
-	return pickBestResolutionCandidate(surface, candidates).res
+	return pickBestResolutionCandidate(surface, lang, candidates).res
 }
 
 func lemmaPOSKey(lemma, pos string) string {
@@ -475,12 +475,17 @@ func appendSourceTag(source, tag string) string {
 	return source + "+" + tag
 }
 
-func pickBestResolutionCandidate(surface string, candidates []resolutionCandidate) resolutionCandidate {
+func pickBestResolutionCandidate(surface, lang string, candidates []resolutionCandidate) resolutionCandidate {
 	if len(candidates) == 1 {
 		return candidates[0]
 	}
 	scored := make([]resolutionCandidate, len(candidates))
 	copy(scored, candidates)
+	// Pre-compute the maximum source priority of any non-VERB candidate
+	// whose lemma matches the surface (a noun/adj in citation form).
+	// Used by the ET verb-inflection bias below. -1 for FI / when no
+	// such candidate exists; the bias is then a no-op.
+	maxNounCitationPriority := maxNonVerbCitationPriority(surface, lang, scored)
 	sort.SliceStable(scored, func(i, j int) bool {
 		ci, cj := scored[i], scored[j]
 		ciCase, ciPOS := caseMatchScore(surface, ci.res.Lemma), posSanityScore(surface, ci.res.POS)
@@ -513,6 +518,24 @@ func pickBestResolutionCandidate(surface string, candidates []resolutionCandidat
 		// surface, but supportScore would still tip to the dict row.
 		if ai, aj := aInfLongBias(surface, ci.res), aInfLongBias(surface, cj.res); ai != aj {
 			return ai > aj
+		}
+		// Estonian verb-inflection-vs-noun-citation bias. Fires only
+		// when (a) a VERB candidate has Person= (signal of finite
+		// inflected form), and (b) at least one competing non-VERB
+		// candidate at the same-or-higher source priority has
+		// lemma==surface (a noun in citation form). The signal: the
+		// surface IS the noun's lemma, so the noun reading is the
+		// canonical citation form — but the surface is ALSO a fully
+		// inflected verb form. Prefer the verb. Captures peatus →
+		// peatuma/VERB, joon → jooma/VERB, naeris → naerma/VERB
+		// where the noun reading is the citation form of a different
+		// lemma that happens to spell out the same as the inflected
+		// verb form. Does not fire when the noun is itself an
+		// inflected case form (lemma != surface), so it stays clear
+		// of arstiks → arst/NOUN, teed → tee/NOUN, koolis → kool/NOUN
+		// where the noun's case morphology grounds the noun reading.
+		if bi, bj := etVerbInflectionBias(ci, maxNounCitationPriority), etVerbInflectionBias(cj, maxNounCitationPriority); bi != bj {
+			return bi > bj
 		}
 		if fstBeatsWeakDict(ci, cj) {
 			return true
@@ -630,6 +653,65 @@ func aInfLongBias(surface string, res FormResolution) int {
 		return 1
 	}
 	return 0
+}
+
+// maxNonVerbCitationPriority returns the highest source priority of
+// any non-VERB candidate whose lemma matches surface (a noun/adj in
+// citation form). Returns -1 when no such candidate exists or lang is
+// not ET — the ET verb-inflection bias is then a no-op.
+func maxNonVerbCitationPriority(surface, lang string, candidates []resolutionCandidate) int {
+	if lang != "ET" {
+		return -1
+	}
+	maxPrio := -1
+	for _, c := range candidates {
+		if c.res.POS == "VERB" {
+			continue
+		}
+		if !strings.EqualFold(c.res.Lemma, surface) {
+			continue
+		}
+		if c.sourcePriority > maxPrio {
+			maxPrio = c.sourcePriority
+		}
+	}
+	return maxPrio
+}
+
+// etVerbInflectionBias returns +1 for an ET VERB candidate that
+// carries Person= in FEATS (signal of finite inflected form) when its
+// source priority is >= the highest priority of any competing
+// noun/adj candidate whose lemma equals the surface (a citation
+// form). Otherwise 0.
+//
+// Why this is the right signal: when the surface IS the noun's
+// lemma, the noun reading is the canonical citation form — no case
+// morphology distinguishes the noun-as-form from the noun-as-lemma.
+// The surface could equally well be a fully inflected verb form
+// (peatus = peatuma+Past+3Sg). Preferring the verb in that
+// configuration recovers peatus/joon/naeris-style regressions from
+// the binary-morphologyScore rollout.
+//
+// Why it does NOT re-break the cross-POS homonym fixes that the
+// binary morphologyScore enabled (arstiks → arst/NOUN, teed →
+// tee/NOUN, koolis → kool/NOUN, kirja → kiri/NOUN): in those cases
+// the highest-priority noun candidate is an inflected case form
+// (lemma != surface), so maxNounCitationPriority returns -1 and this
+// bias is a no-op — the existing ranking falls through.
+func etVerbInflectionBias(c resolutionCandidate, maxNounCitationPriority int) int {
+	if maxNounCitationPriority < 0 {
+		return 0
+	}
+	if c.res.POS != "VERB" {
+		return 0
+	}
+	if !strings.Contains(c.res.Feats, "Person=") {
+		return 0
+	}
+	if c.sourcePriority < maxNounCitationPriority {
+		return 0
+	}
+	return 1
 }
 
 func fstBeatsWeakDict(candidate, other resolutionCandidate) bool {
