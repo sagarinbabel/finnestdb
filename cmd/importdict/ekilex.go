@@ -200,9 +200,7 @@ func importEkilex(db *sql.DB, client *ekilexClient, dbLang string, datasets, wor
 	stmtForm, err := tx.Prepare(
 		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(form, lang) DO UPDATE SET
-		 lemma = excluded.lemma,
-		 pos = excluded.pos,
+		 ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET
 		 source = excluded.source,
 		 source_priority = excluded.source_priority,
 		 feats = excluded.feats
