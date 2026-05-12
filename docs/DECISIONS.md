@@ -40,6 +40,67 @@ is more enjoyable and comprehension is higher.
 
 ---
 
+## Decision 19: Filter low-value dict alternatives in deck/parse expansion
+
+**Date:** 2026-05-12
+
+### Context
+
+`BatchLookupAllForms` returns every `(lemma, pos)` candidate the dictionary
+has for a surface form. Wiktionary-imported form-of rows (e.g.
+`olen → "first-person singular present indicative of olema"`) live alongside
+the base lemma (`olema → "be"`) and, until PR #185, both produced their own
+card or word-list entry during deck/parse expansion. Some surfaces also had
+candidates with empty glosses — `liiga/X` next to `liiga/ADV → "too"` — which
+similarly bloated the deck with rows the learner can't act on.
+
+### Decision
+
+When a surface has multiple dict candidates and at least one has a non-empty
+gloss, suppress:
+
+1. candidates with empty glosses, and
+2. Wiktionary form-of alternatives, when a lexical-base alternative exists for
+   the same surface.
+
+Form-of detection is structural, not substring-based:
+
+- `candidate.Lemma == form` (case-insensitive, trimmed) — Wiktionary form-of
+  rows are imported with the surface form as their own lemma.
+- Gloss contains no `;` or `,` — form-of glosses are single-clause.
+- Gloss parses as `<allowed morphology terms> of <single-word target>` after
+  normalizing `-` and `/` to spaces. The allowed vocabulary covers
+  case names, person/number, tense/mood/voice, infinitive/participle/gerund,
+  comparative/superlative degree, connegative and potential moods, and the
+  bare `form` / `inflection` markers.
+
+When no lexical alternative exists for a surface, all candidates are preserved
+— genuine unresolved / gap cases still surface to the learner.
+
+### Reasoning
+
+A v1 marker-substring heuristic produced false positives on common lexical
+glosses whose body text happens to mention grammatical terms:
+`vana/ADJ "old; ancient; ...; out of order; ...; past; ..."`,
+`oma/ADJ "(my/...) own; ...; one of a kind; ...; singular; ..."`,
+`mennä/VERB "to go [with illative of third infinitive ...]"`. The structural
+signals are language-independent and robust: `form == lemma` identifies
+Wiktionary form-of-as-lemma rows directly, and the `;`/`,` rejection rules
+out multi-sense lexical glosses without inspecting their body.
+
+The filter operates on `BatchLookupAllForms` output before deck-ingest and
+before the parse-overview word list, so the unique-lemma count of an import
+overview still matches the count of the deck the user would save.
+
+### Source
+
+PR [#185](https://github.com/sagarinbabel/finnestdb/pull/185).
+
+**See also:** [CHANGELOG.md §2026-05-12 — Deck/parse low-value dict-alternative
+filter (PR #185)](CHANGELOG.md).
+
+---
+
 ## Decision 18: IMPLEMENTATION.md split
 
 **Date:** 2026-05-07
