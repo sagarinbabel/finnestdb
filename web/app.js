@@ -1,7 +1,7 @@
 "use strict";
 // FinEstDB — frontend with three role-aware surfaces:
 //   anonymous landing/about/signin, authenticated user product, admin workbench.
-const MAX_CHARS = 300000;
+const MAX_CHARS = 1500000;
 const POS_LABELS = {
     NOUN: 'Noun',
     VERB: 'Verb',
@@ -64,6 +64,21 @@ const state = {
     adminFeedbackStatus: 'submitted',
     knownWordsLang: 'FI',
     knownWords: [],
+    // resultsEpub: the EPUB whose parse is currently displayed on the
+    // results page (drives the chapter sidebar + cache). Each form's
+    // "loaded but not yet parsed" EPUB lives on its own ParseFormElements.
+    // The global slot is set when a form's Parse press completes against
+    // a loaded EPUB; cleared on the next text-only parse.
+    resultsEpub: null,
+    // Per-chapter ParseResponse cache for the results-context EPUB. Key
+    // -1 = whole book, 0..N-1 = chapter index.
+    epubChapterCache: new Map(),
+    // Sidebar selection: -1 = whole book, 0..N-1 = chapter, null = no EPUB
+    // context (sidebar hidden).
+    activeChapterIdx: null,
+    // Bumped on every fresh Parse press; in-flight background chapter parses
+    // check this and drop their result if the session has moved on.
+    epubParseGen: 0,
 };
 const NOUN_POS = ['NOUN', 'PROPN'];
 const VERB_POS = ['VERB', 'AUX'];
@@ -816,9 +831,12 @@ function getInspectEls() {
     const cc = document.getElementById('inspect-char-count');
     const warn = document.getElementById('inspect-lang-warning');
     const swBtn = document.getElementById('inspect-lang-switch');
-    if (!lang || !text || !file || !cc || !warn || !swBtn)
+    const dz = document.getElementById('inspect-dropzone');
+    const pill = document.getElementById('inspect-loaded');
+    const chap = document.getElementById('inspect-chapters');
+    if (!lang || !text || !file || !cc || !warn || !swBtn || !dz || !pill || !chap)
         return null;
-    return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn };
+    return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn, dropzone: dz, loadedPill: pill, chapterList: chap, loadedEpub: null };
 }
 function getWorkbenchEls() {
     const lang = bindBtnRadio('parse-lang');
@@ -827,18 +845,33 @@ function getWorkbenchEls() {
     const cc = document.getElementById('char-count');
     const warn = document.getElementById('lang-warning');
     const swBtn = document.getElementById('lang-switch-btn');
-    if (!lang || !text || !file || !cc || !warn || !swBtn)
+    const dz = document.getElementById('parse-dropzone');
+    const pill = document.getElementById('parse-loaded');
+    const chap = document.getElementById('parse-chapters');
+    if (!lang || !text || !file || !cc || !warn || !swBtn || !dz || !pill || !chap)
         return null;
-    return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn };
+    return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn, dropzone: dz, loadedPill: pill, chapterList: chap, loadedEpub: null };
 }
 function updateCharCount(els) {
-    const count = els.text.value.length;
+    // When an EPUB is held, the textarea is empty — count from the loaded
+    // book's totalChars so the user sees the real size, not "0 / 1,000,000".
+    const count = els.loadedEpub
+        ? els.loadedEpub.totalChars
+        : els.text.value.length;
     els.charCount.textContent = `${count.toLocaleString()} / ${MAX_CHARS.toLocaleString()}`;
     els.charCount.classList.toggle('char-count-warn', count > MAX_CHARS * 0.9);
     els.charCount.classList.toggle('char-count-over', count >= MAX_CHARS);
 }
+// Text the parser will actually see — the held EPUB when one is loaded, else
+// whatever's in the textarea. Used for lang detection and submit gating.
+function effectiveSourceText(els) {
+    if (els.loadedEpub)
+        return els.loadedEpub.fullText;
+    return els.text.value;
+}
 function updateLangWarning(els, gateInspectButton) {
-    if (els.text.value.trim().length < LANG_DETECT_MIN_CHARS) {
+    const source = effectiveSourceText(els);
+    if (source.trim().length < LANG_DETECT_MIN_CHARS) {
         els.warning.classList.add('hidden');
         els.switchBtn.classList.add('hidden');
         if (gateInspectButton)
@@ -847,7 +880,7 @@ function updateLangWarning(els, gateInspectButton) {
             setParseButtonsDisabled(false);
         return;
     }
-    const ws = getLangWarningState(els.text.value, els.lang.value);
+    const ws = getLangWarningState(source, els.lang.value);
     if (ws.message) {
         els.warning.textContent = ws.message;
         els.warning.classList.remove('hidden');
@@ -873,13 +906,398 @@ function gateSubmit(id, disabled) {
     if (btn)
         btn.disabled = disabled;
 }
+// Upload an EPUB to /api/import/extract and return its parsed structure, or
+// null on failure (caller surfaces toast).
+async function uploadEpubForExtraction(file) {
+    const form = new FormData();
+    form.append('file', file);
+    try {
+        const resp = await fetch('/api/import/extract', {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: form,
+        });
+        if (!resp.ok) {
+            const msg = await resp.text();
+            showToast(msg || 'Failed to extract EPUB.', 'error');
+            return null;
+        }
+        return await resp.json();
+    }
+    catch (err) {
+        showToast(err?.message || 'EPUB upload failed.', 'error');
+        return null;
+    }
+}
+// Render the "EPUB loaded" pill above the textarea. Caller is responsible for
+// the loadedEpub being non-null on the form.
+function renderLoadedPill(els, gateInspectButton) {
+    const epub = els.loadedEpub;
+    if (!epub) {
+        els.loadedPill.classList.add('hidden');
+        els.loadedPill.innerHTML = '';
+        return;
+    }
+    const chapWord = epub.chapters.length === 1 ? 'chapter' : 'chapters';
+    const subParts = [];
+    if (epub.bookAuthor)
+        subParts.push(escapeHtml(epub.bookAuthor));
+    subParts.push(`${epub.chapters.length} ${chapWord}`);
+    subParts.push(`${epub.totalChars.toLocaleString()} characters`);
+    subParts.push('ready to parse');
+    els.loadedPill.innerHTML = `
+        <span class="loaded-icon" aria-hidden="true">📖</span>
+        <div class="loaded-meta">
+            <span class="loaded-filename" title="${escapeHtml(epub.filename)}">${escapeHtml(epub.bookTitle)}</span>
+            <span class="loaded-sub">${subParts.join(' · ')}</span>
+        </div>
+        <button type="button" class="loaded-clear" aria-label="Clear loaded EPUB">Clear</button>
+    `;
+    els.loadedPill.classList.remove('hidden');
+    const clearBtn = els.loadedPill.querySelector('.loaded-clear');
+    clearBtn?.addEventListener('click', () => clearLoadedEpub(els, gateInspectButton));
+}
+// Rough word count: whitespace-separated runs. Good enough for the chapter
+// sidebar's at-a-glance count; the parser's tokenizer is authoritative for
+// anything that actually depends on token boundaries.
+function countWords(text) {
+    const trimmed = text.trim();
+    if (!trimmed)
+        return 0;
+    return trimmed.split(/\s+/).length;
+}
+// Build a single-line "first 75 chars [...] last 75 chars" preview for a
+// chapter. Whitespace is collapsed so line breaks in the source don't waste
+// space. Short chapters (≤150 chars after collapse) are shown in full.
+function chapterPreviewSnippet(text) {
+    const collapsed = text.replace(/\s+/g, ' ').trim();
+    if (collapsed.length <= 150)
+        return collapsed;
+    const head = collapsed.slice(0, 75).trim();
+    const tail = collapsed.slice(-75).trim();
+    return `${head} [...] ${tail}`;
+}
+// Render the loaded EPUB's chapter list in place of the textarea. The chapter
+// list is scrollable so a 100-chapter book doesn't blow the layout.
+function renderChapterList(els) {
+    const epub = els.loadedEpub;
+    if (!epub) {
+        els.chapterList.classList.add('hidden');
+        els.chapterList.innerHTML = '';
+        return;
+    }
+    els.chapterList.innerHTML = epub.chapters.map(ch => {
+        const snippet = chapterPreviewSnippet(ch.text);
+        return `
+            <li data-tooltip-snippet="${escapeHtml(snippet)}">
+                <span class="chapter-title">${escapeHtml(ch.title)}</span>
+                <span class="chapter-size">${ch.char_count.toLocaleString()} chars</span>
+            </li>
+        `;
+    }).join('');
+    els.chapterList.classList.remove('hidden');
+}
+function hideChapterList(els) {
+    els.chapterList.classList.add('hidden');
+    els.chapterList.innerHTML = '';
+}
+// Render the results-page chapter-filter sidebar. Hidden when no EPUB is held
+// or no results are in view. Wires click handlers to selectChapter on each
+// row.
+function renderChapterNav() {
+    const nav = document.getElementById('results-chapter-nav');
+    if (!nav)
+        return;
+    const epub = state.resultsEpub;
+    if (!epub || !state.currentResults || state.activeChapterIdx === null) {
+        nav.classList.add('hidden');
+        nav.innerHTML = '';
+        return;
+    }
+    const active = state.activeChapterIdx;
+    // "X words" available immediately, "Y lemmas" only once the chapter has
+    // been parsed (i.e. is in the cache). Em-dash placeholder until then.
+    const subFor = (idx, words) => {
+        const wordsLabel = `${words.toLocaleString()} word${words === 1 ? '' : 's'}`;
+        const cached = state.epubChapterCache.get(idx);
+        const lemmasLabel = cached
+            ? `${cached.words.length.toLocaleString()} lemma${cached.words.length === 1 ? '' : 's'}`
+            : '— lemmas';
+        return `${wordsLabel} · ${lemmasLabel}`;
+    };
+    const rowFor = (idx, label, sub, extraCls = '') => {
+        const cls = ['chapter-nav-item'];
+        if (idx === active)
+            cls.push('active');
+        return `<li class="${extraCls}"><button type="button" class="${cls.join(' ')}" data-chapter-idx="${idx}">
+            <span class="chapter-nav-label">${label}</span>
+            <span class="chapter-nav-sub">${sub}</span>
+        </button></li>`;
+    };
+    const chapterRows = [];
+    for (let i = 0; i < epub.chapters.length; i++) {
+        const ch = epub.chapters[i];
+        chapterRows.push(rowFor(i, escapeHtml(ch.title), subFor(i, ch.word_count)));
+    }
+    nav.innerHTML = `
+        <ol class="chapter-nav-list">
+            ${rowFor(-1, '📖 Whole book', subFor(-1, epub.totalWords), 'chapter-nav-whole-book')}
+            ${chapterRows.join('')}
+        </ol>
+    `;
+    nav.classList.remove('hidden');
+    nav.querySelectorAll('.chapter-nav-item').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const idx = parseInt(btn.dataset.chapterIdx || '-1', 10);
+            void selectChapter(idx);
+        });
+    });
+}
+// Switch the displayed results to a different EPUB chapter (or the whole
+// book at idx = -1). Cached parses render instantly; uncached parses fetch
+// /api/parse with the chapter text. Lang and parser mode are inherited from
+// the existing whole-book parse.
+async function selectChapter(idx) {
+    const epub = state.resultsEpub;
+    if (!epub)
+        return;
+    if (state.activeChapterIdx === idx && state.epubChapterCache.has(idx))
+        return;
+    if (idx !== -1 && (idx < 0 || idx >= epub.chapters.length))
+        return;
+    const text = idx === -1 ? epub.fullText : epub.chapters[idx].text;
+    if (!text.trim()) {
+        showToast('That chapter has no parseable text.', 'info');
+        return;
+    }
+    // Apply the active highlight IMMEDIATELY and yield so the browser paints
+    // it before we do anything expensive. Otherwise the heavy table render
+    // inside showResults blocks the next paint and the click feels laggy.
+    state.activeChapterIdx = idx;
+    renderChapterNav();
+    await afterNextPaint();
+    const cached = state.epubChapterCache.get(idx);
+    if (cached) {
+        const preview = idx === -1 ? epub.bookTitle : epub.chapters[idx].title;
+        showResults(cached, preview, state.currentParserMode, state.currentContext);
+        return;
+    }
+    const lang = state.currentResults?.lang || 'FI';
+    try {
+        const resp = await fetch('/api/parse', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            // Chapter parses are auxiliary data — no parse_sessions row.
+            // The whole-book parse (-1) remains persistent; we never reach
+            // this branch for -1 because the whole-book cache is seeded by
+            // the user-initiated runParse before any chapter click.
+            body: JSON.stringify({ lang, text, parser: state.currentParserMode }),
+        });
+        if (!resp.ok)
+            throw new Error(await resp.text() || resp.statusText);
+        const data = await resp.json();
+        state.epubChapterCache.set(idx, data);
+        const preview = idx === -1 ? epub.bookTitle : epub.chapters[idx].title;
+        showResults(data, preview, state.currentParserMode, state.currentContext);
+    }
+    catch (err) {
+        showToast(err?.message || 'Chapter parse failed.', 'error');
+        const fallback = state.epubChapterCache.has(-1) ? -1 : null;
+        state.activeChapterIdx = fallback;
+        renderChapterNav();
+    }
+}
+// Resolves after the next browser paint. Double rAF: the first callback fires
+// before the upcoming paint, the second fires before the paint AFTER that —
+// guaranteeing at least one paint has happened in between.
+function afterNextPaint() {
+    return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}
+// Background-parse every chapter in the held EPUB so the sidebar's lemma
+// counts populate without the user clicking each row. Bounded concurrency
+// (4 in flight) caps server load. Workers re-check state.epubParseGen on
+// every iteration so they bail when the user starts a fresh parse.
+async function parseAllChaptersInBackground(lang, parserMode, gen) {
+    const epub = state.resultsEpub;
+    if (!epub)
+        return;
+    const total = epub.chapters.length;
+    let nextIdx = 0;
+    const CONCURRENCY = 4;
+    async function worker(epubRef) {
+        while (true) {
+            if (state.epubParseGen !== gen)
+                return;
+            const myIdx = nextIdx++;
+            if (myIdx >= total)
+                return;
+            if (state.epubChapterCache.has(myIdx))
+                continue;
+            const text = epubRef.chapters[myIdx].text;
+            if (!text.trim())
+                continue;
+            try {
+                const resp = await fetch('/api/parse', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ lang, text, parser: parserMode }),
+                });
+                if (state.epubParseGen !== gen || !resp.ok)
+                    continue;
+                const data = await resp.json();
+                if (state.epubParseGen !== gen)
+                    return;
+                state.epubChapterCache.set(myIdx, data);
+                renderChapterNav();
+            }
+            catch {
+                // best-effort: skip and move on to the next chapter
+            }
+        }
+    }
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, total) }, () => worker(epub)));
+}
+// Drop the held EPUB from THIS form and re-enable normal textarea editing.
+// Results-page state (state.resultsEpub + chapter cache) is left alone since
+// the user might still be reading the prior parse's results; the next Parse
+// press is what invalidates them.
+function clearLoadedEpub(els, gateInspectButton) {
+    els.loadedEpub = null;
+    renderLoadedPill(els, gateInspectButton);
+    hideChapterList(els);
+    els.text.classList.remove('hidden');
+    els.text.disabled = false;
+    els.text.placeholder = els.text.dataset.originalPlaceholder || '';
+    els.text.value = '';
+    updateCharCount(els);
+    updateLangWarning(els, gateInspectButton);
+}
+// Load a user-uploaded file. .epub is uploaded to the server, held in state,
+// and surfaced as a pill — the textarea is left empty and disabled until the
+// user clears it. .txt/.md is read client-side and pasted into the textarea
+// (existing behavior).
+async function loadFileIntoForm(els, file, gateInspectButton) {
+    const lower = file.name.toLowerCase();
+    if (lower.endsWith('.epub')) {
+        const data = await uploadEpubForExtraction(file);
+        if (!data)
+            return;
+        const chaptersRaw = data.chapters ?? [];
+        const chapters = chaptersRaw.map(ch => ({
+            ...ch,
+            word_count: countWords(ch.text),
+        }));
+        const filename = data.filename || file.name;
+        const bookTitle = (data.book_title || '').trim() || filename.replace(/\.epub$/i, '');
+        els.loadedEpub = {
+            filename,
+            fullText: data.text,
+            chapters,
+            totalChars: data.char_count || data.text.length,
+            totalWords: countWords(data.text),
+            bookTitle,
+            bookAuthor: (data.book_author || '').trim(),
+        };
+        if (data.truncated) {
+            showToast(`EPUB is large — kept the first ${MAX_CHARS.toLocaleString()} characters for analysis.`, 'info');
+        }
+        // Hide the textarea entirely while a book is held and show the
+        // chapter list in its place. The pill's Clear button restores both.
+        if (els.text.dataset.originalPlaceholder === undefined) {
+            els.text.dataset.originalPlaceholder = els.text.placeholder;
+        }
+        els.text.value = '';
+        els.text.disabled = true;
+        els.text.classList.add('hidden');
+        renderChapterList(els);
+        renderLoadedPill(els, gateInspectButton);
+        updateCharCount(els);
+        // Auto-detect language from the first chapter body.
+        const sniff = chapters[0]?.text || data.text.slice(0, 4000);
+        runLangDetectOnText(els, sniff, gateInspectButton, 'file');
+        return;
+    }
+    // .txt / .md and unknown extensions — read client-side and populate the
+    // textarea, dropping any previously held EPUB on this form.
+    if (els.loadedEpub)
+        clearLoadedEpub(els, gateInspectButton);
+    try {
+        const raw = await file.text();
+        els.text.value = raw.slice(0, MAX_CHARS);
+        updateCharCount(els);
+        maybeAutoSwitchFromIngest(els, gateInspectButton, 'file');
+    }
+    catch (err) {
+        showToast(err?.message || 'Could not read file.', 'error');
+    }
+}
+// Wire drag/drop on the dropzone wrapper. preventDefault on dragover is
+// unconditional — gating it on a types.includes('Files') check is unreliable
+// because some browsers (notably Firefox) hide types during dragover for
+// security and the drop event then never fires. The only thing we actually
+// need to gate is whether to process the dropped payload, which we do by
+// looking at e.dataTransfer.files at drop time.
+function wireDragDrop(els, gateInspectButton) {
+    const zone = els.dropzone;
+    const setDragging = (on) => zone.classList.toggle('drag-over', on);
+    zone.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+        setDragging(true);
+    });
+    zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer)
+            e.dataTransfer.dropEffect = 'copy';
+        setDragging(true);
+    });
+    zone.addEventListener('dragleave', (e) => {
+        // Only clear when the cursor actually leaves the dropzone — not when
+        // it crosses an internal child boundary (textarea → CTA, etc.).
+        // relatedTarget is where the cursor is going next; if it's still
+        // inside the zone, ignore.
+        const related = e.relatedTarget;
+        if (related && zone.contains(related))
+            return;
+        setDragging(false);
+    });
+    zone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        setDragging(false);
+        const file = e.dataTransfer?.files?.[0];
+        if (!file)
+            return;
+        await loadFileIntoForm(els, file, gateInspectButton);
+    });
+}
+// Page-level safety net: when a user drops a file anywhere on the page, the
+// browser's default is to navigate to (or download) the file, losing the
+// session. Run in CAPTURE phase so preventDefault fires before anything along
+// the dispatch path can act on the default. Each dropzone's own bubble-phase
+// drop handler still runs and processes the dropped file.
+function preventStrayFileDrops() {
+    const stop = (e) => {
+        if (e.type === 'drop' && !e.dataTransfer?.files?.length)
+            return;
+        e.preventDefault();
+    };
+    document.addEventListener('dragenter', stop, true);
+    document.addEventListener('dragover', stop, true);
+    document.addEventListener('drop', stop, true);
+}
 function maybeAutoSwitchFromIngest(els, gateInspectButton, source) {
-    const text = els.text.value;
-    if (text.trim().length < LANG_DETECT_MIN_CHARS) {
+    runLangDetectOnText(els, els.text.value, gateInspectButton, source);
+}
+// Same auto-switch logic as maybeAutoSwitchFromIngest, but operates on text
+// supplied by the caller — used when an EPUB is held in state and the textarea
+// is empty.
+function runLangDetectOnText(els, sourceText, gateInspectButton, source) {
+    if (sourceText.trim().length < LANG_DETECT_MIN_CHARS) {
         updateLangWarning(els, gateInspectButton);
         return;
     }
-    const detected = detectLang(text);
+    const detected = detectLang(sourceText);
     if (detected !== 'unknown' && detected !== els.lang.value) {
         els.lang.value = detected;
         const sourceLabel = source === 'paste' ? 'pasted text' : 'file content';
@@ -902,7 +1320,7 @@ function initInspectForm() {
     });
     els.lang.addEventListener('change', () => updateLangWarning(els, true));
     els.switchBtn.addEventListener('click', () => {
-        const ws = getLangWarningState(els.text.value, els.lang.value);
+        const ws = getLangWarningState(effectiveSourceText(els), els.lang.value);
         if (ws.canSwitch) {
             els.lang.value = ws.detected;
             updateLangWarning(els, true);
@@ -913,11 +1331,9 @@ function initInspectForm() {
         const file = input.files?.[0];
         if (!file)
             return;
-        const text = await file.text();
-        els.text.value = text.slice(0, MAX_CHARS);
-        updateCharCount(els);
-        maybeAutoSwitchFromIngest(els, true, 'file');
+        await loadFileIntoForm(els, file, true);
     });
+    wireDragDrop(els, true);
     const form = document.getElementById('inspect-form');
     form?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -940,7 +1356,7 @@ function initWorkbenchForm() {
     });
     els.lang.addEventListener('change', () => updateLangWarning(els, false));
     els.switchBtn.addEventListener('click', () => {
-        const ws = getLangWarningState(els.text.value, els.lang.value);
+        const ws = getLangWarningState(effectiveSourceText(els), els.lang.value);
         if (ws.canSwitch) {
             els.lang.value = ws.detected;
             updateLangWarning(els, false);
@@ -951,11 +1367,9 @@ function initWorkbenchForm() {
         const file = input.files?.[0];
         if (!file)
             return;
-        const text = await file.text();
-        els.text.value = text.slice(0, MAX_CHARS);
-        updateCharCount(els);
-        maybeAutoSwitchFromIngest(els, false, 'file');
+        await loadFileIntoForm(els, file, false);
     });
+    wireDragDrop(els, false);
     const handle = (mode, btnId) => async (e) => {
         e.preventDefault();
         await runParse(els, mode, 'workbench', btnId);
@@ -970,7 +1384,11 @@ function initWorkbenchForm() {
 }
 // ── Shared parse runner ────────────────────────────────────────────────────
 async function runParse(els, parserMode, context, activeBtnId) {
-    const text = els.text.value.trim();
+    // EPUB scope is per-form: only THIS form's loaded book contributes to
+    // the parse input. A book held in inspect won't be parsed when the user
+    // hits Parse from the workbench, and vice versa.
+    const epub = els.loadedEpub;
+    const text = (epub ? epub.fullText : els.text.value).trim();
     const lang = els.lang.value;
     const ws = getLangWarningState(text, lang);
     if (!text)
@@ -990,6 +1408,12 @@ async function runParse(els, parserMode, context, activeBtnId) {
         activeBtn.disabled = true;
         activeBtn.textContent = 'Parsing…';
     }
+    // Fresh top-level parse — drop any per-chapter cache from a previous
+    // EPUB. Whole-book result is re-cached below once the request returns.
+    state.epubChapterCache.clear();
+    state.activeChapterIdx = null;
+    state.epubParseGen += 1;
+    const myParseGen = state.epubParseGen;
     try {
         const resp = await fetch('/api/parse', {
             method: 'POST',
@@ -1003,7 +1427,21 @@ async function runParse(els, parserMode, context, activeBtnId) {
         }
         const data = await resp.json();
         state.currentSourceText = text;
-        showResults(data, text.slice(0, 60), parserMode, context);
+        const preview = epub ? epub.bookTitle : text.slice(0, 60);
+        if (epub) {
+            state.resultsEpub = epub;
+            state.epubChapterCache.set(-1, data);
+            state.activeChapterIdx = -1;
+        }
+        else {
+            state.resultsEpub = null;
+        }
+        showResults(data, preview, parserMode, context);
+        if (epub) {
+            // Background-parse every chapter so the sidebar shows real lemma
+            // counts without the user clicking each row. Fire-and-forget.
+            void parseAllChaptersInBackground(lang, parserMode, myParseGen);
+        }
     }
     catch (err) {
         alert(`Parse failed: ${err.message}`);
@@ -1317,6 +1755,7 @@ function showResults(data, textPreview, parserMode, context) {
     }
     renderResultsTable(data);
     renderResultsSaveState();
+    renderChapterNav();
     // Re-apply role visibility so admin-only pills/cells show correctly.
     applyRoleVisibility();
     if (context !== 'deck') {
@@ -1463,6 +1902,14 @@ function renderResultsSaveState() {
     if (!form || !input)
         return;
     form.classList.add('hidden');
+    // For an EPUB import, the book title is a much better deck-name default
+    // than "Finnish: <first chars of body>". Use the results-context EPUB so
+    // a still-loaded book in another form doesn't leak into this default.
+    const epub = state.resultsEpub;
+    if (epub) {
+        input.value = epub.bookTitle;
+        return;
+    }
     const langName = state.currentResults?.lang === 'ET' ? 'Estonian' : 'Finnish';
     input.value = state.currentTextPreview
         ? `${langName}: ${state.currentTextPreview.slice(0, 48)}`
@@ -1835,9 +2282,11 @@ function openCorrectionModal(row) {
     proposedPosEl.value = row.pos in POS_LABELS ? row.pos : 'X';
     proposedGramEl.value = row.original_grammar_label;
     noteEl.value = '';
-    // Backend requires a parse_id — only present for authenticated parses. If it's
-    // missing, disable submit and surface why.
-    const canSubmit = typeof state.currentResults?.parse_id === 'number';
+    // Backend requires authentication. Anonymous parses can't submit
+    // corrections — the feedback endpoint creates the parse_session
+    // lazily but it still has to belong to a user. Surface that
+    // explicitly via the auth hint.
+    const canSubmit = state.role === 'user' || state.role === 'admin';
     submitBtn.disabled = !canSubmit;
     if (authHint)
         authHint.classList.toggle('hidden', canSubmit);
@@ -1861,8 +2310,8 @@ function initCorrectionModal() {
         try {
             const row = state.currentRow;
             const results = state.currentResults;
-            if (!row || !results || typeof results.parse_id !== 'number') {
-                showToast("Can't send correction — no parse session attached.", 'error');
+            if (!row || !results) {
+                showToast("Can't send correction — no parse loaded.", 'error');
                 return;
             }
             const proposedLemma = document.getElementById('correction-proposed-lemma').value.trim();
@@ -1873,24 +2322,35 @@ function initCorrectionModal() {
                 showToast('Please fill in both base form and part of speech.', 'error');
                 return;
             }
+            // Two attribution paths: deck-detail feedback has a persisted
+            // parse_session (results.parse_id); Inspect-view feedback ships
+            // the source text inline and the server creates a session lazily.
+            const body = {
+                lang: results.lang,
+                parser: state.currentParserMode,
+                surface: row.surface,
+                occurrence: row.occurrence,
+                original_lemma: row.lemma,
+                original_pos: row.pos,
+                original_grammar_label: row.original_grammar_label,
+                proposed_lemma: proposedLemma,
+                proposed_pos: proposedPos,
+                proposed_grammar_label: proposedGram,
+                note,
+            };
+            if (typeof results.parse_id === 'number') {
+                body.parse_id = results.parse_id;
+            }
+            else {
+                body.source_text = state.currentSourceText;
+                body.total_tokens = results.total_tokens;
+                body.unique_lemma_count = results.words.length;
+            }
             const resp = await fetch('/api/parse/feedback', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
-                body: JSON.stringify({
-                    parse_id: results.parse_id,
-                    lang: results.lang,
-                    parser: state.currentParserMode,
-                    surface: row.surface,
-                    occurrence: row.occurrence,
-                    original_lemma: row.lemma,
-                    original_pos: row.pos,
-                    original_grammar_label: row.original_grammar_label,
-                    proposed_lemma: proposedLemma,
-                    proposed_pos: proposedPos,
-                    proposed_grammar_label: proposedGram,
-                    note,
-                }),
+                body: JSON.stringify(body),
             });
             if (resp.ok) {
                 showToast('Thanks — correction sent.', 'success');
@@ -2067,14 +2527,30 @@ function ensurePortalTip() {
     document.body.appendChild(portalTip);
     return portalTip;
 }
+// Single-line plain `data-tooltip` and multi-line `data-tooltip-snippet` both
+// route through this. Snippet wins when both are present.
+const TOOLTIP_SELECTOR = '[data-tooltip],[data-tooltip-snippet]';
 function showPortalTooltip(target) {
-    const text = target.getAttribute('data-tooltip');
-    if (!text)
-        return;
+    const snippet = target.getAttribute('data-tooltip-snippet');
     const el = ensurePortalTip();
-    el.textContent = text;
     const rect = target.getBoundingClientRect();
-    el.style.left = `${rect.left + rect.width / 2}px`;
+    if (snippet) {
+        el.classList.add('rich');
+        // textContent + CSS white-space: pre-line preserves the \n separator
+        // without us hand-rolling HTML sanitization.
+        el.textContent = snippet;
+        // Left-aligned: tooltip's left edge sits at the trigger's left edge.
+        el.style.left = `${rect.left}px`;
+    }
+    else {
+        const text = target.getAttribute('data-tooltip');
+        if (!text)
+            return;
+        el.classList.remove('rich');
+        el.textContent = text;
+        // Plain variant: horizontally centered over the trigger.
+        el.style.left = `${rect.left + rect.width / 2}px`;
+    }
     el.style.top = `${rect.top - 6}px`;
     el.classList.add('visible');
 }
@@ -2090,24 +2566,24 @@ function initPortalTooltips() {
     // stuck. Combined with the explicit hidePortalTooltip() call from
     // renderResultsTable for the no-mouse-move case.
     document.addEventListener('mouseover', (e) => {
-        const t = e.target?.closest('[data-tooltip]');
+        const t = e.target?.closest(TOOLTIP_SELECTOR);
         if (t)
             showPortalTooltip(t);
         else
             hidePortalTooltip();
     });
     document.addEventListener('mouseout', (e) => {
-        const t = e.target?.closest('[data-tooltip]');
+        const t = e.target?.closest(TOOLTIP_SELECTOR);
         if (t)
             hidePortalTooltip();
     });
     document.addEventListener('focusin', (e) => {
-        const t = e.target?.closest('[data-tooltip]');
+        const t = e.target?.closest(TOOLTIP_SELECTOR);
         if (t)
             showPortalTooltip(t);
     });
     document.addEventListener('focusout', (e) => {
-        const t = e.target?.closest('[data-tooltip]');
+        const t = e.target?.closest(TOOLTIP_SELECTOR);
         if (t)
             hidePortalTooltip();
     });
@@ -2120,6 +2596,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initSigninForm();
     initInspectForm();
     initWorkbenchForm();
+    preventStrayFileDrops();
     initCorrectionModal();
     initDecksPage();
     initKnownWordsPanel();

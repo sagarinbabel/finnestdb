@@ -12,7 +12,7 @@ import (
 	"finnestdb/internal/store"
 )
 
-const MaxTextChars = 300_000
+const MaxTextChars = 1_500_000
 
 // ParserVersion identifies the parser-behavior iteration that this binary was
 // built from. Bumped on parser-affecting PRs and stamped into every eval JSON

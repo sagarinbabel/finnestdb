@@ -258,24 +258,32 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="inspect-text">Your text <span id="inspect-char-count" class="char-count">0 / 300,000</span></label>
-                    <textarea
-                        id="inspect-text"
-                        name="text"
-                        rows="10"
-                        maxlength="300000"
-                        placeholder="Paste a paragraph, an article, lyrics — anything you'd like to read."
-                        required
-                    ></textarea>
+                    <label for="inspect-text">Your text <span id="inspect-char-count" class="char-count">0 / 1,500,000</span></label>
+                    <div class="dropzone" id="inspect-dropzone">
+                        <div class="dropzone-loaded hidden" id="inspect-loaded" role="status" aria-live="polite"></div>
+                        <textarea
+                            id="inspect-text"
+                            name="text"
+                            rows="10"
+                            maxlength="1500000"
+                            placeholder="Paste a paragraph, an article, lyrics — or drop a file below."
+                            required
+                        ></textarea>
+                        <ol class="dropzone-chapters hidden" id="inspect-chapters" aria-label="Loaded book chapters"></ol>
+                        <label for="inspect-file" class="dropzone-cta" id="inspect-dropzone-cta">
+                            <span class="dropzone-cta-icon" aria-hidden="true">📄</span>
+                            <span class="dropzone-cta-text">
+                                <strong>Drop a file here</strong>
+                                <span class="dropzone-cta-sub">or click to choose · <code>.txt</code> · <code>.md</code> · <code>.epub</code></span>
+                            </span>
+                        </label>
+                        <input type="file" id="inspect-file" accept=".txt,.md,.epub" hidden>
+                        <div class="dropzone-overlay" aria-hidden="true">Release to import</div>
+                    </div>
                 </div>
 
                 <div id="inspect-lang-warning" class="lang-warning hidden" role="status" aria-live="polite"></div>
                 <button type="button" id="inspect-lang-switch" class="lang-switch-btn hidden"></button>
-
-                <div class="form-group">
-                    <label for="inspect-file">Or load from a file (.txt, .md)</label>
-                    <input type="file" id="inspect-file" accept=".txt,.md">
-                </div>
 
                 <button type="submit" class="btn btn-primary btn-lg" id="inspect-submit">Parse text</button>
             </form>
@@ -396,24 +404,32 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="parse-text">Text <span id="char-count" class="char-count">0 / 300,000</span></label>
-                        <textarea
-                            id="parse-text"
-                            name="text"
-                            rows="12"
-                            maxlength="300000"
-                            placeholder="Paste your Finnish or Estonian text here..."
-                            required
-                        ></textarea>
+                        <label for="parse-text">Text <span id="char-count" class="char-count">0 / 1,500,000</span></label>
+                        <div class="dropzone" id="parse-dropzone">
+                            <div class="dropzone-loaded hidden" id="parse-loaded" role="status" aria-live="polite"></div>
+                            <textarea
+                                id="parse-text"
+                                name="text"
+                                rows="12"
+                                maxlength="1500000"
+                                placeholder="Paste your Finnish or Estonian text here — or drop a file below."
+                                required
+                            ></textarea>
+                            <ol class="dropzone-chapters hidden" id="parse-chapters" aria-label="Loaded book chapters"></ol>
+                            <label for="parse-file" class="dropzone-cta" id="parse-dropzone-cta">
+                                <span class="dropzone-cta-icon" aria-hidden="true">📄</span>
+                                <span class="dropzone-cta-text">
+                                    <strong>Drop a file here</strong>
+                                    <span class="dropzone-cta-sub">or click to choose · <code>.txt</code> · <code>.md</code> · <code>.epub</code></span>
+                                </span>
+                            </label>
+                            <input type="file" id="parse-file" accept=".txt,.md,.epub" hidden>
+                            <div class="dropzone-overlay" aria-hidden="true">Release to import</div>
+                        </div>
                     </div>
 
                     <div id="lang-warning" class="lang-warning hidden" role="status" aria-live="polite"></div>
                     <button type="button" id="lang-switch-btn" class="lang-switch-btn hidden"></button>
-
-                    <div class="form-group">
-                        <label for="parse-file">Or load from file (.txt, .md)</label>
-                        <input type="file" id="parse-file" accept=".txt,.md">
-                    </div>
 
                     <div class="parse-buttons">
                         <button type="submit" class="btn btn-primary btn-parse" id="parse-btn-custom" data-parser="custom">
@@ -492,11 +508,14 @@
     <!-- ==================== SHARED RESULTS ==================== -->
     <div id="results-page" class="page">
         <main class="results-main">
+            <div class="results-header">
+                <button id="results-back" class="btn btn-link">← Back</button>
+                <h2 id="results-title">Results</h2>
+            </div>
+            <div class="results-split">
+            <aside class="results-chapter-nav hidden" id="results-chapter-nav" aria-label="Filter results by chapter"></aside>
+            <div class="results-body">
             <section class="results-summary">
-                <div class="results-header">
-                    <button id="results-back" class="btn btn-link">← Back</button>
-                    <h2 id="results-title">Results</h2>
-                </div>
                 <div id="results-meta" class="results-meta">
                     <span id="results-parser" class="results-pill"></span>
                     <div id="results-coverage" class="coverage-gauge">
@@ -524,29 +543,38 @@
                 </div>
             </section>
 
+            <div id="pos-filter-bar" class="pos-filter-bar">
+                <button type="button" class="pos-filter-chip active" data-filter="all">All</button>
+                <button type="button" class="pos-filter-chip" data-filter="NOUN">Nouns</button>
+                <button type="button" class="pos-filter-chip" data-filter="VERB">Verbs</button>
+                <button type="button" class="pos-filter-chip" data-filter="ADJ">Adjectives</button>
+                <button type="button" class="pos-filter-chip" data-filter="ADV">Adverbs</button>
+                <button type="button" class="pos-filter-chip" data-filter="other">Other</button>
+            </div>
+
             <section class="results-table-section">
-                <div id="pos-filter-bar" class="pos-filter-bar">
-                    <button type="button" class="pos-filter-chip active" data-filter="all">All</button>
-                    <button type="button" class="pos-filter-chip" data-filter="NOUN">Nouns</button>
-                    <button type="button" class="pos-filter-chip" data-filter="VERB">Verbs</button>
-                    <button type="button" class="pos-filter-chip" data-filter="ADJ">Adjectives</button>
-                    <button type="button" class="pos-filter-chip" data-filter="ADV">Adverbs</button>
-                    <button type="button" class="pos-filter-chip" data-filter="other">Other</button>
+                <div class="word-table-header-wrap">
+                    <table class="word-table word-table-header">
+                        <thead>
+                            <tr>
+                                <th class="col-row">#</th>
+                                <th class="col-lemma"><button type="button" class="sort-btn" data-sort="lemma">Dictionary Form<span class="sort-arrow" aria-hidden="true"></span></button></th>
+                                <th class="col-def"><button type="button" class="sort-btn" data-sort="definition">Definition<span class="sort-arrow" aria-hidden="true"></span></button></th>
+                                <th class="col-count"><button type="button" class="sort-btn" data-sort="tokens">Occurrences<span class="sort-arrow" aria-hidden="true"></span></button></th>
+                                <th class="col-actions" data-role-show="user admin">Status</th>
+                            </tr>
+                        </thead>
+                    </table>
                 </div>
-                <table class="word-table" id="word-table">
-                    <thead>
-                        <tr>
-                            <th class="col-row">#</th>
-                            <th class="col-lemma"><button type="button" class="sort-btn" data-sort="lemma">Dictionary Form<span class="sort-arrow" aria-hidden="true"></span></button></th>
-                            <th class="col-def"><button type="button" class="sort-btn" data-sort="definition">Definition<span class="sort-arrow" aria-hidden="true"></span></button></th>
-                            <th class="col-count"><button type="button" class="sort-btn" data-sort="tokens">Occurrences<span class="sort-arrow" aria-hidden="true"></span></button></th>
-                            <th class="col-actions" data-role-show="user admin">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="word-table-body">
-                    </tbody>
-                </table>
+                <div class="word-table-scroll">
+                    <table class="word-table word-table-body" id="word-table">
+                        <tbody id="word-table-body">
+                        </tbody>
+                    </table>
+                </div>
             </section>
+            </div>
+            </div>
         </main>
     </div>
 
