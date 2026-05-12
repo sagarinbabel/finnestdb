@@ -29,6 +29,7 @@ committed run.
 
 | Date | Commit | FI fi-manual-v1 lemma | FI ud-tdt lemma | ET et-grammar-v1 lemma | FI grammar | ET grammar | ET coverage |
 |---|---|---:|---:|---:|---:|---:|---:|
+| 2026-05-12a-T1526Z (2026-05-12 PR cascade #183/#185/#187/#188/#189/#191/#193/#195; FI non-finite paradigm coverage in FST + ET +Pers/+Imprs→Voice + ET Inf/Sup/Ger mapping; **UD test sets all up +0.3-1.2pt**, ET grammar Case 78.4→**82.4**) | [`a5a4808`][c-2026-05-12a-T1526Z] | 81.4 | **61.4** | **91.4** | 98.6 | 82.4 | **100.0** |
 | 2026-05-07k-T1118Z (FEATS migration + Ekilex bulk drop + FI kaikki backfill; **first measured FEATS lift end-to-end**: FI grammar 59.5→**98.6**, ET grammar 19.6→**78.4**, UD-tdt grammar 22.2→**83.2**) | [`ffd7584`][c-2026-05-07k-T1118Z] | 81.4 | 60.2 | 86.7 | **98.6** | **78.4** | **100.0** |
 | 2026-05-07k-feats-rich (PR #139; FEATS-rich gold + dict + adapters end-to-end; **first baseline with non-empty FEATS-attribute table**, but DB had no FEATS yet) | (PR #139) | 81.4 | — | 88.6 | 59.5 | 19.6 | 98.9 |
 | 2026-05-07k-T0944Z (post-FEATS re-measure; FST disabled — no production tables; same DB as j) | [`317ab1b`][c-2026-05-07k] | 81.4 | _superseded_ | 88.6 | 59.5 | 19.6 | 98.9 |
@@ -45,6 +46,7 @@ committed run.
 | 2026-05-05 (estnltk ceiling) | [`af111c2`][c-2026-05-05] | — | — | **98.1** | — | **92.2** | 100.0 |
 | 2026-04-28 | [`bb744ba`][c-2026-04-28] | 72.9 | — | 87.6 | 0.0 | 2.0 | 94.6 |
 
+[c-2026-05-12a-T1526Z]: https://github.com/sagarinbabel/finnestdb/commit/a5a4808
 [c-2026-05-07k-T1118Z]: https://github.com/sagarinbabel/finnestdb/commit/ffd7584
 [c-2026-05-07k]: https://github.com/sagarinbabel/finnestdb/commit/317ab1b
 [c-2026-05-07j]: https://github.com/sagarinbabel/finnestdb/commit/42e95d9
@@ -59,6 +61,67 @@ committed run.
 [c-2026-04-28]: https://github.com/sagarinbabel/finnestdb/commit/bb744ba
 
 ## Entries
+
+### 2026-05-12a-T1526Z — FI non-finite paradigm coverage + ET FST FEATS mappings (PRs #188/#189/#191)
+
+**PRs**: [#188](https://github.com/sagarinbabel/finnestdb/pull/188), [#189](https://github.com/sagarinbabel/finnestdb/pull/189), [#191](https://github.com/sagarinbabel/finnestdb/pull/191) (also includes follow-ons [#193](https://github.com/sagarinbabel/finnestdb/pull/193) and [#195](https://github.com/sagarinbabel/finnestdb/pull/195))
+**Commit measured**: [`a5a4808`][c-2026-05-12a-T1526Z] (= `main` head; merge of PR #195)
+**Run started**: 2026-05-12T15:26Z (UTC, FI); 15:34Z (UTC, ET — same baseline)
+**Detail**: [`baselines/2026-05-12a-T1526Z-fi.md`](baselines/2026-05-12a-T1526Z-fi.md), [`baselines/2026-05-12a-T1526Z-et.md`](baselines/2026-05-12a-T1526Z-et.md)
+**Parser version stamp**: `2026.05.12a` (`parsecore.ParserVersion` — unchanged; this baseline is the second freeze on `2026.05.12a`, after `2026-05-12a` which only measured analyzer-traps gold)
+
+First end-to-end baseline that captures the 2026-05-12 PR cascade. Two FST tables were regenerated this session:
+
+1. **FI FST table** via `make gen-lemmatizer-tables-fi VFST_PATH=…` — wordlist grew from ~195k (lemmas-only) to 482,835 surfaces via the new `cmd/genlemmatizerwordlist` from PR #188 (lemmas + 180,341 non-finite dict surfaces + 114,180 synthesised A-inf-long candidates). `fi_min.json` 79 MB → 255 MB. Captures PR #188's non-finite paradigm coverage.
+2. **ET FST table** via `cmd/genlemmatizertables -lang et -hfstol …` against Giellalt lang-est analyser (`md5 ce93843c…`). Wordlist reused the 138,237 keys from the prior 2026-05-07 ET table to hold coverage constant; new mappings from #189/#191 now apply at table-gen time. Captures PR #189's Sup/Ger/Inf corrections and PR #191's +Pers/+Imprs → Voice tagging.
+
+**Dictionary state at measurement.** Same FEATS-rich DB as 2026-05-07k. **No Ekilex reimport was performed this session**, so PR #189's importer fix is **not yet reflected in the dict** (e.g. `õppida → õppima` still has stale `VerbForm=Sup` instead of `Inf`). A follow-up baseline after `make reduce-ekilex` + `make import-ekilex-details-et` will measure the dict-side half of #189.
+
+**Headline numbers** (custom parser):
+
+| Dataset (cases) | Lemma | POS | Grammar | Full | Coverage |
+|---|---:|---:|---:|---:|---:|
+| _Curated FI sets:_ | | | | | |
+| fi-analyzer-traps (20, new) | **100.0** | **100.0** | **100.0** | **100.0** | 98.8 |
+| fi-grammar (80) | 96.8 | 98.1 | **98.6** | 50.6 | 99.7 |
+| fi-core (6) | 85.0 | 90.0 | **100.0** | 45.0 | 95.7 |
+| fi-manual-v1 (22) | 81.4 | 85.7 | **60.0** | 32.9 | 90.7 |
+| fi-manual-v2 (4) | 88.9 | 100.0 | **100.0** | 44.4 | 100.0 |
+| _UD FI test sets:_ | | | | | |
+| ud-fi-ftb-test (1867) | 71.4 | 67.4 | **84.0** | 28.6 | 93.1 |
+| ud-fi-ood-test (2106) | 63.4 | 66.5 | **80.2** | 21.6 | 85.6 |
+| ud-fi-pud-test (1000) | 60.9 | 66.8 | **78.9** | 21.1 | 85.9 |
+| ud-fi-tdt-test (1554) | 61.4 | 68.8 | **83.6** | 21.7 | 90.0 |
+| _Curated ET sets:_ | | | | | |
+| et-analyzer-traps (11, new) | **100.0** | **100.0** | 0.0 | **100.0** | 100.0 |
+| et-grammar (50) | **91.4** | **93.3** | **82.4** | 80.0 | 100.0 |
+| et-manual (4) | 88.9 | 88.9 | **83.3** | 66.7 | 100.0 |
+
+**Net effect vs `2026-05-07k-T1118Z`** (custom parser, curated + UD sets):
+
+| Dataset | Δ Lemma | Δ POS | Δ Grammar | Δ Full |
+|---|---:|---:|---:|---:|
+| fi-core / fi-grammar / fi-manual-v1 / fi-manual-v2 | flat | flat | flat | flat |
+| ud-fi-ftb-test | +0.0 | **+1.0** | **+0.4** | **+0.3** |
+| ud-fi-ood-test | **+0.9** | **+0.9** | **+0.6** | **+0.4** |
+| ud-fi-pud-test | **+0.9** | **+0.8** | **+0.4** | **+0.3** |
+| ud-fi-tdt-test | **+1.2** | **+1.0** | **+0.4** | **+0.4** |
+| et-grammar | **+4.7** | **+1.9** | **+4.0** | **+1.0** |
+| et-manual | **−11.1** | **−11.1** | +0.0 | **−11.1** |
+
+**Reading.**
+
+- **FI curated sets at ceiling** — already near-100% on lemma/POS/grammar; PR #188's non-finite coverage doesn't move them. fi-analyzer-traps reaches 100% (was 95.2% in #183's mini-baseline; PR #188's FST regen fixes the documented `tarjoamaan → tarjoama` residual).
+- **FI UD sets: small consistent positive Δ** across all four, on every metric. This is where PR #188's non-finite coverage shows up — `mennäkseen → mennä`, `tarjoamaan → tarjota`, etc. are naturally-distributed in UD test corpora but absent from curated grammar sets.
+- **ET grammar (50 cases / 105 scored tokens, the statistically meaningful set) lifts on every metric** — Case 78.4 → 82.4 (+4.0pt), lemma 86.7 → 91.4 (+4.7pt). Improvements appear to come from PR #185/#187 dict-side ranking and lexadverbs overlay, not (yet) from PR #189 FEATS — that needs an Ekilex reimport.
+- **ET manual regresses by one verb token** (`peatus → peatu/ADJ` instead of `peatuma/VERB`). With only 9 scored tokens, one miss = 11% drop. Reproduces with both stale and fresh ET FST tables → root cause is dict-side, likely PR #187's source-priority-first ranking. See [`baselines/2026-05-12a-T1526Z-et.md`](baselines/2026-05-12a-T1526Z-et.md) for the trace.
+- **Per-FEATS-attribute table on et-grammar** shows Case +4.0pt (real fix). The one-token drops on Mood/Tense/Voice and the net Person/VerbForm drops come from `naeris` changing from `naerma/VERB` to `naeris/NOUN`; existing `lugesid`/`läksid` Person misses and the pending `õppida` VerbForm miss remain unchanged.
+
+**Open issues this surfaced** (carried to follow-ups, not blocking this freeze):
+
+1. **`peatus → peatu/ADJ` regression** (et-manual) — kind of dictionary-entry attachment that matters for learners. Investigate PR #187 ranking interaction.
+2. **Verb/noun/PROPN homograph picks** on ET — `joon` ("I drink" vs "line"), `naeris` ("laughed" vs "turnip"), and `Eestis`. FST table emits both verb/noun readings for the verb cases; runtime tie-break is now picking NOUN where 2026-05-07k picked VERB/PROPN. `õuna` remains the unchanged `õud/NOUN` lemma miss from 2026-05-07k.
+3. **Ekilex reimport pending** — PR #189's dict-side fix doesn't show up here; expected to fix `õppida` and friends. Run `make reduce-ekilex` + `make import-ekilex-details-et` and re-freeze.
 
 ### 2026-05-12a — Little Prince learner-row cleanup
 
