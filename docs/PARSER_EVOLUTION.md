@@ -60,10 +60,11 @@ committed run.
 
 ## Entries
 
-### 2026-05-12 — Analyser-quality learnings from yle_subs (PR #183)
+### 2026-05-12a — Analyser-quality, alternative filtering, and ranker fixes (PRs #183/#185/#187)
 
-**PR**: [#183](https://github.com/sagarinbabel/finnestdb/pull/183)
-**Scope**: `pkg/lemmatizer-fi-et/{lexadverbs,udfeats}`, `internal/store/dict.go`, `cmd/importdict/`, `testdata/parser-eval/{fi,et}/gold/`
+**PRs**: [#183](https://github.com/sagarinbabel/finnestdb/pull/183), [#185](https://github.com/sagarinbabel/finnestdb/pull/185), [#187](https://github.com/sagarinbabel/finnestdb/pull/187)
+**Scope**: `pkg/lemmatizer-fi-et/{lexadverbs,udfeats}`, `internal/store/dict.go`, `internal/api/handlers.go`, `cmd/importdict/`, `testdata/parser-eval/{fi,et}/gold/`
+**Parser version stamp**: `2026.05.12a` (`parsecore.ParserVersion`)
 
 Pulled five analyser-quality fixes back into finnestdb from yle_subs
 — the downstream Anki-deck builder that consumes `wordlist.tsv` /
@@ -135,7 +136,21 @@ consumer.
    yle_subs bug report. Auto-picked up by
    `make compare-parsers{,-et}` via the `*.json` glob.
 
-**Measurement** (custom parser, against the new gold fixtures):
+8. **Deck/parse low-value alternative suppression** from PR #185 —
+   `internal/api/handlers.go` filters `BatchLookupAllForms` output
+   when a surface has at least one non-empty lexical-base alternative:
+   empty-gloss candidates and Wiktionary form-of alternatives are
+   suppressed before parse-overview and deck-ingest expansion. Gap
+   surfaces where every candidate is empty-gloss are preserved.
+
+9. **Source-priority-first dict/FST ranking** from PR #187 —
+   `pickBestResolutionCandidate` now lets dictionary `source_priority`
+   outrank generic FST support and morphology-density tie-breaks after
+   the case/POS sanity checks and the narrow weak-legacy FST escape
+   hatch. Higher-authority Ekilex rows therefore beat lower-priority
+   kaikki rows once the known regression guards tie.
+
+**Measurement** (custom parser, against the new #183 gold fixtures):
 
 | Dataset | Lemma | POS | Full |
 |---|---:|---:|---:|
@@ -151,7 +166,7 @@ POS/FEATS/gloss are all correct; only the verb-lemma is missing.
 Closing this fully needs FST table regeneration with MA-infinitive
 inflected forms included — separate scope.
 
-**Design choices and provenance**: see Decision 20 in
+**Design choices and provenance**: see Decisions 19, 20, and 21 in
 [`DECISIONS.md`](DECISIONS.md). The yle_subs source files are
 referenced from code comments at every fix point so future audits
 can trace each rule back to the learner-visible bug it patched.
