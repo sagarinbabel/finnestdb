@@ -189,7 +189,7 @@ comments at the entry point in
 and the bad-lemma definitions in
 [`internal/store/dict.go`](../internal/store/dict.go).
 
-**See also:** [PARSER_EVOLUTION.md §2026-05-12](PARSER_EVOLUTION.md),
+**See also:** [PARSER_EVOLUTION.md §2026-05-12a](PARSER_EVOLUTION.md),
 [FST_LEMMATIZER.md "Store-level candidate merge"](FST_LEMMATIZER.md).
 
 ---

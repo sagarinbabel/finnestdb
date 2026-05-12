@@ -39,12 +39,14 @@ runtime fixes that pull learner-quality corrections from
   custom-mode-only, and why the bad-lemma blocklist is two-tiered
   (never-legitimate fragments + (surface, lemma) pairs).
 - Added: [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) entry
-  2026-05-12 — describes the five-piece change set
+  2026-05-12a — describes the parser-behavior bundle
   (lexadverbs overlay, `NormalizeMaInfinitive`, MA-infinitive
   ranking bias, bad-lemma blocklist, structural-gloss filter at
   kaikki ingest, `BatchLookupSenses` API, FI+ET analyser-traps
-  gold fixtures) and reports the measurement against the new
-  gold sets (FI custom lemma=95.2%, ET 100%).
+  gold fixtures, low-value dict-alternative suppression, and
+  source-priority-first dict/FST ranking) and reports the
+  measurement against the new #183 gold sets (FI custom
+  lemma=95.2%, ET 100%).
 - Modified: [`FST_LEMMATIZER.md`](FST_LEMMATIZER.md) "Store-level
   candidate merge" section — documents the new Step 0
   lex-overlay short-circuit, the MA-infinitive ranking bias, the
