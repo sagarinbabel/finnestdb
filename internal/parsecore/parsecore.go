@@ -43,6 +43,34 @@ type TokenResult struct {
 type SentenceResult struct {
 	Text   string        `json:"text"`
 	Tokens []TokenResult `json:"tokens"`
+	// ChapterIdx tags which chapter this sentence belongs to when the parse
+	// was started from a chapters payload (EPUB import flow). Nil otherwise so
+	// the field is omitted from the wire format for plain-text parses.
+	ChapterIdx *int `json:"chapter_idx,omitempty"`
+}
+
+// ChapterInput is one chapter's text submitted to /api/parse via the EPUB
+// import flow. The server parses each chapter through the analyzer separately
+// so per-chapter views can be derived from a single response without firing
+// N additional /api/parse requests.
+type ChapterInput struct {
+	Title string `json:"title"`
+	Text  string `json:"text"`
+}
+
+// ChapterResult is the per-chapter rollup the server returns alongside the
+// whole-book aggregation. The client uses TokenCount/LemmaCount for sidebar
+// labels and switches the displayed words list to Words when the user clicks
+// a chapter row — no extra HTTP needed.
+type ChapterResult struct {
+	Title            string      `json:"title"`
+	CharCount        int         `json:"char_count"`
+	SentenceCount    int         `json:"sentence_count"`
+	TokenCount       int         `json:"token_count"` // non-punct tokens
+	ResolvedTokens   int         `json:"resolved_tokens"`
+	UnresolvedTokens int         `json:"unresolved_tokens"`
+	LemmaCount       int         `json:"lemma_count"` // unique (lemma,pos) pairs
+	Words            []WordEntry `json:"words"`       // per-chapter aggregation
 }
 
 type WordEntry struct {
@@ -84,6 +112,11 @@ type ParseResult struct {
 	Stats           ParseStats       `json:"stats"`
 	Words           []WordEntry      `json:"words"`
 	Sentences       []SentenceResult `json:"sentences"`
+	// Chapters is set only when the parse was started from a chapters payload
+	// (EPUB import flow). Each entry holds per-chapter rollup stats + the
+	// aggregated WordEntry list scoped to that chapter, so the client can
+	// switch chapter views without an extra /api/parse round-trip.
+	Chapters []ChapterResult `json:"chapters,omitempty"`
 }
 
 type parser interface {
@@ -102,6 +135,9 @@ type parsedToken struct {
 type parsedSentence struct {
 	Tokens []parsedToken
 	Text   string
+	// chapterIdx propagates the chapter origin from AnalyzeChapters down to
+	// the SentenceResult. nil for the plain-text path.
+	chapterIdx *int
 }
 
 // AnalyzerFunc is the parser-FFI-shaped adapter contract used by production
@@ -121,6 +157,33 @@ func ValidateInput(lang, text string) error {
 	return nil
 }
 
+// ValidateChaptersInput mirrors ValidateInput for the chapters payload. The
+// cap is applied to the SUM of chapter rune counts so a chapters request and
+// an equivalent text request enforce the same total.
+func ValidateChaptersInput(lang string, chapters []ChapterInput) error {
+	if lang != "FI" && lang != "ET" {
+		return fmt.Errorf("language must be FI or ET")
+	}
+	if len(chapters) == 0 {
+		return fmt.Errorf("chapters is required")
+	}
+	total := 0
+	hasContent := false
+	for _, ch := range chapters {
+		if strings.TrimSpace(ch.Text) != "" {
+			hasContent = true
+		}
+		total += utf8.RuneCountInString(ch.Text)
+	}
+	if !hasContent {
+		return fmt.Errorf("chapters is required")
+	}
+	if total > MaxTextChars {
+		return fmt.Errorf("text exceeds %d character limit", MaxTextChars)
+	}
+	return nil
+}
+
 func Analyze(db *store.DB, lang, text, parserName string) (*ParseResult, error) {
 	if err := ValidateInput(lang, text); err != nil {
 		return nil, err
@@ -134,6 +197,31 @@ func Analyze(db *store.DB, lang, text, parserName string) (*ParseResult, error) 
 		return nil, fmt.Errorf("unsupported parser %q", parserName)
 	}
 	return p.Parse(db, lang, text)
+}
+
+// AnalyzeChapters runs the standard parse pipeline on a chapters payload
+// (typically from the EPUB import flow). Each chapter is sent through the
+// analyzer separately so its sentences can be tagged with chapter_idx, but
+// the dictionary lookup, gloss lookup, and word enrichment passes happen
+// once across the whole book — collapsing N+1 HTTP round-trips down to one.
+// Per-chapter Words are computed by re-enriching each chapter's sentence
+// subset so the client can swap views without firing extra requests.
+func AnalyzeChapters(db *store.DB, lang string, chapters []ChapterInput, parserName string) (*ParseResult, error) {
+	if err := ValidateChaptersInput(lang, chapters); err != nil {
+		return nil, err
+	}
+	if parserName == "" {
+		parserName = "basic"
+	}
+	p, ok := registry()[parserName]
+	if !ok {
+		return nil, fmt.Errorf("unsupported parser %q", parserName)
+	}
+	dp, ok := p.(dictionaryParser)
+	if !ok {
+		return nil, fmt.Errorf("parser %q does not support chapters payload", parserName)
+	}
+	return dp.ParseChapters(db, lang, chapters)
 }
 
 func SupportedParsers() []string {
@@ -209,6 +297,122 @@ func (p dictionaryParser) Parse(db *store.DB, lang, text string) (*ParseResult, 
 		Words:           words,
 		Sentences:       detailedSentences,
 	}, nil
+}
+
+// ParseChapters analyzes each chapter through the analyzer separately so
+// sentences can be tagged with chapter_idx, then runs the standard
+// lookup/gloss/enrich pipeline once across the whole book. Per-chapter Words
+// are produced by re-enriching each chapter's sentence subset against the
+// shared gloss map. Skipped chapters (empty or whitespace-only text) still
+// emit a zero-stat ChapterResult so the response index matches the input.
+func (p dictionaryParser) ParseChapters(db *store.DB, lang string, chapters []ChapterInput) (*ParseResult, error) {
+	parseStartedAt := time.Now()
+
+	analyzeStartedAt := time.Now()
+	allSentences := make([]parsedSentence, 0)
+	for chIdx, ch := range chapters {
+		if strings.TrimSpace(ch.Text) == "" {
+			continue
+		}
+		result, err := p.analyzer(lang, ch.Text)
+		if err != nil {
+			return nil, fmt.Errorf("parse error: %w", err)
+		}
+		if result == nil {
+			continue
+		}
+		idxCopy := chIdx
+		chSentences := toParsedSentences(result)
+		for i := range chSentences {
+			chSentences[i].chapterIdx = &idxCopy
+		}
+		allSentences = append(allSentences, chSentences...)
+	}
+	analyzeNs := time.Since(analyzeStartedAt).Nanoseconds()
+
+	lookupStartedAt := time.Now()
+	uniqueForms := collectUniqueForms(allSentences)
+	formResolutions := db.BatchLookupForms(uniqueForms, lang, p.lookupMode)
+	lookupFormsNs := time.Since(lookupStartedAt).Nanoseconds()
+
+	glossLookupStartedAt := time.Now()
+	lemmaKeys := resolvedLemmaKeys(formResolutions)
+	glosses := db.BatchLookupGlosses(lemmaKeys, lang)
+	lookupGlossesNs := time.Since(glossLookupStartedAt).Nanoseconds()
+
+	resolveStartedAt := time.Now()
+	detailedSentences := resolveDictionarySentences(allSentences, formResolutions)
+	resolveSentencesNs := time.Since(resolveStartedAt).Nanoseconds()
+
+	enrichStartedAt := time.Now()
+	words := enrichWords(detailedSentences, glosses)
+	chapterResults := computeChapterResults(chapters, detailedSentences, glosses)
+	enrichWordsNs := time.Since(enrichStartedAt).Nanoseconds()
+	parseDurationNs := time.Since(parseStartedAt).Nanoseconds()
+	stats := computeParseStats(detailedSentences, len(uniqueForms), ParseTimings{
+		AnalyzeNs:          analyzeNs,
+		LookupFormsNs:      lookupFormsNs,
+		LookupGlossesNs:    lookupGlossesNs,
+		ResolveSentencesNs: resolveSentencesNs,
+		EnrichWordsNs:      enrichWordsNs,
+		TotalNs:            parseDurationNs,
+	})
+
+	return &ParseResult{
+		Lang:            lang,
+		Parser:          p.name,
+		TotalTokens:     countTokens(words),
+		ParseDurationNs: parseDurationNs,
+		Stats:           stats,
+		Words:           words,
+		Sentences:       detailedSentences,
+		Chapters:        chapterResults,
+	}, nil
+}
+
+// computeChapterResults buckets resolved sentences by chapter_idx and produces
+// per-chapter stats + a re-aggregated Words list scoped to that chapter. The
+// gloss map is shared with the whole-book pass so per-chapter entries surface
+// the same definitions without a second BatchLookupGlosses round-trip.
+func computeChapterResults(chapters []ChapterInput, sentences []SentenceResult, glosses map[store.LemmaKey]string) []ChapterResult {
+	out := make([]ChapterResult, len(chapters))
+	for i, ch := range chapters {
+		out[i] = ChapterResult{
+			Title:     ch.Title,
+			CharCount: utf8.RuneCountInString(ch.Text),
+		}
+	}
+	buckets := make([][]SentenceResult, len(chapters))
+	for _, sent := range sentences {
+		if sent.ChapterIdx == nil {
+			continue
+		}
+		idx := *sent.ChapterIdx
+		if idx < 0 || idx >= len(chapters) {
+			continue
+		}
+		buckets[idx] = append(buckets[idx], sent)
+		out[idx].SentenceCount++
+		for _, tok := range sent.Tokens {
+			if tok.POS == "PUNCT" {
+				continue
+			}
+			out[idx].TokenCount++
+			if tok.Resolved {
+				out[idx].ResolvedTokens++
+			} else {
+				out[idx].UnresolvedTokens++
+			}
+		}
+	}
+	for i := range chapters {
+		if len(buckets[i]) == 0 {
+			continue
+		}
+		out[i].Words = enrichWords(buckets[i], glosses)
+		out[i].LemmaCount = len(out[i].Words)
+	}
+	return out
 }
 
 // featsFromJSON converts the analyzer FFI's JSON-object FEATS payload into
@@ -366,7 +570,7 @@ func resolveDictionarySentences(sentences []parsedSentence, formResolutions map[
 			}
 			tokens = append(tokens, resolved)
 		}
-		out = append(out, SentenceResult{Text: sent.Text, Tokens: tokens})
+		out = append(out, SentenceResult{Text: sent.Text, Tokens: tokens, ChapterIdx: sent.chapterIdx})
 	}
 	return out
 }

@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"log"
 	"net/http"
 	"os"
 	"sort"
@@ -25,14 +26,16 @@ const (
 )
 
 type API struct {
-	store   *store.DB
-	analyze func(*store.DB, string, string, string) (*parsecore.ParseResult, error)
+	store           *store.DB
+	analyze         func(*store.DB, string, string, string) (*parsecore.ParseResult, error)
+	analyzeChapters func(*store.DB, string, []parsecore.ChapterInput, string) (*parsecore.ParseResult, error)
 }
 
 func NewAPI(store *store.DB) *API {
 	return &API{
-		store:   store,
-		analyze: parsecore.Analyze,
+		store:           store,
+		analyze:         parsecore.Analyze,
+		analyzeChapters: parsecore.AnalyzeChapters,
 	}
 }
 
@@ -903,6 +906,16 @@ func hasCheckedLemmaKey(checked map[store.LemmaKey]struct{}, key store.LemmaKey)
 // ExampleSentence and Gloss are derived from the first matching token's
 // sentence and a dictionary lookup respectively.
 func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][]store.FormResolution, glosses map[store.LemmaKey]string, checkedGlossKeys map[store.LemmaKey]struct{}) []parsecore.WordEntry {
+	return a.expandSentencesToWords(parsed.Sentences, parsed.Words, parsed.Lang, dict, glosses, checkedGlossKeys)
+}
+
+// expandSentencesToWords is the sentence-scoped core of expandParsedWords:
+// the parser-gated homonym expansion is run over an arbitrary sentence slice
+// (whole-book or one chapter) using the same dict and gloss maps so per-
+// chapter Words match what the whole-book view would have shown for the same
+// (lemma, pos) pair. parserWords is consulted for grammar labels, feats, and
+// example sentences when the parser already produced an entry for that key.
+func (a *API) expandSentencesToWords(sentences []parsecore.SentenceResult, parserWords []parsecore.WordEntry, lang string, dict map[string][]store.FormResolution, glosses map[store.LemmaKey]string, checkedGlossKeys map[store.LemmaKey]struct{}) []parsecore.WordEntry {
 	type aggKey struct {
 		lemma string
 		pos   string
@@ -915,7 +928,7 @@ func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][
 	}
 	agg := map[aggKey]*aggEntry{}
 
-	for _, sent := range parsed.Sentences {
+	for _, sent := range sentences {
 		for _, token := range sent.Tokens {
 			for _, exp := range expandTokenLemmas(token, dict) {
 				key := aggKey{lemma: exp.Lemma, pos: exp.POS}
@@ -939,13 +952,13 @@ func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][
 	// degenerate parse with empty Sentences), fall back to whatever the parser
 	// already produced rather than discarding it.
 	if len(agg) == 0 {
-		return parsed.Words
+		return parserWords
 	}
 
 	parserIndex := map[aggKey]*parsecore.WordEntry{}
-	for i := range parsed.Words {
-		k := aggKey{lemma: parsed.Words[i].Lemma, pos: parsed.Words[i].POS}
-		parserIndex[k] = &parsed.Words[i]
+	for i := range parserWords {
+		k := aggKey{lemma: parserWords[i].Lemma, pos: parserWords[i].POS}
+		parserIndex[k] = &parserWords[i]
 	}
 
 	missingGlossKeys := make([]store.LemmaKey, 0)
@@ -959,7 +972,7 @@ func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][
 		}
 	}
 	if len(missingGlossKeys) > 0 {
-		glosses = mergeGlosses(glosses, a.store.BatchLookupGlosses(missingGlossKeys, parsed.Lang))
+		glosses = mergeGlosses(glosses, a.store.BatchLookupGlosses(missingGlossKeys, lang))
 	}
 
 	out := make([]parsecore.WordEntry, 0, len(agg))
@@ -1608,12 +1621,19 @@ func (a *API) HandleCardKnown(w http.ResponseWriter, r *http.Request) {
 }
 
 type ParseRequest struct {
-	Lang   string `json:"lang"`
-	Text   string `json:"text"`
-	Parser string `json:"parser"` // parser name; defaults to "basic"
+	Lang     string                  `json:"lang"`
+	Text     string                  `json:"text,omitempty"`
+	Parser   string                  `json:"parser"` // parser name; defaults to "basic"
+	Chapters []parsecore.ChapterInput `json:"chapters,omitempty"`
 }
 
 type WordEntry = parsecore.WordEntry
+
+// ChapterResponse mirrors parsecore.ChapterResult but is keyed off the API's
+// WordEntry alias so the wire shape stays stable if WordEntry diverges later.
+// LearningState is populated from the authenticated user's per-lemma state so
+// the client doesn't have to do a second round of state lookups per chapter.
+type ChapterResponse = parsecore.ChapterResult
 
 type ParseResponse struct {
 	Lang            string               `json:"lang"`
@@ -1622,6 +1642,11 @@ type ParseResponse struct {
 	ParseDurationMs float64              `json:"parse_duration_ms"`
 	Stats           parsecore.ParseStats `json:"stats"`
 	Words           []WordEntry          `json:"words"`
+	// Chapters is only populated when the request was a chapters payload
+	// (EPUB import flow). Each entry's Words list is independently usable —
+	// the client can swap the displayed words to a chapter's Words without
+	// another /api/parse round-trip.
+	Chapters []ChapterResponse `json:"chapters,omitempty"`
 }
 
 func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
@@ -1640,15 +1665,30 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(req.Text) == 0 {
-		http.Error(w, "Text is required", http.StatusBadRequest)
+	hasText := len(req.Text) > 0
+	hasChapters := len(req.Chapters) > 0
+	if hasText == hasChapters {
+		// Reject both empty and both populated — the latter is an ambiguous
+		// payload that earlier code would have silently dropped one half of.
+		if !hasText && !hasChapters {
+			http.Error(w, "Text or chapters is required", http.StatusBadRequest)
+		} else {
+			http.Error(w, "Provide either text or chapters, not both", http.StatusBadRequest)
+		}
 		return
 	}
-	parsed, err := a.analyze(a.store, req.Lang, req.Text, req.Parser)
+
+	var parsed *parsecore.ParseResult
+	var err error
+	if hasChapters {
+		parsed, err = a.analyzeChapters(a.store, req.Lang, req.Chapters, req.Parser)
+	} else {
+		parsed, err = a.analyze(a.store, req.Lang, req.Text, req.Parser)
+	}
 	if err != nil {
 		status := http.StatusInternalServerError
 		switch err.Error() {
-		case "language must be FI or ET", "text is required":
+		case "language must be FI or ET", "text is required", "chapters is required":
 			status = http.StatusBadRequest
 		default:
 			if len(err.Error()) >= 13 && err.Error()[:13] == "text exceeds " {
@@ -1664,11 +1704,23 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 
 	// Apply the same parser-gated homonym expansion that handleCreateDeck runs,
 	// so the import overview's unique-lemma count matches the count of the
-	// deck the user gets when saving. See expandParsedWords for details.
+	// deck the user gets when saving. See expandSentencesToWords for details.
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
 	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang, parsed.Parser)
 	dictCandidates, dictGlosses, checkedGlossKeys := a.filterLowValueDictAlternatives(dictCandidates, req.Lang)
 	parsed.Words = a.expandParsedWords(parsed, dictCandidates, dictGlosses, checkedGlossKeys)
+
+	// Per-chapter Words go through the same homonym-expansion pipeline so
+	// switching to a chapter view doesn't surface a different (lemma, pos)
+	// set than the whole-book view would for the same tokens. dictCandidates
+	// and the already-merged gloss map are reused across all chapters.
+	if hasChapters {
+		for i := range parsed.Chapters {
+			chSentences := chapterSentenceSubset(parsed.Sentences, i)
+			parsed.Chapters[i].Words = a.expandSentencesToWords(chSentences, parsed.Words, parsed.Lang, dictCandidates, dictGlosses, checkedGlossKeys)
+			parsed.Chapters[i].LemmaCount = len(parsed.Chapters[i].Words)
+		}
+	}
 
 	auth, err := a.getCurrentUser(r)
 	if err != nil {
@@ -1683,23 +1735,9 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	// This matches the "return data, persist on save" model so a user who
 	// inspects and walks away leaves nothing in parse_sessions.
 	if auth != nil {
-		keys := make([]store.LemmaKey, 0, len(parsed.Words))
-		for _, word := range parsed.Words {
-			if strings.TrimSpace(word.Lemma) == "" || strings.TrimSpace(word.POS) == "" {
-				continue
-			}
-			keys = append(keys, store.LemmaKey{Lemma: word.Lemma, POS: word.POS})
-		}
-		states, err := a.store.BatchLemmaStates(auth.UserID, parsed.Lang, keys)
-		if err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
-		}
-		for i := range parsed.Words {
-			key := store.LemmaKey{Lemma: parsed.Words[i].Lemma, POS: parsed.Words[i].POS}
-			if status := states[key]; status != "" {
-				parsed.Words[i].LearningState = status
-			}
+		applyLemmaStatesInPlace(a.store, auth.UserID, parsed.Lang, parsed.Words)
+		for i := range parsed.Chapters {
+			applyLemmaStatesInPlace(a.store, auth.UserID, parsed.Lang, parsed.Chapters[i].Words)
 		}
 	}
 
@@ -1710,7 +1748,58 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		ParseDurationMs: float64(parsed.ParseDurationNs) / 1e6,
 		Stats:           parsed.Stats,
 		Words:           parsed.Words,
+		Chapters:        parsed.Chapters,
 	})
+}
+
+// chapterSentenceSubset returns the sentences whose ChapterIdx matches idx.
+// Sentences without a ChapterIdx (plain-text parses) are never included; the
+// chapters branch always sets ChapterIdx in toParsedSentences.
+func chapterSentenceSubset(sentences []parsecore.SentenceResult, idx int) []parsecore.SentenceResult {
+	out := make([]parsecore.SentenceResult, 0, len(sentences))
+	for _, sent := range sentences {
+		if sent.ChapterIdx == nil {
+			continue
+		}
+		if *sent.ChapterIdx != idx {
+			continue
+		}
+		out = append(out, sent)
+	}
+	return out
+}
+
+// applyLemmaStatesInPlace fills LearningState on each WordEntry from the
+// user's per-(lemma, pos) state map. A single BatchLemmaStates call per slice
+// keeps the per-chapter passes cheap relative to the original 41-request
+// architecture they replace. Errors are logged and swallowed — the lemma
+// state is decorative, not load-bearing, and an error path here would
+// otherwise mask the parse result the user just spent compute on.
+func applyLemmaStatesInPlace(db *store.DB, userID int64, lang string, words []parsecore.WordEntry) {
+	if len(words) == 0 {
+		return
+	}
+	keys := make([]store.LemmaKey, 0, len(words))
+	for _, w := range words {
+		if strings.TrimSpace(w.Lemma) == "" || strings.TrimSpace(w.POS) == "" {
+			continue
+		}
+		keys = append(keys, store.LemmaKey{Lemma: w.Lemma, POS: w.POS})
+	}
+	if len(keys) == 0 {
+		return
+	}
+	states, err := db.BatchLemmaStates(userID, lang, keys)
+	if err != nil {
+		log.Printf("api: BatchLemmaStates(%s): %v", lang, err)
+		return
+	}
+	for i := range words {
+		key := store.LemmaKey{Lemma: words[i].Lemma, POS: words[i].POS}
+		if status := states[key]; status != "" {
+			words[i].LearningState = status
+		}
+	}
 }
 
 func (a *API) HandleParseFeedback(w http.ResponseWriter, r *http.Request) {
