@@ -40,6 +40,62 @@ is more enjoyable and comprehension is higher.
 
 ---
 
+## Decision 21: Source priority outranks generic FST support and morphology ties
+
+**Date:** 2026-05-12
+
+### Context
+
+PR #187 revisited the custom dict+FST merge ranker after PR #185's
+learner-facing alternative filtering. The parser already used
+dictionary `source_priority`, but in the merged candidate path that
+priority came after generic support and morphology tie-breaks. A
+lower-priority kaikki row could therefore beat a higher-priority
+Ekilex row if it had same-lemma FST support, or if it carried FEATS
+while the Ekilex row did not.
+
+That ordering was too weak for cross-source dictionary overlap. The
+source priority column is the row-level authority signal: Ekilex bulk
+rows are intended to beat kaikki rows once candidates are otherwise
+equal on the sanity checks that protect learner-facing regressions.
+
+### Decision
+
+In `pickBestResolutionCandidate`, keep this rank order:
+
+1. Surface/lemma case sanity.
+2. Lowercase-surface `PROPN` sanity.
+3. The narrow `fstBeatsWeakDict` escape hatch for legacy dict rows
+   with no priority and no morphology.
+4. Dictionary `source_priority`.
+5. Generic dict/FST support score.
+6. Morphology presence (`FEATS` or projected grammar label).
+7. Deterministic tie-breaks.
+
+This means higher-priority Ekilex rows beat lower-priority kaikki rows
+even when the lower-priority row has FST support or FEATS, provided
+case/POS sanity ties and the dict row is not the specific weak legacy
+case handled by `fstBeatsWeakDict`.
+
+### Reasoning
+
+This is not an "Ekilex always wins" rule. The case/POS sanity checks
+still run first because proper-name homonyms and lowercase common-word
+regressions are known, user-visible failures. The FST escape hatch
+also remains before priority so generated morphology can still repair
+truly weak legacy rows.
+
+Once those guards tie, source priority is the better authority signal
+than generic support or morphology density. Ekilex is the stronger
+source for Estonian cross-source overlaps, and the 2026-05-07 bulk
+import normally supplies dense FEATS; an Ekilex row without FEATS is
+the exception, not a reason for a lower-priority kaikki row to win.
+The change was eval-checked on committed FI/ET gold and local UD-ET
+test sets, and pinned with regression tests for both lower-priority
+FST support and lower-priority FEATS.
+
+---
+
 ## Decision 20: Lexical-overlay short-circuit and curated bad-lemma blocklists
 
 **Date:** 2026-05-12
@@ -1189,3 +1245,4 @@ _Questions are date-tagged with the date they were first recorded._
 | 2026-05-07 | Decision 18 added: IMPLEMENTATION.md split into PARSER_FEEDBACK_LOOP.md + README sections (PR #135) |
 | 2026-05-07 | Document reordered latest-first; roadmap moved to TODO.md (preserved here as historical) |
 | 2026-05-07 | Decision 5 amended (PR #139): case-suffix stopgap also projects UD `Case=` into `forms.feats` via `featsFromCaseLabel`; suffix table itself stays frozen. **Decision 14 (kaikki `feats` not backfilled) reversed**: `cmd/importdict/feats.go::kaikkiTagsToFeats` now projects Wiktionary tag arrays into UD FEATS at import time, populating `forms.feats` for every kaikki row |
+| 2026-05-12 | Decision 21 added: source priority outranks generic FST support and morphology ties in the merged dict+FST ranker (PR #187) |
