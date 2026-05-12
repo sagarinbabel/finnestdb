@@ -235,6 +235,47 @@ func IsMaInfinitiveSurface(surface string) bool {
 	return false
 }
 
+// aInfLongSuffixes are the surface endings of the Finnish A-infinitive
+// long form: 1st-infinitive stem + translative case (-kse-) + possessive
+// suffix. The construction means "in order to V" / "for V-ing" and is
+// distinct from the basic A-infinitive (the citation form, e.g. `mennä`).
+//
+// All five suffix vowels are e/i — neutral in Finnish vowel harmony — so
+// the same five suffixes work for both back-harmony stems (tullakseen)
+// and front-harmony stems (mennäkseen). No harmony pair needed.
+//
+// 3sg/3pl share `kseen` (Finnish 3rd-person possessive doesn't
+// distinguish singular and plural in this construction).
+var aInfLongSuffixes = [5]string{
+	"kseen", // 3 (sg/pl)
+	"kseni", // 1sg
+	"ksesi", // 2sg
+	"ksemme", // 1pl
+	"ksenne", // 2pl
+}
+
+// IsAInfLongSurface reports whether a Finnish surface matches the
+// A-infinitive long suffix pattern (kseen/kseni/ksesi/ksemme/ksenne).
+// Used by the dict-layer ranker analogously to IsMaInfinitiveSurface:
+// to demote kaikki's self-keyed entries (mennäkseen→mennäkseen) and
+// wrong-POS entries (ymmärtääkseen→ADV) when Voikko returns the
+// correctly-stemmed verb reading via the FST table.
+//
+// This is a surface-only check. Callers compose with FEATS-on-candidate
+// checks (VerbForm=Inf, InfForm=1, Person[psor]=N) to decide.
+func IsAInfLongSurface(surface string) bool {
+	if surface == "" {
+		return false
+	}
+	lower := toLowerASCII(surface)
+	for _, sfx := range aInfLongSuffixes {
+		if hasSuffix(lower, sfx) {
+			return true
+		}
+	}
+	return false
+}
+
 // NormalizeMaInfinitive rewrites FEATS when (pos, surface, feats) match
 // the analyzer-noun-cousin trap for Finnish MA-infinitives.
 //

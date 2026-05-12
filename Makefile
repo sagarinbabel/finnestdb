@@ -3,7 +3,7 @@
         import-ekilex-details-et import-dict-et-recommended import-kotus-fi import-dict-fi-recommended \
         fetch-ekilex-refresh fetch-ekilex-sample fetch-ekilex \
         reduce-ekilex \
-        gen-lemmatizer-tables-fi gen-lemmatizer-tables-et \
+        gen-lemmatizer-tables-fi gen-lemmatizer-tables-et gen-lemmatizer-wordlist-fi \
         reimport-dict-fi reimport-dict-et reimport-dict verify-dict \
         setup-omorfi setup-estnltk eval eval-watch eval-check compare-parsers compare-parsers-et \
         import-ud-gold import-ud-gold-fi import-ud-gold-et \
@@ -69,14 +69,27 @@ doctor:
 #   make gen-lemmatizer-tables-et HFSTOL_PATH=/path/to/analyser-gt-desc.hfstol
 VFST_PATH ?=
 HFSTOL_PATH ?=
+FI_WORDLIST ?= localdata/lemmatizer-fi-et/wordlists/fi.txt
+gen-lemmatizer-wordlist-fi:
+	@if [ ! -f finnestdb.db ]; then \
+		echo "finnestdb.db is required (run scripts/setup-local.sh first)."; \
+		exit 1; \
+	fi
+	@mkdir -p localdata/lemmatizer-fi-et/wordlists
+	go run ./cmd/genlemmatizerwordlist -db finnestdb.db -lang fi -out "$(FI_WORDLIST)"
+
 gen-lemmatizer-tables-fi:
 	@if [ -z "$(VFST_PATH)" ]; then \
 		echo "VFST_PATH is required (local path to mor.vfst; do not commit)."; \
 		exit 1; \
 	fi
+	@if [ ! -f "$(FI_WORDLIST)" ]; then \
+		echo "FI wordlist missing at $(FI_WORDLIST); generating from finnestdb.db…"; \
+		$(MAKE) gen-lemmatizer-wordlist-fi; \
+	fi
 	@mkdir -p localdata/lemmatizer-fi-et/tables
 	go run ./cmd/genlemmatizertables -lang fi -vfst "$(VFST_PATH)" \
-	  -wordlist cmd/genlemmatizertables/wordlists/fi_smoke.txt \
+	  -wordlist "$(FI_WORDLIST)" \
 	  -out localdata/lemmatizer-fi-et/tables/fi_min.json
 
 # Estonian: same policy as FI. Source analyser is Giellalt's

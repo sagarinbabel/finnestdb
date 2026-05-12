@@ -503,6 +503,17 @@ func pickBestResolutionCandidate(surface string, candidates []resolutionCandidat
 		if mi, mj := maInfinitiveBias(surface, ci.res), maInfinitiveBias(surface, cj.res); mi != mj {
 			return mi > mj
 		}
+		// A-infinitive-long bias: parallel to MA-inf, scoped to the
+		// translative+possessive A-inf surface family (mennäkseen,
+		// tarjotakseni, ...). Kaikki has spotty A-long coverage and
+		// when present often self-keys the surface as its own lemma
+		// (mennäkseen→mennäkseen) or tags it ADV
+		// (ymmärtääkseen→ADV); the FST returns the correctly-stemmed
+		// verb reading once the regenerated table includes the
+		// surface, but supportScore would still tip to the dict row.
+		if ai, aj := aInfLongBias(surface, ci.res), aInfLongBias(surface, cj.res); ai != aj {
+			return ai > aj
+		}
 		if fstBeatsWeakDict(ci, cj) {
 			return true
 		}
@@ -576,6 +587,40 @@ func maInfinitiveBias(surface string, res FormResolution) int {
 		return -1
 	}
 	if res.POS == "VERB" && strings.Contains(res.Feats, "InfForm=Ma") {
+		return 1
+	}
+	return 0
+}
+
+// aInfLongBias returns +1 for a VERB reading carrying the
+// A-infinitive-long signature (InfForm=1 + Person[psor]=N) on a
+// matching surface, -1 for a candidate whose lemma equals the
+// surface (kaikki's self-key bug for these surfaces), and 0
+// otherwise. Surfaces that don't match the A-long suffix pattern
+// always return 0, so this is a no-op for the common case.
+//
+// Voikko emits A-inf-long readings with no Case= attribute — the
+// translative is implicit in the construction — so the signature is
+// VerbForm=Inf + InfForm=1 + Person[psor]=N. The basic A-infinitive
+// (the citation form `mennä`) shares InfForm=1 but has no
+// Person[psor], which is why we require both.
+//
+// The lemma-equals-surface demotion catches kaikki rows where the
+// inflected A-long form is keyed back to itself (mennäkseen lemma
+// `mennäkseen`) or as ADV (ymmärtääkseen). These are user-visible
+// failures because the headword shown to a learner is the wrong
+// word; the FST reading via the regenerated fi_min.json gives the
+// correct verb headword.
+func aInfLongBias(surface string, res FormResolution) int {
+	if !udfeats.IsAInfLongSurface(surface) {
+		return 0
+	}
+	if strings.EqualFold(res.Lemma, surface) {
+		return -1
+	}
+	if res.POS == "VERB" &&
+		strings.Contains(res.Feats, "InfForm=1") &&
+		strings.Contains(res.Feats, "Person[psor]=") {
 		return 1
 	}
 	return 0

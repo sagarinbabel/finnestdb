@@ -1929,6 +1929,166 @@ func TestPickBestResolutionCandidate_MaInfinitiveBias(t *testing.T) {
 	}
 }
 
+// TestPickBestResolutionCandidate_AInfLongBias proves the
+// A-infinitive-long bias picks the FST verb reading over kaikki's
+// self-keyed dict row, and that a non-A-long surface is unaffected.
+//
+// Surfaces under test:
+//   - tarjotakseen: dict ships nothing useful (or wrong-POS); FST
+//     gives tarjota VERB InfForm=1|Person[psor]=3|VerbForm=Inf
+//   - mennäkseen: kaikki keys this back to itself as lemma; FST gives
+//     mennä VERB InfForm=1|Person[psor]=3|VerbForm=Inf
+//   - ymmärtääkseen: kaikki tags this ADV (wrong POS) with self-lemma;
+//     FST gives ymmärtää VERB InfForm=1|Person[psor]=3|VerbForm=Inf
+func TestPickBestResolutionCandidate_AInfLongBias(t *testing.T) {
+	cases := []struct {
+		name      string
+		surface   string
+		dictRes   FormResolution
+		fstRes    FormResolution
+		wantLemma string
+		wantPOS   string
+	}{
+		{
+			name:    "mennäkseen self-keyed dict loses to FST verb",
+			surface: "mennäkseen",
+			dictRes: FormResolution{
+				Lemma:  "mennäkseen",
+				POS:    "VERB",
+				Source: "dict",
+			},
+			fstRes: FormResolution{
+				Lemma:  "mennä",
+				POS:    "VERB",
+				Feats:  "InfForm=1|Person[psor]=3|VerbForm=Inf",
+				Source: "fst",
+			},
+			wantLemma: "mennä",
+			wantPOS:   "VERB",
+		},
+		{
+			name:    "ymmärtääkseen wrong-POS ADV self-key loses to FST verb",
+			surface: "ymmärtääkseen",
+			dictRes: FormResolution{
+				Lemma:  "ymmärtääkseen",
+				POS:    "ADV",
+				Source: "dict",
+			},
+			fstRes: FormResolution{
+				Lemma:  "ymmärtää",
+				POS:    "VERB",
+				Feats:  "InfForm=1|Person[psor]=3|VerbForm=Inf",
+				Source: "fst",
+			},
+			wantLemma: "ymmärtää",
+			wantPOS:   "VERB",
+		},
+		{
+			name:    "tarjotakseen FST-only path resolves to verb",
+			surface: "tarjotakseen",
+			// No dict candidate — only the FST verb reading. Still must
+			// resolve correctly. (This is a smoke that adding the bias
+			// doesn't break the FST-only happy path.)
+			fstRes: FormResolution{
+				Lemma:  "tarjota",
+				POS:    "VERB",
+				Feats:  "InfForm=1|Person[psor]=3|VerbForm=Inf",
+				Source: "fst",
+			},
+			wantLemma: "tarjota",
+			wantPOS:   "VERB",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cands := make([]resolutionCandidate, 0, 2)
+			if tc.dictRes.Lemma != "" {
+				cands = append(cands, resolutionCandidate{
+					res:            tc.dictRes,
+					sourcePriority: 10, // strong dict priority — bias must override
+					hasDict:        true,
+					fstOrder:       9999,
+				})
+			}
+			cands = append(cands, resolutionCandidate{
+				res:      tc.fstRes,
+				hasFST:   true,
+				fstOrder: 0,
+			})
+			got := pickBestResolutionCandidate(tc.surface, cands)
+			if got.res.Lemma != tc.wantLemma || got.res.POS != tc.wantPOS {
+				t.Errorf("got (%s/%s), want (%s/%s)",
+					got.res.Lemma, got.res.POS, tc.wantLemma, tc.wantPOS)
+			}
+		})
+	}
+
+	// Non-A-long surface: bias must NOT fire. tarjotaan is the passive
+	// present indicative of tarjota — same lemma, but a different
+	// inflection that doesn't carry the -kseen suffix family.
+	dictNoun := resolutionCandidate{
+		res:            FormResolution{Lemma: "talo", POS: "NOUN", Feats: "Case=Ine"},
+		sourcePriority: 10,
+		hasDict:        true,
+	}
+	fstOddball := resolutionCandidate{
+		res:      FormResolution{Lemma: "talu", POS: "VERB", Feats: "InfForm=1|Person[psor]=3"},
+		hasFST:   true,
+		fstOrder: 0,
+	}
+	got := pickBestResolutionCandidate("talossa", []resolutionCandidate{dictNoun, fstOddball})
+	if got.res.Lemma != "talo" {
+		t.Errorf("non-A-long surface: bias should not fire, got (%s/%s) want talo/NOUN",
+			got.res.Lemma, got.res.POS)
+	}
+}
+
+func TestAInfLongBias(t *testing.T) {
+	cases := []struct {
+		surface string
+		res     FormResolution
+		want    int
+	}{
+		// Verb with A-long signature + correct stemmed lemma → +1.
+		{"mennäkseen", FormResolution{
+			Lemma: "mennä", POS: "VERB",
+			Feats: "InfForm=1|Person[psor]=3|VerbForm=Inf",
+		}, 1},
+		{"tarjotakseni", FormResolution{
+			Lemma: "tarjota", POS: "VERB",
+			Feats: "InfForm=1|Number[psor]=Sing|Person[psor]=1|VerbForm=Inf",
+		}, 1},
+		{"mennäksemme", FormResolution{
+			Lemma: "mennä", POS: "VERB",
+			Feats: "InfForm=1|Number[psor]=Plur|Person[psor]=1|VerbForm=Inf",
+		}, 1},
+		// Self-key (kaikki bug): lemma equals surface on A-long surface → -1,
+		// regardless of POS (ymmärtääkseen is tagged ADV in kaikki).
+		{"mennäkseen", FormResolution{Lemma: "mennäkseen", POS: "VERB"}, -1},
+		{"ymmärtääkseen", FormResolution{Lemma: "ymmärtääkseen", POS: "ADV"}, -1},
+		// Mixed-case lemma-equals-surface still demotes (EqualFold).
+		{"Mennäkseen", FormResolution{Lemma: "mennäkseen", POS: "VERB"}, -1},
+		// A-long surface but candidate has neither signature — bias is 0.
+		// (e.g. an FST reading that happens to land here without the
+		// A-long markers, or a noun reading.)
+		{"mennäkseen", FormResolution{Lemma: "mennä", POS: "NOUN", Feats: "Case=Tra|Number=Sing"}, 0},
+		// Verb with InfForm=1 but no Person[psor]: basic A-inf, not A-long.
+		// Bias must not promote.
+		{"mennäkseen", FormResolution{Lemma: "mennä", POS: "VERB", Feats: "InfForm=1|VerbForm=Inf"}, 0},
+		// Non-A-long surfaces: always 0.
+		{"talossa", FormResolution{Lemma: "mennä", POS: "VERB", Feats: "InfForm=1|Person[psor]=3|VerbForm=Inf"}, 0},
+		{"tarjoamaan", FormResolution{Lemma: "tarjota", POS: "VERB", Feats: "Case=Ill|InfForm=Ma|VerbForm=Inf"}, 0},
+		// Empty surface: defensive.
+		{"", FormResolution{POS: "VERB"}, 0},
+	}
+	for _, tc := range cases {
+		got := aInfLongBias(tc.surface, tc.res)
+		if got != tc.want {
+			t.Errorf("aInfLongBias(%q, %+v) = %d, want %d", tc.surface, tc.res, got, tc.want)
+		}
+	}
+}
+
 func TestMaInfinitiveBias(t *testing.T) {
 	cases := []struct {
 		surface string
