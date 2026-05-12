@@ -30,7 +30,7 @@ Estonian:
 | Lesson class | ET status | Notes |
 |--------------|-----------|-------|
 | Known analyzer traps as eval fixtures | Adapt | Seed ET fixtures from ET failures, not FI surfaces. |
-| MA-infinitive noun-cousin trap | Partial | ET has analogous `-ma` supine/case forms, but Ekilex already covers many as `VerbForm=Sup`. |
+| MA-infinitive noun-cousin trap | Partial | ET has analogous non-finite (`-ma`/`-da`/`-des`) forms; Ekilex tags them with explicit UD FEATS (`Case=Ill\|VerbForm=Sup`, `VerbForm=Inf`, `VerbForm=Conv`) so the noun-cousin trap does not arise the same way. |
 | Lexicalized adverbs/adpositions misread as productive cases | Direct | Highest-value ET transfer. |
 | Sentence-level glossing for polysemy | Direct | Especially for adpositions/adverbs such as `peale`, `eest`, `pärast`, `sisse`, `välja`. |
 | Structural-gloss filter | Direct, source-aware | Keep Kaikki "form-of" glosses from becoming primary learner glosses; avoid broad false positives on Ekilex definitions. |

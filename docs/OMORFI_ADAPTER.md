@@ -100,6 +100,28 @@ The adapter command must:
 3. return JSON on stdout
 4. exit non-zero on failure
 
+`cmd/parsertest` keeps external analyzers alive for the duration of each
+evaluation run when the adapter supports server mode. To opt in, accept
+`--server`, then read one JSON object per stdin line and write one JSON object
+per stdout line:
+
+```json
+{"text":"kirjassani on."}
+```
+
+Each response is the same analysis JSON shape as one-shot mode, or
+`{"error":"..."}` for a request-level failure. The bundled Omorfi and EstNLTK
+adapters support both modes. Older custom adapters that reject `--server` with
+a normal unknown-flag error fall back to one-shot mode, so existing
+`FINNESTDB_OMORFI_CMD` / `FINNESTDB_ESTNLTK_CMD` values keep working.
+
+That fallback is best-effort. It is meant for common argparse / flag-parser
+"unknown option" failures on stderr; if a custom adapter rejects `--server`
+with a different error shape, `cmd/parsertest` reports the adapter failure
+instead of silently guessing. In that case either add `--server` support to the
+adapter or keep using the one-shot package-level `evalparsers.Analyze` helper
+from Go tests and scripts that intentionally do not need process reuse.
+
 The subprocess timeout defaults to `5s` and can be overridden with a Go
 duration string in `FINNESTDB_OMORFI_TIMEOUT` (e.g. `30s`, `1m`).
 

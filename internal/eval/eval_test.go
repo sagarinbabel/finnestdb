@@ -1,14 +1,19 @@
 package eval
 
 import (
+	"bufio"
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
+	"io"
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"finnestdb/internal/parsecore"
+	"finnestdb/internal/store"
 )
 
 func TestLoadDatasetReadsGzip(t *testing.T) {
@@ -51,6 +56,176 @@ func TestLoadDatasetReadsGzip(t *testing.T) {
 	if got.Name != "fi-smoke" || got.Language != "FI" || len(got.Cases) != 1 {
 		t.Fatalf("dataset=%+v", got)
 	}
+}
+
+func TestEvaluateReusesExternalAnalyzerProcess(t *testing.T) {
+	db, err := store.NewDB(":memory:")
+	if err != nil {
+		t.Fatalf("NewDB: %v", err)
+	}
+	defer db.Close()
+
+	startsPath := filepath.Join(t.TempDir(), "adapter-starts")
+	t.Setenv("FINNESTDB_FAKE_ANALYZER_ADAPTER", "1")
+	t.Setenv("FINNESTDB_FAKE_ANALYZER_STARTS", startsPath)
+	t.Setenv("FINNESTDB_ESTNLTK_CMD", os.Args[0]+" -test.run=TestFakeAnalyzerAdapter --")
+
+	dataset := &Dataset{
+		Name:     "et-fake",
+		Language: "ET",
+		Cases: []DatasetCase{
+			{ID: "c1", Text: "Poes.", Tokens: []ExpectedTokenRef{{Surface: "Poes", Lemma: "poes", POS: "NOUN"}}},
+			{ID: "c2", Text: "Majad.", Tokens: []ExpectedTokenRef{{Surface: "Majad", Lemma: "majad", POS: "NOUN"}}},
+		},
+	}
+	report, err := Evaluate(db, dataset, EvaluateOptions{
+		Parsers:    []string{"estnltk"},
+		WarmupRuns: 1,
+		RepeatRuns: 2,
+	})
+	if err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+	if report.Summary["estnltk"].ExpectedTokens != 2 {
+		t.Fatalf("expected_tokens=%d want 2", report.Summary["estnltk"].ExpectedTokens)
+	}
+	starts, err := os.ReadFile(startsPath)
+	if err != nil {
+		t.Fatalf("read starts: %v", err)
+	}
+	if got := strings.Count(string(starts), "server\n"); got != 1 {
+		t.Fatalf("adapter starts=%d want 1; full log %q", got, starts)
+	}
+}
+
+func TestEvaluateFallsBackForAdaptersWithoutServerMode(t *testing.T) {
+	db, err := store.NewDB(":memory:")
+	if err != nil {
+		t.Fatalf("NewDB: %v", err)
+	}
+	defer db.Close()
+
+	startsPath := filepath.Join(t.TempDir(), "adapter-starts")
+	t.Setenv("FINNESTDB_FAKE_ANALYZER_ADAPTER", "1")
+	t.Setenv("FINNESTDB_FAKE_ANALYZER_STARTS", startsPath)
+	t.Setenv("FINNESTDB_FAKE_ANALYZER_ONESHOT_ONLY", "1")
+	t.Setenv("FINNESTDB_ESTNLTK_CMD", os.Args[0]+" -test.run=TestFakeAnalyzerAdapter --")
+
+	dataset := &Dataset{
+		Name:     "et-fake",
+		Language: "ET",
+		Cases: []DatasetCase{
+			{ID: "c1", Text: "Poes.", Tokens: []ExpectedTokenRef{{Surface: "Poes", Lemma: "poes", POS: "NOUN"}}},
+			{ID: "c2", Text: "Majad.", Tokens: []ExpectedTokenRef{{Surface: "Majad", Lemma: "majad", POS: "NOUN"}}},
+		},
+	}
+	if _, err := Evaluate(db, dataset, EvaluateOptions{
+		Parsers:    []string{"estnltk"},
+		WarmupRuns: 0,
+		RepeatRuns: 1,
+	}); err != nil {
+		t.Fatalf("Evaluate: %v", err)
+	}
+	starts, err := os.ReadFile(startsPath)
+	if err != nil {
+		t.Fatalf("read starts: %v", err)
+	}
+	if got := strings.Count(string(starts), "server\n"); got != 1 {
+		t.Fatalf("server starts=%d want 1; full log %q", got, starts)
+	}
+	if got := strings.Count(string(starts), "oneshot\n"); got != 2 {
+		t.Fatalf("oneshot starts=%d want 2; full log %q", got, starts)
+	}
+}
+
+// TestFakeAnalyzerAdapter is a subprocess re-entry helper for the external
+// analyzer tests above. Normal `go test` runs return immediately; child
+// processes execute the fake adapter when FINNESTDB_FAKE_ANALYZER_ADAPTER=1.
+func TestFakeAnalyzerAdapter(t *testing.T) {
+	if os.Getenv("FINNESTDB_FAKE_ANALYZER_ADAPTER") != "1" {
+		return
+	}
+	startsPath := os.Getenv("FINNESTDB_FAKE_ANALYZER_STARTS")
+	if startsPath != "" {
+		f, err := os.OpenFile(startsPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(2)
+		}
+		if hasArg("--server") {
+			fmt.Fprintln(f, "server")
+		} else {
+			fmt.Fprintln(f, "oneshot")
+		}
+		_ = f.Close()
+	}
+
+	if hasArg("--server") {
+		if os.Getenv("FINNESTDB_FAKE_ANALYZER_ONESHOT_ONLY") == "1" {
+			fmt.Fprintln(os.Stderr, "error: unrecognized arguments: --server")
+			os.Exit(2)
+		}
+		scanner := bufio.NewScanner(os.Stdin)
+		encoder := json.NewEncoder(os.Stdout)
+		for scanner.Scan() {
+			var request struct {
+				Text string `json:"text"`
+			}
+			if err := json.Unmarshal(scanner.Bytes(), &request); err != nil {
+				_ = encoder.Encode(map[string]string{"error": err.Error()})
+				continue
+			}
+			_ = encoder.Encode(fakeAnalyzerResult(request.Text))
+		}
+		os.Exit(0)
+	}
+
+	text, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	if err := json.NewEncoder(os.Stdout).Encode(fakeAnalyzerResult(string(text))); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	os.Exit(0)
+}
+
+func hasArg(want string) bool {
+	for _, arg := range os.Args {
+		if arg == want {
+			return true
+		}
+	}
+	return false
+}
+
+func fakeAnalyzerResult(text string) map[string]any {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return map[string]any{"sentences": []any{}}
+	}
+	form := strings.TrimSuffix(text, ".")
+	tokens := []map[string]any{{
+		"form":          form,
+		"lemma":         strings.ToLower(form),
+		"pos":           "NOUN",
+		"feats":         map[string]string{},
+		"grammar_label": "",
+		"mwe_id":        nil,
+	}}
+	if strings.HasSuffix(text, ".") {
+		tokens = append(tokens, map[string]any{
+			"form":          ".",
+			"lemma":         ".",
+			"pos":           "PUNCT",
+			"feats":         map[string]string{},
+			"grammar_label": "PUNCT_CLOSE",
+			"mwe_id":        nil,
+		})
+	}
+	return map[string]any{"sentences": []map[string]any{{"tokens": tokens}}}
 }
 
 func TestResolveRunIDSlug_OptionWinsAndDistinguishesSameNameFiles(t *testing.T) {

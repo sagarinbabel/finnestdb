@@ -1,6 +1,6 @@
 # System Versioning
 
-_Current as of 2026-05-01 - see [CHANGELOG.md](CHANGELOG.md) for revisions._
+_Current as of 2026-05-12 - see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
 FinEstDB should version the behavior of major subsystems separately. The parser,
 deck review loop, and evaluation baselines change for different reasons and
@@ -22,8 +22,8 @@ These are documentation starting points, not claims that the systems are stable.
 
 | System | Current version | Notes |
 |--------|-----------------|-------|
-| Parser behavior | `parser-v1` (= dated tag `2026.05.07k`, see [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md)) | Production `basic`/`custom` parser modes live in `parsecore`; evaluation-only `omorfi`/`estnltk` live in `internal/evalparsers`. The constant `parsecore.ParserVersion` carries the dated tag and is stamped into every eval JSON report's `parser_version` field. |
-| Parser evaluation baseline | `parser-baseline-2026-05-07-k-T1118Z` (latest; see "Parser evaluation baseline history" below) | Latest k freeze; full history of baselines is preserved in the dedicated section below this table and as a row-per-event trend in [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md). The wall-clock `THHMMZ` suffix is part of the baseline ID — multiple baselines on the same parser-behavior version are distinguished by run-start UTC time. |
+| Parser behavior | `parser-v2` (= dated tag `2026.05.12a`, see [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md)) | Production `basic`/`custom` parser modes live in `parsecore`; evaluation-only `omorfi`/`estnltk` live in `internal/evalparsers`. The constant `parsecore.ParserVersion` carries the dated tag and is stamped into every eval JSON report's `parser_version` field. |
+| Parser evaluation baseline | `parser-baseline-2026-05-07-k-T1118Z` (latest; see "Parser evaluation baseline history" below) | Latest frozen baseline remains the k freeze; current parser behavior has moved to `parser-v2` / `2026.05.12a` and needs a new freeze before headline baseline numbers reflect it. Full history of baselines is preserved in the dedicated section below this table and as a row-per-event trend in [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md). The wall-clock `THHMMZ` suffix is part of the baseline ID — multiple baselines on the same parser-behavior version are distinguished by run-start UTC time. |
 | Deck review system | `review-v0` | Backend and UI scaffolding exist, but review scheduling is not yet a locked production contract. |
 | API contract | `api-v0` | Alpha API surface; parse is the most mature contract. |
 | Data schema | implicit | Schema exists in code today; explicit migrations should become the source of truth before production data matters. |
@@ -71,6 +71,7 @@ when each `parser-vN` ships:
 
 | `parser-vN` | Latest dated iteration when bumped | Notable behaviors introduced |
 |---|---|---|
+| `parser-v2` | `2026.05.12a` | Learner-quality parser fixes from PR #183: lexical-adverb overlays, MA-infinitive FEATS normalization/ranking, bad-lemma blocklists, structural-gloss ingest filtering, and `BatchLookupSenses`; deck/parse low-value alternative suppression from PR #185; source-priority-first dict/FST candidate ranking from PR #187. |
 | `parser-v1` | `2026.05.07k` | Baseline scope: dict (basic/custom), case-suffix grammar-label stopgap, FST as parallel scorer in dict step 1 (post-#127) against smoke fixtures, FST candidate-merge FEATS enrichment (post-#129), per-attribute FEATS eval (post-#130), omorfi/estnltk eval columns. Iterations within v1: `j` (2026-05-07, pre-FEATS-eval), `k` (2026-05-07, post-FEATS-eval). |
 
 Do not bump a subsystem version for implementation-only refactors that preserve

@@ -206,6 +206,233 @@ body {
     font-family: inherit;
 }
 
+/* Dropzone wrapping the textarea so we can show drag-and-drop affordances
+   and an EPUB-loaded pill without affecting the textarea's own layout. */
+.dropzone {
+    position: relative;
+    border: 2px dashed transparent;
+    border-radius: 8px;
+    padding: 4px;
+    margin: -4px;
+    transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease;
+}
+
+.dropzone:hover {
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+    background-color: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.dropzone.drag-over {
+    border-color: var(--accent);
+    background-color: color-mix(in srgb, var(--accent) 10%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* Visible, tall, clickable CTA below the textarea. Doubles as the file
+   picker trigger (it's a <label for=fileInput>) and as the obvious "drop a
+   file here" target. */
+.dropzone-cta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.85rem;
+    margin-top: 0.75rem;
+    padding: 1.5rem 1.25rem;
+    min-height: 96px;
+    border: 2px dashed color-mix(in srgb, var(--accent) 45%, var(--border));
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--bg-secondary) 50%, transparent);
+    color: var(--text-secondary);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease,
+                color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+}
+
+.dropzone-cta:hover {
+    border-color: var(--accent);
+    background-color: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+.dropzone-cta:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+/* When a file is being dragged anywhere over the dropzone, the CTA becomes
+   the most prominent target so the user can clearly drop on it. */
+.dropzone.drag-over .dropzone-cta {
+    border-color: var(--accent);
+    background-color: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+}
+
+.dropzone-cta-icon {
+    font-size: 2rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.dropzone-cta-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    line-height: 1.3;
+}
+
+.dropzone-cta-text strong {
+    font-size: 1rem;
+    color: inherit;
+    font-weight: 600;
+}
+
+.dropzone-cta-sub {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.dropzone-cta-sub code {
+    padding: 0 0.25rem;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
+}
+
+/* Chapter list shown in place of the textarea when an EPUB is loaded. Mirrors
+   the textarea's height so the form layout doesn't jump, and scrolls when a
+   book has more chapters than fit. */
+.dropzone-chapters {
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem;
+    max-height: 18rem;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-primary);
+    counter-reset: chapter;
+}
+
+.dropzone-chapters li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    line-height: 1.35;
+    counter-increment: chapter;
+}
+
+.dropzone-chapters li:hover {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.dropzone-chapters li::before {
+    content: counter(chapter, decimal-leading-zero);
+    flex-shrink: 0;
+    min-width: 2rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.8rem;
+}
+
+.dropzone-chapters .chapter-title {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+}
+
+.dropzone-chapters .chapter-size {
+    flex-shrink: 0;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Drag-over overlay covers the entire dropzone (textarea + CTA) so the
+   user sees an unambiguous "release to import" signal anywhere they
+   release. Hidden by default. */
+.dropzone-overlay {
+    position: absolute;
+    inset: 4px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--accent);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.1rem;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.dropzone.drag-over .dropzone-overlay {
+    display: flex;
+}
+
+/* "EPUB loaded" pill sits above the textarea when a book is held in app
+   state. Filename + chapter count + a small clear button. */
+.dropzone-loaded {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.85rem;
+    margin-bottom: 0.5rem;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--accent) 10%, var(--bg-secondary));
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.dropzone-loaded .loaded-icon {
+    font-size: 1.2rem;
+}
+
+.dropzone-loaded .loaded-meta {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.dropzone-loaded .loaded-filename {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dropzone-loaded .loaded-sub {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.dropzone-loaded .loaded-clear {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background-color 120ms ease, color 120ms ease;
+}
+
+.dropzone-loaded .loaded-clear:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+
 .help-text {
     margin-top: 1rem;
     font-size: 0.875rem;
@@ -715,14 +942,167 @@ body {
 
 /* ── Results page ────────────────────────────────────────────────────────── */
 
+/* Pin the entire results page to the viewport so the page itself can never
+   scroll — only the sidebar and table-section scroll, inside their own
+   columns. position: fixed takes the page out of body flow, so no amount
+   of inner content can push the body taller than 100vh. */
+#results-page.page {
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding-top: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .results-main {
-    max-width: 900px;
-    margin: 2rem auto;
-    padding: 0 1rem;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 1rem;
+    /* Vertical stack: header row, divider, then a horizontal split for the
+       chapter sidebar + the main results body. */
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    height: 100%;
+    overflow: hidden;
+}
+
+.results-split {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    gap: 1.5rem;
+}
+
+/* Two-row flex stack: the summary header stays put while only the table
+   section below scrolls. NOTE: do NOT set overflow:hidden here — Firefox
+   would then treat .results-body as the sticky scroll container instead
+   of the actual scroller (.results-table-section), and the sticky thead
+   wouldn't pin. The flex children's own constraints keep this in bounds. */
+.results-body {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Chapter-filter sidebar: appears on the left of the results page only when
+   an EPUB is loaded. Fills its column height; scrolls within itself. */
+.results-chapter-nav {
+    flex-shrink: 0;
+    width: 240px;
+    height: 100%;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    padding: 0.75rem;
+}
+
+.chapter-nav-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.chapter-nav-list li {
+    margin: 0;
+}
+
+/* "Whole book" row pinned at the top of the sidebar so it remains
+   reachable as the user scrolls through 30+ chapters. Underlined to
+   separate it from the chapter list below. */
+.chapter-nav-list .chapter-nav-whole-book {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: var(--bg-secondary);
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.4rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.chapter-nav-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    width: 100%;
+    padding: 0.4rem 0.55rem;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    text-align: left;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-family: inherit;
+    transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.chapter-nav-item:hover {
+    background-color: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.chapter-nav-item.active {
+    background-color: color-mix(in srgb, var(--accent) 14%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.chapter-nav-label {
+    font-size: 0.88rem;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.chapter-nav-sub {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* On narrow viewports drop the locked viewport layout entirely. The whole
+   page scrolls as one and the sidebar stacks above the results. */
+@media (max-width: 768px) {
+    #results-page.page {
+        position: static;
+        top: auto;
+        left: auto;
+        right: auto;
+        bottom: auto;
+        padding-top: var(--nav-height);
+        min-height: calc(100vh - var(--nav-height));
+        overflow: visible;
+    }
+    .results-main {
+        height: auto;
+        overflow: visible;
+    }
+    .results-split {
+        flex-direction: column;
+        min-height: 0;
+    }
+    .results-body {
+        height: auto;
+        overflow: visible;
+        padding-right: 0;
+    }
+    .results-chapter-nav {
+        width: 100%;
+        height: auto;
+        max-height: 240px;
+    }
 }
 
 .results-summary {
     margin-bottom: 1.5rem;
+    flex-shrink: 0;
 }
 
 .results-stats {
@@ -755,13 +1135,54 @@ body {
     font-size: 0.85rem;
 }
 
+/* Visual frame stacking a fixed header table on top and a scrolling body
+   table below. Splitting <thead> into its own table is the only way to
+   guarantee the header NEVER scrolls — `position: sticky` on table cells
+   misbehaves on Firefox when the scroll container has rounded corners.
+   Both tables share class-based column widths so they line up exactly. */
 .results-table-section {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.word-table-header-wrap {
+    flex-shrink: 0;
+    /* `overflow: hidden` makes this a scroll container, which lets
+       `scrollbar-gutter: stable` reserve the same right-side gutter that
+       the body's scrollbar takes, so columns line up. */
+    overflow: hidden;
+    scrollbar-gutter: stable;
+}
+
+.word-table-header {
+    margin: 0;
+}
+
+.word-table-scroll {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
     overflow-x: auto;
+    overflow-y: auto;
+    /* Reserve a scrollbar gutter even when the body table doesn't overflow
+       yet, so the body's column edges stay where they were when it does
+       overflow. Combined with the same gutter on the header keeps columns
+       aligned regardless of scrollbar state. */
+    scrollbar-gutter: stable;
 }
 
 .word-table {
     width: 100%;
-    border-collapse: collapse;
+    /* `separate` so the sticky thead can have rounded corners on its first
+       and last <th> cells; row-level border-bottoms on td/th still render
+       cleanly without merging. */
+    border-collapse: separate;
+    border-spacing: 0;
     font-size: 0.95rem;
     table-layout: fixed;
 }
@@ -1053,7 +1474,10 @@ body {
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 0.5rem;
+    flex-shrink: 0;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
 }
 
 .results-header h2 {
@@ -1062,17 +1486,19 @@ body {
 
 /* ── Issue #20: Results table polish ────────────────────────────────────── */
 
-/* Sticky header */
-.word-table thead {
-    position: sticky;
-    top: 0;
-    background: var(--bg-primary);
-    z-index: 10;
+.word-table thead th {
+    background: var(--bg-secondary);
+    /* Bottom border draws the line between header band and rows. Top
+       border is provided by the parent .results-table-section's frame. */
+    border-bottom: 1px solid var(--border);
 }
 
-.word-table thead th {
-    background: var(--bg-primary);
-    box-shadow: 0 1px 0 var(--border);
+.word-table thead th:first-child {
+    border-top-left-radius: 8px;
+}
+
+.word-table thead th:last-child {
+    border-top-right-radius: 8px;
 }
 
 /* Zebra striping */
@@ -1092,6 +1518,7 @@ body {
     margin-bottom: 1rem;
     padding-bottom: 0.75rem;
     border-bottom: 1px solid var(--border);
+    flex-shrink: 0; /* sits in the fixed top stack of .results-body */
 }
 
 .pos-filter-chip {
@@ -1263,6 +1690,20 @@ body {
 }
 .portal-tooltip.visible {
     opacity: 1;
+}
+
+/* Multi-line variant used by chapter previews (first 50 chars … last 50).
+   Left-aligned: anchors its left edge to the trigger via JS-set `left`, so
+   transform only handles the vertical lift. */
+.portal-tooltip.rich {
+    max-width: 320px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1.4;
+    white-space: pre-line;
+    text-align: left;
+    transform: translateY(-100%);
 }
 
 .example-text .highlight-form {
@@ -2588,12 +3029,13 @@ a {
 .inspect-main,
 .decks-main,
 .review-main,
-.admin-main,
-.results-main {
+.admin-main {
     max-width: 1180px;
     margin: 0 auto;
     padding: 32px 32px 80px;
 }
+/* `.results-main` intentionally excluded — it owns its own viewport-locked
+   flex layout (see the dedicated rule near the top of this file). */
 
 .hero-section {
     min-height: calc(100vh - var(--nav-height) - 240px);
@@ -2773,6 +3215,12 @@ h2 {
 .data-table {
     border-collapse: separate;
     border-spacing: 0;
+}
+
+/* .data-table still wants its own framed look (it appears outside the
+   results-table-section card). The word-table inside the results page is
+   already framed by .results-table-section, so don't double up. */
+.data-table {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -2830,8 +3278,7 @@ h2 {
     .inspect-main,
     .decks-main,
     .review-main,
-    .admin-main,
-    .results-main {
+    .admin-main {
         padding: 24px 16px 64px;
     }
 
