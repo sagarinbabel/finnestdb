@@ -646,6 +646,65 @@ func expandTokenLemmas(token parsecore.TokenResult, dict map[string][]store.Form
 	return []tokenLemma{{Lemma: lemma, POS: token.POS}}
 }
 
+func (a *API) filterGlosslessDictAlternatives(dict map[string][]store.FormResolution, lang string) map[string][]store.FormResolution {
+	keys := dictCandidateLemmaKeys(dict)
+	if len(keys) == 0 {
+		return dict
+	}
+	glosses := a.store.BatchLookupGlosses(keys, lang)
+	if len(glosses) == 0 {
+		return dict
+	}
+	return filterGlosslessAlternatives(dict, glosses)
+}
+
+func dictCandidateLemmaKeys(dict map[string][]store.FormResolution) []store.LemmaKey {
+	seen := map[store.LemmaKey]struct{}{}
+	keys := make([]store.LemmaKey, 0)
+	for _, candidates := range dict {
+		for _, c := range candidates {
+			if c.Lemma == "" || c.POS == "" {
+				continue
+			}
+			k := store.LemmaKey{Lemma: c.Lemma, POS: c.POS}
+			if _, ok := seen[k]; ok {
+				continue
+			}
+			seen[k] = struct{}{}
+			keys = append(keys, k)
+		}
+	}
+	return keys
+}
+
+func filterGlosslessAlternatives(dict map[string][]store.FormResolution, glosses map[store.LemmaKey]string) map[string][]store.FormResolution {
+	out := make(map[string][]store.FormResolution, len(dict))
+	for form, candidates := range dict {
+		hasGlossedCandidate := false
+		for _, c := range candidates {
+			if glosses[store.LemmaKey{Lemma: c.Lemma, POS: c.POS}] != "" {
+				hasGlossedCandidate = true
+				break
+			}
+		}
+		if !hasGlossedCandidate {
+			out[form] = candidates
+			continue
+		}
+
+		filtered := make([]store.FormResolution, 0, len(candidates))
+		for _, c := range candidates {
+			if glosses[store.LemmaKey{Lemma: c.Lemma, POS: c.POS}] != "" {
+				filtered = append(filtered, c)
+			}
+		}
+		if len(filtered) > 0 {
+			out[form] = filtered
+		}
+	}
+	return out
+}
+
 // expandParsedWords reapplies the same dict-driven homonym expansion that
 // handleCreateDeck runs, producing one WordEntry per (lemma, pos) candidate
 // the dictionary knows of for each token. The result mirrors the (lemma, pos)
@@ -803,6 +862,7 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 	// parser's pick is only used when the dict is silent.
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
 	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang)
+	dictCandidates = a.filterGlosslessDictAlternatives(dictCandidates, req.Lang)
 
 	sentences := make([]store.DeckSentenceInput, 0, len(parsed.Sentences))
 	for _, sent := range parsed.Sentences {
@@ -1401,6 +1461,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	// deck the user gets when saving. See expandParsedWords for details.
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
 	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang)
+	dictCandidates = a.filterGlosslessDictAlternatives(dictCandidates, req.Lang)
 	parsed.Words = a.expandParsedWords(parsed, dictCandidates)
 
 	auth, err := a.getCurrentUser(r)

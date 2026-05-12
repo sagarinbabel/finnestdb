@@ -428,6 +428,60 @@ func TestHandleParseExpandsHomonyms(t *testing.T) {
 	}
 }
 
+func TestHandleParseSuppressesGlosslessAlternativeWhenSurfaceHasGlossedCandidate(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("liiga", "ADV", "too", "ET"); err != nil {
+		t.Fatalf("UpsertLemma liiga/ADV: %v", err)
+	}
+	if err := api.store.UpsertLemma("liiga", "X", "", "ET"); err != nil {
+		t.Fatalf("UpsertLemma liiga/X: %v", err)
+	}
+	for _, r := range [][4]string{
+		{"liiga", "liiga", "ADV", "ET"},
+		{"liiga", "liiga", "X", "ET"},
+	} {
+		if err := api.store.UpsertForm(r[0], r[1], r[2], r[3]); err != nil {
+			t.Fatalf("UpsertForm %v: %v", r, err)
+		}
+	}
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang:   lang,
+			Parser: "custom",
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "liiga",
+					Tokens: []parsecore.TokenResult{
+						{Form: "liiga", Lemma: "liiga", POS: "ADV", Resolved: true},
+					},
+				},
+			},
+			Words: []parsecore.WordEntry{
+				{Lemma: "liiga", POS: "ADV", Forms: []string{"liiga"}, Count: 1, Gloss: "too"},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"ET","text":"liiga","parser":"custom"}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
+	}
+
+	var resp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Words) != 1 {
+		t.Fatalf("len(words)=%d want 1; words=%+v", len(resp.Words), resp.Words)
+	}
+	if got := resp.Words[0]; got.Lemma != "liiga" || got.POS != "ADV" || got.Gloss != "too" {
+		t.Fatalf("word=%+v want liiga/ADV with gloss", got)
+	}
+}
+
 func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
 	api := newTestAPI(t)
 	parsed := &parsecore.ParseResult{
@@ -1422,6 +1476,67 @@ func TestCreateDeckExpandsAmbiguousTokenIntoMultipleCards(t *testing.T) {
 	}
 	if stats[0].Unique != 4 {
 		t.Errorf("Unique=%d want 4 (mina, joon-noun, jooma-verb, vesi)", stats[0].Unique)
+	}
+}
+
+func TestCreateDeckSuppressesGlosslessAlternativeWhenSurfaceHasGlossedCandidate(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("liiga", "ADV", "too", "ET"); err != nil {
+		t.Fatalf("UpsertLemma liiga/ADV: %v", err)
+	}
+	if err := api.store.UpsertLemma("liiga", "X", "", "ET"); err != nil {
+		t.Fatalf("UpsertLemma liiga/X: %v", err)
+	}
+	for _, r := range [][4]string{
+		{"liiga", "liiga", "ADV", "ET"},
+		{"liiga", "liiga", "X", "ET"},
+	} {
+		if err := api.store.UpsertForm(r[0], r[1], r[2], r[3]); err != nil {
+			t.Fatalf("UpsertForm %v: %v", r, err)
+		}
+	}
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang:        lang,
+			Parser:      "custom",
+			TotalTokens: 1,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "liiga",
+					Tokens: []parsecore.TokenResult{
+						{Form: "liiga", Lemma: "liiga", POS: "ADV", Resolved: true},
+					},
+				},
+			},
+			Words: []parsecore.WordEntry{
+				{Lemma: "liiga", POS: "ADV", Forms: []string{"liiga"}, Count: 1, Gloss: "too"},
+			},
+		}, nil
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "liiga@example.com")
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Liiga","lang":"ET","text":"liiga"}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create deck status=%d body=%q", createRec.Code, createRec.Body.String())
+	}
+
+	auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
+	if err != nil || auth == nil {
+		t.Fatal("expected authenticated user")
+	}
+	cardCount, err := api.store.CountCards(auth.UserID, "ET")
+	if err != nil {
+		t.Fatalf("CountCards: %v", err)
+	}
+	if cardCount != 1 {
+		t.Fatalf("card_count=%d want 1; glossless X alternative should not create a card", cardCount)
 	}
 }
 
