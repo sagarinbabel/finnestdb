@@ -11,6 +11,15 @@ func TestIsStructuralGloss(t *testing.T) {
 		"partitive singular of vuosi",
 		"Partitive plural of asia",
 		"genitive singular of pankki",
+		// Umlauted / non-ASCII headwords: Go's regexp \w is ASCII-only,
+		// so the case-of-X pattern uses \pL instead. These cases would
+		// silently miss with a naive \w port from the Python pattern.
+		"partitive singular of ääni",
+		"genitive singular of õun",
+		"essive singular of pää",
+		"illative singular of käsi",
+		"adessive plural of käet",
+		"elative singular of väri",
 		"first-person singular indicative of olla",
 		"second person plural indicative of mennä",
 		"third-person singular present indicative of tehdä",

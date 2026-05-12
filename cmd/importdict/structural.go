@@ -24,12 +24,21 @@ import (
 // containing the phrase "inflection of" in the middle of a real
 // definition ("a regional inflection of the verb 'to be'") must not
 // be filtered out.
+//
+// Note on Unicode: Go's RE2 \w is ASCII-only — a naïve port of the
+// Python original would miss "partitive singular of ääni" or
+// "genitive singular of õun" because `ä`/`õ` are not in \w. The
+// case-of-headword pattern below uses \pL (Unicode letter class)
+// instead. The other patterns end in \b, where the boundary fires
+// between the ASCII letter `f` of "of" and the following space —
+// regardless of what letter starts the headword that follows — so
+// they handle umlauts correctly already.
 var structuralGlossPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)^inflection of\b`),
 	regexp.MustCompile(`(?i)^(first|second|third)[-\s]?person\b.*\b(of|indicative)\b`),
 	regexp.MustCompile(`(?i)^(past|present|future)\s+(active|passive)?\s*participle\s+of\b`),
 	regexp.MustCompile(`(?i)^(alternative|obsolete|archaic|dated|colloquial|informal|formal)\s+(form|spelling)\s+of\b`),
-	regexp.MustCompile(`(?i)^(partitive|genitive|illative|inessive|elative|adessive|allative|ablative|essive|translative|nominative|accusative|abessive|comitative|instructive)\s+(singular|plural)?\s*of\s+\w`),
+	regexp.MustCompile(`(?i)^(partitive|genitive|illative|inessive|elative|adessive|allative|ablative|essive|translative|nominative|accusative|abessive|comitative|instructive)\s+(singular|plural)?\s*of\s+\pL`),
 	regexp.MustCompile(`(?i)^synonym of\b`),
 	regexp.MustCompile(`(?i)^(form|conjugation|declension)\s+of\b`),
 	regexp.MustCompile(`(?i)^plural\s+of\b`),
