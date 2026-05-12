@@ -91,10 +91,29 @@ func TestJoinTranslations_DedupesCaseInsensitive(t *testing.T) {
 		{TranslationsEN: []string{"Line", "feature", "shape"}},
 	}}
 	got := joinTranslations(entry)
-	// "Line" wins the dedup tiebreak over "line" (chooseCasing prefers
-	// the uppercase-leading variant). Lexicographic sort places "Line"
-	// before "feature" because uppercase ASCII sorts before lowercase.
-	want := "Line; feature; shape; stripe"
+	// "Line" wins the dedup tiebreak over "line" (chooseCasing prefers the
+	// uppercase-leading variant), but the original meaning order is preserved.
+	want := "Line; stripe; feature; shape"
+	if got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestJoinTranslations_PreservesMeaningOrderForPrimaryGloss(t *testing.T) {
+	// Learner-facing primary glosses must follow Ekilex meaning order, not
+	// alphabetic order. Otherwise common verbs like olema can surface a rare
+	// alphabetically-earlier sense such as "accompany" before "be".
+	entry := definitionEntry{Meanings: []struct {
+		POS            []string `json:"pos"`
+		DefinitionsET  []string `json:"definitions_et"`
+		TranslationsEN []string `json:"translations_en"`
+		UsagesET       []string `json:"usages_et"`
+	}{
+		{TranslationsEN: []string{"be"}},
+		{TranslationsEN: []string{"accompany"}},
+	}}
+	got := joinTranslations(entry)
+	want := "be; accompany"
 	if got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}
@@ -310,7 +329,7 @@ func TestImporter_MergesGlossesAcrossHomonyms(t *testing.T) {
 	if err := db.QueryRow(`SELECT gloss FROM lemmas WHERE lemma='aste' AND pos='NOUN' AND lang='ET'`).Scan(&gloss); err != nil {
 		t.Fatalf("query: %v", err)
 	}
-	want := "degree; rank; step; stepping"
+	want := "step; stepping; degree; rank"
 	if gloss != want {
 		t.Errorf("merged gloss = %q, want %q", gloss, want)
 	}
@@ -701,7 +720,7 @@ func TestWriteTranslations_BasicWrite(t *testing.T) {
 		t.Fatalf("writeTranslations: %v", err)
 	}
 	if written != 3 {
-		t.Errorf("translations written = %d, want 3 (bad+dog+hound after dedup)", written)
+		t.Errorf("translations written = %d, want 3 (dog+hound+bad after dedup)", written)
 	}
 
 	rows, err := db.Query(
@@ -720,8 +739,8 @@ func TestWriteTranslations_BasicWrite(t *testing.T) {
 		}
 		got = append(got, fmt.Sprintf("%d:%s/%s/%s", idx, text, target, src))
 	}
-	// sortedTranslations sorts the deduplicated set: ["bad", "dog", "hound"].
-	want := []string{"0:bad/EN/ekilex", "1:dog/EN/ekilex", "2:hound/EN/ekilex"}
+	// orderedTranslations preserves Ekilex meaning order: ["dog", "hound", "bad"].
+	want := []string{"0:dog/EN/ekilex", "1:hound/EN/ekilex", "2:bad/EN/ekilex"}
 	if !equalStringSlices(got, want) {
 		t.Errorf("translations: got %v, want %v", got, want)
 	}
@@ -1171,7 +1190,7 @@ func TestAggregateDefinitions_AttributesMeaningsPerPOS(t *testing.T) {
 		t.Errorf("ADJ definitionsET = %v, want [adj-def] (NOUN defs leaked in)",
 			adj.definitionsET)
 	}
-	adjT := sortedTranslations(adj)
+	adjT := orderedTranslations(adj)
 	if !equalStringSlices(adjT, []string{"yearly"}) {
 		t.Errorf("ADJ translations = %v, want [yearly] (NOUN translations leaked in)", adjT)
 	}
@@ -1184,7 +1203,7 @@ func TestAggregateDefinitions_AttributesMeaningsPerPOS(t *testing.T) {
 		t.Errorf("NOUN definitionsET = %v, want [noun-def-1 noun-def-2] (ADJ defs leaked in or order wrong)",
 			noun.definitionsET)
 	}
-	nounT := sortedTranslations(noun)
+	nounT := orderedTranslations(noun)
 	if !equalStringSlices(nounT, []string{"yearling"}) {
 		t.Errorf("NOUN translations = %v, want [yearling] (ADJ translations leaked in)", nounT)
 	}
