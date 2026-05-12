@@ -12,6 +12,87 @@ to be revisited.
 
 ---
 
+## 2026-05-12 — Downstream Finnish deck overrides mostly transfer to Estonian as trap classes
+
+**Source:** read-only sweep of the downstream Anki deck builder at
+`/Users/sagar/Downloads/projects/yle_subs`, which consumes FinEstDB
+`wordlist.tsv` and `sentences_user_friendly.tsv`, plus a local scan of
+`localdata/et-corpus/_derived/wordlist.tsv`.
+
+The deck builder's Finnish overrides are real production bug reports:
+each blocklist entry or manual rewrite is a parser output a learner saw
+and rejected. The exact Finnish surfaces mostly do not transfer to
+Estonian, but the failure modes do.
+
+**Count:** out of 16 distinct downstream lessons, 15 are useful for
+Estonian:
+
+| Lesson class | ET status | Notes |
+|--------------|-----------|-------|
+| Known analyzer traps as eval fixtures | Adapt | Seed ET fixtures from ET failures, not FI surfaces. |
+| MA-infinitive noun-cousin trap | Partial | ET has analogous `-ma` supine/case forms, but Ekilex already covers many as `VerbForm=Sup`. |
+| Lexicalized adverbs/adpositions misread as productive cases | Direct | Highest-value ET transfer. |
+| Sentence-level glossing for polysemy | Direct | Especially for adpositions/adverbs such as `peale`, `eest`, `pärast`, `sisse`, `välja`. |
+| Structural-gloss filter | Direct, source-aware | Keep Kaikki "form-of" glosses from becoming primary learner glosses; avoid broad false positives on Ekilex definitions. |
+| Trust-by-source scoring | Direct, nuanced | Agreement is useful signal, but dict+FST can agree on the same wrong case analysis. |
+| LLM grammar-note quality gate | Direct | Language-neutral: use LLMs only after deterministic checks and reject generic notes. |
+| Bare grammar cue drop | Direct | A cloze cue like "partitive" without a meaning anchor is bad in either language. |
+| Context-thinness QA | Direct | Learner examples need enough tokens around the target. |
+| Suspicious `suomi` language gloss heuristic | No, as written | Could become an ET-specific `eesti` heuristic later, but do not port literally. |
+| Long-gloss cleanup | Direct | First concise sense is better for card cues than a full dictionary string. |
+| TSV-as-config for reviewed corrections | Direct | Human-reviewed lexical traps should not require a code edit per correction. |
+| Two-log discipline | Direct | Keep user-visible behavior and parser/QA reasoning separately traceable. |
+| Sampling/morphology coverage reports | Direct | Baselines should expose POS/case/feature distribution, not only headline accuracy. |
+| `(lemma, pos) -> senses[]` API | Direct | Needed for contextual glossing instead of one primary gloss. |
+| LLM only for fuzzy judgment | Direct | Routing, regexes, ranking, and deterministic fallbacks stay in code. |
+
+**The strongest ET evidence is the frozen-adverb/adposition class.** A
+scan of the Estonian corpus wordlist found 3,137 surfaces where an `ADV`
+analysis exists but the parser choice is a case-marked non-`ADV`, covering
+about 38.0M corpus occurrences. High-frequency examples:
+
+| Surface | Bad chosen analysis | Better class |
+|---------|---------------------|--------------|
+| `välja` | `väli` NOUN, illative | `välja` ADV |
+| `seal` | `siga` ADJ/NOUN, adessive | `seal` ADV |
+| `sisse` | `siss` NOUN, partitive plural | `sisse` ADV/ADP |
+| `veel` | `vesi` NOUN, adessive | `veel` ADV |
+| `peale` | `pea` NOUN, allative | `peale` ADP/ADV |
+| `jaoks` | `jagu` NOUN, translative | ADP |
+| `lihtsalt` | `lihtne` ADJ, ablative | ADV |
+| `tegelikult` | `tegelik` ADJ, ablative | ADV |
+
+**Implications:**
+
+1. Add an Estonian analyzer-trap regression fixture seeded from the
+   high-frequency corpus failures above. The existing curated ET grammar
+   set has sentences containing `välja` and `sisse`, but those tokens are
+   not themselves asserted, so the bug is not locked.
+2. Add a small lexicalized closed-class override layer for ET
+   adverbs/adpositions before productive nominal case readings. This
+   belongs near `pkg/lemmatizer-fi-et/` or a shared lexical override
+   layer, not as another suffix-table expansion.
+3. Treat dict/FST agreement as strong but not absolute. For ET, agreement
+   can reinforce the same misleading case-shaped lemma, so scoring needs
+   a lexicalized closed-class escape hatch.
+4. Add a source-aware structural-gloss filter at ingest. Kaikki-style
+   "inflection of" and "case singular of" glosses should not be primary
+   learner definitions, but Ekilex phrases containing "form of" can be
+   legitimate and should not be rejected by an over-broad regex.
+5. Expose multiple senses by `(lang, lemma, pos)` so downstream consumers
+   can choose sentence-appropriate glosses instead of reverse-engineering
+   them from one primary definition.
+6. Carry the deck-builder QA rules into parser/deck baselines: context
+   thinness, bare grammar cue rejection, concise gloss cleanup, and
+   morphology distribution summaries.
+
+**Strategy:** downstream learner overrides are not one-off card-builder
+quirks. Treat them as a free parser-feedback corpus. Port the failure
+class cross-language when the morphology is shared, but seed regression
+fixtures from the target language's own high-frequency corpus output.
+
+---
+
 ## 2026-05-07 — Pre-policy FST scheduling experiment was not production evidence
 
 **Source:** historical integration test merging pre-policy versions of PRs
