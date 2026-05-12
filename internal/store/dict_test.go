@@ -147,6 +147,25 @@ func TestBatchLookupAllForms_CaseFolding(t *testing.T) {
 	}
 }
 
+func TestBatchLookupAllForms_FiltersBadDictLemmas(t *testing.T) {
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"varsin", "varsi", "NOUN", "FI"},
+		{"varsin", "varsin", "ADV", "FI"},
+		{"poliisissa", "poli", "NOUN", "FI"},
+	})
+
+	got := db.BatchLookupAllForms([]string{"varsin", "poliisissa"}, "FI", "basic")
+
+	cands := got["varsin"]
+	if len(cands) != 1 || cands[0].Lemma != "varsin" || cands[0].POS != "ADV" {
+		t.Fatalf("varsin candidates=%+v want only varsin/ADV after bad-lemma filtering", cands)
+	}
+	if _, ok := got["poliisissa"]; ok {
+		t.Fatalf("poliisissa candidates=%+v want absent after always-bad lemma filtering", got["poliisissa"])
+	}
+}
+
 // TestBatchLookupAllForms_FI_MaInfinitiveCorrectsNounCousin proves that
 // when kaikki has the buggy (lemma=tarjoama, pos=VERB) row for the
 // MA-infinitive surface `tarjoamaan`, the FI homonym-expansion path
@@ -378,13 +397,13 @@ func TestBatchLookupAllForms_LexOverlaySuppressesRawDictTrapsInCustomMode(t *tes
 func TestBatchLookupAllForms_LexOverlayBasicModeNotAffected(t *testing.T) {
 	db := newTestDB(t)
 	seedForms(t, db, [][4]string{
-		{"varsin", "varsi", "NOUN", "FI"},
+		{"tuskin", "tuska", "NOUN", "FI"},
 		{"välja", "väli", "NOUN", "ET"},
 	})
 
-	fi := db.BatchLookupAllForms([]string{"varsin"}, "FI", "basic")
-	if cands := fi["varsin"]; len(cands) != 1 || cands[0].Lemma != "varsi" || cands[0].POS != "NOUN" || cands[0].Source != "dict" {
-		t.Fatalf("basic FI candidates=%+v, want raw dict varsi/NOUN", cands)
+	fi := db.BatchLookupAllForms([]string{"tuskin"}, "FI", "basic")
+	if cands := fi["tuskin"]; len(cands) != 1 || cands[0].Lemma != "tuska" || cands[0].POS != "NOUN" || cands[0].Source != "dict" {
+		t.Fatalf("basic FI candidates=%+v, want raw dict tuska/NOUN", cands)
 	}
 	et := db.BatchLookupAllForms([]string{"välja"}, "ET", "basic")
 	if cands := et["välja"]; len(cands) != 1 || cands[0].Lemma != "väli" || cands[0].POS != "NOUN" || cands[0].Source != "dict" {
