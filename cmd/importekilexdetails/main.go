@@ -855,7 +855,36 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 	}
 	defer stmt.Close()
 
+	stmtInvariant, err := tx.Prepare(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+		 VALUES (?, ?, ?, 'ET', 'ekilex', 20, '')
+		 ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET
+		   source = excluded.source,
+		   source_priority = excluded.source_priority,
+		   feats = ''
+		 WHERE forms.source_priority <= excluded.source_priority`,
+	)
+	if err != nil {
+		return 0, err
+	}
+	defer stmtInvariant.Close()
+
+	stmtNominative, err := tx.Prepare(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+		 VALUES (?, ?, ?, 'ET', 'ekilex', 20, ?)
+		 ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET
+		   source = excluded.source,
+		   source_priority = excluded.source_priority,
+		   feats = excluded.feats
+		 WHERE forms.source_priority <= excluded.source_priority`,
+	)
+	if err != nil {
+		return 0, err
+	}
+	defer stmtNominative.Close()
+
 	inserted := 0
+	invariantFormKeys := map[string]struct{}{}
 	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -904,6 +933,33 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 				if !posMatchesMorphClass(upos, class) {
 					continue
 				}
+				key := formImportKey(form, lemma, upos)
+				if morphCode != "ID" {
+					if _, invariant := invariantFormKeys[key]; invariant {
+						continue
+					}
+				}
+				if morphCode == "ID" {
+					res, err := stmtInvariant.Exec(form, lemma, upos)
+					if err != nil {
+						return fmt.Errorf("insert invariant form %q %q %s: %w", form, lemma, upos, err)
+					}
+					invariantFormKeys[key] = struct{}{}
+					if n, _ := res.RowsAffected(); n == 1 {
+						inserted++
+					}
+					continue
+				}
+				if morphCode == "SgN" {
+					res, err := stmtNominative.Exec(form, lemma, upos, feats)
+					if err != nil {
+						return fmt.Errorf("insert nominative form %q %q %s: %w", form, lemma, upos, err)
+					}
+					if n, _ := res.RowsAffected(); n == 1 {
+						inserted++
+					}
+					continue
+				}
 				res, err := stmt.Exec(form, lemma, upos, feats)
 				if err != nil {
 					return fmt.Errorf("insert form %q %q %s: %w", form, lemma, upos, err)
@@ -922,6 +978,10 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 		return 0, err
 	}
 	return inserted, nil
+}
+
+func formImportKey(form, lemma, upos string) string {
+	return form + "\x00" + lemma + "\x00" + upos
 }
 
 func upsertDictMetadata(db *sql.DB, source string, rowCount int) error {

@@ -293,6 +293,78 @@ func TestImporter_EndToEnd_HandlesHomonymsAndEmptyGlossGuard(t *testing.T) {
 	}
 }
 
+func TestImportForms_InvariantIDKeepsEmptyFeats(t *testing.T) {
+	tmp := t.TempDir()
+	formsDir := filepath.Join(tmp, "forms")
+	if err := writeAll(formsDir, "e.tsv",
+		"lemma\tform\tmorph_code\n"+
+			"ei\tei\tID\n"+
+			"ei\tei\tSgG\n"+
+			"ei\tei\tSgN\n",
+	); err != nil {
+		t.Fatalf("write forms: %v", err)
+	}
+
+	db, err := sql.Open("sqlite3", filepath.Join(tmp, "test.db"))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	lemmaPOS := lemmaPOSMap{}
+	lemmaPOS.add("ei", "ADV", []string{"no", "not"}, nil)
+	if _, err := importForms(db, formsDir, lemmaPOS); err != nil {
+		t.Fatalf("importForms: %v", err)
+	}
+
+	var feats string
+	if err := db.QueryRow(`SELECT COALESCE(feats, '') FROM forms WHERE form='ei' AND lemma='ei' AND pos='ADV' AND lang='ET'`).Scan(&feats); err != nil {
+		t.Fatalf("query feats: %v", err)
+	}
+	if feats != "" {
+		t.Errorf("ei ADV feats = %q, want empty because ID marks the invariant word", feats)
+	}
+}
+
+func TestImportForms_PrefersBareNominativeOverAditiveDuplicate(t *testing.T) {
+	tmp := t.TempDir()
+	formsDir := filepath.Join(tmp, "forms")
+	if err := writeAll(formsDir, "m.tsv",
+		"lemma\tform\tmorph_code\n"+
+			"mA\tmA\tSgAdt\n"+
+			"mA\tmA\tSgG\n"+
+			"mA\tmA\tSgN\n",
+	); err != nil {
+		t.Fatalf("write forms: %v", err)
+	}
+
+	db, err := sql.Open("sqlite3", filepath.Join(tmp, "test.db"))
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	lemmaPOS := lemmaPOSMap{}
+	lemmaPOS.add("mA", "NOUN", nil, []string{"milliamper"})
+	if _, err := importForms(db, formsDir, lemmaPOS); err != nil {
+		t.Fatalf("importForms: %v", err)
+	}
+
+	var feats string
+	if err := db.QueryRow(`SELECT COALESCE(feats, '') FROM forms WHERE form='ma' AND lemma='mA' AND pos='NOUN' AND lang='ET'`).Scan(&feats); err != nil {
+		t.Fatalf("query feats: %v", err)
+	}
+	if feats != "Case=Nom|Number=Sing" {
+		t.Errorf("mA bare-form feats = %q, want nominative despite earlier SgAdt/SgG duplicates", feats)
+	}
+}
+
 // TestImporter_MergesGlossesAcrossHomonyms guards against the P2 regression
 // codex flagged: two Ekilex entries that collapse into the same
 // (lemma, pos, lang) row (e.g. aste#1 "step" + aste#2 "degree", both NOUN)

@@ -23,6 +23,105 @@ choices we did.
 
 ---
 
+## Decision 22: Source-backed ET learner corrections stay deterministic
+
+**Date:** 2026-05-12
+
+### Context
+
+A manual audit of Estonian parse rows flagged cases where the learner
+surface was misleading even though the row could be traced to local
+Ekilex-derived data:
+
+- `olema/VERB` could show the translation `accompany` instead of the
+  learner-primary `be`.
+- `see/PRON`, `väike/ADJ`, `et/CCONJ`, and `kui/CCONJ` could expose
+  low-value source translations such as `current`, `delicate`,
+  `as if`, or `albeit` ahead of the expected learner gloss.
+- `ei`, `kui`, and other invariant closed-class rows could inherit
+  nominal case FEATS from duplicate Ekilex form rows, producing labels
+  like genitive or illative on words where a case label is not
+  learner-meaningful.
+- Special-capitalized dictionary entries such as `mA` and `MA` were
+  indexed under lowercase `ma`, so the pronoun `ma` could collide with
+  unit or degree abbreviations.
+- ET-only source definitions such as `sina/NOUN` described an Estonian
+  color noun, not the high-frequency pronoun the learner expects.
+
+The important source rule is that the parser must not invent
+Sõnaveeb/Ekilex content. If a weird translation is displayed, we need
+to know whether it is present in the source artifacts and then decide
+whether it belongs in the learner-primary slot.
+
+### Decision
+
+Keep this correction path deterministic and auditable:
+
+1. Treat reduced Ekilex artifacts and Sõnaveeb pages as provenance for
+   source claims. A translation being present in the local Ekilex shard
+   is not by itself enough to make it the learner-primary gloss.
+2. Use small learner gloss overrides for high-frequency ET closed-class
+   rows where source ordering is not suitable for the app:
+   `ei/ADV -> "no; not"`, `et/CCONJ -> "that"`,
+   `kui/CCONJ -> "when; if; as; than"`, `olema/VERB -> "be"`,
+   plus the existing `see/PRON` and `väike/ADJ` overrides.
+3. Require exact surface capitalization for bare special-capitalized
+   dictionary lemmas. `ma` and sentence-initial `Ma` resolve to the
+   pronoun; exact `mA` or `MA` may resolve to their abbreviation rows.
+4. Sanitize misleading FEATS at runtime for already-imported DBs:
+   nominal case-only FEATS on invariant closed-class exact rows are
+   cleared, and exact ET verb dictionary forms with
+   `Case=Ill|VerbForm=Sup` display as `VerbForm=Inf`.
+5. Change future Ekilex form imports so `ID` rows keep empty FEATS and
+   same-key `SgN` rows can overwrite earlier stale case duplicates with
+   nominative FEATS.
+6. Filter known ET source-language-only trap alternatives by exact
+   `(surface, lemma, POS)`, for example `kui/NOUN`, so stale nominal
+   FEATS cannot outrank the real closed-class readings.
+7. Add ET lexical-overlay entries for `ei`, `ma`, and `sina` in custom
+   mode. These are deterministic closed-class corrections, not
+   generated guesses.
+
+### Reasoning
+
+This keeps source fidelity separate from learner presentation. The
+source artifacts can contain long-tail translations, abbreviations,
+symbols, and source-language-only definitions that are real data but
+bad first choices for a language-learning parse row. The parser should
+record and use those sources, but the learner-primary gloss should be a
+small curated decision when high-frequency function words are involved.
+
+Importer fixes are the durable answer for future DB builds, but runtime
+sanitization is still necessary because developers and deployments can
+already have a 5+ GB SQLite DB built from the previous importer. The
+runtime guard is deliberately narrow: it only clears nominal case-only
+FEATS from invariant closed-class exact rows, and it normalizes exact
+special-capitalized dictionary forms to bare nominative display instead
+of exposing stale illative/genitive labels.
+
+Exact capitalization is also a source-fidelity rule. If Ekilex has
+separate `mA` or `MA` entries, lowercasing them into the same learner
+surface as `ma` loses information and lets abbreviations beat the
+pronoun. Matching special-capitalized lemmas exactly preserves those
+entries for exact input while protecting ordinary text.
+
+No LLM call belongs in this path. The failures are exact lookup,
+capitalization, morphology-code, and source-priority problems; each has
+a deterministic rule and a focused regression test.
+
+### Source
+
+The audited values were checked against the local reduced Ekilex shards
+under `localdata/ekilex/{definitions,forms}` and the public Sõnaveeb
+lookup pages for the reported words. The importer behavior is pinned by
+`cmd/importekilexdetails` tests; runtime behavior is pinned by
+`internal/store` and `pkg/lemmatizer-fi-et/lexadverbs` tests.
+
+**See also:** [CHANGELOG.md §2026-05-12 — Source-backed ET learner
+cleanup](CHANGELOG.md), [PARSER_EVOLUTION.md §2026-05-12b](PARSER_EVOLUTION.md).
+
+---
+
 ## Product Vision
 
 FinEstDB is a **JPDB clone for Finnish and Estonian**. The core user flow:
@@ -1246,3 +1345,4 @@ _Questions are date-tagged with the date they were first recorded._
 | 2026-05-07 | Decision 5 amended (PR #139): case-suffix stopgap also projects UD `Case=` into `forms.feats` via `featsFromCaseLabel`; suffix table itself stays frozen. **Decision 14 (kaikki `feats` not backfilled) reversed**: `cmd/importdict/feats.go::kaikkiTagsToFeats` now projects Wiktionary tag arrays into UD FEATS at import time, populating `forms.feats` for every kaikki row |
 | 2026-05-12 | Decision 20 added: lexical-overlay short-circuit and curated bad-lemma blocklists (PR #183) |
 | 2026-05-12 | Decision 21 added: source priority outranks generic FST support and morphology ties in the merged dict+FST ranker (PR #187) |
+| 2026-05-12 | Decision 22 added: source-backed ET learner corrections stay deterministic and source-audited |

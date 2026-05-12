@@ -61,10 +61,10 @@ var fiOverlay = map[string]Analysis{
 		Feats:        "Case=Ill|Number=Sing",
 	},
 	"enemmän": {
-		Lemma:    "paljon",
-		UPOS:     "ADV",
-		Degree:   "Cmp",
-		Feats:    "Degree=Cmp",
+		Lemma:  "paljon",
+		UPOS:   "ADV",
+		Degree: "Cmp",
+		Feats:  "Degree=Cmp",
 	},
 	"kotona": {
 		Lemma:        "koti",
@@ -147,14 +147,16 @@ var fiOverlay = map[string]Analysis{
 // failures; the productive case reading for each is essentially
 // never the intended meaning in modern Estonian prose.
 //
-// Closed-class adpositions (ADP) and adverbs (ADV) sit side-by-side
-// because the user-facing learner distinction between them is fuzzy
-// — `peale` can carry either tag depending on context, but the bug
-// being patched is the same: the parser fires a productive case
-// reading (e.g. `pea`/NOUN/Allative) on a closed-class form. We pick
-// the most informative single tag and let the contextual gloss
-// layer (TODO from yle_subs) handle ADV-vs-ADP disambiguation later.
+// Closed-class adpositions (ADP), adverbs (ADV), particles, and pronouns
+// sit side-by-side because the bug being patched is the same: the parser
+// fires a productive case or noun reading on a high-frequency function
+// word. We pick the most informative single tag and let the contextual
+// gloss layer (TODO from yle_subs) handle finer disambiguation later.
 var etOverlay = map[string]Analysis{
+	"ei": {
+		Lemma: "ei",
+		UPOS:  "ADV",
+	},
 	"eest": {
 		Lemma: "eest",
 		UPOS:  "ADP",
@@ -166,6 +168,13 @@ var etOverlay = map[string]Analysis{
 	"lihtsalt": {
 		Lemma: "lihtsalt",
 		UPOS:  "ADV",
+	},
+	"ma": {
+		Lemma:  "ma",
+		UPOS:   "PRON",
+		Number: "Sing",
+		Person: "1",
+		Feats:  "Case=Nom|Number=Sing|Person=1|PronType=Prs",
 	},
 	"peale": {
 		Lemma: "peale",
@@ -182,6 +191,13 @@ var etOverlay = map[string]Analysis{
 	"sisse": {
 		Lemma: "sisse",
 		UPOS:  "ADV",
+	},
+	"sina": {
+		Lemma:  "sina",
+		UPOS:   "PRON",
+		Number: "Sing",
+		Person: "2",
+		Feats:  "Case=Nom|Number=Sing|Person=2|PronType=Prs",
 	},
 	"ta": {
 		// `ta` is the high-frequency personal pronoun, not Ekilex's

@@ -115,11 +115,14 @@ traps before any general-purpose ranking runs.
    adverbs the parser keeps unfolding as productive case forms),
    Finnish `vuotta`/`siitä`/`muuta` (kaikki-imported with bad
    lemmas), and Estonian `peale`/`jaoks`/`seal`/`välja` (closed-class
-   adpositions/adverbs read as productive case). When the overlay
-   hits, the curated analysis is returned outright and Steps 1 and 5
-   are skipped. Source tag `lex-overlay` lets eval reports attribute
-   hits to this layer. The overlay is custom-mode-only: basic-mode
-   baselines stay stable.
+   adpositions/adverbs read as productive case). The ET table also
+   covers high-frequency closed-class learner traps such as `ei`,
+   `ma`, and `sina`, where raw dictionary alternatives include nominal,
+   abbreviation, or source-language-only rows. When the overlay hits,
+   the curated analysis is returned outright and Steps 1 and 5 are
+   skipped. Source tag `lex-overlay` lets eval reports attribute hits
+   to this layer. The overlay is custom-mode-only: basic-mode baselines
+   stay stable.
 1. **Direct dictionary hits.** The store now treats dictionary rows and
    generated-table FST analyses as one candidate set for the surface
    form. Candidates are keyed by `(lemma, POS)`.
@@ -140,6 +143,32 @@ The direct-hit merge is deliberately conservative:
   authoritative for now, even if the FST analysis is richer.
 - If local FST tables are missing, behavior degrades to the dictionary
   path plus the existing case-suffix label stopgap.
+
+#### ET source-backed learner guards (2026.05.12b)
+
+The ET dictionary path has two narrow guards for Sõnaveeb/Ekilex-backed
+data that is valid as source data but misleading as a learner-primary
+parse row:
+
+- Special-capitalized lemmas such as `mA` and `MA` require an exact
+  bare-surface match. Lowercase `ma` and sentence-initial `Ma` resolve
+  to the pronoun, while exact `mA`/`MA` can still reach their source
+  dictionary entries.
+- Nominal case-only FEATS are cleared from invariant closed-class exact
+  rows (`ADV`, `ADP`, `CCONJ`, `SCONJ`, `INTJ`, `PART`, `X`). This
+  prevents duplicate Ekilex morphology rows from displaying genitive or
+  illative labels on words such as `ei` and `kui`.
+- Exact ET verb dictionary forms whose source FEATS are
+  `Case=Ill|VerbForm=Sup` display as `VerbForm=Inf`, so entries such
+  as `olema` do not show learner-facing case labels.
+- Known ET source-language-only alternatives are filtered by exact
+  `(surface, lemma, POS)`, for example `kui/NOUN`, so stale nominal
+  FEATS cannot outrank useful closed-class readings.
+
+The runtime guard protects already-built SQLite dictionaries. Future
+Ekilex imports also handle this at source: `ID` form rows keep empty
+FEATS, and same-key `SgN` rows can replace earlier stale case
+duplicates with nominative FEATS for bare dictionary forms.
 
 #### MA-infinitive bias (PR #183)
 
