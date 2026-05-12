@@ -113,6 +113,42 @@ func TestNaturalLessOrdersNumericSuffixes(t *testing.T) {
 	}
 }
 
+func TestExtractMetadataFromOPF(t *testing.T) {
+	opf := `<?xml version="1.0"?><package><metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+		<dc:creator/>
+		<dc:title>Väike prints</dc:title>
+		<dc:creator opf:role="aut">Antoine de Saint-Exupéry</dc:creator>
+	</metadata></package>`
+	data := buildEPUB(t, map[string]string{
+		"OEBPS/content.opf":       opf,
+		"OEBPS/Text/ch01.xhtml":   `<html><body><p>Body.</p></body></html>`,
+	})
+
+	meta, err := ExtractMetadataFromBytes(data)
+	if err != nil {
+		t.Fatalf("ExtractMetadataFromBytes: %v", err)
+	}
+	if meta.Title != "Väike prints" {
+		t.Fatalf("Title = %q, want %q", meta.Title, "Väike prints")
+	}
+	if meta.Author != "Antoine de Saint-Exupéry" {
+		t.Fatalf("Author = %q, want %q", meta.Author, "Antoine de Saint-Exupéry")
+	}
+}
+
+func TestExtractMetadataMissingOPF(t *testing.T) {
+	data := buildEPUB(t, map[string]string{
+		"OEBPS/Text/ch01.xhtml": `<html><body><p>Body.</p></body></html>`,
+	})
+	meta, err := ExtractMetadataFromBytes(data)
+	if err != nil {
+		t.Fatalf("ExtractMetadataFromBytes: %v", err)
+	}
+	if meta.Title != "" || meta.Author != "" {
+		t.Fatalf("expected empty metadata, got %+v", meta)
+	}
+}
+
 func TestExtractChaptersDropsHeadTitleAndDRMFile(t *testing.T) {
 	data := buildEPUB(t, map[string]string{
 		"OEBPS/Text/ch1.xhtml": `<html><head><title>filename-leak</title></head><body><h1>Chapter One</h1><p>Body sentence.</p></body></html>`,

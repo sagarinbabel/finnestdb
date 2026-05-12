@@ -508,11 +508,14 @@
     <!-- ==================== SHARED RESULTS ==================== -->
     <div id="results-page" class="page">
         <main class="results-main">
+            <div class="results-header">
+                <button id="results-back" class="btn btn-link">← Back</button>
+                <h2 id="results-title">Results</h2>
+            </div>
+            <div class="results-split">
+            <aside class="results-chapter-nav hidden" id="results-chapter-nav" aria-label="Filter results by chapter"></aside>
+            <div class="results-body">
             <section class="results-summary">
-                <div class="results-header">
-                    <button id="results-back" class="btn btn-link">← Back</button>
-                    <h2 id="results-title">Results</h2>
-                </div>
                 <div id="results-meta" class="results-meta">
                     <span id="results-parser" class="results-pill"></span>
                     <div id="results-coverage" class="coverage-gauge">
@@ -540,29 +543,38 @@
                 </div>
             </section>
 
+            <div id="pos-filter-bar" class="pos-filter-bar">
+                <button type="button" class="pos-filter-chip active" data-filter="all">All</button>
+                <button type="button" class="pos-filter-chip" data-filter="NOUN">Nouns</button>
+                <button type="button" class="pos-filter-chip" data-filter="VERB">Verbs</button>
+                <button type="button" class="pos-filter-chip" data-filter="ADJ">Adjectives</button>
+                <button type="button" class="pos-filter-chip" data-filter="ADV">Adverbs</button>
+                <button type="button" class="pos-filter-chip" data-filter="other">Other</button>
+            </div>
+
             <section class="results-table-section">
-                <div id="pos-filter-bar" class="pos-filter-bar">
-                    <button type="button" class="pos-filter-chip active" data-filter="all">All</button>
-                    <button type="button" class="pos-filter-chip" data-filter="NOUN">Nouns</button>
-                    <button type="button" class="pos-filter-chip" data-filter="VERB">Verbs</button>
-                    <button type="button" class="pos-filter-chip" data-filter="ADJ">Adjectives</button>
-                    <button type="button" class="pos-filter-chip" data-filter="ADV">Adverbs</button>
-                    <button type="button" class="pos-filter-chip" data-filter="other">Other</button>
+                <div class="word-table-header-wrap">
+                    <table class="word-table word-table-header">
+                        <thead>
+                            <tr>
+                                <th class="col-row">#</th>
+                                <th class="col-lemma"><button type="button" class="sort-btn" data-sort="lemma">Dictionary Form<span class="sort-arrow" aria-hidden="true"></span></button></th>
+                                <th class="col-def"><button type="button" class="sort-btn" data-sort="definition">Definition<span class="sort-arrow" aria-hidden="true"></span></button></th>
+                                <th class="col-count"><button type="button" class="sort-btn" data-sort="tokens">Occurrences<span class="sort-arrow" aria-hidden="true"></span></button></th>
+                                <th class="col-actions" data-role-show="user admin">Status</th>
+                            </tr>
+                        </thead>
+                    </table>
                 </div>
-                <table class="word-table" id="word-table">
-                    <thead>
-                        <tr>
-                            <th class="col-row">#</th>
-                            <th class="col-lemma"><button type="button" class="sort-btn" data-sort="lemma">Dictionary Form<span class="sort-arrow" aria-hidden="true"></span></button></th>
-                            <th class="col-def"><button type="button" class="sort-btn" data-sort="definition">Definition<span class="sort-arrow" aria-hidden="true"></span></button></th>
-                            <th class="col-count"><button type="button" class="sort-btn" data-sort="tokens">Occurrences<span class="sort-arrow" aria-hidden="true"></span></button></th>
-                            <th class="col-actions" data-role-show="user admin">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="word-table-body">
-                    </tbody>
-                </table>
+                <div class="word-table-scroll">
+                    <table class="word-table word-table-body" id="word-table">
+                        <tbody id="word-table-body">
+                        </tbody>
+                    </table>
+                </div>
             </section>
+            </div>
+            </div>
         </main>
     </div>
 

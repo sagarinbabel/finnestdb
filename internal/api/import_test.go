@@ -46,6 +46,28 @@ func buildMinimalEPUB(t *testing.T, body string) []byte {
 	return buf.Bytes()
 }
 
+func buildEPUBWithOPF(t *testing.T, opf, body string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for name, content := range map[string]string{
+		"OEBPS/content.opf":     opf,
+		"OEBPS/Text/ch01.xhtml": body,
+	} {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatalf("zip create %s: %v", name, err)
+		}
+		if _, err := w.Write([]byte(content)); err != nil {
+			t.Fatalf("zip write %s: %v", name, err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("zip close: %v", err)
+	}
+	return buf.Bytes()
+}
+
 func postImportExtract(t *testing.T, mux *http.ServeMux, cookies []*http.Cookie, filename string, content []byte) *httptest.ResponseRecorder {
 	t.Helper()
 	body, contentType := newMultipartUpload(t, filename, content)
@@ -142,6 +164,33 @@ func TestHandleImportExtractEPUB(t *testing.T) {
 	}
 	if !strings.Contains(resp.Chapters[0].Text, "Kalevala alkaa täältä") {
 		t.Fatalf("chapter[0].Text missing body: %q", resp.Chapters[0].Text)
+	}
+}
+
+func TestHandleImportExtractEPUBSurfacesBookMetadata(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "import-epub-meta@example.com")
+
+	opf := `<?xml version="1.0"?><package><metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+		<dc:title>Väike prints</dc:title>
+		<dc:creator opf:role="aut">Antoine de Saint-Exupéry</dc:creator>
+	</metadata></package>`
+	body := `<html><body><p>Body.</p></body></html>`
+	rec := postImportExtract(t, mux, cookies, "vp.epub", buildEPUBWithOPF(t, opf, body))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d body=%q", rec.Code, rec.Body.String())
+	}
+	var resp ImportExtractResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.BookTitle != "Väike prints" {
+		t.Fatalf("BookTitle = %q, want %q", resp.BookTitle, "Väike prints")
+	}
+	if resp.BookAuthor != "Antoine de Saint-Exupéry" {
+		t.Fatalf("BookAuthor = %q, want %q", resp.BookAuthor, "Antoine de Saint-Exupéry")
 	}
 }
 

@@ -21,11 +21,13 @@ const (
 )
 
 type ImportExtractResponse struct {
-	Text      string           `json:"text"`
-	Filename  string           `json:"filename"`
-	CharCount int              `json:"char_count"`
-	Truncated bool             `json:"truncated"`
-	Chapters  []ImportChapter  `json:"chapters,omitempty"`
+	Text       string          `json:"text"`
+	Filename   string          `json:"filename"`
+	CharCount  int             `json:"char_count"`
+	Truncated  bool            `json:"truncated"`
+	BookTitle  string          `json:"book_title,omitempty"`
+	BookAuthor string          `json:"book_author,omitempty"`
+	Chapters   []ImportChapter `json:"chapters,omitempty"`
 }
 
 type ImportChapter struct {
@@ -67,7 +69,7 @@ func (a *API) HandleImportExtract(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	text, chapters, err := extractUploadedContent(file, header.Filename, header.Size)
+	text, chapters, meta, err := extractUploadedContent(file, header.Filename, header.Size)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -80,39 +82,45 @@ func (a *API) HandleImportExtract(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, ImportExtractResponse{
-		Text:      text,
-		Filename:  filepath.Base(header.Filename),
-		CharCount: utf8.RuneCountInString(text),
-		Truncated: truncated,
-		Chapters:  chapters,
+		Text:       text,
+		Filename:   filepath.Base(header.Filename),
+		CharCount:  utf8.RuneCountInString(text),
+		Truncated:  truncated,
+		BookTitle:  meta.Title,
+		BookAuthor: meta.Author,
+		Chapters:   chapters,
 	})
 }
 
 // extractUploadedContent reads file content and returns plain text plus, for
-// EPUBs, per-chapter structure. size is the declared content length from the
-// multipart header; we read up to maxImportUploadBytes regardless.
-func extractUploadedContent(file io.Reader, filename string, size int64) (string, []ImportChapter, error) {
+// EPUBs, per-chapter structure and book metadata. size is the declared
+// content length from the multipart header; we read up to
+// maxImportUploadBytes regardless.
+func extractUploadedContent(file io.Reader, filename string, size int64) (string, []ImportChapter, epub.BookMetadata, error) {
 	ext := strings.ToLower(filepath.Ext(filename))
 	switch ext {
 	case ".txt", ".md":
 		data, err := io.ReadAll(file)
 		if err != nil {
-			return "", nil, errors.New("could not read uploaded file")
+			return "", nil, epub.BookMetadata{}, errors.New("could not read uploaded file")
 		}
 		if !utf8.Valid(data) {
-			return "", nil, errors.New("file is not valid UTF-8")
+			return "", nil, epub.BookMetadata{}, errors.New("file is not valid UTF-8")
 		}
-		return string(data), nil, nil
+		return string(data), nil, epub.BookMetadata{}, nil
 	case ".epub":
 		// archive/zip needs ReaderAt + size, so buffer the whole upload first.
 		data, err := io.ReadAll(file)
 		if err != nil {
-			return "", nil, errors.New("could not read uploaded EPUB")
+			return "", nil, epub.BookMetadata{}, errors.New("could not read uploaded EPUB")
 		}
 		chapters, err := epub.ExtractChaptersFromBytes(data)
 		if err != nil {
-			return "", nil, err
+			return "", nil, epub.BookMetadata{}, err
 		}
+		// Best-effort metadata read — a malformed OPF shouldn't fail the
+		// whole import. zero-value metadata is fine.
+		meta, _ := epub.ExtractMetadataFromBytes(data)
 		out := make([]ImportChapter, 0, len(chapters))
 		var sb strings.Builder
 		for _, ch := range chapters {
@@ -125,9 +133,9 @@ func extractUploadedContent(file io.Reader, filename string, size int64) (string
 			sb.WriteByte('\n')
 			sb.WriteByte('\n')
 		}
-		return strings.TrimSpace(sb.String()), out, nil
+		return strings.TrimSpace(sb.String()), out, meta, nil
 	default:
-		return "", nil, errors.New("unsupported file type: only .txt, .md, and .epub are accepted")
+		return "", nil, epub.BookMetadata{}, errors.New("unsupported file type: only .txt, .md, and .epub are accepted")
 	}
 }
 

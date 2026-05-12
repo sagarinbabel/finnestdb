@@ -27,6 +27,29 @@ type Chapter struct {
 	Text string
 }
 
+// BookMetadata holds the Dublin Core metadata an EPUB advertises in its OPF
+// package file. Empty fields mean the EPUB didn't supply them.
+type BookMetadata struct {
+	Title  string // <dc:title>
+	Author string // <dc:creator>
+}
+
+// ExtractMetadata returns the book's title/author from the EPUB's OPF
+// package, falling back to empty strings when fields are missing. Errors on
+// invalid zip but never on missing metadata — a metadata-less EPUB is valid.
+func ExtractMetadata(r io.ReaderAt, size int64) (BookMetadata, error) {
+	zr, err := zip.NewReader(r, size)
+	if err != nil {
+		return BookMetadata{}, fmt.Errorf("read epub: %w", err)
+	}
+	return readMetadataFromZip(zr), nil
+}
+
+// ExtractMetadataFromBytes is a convenience wrapper around ExtractMetadata.
+func ExtractMetadataFromBytes(data []byte) (BookMetadata, error) {
+	return ExtractMetadata(bytes.NewReader(data), int64(len(data)))
+}
+
 // ExtractChapters returns each XHTML/HTML content document in the EPUB as a
 // separate Chapter, in alphabetical filename order. Documents whose body is
 // empty after stripping are skipped. Returns an error if the bytes are not a
@@ -118,6 +141,52 @@ var (
 	reH1Tag    = regexp.MustCompile(`(?is)<h1\b[^>]*>(.*?)</h1\s*>`)
 	reTitleTag = regexp.MustCompile(`(?is)<title\b[^>]*>(.*?)</title\s*>`)
 )
+
+// readMetadataFromZip walks the zip for an OPF package file and pulls
+// <dc:title> / <dc:creator> out of it. Returns zero-value metadata if no OPF
+// is present or its dc fields are empty.
+func readMetadataFromZip(zr *zip.Reader) BookMetadata {
+	for _, f := range zr.File {
+		if !strings.HasSuffix(strings.ToLower(f.Name), ".opf") {
+			continue
+		}
+		rc, err := f.Open()
+		if err != nil {
+			continue
+		}
+		raw, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			continue
+		}
+		return parseOPFMetadata(string(raw))
+	}
+	return BookMetadata{}
+}
+
+var (
+	// `[^/>]*` in the open-tag attribute slot excludes self-closing forms
+	// (`<dc:title/>`) so the non-greedy body doesn't span across the empty
+	// element into the next element's content.
+	reDCTitle   = regexp.MustCompile(`(?is)<dc:title\b[^/>]*>(.*?)</dc:title\s*>`)
+	reDCCreator = regexp.MustCompile(`(?is)<dc:creator\b[^/>]*>(.*?)</dc:creator\s*>`)
+)
+
+func parseOPFMetadata(opf string) BookMetadata {
+	out := BookMetadata{}
+	if m := reDCTitle.FindStringSubmatch(opf); len(m) == 2 {
+		out.Title = strings.TrimSpace(stripXHTML(m[1]))
+	}
+	// First non-empty <dc:creator> wins. EPUBs sometimes declare an empty
+	// placeholder before the real one.
+	for _, m := range reDCCreator.FindAllStringSubmatch(opf, -1) {
+		if name := strings.TrimSpace(stripXHTML(m[1])); name != "" {
+			out.Author = name
+			break
+		}
+	}
+	return out
+}
 
 // isNonContentEPUBFile skips files that are HTML by extension but aren't
 // reading content — currently the iBooks DRM marker. Conservative: only known
