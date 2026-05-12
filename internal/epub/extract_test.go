@@ -30,9 +30,9 @@ func buildEPUB(t *testing.T, files map[string]string) []byte {
 
 func TestExtractTextConcatenatesChaptersInOrder(t *testing.T) {
 	data := buildEPUB(t, map[string]string{
-		"OEBPS/ch02.xhtml": `<html><body><p>Toinen luku.</p></body></html>`,
-		"OEBPS/ch01.xhtml": `<html><body><p>Ensimmäinen luku.</p></body></html>`,
-		"OEBPS/styles.css": `body { color: red; }`,
+		"OEBPS/ch02.xhtml":       `<html><body><p>Toinen luku.</p></body></html>`,
+		"OEBPS/ch01.xhtml":       `<html><body><p>Ensimmäinen luku.</p></body></html>`,
+		"OEBPS/styles.css":       `body { color: red; }`,
 		"META-INF/container.xml": `<container/>`,
 	})
 
@@ -98,7 +98,7 @@ func TestNaturalLessOrdersNumericSuffixes(t *testing.T) {
 		a, b string
 		want bool
 	}{
-		{"ch2.xhtml", "ch10.xhtml", true},   // numeric, not lexical
+		{"ch2.xhtml", "ch10.xhtml", true}, // numeric, not lexical
 		{"ch10.xhtml", "ch2.xhtml", false},
 		{"ch9.xhtml", "ch10.xhtml", true},
 		{"a.xhtml", "b.xhtml", true},
@@ -189,8 +189,8 @@ func TestExtractMetadataFromOPF(t *testing.T) {
 		<dc:creator opf:role="aut">Antoine de Saint-Exupéry</dc:creator>
 	</metadata></package>`
 	data := buildEPUB(t, map[string]string{
-		"OEBPS/content.opf":       opf,
-		"OEBPS/Text/ch01.xhtml":   `<html><body><p>Body.</p></body></html>`,
+		"OEBPS/content.opf":     opf,
+		"OEBPS/Text/ch01.xhtml": `<html><body><p>Body.</p></body></html>`,
 	})
 
 	meta, err := ExtractMetadataFromBytes(data)
@@ -220,7 +220,7 @@ func TestExtractMetadataMissingOPF(t *testing.T) {
 
 func TestExtractChaptersDropsHeadTitleAndDRMFile(t *testing.T) {
 	data := buildEPUB(t, map[string]string{
-		"OEBPS/Text/ch1.xhtml": `<html><head><title>filename-leak</title></head><body><h1>Chapter One</h1><p>Body sentence.</p></body></html>`,
+		"OEBPS/Text/ch1.xhtml":               `<html><head><title>filename-leak</title></head><body><h1>Chapter One</h1><p>Body sentence.</p></body></html>`,
 		"OEBPS/rrOwnerInfo/rrOwnerInfo.html": `<html><body><p>iBooks DRM marker — should not appear.</p></body></html>`,
 	})
 
@@ -236,6 +236,63 @@ func TestExtractChaptersDropsHeadTitleAndDRMFile(t *testing.T) {
 	}
 	if !strings.Contains(chapters[0].Text, "Body sentence.") {
 		t.Fatalf("chapter text missing body: %q", chapters[0].Text)
+	}
+}
+
+func TestExtractChaptersDropsPublisherFrontMatterPages(t *testing.T) {
+	data := buildEPUB(t, map[string]string{
+		"OEBPS/Text/part0001.xhtml": `<html><body>
+			<p>A.H. Tammsaare</p>
+			<p>TÕDE JA ÕIGUS</p>
+			<p>II</p>
+			<p>Romaan</p>
+			<p>Tartu: Noor-Eesti, 1929</p>
+			<p>Keeleliselt muutmata</p>
+			<p>See e-raamat on skaneeritud ja koostatud Tartu Linnaraamatukogus.</p>
+			<p>E-raamat on ilmunud Kultuuriministeeriumi programmi „Eesti kirjandus" toel.</p>
+		</body></html>`,
+		"OEBPS/Text/part0002.xhtml": `<html><body>
+			<h1>Esimene peatükk</h1>
+			<p>Valgus langes aknast sisse ja Mari hakkas tasa lugema.</p>
+		</body></html>`,
+		"OEBPS/Text/part0003.xhtml": `<html><body>
+			<p>© Rahva Raamat AS</p>
+			<p>Originaalpealkiri: Le Petit Prince, 1943</p>
+		</body></html>`,
+	})
+
+	chapters, err := ExtractChaptersFromBytes(data)
+	if err != nil {
+		t.Fatalf("ExtractChaptersFromBytes: %v", err)
+	}
+	if len(chapters) != 1 {
+		t.Fatalf("got %d chapters, want 1; titles=%v", len(chapters), chapterTitles(chapters))
+	}
+	if strings.Contains(chapters[0].Text, "Kultuuriministeeriumi") ||
+		strings.Contains(chapters[0].Text, "Rahva Raamat") ||
+		strings.Contains(chapters[0].Text, "Originaalpealkiri") {
+		t.Fatalf("front matter leaked into chapter text: %q", chapters[0].Text)
+	}
+	if !strings.Contains(chapters[0].Text, "Mari hakkas tasa lugema") {
+		t.Fatalf("chapter text missing prose: %q", chapters[0].Text)
+	}
+}
+
+func TestExtractChaptersDropsDividerOnlyPagesButKeepsShortProse(t *testing.T) {
+	data := buildEPUB(t, map[string]string{
+		"OEBPS/Text/ch01.xhtml": `<html><body><p>I</p></body></html>`,
+		"OEBPS/Text/ch02.xhtml": `<html><body><p>Avas silmad. Vihm jäi üle.</p></body></html>`,
+	})
+
+	chapters, err := ExtractChaptersFromBytes(data)
+	if err != nil {
+		t.Fatalf("ExtractChaptersFromBytes: %v", err)
+	}
+	if len(chapters) != 1 {
+		t.Fatalf("got %d chapters, want 1; titles=%v", len(chapters), chapterTitles(chapters))
+	}
+	if !strings.Contains(chapters[0].Text, "Avas silmad") {
+		t.Fatalf("short prose chapter was not preserved: %q", chapters[0].Text)
 	}
 }
 
