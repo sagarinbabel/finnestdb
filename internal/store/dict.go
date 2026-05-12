@@ -295,7 +295,7 @@ func lookupFormCandidates(stmt *sql.Stmt, lowerSurface, lang string) ([]formCand
 		if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority, &c.Feats); err != nil {
 			return nil, false
 		}
-		if isBadDictLemma(lang, c.Lemma) {
+		if isBadDictLemma(lang, lowerSurface, c.Lemma) {
 			continue
 		}
 		candidates = append(candidates, c)
@@ -306,40 +306,69 @@ func lookupFormCandidates(stmt *sql.Stmt, lowerSurface, lang string) ([]formCand
 	return candidates, true
 }
 
-// badDictLemmasFI is the runtime blocklist for Finnish dictionary
-// candidates. Each entry is a lemma kaikki/Wiktionary ships that is
-// almost never the right answer in modern Finnish: short fragments
-// (`as`, `taa`, `ku`), compound-clip lemmas (`sisä-`, `ylä-`),
-// rare-or-archaic forms whose inflected children consistently mean
-// something else (`poli` for `poliisi`, `vuo` for `vuotta`, `paljo`
-// for `paljon`), and adverb-as-noun analyser traps (`varsi` for
-// `varsin`).
+// alwaysBadDictLemmasFI lists Finnish lemmas that are NEVER the right
+// answer because the "lemma" is a structural artifact rather than a
+// standalone word: short fragments kaikki ships as their own headword
+// (`as`, `taa`, `ku`), and compound-clip prefixes that only ever
+// appear as the left half of a compound (`sisä-`, `ylä-`). Filtering
+// these is safe regardless of which surface is being looked up — a
+// learner typing the surface `sisä-` is overwhelmingly likely to
+// want the compound it belongs to, not the bare prefix.
 //
-// Filtering at lookup time rather than at ingest keeps existing DBs
-// usable without re-import: when a blocked candidate is the only
-// match, the surface falls through to Steps 2-5 (possessive strip,
-// compound split, case-suffix strip, FST) which produce the correct
-// answer for these forms.
+// Note this set is intentionally narrow. Lemmas like `varsi`
+// (a real noun "stalk") or `vuo` (archaic but real "stream") MUST
+// NOT live here: dropping them globally would break the legitimate
+// `varsi` → `varsi/NOUN` dictionary lookup. Those go in the
+// surface-keyed pair blocklist below.
 //
-// Seeded from yle_subs/card_overrides/bad_lemmas.tsv + the
-// SUSPICIOUS_SURFACE_LEMMAS lemma-side entries.
-var badDictLemmasFI = map[string]struct{}{
+// `poli` is a special case: kaikki ships it as the lemma for
+// `poliisi` inflected forms (a documented import bug). Treating
+// it as always-bad is defensible — no learner asking for the
+// surface `poli` is looking for the kaikki "poli" entry.
+var alwaysBadDictLemmasFI = map[string]struct{}{
 	"as":    {},
 	"taa":   {},
 	"poli":  {},
 	"sisä-": {},
 	"ylä-":  {},
 	"ku":    {},
-	"paljo": {},
-	"varsi": {},
-	"vuo":   {},
 }
 
-func isBadDictLemma(lang, lemma string) bool {
+// badSurfaceLemmaFI is the (surface, lemma) pair blocklist. Each
+// entry is a kaikki/analyser mapping that ranks first for the trap
+// surface but loses to the correct answer on every learner-facing
+// occurrence. The lemma is preserved for OTHER surfaces — `varsi`
+// is filtered out only for surface `varsin`, not for the bare
+// noun lookup `varsi`.
+//
+// Keyed by "surface\x00lemma" to avoid the struct-key allocation
+// cost on every dict candidate scan.
+//
+// Seeded from yle_subs/build_surface_target_decks.py's
+// SUSPICIOUS_SURFACE_LEMMAS.
+var badSurfaceLemmaFI = map[string]struct{}{
+	"varsin\x00varsi":     {},
+	"vuotta\x00vuo":       {},
+	"siitä\x00siittää":    {},
+	"muuta\x00muuttaa":    {},
+	"juuri\x00juuria":     {},
+	"mulla\x00mullah":     {},
+	"sulla\x00sullah":     {},
+	"kuulla\x00kuu":       {},
+	"paljon\x00paljo":     {},
+}
+
+func isBadDictLemma(lang, lowerSurface, lemma string) bool {
 	if lang != "FI" || lemma == "" {
 		return false
 	}
-	_, blocked := badDictLemmasFI[lemma]
+	if _, blocked := alwaysBadDictLemmasFI[lemma]; blocked {
+		return true
+	}
+	if lowerSurface == "" {
+		return false
+	}
+	_, blocked := badSurfaceLemmaFI[lowerSurface+"\x00"+lemma]
 	return blocked
 }
 

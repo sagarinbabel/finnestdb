@@ -1687,6 +1687,97 @@ func TestBatchLookupForms_LexOverlayBeatsDictTrap(t *testing.T) {
 	}
 }
 
+// TestBatchLookupForms_BadLemmaFilterPreservesLegitimateLookup is
+// the P1 regression for review feedback on the bad-lemma blocklist:
+// dropping `varsi` globally also removed the legitimate noun lookup
+// for surface `varsi → varsi/NOUN` (a real Finnish noun meaning
+// "stalk"). The blocklist must be (surface, lemma)-keyed for these
+// non-fragment lemmas — only filter when the surface is the trap.
+func TestBatchLookupForms_BadLemmaFilterPreservesLegitimateLookup(t *testing.T) {
+	db := newTestDB(t)
+	seedFormsWithSource(t, db, []struct {
+		form, lemma, pos, lang, source string
+		priority                       int
+	}{
+		// Legitimate dict rows: the lemma matches its own surface.
+		{"varsi", "varsi", "NOUN", "FI", "kaikki", 10},
+		{"vuo", "vuo", "NOUN", "FI", "kaikki", 10},
+		{"siittää", "siittää", "VERB", "FI", "kaikki", 10},
+		{"muuttaa", "muuttaa", "VERB", "FI", "kaikki", 10},
+	})
+
+	// Each of these surfaces is the lemma form itself, NOT the trap
+	// surface. The blocklist must not strip it.
+	for _, tc := range []struct {
+		surface, wantLemma, wantPOS string
+	}{
+		{"varsi", "varsi", "NOUN"},
+		{"vuo", "vuo", "NOUN"},
+		{"siittää", "siittää", "VERB"},
+		{"muuttaa", "muuttaa", "VERB"},
+	} {
+		for _, mode := range []string{"basic", "custom"} {
+			got := db.BatchLookupForms([]string{tc.surface}, "FI", mode)
+			r, ok := got[tc.surface]
+			if !ok {
+				t.Errorf("%s [%s]: surface dropped (bad-lemma filter regression)",
+					tc.surface, mode)
+				continue
+			}
+			if r.Lemma != tc.wantLemma || r.POS != tc.wantPOS {
+				t.Errorf("%s [%s]: got (%s/%s), want (%s/%s)",
+					tc.surface, mode, r.Lemma, r.POS, tc.wantLemma, tc.wantPOS)
+			}
+		}
+	}
+}
+
+func TestIsBadDictLemma(t *testing.T) {
+	// Always-bad fragments: filtered regardless of surface.
+	for _, lemma := range []string{"as", "taa", "poli", "sisä-", "ylä-", "ku"} {
+		if !isBadDictLemma("FI", "anything", lemma) {
+			t.Errorf("always-bad %q: expected blocked, was not", lemma)
+		}
+	}
+	// Surface-keyed pairs: only the trap surface fires the block.
+	hits := []struct{ surface, lemma string }{
+		{"varsin", "varsi"},
+		{"vuotta", "vuo"},
+		{"siitä", "siittää"},
+		{"muuta", "muuttaa"},
+		{"paljon", "paljo"},
+	}
+	for _, h := range hits {
+		if !isBadDictLemma("FI", h.surface, h.lemma) {
+			t.Errorf("trap pair (%s, %s): expected blocked, was not", h.surface, h.lemma)
+		}
+	}
+	// Same lemmas on non-trap surfaces must NOT be blocked.
+	misses := []struct{ surface, lemma string }{
+		{"varsi", "varsi"},     // bare lemma lookup
+		{"vuo", "vuo"},          // bare lemma lookup
+		{"siittää", "siittää"},  // bare verb lookup
+		{"muuttaa", "muuttaa"},  // bare verb lookup
+		{"paljo", "paljo"},      // bare lemma lookup
+	}
+	for _, m := range misses {
+		if isBadDictLemma("FI", m.surface, m.lemma) {
+			t.Errorf("legitimate (%s, %s): expected NOT blocked, was blocked", m.surface, m.lemma)
+		}
+	}
+	// Non-FI languages are not filtered.
+	if isBadDictLemma("ET", "varsin", "varsi") {
+		t.Error("ET lang: blocklist is FI-only, should not fire")
+	}
+	// Empty values defensive.
+	if isBadDictLemma("FI", "", "") {
+		t.Error("empty: should not fire")
+	}
+	if isBadDictLemma("FI", "anything", "") {
+		t.Error("empty lemma: should not fire")
+	}
+}
+
 // TestBatchLookupForms_LexOverlayBasicModeNotAffected confirms the
 // overlay is gated to custom mode. Basic-mode eval baselines must
 // not shift because of this fix.
