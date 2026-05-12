@@ -571,19 +571,25 @@ func maInfinitiveBias(surface string, res FormResolution) int {
 	if !udfeats.IsMaInfinitiveSurface(surface) {
 		return 0
 	}
-	// Noun-cousin shape FIRST. Lemma ends in -ma/-mä on a MA-suffix
-	// surface is the trap regardless of POS or whether the FEATS
-	// already carry InfForm=Ma. The dict-side NormalizeMaInfinitive
-	// will have rewritten the feats to look like a real MA-infinitive
-	// (Case=X|InfForm=Ma|VerbForm=Inf|Voice=Act) for these noun-cousin
-	// candidates too — but the lemma is the part that's wrong. Demote
-	// on the lemma signal before granting the verb promotion below.
+	// Noun-cousin trap: kaikki ships some MA-shape surfaces under the
+	// deverbal -ma noun (e.g. tarjoamaan/tarjoama, lähtemään/lähtemä,
+	// hautaamaan/hautaama) but mis-tagged POS=VERB. The dict-side
+	// NormalizeMaInfinitive rewrites their FEATS to look like a real
+	// MA-infinitive (Case=X|InfForm=Ma|VerbForm=Inf|Voice=Act) — but
+	// the lemma is the part that's wrong. Demote those before granting
+	// the verb promotion below.
 	//
-	// Finnish verb 1st-infinitives end in -a/-ä (with -da/-ta/-la/-na
-	// preceding); a lemma ending in -ma/-mä on this surface is almost
-	// always the derived-noun reading. Counter-examples would be
-	// loanwords or proper nouns; surface this if/when we find one.
-	if strings.HasSuffix(res.Lemma, "ma") || strings.HasSuffix(res.Lemma, "mä") {
+	// POS=VERB is load-bearing here. Finnish has thousands of
+	// legitimate nouns whose lemma ends in -ma/-mä (voima, ryhmä,
+	// järjestelmä, asema, oireyhtymä …) which take regular case
+	// inflection on MA-shape surfaces (voimassa = "in force",
+	// ryhmästä = "from the group"). Demoting those would silently
+	// drop the only correct reading. The kaikki self-key bug
+	// specifically mis-tags the inflected -ma noun form as VERB —
+	// the POS=VERB gate is what distinguishes the trap from the
+	// legit homonym.
+	if res.POS == "VERB" &&
+		(strings.HasSuffix(res.Lemma, "ma") || strings.HasSuffix(res.Lemma, "mä")) {
 		return -1
 	}
 	if res.POS == "VERB" && strings.Contains(res.Feats, "InfForm=Ma") {

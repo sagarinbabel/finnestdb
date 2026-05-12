@@ -224,6 +224,51 @@ func TestBatchLookupAllForms_FI_AInfLongCorrectsSelfKey(t *testing.T) {
 	}
 }
 
+// TestBatchLookupAllForms_FI_PreservesLegitMaNoun proves the
+// noun-cousin demotion doesn't false-fire on legitimate Finnish nouns
+// whose lemma ends in -ma/-mä (voima, ryhmä, asema, järjestelmä,
+// oireyhtymä, …). These are real nouns, not the kaikki trap, and on
+// MA-shape surfaces (voimassa, ryhmästä) they must pass through to
+// the deck/parse expansion as the correct headword.
+//
+// The kaikki trap signature is POS=VERB mis-tag with -ma/-mä lemma;
+// the legit signature is POS=NOUN. The bias gate uses POS to
+// distinguish.
+func TestBatchLookupAllForms_FI_PreservesLegitMaNoun(t *testing.T) {
+	// FST also has a competing voida/VERB MA-infinitive reading for
+	// voimassa (linguistically valid: "while being able to"). For the
+	// homonym-expansion path, we deliberately do NOT mix the FST verb
+	// reading into the candidate list when the dict already has a
+	// non-demoted candidate — that prevents the deck from offering
+	// the wrong headword for context like "Sopimus on voimassa"
+	// where voima/NOUN is what the learner actually sees.
+	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
+		"voimassa": {
+			{
+				Lemma: "voida",
+				UPOS:  "VERB",
+				Feats: "Case=Ine|InfForm=3|Number=Sing|VerbForm=Inf",
+				Raw:   "generated-table",
+			},
+		},
+	})
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"voimassa", "voima", "NOUN", "FI"},
+	})
+
+	got := db.BatchLookupAllForms([]string{"voimassa"}, "FI")
+
+	cands := got["voimassa"]
+	if len(cands) != 1 {
+		t.Fatalf("voimassa: got %d candidates, want 1: %+v", len(cands), cands)
+	}
+	if cands[0].Lemma != "voima" || cands[0].POS != "NOUN" {
+		t.Errorf("voimassa: got {%q %q}, want {voima NOUN}",
+			cands[0].Lemma, cands[0].POS)
+	}
+}
+
 // TestBatchLookupAllForms_FI_PreservesGenuineHomonym proves the
 // correction path is conservative: when no candidate is demoted, the
 // raw dict list passes through unchanged (no FST consultation, no
@@ -2234,11 +2279,22 @@ func TestMaInfinitiveBias(t *testing.T) {
 		res     FormResolution
 		want    int
 	}{
-		// MA-suffix surfaces: verb-with-Ma wins, noun-cousin loses.
+		// MA-suffix surfaces: verb-with-Ma wins, noun-cousin trap loses.
 		{"lähtemään", FormResolution{POS: "VERB", Feats: "Case=Ill|InfForm=Ma"}, 1},
 		{"juomassa", FormResolution{POS: "VERB", Feats: "Case=Ine|InfForm=Ma|VerbForm=Inf"}, 1},
-		{"lähtemään", FormResolution{POS: "NOUN", Lemma: "lähtemä"}, -1},
-		{"juomassa", FormResolution{POS: "NOUN", Lemma: "juoma"}, -1},
+		// Noun-cousin trap: POS=VERB with -ma/-mä lemma is the kaikki
+		// mis-tagging of an inflected deverbal noun. Demote.
+		{"lähtemään", FormResolution{POS: "VERB", Lemma: "lähtemä"}, -1},
+		{"juomassa", FormResolution{POS: "VERB", Lemma: "juoma"}, -1},
+		{"tarjoamaan", FormResolution{POS: "VERB", Lemma: "tarjoama"}, -1},
+		// Legitimate -ma/-mä noun on a MA-shape surface (voima "force",
+		// ryhmä "group", asema "station", oireyhtymä "syndrome", …).
+		// Must NOT be demoted — the POS=NOUN tag distinguishes a real
+		// noun from the kaikki noun-cousin mis-tag.
+		{"voimassa", FormResolution{POS: "NOUN", Lemma: "voima"}, 0},
+		{"ryhmässä", FormResolution{POS: "NOUN", Lemma: "ryhmä"}, 0},
+		{"asemalla", FormResolution{POS: "NOUN", Lemma: "asema"}, 0},
+		{"oireyhtymästä", FormResolution{POS: "NOUN", Lemma: "oireyhtymä"}, 0},
 		// MA-suffix surface, lemma not ending in -ma/-mä: no NOUN penalty
 		// (could be an unrelated compound).
 		{"lähtemään", FormResolution{POS: "NOUN", Lemma: "lähtö"}, 0},
