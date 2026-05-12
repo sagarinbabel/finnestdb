@@ -210,6 +210,54 @@ func TestIsMaInfinitiveSurface(t *testing.T) {
 	}
 }
 
+func TestIsAInfLongSurface(t *testing.T) {
+	hits := []string{
+		// 3-person (kseen): the most common — "in order to V"
+		"mennäkseen", "tarjotakseen", "tullakseen",
+		"antaakseen", "saadakseen", "ymmärtääkseen",
+		"lukeakseen", "kirjoittaakseen",
+		// Case folding: uppercase should still match.
+		"Mennäkseen", "TARJOTAKSEEN",
+		// Other possessive suffixes.
+		"mennäkseni", "tarjotakseni",
+		"mennäksesi", "tarjotaksesi",
+		"mennäksemme", "tarjotaksemme",
+		"mennäksenne", "tarjotaksenne",
+	}
+	for _, s := range hits {
+		if !IsAInfLongSurface(s) {
+			t.Errorf("IsAInfLongSurface(%q) = false; want true", s)
+		}
+	}
+	misses := []string{
+		"",
+		// Verb base forms: don't match.
+		"mennä", "tarjota", "ymmärtää",
+		// MA-infinitive surfaces: own family, must not collide.
+		"tarjoamaan", "menemään", "tarjoamassa",
+		// Common case-marked nouns: must not match.
+		"talossa", "rakkaudella", "kirjassa",
+		// "ksi" alone (translative without possessive): not A-long.
+		"taloksi", "kotiksi",
+		// Possessive on a noun in inessive: must not match.
+		"talossani", "kotimme",
+		// Noun translative + 3sg/pl possessive where the stem vowel
+		// isn't a/ä — surface ends in -Vkseen but the V is u/i/o, so
+		// the {a,ä}-before-kse gate excludes these.
+		"hissukseen", "luokseen", "kotikseen", "yksikseen", "sikseen",
+		// -s-stem noun illative (consonant gradation): "kse" appears
+		// for a different reason. Surface ends in -ykseen/-ukseen.
+		"risteykseen", "vastaukseen", "varkaaseen",
+		// 3pl analogue of luokseen — same exclusion reason.
+		"luokseni", "luoksesi",
+	}
+	for _, s := range misses {
+		if IsAInfLongSurface(s) {
+			t.Errorf("IsAInfLongSurface(%q) = true; want false", s)
+		}
+	}
+}
+
 func lastSpace(s string) int {
 	for i := len(s) - 1; i >= 0; i-- {
 		if s[i] == ' ' {

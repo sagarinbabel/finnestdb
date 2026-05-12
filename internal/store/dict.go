@@ -503,6 +503,17 @@ func pickBestResolutionCandidate(surface string, candidates []resolutionCandidat
 		if mi, mj := maInfinitiveBias(surface, ci.res), maInfinitiveBias(surface, cj.res); mi != mj {
 			return mi > mj
 		}
+		// A-infinitive-long bias: parallel to MA-inf, scoped to the
+		// translative+possessive A-inf surface family (mennäkseen,
+		// tarjotakseni, ...). Kaikki has spotty A-long coverage and
+		// when present often self-keys the surface as its own lemma
+		// (mennäkseen→mennäkseen) or tags it ADV
+		// (ymmärtääkseen→ADV); the FST returns the correctly-stemmed
+		// verb reading once the regenerated table includes the
+		// surface, but supportScore would still tip to the dict row.
+		if ai, aj := aInfLongBias(surface, ci.res), aInfLongBias(surface, cj.res); ai != aj {
+			return ai > aj
+		}
 		if fstBeatsWeakDict(ci, cj) {
 			return true
 		}
@@ -560,22 +571,62 @@ func maInfinitiveBias(surface string, res FormResolution) int {
 	if !udfeats.IsMaInfinitiveSurface(surface) {
 		return 0
 	}
-	// Noun-cousin shape FIRST. Lemma ends in -ma/-mä on a MA-suffix
-	// surface is the trap regardless of POS or whether the FEATS
-	// already carry InfForm=Ma. The dict-side NormalizeMaInfinitive
-	// will have rewritten the feats to look like a real MA-infinitive
-	// (Case=X|InfForm=Ma|VerbForm=Inf|Voice=Act) for these noun-cousin
-	// candidates too — but the lemma is the part that's wrong. Demote
-	// on the lemma signal before granting the verb promotion below.
+	// Noun-cousin trap: kaikki ships some MA-shape surfaces under the
+	// deverbal -ma noun (e.g. tarjoamaan/tarjoama, lähtemään/lähtemä,
+	// hautaamaan/hautaama) but mis-tagged POS=VERB. The dict-side
+	// NormalizeMaInfinitive rewrites their FEATS to look like a real
+	// MA-infinitive (Case=X|InfForm=Ma|VerbForm=Inf|Voice=Act) — but
+	// the lemma is the part that's wrong. Demote those before granting
+	// the verb promotion below.
 	//
-	// Finnish verb 1st-infinitives end in -a/-ä (with -da/-ta/-la/-na
-	// preceding); a lemma ending in -ma/-mä on this surface is almost
-	// always the derived-noun reading. Counter-examples would be
-	// loanwords or proper nouns; surface this if/when we find one.
-	if strings.HasSuffix(res.Lemma, "ma") || strings.HasSuffix(res.Lemma, "mä") {
+	// POS=VERB is load-bearing here. Finnish has thousands of
+	// legitimate nouns whose lemma ends in -ma/-mä (voima, ryhmä,
+	// järjestelmä, asema, oireyhtymä …) which take regular case
+	// inflection on MA-shape surfaces (voimassa = "in force",
+	// ryhmästä = "from the group"). Demoting those would silently
+	// drop the only correct reading. The kaikki self-key bug
+	// specifically mis-tags the inflected -ma noun form as VERB —
+	// the POS=VERB gate is what distinguishes the trap from the
+	// legit homonym.
+	if res.POS == "VERB" &&
+		(strings.HasSuffix(res.Lemma, "ma") || strings.HasSuffix(res.Lemma, "mä")) {
 		return -1
 	}
 	if res.POS == "VERB" && strings.Contains(res.Feats, "InfForm=Ma") {
+		return 1
+	}
+	return 0
+}
+
+// aInfLongBias returns +1 for a VERB reading carrying the
+// A-infinitive-long signature (InfForm=1 + Person[psor]=N) on a
+// matching surface, -1 for a candidate whose lemma equals the
+// surface (kaikki's self-key bug for these surfaces), and 0
+// otherwise. Surfaces that don't match the A-long suffix pattern
+// always return 0, so this is a no-op for the common case.
+//
+// Voikko emits A-inf-long readings with no Case= attribute — the
+// translative is implicit in the construction — so the signature is
+// VerbForm=Inf + InfForm=1 + Person[psor]=N. The basic A-infinitive
+// (the citation form `mennä`) shares InfForm=1 but has no
+// Person[psor], which is why we require both.
+//
+// The lemma-equals-surface demotion catches kaikki rows where the
+// inflected A-long form is keyed back to itself (mennäkseen lemma
+// `mennäkseen`) or as ADV (ymmärtääkseen). These are user-visible
+// failures because the headword shown to a learner is the wrong
+// word; the FST reading via the regenerated fi_min.json gives the
+// correct verb headword.
+func aInfLongBias(surface string, res FormResolution) int {
+	if !udfeats.IsAInfLongSurface(surface) {
+		return 0
+	}
+	if strings.EqualFold(res.Lemma, surface) {
+		return -1
+	}
+	if res.POS == "VERB" &&
+		strings.Contains(res.Feats, "InfForm=1") &&
+		strings.Contains(res.Feats, "Person[psor]=") {
 		return 1
 	}
 	return 0
@@ -1039,6 +1090,17 @@ func uniqueNonEmptyStrings(values []string) []string {
 // are designed to commit to a single resolution and aren't authoritative for
 // ambiguity.
 //
+// For Finnish, candidates also pass through the same MA-infinitive and
+// A-infinitive-long bias filters BatchLookupForms applies: dict rows that
+// the ranker would demote to -1 (kaikki's deverbal-noun noun-cousin trap
+// and self-keyed A-long surfaces) are dropped, and the FST's
+// verb-headword reading is substituted when one is available. Without
+// this, deck creation and the /api/parse `words` listing would still
+// show `tarjoamaan→tarjoama`, `mennäkseen→mennäkseen`, and
+// `ymmärtääkseen→ADV` even after BatchLookupForms picks the right
+// headword for the sentence-level token — see the discussion on the
+// MA/A-inf-long table-regen PR for the failure mode.
+//
 // Forms with no direct dict hit are absent from the result map. Each form's
 // slice is non-empty when present.
 func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string) map[string][]FormResolution {
@@ -1077,11 +1139,84 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 			candidates = append(candidates, FormResolution{Lemma: lemma, POS: pos, Source: "dict"})
 		}
 		rows.Close()
+		if lang == "FI" {
+			candidates = correctFICandidates(d, form, lower, candidates)
+		}
 		if len(candidates) > 0 {
 			result[form] = candidates
 		}
 	}
 	return result
+}
+
+// correctFICandidates is the BatchLookupAllForms-side analogue of the
+// MA/A-inf-long biases in pickBestResolutionCandidate. It runs on each
+// FI surface, drops dict candidates the biases would demote to -1, and
+// substitutes the FST's verb-headword reading when the surface matches
+// a non-finite paradigm slot. Returns the (possibly modified) candidate
+// list — nil when the corrected list is empty.
+//
+// The single-pick path (BatchLookupForms) handles the same gap via
+// pickBestResolutionCandidate's tie-breakers; this function makes the
+// homonym-expansion path (deck creation, /api/parse words) match. The
+// two paths must agree on the lemma a learner sees, or the headword on
+// their card won't match the headword for the sentence-level token.
+//
+// Negative pre-checks: if no candidate is demoted AND the surface
+// doesn't match a non-finite paradigm slot, this is a no-op — the
+// common case stays cheap.
+func correctFICandidates(d *DB, surface, lower string, candidates []FormResolution) []FormResolution {
+	if len(candidates) == 0 {
+		return candidates
+	}
+
+	// First pass: drop the -1 candidates. Track whether anything was dropped
+	// so we know whether to consult the FST for a replacement headword.
+	kept := candidates[:0]
+	droppedAny := false
+	for _, c := range candidates {
+		if maInfinitiveBias(surface, c) == -1 || aInfLongBias(surface, c) == -1 {
+			droppedAny = true
+			continue
+		}
+		kept = append(kept, c)
+	}
+
+	if !droppedAny {
+		// No dict row was demoted — homonym list is fine as-is. The common
+		// case (talossa, kissan, …) lands here.
+		return kept
+	}
+
+	// Something was dropped. Pull FST candidates that *score +1* on this
+	// surface (i.e. the correctly-stemmed verb headword) and merge them
+	// in. Dedupe against any surviving dict candidates by (lemma, pos) so
+	// we don't double-list a verb that kaikki happened to ship correctly
+	// alongside the buggy row.
+	lem := d.fstLemmatizer()
+	if lem == nil {
+		return kept
+	}
+	for _, a := range lem.Lemmatize("FI", lower) {
+		if a.Lemma == "" || a.UPOS == "" {
+			continue
+		}
+		res := formResolutionFromFSTAnalysis(lower, a, "fst")
+		if maInfinitiveBias(surface, res) != 1 && aInfLongBias(surface, res) != 1 {
+			continue
+		}
+		dup := false
+		for _, k := range kept {
+			if k.Lemma == res.Lemma && k.POS == res.POS {
+				dup = true
+				break
+			}
+		}
+		if !dup {
+			kept = append(kept, res)
+		}
+	}
+	return kept
 }
 
 // LemmaKey identifies a unique (lemma, pos) pair for use as a map key.
