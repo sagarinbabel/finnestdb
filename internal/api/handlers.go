@@ -742,7 +742,7 @@ func isInflectionalFormCandidate(form string, candidate store.FormResolution, gl
 	if target == "" || strings.Contains(target, " ") {
 		return false
 	}
-	before = strings.ReplaceAll(before, "-", " ")
+	before = strings.NewReplacer("-", " ", "/", " ").Replace(before)
 	parts := strings.Fields(before)
 	if len(parts) == 0 {
 		return false
@@ -757,6 +757,7 @@ func isInflectionalFormCandidate(form string, candidate store.FormResolution, gl
 		"comparative": {},
 		"comitative":  {},
 		"conditional": {},
+		"connegative": {},
 		"degree":      {},
 		"elative":     {},
 		"essive":      {},
@@ -778,6 +779,7 @@ func isInflectionalFormCandidate(form string, candidate store.FormResolution, gl
 		"past":        {},
 		"person":      {},
 		"plural":      {},
+		"potential":   {},
 		"present":     {},
 		"second":      {},
 		"singular":    {},

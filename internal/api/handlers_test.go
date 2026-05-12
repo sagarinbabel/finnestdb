@@ -594,6 +594,33 @@ func TestFilterLowValueAlternativesKeepsFormOfWhenNoLexicalCandidate(t *testing.
 	}
 }
 
+func TestFilterLowValueAlternativesSuppressesSlashAndConnegativeFormOfAlternatives(t *testing.T) {
+	dict := map[string][]store.FormResolution{
+		"aega": {
+			{Lemma: "aeg", POS: "NOUN"},
+			{Lemma: "aega", POS: "NOUN"},
+		},
+		"menne": {
+			{Lemma: "mennä", POS: "VERB"},
+			{Lemma: "menne", POS: "VERB"},
+		},
+	}
+	glosses := map[store.LemmaKey]string{
+		{Lemma: "aeg", POS: "NOUN"}:   "time",
+		{Lemma: "aega", POS: "NOUN"}:  "genitive/partitive/illative singular of aeg",
+		{Lemma: "mennä", POS: "VERB"}: "go",
+		{Lemma: "menne", POS: "VERB"}: "connegative potential of mennä",
+	}
+
+	got := filterLowValueAlternatives(dict, glosses)
+	if candidates := got["aega"]; len(candidates) != 1 || candidates[0].Lemma != "aeg" || candidates[0].POS != "NOUN" {
+		t.Fatalf("aega candidates=%+v want only lexical aeg/NOUN", candidates)
+	}
+	if candidates := got["menne"]; len(candidates) != 1 || candidates[0].Lemma != "mennä" || candidates[0].POS != "VERB" {
+		t.Fatalf("menne candidates=%+v want only lexical mennä/VERB", candidates)
+	}
+}
+
 func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
 	api := newTestAPI(t)
 	parsed := &parsecore.ParseResult{
