@@ -494,9 +494,9 @@ func checkFrequencyBaselines() check {
 
 func checkRustParser() check {
 	candidates := []string{
-		"parser/target/release/libfinnestdb_parser.dylib",
-		"parser/target/release/libfinnestdb_parser.so",
-		"parser/target/release/finnestdb_parser.dll",
+		"parser/target/release/libparser.dylib",
+		"parser/target/release/libparser.so",
+		"parser/target/release/parser.dll",
 	}
 	for _, p := range candidates {
 		if fileExists(p) {

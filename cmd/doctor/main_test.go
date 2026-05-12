@@ -111,6 +111,26 @@ func TestCheckETAnalyserHintUsesLocaldata(t *testing.T) {
 	}
 }
 
+func TestCheckRustParserFindsCargoReleaseLibrary(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	path := filepath.Join("parser", "target", "release", "libparser.dylib")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("fixture"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	check := checkRustParser()
+	if check.level != levelOK {
+		t.Fatalf("Rust parser check level = %v, want OK; detail=%q", check.level, check.detail)
+	}
+	if check.detail != path {
+		t.Errorf("Rust parser detail = %q, want %q", check.detail, path)
+	}
+}
+
 func TestFindHFSTOLUsesLocaldataPath(t *testing.T) {
 	t.Chdir(t.TempDir())
 
