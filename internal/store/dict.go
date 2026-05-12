@@ -347,15 +347,15 @@ var alwaysBadDictLemmasFI = map[string]struct{}{
 // Seeded from yle_subs/build_surface_target_decks.py's
 // SUSPICIOUS_SURFACE_LEMMAS.
 var badSurfaceLemmaFI = map[string]struct{}{
-	"varsin\x00varsi":     {},
-	"vuotta\x00vuo":       {},
-	"siitä\x00siittää":    {},
-	"muuta\x00muuttaa":    {},
-	"juuri\x00juuria":     {},
-	"mulla\x00mullah":     {},
-	"sulla\x00sullah":     {},
-	"kuulla\x00kuu":       {},
-	"paljon\x00paljo":     {},
+	"varsin\x00varsi":  {},
+	"vuotta\x00vuo":    {},
+	"siitä\x00siittää": {},
+	"muuta\x00muuttaa": {},
+	"juuri\x00juuria":  {},
+	"mulla\x00mullah":  {},
+	"sulla\x00sullah":  {},
+	"kuulla\x00kuu":    {},
+	"paljon\x00paljo":  {},
 }
 
 func isBadDictLemma(lang, lowerSurface, lemma string) bool {
@@ -1085,10 +1085,11 @@ func uniqueNonEmptyStrings(values []string) []string {
 // jooma/VERB). In custom mode, lexical-overlay surfaces short-circuit to the
 // curated single reading because those entries are known raw-dict/analyzer
 // traps, not real ambiguity. Basic mode remains direct dictionary lookup to
-// match BatchLookupForms' baseline contract. Otherwise this does not run the
-// possessive / compound / case-suffix fallback chain, because those heuristics
-// are designed to commit to a single resolution and aren't authoritative for
-// ambiguity.
+// match BatchLookupForms' baseline contract, with the same bad-lemma blocklist
+// applied so raw expansion cannot revive known dictionary artifacts. Otherwise
+// this does not run the possessive / compound / case-suffix fallback chain,
+// because those heuristics are designed to commit to a single resolution and
+// aren't authoritative for ambiguity.
 //
 // For Finnish, candidates also pass through the same MA-infinitive and
 // A-infinitive-long bias filters BatchLookupForms applies: dict rows that
@@ -1135,6 +1136,9 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 				rows.Close()
 				candidates = nil
 				break
+			}
+			if isBadDictLemma(lang, lower, lemma) {
+				continue
 			}
 			candidates = append(candidates, FormResolution{Lemma: lemma, POS: pos, Source: "dict"})
 		}

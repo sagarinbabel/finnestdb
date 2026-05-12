@@ -729,6 +729,56 @@ func TestHandleParseSuppressesInflectedFormGlossWhenSurfaceHasLexicalCandidate(t
 	}
 }
 
+func TestHandleParseKeepsParserProtectedLemmaWhenRawDictHasTrap(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("tuskin", "ADV", "hardly", "FI"); err != nil {
+		t.Fatalf("UpsertLemma tuskin/ADV: %v", err)
+	}
+	if err := api.store.UpsertLemma("tuska", "NOUN", "pain", "FI"); err != nil {
+		t.Fatalf("UpsertLemma tuska/NOUN: %v", err)
+	}
+	if err := api.store.UpsertForm("tuskin", "tuska", "NOUN", "FI"); err != nil {
+		t.Fatalf("UpsertForm tuskin->tuska: %v", err)
+	}
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang:   lang,
+			Parser: "custom",
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "Tuskin.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Tuskin", Lemma: "tuskin", POS: "ADV", Source: "lex-overlay", Resolved: true},
+						{Form: ".", POS: "PUNCT"},
+					},
+				},
+			},
+			Words: []parsecore.WordEntry{
+				{Lemma: "tuskin", POS: "ADV", Forms: []string{"Tuskin"}, Count: 1, Gloss: "hardly"},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"FI","text":"Tuskin.","parser":"custom"}`))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
+	}
+
+	var resp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Words) != 1 {
+		t.Fatalf("len(words)=%d want 1 protected parser lemma: %+v", len(resp.Words), resp.Words)
+	}
+	if got := resp.Words[0]; got.Lemma != "tuskin" || got.POS != "ADV" || got.Gloss != "hardly" {
+		t.Fatalf("word=%+v want protected tuskin/ADV", got)
+	}
+}
+
 func TestFilterLowValueAlternativesKeepsLexicalGlossesWithLooseMarkers(t *testing.T) {
 	dict := map[string][]store.FormResolution{
 		"vana": {
@@ -1838,6 +1888,70 @@ func TestCreateDeckExpandsAmbiguousTokenIntoMultipleCards(t *testing.T) {
 	}
 }
 
+func TestCreateDeckKeepsParserProtectedLemmaWhenRawDictHasTrap(t *testing.T) {
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("tuskin", "ADV", "hardly", "FI"); err != nil {
+		t.Fatalf("UpsertLemma tuskin/ADV: %v", err)
+	}
+	if err := api.store.UpsertLemma("tuska", "NOUN", "pain", "FI"); err != nil {
+		t.Fatalf("UpsertLemma tuska/NOUN: %v", err)
+	}
+	if err := api.store.UpsertForm("tuskin", "tuska", "NOUN", "FI"); err != nil {
+		t.Fatalf("UpsertForm tuskin->tuska: %v", err)
+	}
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang:        lang,
+			Parser:      "custom",
+			TotalTokens: 1,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "Tuskin.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Tuskin", Lemma: "tuskin", POS: "ADV", Source: "lex-overlay", Resolved: true},
+						{Form: ".", POS: "PUNCT"},
+					},
+				},
+			},
+			Words: []parsecore.WordEntry{
+				{Lemma: "tuskin", POS: "ADV", Forms: []string{"Tuskin"}, Count: 1, Gloss: "hardly"},
+			},
+		}, nil
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "tuskin@example.com")
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Tuskin","lang":"FI","text":"Tuskin."}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create deck status=%d body=%q", createRec.Code, createRec.Body.String())
+	}
+
+	var createResp CreateDeckResponse
+	if err := json.NewDecoder(bytes.NewReader(createRec.Body.Bytes())).Decode(&createResp); err != nil {
+		t.Fatalf("decode create deck response: %v", err)
+	}
+	auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
+	if err != nil || auth == nil {
+		t.Fatal("expected authenticated user")
+	}
+	details, err := api.store.GetDeckDetails(auth.UserID, createResp.DeckID)
+	if err != nil {
+		t.Fatalf("GetDeckDetails: %v", err)
+	}
+	if len(details.Lemmas) != 1 {
+		t.Fatalf("deck lemmas=%+v want only protected parser lemma", details.Lemmas)
+	}
+	if got := details.Lemmas[0]; got.Lemma != "tuskin" || got.POS != "ADV" || got.Gloss != "hardly" {
+		t.Fatalf("deck lemma=%+v want tuskin/ADV", got)
+	}
+}
+
 func TestCreateDeckSuppressesGlosslessAlternativeWhenSurfaceHasGlossedCandidate(t *testing.T) {
 	api := newTestAPI(t)
 	if err := api.store.UpsertLemma("liiga", "ADV", "too", "ET"); err != nil {
@@ -2023,6 +2137,67 @@ func TestExpandTokenLemmasUsesDictCandidatesWhenPresent(t *testing.T) {
 	}
 	if len(want) != 0 {
 		t.Errorf("missing expansions: %+v", want)
+	}
+}
+
+func TestExpandTokenLemmasKeepsParserPickWhenDictDoesNotContainIt(t *testing.T) {
+	dict := map[string][]store.FormResolution{
+		"olen": {{Lemma: "olen", POS: "VERB", Source: "dict"}},
+	}
+
+	got := expandTokenLemmas(parsecore.TokenResult{
+		Form:   "olen",
+		Lemma:  "olema",
+		POS:    "VERB",
+		Source: "fst",
+	}, dict)
+
+	if len(got) != 1 || got[0] != (tokenLemma{Lemma: "olema", POS: "VERB"}) {
+		t.Fatalf("got %+v, want parser-selected olema/VERB instead of raw dict candidate", got)
+	}
+}
+
+func TestExpandTokenLemmasKeepsParserPickWhenLowValueFilterRemovedIt(t *testing.T) {
+	rawDict := map[string][]store.FormResolution{
+		"olen": {
+			{Lemma: "olema", POS: "VERB", Source: "dict"},
+			{Lemma: "olen", POS: "VERB", Source: "dict"},
+		},
+	}
+	glosses := map[store.LemmaKey]string{
+		{Lemma: "olema", POS: "VERB"}: "be",
+		{Lemma: "olen", POS: "VERB"}:  "first-person singular present indicative of olema",
+	}
+	filtered := filterLowValueAlternatives(rawDict, glosses)
+
+	got := expandTokenLemmas(parsecore.TokenResult{
+		Form:  "olen",
+		Lemma: "olen",
+		POS:   "VERB",
+	}, filtered)
+
+	if len(got) != 1 || got[0] != (tokenLemma{Lemma: "olen", POS: "VERB"}) {
+		t.Fatalf("got %+v, want parser-selected olen/VERB after low-value filter removed it", got)
+	}
+}
+
+func TestExpandTokenLemmasKeepsLexOverlayPickEvenIfDictContainsIt(t *testing.T) {
+	dict := map[string][]store.FormResolution{
+		"varsin": {
+			{Lemma: "varsin", POS: "ADV", Source: "dict"},
+			{Lemma: "varsi", POS: "NOUN", Source: "dict"},
+		},
+	}
+
+	got := expandTokenLemmas(parsecore.TokenResult{
+		Form:   "varsin",
+		Lemma:  "varsin",
+		POS:    "ADV",
+		Source: "lex-overlay",
+	}, dict)
+
+	if len(got) != 1 || got[0] != (tokenLemma{Lemma: "varsin", POS: "ADV"}) {
+		t.Fatalf("got %+v, want overlay-selected varsin/ADV only", got)
 	}
 }
 

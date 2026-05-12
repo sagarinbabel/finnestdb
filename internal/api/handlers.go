@@ -622,40 +622,58 @@ func collectSurfaceForms(sentences []parsecore.SentenceResult) []string {
 }
 
 // expandTokenLemmas resolves a single parsed token to one or more (lemma, pos)
-// pairs. When the dictionary has any candidates for the surface form, those
-// are returned (deduplicated, dict-authoritative). When the dict is silent,
-// the parser's single pick is used. PUNCT tokens and empty lemmas are
-// dropped — callers should not write occurrence rows for them.
+// pairs. Direct dict candidates are used for homonym expansion only when they
+// include the parser's selected lemma/POS; otherwise the parser pick stays
+// authoritative. This preserves custom parser corrections such as lexical
+// overlays and FST wins while still expanding genuine dict-known ambiguity.
+// PUNCT tokens and empty lemmas are dropped — callers should not write
+// occurrence rows for them.
 func expandTokenLemmas(token parsecore.TokenResult, dict map[string][]store.FormResolution) []tokenLemma {
 	if token.POS == "PUNCT" {
 		return nil
 	}
+	parserPick, hasParserPick := parserTokenLemma(token)
+	if hasParserPick && token.Source == "lex-overlay" {
+		return []tokenLemma{parserPick}
+	}
+
 	if cands, ok := dict[token.Form]; ok && len(cands) > 0 {
 		out := make([]tokenLemma, 0, len(cands))
 		seen := make(map[tokenLemma]struct{}, len(cands))
+		hasParserCandidate := false
 		for _, c := range cands {
 			if c.Lemma == "" || c.POS == "" {
 				continue
 			}
 			tl := tokenLemma{Lemma: c.Lemma, POS: c.POS}
+			if hasParserPick && tl == parserPick {
+				hasParserCandidate = true
+			}
 			if _, dup := seen[tl]; dup {
 				continue
 			}
 			seen[tl] = struct{}{}
 			out = append(out, tl)
 		}
-		if len(out) > 0 {
+		if len(out) > 0 && (!hasParserPick || hasParserCandidate) {
 			return out
 		}
 	}
+	if hasParserPick {
+		return []tokenLemma{parserPick}
+	}
+	return nil
+}
+
+func parserTokenLemma(token parsecore.TokenResult) (tokenLemma, bool) {
 	lemma := token.Lemma
 	if lemma == "" {
 		lemma = strings.ToLower(token.Form)
 	}
 	if lemma == "" || token.POS == "" {
-		return nil
+		return tokenLemma{}, false
 	}
-	return []tokenLemma{{Lemma: lemma, POS: token.POS}}
+	return tokenLemma{Lemma: lemma, POS: token.POS}, true
 }
 
 func (a *API) filterLowValueDictAlternatives(dict map[string][]store.FormResolution, lang string) (map[string][]store.FormResolution, map[store.LemmaKey]string, map[store.LemmaKey]struct{}) {
@@ -832,11 +850,11 @@ func hasCheckedLemmaKey(checked map[store.LemmaKey]struct{}, key store.LemmaKey)
 	return ok
 }
 
-// expandParsedWords reapplies the same dict-driven homonym expansion that
-// handleCreateDeck runs, producing one WordEntry per (lemma, pos) candidate
-// the dictionary knows of for each token. The result mirrors the (lemma, pos)
-// shape of the deck the user would get if they saved this parse, so the
-// import overview's unique-lemma count agrees with the deck's unique count.
+// expandParsedWords reapplies the same parser-gated homonym expansion that
+// handleCreateDeck runs, producing one WordEntry per safe (lemma, pos)
+// candidate for each token. The result mirrors the (lemma, pos) shape of the
+// deck the user would get if they saved this parse, so the import overview's
+// unique-lemma count agrees with the deck's unique count.
 //
 // For (lemma, pos) entries the parser also picked, GrammarLabel,
 // ExampleSentence, and Gloss are inherited from the parser's WordEntry. For
@@ -985,10 +1003,11 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 
 	// Multi-lemma expansion: when the dictionary has multiple (lemma, pos)
 	// candidates for a surface form (e.g. ET "joon" = noun "line" or 1Sg of
-	// "jooma"), emit one DeckTokenInput per candidate so each homonym becomes
-	// its own card and contributes to the deck's word count. The dict, when
-	// it has any candidates for a form, is treated as authoritative — the
-	// parser's pick is only used when the dict is silent.
+	// "jooma"), emit one DeckTokenInput per safe candidate so each genuine
+	// homonym becomes its own card and contributes to the deck's word count.
+	// Raw dict candidates are allowed to expand the token only when they still
+	// contain the parser's selected lemma/POS, so custom parser protections do
+	// not get overwritten during deck ingest.
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
 	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang, "custom")
 	dictCandidates, _, _ = a.filterLowValueDictAlternatives(dictCandidates, req.Lang)
@@ -1585,7 +1604,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Apply the same dict-driven homonym expansion that handleCreateDeck runs,
+	// Apply the same parser-gated homonym expansion that handleCreateDeck runs,
 	// so the import overview's unique-lemma count matches the count of the
 	// deck the user gets when saving. See expandParsedWords for details.
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
@@ -1627,7 +1646,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, ParseResponse{
-		Lang:            parsed.Lang,
+		Lang: parsed.Lang,
 		// ParseID is intentionally nil — /api/parse no longer persists.
 		TotalTokens:     parsed.TotalTokens,
 		ParseDurationMs: float64(parsed.ParseDurationNs) / 1e6,
