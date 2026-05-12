@@ -10,6 +10,20 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-05-12 — Documentation state refresh
+
+Refreshes the living status docs after reviewing the last 20 merged PRs
+on `main` (#176, #177, #179-#181, and #183-#197).
+
+- Modified: [`docs/INDEX.md`](INDEX.md) and [`TODO.md`](../TODO.md) —
+  corrected the decisions count, current parser-v2 status, recent upload
+  support, and open-PR snapshot.
+- Modified: [`corpus_pipeline/v2plan.md`](../corpus_pipeline/v2plan.md) —
+  removed duplicate superseded v2.4-v2.8 follow-up blocks so the roadmap
+  no longer reports the same work as both done and not started.
+- Modified historical docs and reports to replace stale local Markdown links
+  with valid file links or plain local-only paths.
+
 ## 2026-05-12 — Deck/parse low-value dict-alternative filter (PR #185)
 
 Records the deck/parse expansion change in PR
@@ -474,7 +488,7 @@ extension is purely on the report side.
 First silver-tier corpus source. Scrapes public-domain Finnish books from
 Project Gutenberg (https://www.gutenberg.org/ebooks/search/?query=l.fi),
 strips PG boilerplate, saves cleaned text + a JSONL manifest under
-`data/silver-fi/`.
+`localdata/silver-fi/` (gitignored).
 
 - Added [`cmd/scrapegutenberg`](../cmd/scrapegutenberg/main.go): polite
   HTTP scraper (1.5s between requests, transparent User-Agent, single
@@ -483,12 +497,12 @@ strips PG boilerplate, saves cleaned text + a JSONL manifest under
   strips Project Gutenberg "*** START OF" / "*** END OF" boilerplate;
   rejects non-Finnish leaks (English-authored books with l.fi metadata)
   via an ä/ö frequency + common-particle heuristic.
-- Added [`data/silver-fi/`](../data/silver-fi/) with 14 books (~511k
+- Added `localdata/silver-fi/` with 14 books (~511k
   tokens) on first run: Kalevala, Aleksis Kivi (Seitsemän veljestä),
   Minna Canth, Aleksis Kivi-era prose, Finnish translations of Jack
   London / Molière / Drachmann, plus modern works (Pekkarinen,
   Haanpää, Järnefelt). Manifest at
-  [`data/silver-fi/manifest.jsonl`](../data/silver-fi/manifest.jsonl)
+  `localdata/silver-fi/manifest.jsonl`
   records id, title, author, source URL, encoding, fetched_at, token
   count per book.
 - Added Makefile target `make scrape-gutenberg-fi` (overridable
@@ -537,7 +551,8 @@ Locks the dictionary layer as multi-source with row-level provenance and
 priority, ships the Estonian source-data pipeline end-to-end, and stages
 the Finnish equivalent at the schema layer with a fully scoped plan.
 
-- Added [`docs/ESTONIAN_LEXICAL_PLAN.md`](ESTONIAN_LEXICAL_PLAN.md):
+- Added `docs/ESTONIAN_LEXICAL_PLAN.md` (later consolidated into
+  [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md)):
   EstNLTK/Vabamorf as the analyzer baseline, EKI/Ekilex as the
   sanctioned lexical-data source, attribution requirements per import,
   parity correction flow shared with Finnish.
