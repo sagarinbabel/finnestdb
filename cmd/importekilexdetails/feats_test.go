@@ -29,8 +29,10 @@ func TestEkilexMorphToFeats_Verbal(t *testing.T) {
 		"IndIpfPl3": "Mood=Ind|Number=Plur|Person=3|Tense=Past|VerbForm=Fin|Voice=Act",
 		"KndPrSg1":  "Mood=Cnd|Number=Sing|Person=1|Tense=Pres|VerbForm=Fin|Voice=Act",
 		"ImpPrSg2":  "Mood=Imp|Number=Sing|Person=2|Tense=Pres|VerbForm=Fin|Voice=Act",
-		"Inf":       "VerbForm=Sup",
-		"Sup":       "VerbForm=Inf",
+		"Inf":       "VerbForm=Inf",
+		"Sup":       "Case=Ill|VerbForm=Sup",
+		"Ger":       "VerbForm=Conv",
+		"SupIps":    "Case=Ill|VerbForm=Sup|Voice=Pass",
 		"PtsPtIps":  "Tense=Past|VerbForm=Part|Voice=Pass",
 	}
 	for code, want := range cases {
@@ -50,7 +52,7 @@ func TestEkilexMorphToFeats_Negative(t *testing.T) {
 		"IndIpfPsN":   "Mood=Ind|Polarity=Neg|Tense=Past|VerbForm=Fin|Voice=Act",
 		"PtsPtIpsNeg": "Polarity=Neg|Tense=Past|VerbForm=Part|Voice=Pass",
 		"PtsPtPsNeg":  "Polarity=Neg|Tense=Past|VerbForm=Part|Voice=Act",
-		"InfN":        "Polarity=Neg|VerbForm=Sup",
+		"InfN":        "Polarity=Neg|VerbForm=Inf",
 	}
 	for code, want := range cases {
 		got := ekilexMorphToFeats(code)
@@ -76,7 +78,7 @@ func TestEkilexMorphToFeats_PositiveUnderscore(t *testing.T) {
 }
 
 func TestEkilexMorphToFeats_Empty(t *testing.T) {
-	cases := []string{"", "ID", "Ger", "??", "Bogus"}
+	cases := []string{"", "ID", "??", "Bogus"}
 	for _, code := range cases {
 		if got := ekilexMorphToFeats(code); got != "" {
 			t.Errorf("%s: expected empty, got %q", code, got)

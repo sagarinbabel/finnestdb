@@ -167,6 +167,8 @@ func TestImporter_EndToEnd_HandlesHomonymsAndEmptyGlossGuard(t *testing.T) {
 			// jooma's verbal forms
 			"jooma\tjoon\tIndPrSg1\n"+
 			"jooma\tjooma\tSup\n"+
+			"jooma\tjuua\tInf\n"+
+			"jooma\tjuues\tGer\n"+
 			// jooma's nominal forms
 			"jooma\tjooma\tSgN\n"+
 			"jooma\tjoomad\tPlN\n"+
@@ -261,6 +263,23 @@ func TestImporter_EndToEnd_HandlesHomonymsAndEmptyGlossGuard(t *testing.T) {
 	// SgN of jooma is "jooma" (nominal) — that should be present as NOUN.
 	if nounSup != 1 {
 		t.Errorf("jooma SgN row missing under NOUN: count=%d", nounSup)
+	}
+
+	for _, tc := range []struct {
+		form string
+		want string
+	}{
+		{"jooma", "Case=Ill|VerbForm=Sup"},
+		{"juua", "VerbForm=Inf"},
+		{"juues", "VerbForm=Conv"},
+	} {
+		var feats string
+		if err := db.QueryRow(`SELECT COALESCE(feats, '') FROM forms WHERE form=? AND lemma='jooma' AND pos='VERB' AND lang='ET'`, tc.form).Scan(&feats); err != nil {
+			t.Fatalf("query %s feats: %v", tc.form, err)
+		}
+		if feats != tc.want {
+			t.Errorf("%s feats = %q, want %q", tc.form, feats, tc.want)
+		}
 	}
 
 	// 24/7's "all the time" went to ADV (via the prop→PROPN, adv→ADV mapping).
@@ -666,6 +685,111 @@ func TestImporter_UpgradesSourceOnConflictWhenAtLeastAsAuthoritative(t *testing.
 	if src != "custom_overrides" || prio != 100 {
 		t.Errorf("custom form downgrade leak: got source=%q priority=%d, want custom_overrides/100",
 			src, prio)
+	}
+}
+
+func TestImporter_ReimportRepairsStaleSameSourceFeats(t *testing.T) {
+	tmp := t.TempDir()
+	defDir := filepath.Join(tmp, "definitions")
+	formsDir := filepath.Join(tmp, "forms")
+	if err := writeAll(defDir, "j.jsonl",
+		`{"word_id":1,"lemma":"jooma","homonym_nr":1,"word_class":"verb","meanings":[{"pos":["v"],"translations_en":["drink"]}]}`+"\n"+
+			`{"word_id":2,"lemma":"guarded","homonym_nr":1,"word_class":"verb","meanings":[{"pos":["v"],"translations_en":["guard"]}]}`+"\n",
+	); err != nil {
+		t.Fatalf("write definitions: %v", err)
+	}
+	if err := writeAll(formsDir, "j.tsv",
+		"lemma\tform\tmorph_code\n"+
+			"jooma\tjooma\tSup\n"+
+			"jooma\tjuua\tInf\n"+
+			"jooma\tjuues\tGer\n"+
+			"jooma\tjoodama\tSupIps\n"+
+			"guarded\tguarded\tSup\n",
+	); err != nil {
+		t.Fatalf("write forms: %v", err)
+	}
+
+	dbPath := filepath.Join(tmp, "test.db")
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer db.Close()
+	if err := ensureSchema(db); err != nil {
+		t.Fatalf("schema: %v", err)
+	}
+
+	lemmaPOS, _, err := aggregateDefinitions(defDir)
+	if err != nil {
+		t.Fatalf("aggregateDefinitions: %v", err)
+	}
+	if _, _, err := writeLemmas(db, lemmaPOS); err != nil {
+		t.Fatalf("writeLemmas: %v", err)
+	}
+
+	if _, err := db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+		 VALUES ('jooma', 'jooma', 'VERB', 'ET', 'ekilex', 20, 'VerbForm=Inf')`,
+	); err != nil {
+		t.Fatalf("seed stale ekilex form: %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+		 VALUES ('juua', 'jooma', 'VERB', 'ET', 'ekilex', 20, 'VerbForm=Sup')`,
+	); err != nil {
+		t.Fatalf("seed stale infinitive form: %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+		 VALUES ('juues', 'jooma', 'VERB', 'ET', 'ekilex', 20, '')`,
+	); err != nil {
+		t.Fatalf("seed empty gerund form: %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+		 VALUES ('joodama', 'jooma', 'VERB', 'ET', 'ekilex', 20, 'VerbForm=Sup|Voice=Pass')`,
+	); err != nil {
+		t.Fatalf("seed stale passive supine form: %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+		 VALUES ('guarded', 'guarded', 'VERB', 'ET', 'custom_overrides', 100, 'VerbForm=Inf')`,
+	); err != nil {
+		t.Fatalf("seed custom form: %v", err)
+	}
+
+	if _, err := importForms(db, formsDir, lemmaPOS); err != nil {
+		t.Fatalf("importForms: %v", err)
+	}
+
+	var feats string
+	for _, tc := range []struct {
+		form string
+		want string
+	}{
+		{"jooma", "Case=Ill|VerbForm=Sup"},
+		{"juua", "VerbForm=Inf"},
+		{"juues", "VerbForm=Conv"},
+		{"joodama", "Case=Ill|VerbForm=Sup|Voice=Pass"},
+	} {
+		if err := db.QueryRow(
+			`SELECT feats FROM forms WHERE form=? AND lemma='jooma' AND pos='VERB' AND lang='ET'`,
+			tc.form,
+		).Scan(&feats); err != nil {
+			t.Fatalf("query repaired %s form: %v", tc.form, err)
+		}
+		if feats != tc.want {
+			t.Errorf("%s repaired feats = %q, want %q", tc.form, feats, tc.want)
+		}
+	}
+
+	if err := db.QueryRow(
+		`SELECT feats FROM forms WHERE form='guarded' AND lemma='guarded' AND pos='VERB' AND lang='ET'`,
+	).Scan(&feats); err != nil {
+		t.Fatalf("query custom form: %v", err)
+	}
+	if feats != "VerbForm=Inf" {
+		t.Errorf("custom feats overwritten: got %q, want original VerbForm=Inf", feats)
 	}
 }
 

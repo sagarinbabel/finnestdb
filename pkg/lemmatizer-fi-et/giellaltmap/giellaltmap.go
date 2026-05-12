@@ -226,6 +226,10 @@ func applyTags(a *Analysis, tags []string) {
 		case "InfMIST":
 			a.VerbForm = "Inf"
 			a.InfForm = "5"
+		case "Sup":
+			a.VerbForm = "Sup"
+		case "Ger":
+			a.VerbForm = "Conv"
 
 		// ── VerbForm: participles (with PartForm subtype) ────
 		case "PrsPrc":
@@ -251,19 +255,19 @@ func applyTags(a *Analysis, tags []string) {
 
 		// ── PronType ─────────────────────────────────────────
 		case "Dem":
-			a.PronType = "Dem"
+			setPronType(a, "Dem")
 		case "Interr":
-			a.PronType = "Int"
+			setPronType(a, "Int")
 		case "Rel":
-			a.PronType = "Rel"
+			setPronType(a, "Rel")
 		case "Indef":
-			a.PronType = "Ind"
+			setPronType(a, "Ind")
 		case "Pers":
-			a.PronType = "Prs"
+			setPronType(a, "Prs")
 		case "Refl":
-			a.PronType = "Rfl"
+			setPronType(a, "Rfl")
 		case "Recipr":
-			a.PronType = "Rcp"
+			setPronType(a, "Rcp")
 
 		// ── NumType ──────────────────────────────────────────
 		case "Card":
@@ -333,5 +337,13 @@ func applyTags(a *Analysis, tags []string) {
 			a.Number = "Plur"
 			a.Person = "3"
 		}
+	}
+}
+
+func setPronType(a *Analysis, pronType string) {
+	// Giellalt emits POS before subtype tags in supported analysers. Gate on
+	// the already-seen POS so verb tags like "Pers" don't become PronType=Prs.
+	if a.UPOS == "PRON" {
+		a.PronType = pronType
 	}
 }

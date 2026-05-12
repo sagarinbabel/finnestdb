@@ -17,7 +17,7 @@ import "strings"
 //     drop it before lookup; the base code carries the same FEATS.
 //   - Negative variants (suffix N or Neg) append Polarity=Neg to the
 //     base form's FEATS.
-//   - Idiom (ID), gerund (Ger), and unknown (??) return empty — we
+//   - Idiom (ID) and unknown (??) return empty — we
 //     don't claim FEATS we can't defend.
 //
 // The mapping vocabulary (Case=Ine|Number=Sing etc.) matches UD-Estonian
@@ -88,7 +88,7 @@ func appendFeat(feats, kv string) string {
 //	                          IndPrPs / IndPrIps                present pass/imp
 //	                          IndIpfPs / IndIpfIps              past pass/imp
 //	Conditional / quotative / imperative: Knd*, Kvt*, Imp* — same shape
-//	Non-finite: Inf (-ma supine), Sup (-da infinitive), Ger
+//	Non-finite: Inf (-da infinitive), Sup (-ma supine), Ger (-des converb)
 //	Participles: PtsPr{Ps,Ips} present active/passive
 //	             PtsPt{Ps,Ips} past active/passive
 //	Supine + case: SupAb / SupEl / SupIn / SupTr / SupIps
@@ -179,8 +179,9 @@ var ekilexBaseFeats = map[string]string{
 	"ImpPrIps": "Mood=Imp|Tense=Pres|VerbForm=Fin|Voice=Pass",
 
 	// ── Non-finite ──────────────────────────────────────────────────────
-	"Inf": "VerbForm=Sup", // -ma supine (Ekilex calls it Inf)
-	"Sup": "VerbForm=Inf", // -da infinitive
+	"Inf": "VerbForm=Inf",          // -da infinitive
+	"Sup": "Case=Ill|VerbForm=Sup", // -ma supine
+	"Ger": "VerbForm=Conv",         // -des converb
 
 	// ── Participles ─────────────────────────────────────────────────────
 	"PtsPrPs":  "Tense=Pres|VerbForm=Part|Voice=Act",
@@ -193,9 +194,9 @@ var ekilexBaseFeats = map[string]string{
 	"SupEl":  "Case=Ela|VerbForm=Sup",
 	"SupIn":  "Case=Ine|VerbForm=Sup",
 	"SupTr":  "Case=Tra|VerbForm=Sup",
-	"SupIps": "VerbForm=Sup|Voice=Pass",
+	"SupIps": "Case=Ill|VerbForm=Sup|Voice=Pass",
 
 	// ── Empty / placeholders ────────────────────────────────────────────
-	// "ID" (idiom), "Ger" (gerund), "??" (unknown) deliberately absent —
-	// returning "" for these is the right behavior.
+	// "ID" (idiom) and "??" (unknown) deliberately absent — returning ""
+	// for these is the right behavior.
 }
