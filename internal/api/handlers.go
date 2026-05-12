@@ -143,7 +143,19 @@ type LemmaStateLookupResponse struct {
 }
 
 type ParseFeedbackRequest struct {
-	ParseID              int64  `json:"parse_id"`
+	// ParseID is the existing parse_sessions row to attribute this
+	// feedback against. Optional: when 0 (the default after the eager
+	// /api/parse persistence was removed), the handler creates a new
+	// parse_session lazily from SourceText below. ParseID stays useful
+	// for deck-detail feedback where the deck owns a real session row.
+	ParseID int64 `json:"parse_id,omitempty"`
+	// SourceText is required when ParseID is 0; it's the text the user
+	// was viewing when they clicked "Suggest fix". The handler stores it
+	// in the lazily-created parse_session so admin triage still has
+	// context.
+	SourceText           string `json:"source_text,omitempty"`
+	TotalTokens          int    `json:"total_tokens,omitempty"`
+	UniqueLemmaCount     int    `json:"unique_lemma_count,omitempty"`
 	Lang                 string `json:"lang"`
 	Parser               string `json:"parser"`
 	Surface              string `json:"surface"`
@@ -1409,15 +1421,13 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var parseID *int64
+	// /api/parse no longer creates a parse_sessions row. Persistence is
+	// deferred until the user does something durable with the parse — saves
+	// it as a deck (handleCreateDeck creates the row) or submits feedback
+	// (handleParseFeedback creates one lazily from inline source_text).
+	// This matches the "return data, persist on save" model so a user who
+	// inspects and walks away leaves nothing in parse_sessions.
 	if auth != nil {
-		id, err := a.store.CreateParseSession(&auth.UserID, parsed.Lang, parsed.Parser, req.Text, parsed.TotalTokens, len(parsed.Words))
-		if err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
-		}
-		parseID = &id
-
 		keys := make([]store.LemmaKey, 0, len(parsed.Words))
 		for _, word := range parsed.Words {
 			if strings.TrimSpace(word.Lemma) == "" || strings.TrimSpace(word.POS) == "" {
@@ -1440,7 +1450,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, ParseResponse{
 		Lang:            parsed.Lang,
-		ParseID:         parseID,
+		// ParseID is intentionally nil — /api/parse no longer persists.
 		TotalTokens:     parsed.TotalTokens,
 		ParseDurationMs: float64(parsed.ParseDurationNs) / 1e6,
 		Stats:           parsed.Stats,
@@ -1476,8 +1486,8 @@ func (a *API) handleParseFeedback(w http.ResponseWriter, r *http.Request, auth *
 		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
 		return
 	}
-	if req.ParseID <= 0 || parser == "" || surface == "" || proposedLemma == "" || proposedPOS == "" {
-		http.Error(w, "Parse ID, parser, surface, proposed lemma, and proposed POS are required", http.StatusBadRequest)
+	if parser == "" || surface == "" || proposedLemma == "" || proposedPOS == "" {
+		http.Error(w, "Parser, surface, proposed lemma, and proposed POS are required", http.StatusBadRequest)
 		return
 	}
 	if req.Occurrence < 0 {
@@ -1485,26 +1495,49 @@ func (a *API) handleParseFeedback(w http.ResponseWriter, r *http.Request, auth *
 		return
 	}
 
-	session, err := a.store.GetParseSession(req.ParseID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "Parse session not found", http.StatusBadRequest)
+	// Resolve a parse_session to attribute this feedback against. Two
+	// entry points:
+	//   1. ParseID > 0: feedback from a deck-detail view, where the deck
+	//      owns a real persisted session. Validate ownership + lang/parser.
+	//   2. ParseID == 0: feedback from the Inspect view, where /api/parse
+	//      no longer persists. Create a session lazily from the inline
+	//      SourceText so admin triage still has context to review.
+	var sessionID int64
+	if req.ParseID > 0 {
+		session, err := a.store.GetParseSession(req.ParseID)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "Parse session not found", http.StatusBadRequest)
+				return
+			}
+			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		return
-	}
-	if session.UserID == nil || *session.UserID != auth.UserID {
-		http.Error(w, "Parse session does not belong to the current user", http.StatusForbidden)
-		return
-	}
-	if session.Lang != lang || session.Parser != parser {
-		http.Error(w, "Parse feedback language/parser do not match the parse session", http.StatusBadRequest)
-		return
+		if session.UserID == nil || *session.UserID != auth.UserID {
+			http.Error(w, "Parse session does not belong to the current user", http.StatusForbidden)
+			return
+		}
+		if session.Lang != lang || session.Parser != parser {
+			http.Error(w, "Parse feedback language/parser do not match the parse session", http.StatusBadRequest)
+			return
+		}
+		sessionID = session.ID
+	} else {
+		sourceText := strings.TrimSpace(req.SourceText)
+		if sourceText == "" {
+			http.Error(w, "source_text is required when parse_id is not provided", http.StatusBadRequest)
+			return
+		}
+		id, err := a.store.CreateParseSession(&auth.UserID, lang, parser, req.SourceText, req.TotalTokens, req.UniqueLemmaCount)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		sessionID = id
 	}
 
 	feedbackID, err := a.store.CreateParseFeedback(store.ParseFeedback{
-		ParseSessionID:       session.ID,
+		ParseSessionID:       sessionID,
 		UserID:               auth.UserID,
 		Lang:                 lang,
 		Parser:               parser,

@@ -113,6 +113,75 @@ func TestNaturalLessOrdersNumericSuffixes(t *testing.T) {
 	}
 }
 
+func TestExtractChaptersUsesSpineOrder(t *testing.T) {
+	// Filenames sort 1, 10, 11, 2 naturally — but the spine declares a
+	// different order. Verify the spine wins.
+	container := `<?xml version="1.0"?><container><rootfiles>
+		<rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+	</rootfiles></container>`
+	opf := `<?xml version="1.0"?><package>
+		<manifest>
+			<item id="cover" href="Text/cover.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+			<item id="ch1"   href="Text/ch1.xhtml"   media-type="application/xhtml+xml"/>
+			<item id="ch2"   href="Text/ch2.xhtml"   media-type="application/xhtml+xml"/>
+			<item id="ch3"   href="Text/ch3.xhtml"   media-type="application/xhtml+xml"/>
+		</manifest>
+		<spine>
+			<itemref idref="cover"/>
+			<itemref idref="ch2"/>
+			<itemref idref="ch1"/>
+			<itemref idref="ch3"/>
+		</spine>
+	</package>`
+	data := buildEPUB(t, map[string]string{
+		"META-INF/container.xml": container,
+		"OEBPS/content.opf":      opf,
+		"OEBPS/Text/cover.xhtml": `<html><body><nav>TOC</nav><p>Cover.</p></body></html>`,
+		"OEBPS/Text/ch1.xhtml":   `<html><body><h1>Chapter One</h1><p>One.</p></body></html>`,
+		"OEBPS/Text/ch2.xhtml":   `<html><body><h1>Chapter Two</h1><p>Two.</p></body></html>`,
+		"OEBPS/Text/ch3.xhtml":   `<html><body><h1>Chapter Three</h1><p>Three.</p></body></html>`,
+	})
+
+	chapters, err := ExtractChaptersFromBytes(data)
+	if err != nil {
+		t.Fatalf("ExtractChaptersFromBytes: %v", err)
+	}
+	// Cover is properties="nav" → skipped. Remaining 3 in spine order:
+	// ch2 → ch1 → ch3 (not natural / not filename-sorted).
+	if len(chapters) != 3 {
+		t.Fatalf("got %d chapters, want 3 (nav doc should be skipped); titles=%v", len(chapters), chapterTitles(chapters))
+	}
+	wantOrder := []string{"Chapter Two", "Chapter One", "Chapter Three"}
+	for i, want := range wantOrder {
+		if chapters[i].Title != want {
+			t.Fatalf("chapter[%d].Title = %q, want %q (full order: %v)", i, chapters[i].Title, want, chapterTitles(chapters))
+		}
+	}
+}
+
+func TestExtractChaptersFallsBackWithoutContainerXML(t *testing.T) {
+	// No META-INF/container.xml at all — natural-sort fallback should kick in.
+	data := buildEPUB(t, map[string]string{
+		"OEBPS/Text/ch10.xhtml": `<html><body><h1>Ten</h1><p>Ten.</p></body></html>`,
+		"OEBPS/Text/ch2.xhtml":  `<html><body><h1>Two</h1><p>Two.</p></body></html>`,
+	})
+	chapters, err := ExtractChaptersFromBytes(data)
+	if err != nil {
+		t.Fatalf("ExtractChaptersFromBytes: %v", err)
+	}
+	if len(chapters) != 2 || chapters[0].Title != "Two" || chapters[1].Title != "Ten" {
+		t.Fatalf("fallback order wrong: %v", chapterTitles(chapters))
+	}
+}
+
+func chapterTitles(chs []Chapter) []string {
+	out := make([]string, len(chs))
+	for i, c := range chs {
+		out[i] = c.Title
+	}
+	return out
+}
+
 func TestExtractMetadataFromOPF(t *testing.T) {
 	opf := `<?xml version="1.0"?><package><metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
 		<dc:creator/>

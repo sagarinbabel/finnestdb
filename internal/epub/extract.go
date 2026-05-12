@@ -60,28 +60,17 @@ func ExtractChapters(r io.ReaderAt, size int64) ([]Chapter, error) {
 		return nil, fmt.Errorf("read epub: %w", err)
 	}
 
-	type entry struct {
-		name string
-		f    *zip.File
-	}
-	var docs []entry
-	for _, f := range zr.File {
-		lower := strings.ToLower(f.Name)
-		if !strings.HasSuffix(lower, ".xhtml") && !strings.HasSuffix(lower, ".html") && !strings.HasSuffix(lower, ".htm") {
-			continue
-		}
-		if isNonContentEPUBFile(lower) {
-			continue
-		}
-		docs = append(docs, entry{f.Name, f})
+	// Prefer the OPF spine: it gives the publisher's intended reading order
+	// AND excludes non-reading-order files like nav documents. Fall back to
+	// natural-sorted file walk when the EPUB has no container.xml/OPF or the
+	// spine can't be resolved.
+	docs := resolveSpineDocs(zr)
+	if docs == nil {
+		docs = walkContentDocs(zr)
 	}
 	if len(docs) == 0 {
 		return nil, errors.New("no XHTML/HTML content documents found in EPUB")
 	}
-	// Natural sort: an EPUB whose files are named "ch1.xhtml … ch10.xhtml"
-	// sorts wrong lexically ("ch1, ch10, ch11, ch2, …"). Compare prefix +
-	// trailing-number tuples so "ch10" follows "ch9".
-	sort.Slice(docs, func(i, j int) bool { return naturalLess(docs[i].name, docs[j].name) })
 
 	chapters := make([]Chapter, 0, len(docs))
 	for _, d := range docs {
@@ -141,6 +130,206 @@ var (
 	reH1Tag    = regexp.MustCompile(`(?is)<h1\b[^>]*>(.*?)</h1\s*>`)
 	reTitleTag = regexp.MustCompile(`(?is)<title\b[^>]*>(.*?)</title\s*>`)
 )
+
+// docEntry is one ordered content document inside the EPUB zip.
+type docEntry struct {
+	name string
+	f    *zip.File
+}
+
+// resolveSpineDocs returns content documents in the publisher-declared reading
+// order (META-INF/container.xml → OPF rootfile → manifest + spine). Returns
+// nil if container.xml or the OPF can't be parsed, signalling the caller to
+// fall back to a filename walk.
+func resolveSpineDocs(zr *zip.Reader) []docEntry {
+	containerXML := readZipFile(zr, "META-INF/container.xml")
+	if containerXML == "" {
+		return nil
+	}
+	opfPath := parseContainerRootfile(containerXML)
+	if opfPath == "" {
+		return nil
+	}
+	opfXML := readZipFile(zr, opfPath)
+	if opfXML == "" {
+		return nil
+	}
+	manifest := parseOPFManifest(opfXML)
+	if len(manifest) == 0 {
+		return nil
+	}
+	idrefs := parseOPFSpine(opfXML)
+	if len(idrefs) == 0 {
+		return nil
+	}
+
+	// Resolve hrefs relative to the OPF's directory.
+	opfDir := ""
+	if i := strings.LastIndex(opfPath, "/"); i >= 0 {
+		opfDir = opfPath[:i+1]
+	}
+
+	byName := make(map[string]*zip.File, len(zr.File))
+	for _, f := range zr.File {
+		byName[f.Name] = f
+	}
+
+	docs := make([]docEntry, 0, len(idrefs))
+	for _, idref := range idrefs {
+		href, ok := manifest[idref]
+		if !ok || href == "" {
+			continue
+		}
+		full := joinZipPath(opfDir, href)
+		lower := strings.ToLower(full)
+		if !strings.HasSuffix(lower, ".xhtml") && !strings.HasSuffix(lower, ".html") && !strings.HasSuffix(lower, ".htm") {
+			continue
+		}
+		if isNonContentEPUBFile(lower) {
+			continue
+		}
+		f, ok := byName[full]
+		if !ok {
+			continue
+		}
+		docs = append(docs, docEntry{name: full, f: f})
+	}
+	if len(docs) == 0 {
+		return nil
+	}
+	return docs
+}
+
+// walkContentDocs is the fallback when no spine is available: collect every
+// HTML-like file in the zip and natural-sort by path.
+func walkContentDocs(zr *zip.Reader) []docEntry {
+	var docs []docEntry
+	for _, f := range zr.File {
+		lower := strings.ToLower(f.Name)
+		if !strings.HasSuffix(lower, ".xhtml") && !strings.HasSuffix(lower, ".html") && !strings.HasSuffix(lower, ".htm") {
+			continue
+		}
+		if isNonContentEPUBFile(lower) {
+			continue
+		}
+		docs = append(docs, docEntry{name: f.Name, f: f})
+	}
+	sort.Slice(docs, func(i, j int) bool { return naturalLess(docs[i].name, docs[j].name) })
+	return docs
+}
+
+// readZipFile reads a single named file from the archive. Returns "" if the
+// file is missing or unreadable.
+func readZipFile(zr *zip.Reader, name string) string {
+	for _, f := range zr.File {
+		if f.Name == name {
+			rc, err := f.Open()
+			if err != nil {
+				return ""
+			}
+			defer rc.Close()
+			data, err := io.ReadAll(rc)
+			if err != nil {
+				return ""
+			}
+			return string(data)
+		}
+	}
+	return ""
+}
+
+// joinZipPath resolves an href like "Text/ch1.xhtml" relative to an OPF
+// directory like "OEBPS/". Drops a leading slash on href and collapses ".."
+// segments minimally (one-level only — EPUB hrefs almost never go above the
+// OPF directory).
+func joinZipPath(dir, href string) string {
+	href = strings.TrimPrefix(href, "/")
+	if dir == "" {
+		return href
+	}
+	// Handle the rare "../foo" case where the OPF lives in a subdirectory.
+	for strings.HasPrefix(href, "../") {
+		href = strings.TrimPrefix(href, "../")
+		if i := strings.LastIndex(strings.TrimSuffix(dir, "/"), "/"); i >= 0 {
+			dir = dir[:i+1]
+		} else {
+			dir = ""
+		}
+	}
+	return dir + href
+}
+
+var (
+	reContainerRootfile = regexp.MustCompile(`(?is)<rootfile\b[^>]*\bfull-path="([^"]+)"`)
+	reOPFManifestItem   = regexp.MustCompile(`(?is)<item\b([^>]*)/?>`)
+	reOPFItemID         = regexp.MustCompile(`(?is)\bid="([^"]+)"`)
+	reOPFItemHref       = regexp.MustCompile(`(?is)\bhref="([^"]+)"`)
+	reOPFSpineBlock     = regexp.MustCompile(`(?is)<spine\b[^>]*>(.*?)</spine\s*>`)
+	reOPFItemref        = regexp.MustCompile(`(?is)<itemref\b([^>]*)/?>`)
+	reOPFIdref          = regexp.MustCompile(`(?is)\bidref="([^"]+)"`)
+)
+
+// parseContainerRootfile returns the full-path of the first <rootfile/> in
+// META-INF/container.xml, or "" if not found.
+func parseContainerRootfile(xml string) string {
+	if m := reContainerRootfile.FindStringSubmatch(xml); len(m) == 2 {
+		return m[1]
+	}
+	return ""
+}
+
+var reOPFItemProperties = regexp.MustCompile(`(?is)\bproperties="([^"]+)"`)
+
+// parseOPFManifest returns an id → href map of every <item> in the manifest.
+// Items marked with `properties="nav"` (EPUB3 navigation documents) are
+// skipped — they're the table-of-contents, not learner reading content.
+func parseOPFManifest(opf string) map[string]string {
+	manifestStart := strings.Index(opf, "<manifest")
+	manifestEnd := strings.Index(opf, "</manifest")
+	if manifestStart < 0 || manifestEnd < 0 || manifestEnd <= manifestStart {
+		return nil
+	}
+	body := opf[manifestStart:manifestEnd]
+	out := make(map[string]string)
+	for _, m := range reOPFManifestItem.FindAllStringSubmatch(body, -1) {
+		attrs := m[1]
+		idMatch := reOPFItemID.FindStringSubmatch(attrs)
+		hrefMatch := reOPFItemHref.FindStringSubmatch(attrs)
+		if len(idMatch) != 2 || len(hrefMatch) != 2 {
+			continue
+		}
+		if propMatch := reOPFItemProperties.FindStringSubmatch(attrs); len(propMatch) == 2 {
+			props := strings.Fields(propMatch[1])
+			isNav := false
+			for _, p := range props {
+				if p == "nav" {
+					isNav = true
+					break
+				}
+			}
+			if isNav {
+				continue
+			}
+		}
+		out[idMatch[1]] = hrefMatch[1]
+	}
+	return out
+}
+
+// parseOPFSpine returns the ordered list of idref values from <spine>.
+func parseOPFSpine(opf string) []string {
+	block := reOPFSpineBlock.FindStringSubmatch(opf)
+	if len(block) != 2 {
+		return nil
+	}
+	var out []string
+	for _, m := range reOPFItemref.FindAllStringSubmatch(block[1], -1) {
+		if id := reOPFIdref.FindStringSubmatch(m[1]); len(id) == 2 {
+			out = append(out, id[1])
+		}
+	}
+	return out
+}
 
 // readMetadataFromZip walks the zip for an OPF package file and pulls
 // <dc:title> / <dc:creator> out of it. Returns zero-value metadata if no OPF

@@ -1,7 +1,7 @@
 // FinEstDB — frontend with three role-aware surfaces:
 //   anonymous landing/about/signin, authenticated user product, admin workbench.
 
-const MAX_CHARS = 300_000;
+const MAX_CHARS = 1_500_000;
 
 const POS_LABELS: Record<string, string> = {
     NOUN:  'Noun',
@@ -226,9 +226,14 @@ const state = {
     adminFeedbackStatus: 'submitted',
     knownWordsLang:     'FI',
     knownWords:         [] as KnownLemma[],
-    loadedEpub:         null as LoadedEpub | null,
-    // Per-chapter ParseResponse cache for the held EPUB. Key -1 = whole book,
-    // 0..N-1 = chapter index. Cleared on any non-EPUB parse or EPUB clear.
+    // resultsEpub: the EPUB whose parse is currently displayed on the
+    // results page (drives the chapter sidebar + cache). Each form's
+    // "loaded but not yet parsed" EPUB lives on its own ParseFormElements.
+    // The global slot is set when a form's Parse press completes against
+    // a loaded EPUB; cleared on the next text-only parse.
+    resultsEpub:        null as LoadedEpub | null,
+    // Per-chapter ParseResponse cache for the results-context EPUB. Key
+    // -1 = whole book, 0..N-1 = chapter index.
     epubChapterCache:   new Map<number, ParseResponse>(),
     // Sidebar selection: -1 = whole book, 0..N-1 = chapter, null = no EPUB
     // context (sidebar hidden).
@@ -1036,6 +1041,10 @@ interface ParseFormElements {
     dropzone:    HTMLElement;
     loadedPill:  HTMLElement;
     chapterList: HTMLElement;
+    // EPUB held in THIS form between upload and Parse press. Per-form so
+    // that loading a book in inspect doesn't cause workbench's Parse to
+    // analyze the wrong text (and vice-versa).
+    loadedEpub:  LoadedEpub | null;
 }
 
 function getInspectEls(): ParseFormElements | null {
@@ -1049,7 +1058,7 @@ function getInspectEls(): ParseFormElements | null {
     const pill     = document.getElementById('inspect-loaded');
     const chap     = document.getElementById('inspect-chapters');
     if (!lang || !text || !file || !cc || !warn || !swBtn || !dz || !pill || !chap) return null;
-    return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn, dropzone: dz, loadedPill: pill, chapterList: chap };
+    return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn, dropzone: dz, loadedPill: pill, chapterList: chap, loadedEpub: null };
 }
 
 function getWorkbenchEls(): ParseFormElements | null {
@@ -1063,11 +1072,15 @@ function getWorkbenchEls(): ParseFormElements | null {
     const pill  = document.getElementById('parse-loaded');
     const chap  = document.getElementById('parse-chapters');
     if (!lang || !text || !file || !cc || !warn || !swBtn || !dz || !pill || !chap) return null;
-    return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn, dropzone: dz, loadedPill: pill, chapterList: chap };
+    return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn, dropzone: dz, loadedPill: pill, chapterList: chap, loadedEpub: null };
 }
 
 function updateCharCount(els: ParseFormElements): void {
-    const count = els.text.value.length;
+    // When an EPUB is held, the textarea is empty — count from the loaded
+    // book's totalChars so the user sees the real size, not "0 / 1,000,000".
+    const count = els.loadedEpub
+        ? els.loadedEpub.totalChars
+        : els.text.value.length;
     els.charCount.textContent = `${count.toLocaleString()} / ${MAX_CHARS.toLocaleString()}`;
     els.charCount.classList.toggle('char-count-warn', count > MAX_CHARS * 0.9);
     els.charCount.classList.toggle('char-count-over', count >= MAX_CHARS);
@@ -1076,7 +1089,7 @@ function updateCharCount(els: ParseFormElements): void {
 // Text the parser will actually see — the held EPUB when one is loaded, else
 // whatever's in the textarea. Used for lang detection and submit gating.
 function effectiveSourceText(els: ParseFormElements): string {
-    if (state.loadedEpub) return state.loadedEpub.fullText;
+    if (els.loadedEpub) return els.loadedEpub.fullText;
     return els.text.value;
 }
 
@@ -1138,9 +1151,9 @@ async function uploadEpubForExtraction(file: File): Promise<ImportExtractRespons
 }
 
 // Render the "EPUB loaded" pill above the textarea. Caller is responsible for
-// the loadedEpub being non-null on state.
+// the loadedEpub being non-null on the form.
 function renderLoadedPill(els: ParseFormElements, gateInspectButton: boolean): void {
-    const epub = state.loadedEpub;
+    const epub = els.loadedEpub;
     if (!epub) {
         els.loadedPill.classList.add('hidden');
         els.loadedPill.innerHTML = '';
@@ -1188,7 +1201,7 @@ function chapterPreviewSnippet(text: string): string {
 // Render the loaded EPUB's chapter list in place of the textarea. The chapter
 // list is scrollable so a 100-chapter book doesn't blow the layout.
 function renderChapterList(els: ParseFormElements): void {
-    const epub = state.loadedEpub;
+    const epub = els.loadedEpub;
     if (!epub) {
         els.chapterList.classList.add('hidden');
         els.chapterList.innerHTML = '';
@@ -1217,7 +1230,7 @@ function hideChapterList(els: ParseFormElements): void {
 function renderChapterNav(): void {
     const nav = document.getElementById('results-chapter-nav');
     if (!nav) return;
-    const epub = state.loadedEpub;
+    const epub = state.resultsEpub;
     if (!epub || !state.currentResults || state.activeChapterIdx === null) {
         nav.classList.add('hidden');
         nav.innerHTML = '';
@@ -1268,7 +1281,7 @@ function renderChapterNav(): void {
 // /api/parse with the chapter text. Lang and parser mode are inherited from
 // the existing whole-book parse.
 async function selectChapter(idx: number): Promise<void> {
-    const epub = state.loadedEpub;
+    const epub = state.resultsEpub;
     if (!epub) return;
     if (state.activeChapterIdx === idx && state.epubChapterCache.has(idx)) return;
     if (idx !== -1 && (idx < 0 || idx >= epub.chapters.length)) return;
@@ -1299,6 +1312,10 @@ async function selectChapter(idx: number): Promise<void> {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
+            // Chapter parses are auxiliary data — no parse_sessions row.
+            // The whole-book parse (-1) remains persistent; we never reach
+            // this branch for -1 because the whole-book cache is seeded by
+            // the user-initiated runParse before any chapter click.
             body: JSON.stringify({ lang, text, parser: state.currentParserMode }),
         });
         if (!resp.ok) throw new Error(await resp.text() || resp.statusText);
@@ -1332,7 +1349,7 @@ async function parseAllChaptersInBackground(
     parserMode: ParserMode,
     gen: number,
 ): Promise<void> {
-    const epub = state.loadedEpub;
+    const epub = state.resultsEpub;
     if (!epub) return;
     const total = epub.chapters.length;
     let nextIdx = 0;
@@ -1369,15 +1386,14 @@ async function parseAllChaptersInBackground(
     );
 }
 
-// Drop the held EPUB and re-enable normal textarea editing.
+// Drop the held EPUB from THIS form and re-enable normal textarea editing.
+// Results-page state (state.resultsEpub + chapter cache) is left alone since
+// the user might still be reading the prior parse's results; the next Parse
+// press is what invalidates them.
 function clearLoadedEpub(els: ParseFormElements, gateInspectButton: boolean): void {
-    state.loadedEpub = null;
-    state.epubChapterCache.clear();
-    state.activeChapterIdx = null;
-    state.epubParseGen += 1; // signal background workers from prior parse to bail
+    els.loadedEpub = null;
     renderLoadedPill(els, gateInspectButton);
     hideChapterList(els);
-    renderChapterNav();
     els.text.classList.remove('hidden');
     els.text.disabled = false;
     els.text.placeholder = els.text.dataset.originalPlaceholder || '';
@@ -1407,7 +1423,7 @@ async function loadFileIntoForm(
         }));
         const filename = data.filename || file.name;
         const bookTitle = (data.book_title || '').trim() || filename.replace(/\.epub$/i, '');
-        state.loadedEpub = {
+        els.loadedEpub = {
             filename,
             fullText: data.text,
             chapters,
@@ -1437,8 +1453,8 @@ async function loadFileIntoForm(
     }
 
     // .txt / .md and unknown extensions — read client-side and populate the
-    // textarea, dropping any previously held EPUB.
-    if (state.loadedEpub) clearLoadedEpub(els, gateInspectButton);
+    // textarea, dropping any previously held EPUB on this form.
+    if (els.loadedEpub) clearLoadedEpub(els, gateInspectButton);
     try {
         const raw = await file.text();
         els.text.value = raw.slice(0, MAX_CHARS);
@@ -1632,10 +1648,10 @@ async function runParse(
     context: ResultsContext,
     activeBtnId: string,
 ): Promise<void> {
-    const epub = state.loadedEpub;
-    // When an EPUB is held, parse its full text (chapter parsing is wired but
-    // results currently render only at the book level — per-chapter results
-    // are a follow-up). Otherwise fall back to the textarea.
+    // EPUB scope is per-form: only THIS form's loaded book contributes to
+    // the parse input. A book held in inspect won't be parsed when the user
+    // hits Parse from the workbench, and vice versa.
+    const epub = els.loadedEpub;
     const text = (epub ? epub.fullText : els.text.value).trim();
     const lang = els.lang.value;
     const ws = getLangWarningState(text, lang);
@@ -1679,8 +1695,11 @@ async function runParse(
         state.currentSourceText = text;
         const preview = epub ? epub.bookTitle : text.slice(0, 60);
         if (epub) {
+            state.resultsEpub = epub;
             state.epubChapterCache.set(-1, data);
             state.activeChapterIdx = -1;
+        } else {
+            state.resultsEpub = null;
         }
         showResults(data, preview, parserMode, context);
         if (epub) {
@@ -2160,8 +2179,9 @@ function renderResultsSaveState(): void {
     if (!form || !input) return;
     form.classList.add('hidden');
     // For an EPUB import, the book title is a much better deck-name default
-    // than "Finnish: <first chars of body>".
-    const epub = state.loadedEpub;
+    // than "Finnish: <first chars of body>". Use the results-context EPUB so
+    // a still-loaded book in another form doesn't leak into this default.
+    const epub = state.resultsEpub;
     if (epub) {
         input.value = epub.bookTitle;
         return;
@@ -2555,9 +2575,11 @@ function openCorrectionModal(row: CorrectionRowContext): void {
     proposedGramEl.value  = row.original_grammar_label;
     noteEl.value = '';
 
-    // Backend requires a parse_id — only present for authenticated parses. If it's
-    // missing, disable submit and surface why.
-    const canSubmit = typeof state.currentResults?.parse_id === 'number';
+    // Backend requires authentication. Anonymous parses can't submit
+    // corrections — the feedback endpoint creates the parse_session
+    // lazily but it still has to belong to a user. Surface that
+    // explicitly via the auth hint.
+    const canSubmit = state.role === 'user' || state.role === 'admin';
     submitBtn.disabled = !canSubmit;
     if (authHint) authHint.classList.toggle('hidden', canSubmit);
 
@@ -2584,8 +2606,8 @@ function initCorrectionModal(): void {
         try {
             const row     = state.currentRow;
             const results = state.currentResults;
-            if (!row || !results || typeof results.parse_id !== 'number') {
-                showToast("Can't send correction — no parse session attached.", 'error');
+            if (!row || !results) {
+                showToast("Can't send correction — no parse loaded.", 'error');
                 return;
             }
 
@@ -2598,24 +2620,35 @@ function initCorrectionModal(): void {
                 return;
             }
 
+            // Two attribution paths: deck-detail feedback has a persisted
+            // parse_session (results.parse_id); Inspect-view feedback ships
+            // the source text inline and the server creates a session lazily.
+            const body: Record<string, unknown> = {
+                lang:                   results.lang,
+                parser:                 state.currentParserMode,
+                surface:                row.surface,
+                occurrence:             row.occurrence,
+                original_lemma:         row.lemma,
+                original_pos:           row.pos,
+                original_grammar_label: row.original_grammar_label,
+                proposed_lemma:         proposedLemma,
+                proposed_pos:           proposedPos,
+                proposed_grammar_label: proposedGram,
+                note,
+            };
+            if (typeof results.parse_id === 'number') {
+                body.parse_id = results.parse_id;
+            } else {
+                body.source_text = state.currentSourceText;
+                body.total_tokens = results.total_tokens;
+                body.unique_lemma_count = results.words.length;
+            }
+
             const resp = await fetch('/api/parse/feedback', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'same-origin',
-                body: JSON.stringify({
-                    parse_id:               results.parse_id,
-                    lang:                   results.lang,
-                    parser:                 state.currentParserMode,
-                    surface:                row.surface,
-                    occurrence:             row.occurrence,
-                    original_lemma:         row.lemma,
-                    original_pos:           row.pos,
-                    original_grammar_label: row.original_grammar_label,
-                    proposed_lemma:         proposedLemma,
-                    proposed_pos:           proposedPos,
-                    proposed_grammar_label: proposedGram,
-                    note,
-                }),
+                body: JSON.stringify(body),
             });
             if (resp.ok) {
                 showToast('Thanks — correction sent.', 'success');

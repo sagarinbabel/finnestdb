@@ -15,9 +15,9 @@ const (
 	// Cap upload size at 16 MiB. EPUB books in the FI/ET corpus pipeline have
 	// historically come in well under this. Plain-text files are even smaller.
 	maxImportUploadBytes = 16 << 20
-	// Cap returned text length so the client textarea (MAX_CHARS = 300_000)
+	// Cap returned text length so the client textarea (MAX_CHARS = 1_500_000)
 	// receives at most that many characters. Frontend trims on its end too.
-	maxImportTextChars = 300_000
+	maxImportTextChars = 1_500_000
 )
 
 type ImportExtractResponse struct {
@@ -75,8 +75,14 @@ func (a *API) HandleImportExtract(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// char_count reflects the source's ORIGINAL length, not the length of
+	// the (possibly truncated) returned text. The frontend uses this for
+	// the "X / 1,000,000" counter — if the book is bigger than the cap we
+	// still want the user to see the real number so the overflow state is
+	// honest. `truncated` tells the client the returned text was clipped.
+	originalCharCount := utf8.RuneCountInString(text)
 	truncated := false
-	if utf8.RuneCountInString(text) > maxImportTextChars {
+	if originalCharCount > maxImportTextChars {
 		text = truncateRunes(text, maxImportTextChars)
 		truncated = true
 	}
@@ -84,7 +90,7 @@ func (a *API) HandleImportExtract(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, ImportExtractResponse{
 		Text:       text,
 		Filename:   filepath.Base(header.Filename),
-		CharCount:  utf8.RuneCountInString(text),
+		CharCount:  originalCharCount,
 		Truncated:  truncated,
 		BookTitle:  meta.Title,
 		BookAuthor: meta.Author,
