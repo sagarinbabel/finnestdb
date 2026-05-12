@@ -128,6 +128,29 @@ func TestParse_InfMIST(t *testing.T) {
 	}
 }
 
+func TestParse_EstonianSupine(t *testing.T) {
+	a := Parse("minema+V+Pers+Sup+Ill")
+	if a.VerbForm != "Sup" {
+		t.Errorf("verbform=%q want Sup", a.VerbForm)
+	}
+	if a.GrammarLabel != "illative" {
+		t.Errorf("grammar=%q want illative", a.GrammarLabel)
+	}
+	if a.Feats != "Case=Ill|VerbForm=Sup" {
+		t.Errorf("feats=%q want Case=Ill|VerbForm=Sup", a.Feats)
+	}
+}
+
+func TestParse_EstonianGerund(t *testing.T) {
+	a := Parse("minema+V+Ger")
+	if a.VerbForm != "Conv" {
+		t.Errorf("verbform=%q want Conv", a.VerbForm)
+	}
+	if a.Feats != "VerbForm=Conv" {
+		t.Errorf("feats=%q want VerbForm=Conv", a.Feats)
+	}
+}
+
 func TestParse_DegreePositive(t *testing.T) {
 	a := Parse("suuri+A+Pos+Sg+Nom")
 	if a.Degree != "Pos" {

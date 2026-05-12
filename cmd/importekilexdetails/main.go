@@ -818,11 +818,12 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 	// data per form; the import previously discarded it. See
 	// docs/LEARNINGS.md "Estonian still falls behind FI" entry.
 	//
-	// On conflict, feats is upgraded only if either the existing row
-	// has empty feats OR the new row's source_priority is strictly higher.
-	// This protects manually-curated rows from being overwritten by a
-	// re-import while still letting Ekilex fill in missing data on rows
-	// imported from sources (kaikki) that don't carry FEATS.
+	// On conflict, feats is upgraded when the incoming row is higher priority,
+	// when an equal-priority row has empty FEATS, or when an Ekilex re-import
+	// repairs one of the stale non-finite FEATS values produced by older
+	// versions of this importer. This protects higher-priority curated rows
+	// and avoids replacing legitimate same-source ambiguity such as genitive
+	// vs. partitive noun homographs.
 	stmt, err := tx.Prepare(
 		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
 		 VALUES (?, ?, ?, 'ET', 'ekilex', 20, ?)
@@ -830,12 +831,29 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 		   source = excluded.source,
 		   source_priority = excluded.source_priority,
 		   feats = CASE
-		     WHEN excluded.feats != '' AND (forms.feats IS NULL OR forms.feats = '' OR forms.source_priority < excluded.source_priority)
+		     WHEN excluded.feats != '' AND (
+		       forms.source_priority < excluded.source_priority
+		       OR (forms.source_priority = excluded.source_priority AND (forms.feats IS NULL OR forms.feats = ''))
+		       OR (forms.source = excluded.source AND forms.source_priority = excluded.source_priority AND (
+		         (forms.feats = 'VerbForm=Inf' AND excluded.feats = 'Case=Ill|VerbForm=Sup')
+		         OR (forms.feats = 'VerbForm=Sup' AND excluded.feats = 'VerbForm=Inf')
+		         OR (forms.feats = 'VerbForm=Sup|Voice=Pass' AND excluded.feats = 'Case=Ill|VerbForm=Sup|Voice=Pass')
+		         OR (forms.feats = 'Polarity=Neg|VerbForm=Sup' AND excluded.feats = 'Polarity=Neg|VerbForm=Inf')
+		       ))
+		     )
 		     THEN excluded.feats
 		     ELSE forms.feats
 		   END
 		 WHERE forms.source_priority < excluded.source_priority
-		    OR (forms.source_priority = excluded.source_priority AND (forms.feats IS NULL OR forms.feats = '') AND excluded.feats != '')`,
+		    OR (excluded.feats != '' AND (
+		      (forms.source_priority = excluded.source_priority AND (forms.feats IS NULL OR forms.feats = ''))
+		      OR (forms.source = excluded.source AND forms.source_priority = excluded.source_priority AND (
+		        (forms.feats = 'VerbForm=Inf' AND excluded.feats = 'Case=Ill|VerbForm=Sup')
+		        OR (forms.feats = 'VerbForm=Sup' AND excluded.feats = 'VerbForm=Inf')
+		        OR (forms.feats = 'VerbForm=Sup|Voice=Pass' AND excluded.feats = 'Case=Ill|VerbForm=Sup|Voice=Pass')
+		        OR (forms.feats = 'Polarity=Neg|VerbForm=Sup' AND excluded.feats = 'Polarity=Neg|VerbForm=Inf')
+		      ))
+		    ))`,
 	)
 	if err != nil {
 		return 0, err
