@@ -646,7 +646,7 @@ func expandTokenLemmas(token parsecore.TokenResult, dict map[string][]store.Form
 	return []tokenLemma{{Lemma: lemma, POS: token.POS}}
 }
 
-func (a *API) filterGlosslessDictAlternatives(dict map[string][]store.FormResolution, lang string) map[string][]store.FormResolution {
+func (a *API) filterLowValueDictAlternatives(dict map[string][]store.FormResolution, lang string) map[string][]store.FormResolution {
 	keys := dictCandidateLemmaKeys(dict)
 	if len(keys) == 0 {
 		return dict
@@ -655,7 +655,7 @@ func (a *API) filterGlosslessDictAlternatives(dict map[string][]store.FormResolu
 	if len(glosses) == 0 {
 		return dict
 	}
-	return filterGlosslessAlternatives(dict, glosses)
+	return filterLowValueAlternatives(dict, glosses)
 }
 
 func dictCandidateLemmaKeys(dict map[string][]store.FormResolution) []store.LemmaKey {
@@ -677,14 +677,21 @@ func dictCandidateLemmaKeys(dict map[string][]store.FormResolution) []store.Lemm
 	return keys
 }
 
-func filterGlosslessAlternatives(dict map[string][]store.FormResolution, glosses map[store.LemmaKey]string) map[string][]store.FormResolution {
+// filterLowValueAlternatives keeps real ambiguity, but suppresses learner-facing
+// clutter: empty-gloss alternatives, and inflected-form glosses when a lexical
+// gloss for the same surface is available.
+func filterLowValueAlternatives(dict map[string][]store.FormResolution, glosses map[store.LemmaKey]string) map[string][]store.FormResolution {
 	out := make(map[string][]store.FormResolution, len(dict))
 	for form, candidates := range dict {
 		hasGlossedCandidate := false
+		hasLexicalCandidate := false
 		for _, c := range candidates {
-			if glosses[store.LemmaKey{Lemma: c.Lemma, POS: c.POS}] != "" {
+			gloss := glosses[store.LemmaKey{Lemma: c.Lemma, POS: c.POS}]
+			if gloss != "" {
 				hasGlossedCandidate = true
-				break
+				if !isInflectionalFormGloss(gloss) {
+					hasLexicalCandidate = true
+				}
 			}
 		}
 		if !hasGlossedCandidate {
@@ -694,15 +701,66 @@ func filterGlosslessAlternatives(dict map[string][]store.FormResolution, glosses
 
 		filtered := make([]store.FormResolution, 0, len(candidates))
 		for _, c := range candidates {
-			if glosses[store.LemmaKey{Lemma: c.Lemma, POS: c.POS}] != "" {
-				filtered = append(filtered, c)
+			gloss := glosses[store.LemmaKey{Lemma: c.Lemma, POS: c.POS}]
+			if gloss == "" {
+				continue
 			}
+			if hasLexicalCandidate && isInflectionalFormGloss(gloss) {
+				continue
+			}
+			filtered = append(filtered, c)
 		}
 		if len(filtered) > 0 {
 			out[form] = filtered
 		}
 	}
 	return out
+}
+
+func isInflectionalFormGloss(gloss string) bool {
+	g := strings.ToLower(strings.TrimSpace(gloss))
+	if !strings.Contains(g, " of ") {
+		return false
+	}
+	markers := []string{
+		"form of",
+		"first-person",
+		"second-person",
+		"third-person",
+		"first person",
+		"second person",
+		"third person",
+		"singular",
+		"plural",
+		"indicative",
+		"imperative",
+		"conditional",
+		"present",
+		"past",
+		"participle",
+		"infinitive",
+		"gerund",
+		"nominative",
+		"genitive",
+		"partitive",
+		"illative",
+		"inessive",
+		"elative",
+		"allative",
+		"adessive",
+		"ablative",
+		"translative",
+		"terminative",
+		"essive",
+		"abessive",
+		"comitative",
+	}
+	for _, marker := range markers {
+		if strings.Contains(g, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 // expandParsedWords reapplies the same dict-driven homonym expansion that
@@ -862,7 +920,7 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 	// parser's pick is only used when the dict is silent.
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
 	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang)
-	dictCandidates = a.filterGlosslessDictAlternatives(dictCandidates, req.Lang)
+	dictCandidates = a.filterLowValueDictAlternatives(dictCandidates, req.Lang)
 
 	sentences := make([]store.DeckSentenceInput, 0, len(parsed.Sentences))
 	for _, sent := range parsed.Sentences {
@@ -1461,7 +1519,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	// deck the user gets when saving. See expandParsedWords for details.
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
 	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang)
-	dictCandidates = a.filterGlosslessDictAlternatives(dictCandidates, req.Lang)
+	dictCandidates = a.filterLowValueDictAlternatives(dictCandidates, req.Lang)
 	parsed.Words = a.expandParsedWords(parsed, dictCandidates)
 
 	auth, err := a.getCurrentUser(r)
