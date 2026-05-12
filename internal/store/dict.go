@@ -176,7 +176,7 @@ func tryFSTAnalyze(lem *lemmatizer.Lemmatizer, lang, lower string) (FormResoluti
 	if !ok {
 		return FormResolution{}, false
 	}
-	return formResolutionFromFSTAnalysis(a, "fst"), true
+	return formResolutionFromFSTAnalysis(lower, a, "fst"), true
 }
 
 func pickBestFSTAnalysis(surface string, analyses []lemmatizer.Analysis) (lemmatizer.Analysis, bool) {
@@ -317,7 +317,7 @@ func mergeAndRankDictFSTCandidates(surface string, dictCandidates []formCandidat
 		if a.Lemma == "" || a.UPOS == "" {
 			continue
 		}
-		fstRes := formResolutionFromFSTAnalysis(a, "fst")
+		fstRes := formResolutionFromFSTAnalysis(surface, a, "fst")
 		key := lemmaPOSKey(fstRes.Lemma, fstRes.POS)
 		if idx, ok := byKey[key]; ok {
 			candidates[idx].hasFST = true
@@ -478,8 +478,15 @@ func morphologyScore(res FormResolution) int {
 	return 0
 }
 
-func formResolutionFromFSTAnalysis(a lemmatizer.Analysis, source string) FormResolution {
+func formResolutionFromFSTAnalysis(surface string, a lemmatizer.Analysis, source string) FormResolution {
 	feats := featsFromFSTAnalysis(a)
+	// Rewrite MA-infinitive noun-cousin traps. This catches forms like
+	// `tarjoamaan` where the analyzer ranks the noun `tarjoama` first
+	// and emits Case=Ill|Number=Sing|Person=3 even though the form is
+	// the MA-infinitive illative of the verb `tarjota`. Surfaced-tagged
+	// agreement (suffix harmony + Case feature) lets udfeats rewrite
+	// the FEATS deterministically.
+	feats = udfeats.NormalizeMaInfinitive(surface, a.UPOS, feats)
 	label := ""
 	if feats != "" {
 		label = caseFromFeats(feats)
@@ -965,6 +972,92 @@ func (d *DB) BatchLookupGlosses(lemmas []LemmaKey, lang string) map[LemmaKey]str
 		var gloss string
 		if err := stmt.QueryRow(k.Lemma, k.POS, lang, k.Lemma, k.POS, lang).Scan(&gloss); err == nil && gloss != "" {
 			result[k] = gloss
+		}
+	}
+	return result
+}
+
+// Sense is one ranked gloss reading for a (lemma, pos) pair. Senses
+// from the translations table arrive in priority+order: higher
+// SourcePriority comes first across sources, then lower SenseIdx
+// within the same source. The first element of the slice returned by
+// BatchLookupSenses is therefore the same string BatchLookupGlosses
+// returns — multi-sense callers can drop the first to get
+// "alternative meanings" without re-querying.
+type Sense struct {
+	Text           string // the gloss text (already trimmed; never empty)
+	SenseIdx       int    // sense_idx as written by importdict (flat counter across senses[].glosses[])
+	Source         string // source key (e.g. "kaikki", "ekilex", "custom")
+	SourcePriority int    // lemmas.source_priority for the source this sense came from
+}
+
+// BatchLookupSenses resolves a slice of LemmaKeys to their full ranked
+// list of glosses. Returns a map from LemmaKey → []Sense. Keys with no
+// translations row are absent from the map; the existing
+// lemmas.gloss fallback in BatchLookupGlosses does NOT participate
+// here because that field is a denormalised cache of the primary
+// translations row, not a separate authority worth ranking.
+//
+// Ranking order matches BatchLookupGlosses: source_priority DESC
+// (kaikki=10, EKI=20, custom=100), then sense_idx ASC (first sense
+// wins inside a source). Callers that want a richer ranking — e.g.
+// length-aware tiebreaks, or filtering by POS in context — should
+// compose that on top of this slice rather than mutate the storage
+// query.
+//
+// Target lang is hard-coded to 'EN' because both kaikki dumps for FI
+// and ET are en.wiktionary extractions. If we add FI-Wiktionary
+// monolingual glosses (target_lang='FI') the call signature would
+// gain a target lang parameter; today there's only one shape.
+//
+// Seeded by the yle_subs TODO at yle_subs/TODO.md (FinEstDB lemma-gloss
+// lookup), where the downstream deck builder wants multi-sense data
+// to render context-appropriate front cues for polysemous lemmas
+// (`pää` → "head" generally, "on top of" in `kirjoituspöydän päällä`).
+// The lookup itself is fast — sub-millisecond per key on an indexed
+// translations table — so callers are free to fetch many at once.
+func (d *DB) BatchLookupSenses(lemmas []LemmaKey, lang string) map[LemmaKey][]Sense {
+	result := make(map[LemmaKey][]Sense, len(lemmas))
+	if len(lemmas) == 0 {
+		return result
+	}
+
+	stmt, err := d.db.Prepare(`
+		SELECT t.text, t.sense_idx, t.source, l.source_priority
+		FROM translations t
+		JOIN lemmas l ON l.lemma = t.lemma
+		             AND l.pos   = t.pos
+		             AND l.lang  = t.lang
+		             AND l.source = t.source
+		WHERE t.lemma = ? AND t.pos = ? AND t.lang = ? AND t.target_lang = 'EN'
+		ORDER BY l.source_priority DESC, t.sense_idx ASC, t.source ASC
+	`)
+	if err != nil {
+		return result
+	}
+	defer stmt.Close()
+
+	for _, k := range lemmas {
+		rows, err := stmt.Query(k.Lemma, k.POS, lang)
+		if err != nil {
+			continue
+		}
+		var senses []Sense
+		for rows.Next() {
+			var s Sense
+			if err := rows.Scan(&s.Text, &s.SenseIdx, &s.Source, &s.SourcePriority); err != nil {
+				rows.Close()
+				senses = nil
+				break
+			}
+			if s.Text == "" {
+				continue
+			}
+			senses = append(senses, s)
+		}
+		rows.Close()
+		if len(senses) > 0 {
+			result[k] = senses
 		}
 	}
 	return result

@@ -16,6 +16,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"finnestdb/pkg/lemmatizer-fi-et/lexadverbs"
+	"finnestdb/pkg/lemmatizer-fi-et/udfeats"
 	"finnestdb/pkg/lemmatizer-fi-et/voikkomap"
 )
 
@@ -111,16 +113,37 @@ func (l *Lemmatizer) Close() error {
 // Lemmatize returns every morphological analysis in the loaded table
 // for the given word in the given language. Returns an empty slice if
 // the language isn't supported or the word isn't recognised.
+//
+// Two post-processing layers run on the FST output before it is
+// returned. Both are no-ops on the common case so the hot path stays
+// cheap:
+//
+//   - The lexadverbs overlay shadows known FST-output bugs with a
+//     curated analysis (e.g. `tuskin` returns ADV not the productive
+//     instructive of `tuska`). When an overlay hit fires, the FST
+//     readings are dropped entirely — the overlay asserts the correct
+//     answer.
+//   - The MA-infinitive normaliser rewrites Finnish FEATS on verb
+//     surfaces like `tarjoamaan` where the analyzer's noun-cousin
+//     reading (`tarjoama` Case=Ill|Person=3|Number=Sing) is replaced
+//     by the verb's MA-infinitive shape (Case=Ill|VerbForm=Inf|InfForm=Ma).
 func (l *Lemmatizer) Lemmatize(lang, word string) []Analysis {
 	if word == "" {
 		return nil
 	}
 	switch lang {
 	case "FI":
+		if overlay, ok := lexadverbs.LookupFI(word); ok {
+			return overlay
+		}
 		if l.fi == nil || len(l.fi) == 0 {
 			return nil
 		}
-		return l.fi[word]
+		raw := l.fi[word]
+		if len(raw) == 0 {
+			return nil
+		}
+		return normaliseFI(word, raw)
 	case "ET":
 		if l.et == nil || len(l.et) == 0 {
 			return nil
@@ -129,4 +152,18 @@ func (l *Lemmatizer) Lemmatize(lang, word string) []Analysis {
 	default:
 		return nil
 	}
+}
+
+// normaliseFI returns a copy of raw with FEATS rewritten by per-surface
+// rules. Cloning is mandatory: the caller's map is the cached table,
+// and downstream consumers (parser-compare, dict.go) may mutate the
+// returned slice elements while ranking. Skipping the clone would
+// poison the cache.
+func normaliseFI(surface string, raw []Analysis) []Analysis {
+	out := make([]Analysis, len(raw))
+	for i, a := range raw {
+		a.Feats = udfeats.NormalizeMaInfinitive(surface, a.UPOS, a.Feats)
+		out[i] = a
+	}
+	return out
 }

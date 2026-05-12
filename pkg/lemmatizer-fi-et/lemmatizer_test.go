@@ -156,6 +156,38 @@ func TestNewFromDir_PartialCoverage(t *testing.T) {
 	}
 }
 
+// TestLemmatize_FI_LexicalOverlayShadowsFST asserts that the
+// lexicalised-adverbs overlay short-circuits the FST lookup. The
+// surfaces below are not present in the smoke fi_min.json fixture, so
+// without the overlay Lemmatize would return an empty slice. With the
+// overlay we get the curated analysis even on a degraded table.
+func TestLemmatize_FI_LexicalOverlayShadowsFST(t *testing.T) {
+	l := newTestLemmatizer(t)
+	cases := []struct {
+		surface, wantLemma, wantPOS string
+	}{
+		{"tuskin", "tuskin", "ADV"},
+		{"Tuskin", "tuskin", "ADV"},
+		{"varsin", "varsin", "ADV"},
+		{"enemmän", "paljon", "ADV"},
+		{"vahingossa", "vahingossa", "ADV"},
+		{"asiaan", "asia", "NOUN"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.surface, func(t *testing.T) {
+			analyses := l.Lemmatize("FI", tc.surface)
+			if len(analyses) != 1 {
+				t.Fatalf("Lemmatize(%q): want 1 overlay analysis, got %d (%+v)", tc.surface, len(analyses), analyses)
+			}
+			a := analyses[0]
+			if a.Lemma != tc.wantLemma || a.UPOS != tc.wantPOS {
+				t.Errorf("Lemmatize(%q): got lemma=%q upos=%q, want lemma=%q upos=%q",
+					tc.surface, a.Lemma, a.UPOS, tc.wantLemma, tc.wantPOS)
+			}
+		})
+	}
+}
+
 func TestResolveTablesDir_DefaultAndOverride(t *testing.T) {
 	t.Setenv("LEMMATIZER_TABLES_DIR", "")
 	if got := resolveTablesDir(); got != DefaultTablesDir {

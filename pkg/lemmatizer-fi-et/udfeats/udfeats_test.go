@@ -77,6 +77,141 @@ func TestAppendSortedValue(t *testing.T) {
 	}
 }
 
+func TestNormalizeMaInfinitive(t *testing.T) {
+	cases := []struct {
+		name, surface, pos, in, want string
+	}{
+		{
+			"illative MA noun-cousin trap (tarjoamaan)",
+			"tarjoamaan", "VERB",
+			"Case=Ill|Number=Sing|Person=3",
+			"Case=Ill|InfForm=Ma|VerbForm=Inf",
+		},
+		{
+			"inessive MA in-progress (juomassa)",
+			"juomassa", "VERB",
+			"Case=Ine|Number=Sing|Person=3",
+			"Case=Ine|InfForm=Ma|VerbForm=Inf",
+		},
+		{
+			"elative MA from-doing (juomasta)",
+			"juomasta", "VERB",
+			"Case=Ela|Number=Sing|Person=3",
+			"Case=Ela|InfForm=Ma|VerbForm=Inf",
+		},
+		{
+			"adessive MA by-doing (tekemällä)",
+			"Tekemällä", "VERB",
+			"Case=Ade|Number=Sing|Person=3",
+			"Case=Ade|InfForm=Ma|VerbForm=Inf",
+		},
+		{
+			"abessive MA without-doing (puhumatta)",
+			"puhumatta", "VERB",
+			"Case=Abe|Number=Sing|Person=3",
+			"Case=Abe|InfForm=Ma|VerbForm=Inf",
+		},
+		{
+			"front-vowel harmony preserved (lähtemään)",
+			"lähtemään", "VERB",
+			"Case=Ill|Number=Sing|Person=3",
+			"Case=Ill|InfForm=Ma|VerbForm=Inf",
+		},
+		{
+			"sentence-initial capital with umlaut (Lähtemään)",
+			"Lähtemään", "VERB",
+			"Case=Ill|Number=Sing|Person=3",
+			"Case=Ill|InfForm=Ma|VerbForm=Inf",
+		},
+		{
+			"preserves Voice and other unrelated features",
+			"tarjoamaan", "VERB",
+			"Case=Ill|Number=Sing|Person=3|Voice=Act",
+			"Case=Ill|InfForm=Ma|VerbForm=Inf|Voice=Act",
+		},
+		{
+			"already correctly marked MA-infinitive: unchanged",
+			"tarjoamaan", "VERB",
+			"Case=Ill|InfForm=Ma|VerbForm=Inf",
+			"Case=Ill|InfForm=Ma|VerbForm=Inf",
+		},
+		{
+			"non-VERB pos: unchanged",
+			"tarjoamaan", "NOUN",
+			"Case=Ill|Number=Sing",
+			"Case=Ill|Number=Sing",
+		},
+		{
+			"verb but surface doesn't end in MA-suffix: unchanged",
+			"menin", "VERB",
+			"Number=Sing|Person=1|Tense=Past",
+			"Number=Sing|Person=1|Tense=Past",
+		},
+		{
+			"verb with case but wrong suffix for case: unchanged",
+			"talossa", "VERB",
+			"Case=Ine|Number=Sing|Person=3",
+			"Case=Ine|Number=Sing|Person=3",
+		},
+		{
+			"empty feats: unchanged",
+			"tarjoamaan", "VERB",
+			"",
+			"",
+		},
+		{
+			"verb without Case feature: unchanged",
+			"tarjoamaan", "VERB",
+			"Number=Sing|Person=3",
+			"Number=Sing|Person=3",
+		},
+		{
+			"VERB illative on Number=Plur surface: still normalises (no Sing to strip)",
+			"tarjoamaan", "VERB",
+			"Case=Ill|Number=Plur|Person=3",
+			"Case=Ill|InfForm=Ma|Number=Plur|VerbForm=Inf",
+		},
+	}
+	for _, tc := range cases {
+		got := NormalizeMaInfinitive(tc.surface, tc.pos, tc.in)
+		if got != tc.want {
+			t.Errorf("%s: NormalizeMaInfinitive(%q, %q, %q) = %q, want %q",
+				tc.name, tc.surface, tc.pos, tc.in, got, tc.want)
+		}
+	}
+}
+
+func TestParseFeatsRoundTrip(t *testing.T) {
+	// ComposeMap(parseFeats(x)) must be canonical (alphabetised, deduped).
+	inputs := []string{
+		"Case=Ine|Number=Sing",
+		"Number=Sing|Case=Par",
+		"Person[psor]=3|Number[psor]=Sing|Case=Ine",
+		"VerbForm=Fin|Voice=Act|Tense=Pres|Person=1|Number=Sing|Mood=Ind",
+	}
+	for _, in := range inputs {
+		got := ComposeMap(parseFeats(in))
+		// Reparse to ignore key order in the input.
+		if !sameFeats(in, got) {
+			t.Errorf("ComposeMap(parseFeats(%q)) = %q; not equivalent", in, got)
+		}
+	}
+}
+
+func sameFeats(a, b string) bool {
+	pa := parseFeats(a)
+	pb := parseFeats(b)
+	if len(pa) != len(pb) {
+		return false
+	}
+	for k, v := range pa {
+		if pb[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
 func TestRoundTrip(t *testing.T) {
 	// ComposeMap then CaseFromFeats should round-trip the case label.
 	for label := range LegacyLabelToUDCase {

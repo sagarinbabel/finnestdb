@@ -1627,6 +1627,134 @@ func TestBatchLookupGlosses_LowerSenseIdxWinsWithinSameSource(t *testing.T) {
 	}
 }
 
+// --- BatchLookupSenses tests ---
+
+func TestBatchLookupSenses_ReturnsAllSensesInOrder(t *testing.T) {
+	// All senses from the winning source, in sense_idx ASC order. The
+	// first sense is the same string BatchLookupGlosses returns — the
+	// two APIs must agree on "the primary gloss". The schema has one
+	// lemma row per (lemma, pos, lang); the JOIN in the senses query
+	// couples each translation row to that single source row.
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                        int
+	}{
+		{"pää", "NOUN", "head", "FI", "kaikki", 10},
+	})
+	seedTranslations(t, db, []struct {
+		lemma, pos, lang, target, text, source string
+		senseIdx                               int
+	}{
+		{"pää", "NOUN", "FI", "EN", "head (anatomical)", "kaikki", 0},
+		{"pää", "NOUN", "FI", "EN", "tip / end (of an object)", "kaikki", 1},
+		{"pää", "NOUN", "FI", "EN", "top (the upper part)", "kaikki", 2},
+		{"pää", "NOUN", "FI", "EN", "stalk / stem", "kaikki", 3},
+	})
+
+	got := db.BatchLookupSenses([]LemmaKey{{"pää", "NOUN"}}, "FI")
+	senses, ok := got[LemmaKey{"pää", "NOUN"}]
+	if !ok {
+		t.Fatal("pää: expected senses, got none")
+	}
+	if len(senses) != 4 {
+		t.Fatalf("pää: got %d senses, want 4", len(senses))
+	}
+	for i, want := range []string{
+		"head (anatomical)",
+		"tip / end (of an object)",
+		"top (the upper part)",
+		"stalk / stem",
+	} {
+		if senses[i].Text != want || senses[i].SenseIdx != i {
+			t.Errorf("senses[%d]: got (%q, sense_idx=%d), want (%q, %d)",
+				i, senses[i].Text, senses[i].SenseIdx, want, i)
+		}
+		if senses[i].Source != "kaikki" || senses[i].SourcePriority != 10 {
+			t.Errorf("senses[%d]: got source=%q priority=%d, want kaikki/10",
+				i, senses[i].Source, senses[i].SourcePriority)
+		}
+	}
+	// Verify the first sense's text matches what BatchLookupGlosses
+	// returns — the two APIs must agree on what "the primary gloss" is.
+	primary := db.BatchLookupGlosses([]LemmaKey{{"pää", "NOUN"}}, "FI")[LemmaKey{"pää", "NOUN"}]
+	if primary != senses[0].Text {
+		t.Errorf("primary disagreement: BatchLookupGlosses=%q, senses[0]=%q",
+			primary, senses[0].Text)
+	}
+}
+
+func TestBatchLookupSenses_HigherPrioritySourceWinsLemmaAndDictatesSenses(t *testing.T) {
+	// After ekilex takes over the lemma row (priority 20 > kaikki's 10),
+	// only ekilex's translation rows JOIN successfully. Stale kaikki
+	// translations are silently ignored — mirroring the documented
+	// BatchLookupGlosses behaviour. This guards the invariant that
+	// BatchLookupSenses NEVER surfaces senses whose source no longer
+	// owns the lemma row.
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                        int
+	}{
+		{"talo", "NOUN", "house-from-ekilex", "ET", "ekilex", 20},
+	})
+	seedTranslations(t, db, []struct {
+		lemma, pos, lang, target, text, source string
+		senseIdx                               int
+	}{
+		{"talo", "NOUN", "ET", "EN", "stale-kaikki-1", "kaikki", 0},
+		{"talo", "NOUN", "ET", "EN", "stale-kaikki-2", "kaikki", 1},
+		{"talo", "NOUN", "ET", "EN", "house", "ekilex", 0},
+		{"talo", "NOUN", "ET", "EN", "dwelling", "ekilex", 1},
+	})
+
+	got := db.BatchLookupSenses([]LemmaKey{{"talo", "NOUN"}}, "ET")
+	senses, ok := got[LemmaKey{"talo", "NOUN"}]
+	if !ok {
+		t.Fatal("talo: expected senses, got none")
+	}
+	if len(senses) != 2 {
+		t.Fatalf("talo: got %d senses, want 2 (kaikki rows must be stranded)", len(senses))
+	}
+	for i, want := range []string{"house", "dwelling"} {
+		if senses[i].Text != want || senses[i].Source != "ekilex" {
+			t.Errorf("senses[%d]: got (%q, %q), want (%q, ekilex)",
+				i, senses[i].Text, senses[i].Source, want)
+		}
+	}
+}
+
+func TestBatchLookupSenses_NoTranslationsRowsAbsentFromMap(t *testing.T) {
+	// A lemma that has only lemmas.gloss but no translations rows
+	// (legacy DB, or applyCustomGlosses path) returns no entry from
+	// BatchLookupSenses. That's the documented contract: this API is
+	// about the ranked sense list, not the cached primary.
+	db := newTestDB(t)
+	seedLemmasFull(t, db, []struct {
+		lemma, pos, gloss, lang, source string
+		priority                        int
+	}{
+		{"legacy", "NOUN", "old gloss", "FI", "kaikki", 10},
+	})
+	// no translations seeded
+
+	got := db.BatchLookupSenses([]LemmaKey{{"legacy", "NOUN"}}, "FI")
+	if _, ok := got[LemmaKey{"legacy", "NOUN"}]; ok {
+		t.Errorf("legacy lemma with no translations should be absent; got %v", got)
+	}
+}
+
+func TestBatchLookupSenses_EmptyInput(t *testing.T) {
+	db := newTestDB(t)
+	got := db.BatchLookupSenses(nil, "FI")
+	if got == nil {
+		t.Error("nil input should return non-nil empty map")
+	}
+	if len(got) != 0 {
+		t.Errorf("nil input: got %d entries, want 0", len(got))
+	}
+}
+
 // TestPickBestVFSTAnalysis_PreservesSurfaceCase regression-tests the codex
 // review finding on PR #107: when libvoikko returns multiple analyses for
 // the lowercase form (e.g. `turku/NOUN` and `Turku/PROPN` for "turussa"),
