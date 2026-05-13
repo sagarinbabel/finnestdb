@@ -10,6 +10,19 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-05-12 — ET verb-inflection bias baseline merge
+
+Documents the PR #203 merge resolution after the source-backed ET learner
+cleanup landed first on `main`.
+
+- Modified: [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) — keeps the
+  `2026-05-12b-T1606Z` baseline as historical evidence and adds
+  `2026.05.12d` as the combined current parser stamp.
+- Modified: [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) and
+  [`TODO.md`](../TODO.md) — update the current parser behavior tag to
+  `2026.05.12d` while noting that a new freeze is needed for combined
+  headline numbers.
+
 ## 2026-05-12 — Source-backed ET learner cleanup
 
 Documents the follow-up parser/importer change from the Sõnaveeb/Ekilex

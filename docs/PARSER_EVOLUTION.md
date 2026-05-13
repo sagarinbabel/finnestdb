@@ -29,7 +29,8 @@ committed run.
 
 | Date | Commit | FI fi-manual-v1 lemma | FI ud-tdt lemma | ET et-grammar-v1 lemma | FI grammar | ET grammar | ET coverage |
 |---|---|---:|---:|---:|---:|---:|---:|
-| 2026-05-12a-T1526Z (2026-05-12 PR cascade #183/#185/#187/#188/#189/#191/#193/#195; FI non-finite paradigm coverage in FST + ET +Pers/+Imprs→Voice + ET Inf/Sup/Ger mapping; **UD test sets all up +0.3-1.2pt**, ET grammar Case 78.4→**82.4**) | [`a5a4808`][c-2026-05-12a-T1526Z] | 81.4 | **61.4** | **91.4** | 98.6 | 82.4 | **100.0** |
+| 2026-05-12b-T1606Z (ET verb-inflection bias fix + Ekilex reimport; closes `peatus/joon/naeris` regressions from §2026-05-12a-T1526Z; **ET grammar lemma 91.4→92.4 / full 80.0→82.9 / et-manual lemma 88.9→100**) | [`c13d74e`][c-2026-05-12b-T1606Z] | 81.4 | 61.4 | **92.4** | 98.6 | 82.4 | **100.0** |
+| 2026-05-12a-T1526Z (2026-05-12 PR cascade #183/#185/#187/#188/#189/#191/#193/#195; FI non-finite paradigm coverage in FST + ET +Pers/+Imprs→Voice + ET Inf/Sup/Ger mapping; **UD test sets all up +0.3-1.2pt**, ET grammar Case 78.4→**82.4**) | [`a5a4808`][c-2026-05-12a-T1526Z] | 81.4 | **61.4** | 91.4 | 98.6 | 82.4 | **100.0** |
 | 2026-05-07k-T1118Z (FEATS migration + Ekilex bulk drop + FI kaikki backfill; **first measured FEATS lift end-to-end**: FI grammar 59.5→**98.6**, ET grammar 19.6→**78.4**, UD-tdt grammar 22.2→**83.2**) | [`ffd7584`][c-2026-05-07k-T1118Z] | 81.4 | 60.2 | 86.7 | **98.6** | **78.4** | **100.0** |
 | 2026-05-07k-feats-rich (PR #139; FEATS-rich gold + dict + adapters end-to-end; **first baseline with non-empty FEATS-attribute table**, but DB had no FEATS yet) | (PR #139) | 81.4 | — | 88.6 | 59.5 | 19.6 | 98.9 |
 | 2026-05-07k-T0944Z (post-FEATS re-measure; FST disabled — no production tables; same DB as j) | [`317ab1b`][c-2026-05-07k] | 81.4 | _superseded_ | 88.6 | 59.5 | 19.6 | 98.9 |
@@ -46,6 +47,7 @@ committed run.
 | 2026-05-05 (estnltk ceiling) | [`af111c2`][c-2026-05-05] | — | — | **98.1** | — | **92.2** | 100.0 |
 | 2026-04-28 | [`bb744ba`][c-2026-04-28] | 72.9 | — | 87.6 | 0.0 | 2.0 | 94.6 |
 
+[c-2026-05-12b-T1606Z]: https://github.com/sagarinbabel/finnestdb/commit/c13d74e
 [c-2026-05-12a-T1526Z]: https://github.com/sagarinbabel/finnestdb/commit/a5a4808
 [c-2026-05-07k-T1118Z]: https://github.com/sagarinbabel/finnestdb/commit/ffd7584
 [c-2026-05-07k]: https://github.com/sagarinbabel/finnestdb/commit/317ab1b
@@ -61,6 +63,22 @@ committed run.
 [c-2026-04-28]: https://github.com/sagarinbabel/finnestdb/commit/bb744ba
 
 ## Entries
+
+### 2026-05-12d — ET verb-inflection bias on top of source-backed ET cleanup
+
+**Parser stamp**: `2026.05.12d`
+**Scope**: `internal/store/`
+
+Conflict-resolution iteration after §2026-05-12c landed first on `main`.
+This keeps the source-backed ET learner cleanup from §2026-05-12c and adds
+the targeted `etVerbInflectionBias` that was measured in
+§2026-05-12b-T1606Z. The frozen `2026-05-12b-T1606Z` artifacts remain the
+evidence for the verb-bias behavior itself; run a new freeze before treating
+headline numbers as the combined `2026.05.12d` baseline.
+
+**Verification**:
+
+- `go test ./internal/store ./internal/parsecore`
 
 ### 2026-05-12c — Source-backed ET learner cleanup
 
@@ -125,6 +143,50 @@ primaries stop leaking into parse output.
 **Design choices and provenance**: see Decision 22 in
 [`DECISIONS.md`](DECISIONS.md).
 
+### 2026-05-12b-T1606Z — ET verb-inflection bias + post-#189 Ekilex reimport
+
+**PRs**: This baseline (no separate PR for the bias yet; landing as part of the same branch that froze §2026-05-12a-T1526Z, see [#199](https://github.com/sagarinbabel/finnestdb/pull/199))
+**Commit measured**: [`c13d74e`][c-2026-05-12b-T1606Z]
+**Run started**: 2026-05-12T16:06Z (UTC, both FI and ET)
+**Detail**: [`baselines/2026-05-12b-T1606Z-fi.md`](baselines/2026-05-12b-T1606Z-fi.md), [`baselines/2026-05-12b-T1606Z-et.md`](baselines/2026-05-12b-T1606Z-et.md)
+**Parser version stamp**: `2026.05.12b` (`parsecore.ParserVersion` — bumped from `2026.05.12a`)
+
+Closes the two open items flagged on §2026-05-12a-T1526Z:
+
+1. **`peatus → peatu/ADJ` regression** — root cause was `40afbbf` ("binary morphologyScore") landing between 2026-05-07k and 2026-05-12a. The scaled morphologyScore had been keeping verb readings on top of cross-POS homonym ties via FEATS-count (verbs carry ~6 attrs, nouns ~2). Going binary fixed arstiks/teed/koolis/kirja/mees (where the verb was wrong) but broke peatus/joon/naeris (where the verb was right). Targeted fix: a new `etVerbInflectionBias` in `pickBestResolutionCandidate` that fires only when (a) a VERB candidate has `Person=` in FEATS (signal of finite inflected form), and (b) at least one competing non-VERB candidate at the same-or-higher source priority has `lemma == surface` (a noun in citation form). The bias picks the verb in that configuration. Gated on `lang == "ET"`.
+2. **Ekilex reimport pending** — `make reduce-ekilex` + `make import-ekilex-details-et` (~3 min) picks up PR #189's importer fix for ET non-finite morph codes. Verified `õppida → õppima/VERB feats=VerbForm=Inf` (was `Sup`); 55,875 form rows touched.
+
+The bias keeps clear of arstiks/teed/koolis/kirja/mees because their noun candidates are inflected case forms (lemma != surface), so the `maxNonVerbCitationPriority` gate returns -1 for them and the bias is a no-op. New unit test `TestPickBestResolutionCandidate_EstonianVerbInflectionBias` in `dict_test.go` proves the positive case (peatus) AND the negative control (arstiks).
+
+**Headline numbers** (custom parser):
+
+| Dataset (cases) | Lemma | POS | Grammar | Full | Coverage |
+|---|---:|---:|---:|---:|---:|
+| _ET sets (where the fix lands):_ | | | | | |
+| et-grammar (50) | 92.4 | 94.3 | **82.4** | 82.9 | 100.0 |
+| et-manual (4) | **100.0** | **100.0** | 83.3 | 77.8 | 100.0 |
+| et-analyzer-traps (11) | **100.0** | **100.0** | 0.0 | **100.0** | 100.0 |
+| _FI sets (unchanged from §2026-05-12a-T1526Z; ET-only gate):_ | | | | | |
+| fi-grammar (80) | 96.8 | 98.1 | 98.6 | 50.6 | 99.7 |
+| fi-manual-v1 (22) | 81.4 | 85.7 | 60.0 | 32.9 | 90.7 |
+| ud-fi-tdt-test (1554) | 61.4 | 68.8 | 83.6 | 21.7 | 90.0 |
+
+**Net effect vs `2026-05-12a-T1526Z`** (custom parser):
+
+| Dataset | Δ Lemma | Δ POS | Δ Grammar | Δ Full |
+|---|---:|---:|---:|---:|
+| All FI datasets | flat | flat | flat | flat |
+| et-grammar | **+1.0** | **+1.0** | +0.0 | **+2.9** |
+| et-manual | **+11.1** | **+11.1** | +0.0 | **+11.1** |
+
+**Net effect vs `2026-05-07k-T1118Z`** (the pre-cascade baseline; cumulative gain across 2026-05-12 PR work):
+
+| Dataset | Δ Lemma | Δ POS | Δ Grammar | Δ Full |
+|---|---:|---:|---:|---:|
+| et-grammar | **+5.7** | **+2.9** | **+4.0** | **+3.9** |
+| et-manual | +0.0 | +0.0 | +0.0 | +0.0 |
+
+**Reading.** ET wins are now compounded: et-grammar lifts on lemma/POS/full again (joon, naeris, plus the PR #189 dict-side FEATS); et-manual is fully restored to 100% lemma/POS (peatus); FI is byte-stable vs §2026-05-12a-T1526Z (gate works). The remaining et-grammar misses (Eestis PROPN-vs-NOUN, õuna lemma ambiguity, koer/Koer ADJ-vs-NOUN) are different problem shapes from the ones this baseline addresses — carried as follow-ups in the ET summary.
 ### 2026-05-12a-T1526Z — FI non-finite paradigm coverage + ET FST FEATS mappings (PRs #188/#189/#191)
 
 **PRs**: [#188](https://github.com/sagarinbabel/finnestdb/pull/188), [#189](https://github.com/sagarinbabel/finnestdb/pull/189), [#191](https://github.com/sagarinbabel/finnestdb/pull/191) (also includes follow-ons [#193](https://github.com/sagarinbabel/finnestdb/pull/193) and [#195](https://github.com/sagarinbabel/finnestdb/pull/195))
