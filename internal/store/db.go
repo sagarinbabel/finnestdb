@@ -984,6 +984,10 @@ func (d *DB) GetUserDecks(userID int64) ([]Deck, error) {
 func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 	rows, err := d.db.Query(
 		`SELECT d.id, d.user_id, d.title, d.lang, d.is_public, d.created_at,
+		        EXISTS (
+		            SELECT 1 FROM user_deck_subscriptions s
+		             WHERE s.user_id = ? AND s.deck_id = d.id
+		        ) AS subscribed,
 		        COUNT(DISTINCT o.lemma || char(31) || o.pos) AS unique_count,
 		        COUNT(DISTINCT CASE
 		            WHEN uk.lemma IS NOT NULL THEN o.lemma || char(31) || o.pos
@@ -1025,7 +1029,7 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 		        )
 		  GROUP BY d.id, d.user_id, d.title, d.lang, d.is_public, d.created_at
 		  ORDER BY d.created_at DESC, d.id DESC`,
-		userID, userID, userID, userID, userID,
+		userID, userID, userID, userID, userID, userID,
 	)
 	if err != nil {
 		return nil, err
@@ -1035,6 +1039,11 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 	stats := []DeckStats{}
 	for rows.Next() {
 		var item DeckStats
+		// Subscribed is read straight from the SELECT, not derived from
+		// UserID-vs-caller. The latter only happens to be correct under
+		// today's WHERE clause (owned OR subscribed) — widening the listing
+		// later (shared decks, team decks, etc.) would silently break the
+		// invariant if we kept inferring it.
 		if err := rows.Scan(
 			&item.ID,
 			&item.UserID,
@@ -1042,13 +1051,13 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 			&item.Lang,
 			&item.IsPublic,
 			&item.CreatedAt,
+			&item.Subscribed,
 			&item.Unique,
 			&item.Known,
 			&item.Due,
 		); err != nil {
 			return nil, err
 		}
-		item.Subscribed = item.UserID != userID
 		stats = append(stats, item)
 	}
 	return stats, rows.Err()
@@ -1339,42 +1348,57 @@ func (d *DB) SubscribeUserToPublicDeck(userID, deckID int64) error {
 		return err
 	}
 
-	rows, err := tx.Query(
-		`SELECT DISTINCT lemma, pos FROM occurrence WHERE deck_id = ?`,
-		deckID,
-	)
-	if err != nil {
-		return err
-	}
-	type lemmaKey struct{ lemma, pos string }
-	var keys []lemmaKey
-	for rows.Next() {
-		var k lemmaKey
-		if err := rows.Scan(&k.lemma, &k.pos); err != nil {
-			rows.Close()
-			return err
-		}
-		keys = append(keys, k)
-	}
-	rows.Close()
-	if err := rows.Err(); err != nil {
+	// Seed cards in two bulk INSERTs instead of a per-lemma Go loop. For a
+	// novel-sized deck (~12k unique lemmas) the loop variant did ~24k
+	// queries inside the write transaction and held the SQLite write lock
+	// for tens of seconds, blocking every other writer. The two statements
+	// below do the same work and the lock is held for milliseconds.
+	//
+	// 1. INSERT a card for each unique (lemma, pos) in the deck the user
+	//    hasn't already marked known or ignored. The unique index on cards
+	//    keeps this idempotent for users who re-subscribe.
+	if _, err := tx.Exec(
+		`INSERT OR IGNORE INTO cards (user_id, lang, lemma, pos, mwe_id)
+		 SELECT DISTINCT ?, ?, o.lemma, o.pos, NULL
+		   FROM occurrence o
+		  WHERE o.deck_id = ?
+		    AND o.lemma != ''
+		    AND o.pos   != ''
+		    AND NOT EXISTS (
+		        SELECT 1 FROM user_known_lemmas uk
+		         WHERE uk.user_id = ? AND uk.lang = ?
+		           AND uk.lemma   = o.lemma AND uk.pos = o.pos
+		    )
+		    AND NOT EXISTS (
+		        SELECT 1 FROM user_ignored_lemmas ui
+		         WHERE ui.user_id = ? AND ui.lang = ?
+		           AND ui.lemma   = o.lemma AND ui.pos = o.pos
+		    )`,
+		userID, lang, deckID,
+		userID, lang,
+		userID, lang,
+	); err != nil {
 		return err
 	}
 
-	for _, k := range keys {
-		if k.lemma == "" || k.pos == "" {
-			continue
-		}
-		knownOrIgnored, err := isKnownOrIgnored(tx, userID, lang, k.lemma, k.pos)
-		if err != nil {
-			return err
-		}
-		if knownOrIgnored {
-			continue
-		}
-		if _, err := ensureCard(tx, userID, lang, k.lemma, k.pos); err != nil {
-			return err
-		}
+	// 2. Seed card_state for any card that doesn't have one yet (a card
+	//    inserted just now, or a pre-existing card from another deck whose
+	//    state row was somehow missing). Filtering on this deck's
+	//    occurrence rows scopes the work to seeds we just made.
+	if _, err := tx.Exec(
+		`INSERT OR IGNORE INTO card_state (card_id, fsrs_json, next_due, last_answer_at)
+		 SELECT c.id, NULL, NULL, NULL
+		   FROM cards c
+		  WHERE c.user_id = ? AND c.lang = ? AND c.mwe_id IS NULL
+		    AND EXISTS (
+		        SELECT 1 FROM occurrence o
+		         WHERE o.deck_id = ?
+		           AND o.lemma   = c.lemma
+		           AND o.pos     = c.pos
+		    )`,
+		userID, lang, deckID,
+	); err != nil {
+		return err
 	}
 
 	return tx.Commit()
@@ -1473,6 +1497,12 @@ func (d *DB) DeleteDeck(userID, deckID int64) error {
 	if _, err := tx.Exec(`DELETE FROM sentences WHERE deck_id = ? AND deck_id IN (SELECT id FROM decks WHERE id = ? AND user_id = ?)`, deckID, deckID, userID); err != nil {
 		return err
 	}
+	// PRAGMA foreign_keys is not enabled, so FK declarations don't cascade.
+	// Same guard pattern as above: only clear subscriptions when the deck is
+	// actually owned by the caller (= will actually be deleted below).
+	if _, err := tx.Exec(`DELETE FROM user_deck_subscriptions WHERE deck_id = ? AND deck_id IN (SELECT id FROM decks WHERE id = ? AND user_id = ?)`, deckID, deckID, userID); err != nil {
+		return err
+	}
 	deckResult, err := tx.Exec(`DELETE FROM decks WHERE id = ? AND user_id = ?`, deckID, userID)
 	if err != nil {
 		return err
@@ -1505,8 +1535,15 @@ type DeckDetails struct {
 
 // GetDeckDetails returns the deck's metadata and an aggregated list of
 // (lemma, pos) entries with counts, glosses, and a representative example
-// sentence. Returns sql.ErrNoRows if the deck does not exist, is not owned
-// by userID, and is not a public official deck.
+// sentence. Returns sql.ErrNoRows when none of these apply:
+//   - the user owns the deck;
+//   - the deck is currently public; or
+//   - the user has an active subscription (was studying the deck before it
+//     was unpublished — they keep read-only access).
+//
+// The third clause is the "grandfather" rule: unpublishing a deck must not
+// 404 learners who already added it to their studying list. GetUserDeckStats
+// keeps showing the deck for them; this query has to agree.
 func (d *DB) GetDeckDetails(userID, deckID int64) (*DeckDetails, error) {
 	var details DeckDetails
 	var parseSessionID sql.NullInt64
@@ -1514,8 +1551,11 @@ func (d *DB) GetDeckDetails(userID, deckID int64) (*DeckDetails, error) {
 		`SELECT id, user_id, title, lang, is_public, parse_session_id, created_at
 		   FROM decks
 		  WHERE id = ?
-		    AND (user_id = ? OR is_public = 1)`,
-		deckID, userID,
+		    AND (user_id = ?
+		         OR is_public = 1
+		         OR EXISTS (SELECT 1 FROM user_deck_subscriptions s
+		                     WHERE s.user_id = ? AND s.deck_id = ?))`,
+		deckID, userID, userID, deckID,
 	).Scan(&details.ID, &details.UserID, &details.Title, &details.Lang, &details.IsPublic, &parseSessionID, &details.CreatedAt)
 	if err != nil {
 		return nil, err

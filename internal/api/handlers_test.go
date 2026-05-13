@@ -2966,6 +2966,218 @@ func TestPublicDeckLifecycleAdminCreateAndSubscribe(t *testing.T) {
 	}
 }
 
+// TestUnpublishGrandfathersExistingSubscribers verifies that when an admin
+// unpublishes an official deck, learners who had already added it to their
+// studying list keep working access. Without grandfathering, GetUserDeckStats
+// still listed the deck (via the subscription join) while GetDeckDetails
+// 404'd on click — a "ghost row" bug. See review item #1.
+func TestUnpublishGrandfathersExistingSubscribers(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+		t.Fatalf("UpsertLemma: %v", err)
+	}
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{{
+				Text: "Kissa juoksee.",
+				Tokens: []parsecore.TokenResult{
+					{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+				},
+			}},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	// Admin creates a public deck.
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Beginner","lang":"FI","text":"Kissa juoksee.","is_public":true}`))
+	for _, c := range adminCookies {
+		createReq.AddCookie(c)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create status=%d body=%q", createRec.Code, createRec.Body.String())
+	}
+	var created CreateDeckResponse
+	if err := json.NewDecoder(bytes.NewReader(createRec.Body.Bytes())).Decode(&created); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	// Learner subscribes.
+	learnerCookies := loginAndReturnCookies(t, mux, "grandfathered@example.com")
+	subReq := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/decks/%d/subscribe", created.DeckID), nil)
+	for _, c := range learnerCookies {
+		subReq.AddCookie(c)
+	}
+	subRec := httptest.NewRecorder()
+	mux.ServeHTTP(subRec, subReq)
+	if subRec.Code != http.StatusOK {
+		t.Fatalf("subscribe status=%d body=%q", subRec.Code, subRec.Body.String())
+	}
+
+	// Admin unpublishes.
+	unpubReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/decks/%d", created.DeckID), strings.NewReader(`{"is_public":false}`))
+	for _, c := range adminCookies {
+		unpubReq.AddCookie(c)
+	}
+	unpubRec := httptest.NewRecorder()
+	mux.ServeHTTP(unpubRec, unpubReq)
+	if unpubRec.Code != http.StatusOK {
+		t.Fatalf("unpublish status=%d body=%q", unpubRec.Code, unpubRec.Body.String())
+	}
+
+	// Catalog now hides the deck from new visitors (correct).
+	newcomerCookies := loginAndReturnCookies(t, mux, "newcomer@example.com")
+	catReq := httptest.NewRequest(http.MethodGet, "/api/decks/public", nil)
+	for _, c := range newcomerCookies {
+		catReq.AddCookie(c)
+	}
+	catRec := httptest.NewRecorder()
+	mux.ServeHTTP(catRec, catReq)
+	var catalog PublicDeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(catRec.Body.Bytes())).Decode(&catalog); err != nil {
+		t.Fatalf("decode catalog: %v", err)
+	}
+	if len(catalog.Decks) != 0 {
+		t.Fatalf("expected catalog empty after unpublish, got %+v", catalog.Decks)
+	}
+
+	// Grandfathered learner still sees the deck in their listing AND can
+	// open the detail page (used to 404 — listing/detail disagreed).
+	listReq := httptest.NewRequest(http.MethodGet, "/api/decks", nil)
+	for _, c := range learnerCookies {
+		listReq.AddCookie(c)
+	}
+	listRec := httptest.NewRecorder()
+	mux.ServeHTTP(listRec, listReq)
+	var list DeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(listRec.Body.Bytes())).Decode(&list); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+	if len(list.Decks) != 1 || list.Decks[0].ID != created.DeckID {
+		t.Fatalf("expected grandfathered deck in learner listing, got %+v", list.Decks)
+	}
+
+	detailReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/decks/%d", created.DeckID), nil)
+	for _, c := range learnerCookies {
+		detailReq.AddCookie(c)
+	}
+	detailRec := httptest.NewRecorder()
+	mux.ServeHTTP(detailRec, detailReq)
+	if detailRec.Code != http.StatusOK {
+		t.Fatalf("grandfathered detail status=%d want 200 body=%q", detailRec.Code, detailRec.Body.String())
+	}
+	var detail DeckDetailResponse
+	if err := json.NewDecoder(bytes.NewReader(detailRec.Body.Bytes())).Decode(&detail); err != nil {
+		t.Fatalf("decode detail: %v", err)
+	}
+	if detail.IsPublic {
+		t.Fatal("deck should report is_public=false after unpublish")
+	}
+
+	// A user who never subscribed must still get 404 on the now-private deck.
+	stranger404Req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/decks/%d", created.DeckID), nil)
+	for _, c := range newcomerCookies {
+		stranger404Req.AddCookie(c)
+	}
+	stranger404Rec := httptest.NewRecorder()
+	mux.ServeHTTP(stranger404Rec, stranger404Req)
+	if stranger404Rec.Code != http.StatusNotFound {
+		t.Fatalf("non-subscriber detail status=%d want 404 body=%q", stranger404Rec.Code, stranger404Rec.Body.String())
+	}
+}
+
+// TestDeckPatchNonOwnerWithTitleAndIsPublic verifies that an admin
+// PATCHing both title and is_public on a deck they don't own is rejected
+// BEFORE either mutation runs. The previous handler applied is_public
+// first and then 404'd on the title update, leaving the visibility
+// flipped without telling the caller. See review item #2.
+func TestDeckPatchNonOwnerWithTitleAndIsPublic(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{{
+				Text: "Kissa juoksee.",
+				Tokens: []parsecore.TokenResult{
+					{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+				},
+			}},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	// User creates a private deck.
+	userCookies := loginAndReturnCookies(t, mux, "owner@example.com")
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Private","lang":"FI","text":"Kissa juoksee."}`))
+	for _, c := range userCookies {
+		createReq.AddCookie(c)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create status=%d body=%q", createRec.Code, createRec.Body.String())
+	}
+	var created CreateDeckResponse
+	if err := json.NewDecoder(bytes.NewReader(createRec.Body.Bytes())).Decode(&created); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	// Admin (not the owner) PATCHes both fields. The title update would
+	// fail the owner check, so the whole PATCH must abort before is_public
+	// commits.
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+	body := fmt.Sprintf(`{"title":"Hijacked","is_public":true}`)
+	patchReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/decks/%d", created.DeckID), strings.NewReader(body))
+	for _, c := range adminCookies {
+		patchReq.AddCookie(c)
+	}
+	patchRec := httptest.NewRecorder()
+	mux.ServeHTTP(patchRec, patchReq)
+	if patchRec.Code != http.StatusForbidden {
+		t.Fatalf("PATCH status=%d want 403 body=%q", patchRec.Code, patchRec.Body.String())
+	}
+
+	// Verify is_public did NOT change, AND the title did NOT change.
+	detailReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/decks/%d", created.DeckID), nil)
+	for _, c := range userCookies {
+		detailReq.AddCookie(c)
+	}
+	detailRec := httptest.NewRecorder()
+	mux.ServeHTTP(detailRec, detailReq)
+	if detailRec.Code != http.StatusOK {
+		t.Fatalf("owner detail status=%d body=%q", detailRec.Code, detailRec.Body.String())
+	}
+	var detail DeckDetailResponse
+	if err := json.NewDecoder(bytes.NewReader(detailRec.Body.Bytes())).Decode(&detail); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if detail.IsPublic {
+		t.Fatal("is_public must not have flipped when title update was disallowed")
+	}
+	if detail.Title != "Private" {
+		t.Fatalf("title=%q want 'Private'", detail.Title)
+	}
+
+	// Admin can still patch just is_public on the non-owned deck — the
+	// pre-check only blocks combined PATCHes that include a title.
+	patchPublicReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/decks/%d", created.DeckID), strings.NewReader(`{"is_public":true}`))
+	for _, c := range adminCookies {
+		patchPublicReq.AddCookie(c)
+	}
+	patchPublicRec := httptest.NewRecorder()
+	mux.ServeHTTP(patchPublicRec, patchPublicReq)
+	if patchPublicRec.Code != http.StatusOK {
+		t.Fatalf("is_public-only PATCH status=%d body=%q", patchPublicRec.Code, patchPublicRec.Body.String())
+	}
+}
+
 func TestDeckPatchTogglesIsPublicAdminOnly(t *testing.T) {
 	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
 

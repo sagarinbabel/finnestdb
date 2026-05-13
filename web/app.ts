@@ -364,9 +364,11 @@ interface PromptOptions extends ConfirmOptions {
     placeholder?:  string;
 }
 
-// Tracks the currently-bound dialog so the next caller's listeners don't
-// stack on top of the previous one. Each open re-wires the buttons.
-let dialogModalCleanup: (() => void) | null = null;
+// Tracks the currently-open dialog so a superseding open() can resolve the
+// prior one to null (cancel-equivalent) before stealing the modal markup.
+// Without this, the first Promise would hang forever — listeners get torn
+// down, but the resolve() function was never called.
+let activeDialog: { cancel: () => void } | null = null;
 
 function openDialog(opts: PromptOptions & { prompt: boolean }): Promise<string | null> {
     return new Promise(resolve => {
@@ -387,9 +389,10 @@ function openDialog(opts: PromptOptions & { prompt: boolean }): Promise<string |
             return;
         }
 
-        // If a previous dialog is still bound (e.g. nested calls), tear it
-        // down first so its listeners don't fire for this one.
-        if (dialogModalCleanup) dialogModalCleanup();
+        // If a previous dialog is still open, cancel it first. cancel()
+        // both removes its listeners AND resolves its promise so awaiters
+        // unblock instead of hanging.
+        if (activeDialog) activeDialog.cancel();
 
         titleEl.textContent   = opts.title   ?? (opts.prompt ? 'Edit' : 'Confirm');
         messageEl.textContent = opts.message;
@@ -406,9 +409,21 @@ function openDialog(opts: PromptOptions & { prompt: boolean }): Promise<string |
             inputWrap.classList.add('hidden');
         }
 
+        let settled = false;
+        const detachListeners = (): void => {
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            backdrop.removeEventListener('click', onCancel);
+            document.removeEventListener('keydown', onKey);
+        };
         const finish = (value: string | null) => {
+            if (settled) return;
+            settled = true;
             modal.classList.add('hidden');
-            if (dialogModalCleanup) dialogModalCleanup();
+            detachListeners();
+            if (activeDialog && activeDialog.cancel === onCancel) {
+                activeDialog = null;
+            }
             resolve(value);
         };
         const onConfirm = () => finish(opts.prompt ? input.value.trim() : '');
@@ -426,13 +441,7 @@ function openDialog(opts: PromptOptions & { prompt: boolean }): Promise<string |
         backdrop.addEventListener('click', onCancel);
         document.addEventListener('keydown', onKey);
 
-        dialogModalCleanup = () => {
-            confirmBtn.removeEventListener('click', onConfirm);
-            cancelBtn.removeEventListener('click', onCancel);
-            backdrop.removeEventListener('click', onCancel);
-            document.removeEventListener('keydown', onKey);
-            dialogModalCleanup = null;
-        };
+        activeDialog = { cancel: onCancel };
 
         modal.classList.remove('hidden');
         if (opts.prompt) input.focus();
@@ -1101,9 +1110,13 @@ async function loadOfficialDecks(): Promise<void> {
         state.officialDecks = data.decks || [];
         state.officialDecksLoaded = true;
     } catch (err: any) {
+        // Surface the failure via toast but DON'T wipe state.officialDecks or
+        // mark the cache as loaded — wiping would render the misleading
+        // "No official decks have been published yet" empty state on a
+        // network blip, and flipping officialDecksLoaded would suppress the
+        // automatic retry on next visit. Keep what we had; let the user try
+        // again.
         showToast(err.message || 'Failed to load official decks.', 'error');
-        state.officialDecks = [];
-        state.officialDecksLoaded = true;
     }
 }
 

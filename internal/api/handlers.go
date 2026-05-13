@@ -1225,14 +1225,36 @@ func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Title or is_public is required", http.StatusBadRequest)
 			return
 		}
-		// Toggling official-deck status requires admin and is allowed on any
-		// deck (admins manage the catalog). Renaming still requires
-		// ownership and is enforced by UpdateDeckTitle's WHERE clause.
-		if req.IsPublic != nil {
-			if !auth.IsAdmin {
-				http.Error(w, "Admin access required to change deck visibility", http.StatusForbidden)
+		// Authorisation differs between fields: is_public is admin-only on
+		// any deck (admins manage the catalog), title is owner-only. When
+		// both are present we have to check BOTH up front; otherwise an
+		// admin patching a deck they don't own could flip is_public, fail
+		// the title update, and walk away thinking the request 404'd while
+		// the visibility actually changed.
+		if req.IsPublic != nil && !auth.IsAdmin {
+			http.Error(w, "Admin access required to change deck visibility", http.StatusForbidden)
+			return
+		}
+		if title != "" {
+			owns, err := a.store.UserOwnsDeck(auth.UserID, deckID)
+			if err != nil {
+				http.Error(w, "Database error", http.StatusInternalServerError)
 				return
 			}
+			if !owns {
+				// Distinguish "deck doesn't exist" from "you're not the
+				// owner" only when the visibility flag isn't also being
+				// changed — otherwise we'd leak existence to a non-owner
+				// admin.
+				if req.IsPublic == nil {
+					http.Error(w, "Deck not found", http.StatusNotFound)
+				} else {
+					http.Error(w, "Only the deck owner can rename it", http.StatusForbidden)
+				}
+				return
+			}
+		}
+		if req.IsPublic != nil {
 			if err := a.store.SetDeckIsPublic(deckID, *req.IsPublic); err != nil {
 				if err == sql.ErrNoRows {
 					http.Error(w, "Deck not found", http.StatusNotFound)
@@ -2222,10 +2244,11 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/admin/parse-feedback", a.HandleAdminParseFeedback)
 	mux.HandleFunc("/api/admin/users", a.HandleAdminUsers)
 
-	// Decks
+	// Decks. net/http's ServeMux uses longest-prefix matching, not
+	// registration order, so "/api/decks/public" (exact match) wins over
+	// "/api/decks/" (subtree) regardless of which line goes first. Group
+	// is just for readability.
 	mux.HandleFunc("/api/decks", a.HandleDecks)
-	// "/api/decks/public" must be registered before "/api/decks/" so the
-	// catch-all id handler doesn't shadow the listing endpoint.
 	mux.HandleFunc("/api/decks/public", a.HandlePublicDecks)
 	mux.HandleFunc("/api/decks/", a.HandleDeckByID)
 
