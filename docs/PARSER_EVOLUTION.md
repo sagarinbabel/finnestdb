@@ -64,6 +64,55 @@ committed run.
 
 ## Entries
 
+### 2026-05-12e — ET review follow-ups: basic-mode parity, attribute-based FEATS, TA bypass test (PR #205)
+
+**Parser stamp**: `2026.05.12e`
+**Scope**: `internal/store/`, `pkg/lemmatizer-fi-et/lexadverbs`
+
+Follow-up to §2026-05-12c after a review of PR #201. The behavior
+changes from #205 are real but narrow; each one tightens a hidden
+contract that was implicit in §2026-05-12c and pins it with a test.
+
+**What changed:**
+
+1. Basic-mode special-capitalization FEATS sanitization parity. The
+   direct-dictionary path now passes the original-case surface (not the
+   lowercased form) into `formResolutionFromCandidate`, so rule 2 of
+   `sanitizeDictFeats` can fire in both `basic` and `custom` modes. The
+   user-visible effect is that exact `mA`/`MA` rows display
+   `Case=Nom|Number=Sing` in basic mode too, matching custom mode.
+   Basic mode is still dictionary-only with respect to lex overlays and
+   FST custom enhancements; only the source-integrity filter is shared.
+
+2. Attribute-based ET verb dictionary-form FEATS cleanup. The exact
+   string match `c.Feats == "Case=Ill|VerbForm=Sup"` is replaced by an
+   attribute check via `featsHasValue(feats, key, value)`. Reordered
+   keys (`VerbForm=Sup|Case=Ill`) and harmless extras
+   (`Case=Ill|Number=Sing|VerbForm=Sup`) now normalize to
+   `VerbForm=Inf` the same way. Decouples the rule from importer key
+   order.
+
+3. Explicit `TA` / `Ta` lex-overlay bypass. The `lookupLexOverlay`
+   special-cap guard is now self-documenting in the code, the
+   `lexadverbs` `ta` entry no longer claims to cover exact all-caps
+   `TA`, and a new unit test pins both code paths: sentence-initial
+   `Ta` reaches the lowercase `tema/PRON` overlay, exact all-caps `TA`
+   bypasses the overlay and may reach an exact source dictionary entry.
+
+**Verification:**
+
+- `go test ./internal/store ./pkg/lemmatizer-fi-et/lexadverbs ./cmd/importekilexdetails`
+- Live API smoke on `olema see väike ma mA MA ei et kui sina Ta TA`
+  unchanged from §2026-05-12c — `olema -> be`, `see -> this; that`,
+  `väike -> small; little`, `ei -> no; not`, `et -> that`,
+  `sina -> you`, exact `mA`/`MA` stay abbreviation rows.
+
+**No new freeze required for the headline baseline.** The only
+user-facing display change vs §2026-05-12d is the basic-mode FEATS
+sanitization for exact special-cap surfaces (Ill → Nom), which is not
+covered by the current FI/ET evaluation sets. A new freeze is still
+desirable to lock the combined `2026.05.12e` state when convenient.
+
 ### 2026-05-12d — ET verb-inflection bias on top of source-backed ET cleanup
 
 **Parser stamp**: `2026.05.12d`
