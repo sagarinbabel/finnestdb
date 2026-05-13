@@ -43,6 +43,12 @@ jobs:
         run: cd parser && cargo build --release
 
       - name: Run Go tests
+        # libparser.so is a Rust cdylib; cgo links against -lparser at build
+        # time but the dynamic loader needs it on LD_LIBRARY_PATH to find
+        # the shared object at runtime. On macOS the binary picks up
+        # libparser.dylib via the build directory path automatically.
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/parser/target/release
         run: go test ./internal/...
 
   # ── Lint ─────────────────────────────────────────────────────────────────
@@ -132,7 +138,12 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run Playwright tests
+        # Playwright spawns `go run ./cmd/server` via webServer config; the
+        # spawned process inherits this env, so libparser.so is locatable
+        # at runtime. See the unit-tests job for the same workaround.
         working-directory: web
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/parser/target/release
         run: npx playwright test
 
       - name: Upload Playwright report on failure
