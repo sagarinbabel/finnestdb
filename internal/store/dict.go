@@ -102,7 +102,10 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		// against. The overlay wins outright: skip the dict + FST
 		// merge for these surfaces. Gated to custom mode because the
 		// overlay is part of the "custom enhancements" suite; basic
-		// mode stays dict-only to keep its baselines stable.
+		// mode stays dict-only to keep overlay baselines stable. The
+		// direct dictionary path below still applies source-integrity
+		// filters such as exact special-capitalization matching in both
+		// modes.
 		if parserMode == "custom" {
 			if res, ok := lookupLexOverlay(lang, form); ok {
 				result[form] = res
@@ -117,7 +120,7 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		if dictCandidates, ok := lookupFormCandidates(stmtFormsAll, lower, lang); ok {
 			dictCandidates = filterCaseCompatibleCandidates(form, dictCandidates)
 			if len(dictCandidates) > 0 {
-				best := formResolutionFromCandidate(lower, pickBestFormCandidate(form, dictCandidates))
+				best := formResolutionFromCandidate(form, pickBestFormCandidate(form, dictCandidates))
 				if parserMode == "custom" {
 					var analyses []lemmatizer.Analysis
 					if lang == "FI" || lang == "ET" {
@@ -475,7 +478,8 @@ func sanitizeDictFeats(surface string, c formCandidate) string {
 	}
 	if c.POS == "VERB" &&
 		strings.EqualFold(strings.TrimSpace(surface), strings.TrimSpace(c.Lemma)) &&
-		c.Feats == "Case=Ill|VerbForm=Sup" {
+		featsHasValue(c.Feats, "Case", "Ill") &&
+		featsHasValue(c.Feats, "VerbForm", "Sup") {
 		return "VerbForm=Inf"
 	}
 	if surface == c.Lemma && hasSpecialCapitalization(c.Lemma) && isNominalCaseOnlyFeats(c.Feats) {
@@ -503,6 +507,16 @@ func isNominalCaseOnlyFeats(feats string) bool {
 		}
 	}
 	return strings.Contains(feats, "Case=")
+}
+
+func featsHasValue(feats, key, value string) bool {
+	prefix := key + "="
+	for _, part := range strings.Split(feats, "|") {
+		if strings.TrimSpace(part) == prefix+value {
+			return true
+		}
+	}
+	return false
 }
 
 func mergeAndRankDictFSTCandidates(surface, lang string, dictCandidates []formCandidate, analyses []lemmatizer.Analysis) FormResolution {
@@ -879,6 +893,9 @@ func morphologyScore(res FormResolution) int {
 // this layer distinctly from dict/fst/dict+fst.
 func lookupLexOverlay(lang, surface string) (FormResolution, bool) {
 	if hasSpecialCapitalization(surface) {
+		// Preserve exact source entries such as ET `TA`, `mA`, and `MA`.
+		// Sentence-initial titlecase words like `Ta` do not count as
+		// special capitalization and can still hit the lowercase overlay.
 		return FormResolution{}, false
 	}
 	lower := strings.ToLower(surface)

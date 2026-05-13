@@ -68,10 +68,15 @@ Keep this correction path deterministic and auditable:
 3. Require exact surface capitalization for bare special-capitalized
    dictionary lemmas. `ma` and sentence-initial `Ma` resolve to the
    pronoun; exact `mA` or `MA` may resolve to their abbreviation rows.
+   This direct-dictionary filter applies in both `basic` and `custom`
+   modes; basic mode remains dictionary-only but its candidate set is
+   source-integrity-filtered. Exact all-caps forms such as `TA` also
+   bypass lowercase lexical overlays and may reach exact source entries.
 4. Sanitize misleading FEATS at runtime for already-imported DBs:
    nominal case-only FEATS on invariant closed-class exact rows are
    cleared, and exact ET verb dictionary forms with
-   `Case=Ill|VerbForm=Sup` display as `VerbForm=Inf`.
+   `Case=Ill|VerbForm=Sup` display as `VerbForm=Inf` regardless of
+   FEATS attribute order or harmless extra nominal attributes.
 5. Change future Ekilex form imports so `ID` rows keep empty FEATS and
    same-key `SgN` rows can overwrite earlier stale case duplicates with
    nominative FEATS.
