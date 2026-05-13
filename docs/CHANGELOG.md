@@ -25,13 +25,13 @@ become misleading learner primaries.
   compatibility for already-imported DBs, and curated overrides only
   for high-frequency rows with verified bad learner primaries.
 - Added: [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) entry
-  2026-05-12b — records the parser stamp bump, changed behavior, and
+  2026-05-12c — records the parser stamp bump, changed behavior, and
   focused verification commands.
 - Modified: [`FST_LEMMATIZER.md`](FST_LEMMATIZER.md) "Store-level
   candidate merge" section — documents the ET overlay additions and
   the dictionary-side special-capitalization / invariant-FEATS guards.
 - Modified: [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) — updates
-  the current parser dated tag to `2026.05.12b`.
+  the current parser dated tag to `2026.05.12c`.
 - Modified: [`INDEX.md`](INDEX.md) and [`TODO.md`](../TODO.md) —
   refresh the current decision count and parser behavior stamp after
   Decision 22.

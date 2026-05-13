@@ -144,7 +144,7 @@ The direct-hit merge is deliberately conservative:
 - If local FST tables are missing, behavior degrades to the dictionary
   path plus the existing case-suffix label stopgap.
 
-#### ET source-backed learner guards (2026.05.12b)
+#### ET source-backed learner guards (2026.05.12c)
 
 The ET dictionary path has two narrow guards for Sõnaveeb/Ekilex-backed
 data that is valid as source data but misleading as a learner-primary

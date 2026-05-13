@@ -62,9 +62,9 @@ committed run.
 
 ## Entries
 
-### 2026-05-12b — Source-backed ET learner cleanup
+### 2026-05-12c — Source-backed ET learner cleanup
 
-**Parser stamp**: `2026.05.12b`
+**Parser stamp**: `2026.05.12c`
 **Scope**: `internal/store/`, `cmd/importekilexdetails/`,
 `pkg/lemmatizer-fi-et/lexadverbs`
 

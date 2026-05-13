@@ -118,7 +118,7 @@ lookup pages for the reported words. The importer behavior is pinned by
 `internal/store` and `pkg/lemmatizer-fi-et/lexadverbs` tests.
 
 **See also:** [CHANGELOG.md §2026-05-12 — Source-backed ET learner
-cleanup](CHANGELOG.md), [PARSER_EVOLUTION.md §2026-05-12b](PARSER_EVOLUTION.md).
+cleanup](CHANGELOG.md), [PARSER_EVOLUTION.md §2026-05-12c](PARSER_EVOLUTION.md).
 
 ---
 

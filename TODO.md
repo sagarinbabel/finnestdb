@@ -38,7 +38,7 @@ Snapshot of capabilities currently shipped on main, organized by area.
 - FST as parallel scorer in dict step 1 ([PR #127](https://github.com/sagarinbabel/finnestdb/pull/127))
 - FST candidate-merge FEATS enrichment ([PR #129](https://github.com/sagarinbabel/finnestdb/pull/129))
 - Per-attribute FEATS eval ([PR #130](https://github.com/sagarinbabel/finnestdb/pull/130))
-- Parser behavior stamp `parser-v2` / `2026.05.12b`
+- Parser behavior stamp `parser-v2` / `2026.05.12c`
 - Lexical overlays, bad-lemma blocklists, MA/A-infinitive biasing, and low-value dict-alternative suppression from the 2026-05-12 parser-quality run
 - Multi-source dictionary with row-level provenance and source-priority-first ranker ([Decision 21](docs/DECISIONS.md))
 - Multi-lemma surface forms (`forms` PK = `(form, lang, lemma, pos)`)
