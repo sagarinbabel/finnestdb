@@ -104,7 +104,7 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		// overlay is part of the "custom enhancements" suite; basic
 		// mode stays dict-only to keep its baselines stable.
 		if parserMode == "custom" {
-			if res, ok := lookupLexOverlay(lang, lower); ok {
+			if res, ok := lookupLexOverlay(lang, form); ok {
 				result[form] = res
 				continue
 			}
@@ -115,21 +115,24 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		// against the original-case surface so PROPN homonyms don't beat
 		// common-noun lemmas on lowercase surfaces.
 		if dictCandidates, ok := lookupFormCandidates(stmtFormsAll, lower, lang); ok {
-			best := formResolutionFromCandidate(lower, pickBestFormCandidate(form, dictCandidates))
-			if parserMode == "custom" {
-				var analyses []lemmatizer.Analysis
-				if lang == "FI" || lang == "ET" {
-					if lem := d.fstLemmatizer(); lem != nil {
-						analyses = lem.Lemmatize(lang, lower)
+			dictCandidates = filterCaseCompatibleCandidates(form, dictCandidates)
+			if len(dictCandidates) > 0 {
+				best := formResolutionFromCandidate(lower, pickBestFormCandidate(form, dictCandidates))
+				if parserMode == "custom" {
+					var analyses []lemmatizer.Analysis
+					if lang == "FI" || lang == "ET" {
+						if lem := d.fstLemmatizer(); lem != nil {
+							analyses = lem.Lemmatize(lang, lower)
+						}
+					}
+					best = mergeAndRankDictFSTCandidates(form, lang, dictCandidates, analyses)
+					if strings.HasPrefix(best.Source, "dict") && best.GrammarLabel == "" && best.Feats == "" {
+						best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
 					}
 				}
-				best = mergeAndRankDictFSTCandidates(form, lang, dictCandidates, analyses)
-				if strings.HasPrefix(best.Source, "dict") && best.GrammarLabel == "" && best.Feats == "" {
-					best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
-				}
+				result[form] = best
+				continue
 			}
-			result[form] = best
-			continue
 		}
 
 		// Steps 2-4 only run in "custom" parser mode.
@@ -295,7 +298,7 @@ func lookupFormCandidates(stmt *sql.Stmt, lowerSurface, lang string) ([]formCand
 		if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority, &c.Feats); err != nil {
 			return nil, false
 		}
-		if isBadDictLemma(lang, lowerSurface, c.Lemma) {
+		if isBadDictCandidate(lang, lowerSurface, c.Lemma, c.POS) {
 			continue
 		}
 		candidates = append(candidates, c)
@@ -304,6 +307,57 @@ func lookupFormCandidates(stmt *sql.Stmt, lowerSurface, lang string) ([]formCand
 		return nil, false
 	}
 	return candidates, true
+}
+
+func filterCaseCompatibleCandidates(surface string, candidates []formCandidate) []formCandidate {
+	if len(candidates) == 0 {
+		return candidates
+	}
+	out := candidates[:0]
+	for _, c := range candidates {
+		if candidateCaseCompatible(surface, c.Lemma) {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func candidateCaseCompatible(surface, lemma string) bool {
+	if surface == "" || lemma == "" {
+		return true
+	}
+	surfaceSpecial := hasSpecialCapitalization(surface)
+	lemmaSpecial := hasSpecialCapitalization(lemma)
+	if surfaceSpecial {
+		if !lemmaSpecial {
+			return !strings.EqualFold(surface, lemma)
+		}
+		if strings.EqualFold(surface, lemma) {
+			return surface == lemma
+		}
+		return strings.HasPrefix(surface, lemma)
+	}
+	if lemmaSpecial && strings.EqualFold(surface, lemma) {
+		return surface == lemma
+	}
+	return true
+}
+
+func hasSpecialCapitalization(s string) bool {
+	seenFirstLetter := false
+	for _, r := range s {
+		if !unicode.IsLetter(r) {
+			continue
+		}
+		if !seenFirstLetter {
+			seenFirstLetter = true
+			continue
+		}
+		if unicode.IsUpper(r) {
+			return true
+		}
+	}
+	return false
 }
 
 // alwaysBadDictLemmasFI lists Finnish lemmas that are NEVER the right
@@ -372,6 +426,29 @@ func isBadDictLemma(lang, lowerSurface, lemma string) bool {
 	return blocked
 }
 
+// badSurfaceLemmaPOSET is the Estonian counterpart for high-frequency
+// source-language-only alternatives that should not compete with real
+// learner readings. Include POS because the lemma often equals the surface
+// for both the good closed-class row and the bad noun/sign row.
+var badSurfaceLemmaPOSET = map[string]struct{}{
+	"ei\x00ei\x00INTJ":     {},
+	"ei\x00ei\x00NOUN":     {},
+	"ei\x00ei\x00X":        {},
+	"kui\x00kui\x00NOUN":   {},
+	"sina\x00sina\x00NOUN": {},
+}
+
+func isBadDictCandidate(lang, lowerSurface, lemma, pos string) bool {
+	if isBadDictLemma(lang, lowerSurface, lemma) {
+		return true
+	}
+	if lang != "ET" || lowerSurface == "" || lemma == "" || pos == "" {
+		return false
+	}
+	_, blocked := badSurfaceLemmaPOSET[lowerSurface+"\x00"+lemma+"\x00"+pos]
+	return blocked
+}
+
 func formResolutionFromCandidate(surface string, c formCandidate) FormResolution {
 	// MA-infinitive normalisation runs on dict candidates too. Kaikki
 	// ships forms like `lähtemään` keyed under `lähteä`/VERB but with
@@ -380,7 +457,8 @@ func formResolutionFromCandidate(surface string, c formCandidate) FormResolution
 	// agreement rule that catches the FST noun-cousin trap rewrites
 	// the dict FEATS too, so the resolution returned to callers is
 	// consistent regardless of which source supplied the lemma.
-	feats := udfeats.NormalizeMaInfinitive(surface, c.POS, c.Feats)
+	feats := sanitizeDictFeats(surface, c)
+	feats = udfeats.NormalizeMaInfinitive(surface, c.POS, feats)
 	res := FormResolution{Lemma: c.Lemma, POS: c.POS, Feats: feats, Source: "dict"}
 	// Project Case= from Feats to GrammarLabel for back-compat with the
 	// case-only metric. New code should consume Feats directly; the
@@ -389,6 +467,42 @@ func formResolutionFromCandidate(surface string, c formCandidate) FormResolution
 		res.GrammarLabel = caseFromFeats(feats)
 	}
 	return res
+}
+
+func sanitizeDictFeats(surface string, c formCandidate) string {
+	if c.Feats == "" {
+		return ""
+	}
+	if c.POS == "VERB" &&
+		strings.EqualFold(strings.TrimSpace(surface), strings.TrimSpace(c.Lemma)) &&
+		c.Feats == "Case=Ill|VerbForm=Sup" {
+		return "VerbForm=Inf"
+	}
+	if surface == c.Lemma && hasSpecialCapitalization(c.Lemma) && isNominalCaseOnlyFeats(c.Feats) {
+		return "Case=Nom|Number=Sing"
+	}
+	switch c.POS {
+	case "ADV", "ADP", "CCONJ", "SCONJ", "INTJ", "PART", "X":
+		if strings.EqualFold(strings.TrimSpace(surface), strings.TrimSpace(c.Lemma)) && isNominalCaseOnlyFeats(c.Feats) {
+			return ""
+		}
+	}
+	return c.Feats
+}
+
+func isNominalCaseOnlyFeats(feats string) bool {
+	if feats == "" {
+		return false
+	}
+	for _, part := range strings.Split(feats, "|") {
+		if part == "" {
+			continue
+		}
+		if !strings.HasPrefix(part, "Case=") && !strings.HasPrefix(part, "Number=") {
+			return false
+		}
+	}
+	return strings.Contains(feats, "Case=")
 }
 
 func mergeAndRankDictFSTCandidates(surface, lang string, dictCandidates []formCandidate, analyses []lemmatizer.Analysis) FormResolution {
@@ -763,7 +877,11 @@ func morphologyScore(res FormResolution) int {
 //
 // Source tag is "lex-overlay" so eval reports can attribute hits to
 // this layer distinctly from dict/fst/dict+fst.
-func lookupLexOverlay(lang, lower string) (FormResolution, bool) {
+func lookupLexOverlay(lang, surface string) (FormResolution, bool) {
+	if hasSpecialCapitalization(surface) {
+		return FormResolution{}, false
+	}
+	lower := strings.ToLower(surface)
 	var analyses []lemmatizer.Analysis
 	var ok bool
 	switch lang {
@@ -1201,7 +1319,7 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 	for _, form := range forms {
 		lower := strings.ToLower(form)
 		if parserMode == "custom" {
-			if res, ok := lookupLexOverlay(lang, lower); ok {
+			if res, ok := lookupLexOverlay(lang, form); ok {
 				result[form] = []FormResolution{res}
 				continue
 			}
@@ -1219,7 +1337,10 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 				candidates = nil
 				break
 			}
-			if isBadDictLemma(lang, lower, lemma) {
+			if isBadDictCandidate(lang, lower, lemma, pos) {
+				continue
+			}
+			if !candidateCaseCompatible(form, lemma) {
 				continue
 			}
 			candidates = append(candidates, FormResolution{Lemma: lemma, POS: pos, Source: "dict"})
@@ -1391,8 +1512,12 @@ func (d *DB) BatchLookupGlosses(lemmas []LemmaKey, lang string) map[LemmaKey]str
 // small and remove entries once the upstream source or source-priority ranking
 // returns deck-quality English glosses for the same (lemma, POS).
 var etLearnerGlossOverrides = map[LemmaKey]string{
-	{Lemma: "see", POS: "PRON"}:  "this; that",
-	{Lemma: "väike", POS: "ADJ"}: "small; little",
+	{Lemma: "ei", POS: "ADV"}:     "no; not",
+	{Lemma: "et", POS: "CCONJ"}:   "that",
+	{Lemma: "kui", POS: "CCONJ"}:  "when; if; as; than",
+	{Lemma: "olema", POS: "VERB"}: "be",
+	{Lemma: "see", POS: "PRON"}:   "this; that",
+	{Lemma: "väike", POS: "ADJ"}:  "small; little",
 }
 
 func learnerGlossOverride(lang string, key LemmaKey, source string) (string, bool) {

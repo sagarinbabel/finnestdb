@@ -44,7 +44,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"unicode"
 
@@ -222,13 +221,15 @@ type lemmaPOSMap map[string]map[string]*lemmaPOSData
 
 type lemmaPOSData struct {
 	// translationsByKey maps the lowercase form of an EN translation to
-	// the chosen original-cased version. Dedup is case-insensitive — when
-	// the same lowercase key arrives with different casings (e.g. real
-	// data has "Calvinism" and "calvinism", "Turbot" and "turbot") the
-	// uppercase-leading variant wins, see chooseCasing. This biases
-	// toward the proper-noun / acronym reading, which is the common
-	// reason the same word appears with different cases in Ekilex.
+	// the chosen original-cased version. Dedup is case-insensitive, while
+	// translationKeys preserves Ekilex meaning order for primary-gloss
+	// selection. When the same lowercase key arrives with different
+	// casings (e.g. real data has "Calvinism" and "calvinism", "Turbot"
+	// and "turbot") the uppercase-leading variant wins, see chooseCasing.
+	// This biases toward the proper-noun / acronym reading, which is the
+	// common reason the same word appears with different cases in Ekilex.
 	translationsByKey map[string]string
+	translationKeys   []string
 
 	// definitionsET holds Estonian-language definitions accumulated across
 	// every meaning entry that contributed to this (lemma, pos) pair.
@@ -265,6 +266,7 @@ func (m lemmaPOSMap) add(lemma, upos string, translations, definitionsET []strin
 		existing, dup := d.translationsByKey[key]
 		if !dup {
 			d.translationsByKey[key] = t
+			d.translationKeys = append(d.translationKeys, key)
 			continue
 		}
 		d.translationsByKey[key] = chooseCasing(existing, t)
@@ -602,7 +604,7 @@ func writeTranslations(db *sql.DB, lemmaPOS lemmaPOSMap) (int, error) {
 	written := 0
 	for lemma, byPOS := range lemmaPOS {
 		for pos, data := range byPOS {
-			translations := sortedTranslations(data)
+			translations := orderedTranslations(data)
 			for senseIdx, text := range translations {
 				if _, err := stmt.Exec(lemma, pos, text, senseIdx); err != nil {
 					return written, fmt.Errorf("write translation %q %s sense=%d: %w", lemma, pos, senseIdx, err)
@@ -677,25 +679,25 @@ func writeDefinitions(db *sql.DB, lemmaPOS lemmaPOSMap) (int, error) {
 // definitions table without truncation.
 const glossFallbackMaxLen = 240
 
-// sortedTranslations returns the deduplicated translations sorted by their
-// original-cased value. Used both for the lemmas.gloss `; `-joined cache
-// and for assigning sense_idx in the translations table — the same sort
-// order in both places keeps `lemmas.gloss[0]` and `translations[sense_idx=0]`
+// orderedTranslations returns deduplicated translations in upstream Ekilex
+// meaning order. Used both for the lemmas.gloss `; `-joined cache and for
+// assigning sense_idx in the translations table — the same order in both
+// places keeps `lemmas.gloss[0]` and `translations[sense_idx=0]`
 // referentially consistent for a given (lemma, pos).
-func sortedTranslations(d *lemmaPOSData) []string {
+func orderedTranslations(d *lemmaPOSData) []string {
 	if d == nil || len(d.translationsByKey) == 0 {
 		return nil
 	}
-	out := make([]string, 0, len(d.translationsByKey))
-	for _, t := range d.translationsByKey {
-		out = append(out, t)
+	out := make([]string, 0, len(d.translationKeys))
+	for _, key := range d.translationKeys {
+		out = append(out, d.translationsByKey[key])
 	}
-	sort.Strings(out)
 	return out
 }
 
-// joinTranslationData sorts the deduplicated translations and joins with
-// "; " for the gloss column. Sorting keeps output byte-stable across runs.
+// joinTranslationData joins the deduplicated translations with "; " for the
+// gloss column, preserving Ekilex meaning order so the primary gloss remains
+// learner-useful instead of alphabetically arbitrary.
 //
 // When no EN translations are available for a (lemma, pos), the first
 // Estonian-language definition is returned with the `[ET] ` prefix as a
@@ -705,7 +707,7 @@ func sortedTranslations(d *lemmaPOSData) []string {
 // downstream renderers tell EN translations apart from ET fallbacks and
 // style them differently (or hide the fallback when EN-only is needed).
 func joinTranslationData(d *lemmaPOSData) string {
-	out := sortedTranslations(d)
+	out := orderedTranslations(d)
 	if len(out) > 0 {
 		return strings.Join(out, "; ")
 	}
@@ -855,7 +857,36 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 	}
 	defer stmt.Close()
 
+	stmtInvariant, err := tx.Prepare(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+		 VALUES (?, ?, ?, 'ET', 'ekilex', 20, '')
+		 ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET
+		   source = excluded.source,
+		   source_priority = excluded.source_priority,
+		   feats = ''
+		 WHERE forms.source_priority <= excluded.source_priority`,
+	)
+	if err != nil {
+		return 0, err
+	}
+	defer stmtInvariant.Close()
+
+	stmtNominative, err := tx.Prepare(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+		 VALUES (?, ?, ?, 'ET', 'ekilex', 20, ?)
+		 ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET
+		   source = excluded.source,
+		   source_priority = excluded.source_priority,
+		   feats = excluded.feats
+		 WHERE forms.source_priority <= excluded.source_priority`,
+	)
+	if err != nil {
+		return 0, err
+	}
+	defer stmtNominative.Close()
+
 	inserted := 0
+	invariantFormKeys := map[string]struct{}{}
 	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -904,6 +935,33 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 				if !posMatchesMorphClass(upos, class) {
 					continue
 				}
+				key := formImportKey(form, lemma, upos)
+				if morphCode != "ID" {
+					if _, invariant := invariantFormKeys[key]; invariant {
+						continue
+					}
+				}
+				if morphCode == "ID" {
+					res, err := stmtInvariant.Exec(form, lemma, upos)
+					if err != nil {
+						return fmt.Errorf("insert invariant form %q %q %s: %w", form, lemma, upos, err)
+					}
+					invariantFormKeys[key] = struct{}{}
+					if n, _ := res.RowsAffected(); n == 1 {
+						inserted++
+					}
+					continue
+				}
+				if morphCode == "SgN" {
+					res, err := stmtNominative.Exec(form, lemma, upos, feats)
+					if err != nil {
+						return fmt.Errorf("insert nominative form %q %q %s: %w", form, lemma, upos, err)
+					}
+					if n, _ := res.RowsAffected(); n == 1 {
+						inserted++
+					}
+					continue
+				}
 				res, err := stmt.Exec(form, lemma, upos, feats)
 				if err != nil {
 					return fmt.Errorf("insert form %q %q %s: %w", form, lemma, upos, err)
@@ -922,6 +980,10 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 		return 0, err
 	}
 	return inserted, nil
+}
+
+func formImportKey(form, lemma, upos string) string {
+	return form + "\x00" + lemma + "\x00" + upos
 }
 
 func upsertDictMetadata(db *sql.DB, source string, rowCount int) error {

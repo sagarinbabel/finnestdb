@@ -66,11 +66,18 @@ func TestHandleParseRejectsInvalidRequests(t *testing.T) {
 			wantBody:   "Language must be FI or ET",
 		},
 		{
-			name:       "missing text",
+			name:       "missing text and chapters",
 			method:     http.MethodPost,
 			body:       `{"lang":"FI","text":""}`,
 			wantStatus: http.StatusBadRequest,
-			wantBody:   "Text is required",
+			wantBody:   "Text or chapters is required",
+		},
+		{
+			name:       "both text and chapters",
+			method:     http.MethodPost,
+			body:       `{"lang":"FI","text":"hi","chapters":[{"title":"A","text":"hello"}]}`,
+			wantStatus: http.StatusBadRequest,
+			wantBody:   "Provide either text or chapters, not both",
 		},
 		{
 			name:       "unsupported parser",
@@ -200,6 +207,216 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 	}
 	if resp.Words[0].Lemma != "kissa" {
 		t.Fatalf("first lemma=%q want kissa", resp.Words[0].Lemma)
+	}
+}
+
+func TestHandleParseChaptersPayloadReturnsPerChapterWordsAndState(t *testing.T) {
+	api := newTestAPI(t)
+	textCalled := 0
+	api.analyze = func(_ *store.DB, _, _, _ string) (*parsecore.ParseResult, error) {
+		textCalled++
+		return nil, nil
+	}
+	idx := func(i int) *int { return &i }
+	api.analyzeChapters = func(_ *store.DB, lang string, chapters []parsecore.ChapterInput, parser string) (*parsecore.ParseResult, error) {
+		if parser == "" {
+			parser = "custom"
+		}
+		// Two chapters, three sentences, two of which belong to chapter 0.
+		// kissa appears in both chapters so the per-chapter Words split must
+		// not just be a filter on whole-book Words.
+		return &parsecore.ParseResult{
+			Lang:            lang,
+			Parser:          parser,
+			TotalTokens:     5,
+			ParseDurationNs: 12_000_000,
+			Stats:           parsecore.ParseStats{},
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text:       "Kissa juoksee.",
+					ChapterIdx: idx(0),
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kissa", Lemma: "kissa", POS: "NOUN", Resolved: true},
+						{Form: "juoksee", Lemma: "juosta", POS: "VERB", Resolved: true},
+					},
+				},
+				{
+					Text:       "Lisää kissoja.",
+					ChapterIdx: idx(0),
+					Tokens: []parsecore.TokenResult{
+						{Form: "kissoja", Lemma: "kissa", POS: "NOUN", Resolved: true},
+					},
+				},
+				{
+					Text:       "Kissa nukkuu.",
+					ChapterIdx: idx(1),
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kissa", Lemma: "kissa", POS: "NOUN", Resolved: true},
+						{Form: "nukkuu", Lemma: "nukkua", POS: "VERB", Resolved: true},
+					},
+				},
+			},
+			Words: []parsecore.WordEntry{
+				{Lemma: "kissa", POS: "NOUN", Forms: []string{"Kissa", "kissoja"}, Count: 3},
+				{Lemma: "juosta", POS: "VERB", Forms: []string{"juoksee"}, Count: 1},
+				{Lemma: "nukkua", POS: "VERB", Forms: []string{"nukkuu"}, Count: 1},
+			},
+			Chapters: []parsecore.ChapterResult{
+				{Title: "First", CharCount: 30, SentenceCount: 2, TokenCount: 3, ResolvedTokens: 3},
+				{Title: "Second", CharCount: 15, SentenceCount: 1, TokenCount: 2, ResolvedTokens: 2},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "chapters-user@example.com")
+
+	// Pre-mark kissa as known so we can verify learning_state propagates onto
+	// the per-chapter Words too, not just the whole-book Words.
+	markReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"known"}`))
+	for _, c := range cookies {
+		markReq.AddCookie(c)
+	}
+	if markRec := httptest.NewRecorder(); true {
+		mux.ServeHTTP(markRec, markReq)
+		if markRec.Code != http.StatusOK {
+			t.Fatalf("mark kissa known: status=%d body=%q", markRec.Code, markRec.Body.String())
+		}
+	}
+
+	body := `{"lang":"FI","parser":"custom","chapters":[{"title":"First","text":"Kissa juoksee. Lisää kissoja."},{"title":"Second","text":"Kissa nukkuu."}]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(body))
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
+	}
+	if textCalled != 0 {
+		t.Fatalf("analyze (text path) was called %d times; chapters payload must not fall through to the text analyzer", textCalled)
+	}
+
+	var resp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Chapters) != 2 {
+		t.Fatalf("len(chapters)=%d want 2", len(resp.Chapters))
+	}
+	// Per-chapter Words must be populated by the handler's per-chapter
+	// expansion pass — the mock doesn't pre-fill Words on Chapters[].
+	if len(resp.Chapters[0].Words) == 0 {
+		t.Fatalf("chapter 0 has no Words; handler should re-aggregate per chapter")
+	}
+	if len(resp.Chapters[1].Words) == 0 {
+		t.Fatalf("chapter 1 has no Words; handler should re-aggregate per chapter")
+	}
+	// LemmaCount should match the produced Words length (handler sets it).
+	if resp.Chapters[0].LemmaCount != len(resp.Chapters[0].Words) {
+		t.Fatalf("chapter 0 lemma_count=%d but len(words)=%d", resp.Chapters[0].LemmaCount, len(resp.Chapters[0].Words))
+	}
+	// kissa must appear in both chapters' Words (it's in both).
+	kissaIn := func(words []WordEntry) bool {
+		for _, w := range words {
+			if w.Lemma == "kissa" && w.POS == "NOUN" {
+				return true
+			}
+		}
+		return false
+	}
+	if !kissaIn(resp.Chapters[0].Words) || !kissaIn(resp.Chapters[1].Words) {
+		t.Fatalf("kissa missing from a chapter's words; ch0=%+v ch1=%+v", resp.Chapters[0].Words, resp.Chapters[1].Words)
+	}
+	// nukkua must appear ONLY in chapter 1, never in chapter 0.
+	for _, w := range resp.Chapters[0].Words {
+		if w.Lemma == "nukkua" {
+			t.Fatalf("nukkua leaked into chapter 0; sentence subset is broken")
+		}
+	}
+	// learning_state must apply to both whole-book and per-chapter kissa.
+	wholeBookKissaKnown := false
+	for _, w := range resp.Words {
+		if w.Lemma == "kissa" && w.POS == "NOUN" && w.LearningState == "known" {
+			wholeBookKissaKnown = true
+		}
+	}
+	if !wholeBookKissaKnown {
+		t.Fatalf("whole-book kissa missing learning_state=known: %+v", resp.Words)
+	}
+	for chIdx, ch := range resp.Chapters {
+		gotKnown := false
+		for _, w := range ch.Words {
+			if w.Lemma == "kissa" && w.POS == "NOUN" && w.LearningState == "known" {
+				gotKnown = true
+			}
+		}
+		if !gotKnown {
+			t.Fatalf("chapter %d kissa missing learning_state=known: %+v", chIdx, ch.Words)
+		}
+	}
+}
+
+func TestHandleParseChaptersPayloadKeepsEmptyChapterWordsEmpty(t *testing.T) {
+	api := newTestAPI(t)
+	idx := func(i int) *int { return &i }
+	api.analyzeChapters = func(_ *store.DB, lang string, chapters []parsecore.ChapterInput, parser string) (*parsecore.ParseResult, error) {
+		if parser == "" {
+			parser = "custom"
+		}
+		return &parsecore.ParseResult{
+			Lang:            lang,
+			Parser:          parser,
+			TotalTokens:     1,
+			ParseDurationNs: 4_000_000,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text:       "Kissa.",
+					ChapterIdx: idx(0),
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kissa", Lemma: "kissa", POS: "NOUN", Resolved: true},
+					},
+				},
+			},
+			Words: []parsecore.WordEntry{
+				{Lemma: "kissa", POS: "NOUN", Forms: []string{"Kissa"}, Count: 1, ExampleSentence: "whole-book parser entry"},
+			},
+			Chapters: []parsecore.ChapterResult{
+				{
+					Title: "Cat", Words: []parsecore.WordEntry{
+						{Lemma: "kissa", POS: "NOUN", Forms: []string{"Kissa"}, Count: 1, ExampleSentence: "chapter parser entry"},
+					},
+				},
+				{Title: "Empty"},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	body := `{"lang":"FI","parser":"custom","chapters":[{"title":"Cat","text":"Kissa."},{"title":"Empty","text":"   "}]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
+	}
+	var resp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Chapters) != 2 {
+		t.Fatalf("len(chapters)=%d want 2", len(resp.Chapters))
+	}
+	if got := resp.Chapters[1].Words; len(got) != 0 {
+		t.Fatalf("empty chapter words=%+v, want empty instead of whole-book fallback", got)
+	}
+	if resp.Chapters[1].LemmaCount != 0 {
+		t.Fatalf("empty chapter lemma_count=%d want 0", resp.Chapters[1].LemmaCount)
+	}
+	if len(resp.Chapters[0].Words) == 0 || resp.Chapters[0].Words[0].ExampleSentence != "chapter parser entry" {
+		t.Fatalf("chapter parser metadata not preserved: %+v", resp.Chapters[0].Words)
 	}
 }
 

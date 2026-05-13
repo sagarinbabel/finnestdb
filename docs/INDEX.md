@@ -27,7 +27,7 @@ descriptions when two docs sound similar.
 - **System architecture:** [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (current), [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) (lexical-layer detail), [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) (offline corpus pipeline)
 - **Product framing:** [`docs/FEATURES.md`](FEATURES.md) (user-facing), [`docs/DESIGN_REVIEW.md`](DESIGN_REVIEW.md) (design folder audit + TODO)
 - **What's done / what's next:** [`../TODO.md`](../TODO.md) (the only doc you need for status)
-- **Why we made choices:** [`docs/DECISIONS.md`](DECISIONS.md) (latest-first, 21 decisions)
+- **Why we made choices:** [`docs/DECISIONS.md`](DECISIONS.md) (latest-first, 22 decisions)
 - **What changed when:** [`docs/CHANGELOG.md`](CHANGELOG.md) (latest-first, cross-linked to DECISIONS)
 - **Measured parser quality:** [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) (chronological log)
 - **ML roadmap:** [`docs/ML_IDEAS.md`](ML_IDEAS.md)
