@@ -10,6 +10,23 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-05-13 — ET review follow-ups parser stamp (PR #205)
+
+Documents the parser-stamp bump for the PR #205 follow-ups that landed
+on top of the `2026.05.12d` source-backed ET cleanup. The behavior
+changes are real (basic-mode special-cap FEATS parity, attribute-based
+ET verb dictionary-form check, explicit `TA` lex-overlay bypass) but
+narrow; each is pinned by a unit test.
+
+- Added: [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) entry
+  `2026-05-12e` — records the parser stamp bump, the three behavior
+  changes, and the verification commands.
+- Modified: [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) and
+  [`TODO.md`](../TODO.md) — current parser behavior tag is
+  `2026.05.12e`. The latest frozen baseline remains
+  `parser-baseline-2026-05-12-b-T1606Z`; a new freeze is still needed
+  for the combined `2026.05.12e` state.
+
 ## 2026-05-12 — ET verb-inflection bias baseline merge
 
 Documents the PR #203 merge resolution after the source-backed ET learner
