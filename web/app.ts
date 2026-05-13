@@ -99,12 +99,15 @@ interface DashboardData {
 }
 
 interface DeckSummary {
-    id:     number;
-    title:  string;
-    lang:   string;
-    known:  number;
-    unique: number;
-    due:    number;
+    id:          number;
+    title:       string;
+    lang:        string;
+    known:       number;
+    unique:      number;
+    due:         number;
+    is_public:   boolean;
+    is_owner?:   boolean;
+    subscribed?: boolean;
 }
 
 interface MeResponse {
@@ -135,6 +138,9 @@ interface DeckDetailResponse {
     created_at:   string;
     total_tokens: number;
     words:        WordEntry[];
+    is_public?:   boolean;
+    is_owner?:    boolean;
+    subscribed?:  boolean;
 }
 
 interface KnownLemma {
@@ -218,10 +224,15 @@ interface DisplayWordEntry extends WordEntry { originalIndex: number; }
 
 // ── App-wide state ─────────────────────────────────────────────────────────
 
+type DecksTab = 'mine' | 'official';
+
 const state = {
     user:        null as SessionUser | null,
     dashboard:   null as DashboardData | null,
     decks:       [] as DeckSummary[],
+    officialDecks:    [] as DeckSummary[],
+    officialDecksLoaded: false,
+    decksTab:    'mine' as DecksTab,
     role:        'anon' as Role,
     currentResults:     null as ParseResponse | null,
     currentContext:     'inspect' as ResultsContext,
@@ -328,6 +339,114 @@ function showToast(message: string, type: 'info' | 'success' | 'error' = 'info',
         toast.classList.add('hiding');
         setTimeout(() => toast.remove(), 300);
     }, duration);
+}
+
+// ── Site-standard dialogs (replaces window.alert/.confirm/.prompt) ────────
+//
+// Every confirmation, prompt, or "are you sure?" message must go through
+// showConfirm() / showPrompt(). The dialog markup lives in #dialog-modal in
+// index.html and is reused for both call types. Browser-native dialogs
+// (window.alert / confirm / prompt) are forbidden — see .claude/CLAUDE.md.
+// For non-blocking info/error notifications, use showToast() above.
+
+interface ConfirmOptions {
+    title?:        string;
+    message:       string;
+    confirmLabel?: string;
+    cancelLabel?:  string;
+    /** Visually emphasise the confirm button as a destructive action. */
+    danger?:       boolean;
+}
+
+interface PromptOptions extends ConfirmOptions {
+    label?:        string;
+    initialValue?: string;
+    placeholder?:  string;
+}
+
+// Tracks the currently-bound dialog so the next caller's listeners don't
+// stack on top of the previous one. Each open re-wires the buttons.
+let dialogModalCleanup: (() => void) | null = null;
+
+function openDialog(opts: PromptOptions & { prompt: boolean }): Promise<string | null> {
+    return new Promise(resolve => {
+        const modal       = document.getElementById('dialog-modal');
+        const titleEl     = document.getElementById('dialog-modal-title');
+        const messageEl   = document.getElementById('dialog-modal-message');
+        const inputWrap   = document.getElementById('dialog-modal-input-wrap');
+        const inputLabel  = document.getElementById('dialog-modal-input-label');
+        const input       = document.getElementById('dialog-modal-input') as HTMLInputElement | null;
+        const backdrop    = document.getElementById('dialog-modal-backdrop');
+        const confirmBtn  = document.getElementById('dialog-modal-confirm') as HTMLButtonElement | null;
+        const cancelBtn   = document.getElementById('dialog-modal-cancel')  as HTMLButtonElement | null;
+        if (!modal || !titleEl || !messageEl || !inputWrap || !input || !confirmBtn || !cancelBtn || !backdrop) {
+            // Markup missing — fall back to native dialogs so the user never
+            // gets a silently dropped confirmation.
+            if (opts.prompt) resolve(window.prompt(opts.message, opts.initialValue) ?? null);
+            else resolve(window.confirm(opts.message) ? '' : null);
+            return;
+        }
+
+        // If a previous dialog is still bound (e.g. nested calls), tear it
+        // down first so its listeners don't fire for this one.
+        if (dialogModalCleanup) dialogModalCleanup();
+
+        titleEl.textContent   = opts.title   ?? (opts.prompt ? 'Edit' : 'Confirm');
+        messageEl.textContent = opts.message;
+        confirmBtn.textContent = opts.confirmLabel ?? (opts.prompt ? 'Save' : 'OK');
+        cancelBtn.textContent  = opts.cancelLabel  ?? 'Cancel';
+        confirmBtn.classList.toggle('btn-danger', !!opts.danger);
+
+        if (opts.prompt) {
+            inputWrap.classList.remove('hidden');
+            if (inputLabel) inputLabel.textContent = opts.label ?? 'Value';
+            input.value = opts.initialValue ?? '';
+            input.placeholder = opts.placeholder ?? '';
+        } else {
+            inputWrap.classList.add('hidden');
+        }
+
+        const finish = (value: string | null) => {
+            modal.classList.add('hidden');
+            if (dialogModalCleanup) dialogModalCleanup();
+            resolve(value);
+        };
+        const onConfirm = () => finish(opts.prompt ? input.value.trim() : '');
+        const onCancel  = () => finish(null);
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
+            else if (e.key === 'Enter' && opts.prompt && document.activeElement === input) {
+                e.preventDefault();
+                onConfirm();
+            }
+        };
+
+        confirmBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click', onCancel);
+        backdrop.addEventListener('click', onCancel);
+        document.addEventListener('keydown', onKey);
+
+        dialogModalCleanup = () => {
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            backdrop.removeEventListener('click', onCancel);
+            document.removeEventListener('keydown', onKey);
+            dialogModalCleanup = null;
+        };
+
+        modal.classList.remove('hidden');
+        if (opts.prompt) input.focus();
+        else confirmBtn.focus();
+    });
+}
+
+async function showConfirm(opts: ConfirmOptions): Promise<boolean> {
+    const result = await openDialog({ ...opts, prompt: false });
+    return result !== null;
+}
+
+async function showPrompt(opts: PromptOptions): Promise<string | null> {
+    return openDialog({ ...opts, prompt: true });
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -441,6 +560,9 @@ async function handleSignout(): Promise<void> {
     state.user = null;
     state.dashboard = null;
     state.decks = [];
+    state.officialDecks = [];
+    state.officialDecksLoaded = false;
+    state.decksTab = 'mine';
     state.role = 'anon';
     state.currentResults = null;
     state.currentTextPreview = '';
@@ -484,12 +606,22 @@ const ROUTE_TO_PAGE: Record<string, string> = {
     '/dashboard':        'dashboard-page',
     '/inspect':          'inspect-page',
     '/decks':            'decks-page',
+    '/decks/official':   'decks-page',
     '/review':           'review-page',
     '/admin/workbench':  'admin-workbench-page',
     '/admin/feedback':   'admin-feedback-page',
     '/admin/users':      'admin-users-page',
     '/results':          'results-page',
 };
+
+// /decks → My Decks (default), /decks/official → Official Decks.
+// Mapping is centralised so the hash router and the tab buttons agree.
+function tabForDecksRoute(route: string): DecksTab {
+    return route === '/decks/official' ? 'official' : 'mine';
+}
+function routeForDecksTab(tab: DecksTab): string {
+    return tab === 'official' ? '/decks/official' : '/decks';
+}
 
 function currentRoute(): string {
     const hash = window.location.hash || '#/';
@@ -531,7 +663,7 @@ function isRouteAllowed(route: string): { allowed: boolean; redirect?: string } 
     }
 
     // Authenticated-only routes
-    const userOnly = ['/dashboard', '/inspect', '/decks', '/review', '/results'];
+    const userOnly = ['/dashboard', '/inspect', '/decks', '/decks/official', '/review', '/results'];
     const isDeckDetail = DECK_DETAIL_RE.test(route);
     if (userOnly.includes(route) || isDeckDetail) {
         if (role === 'anon') return { allowed: false, redirect: '/signin' };
@@ -572,9 +704,21 @@ function renderRoute(): void {
 
     // Per-page hooks
     if (route === '/dashboard') renderDashboard();
-    if (route === '/decks') {
+    if (route === '/decks' || route === '/decks/official') {
+        // Tab state is derived from the route so refreshing the page or
+        // sharing a link keeps the same tab open. Both routes share the
+        // same page; only the active tab differs.
+        state.decksTab = tabForDecksRoute(route);
+        // Highlight the /decks nav link for the Official subroute too.
+        setActiveNavLink('/decks');
         renderDecksPage();
         void loadKnownWords();
+        if (state.decksTab === 'official' && !state.officialDecksLoaded) {
+            void (async () => {
+                await loadOfficialDecks();
+                if (state.decksTab === 'official') renderDecksPage();
+            })();
+        }
     }
     if (route === '/review') {
         renderReviewPage();
@@ -826,9 +970,30 @@ async function markResultLemma(status: LemmaStateUpdate, lemma: string, pos: str
 }
 
 function renderDecksPage(): void {
+    const tabMine = document.getElementById('decks-tab-mine');
+    const tabOfficial = document.getElementById('decks-tab-official');
+    tabMine?.classList.toggle('active', state.decksTab === 'mine');
+    tabOfficial?.classList.toggle('active', state.decksTab === 'official');
+    tabMine?.setAttribute('aria-selected', state.decksTab === 'mine' ? 'true' : 'false');
+    tabOfficial?.setAttribute('aria-selected', state.decksTab === 'official' ? 'true' : 'false');
+
+    if (state.decksTab === 'mine') {
+        renderMyDecksTab();
+    } else {
+        renderOfficialDecksTab();
+    }
+    renderKnownWordsPanel();
+}
+
+function renderMyDecksTab(): void {
     const empty = document.getElementById('decks-empty');
     const list = document.getElementById('decks-list');
-    if (!empty || !list) return;
+    const officialEmpty = document.getElementById('official-decks-empty');
+    const officialList = document.getElementById('official-decks-list');
+    if (!empty || !list || !officialEmpty || !officialList) return;
+
+    officialEmpty.classList.add('hidden');
+    officialList.classList.add('hidden');
 
     const decks = state.decks || [];
     empty.classList.toggle('hidden', decks.length > 0);
@@ -836,31 +1001,115 @@ function renderDecksPage(): void {
 
     if (decks.length === 0) {
         list.innerHTML = '';
-        renderKnownWordsPanel();
         return;
     }
 
+    const isAdmin = state.role === 'admin';
     list.innerHTML = decks.map(deck => {
         const langName = deck.lang === 'FI' ? 'Finnish' : 'Estonian';
         const knownPct = deck.unique > 0 ? Math.round((deck.known / deck.unique) * 100) : 0;
+        const isOwner = !deck.subscribed;
+        const badges = [];
+        if (deck.is_public && isOwner) badges.push('<span class="deck-badge deck-badge-official">Official</span>');
+        if (deck.is_public && !isOwner) badges.push('<span class="deck-badge deck-badge-official">Official · added</span>');
+        const actions = [
+            `<button type="button" class="btn btn-link btn-sm" data-open-review="${deck.id}">Review</button>`,
+        ];
+        if (isOwner) {
+            actions.push(`<button type="button" class="btn btn-link btn-sm" data-rename-deck="${deck.id}">Rename</button>`);
+            if (isAdmin) {
+                const label = deck.is_public ? 'Unpublish' : 'Publish';
+                actions.push(`<button type="button" class="btn btn-link btn-sm" data-toggle-public="${deck.id}" data-current-public="${deck.is_public ? '1' : '0'}">${label}</button>`);
+            }
+            actions.push(`<button type="button" class="btn btn-link btn-sm" data-delete-deck="${deck.id}">Delete</button>`);
+        } else {
+            actions.push(`<button type="button" class="btn btn-link btn-sm" data-unsubscribe-deck="${deck.id}">Remove</button>`);
+        }
         return `<article class="deck-list-item">
             <div>
-                <h2><a href="#/decks/${deck.id}" class="deck-list-title">${escapeHtml(deck.title)}</a></h2>
+                <h2><a href="#/decks/${deck.id}" class="deck-list-title">${escapeHtml(deck.title)}</a> ${badges.join(' ')}</h2>
                 <p class="deck-list-meta">${langName} · ${deck.known}/${deck.unique} known (${knownPct}%) · ${deck.due} due</p>
             </div>
             <div class="deck-list-actions">
-                <button type="button" class="btn btn-link btn-sm" data-open-review="${deck.id}">Review</button>
-                <button type="button" class="btn btn-link btn-sm" data-rename-deck="${deck.id}">Rename</button>
-                <button type="button" class="btn btn-link btn-sm" data-delete-deck="${deck.id}">Delete</button>
+                ${actions.join('')}
             </div>
         </article>`;
     }).join('');
+}
 
-    renderKnownWordsPanel();
+function renderOfficialDecksTab(): void {
+    const empty = document.getElementById('decks-empty');
+    const list = document.getElementById('decks-list');
+    const officialEmpty = document.getElementById('official-decks-empty');
+    const officialList = document.getElementById('official-decks-list');
+    if (!empty || !list || !officialEmpty || !officialList) return;
+
+    empty.classList.add('hidden');
+    list.classList.add('hidden');
+
+    const decks = state.officialDecks || [];
+    if (!state.officialDecksLoaded) {
+        officialEmpty.classList.add('hidden');
+        officialList.classList.remove('hidden');
+        officialList.innerHTML = '<p class="empty-state">Loading official decks…</p>';
+        return;
+    }
+    officialEmpty.classList.toggle('hidden', decks.length > 0);
+    officialList.classList.toggle('hidden', decks.length === 0);
+
+    if (decks.length === 0) {
+        officialList.innerHTML = '';
+        return;
+    }
+
+    officialList.innerHTML = decks.map(deck => {
+        const langName = deck.lang === 'FI' ? 'Finnish' : 'Estonian';
+        const subscribed = !!deck.subscribed;
+        const isOwner = !!deck.is_owner;
+        // Owner of the deck doesn't subscribe to their own publication — they
+        // can manage it from "My decks". Other users get the studying-list
+        // toggle.
+        let actionBtn: string;
+        let badge: string;
+        if (isOwner) {
+            actionBtn = '';
+            badge = '<span class="deck-badge deck-badge-subscribed">You published this</span>';
+        } else if (subscribed) {
+            actionBtn = `<button type="button" class="btn btn-link btn-sm" data-unsubscribe-deck="${deck.id}">Remove from studying</button>`;
+            badge = '<span class="deck-badge deck-badge-subscribed">Added</span>';
+        } else {
+            actionBtn = `<button type="button" class="btn btn-primary btn-sm" data-subscribe-deck="${deck.id}">Add to studying list</button>`;
+            badge = '';
+        }
+        return `<article class="deck-list-item">
+            <div>
+                <h2><a href="#/decks/${deck.id}" class="deck-list-title">${escapeHtml(deck.title)}</a> ${badge}</h2>
+                <p class="deck-list-meta">${langName} · ${deck.unique} unique words</p>
+            </div>
+            <div class="deck-list-actions">
+                ${actionBtn}
+            </div>
+        </article>`;
+    }).join('');
+}
+
+async function loadOfficialDecks(): Promise<void> {
+    try {
+        const resp = await fetch('/api/decks/public', { credentials: 'same-origin' });
+        if (!resp.ok) throw new Error(await resp.text() || 'Failed to load official decks');
+        const data = await resp.json() as { decks: DeckSummary[] };
+        state.officialDecks = data.decks || [];
+        state.officialDecksLoaded = true;
+    } catch (err: any) {
+        showToast(err.message || 'Failed to load official decks.', 'error');
+        state.officialDecks = [];
+        state.officialDecksLoaded = true;
+    }
 }
 
 function getDeckByID(deckID: number): DeckSummary | undefined {
-    return state.decks.find(deck => deck.id === deckID);
+    return state.decks.find(deck => deck.id === deckID)
+        ?? state.officialDecks.find(deck => deck.id === deckID);
 }
 
 function renderKnownWordsPanel(): void {
@@ -1687,7 +1936,7 @@ async function runParse(
 
     if (!text) return;
     if (text.length > MAX_CHARS) {
-        alert(`Text must be ${MAX_CHARS.toLocaleString()} characters or fewer.`);
+        showToast(`Text must be ${MAX_CHARS.toLocaleString()} characters or fewer.`, 'error');
         return;
     }
     if (ws.blocksParse) return;
@@ -1751,7 +2000,7 @@ async function runParse(
         }
         showResults(data, preview, parserMode, context);
     } catch (err: any) {
-        alert(`Parse failed: ${err.message}`);
+        showToast(`Parse failed: ${err.message}`, 'error');
     } finally {
         if (activeBtn) {
             activeBtn.disabled = false;
@@ -2238,6 +2487,7 @@ function renderResultsSaveState(): void {
 async function saveCurrentResultsAsDeck(): Promise<void> {
     const titleInput = document.getElementById('results-deck-title') as HTMLInputElement | null;
     const submitBtn = document.getElementById('results-save-submit') as HTMLButtonElement | null;
+    const publicCheckbox = document.getElementById('results-deck-public') as HTMLInputElement | null;
     if (!titleInput || !submitBtn || !state.currentResults || !state.currentSourceText.trim()) return;
 
     const title = titleInput.value.trim();
@@ -2245,6 +2495,8 @@ async function saveCurrentResultsAsDeck(): Promise<void> {
         showToast('Please enter a deck title.', 'error');
         return;
     }
+
+    const isPublic = state.role === 'admin' && !!publicCheckbox?.checked;
 
     submitBtn.disabled = true;
     const originalLabel = submitBtn.textContent || '';
@@ -2258,14 +2510,18 @@ async function saveCurrentResultsAsDeck(): Promise<void> {
                 title,
                 lang: state.currentResults.lang,
                 text: state.currentSourceText,
+                is_public: isPublic,
             }),
         });
         if (!resp.ok) {
             throw new Error(await resp.text() || 'Failed to create deck');
         }
         const created: CreateDeckResponse = await resp.json();
+        // Invalidate the official-deck cache so the new entry shows up
+        // when the admin switches to the "Official decks" tab.
+        if (isPublic) state.officialDecksLoaded = false;
         await refreshDashboardData();
-        showToast(`Deck saved (#${created.deck_id}).`, 'success');
+        showToast(isPublic ? `Official deck saved (#${created.deck_id}).` : `Deck saved (#${created.deck_id}).`, 'success');
         navigate('/decks');
     } catch (err: any) {
         showToast(err.message || 'Failed to save deck.', 'error');
@@ -2709,59 +2965,176 @@ function initCorrectionModal(): void {
 }
 
 function initDecksPage(): void {
-    document.getElementById('decks-list')?.addEventListener('click', async (e) => {
-        const target = e.target as HTMLElement | null;
-        if (!target) return;
-
-        const reviewDeckID = target.getAttribute('data-open-review');
-        if (reviewDeckID) {
-            state.reviewDeckFilter = reviewDeckID;
-            navigate('/review');
-            return;
-        }
-
-        const renameDeckID = target.getAttribute('data-rename-deck');
-        if (renameDeckID) {
-            const deckID = Number(renameDeckID);
-            const deck = getDeckByID(deckID);
-            if (!deck) return;
-            const title = window.prompt('Rename deck', deck.title)?.trim();
-            if (!title || title === deck.title) return;
-            try {
-                const resp = await fetch(`/api/decks/${deckID}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ title }),
-                });
-                if (!resp.ok) throw new Error(await resp.text() || 'Rename failed');
-                await refreshDashboardData();
-                showToast('Deck renamed.', 'success');
-            } catch (err: any) {
-                showToast(err.message || 'Rename failed.', 'error');
-            }
-            return;
-        }
-
-        const deleteDeckID = target.getAttribute('data-delete-deck');
-        if (deleteDeckID) {
-            const deckID = Number(deleteDeckID);
-            const deck = getDeckByID(deckID);
-            if (!deck) return;
-            if (!window.confirm(`Delete "${deck.title}"? This removes the deck text but keeps global learning state.`)) return;
-            try {
-                const resp = await fetch(`/api/decks/${deckID}`, {
-                    method: 'DELETE',
-                    credentials: 'same-origin',
-                });
-                if (!resp.ok) throw new Error(await resp.text() || 'Delete failed');
-                await refreshDashboardData();
-                showToast('Deck deleted.', 'success');
-            } catch (err: any) {
-                showToast(err.message || 'Delete failed.', 'error');
-            }
-        }
+    document.querySelectorAll<HTMLElement>('[data-decks-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.getAttribute('data-decks-tab') as DecksTab | null;
+            if (!tab) return;
+            // Navigate via the hash router so the URL reflects the active
+            // tab and a refresh restores it. The route handler in
+            // renderRoute() loads the catalog as needed.
+            navigate(routeForDecksTab(tab));
+        });
     });
+
+    const handleDeckClick = (e: Event): void => { void handleDeckListClick(e); };
+    document.getElementById('decks-list')?.addEventListener('click', handleDeckClick);
+    document.getElementById('official-decks-list')?.addEventListener('click', handleDeckClick);
+}
+
+async function handleDeckListClick(e: Event): Promise<void> {
+    const target = e.target as HTMLElement | null;
+    if (!target) return;
+
+    const reviewDeckID = target.getAttribute('data-open-review');
+    if (reviewDeckID) {
+        state.reviewDeckFilter = reviewDeckID;
+        navigate('/review');
+        return;
+    }
+
+    const renameDeckID = target.getAttribute('data-rename-deck');
+    if (renameDeckID) {
+        const deckID = Number(renameDeckID);
+        const deck = getDeckByID(deckID);
+        if (!deck) return;
+        const title = (await showPrompt({
+            title:        'Rename deck',
+            message:      `Pick a new title for "${deck.title}".`,
+            label:        'New title',
+            initialValue: deck.title,
+            confirmLabel: 'Rename',
+        }))?.trim();
+        if (!title || title === deck.title) return;
+        try {
+            const resp = await fetch(`/api/decks/${deckID}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ title }),
+            });
+            if (!resp.ok) throw new Error(await resp.text() || 'Rename failed');
+            await refreshDashboardData();
+            showToast('Deck renamed.', 'success');
+        } catch (err: any) {
+            showToast(err.message || 'Rename failed.', 'error');
+        }
+        return;
+    }
+
+    const togglePublicDeckID = target.getAttribute('data-toggle-public');
+    if (togglePublicDeckID) {
+        const deckID = Number(togglePublicDeckID);
+        const deck = getDeckByID(deckID);
+        if (!deck) return;
+        const nextPublic = target.getAttribute('data-current-public') !== '1';
+        const action = nextPublic ? 'Publish' : 'Unpublish';
+        const confirmed = await showConfirm({
+            title:        nextPublic ? 'Publish as official deck?' : 'Unpublish official deck?',
+            message:      nextPublic
+                ? `"${deck.title}" will be visible to every user under Official decks.`
+                : `"${deck.title}" will be removed from Official decks. Users who already added it keep their progress.`,
+            confirmLabel: action,
+            danger:       !nextPublic,
+        });
+        if (!confirmed) return;
+        const button = target as HTMLButtonElement;
+        button.disabled = true;
+        try {
+            const resp = await fetch(`/api/decks/${deckID}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ is_public: nextPublic }),
+            });
+            if (!resp.ok) throw new Error(await resp.text() || `${action} failed`);
+            // Catalog membership changes — bust the cache so the Official
+            // tab reflects the new state on next view.
+            state.officialDecksLoaded = false;
+            await refreshDashboardData();
+            showToast(nextPublic ? 'Deck published as official.' : 'Deck unpublished.', 'success');
+        } catch (err: any) {
+            showToast(err.message || `${action} failed.`, 'error');
+            button.disabled = false;
+        }
+        return;
+    }
+
+    const deleteDeckID = target.getAttribute('data-delete-deck');
+    if (deleteDeckID) {
+        const deckID = Number(deleteDeckID);
+        const deck = getDeckByID(deckID);
+        if (!deck) return;
+        const confirmed = await showConfirm({
+            title:        'Delete deck?',
+            message:      `Delete "${deck.title}"? This removes the deck text but keeps global learning state.`,
+            confirmLabel: 'Delete',
+            danger:       true,
+        });
+        if (!confirmed) return;
+        try {
+            const resp = await fetch(`/api/decks/${deckID}`, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+            });
+            if (!resp.ok) throw new Error(await resp.text() || 'Delete failed');
+            await refreshDashboardData();
+            showToast('Deck deleted.', 'success');
+        } catch (err: any) {
+            showToast(err.message || 'Delete failed.', 'error');
+        }
+        return;
+    }
+
+    const subscribeDeckID = target.getAttribute('data-subscribe-deck');
+    if (subscribeDeckID) {
+        const deckID = Number(subscribeDeckID);
+        const button = target as HTMLButtonElement;
+        button.disabled = true;
+        try {
+            const resp = await fetch(`/api/decks/${deckID}/subscribe`, {
+                method: 'POST',
+                credentials: 'same-origin',
+            });
+            if (!resp.ok) throw new Error(await resp.text() || 'Failed to add deck');
+            await Promise.all([loadOfficialDecks(), refreshDashboardData({ rerenderRoute: false })]);
+            renderDecksPage();
+            showToast('Added to your studying list.', 'success');
+        } catch (err: any) {
+            showToast(err.message || 'Failed to add deck.', 'error');
+            button.disabled = false;
+        }
+        return;
+    }
+
+    const unsubscribeDeckID = target.getAttribute('data-unsubscribe-deck');
+    if (unsubscribeDeckID) {
+        const deckID = Number(unsubscribeDeckID);
+        const deck = getDeckByID(deckID);
+        if (!deck) return;
+        const confirmed = await showConfirm({
+            title:        'Remove from studying list?',
+            message:      `Remove "${deck.title}" from your studying list? Cards you've already reviewed stay in your history.`,
+            confirmLabel: 'Remove',
+            danger:       true,
+        });
+        if (!confirmed) return;
+        const button = target as HTMLButtonElement;
+        button.disabled = true;
+        try {
+            const resp = await fetch(`/api/decks/${deckID}/subscribe`, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+            });
+            if (!resp.ok) throw new Error(await resp.text() || 'Failed to remove deck');
+            await Promise.all([loadOfficialDecks(), refreshDashboardData({ rerenderRoute: false })]);
+            renderDecksPage();
+            showToast('Removed from your studying list.', 'success');
+        } catch (err: any) {
+            showToast(err.message || 'Failed to remove deck.', 'error');
+            button.disabled = false;
+        }
+        return;
+    }
 }
 
 function initKnownWordsPanel(): void {
@@ -2822,7 +3195,11 @@ function initResultsSaveForm(): void {
     toggleBtn?.addEventListener('click', () => {
         form?.classList.toggle('hidden');
         const input = document.getElementById('results-deck-title') as HTMLInputElement | null;
-        if (form && !form.classList.contains('hidden')) input?.focus();
+        const publicCheckbox = document.getElementById('results-deck-public') as HTMLInputElement | null;
+        if (form && !form.classList.contains('hidden')) {
+            input?.focus();
+            if (publicCheckbox) publicCheckbox.checked = false;
+        }
     });
     cancelBtn?.addEventListener('click', () => {
         form?.classList.add('hidden');

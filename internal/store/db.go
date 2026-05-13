@@ -67,14 +67,16 @@ type Deck struct {
 	UserID    int64
 	Title     string
 	Lang      string
+	IsPublic  bool
 	CreatedAt time.Time
 }
 
 type DeckStats struct {
 	Deck
-	Known  int
-	Unique int
-	Due    int
+	Known      int
+	Unique     int
+	Due        int
+	Subscribed bool
 }
 
 type Sentence struct {
@@ -201,8 +203,22 @@ func (d *DB) initSchema() error {
 		-- Optional: if present, deck-detail "Suggest fix" can attribute feedback to
 		-- the parse session that produced the deck.
 		parse_session_id INTEGER,
+		-- 1 = deck is part of the official deck library, visible to all users
+		-- under the "Official decks" tab. Admin-only flag at create time.
+		is_public INTEGER NOT NULL DEFAULT 0,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY(user_id) REFERENCES users(id)
+	);
+
+	-- A user has opted in to study an official deck. Owners of decks are NOT
+	-- listed here for their own decks — ownership implies study access.
+	CREATE TABLE IF NOT EXISTS user_deck_subscriptions (
+		user_id INTEGER NOT NULL,
+		deck_id INTEGER NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		PRIMARY KEY (user_id, deck_id),
+		FOREIGN KEY(user_id) REFERENCES users(id),
+		FOREIGN KEY(deck_id) REFERENCES decks(id)
 	);
 
 	CREATE TABLE IF NOT EXISTS sentences (
@@ -411,7 +427,21 @@ func (d *DB) initSchema() error {
 	if err := EnsureDeckParseSessionColumn(d.db); err != nil {
 		return err
 	}
+	if err := EnsureDeckIsPublicColumn(d.db); err != nil {
+		return err
+	}
 
+	return nil
+}
+
+// EnsureDeckIsPublicColumn backfills the is_public column on older DB files.
+// Fresh DBs already include the column in CREATE TABLE.
+func EnsureDeckIsPublicColumn(db *sql.DB) error {
+	if _, err := db.Exec(`ALTER TABLE decks ADD COLUMN is_public INTEGER NOT NULL DEFAULT 0`); err != nil {
+		if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -902,7 +932,7 @@ type sqlQueryRower interface {
 
 func (d *DB) CreateDeck(userID int64, title, lang string) (int64, error) {
 	result, err := d.db.Exec(
-		"INSERT INTO decks (user_id, title, lang) VALUES (?, ?, ?)",
+		"INSERT INTO decks (user_id, title, lang, is_public) VALUES (?, ?, ?, 0)",
 		userID, title, lang,
 	)
 	if err != nil {
@@ -924,7 +954,7 @@ func (d *DB) CreateSentence(deckID int64, text, lang string) (int64, error) {
 
 func (d *DB) GetUserDecks(userID int64) ([]Deck, error) {
 	rows, err := d.db.Query(
-		"SELECT id, user_id, title, lang, created_at FROM decks WHERE user_id = ? ORDER BY created_at DESC",
+		"SELECT id, user_id, title, lang, is_public, created_at FROM decks WHERE user_id = ? ORDER BY created_at DESC",
 		userID,
 	)
 	if err != nil {
@@ -935,7 +965,7 @@ func (d *DB) GetUserDecks(userID int64) ([]Deck, error) {
 	var decks []Deck
 	for rows.Next() {
 		var deck Deck
-		if err := rows.Scan(&deck.ID, &deck.UserID, &deck.Title, &deck.Lang, &deck.CreatedAt); err != nil {
+		if err := rows.Scan(&deck.ID, &deck.UserID, &deck.Title, &deck.Lang, &deck.IsPublic, &deck.CreatedAt); err != nil {
 			return nil, err
 		}
 		decks = append(decks, deck)
@@ -945,7 +975,7 @@ func (d *DB) GetUserDecks(userID int64) ([]Deck, error) {
 
 func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 	rows, err := d.db.Query(
-		`SELECT d.id, d.user_id, d.title, d.lang, d.created_at,
+		`SELECT d.id, d.user_id, d.title, d.lang, d.is_public, d.created_at,
 		        COUNT(DISTINCT o.lemma || char(31) || o.pos) AS unique_count,
 		        COUNT(DISTINCT CASE
 		            WHEN uk.lemma IS NOT NULL THEN o.lemma || char(31) || o.pos
@@ -963,17 +993,17 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 		   LEFT JOIN occurrence o
 		          ON o.deck_id = d.id
 		   LEFT JOIN user_known_lemmas uk
-		          ON uk.user_id = d.user_id
+		          ON uk.user_id = ?
 		         AND uk.lang = d.lang
 		         AND uk.lemma = o.lemma
 		         AND uk.pos = o.pos
 		   LEFT JOIN user_ignored_lemmas ui
-		          ON ui.user_id = d.user_id
+		          ON ui.user_id = ?
 		         AND ui.lang = d.lang
 		         AND ui.lemma = o.lemma
 		         AND ui.pos = o.pos
 		   LEFT JOIN cards c
-		          ON c.user_id = d.user_id
+		          ON c.user_id = ?
 		         AND c.lang = d.lang
 		         AND c.lemma = o.lemma
 		         AND c.pos = o.pos
@@ -981,9 +1011,13 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 		   LEFT JOIN card_state cs
 		          ON cs.card_id = c.id
 		  WHERE d.user_id = ?
-		  GROUP BY d.id, d.user_id, d.title, d.lang, d.created_at
+		     OR EXISTS (
+		            SELECT 1 FROM user_deck_subscriptions s
+		             WHERE s.user_id = ? AND s.deck_id = d.id
+		        )
+		  GROUP BY d.id, d.user_id, d.title, d.lang, d.is_public, d.created_at
 		  ORDER BY d.created_at DESC, d.id DESC`,
-		userID,
+		userID, userID, userID, userID, userID,
 	)
 	if err != nil {
 		return nil, err
@@ -998,6 +1032,7 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 			&item.UserID,
 			&item.Title,
 			&item.Lang,
+			&item.IsPublic,
 			&item.CreatedAt,
 			&item.Unique,
 			&item.Known,
@@ -1005,15 +1040,16 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 		); err != nil {
 			return nil, err
 		}
+		item.Subscribed = item.UserID != userID
 		stats = append(stats, item)
 	}
 	return stats, rows.Err()
 }
 
-func createDeck(q sqlReadWriter, userID int64, title, lang string) (int64, error) {
+func createDeck(q sqlReadWriter, userID int64, title, lang string, isPublic bool) (int64, error) {
 	result, err := q.Exec(
-		"INSERT INTO decks (user_id, title, lang) VALUES (?, ?, ?)",
-		userID, title, lang,
+		"INSERT INTO decks (user_id, title, lang, is_public) VALUES (?, ?, ?, ?)",
+		userID, title, lang, boolToInt(isPublic),
 	)
 	if err != nil {
 		return 0, err
@@ -1081,6 +1117,13 @@ func isKnownOrIgnored(q sqlReadWriter, userID int64, lang, lemma, pos string) (b
 }
 
 func (d *DB) CreateDeckWithSentences(userID int64, title, lang string, sentences []DeckSentenceInput) (int64, error) {
+	return d.CreateDeckWithSentencesOptions(userID, title, lang, false, sentences)
+}
+
+// CreateDeckWithSentencesOptions creates a deck and optionally marks it as
+// public (visible to all users under "Official decks"). Callers are
+// responsible for authorising the isPublic flag — see handleCreateDeck.
+func (d *DB) CreateDeckWithSentencesOptions(userID int64, title, lang string, isPublic bool, sentences []DeckSentenceInput) (int64, error) {
 	tx, err := d.db.Begin()
 	if err != nil {
 		return 0, err
@@ -1115,7 +1158,7 @@ func (d *DB) CreateDeckWithSentences(userID int64, title, lang string, sentences
 		}
 	}
 
-	deckID, err := createDeck(tx, userID, title, lang)
+	deckID, err := createDeck(tx, userID, title, lang, isPublic)
 	if err != nil {
 		return 0, err
 	}
@@ -1157,6 +1200,238 @@ func (d *DB) UserOwnsDeck(userID, deckID int64) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// UserCanStudyDeck returns true if the user owns the deck or has subscribed
+// to it via the official-deck list. Used by review-by-deck filtering.
+func (d *DB) UserCanStudyDeck(userID, deckID int64) (bool, error) {
+	var exists int
+	err := d.db.QueryRow(
+		`SELECT 1 FROM decks d
+		  WHERE d.id = ?
+		    AND (d.user_id = ?
+		         OR EXISTS (SELECT 1 FROM user_deck_subscriptions s
+		                     WHERE s.user_id = ? AND s.deck_id = d.id))`,
+		deckID, userID, userID,
+	).Scan(&exists)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// PublicDeckSummary is one row of the official-deck listing.
+type PublicDeckSummary struct {
+	DeckStats
+	// Subscribed is true if the requesting user has added this deck to
+	// their studying list (does not apply when IsOwner is true).
+	Subscribed bool
+	// IsOwner is true if the deck was created by the requesting user.
+	// Owners see their own deck in the catalog so they can verify what
+	// other users will see; the UI suppresses the subscribe button.
+	IsOwner bool
+}
+
+// ListPublicDecksForUser returns every is_public deck (including ones the
+// requesting user owns), alongside whether they've added it to their
+// studying list. The owner case is signaled via PublicDeckSummary.IsOwner so
+// the UI can render it without a meaningless "Add to studying" button — an
+// admin verifying their own publication still wants to see it in the
+// catalog the way other users will.
+func (d *DB) ListPublicDecksForUser(userID int64) ([]PublicDeckSummary, error) {
+	rows, err := d.db.Query(
+		`SELECT d.id, d.user_id, d.title, d.lang, d.is_public, d.created_at,
+		        COUNT(DISTINCT o.lemma || char(31) || o.pos) AS unique_count,
+		        COUNT(DISTINCT CASE
+		            WHEN uk.lemma IS NOT NULL THEN o.lemma || char(31) || o.pos
+		            ELSE NULL
+		        END) AS known_count,
+		        EXISTS (
+		            SELECT 1 FROM user_deck_subscriptions s
+		             WHERE s.user_id = ? AND s.deck_id = d.id
+		        ) AS subscribed
+		   FROM decks d
+		   LEFT JOIN occurrence o
+		          ON o.deck_id = d.id
+		   LEFT JOIN user_known_lemmas uk
+		          ON uk.user_id = ?
+		         AND uk.lang = d.lang
+		         AND uk.lemma = o.lemma
+		         AND uk.pos = o.pos
+		  WHERE d.is_public = 1
+		  GROUP BY d.id, d.user_id, d.title, d.lang, d.is_public, d.created_at
+		  ORDER BY d.created_at DESC, d.id DESC`,
+		userID, userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	results := []PublicDeckSummary{}
+	for rows.Next() {
+		var item PublicDeckSummary
+		if err := rows.Scan(
+			&item.ID,
+			&item.UserID,
+			&item.Title,
+			&item.Lang,
+			&item.IsPublic,
+			&item.CreatedAt,
+			&item.Unique,
+			&item.Known,
+			&item.Subscribed,
+		); err != nil {
+			return nil, err
+		}
+		// Due not meaningful in the catalog — reviews are user-scoped and the
+		// catalog row may not have any seeded cards yet.
+		item.Due = 0
+		item.IsOwner = item.UserID == userID
+		results = append(results, item)
+	}
+	return results, rows.Err()
+}
+
+// SubscribeUserToPublicDeck records that the user has added an official deck
+// to their studying list and seeds cards for each unique (lemma, pos) in the
+// deck, skipping lemmas the user has already marked known or ignored. Idempotent.
+// Returns sql.ErrNoRows if the deck does not exist or is not public.
+func (d *DB) SubscribeUserToPublicDeck(userID, deckID int64) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var lang string
+	var ownerID int64
+	var isPublic int
+	if err := tx.QueryRow(
+		`SELECT lang, user_id, is_public FROM decks WHERE id = ?`,
+		deckID,
+	).Scan(&lang, &ownerID, &isPublic); err != nil {
+		return err
+	}
+	if isPublic != 1 {
+		return sql.ErrNoRows
+	}
+	if ownerID == userID {
+		// Owners implicitly study their own decks. No subscription row needed.
+		return tx.Commit()
+	}
+
+	if _, err := tx.Exec(
+		`INSERT OR IGNORE INTO user_deck_subscriptions (user_id, deck_id) VALUES (?, ?)`,
+		userID, deckID,
+	); err != nil {
+		return err
+	}
+
+	rows, err := tx.Query(
+		`SELECT DISTINCT lemma, pos FROM occurrence WHERE deck_id = ?`,
+		deckID,
+	)
+	if err != nil {
+		return err
+	}
+	type lemmaKey struct{ lemma, pos string }
+	var keys []lemmaKey
+	for rows.Next() {
+		var k lemmaKey
+		if err := rows.Scan(&k.lemma, &k.pos); err != nil {
+			rows.Close()
+			return err
+		}
+		keys = append(keys, k)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for _, k := range keys {
+		if k.lemma == "" || k.pos == "" {
+			continue
+		}
+		knownOrIgnored, err := isKnownOrIgnored(tx, userID, lang, k.lemma, k.pos)
+		if err != nil {
+			return err
+		}
+		if knownOrIgnored {
+			continue
+		}
+		if _, err := ensureCard(tx, userID, lang, k.lemma, k.pos); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// UserSubscribedToDeck returns true if the user has added this deck to their
+// studying list via user_deck_subscriptions. Returns false when they own the
+// deck (ownership is not represented in the subscriptions table).
+func (d *DB) UserSubscribedToDeck(userID, deckID int64) (bool, error) {
+	var exists int
+	err := d.db.QueryRow(
+		`SELECT 1 FROM user_deck_subscriptions WHERE user_id = ? AND deck_id = ?`,
+		userID, deckID,
+	).Scan(&exists)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// UnsubscribeUserFromPublicDeck removes the studying-list entry. Cards
+// previously seeded for this deck are left in place, matching how deleting
+// one's own deck preserves global learning state.
+func (d *DB) UnsubscribeUserFromPublicDeck(userID, deckID int64) error {
+	res, err := d.db.Exec(
+		`DELETE FROM user_deck_subscriptions WHERE user_id = ? AND deck_id = ?`,
+		userID, deckID,
+	)
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+// SetDeckIsPublic toggles a deck's official-deck status. Caller is
+// responsible for authorising the operation (admin-only at the handler
+// layer) — this method intentionally does not filter by user_id so admins
+// can re-publish decks they don't personally own. Returns sql.ErrNoRows if
+// the deck doesn't exist.
+func (d *DB) SetDeckIsPublic(deckID int64, isPublic bool) error {
+	result, err := d.db.Exec(
+		`UPDATE decks SET is_public = ? WHERE id = ?`,
+		boolToInt(isPublic), deckID,
+	)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func (d *DB) UpdateDeckTitle(userID, deckID int64, title string) error {
@@ -1222,16 +1497,18 @@ type DeckDetails struct {
 
 // GetDeckDetails returns the deck's metadata and an aggregated list of
 // (lemma, pos) entries with counts, glosses, and a representative example
-// sentence. Returns sql.ErrNoRows if the deck does not exist or is not
-// owned by userID.
+// sentence. Returns sql.ErrNoRows if the deck does not exist, is not owned
+// by userID, and is not a public official deck.
 func (d *DB) GetDeckDetails(userID, deckID int64) (*DeckDetails, error) {
 	var details DeckDetails
 	var parseSessionID sql.NullInt64
 	err := d.db.QueryRow(
-		`SELECT id, user_id, title, lang, parse_session_id, created_at
-		   FROM decks WHERE id = ? AND user_id = ?`,
+		`SELECT id, user_id, title, lang, is_public, parse_session_id, created_at
+		   FROM decks
+		  WHERE id = ?
+		    AND (user_id = ? OR is_public = 1)`,
 		deckID, userID,
-	).Scan(&details.ID, &details.UserID, &details.Title, &details.Lang, &parseSessionID, &details.CreatedAt)
+	).Scan(&details.ID, &details.UserID, &details.Title, &details.Lang, &details.IsPublic, &parseSessionID, &details.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -1655,13 +1932,21 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error)
 		newCardFilter = ` AND cs.last_answer_at IS NOT NULL`
 	}
 
+	// "Studied" deck = owned by the user OR added to their studying list via
+	// the official-deck catalog (user_deck_subscriptions). Examples and source
+	// titles only come from studied decks; other users' private decks stay
+	// invisible.
+	studiedDeckClause := `(d.user_id = c.user_id
+		OR EXISTS (SELECT 1 FROM user_deck_subscriptions s
+		            WHERE s.user_id = c.user_id AND s.deck_id = d.id))`
+
 	query := `SELECT c.id, c.lang, c.lemma, c.pos, COALESCE(l.gloss, ''),
 	                 COALESCE((
 	                     SELECT s.text
 	                       FROM occurrence o
 	                       JOIN sentences s ON s.id = o.sentence_id
 	                       JOIN decks d ON d.id = o.deck_id
-	                      WHERE d.user_id = c.user_id
+	                      WHERE ` + studiedDeckClause + `
 	                        AND d.lang = c.lang
 	                        AND o.lemma = c.lemma AND o.pos = c.pos` + deckOccurrenceFilter + `
 	                      ORDER BY s.id ASC
@@ -1671,7 +1956,7 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error)
 	                     SELECT d.title
 	                       FROM occurrence o
 	                       JOIN decks d ON d.id = o.deck_id
-	                      WHERE d.user_id = c.user_id
+	                      WHERE ` + studiedDeckClause + `
 	                        AND d.lang = c.lang
 	                        AND o.lemma = c.lemma
 	                        AND o.pos = c.pos` + deckOccurrenceFilter + `
@@ -1729,13 +2014,15 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error)
 		`SELECT d.title, COUNT(*)
 		   FROM occurrence o
 		   JOIN decks d ON d.id = o.deck_id
-		  WHERE d.user_id = ?
+		  WHERE (d.user_id = ?
+		         OR EXISTS (SELECT 1 FROM user_deck_subscriptions s
+		                     WHERE s.user_id = ? AND s.deck_id = d.id))
 		    AND d.lang = ?
 		    AND o.lemma = ?
 		    AND o.pos = ?
 		  GROUP BY d.id, d.title
 		  ORDER BY d.created_at DESC, d.id DESC`,
-		userID, card.Lang, card.Lemma, card.POS,
+		userID, userID, card.Lang, card.Lemma, card.POS,
 	)
 	if err != nil {
 		return nil, err

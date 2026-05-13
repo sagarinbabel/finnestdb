@@ -2740,6 +2740,358 @@ func TestGetDeckDetail(t *testing.T) {
 	}
 }
 
+func TestPublicDeckCreationRequiresAdmin(t *testing.T) {
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{{
+				Text: "Kissa juoksee.",
+				Tokens: []parsecore.TokenResult{
+					{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+				},
+			}},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "regular-user@example.com")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Sneaky","lang":"FI","text":"Kissa juoksee.","is_public":true}`))
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusForbidden, rec.Body.String())
+	}
+}
+
+func TestPublicDeckLifecycleAdminCreateAndSubscribe(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+		t.Fatalf("UpsertLemma: %v", err)
+	}
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{{
+				Text: "Kissa juoksee.",
+				Tokens: []parsecore.TokenResult{
+					{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+				},
+			}},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Beginner Finnish","lang":"FI","text":"Kissa juoksee.","is_public":true}`))
+	for _, cookie := range adminCookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create status=%d want %d body=%q", createRec.Code, http.StatusOK, createRec.Body.String())
+	}
+	var created CreateDeckResponse
+	if err := json.NewDecoder(bytes.NewReader(createRec.Body.Bytes())).Decode(&created); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	userCookies := loginAndReturnCookies(t, mux, "learner@example.com")
+
+	// Learner should see the official deck in the catalog, unsubscribed.
+	catalogReq := httptest.NewRequest(http.MethodGet, "/api/decks/public", nil)
+	for _, cookie := range userCookies {
+		catalogReq.AddCookie(cookie)
+	}
+	catalogRec := httptest.NewRecorder()
+	mux.ServeHTTP(catalogRec, catalogReq)
+	if catalogRec.Code != http.StatusOK {
+		t.Fatalf("catalog status=%d body=%q", catalogRec.Code, catalogRec.Body.String())
+	}
+	var catalog PublicDeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(catalogRec.Body.Bytes())).Decode(&catalog); err != nil {
+		t.Fatalf("decode catalog: %v", err)
+	}
+	if len(catalog.Decks) != 1 || catalog.Decks[0].ID != created.DeckID {
+		t.Fatalf("catalog=%+v want one deck id=%d", catalog.Decks, created.DeckID)
+	}
+	if catalog.Decks[0].Subscribed {
+		t.Fatal("expected unsubscribed by default")
+	}
+	if !catalog.Decks[0].IsPublic {
+		t.Fatal("expected is_public=true")
+	}
+	if catalog.Decks[0].IsOwner {
+		t.Fatal("learner should not be marked as owner of admin's deck")
+	}
+
+	// Admin (the owner) also sees their own deck in the catalog so they can
+	// verify what other users will see — but marked as is_owner so the UI
+	// can suppress the subscribe button.
+	adminCatalogReq := httptest.NewRequest(http.MethodGet, "/api/decks/public", nil)
+	for _, cookie := range adminCookies {
+		adminCatalogReq.AddCookie(cookie)
+	}
+	adminCatalogRec := httptest.NewRecorder()
+	mux.ServeHTTP(adminCatalogRec, adminCatalogReq)
+	var adminCatalog PublicDeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(adminCatalogRec.Body.Bytes())).Decode(&adminCatalog); err != nil {
+		t.Fatalf("decode admin catalog: %v", err)
+	}
+	if len(adminCatalog.Decks) != 1 || adminCatalog.Decks[0].ID != created.DeckID {
+		t.Fatalf("admin catalog=%+v want one deck id=%d", adminCatalog.Decks, created.DeckID)
+	}
+	if !adminCatalog.Decks[0].IsOwner {
+		t.Fatal("expected is_owner=true for the admin viewing their own publication")
+	}
+
+	// Read-only GET of the public deck succeeds for the learner.
+	getReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/decks/%d", created.DeckID), nil)
+	for _, cookie := range userCookies {
+		getReq.AddCookie(cookie)
+	}
+	getRec := httptest.NewRecorder()
+	mux.ServeHTTP(getRec, getReq)
+	if getRec.Code != http.StatusOK {
+		t.Fatalf("learner GET status=%d body=%q", getRec.Code, getRec.Body.String())
+	}
+	var detail DeckDetailResponse
+	if err := json.NewDecoder(bytes.NewReader(getRec.Body.Bytes())).Decode(&detail); err != nil {
+		t.Fatalf("decode detail: %v", err)
+	}
+	if !detail.IsPublic || detail.IsOwner || detail.Subscribed {
+		t.Fatalf("detail flags wrong: %+v", detail)
+	}
+
+	// Rename + delete are owner-only; learner gets 404 for both.
+	for _, method := range []string{http.MethodPatch, http.MethodDelete} {
+		var body string
+		if method == http.MethodPatch {
+			body = `{"title":"hijack"}`
+		}
+		req := httptest.NewRequest(method, fmt.Sprintf("/api/decks/%d", created.DeckID), strings.NewReader(body))
+		for _, cookie := range userCookies {
+			req.AddCookie(cookie)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Fatalf("%s as learner status=%d want 404 body=%q", method, rec.Code, rec.Body.String())
+		}
+	}
+
+	// Subscribe: seeds cards for the user.
+	subReq := httptest.NewRequest(http.MethodPost, fmt.Sprintf("/api/decks/%d/subscribe", created.DeckID), nil)
+	for _, cookie := range userCookies {
+		subReq.AddCookie(cookie)
+	}
+	subRec := httptest.NewRecorder()
+	mux.ServeHTTP(subRec, subReq)
+	if subRec.Code != http.StatusOK {
+		t.Fatalf("subscribe status=%d body=%q", subRec.Code, subRec.Body.String())
+	}
+
+	// Catalog now shows subscribed=true.
+	catalog2Rec := httptest.NewRecorder()
+	catalog2Req := httptest.NewRequest(http.MethodGet, "/api/decks/public", nil)
+	for _, cookie := range userCookies {
+		catalog2Req.AddCookie(cookie)
+	}
+	mux.ServeHTTP(catalog2Rec, catalog2Req)
+	var catalog2 PublicDeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(catalog2Rec.Body.Bytes())).Decode(&catalog2); err != nil {
+		t.Fatalf("decode catalog2: %v", err)
+	}
+	if len(catalog2.Decks) != 1 || !catalog2.Decks[0].Subscribed {
+		t.Fatalf("catalog2 not subscribed: %+v", catalog2.Decks)
+	}
+
+	// Subscribed deck appears in the learner's "/api/decks" listing too.
+	myReq := httptest.NewRequest(http.MethodGet, "/api/decks", nil)
+	for _, cookie := range userCookies {
+		myReq.AddCookie(cookie)
+	}
+	myRec := httptest.NewRecorder()
+	mux.ServeHTTP(myRec, myReq)
+	var myList DeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(myRec.Body.Bytes())).Decode(&myList); err != nil {
+		t.Fatalf("decode my list: %v", err)
+	}
+	if len(myList.Decks) != 1 || !myList.Decks[0].Subscribed || !myList.Decks[0].IsPublic {
+		t.Fatalf("my list: %+v", myList.Decks)
+	}
+
+	// Review queue surfaces the seeded card.
+	reviewReq := httptest.NewRequest(http.MethodGet, "/api/review/next", nil)
+	for _, cookie := range userCookies {
+		reviewReq.AddCookie(cookie)
+	}
+	reviewRec := httptest.NewRecorder()
+	mux.ServeHTTP(reviewRec, reviewReq)
+	if reviewRec.Code != http.StatusOK {
+		t.Fatalf("review status=%d body=%q", reviewRec.Code, reviewRec.Body.String())
+	}
+
+	// Unsubscribe.
+	unsubReq := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/api/decks/%d/subscribe", created.DeckID), nil)
+	for _, cookie := range userCookies {
+		unsubReq.AddCookie(cookie)
+	}
+	unsubRec := httptest.NewRecorder()
+	mux.ServeHTTP(unsubRec, unsubReq)
+	if unsubRec.Code != http.StatusOK {
+		t.Fatalf("unsubscribe status=%d body=%q", unsubRec.Code, unsubRec.Body.String())
+	}
+
+	// Subscription removed from listing.
+	myFinalReq := httptest.NewRequest(http.MethodGet, "/api/decks", nil)
+	for _, cookie := range userCookies {
+		myFinalReq.AddCookie(cookie)
+	}
+	myFinalRec := httptest.NewRecorder()
+	mux.ServeHTTP(myFinalRec, myFinalReq)
+	var myFinal DeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(myFinalRec.Body.Bytes())).Decode(&myFinal); err != nil {
+		t.Fatalf("decode my final list: %v", err)
+	}
+	if len(myFinal.Decks) != 0 {
+		t.Fatalf("expected empty deck list after unsubscribe, got %+v", myFinal.Decks)
+	}
+}
+
+func TestDeckPatchTogglesIsPublicAdminOnly(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+
+	api := newTestAPI(t)
+	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+		t.Fatalf("UpsertLemma: %v", err)
+	}
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{{
+				Text: "Kissa juoksee.",
+				Tokens: []parsecore.TokenResult{
+					{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+				},
+			}},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	// A regular user creates a private deck.
+	userCookies := loginAndReturnCookies(t, mux, "owner@example.com")
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"My private","lang":"FI","text":"Kissa juoksee."}`))
+	for _, cookie := range userCookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create status=%d body=%q", createRec.Code, createRec.Body.String())
+	}
+	var created CreateDeckResponse
+	if err := json.NewDecoder(bytes.NewReader(createRec.Body.Bytes())).Decode(&created); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	// Non-admin owner tries to publish their own deck → 403.
+	patchByOwnerReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/decks/%d", created.DeckID), strings.NewReader(`{"is_public":true}`))
+	for _, cookie := range userCookies {
+		patchByOwnerReq.AddCookie(cookie)
+	}
+	patchByOwnerRec := httptest.NewRecorder()
+	mux.ServeHTTP(patchByOwnerRec, patchByOwnerReq)
+	if patchByOwnerRec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin patch status=%d want 403 body=%q", patchByOwnerRec.Code, patchByOwnerRec.Body.String())
+	}
+
+	// Confirm the deck is still private.
+	verifyReq := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/api/decks/%d", created.DeckID), nil)
+	for _, cookie := range userCookies {
+		verifyReq.AddCookie(cookie)
+	}
+	verifyRec := httptest.NewRecorder()
+	mux.ServeHTTP(verifyRec, verifyReq)
+	var detail DeckDetailResponse
+	if err := json.NewDecoder(bytes.NewReader(verifyRec.Body.Bytes())).Decode(&detail); err != nil {
+		t.Fatalf("decode detail: %v", err)
+	}
+	if detail.IsPublic {
+		t.Fatal("deck is_public should still be false after 403")
+	}
+
+	// Admin publishes the deck (admin doesn't own it — that's fine).
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+	patchByAdminReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/decks/%d", created.DeckID), strings.NewReader(`{"is_public":true}`))
+	for _, cookie := range adminCookies {
+		patchByAdminReq.AddCookie(cookie)
+	}
+	patchByAdminRec := httptest.NewRecorder()
+	mux.ServeHTTP(patchByAdminRec, patchByAdminReq)
+	if patchByAdminRec.Code != http.StatusOK {
+		t.Fatalf("admin publish status=%d body=%q", patchByAdminRec.Code, patchByAdminRec.Body.String())
+	}
+
+	// Deck now appears in the public catalog for a different learner.
+	learnerCookies := loginAndReturnCookies(t, mux, "learner-toggle@example.com")
+	catReq := httptest.NewRequest(http.MethodGet, "/api/decks/public", nil)
+	for _, cookie := range learnerCookies {
+		catReq.AddCookie(cookie)
+	}
+	catRec := httptest.NewRecorder()
+	mux.ServeHTTP(catRec, catReq)
+	var catalog PublicDeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(catRec.Body.Bytes())).Decode(&catalog); err != nil {
+		t.Fatalf("decode catalog: %v", err)
+	}
+	if len(catalog.Decks) != 1 || catalog.Decks[0].ID != created.DeckID || !catalog.Decks[0].IsPublic {
+		t.Fatalf("catalog after publish: %+v", catalog.Decks)
+	}
+
+	// Admin unpublishes. Catalog goes back to empty for new learners.
+	unpublishReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/decks/%d", created.DeckID), strings.NewReader(`{"is_public":false}`))
+	for _, cookie := range adminCookies {
+		unpublishReq.AddCookie(cookie)
+	}
+	unpublishRec := httptest.NewRecorder()
+	mux.ServeHTTP(unpublishRec, unpublishReq)
+	if unpublishRec.Code != http.StatusOK {
+		t.Fatalf("admin unpublish status=%d body=%q", unpublishRec.Code, unpublishRec.Body.String())
+	}
+	catAfterReq := httptest.NewRequest(http.MethodGet, "/api/decks/public", nil)
+	for _, cookie := range learnerCookies {
+		catAfterReq.AddCookie(cookie)
+	}
+	catAfterRec := httptest.NewRecorder()
+	mux.ServeHTTP(catAfterRec, catAfterReq)
+	var catalogAfter PublicDeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(catAfterRec.Body.Bytes())).Decode(&catalogAfter); err != nil {
+		t.Fatalf("decode catalog after: %v", err)
+	}
+	if len(catalogAfter.Decks) != 0 {
+		t.Fatalf("catalog after unpublish should be empty, got %+v", catalogAfter.Decks)
+	}
+
+	// Empty PATCH body (no title, no is_public) → 400.
+	emptyReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/decks/%d", created.DeckID), strings.NewReader(`{}`))
+	for _, cookie := range adminCookies {
+		emptyReq.AddCookie(cookie)
+	}
+	emptyRec := httptest.NewRecorder()
+	mux.ServeHTTP(emptyRec, emptyReq)
+	if emptyRec.Code != http.StatusBadRequest {
+		t.Fatalf("empty patch status=%d want 400 body=%q", emptyRec.Code, emptyRec.Body.String())
+	}
+}
+
 func TestReviewFlowAnswerAndMarkKnown(t *testing.T) {
 	api := newTestAPI(t)
 	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
