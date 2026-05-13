@@ -1664,6 +1664,64 @@ func TestBatchLookupForms_AllowsPROPNOnUppercaseSurface(t *testing.T) {
 	}
 }
 
+func TestBatchLookupForms_RequiresExactSpecialCapitalization(t *testing.T) {
+	db := newTestDB(t)
+	rows := []struct {
+		form, lemma, pos, gloss, feats string
+	}{
+		{"ma", "ma", "PRON", "I", ""},
+		{"ma", "mA", "NOUN", "[ET] milliampere", "Case=Ill|Number=Sing"},
+		{"ma", "MA", "NOUN", "Master of Arts", "Case=Ill|Number=Sing"},
+	}
+	for _, r := range rows {
+		if _, err := db.db.Exec(
+			`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats) VALUES (?, ?, ?, 'ET', 'ekilex', 20, ?)`,
+			r.form, r.lemma, r.pos, r.feats,
+		); err != nil {
+			t.Fatalf("seed form: %v", err)
+		}
+		if _, err := db.db.Exec(
+			`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority) VALUES (?, ?, ?, 'ET', 'ekilex', 20)`,
+			r.lemma, r.pos, r.gloss,
+		); err != nil {
+			t.Fatalf("seed lemma: %v", err)
+		}
+	}
+
+	cases := []struct {
+		surface, wantLemma, wantPOS string
+	}{
+		{"ma", "ma", "PRON"},
+		{"Ma", "ma", "PRON"},
+		{"mA", "mA", "NOUN"},
+		{"MA", "MA", "NOUN"},
+	}
+	for _, tc := range cases {
+		got := db.BatchLookupForms([]string{tc.surface}, "ET", "custom")
+		r, ok := got[tc.surface]
+		if !ok {
+			t.Fatalf("%s: expected resolution", tc.surface)
+		}
+		if r.Lemma != tc.wantLemma || r.POS != tc.wantPOS {
+			t.Errorf("%s: got %s/%s, want %s/%s", tc.surface, r.Lemma, r.POS, tc.wantLemma, tc.wantPOS)
+		}
+		if hasSpecialCapitalization(tc.wantLemma) && r.GrammarLabel != "" {
+			t.Errorf("%s: got grammar label %q, want empty for exact dictionary-form abbreviation", tc.surface, r.GrammarLabel)
+		}
+	}
+
+	all := db.BatchLookupAllForms([]string{"ma", "mA", "MA"}, "ET", "custom")
+	if c := all["ma"]; len(c) != 1 || c[0].Lemma != "ma" || c[0].POS != "PRON" {
+		t.Fatalf("BatchLookupAllForms ma=%+v, want only ma/PRON", c)
+	}
+	if c := all["mA"]; len(c) != 1 || c[0].Lemma != "mA" || c[0].POS != "NOUN" {
+		t.Fatalf("BatchLookupAllForms mA=%+v, want only mA/NOUN", c)
+	}
+	if c := all["MA"]; len(c) != 1 || c[0].Lemma != "MA" || c[0].POS != "NOUN" {
+		t.Fatalf("BatchLookupAllForms MA=%+v, want only MA/NOUN", c)
+	}
+}
+
 func TestBatchLookupForms_HigherPriorityWinsAmongEqualCandidates(t *testing.T) {
 	// Two NOUN candidates (no case/POS signal), source priority decides.
 	db := newTestDB(t)
@@ -1761,6 +1819,90 @@ func TestBatchLookupForms_DoesNotPickVerbHomonymOnFEATSDensity(t *testing.T) {
 	if r.Lemma != "arst" || r.POS != "NOUN" {
 		t.Errorf("arstiks: got %s/%s, want arst/NOUN (lemma asc tiebreak after morphology ties)",
 			r.Lemma, r.POS)
+	}
+}
+
+func TestBatchLookupForms_ClearsBogusCaseFeatsOnInvariantClosedClassRows(t *testing.T) {
+	db := newTestDB(t)
+	if _, err := db.db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+		 VALUES ('kui', 'kui', 'ADV', 'ET', 'ekilex', 20, 'Case=Gen|Number=Sing')`,
+	); err != nil {
+		t.Fatalf("seed form: %v", err)
+	}
+
+	got := db.BatchLookupForms([]string{"kui"}, "ET", "custom")
+	r, ok := got["kui"]
+	if !ok {
+		t.Fatal("kui: expected resolution")
+	}
+	if r.Feats != "" || r.GrammarLabel != "" {
+		t.Errorf("kui: got feats=%q grammar=%q, want both empty for invariable ADV", r.Feats, r.GrammarLabel)
+	}
+}
+
+func TestBatchLookupForms_FiltersETSourceLanguageOnlyNounTrap(t *testing.T) {
+	db := newTestDB(t)
+	for _, pos := range []string{"ADV", "CCONJ", "NOUN"} {
+		if _, err := db.db.Exec(
+			`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+			 VALUES ('kui', 'kui', ?, 'ET', 'ekilex', 20, 'Case=Gen|Number=Sing')`,
+			pos,
+		); err != nil {
+			t.Fatalf("seed %s form: %v", pos, err)
+		}
+	}
+
+	got := db.BatchLookupForms([]string{"kui"}, "ET", "custom")
+	r, ok := got["kui"]
+	if !ok {
+		t.Fatal("kui: expected resolution")
+	}
+	if r.POS == "NOUN" {
+		t.Fatalf("kui resolved to source-language-only noun trap: %+v", r)
+	}
+	if r.Feats != "" || r.GrammarLabel != "" {
+		t.Errorf("kui: got feats=%q grammar=%q, want closed-class morphology suppressed", r.Feats, r.GrammarLabel)
+	}
+
+	all := db.BatchLookupAllForms([]string{"kui"}, "ET", "custom")
+	for _, c := range all["kui"] {
+		if c.POS == "NOUN" {
+			t.Fatalf("BatchLookupAllForms kept kui/NOUN trap: %+v", all["kui"])
+		}
+	}
+	if len(all["kui"]) != 2 {
+		t.Fatalf("BatchLookupAllForms kui=%+v, want ADV and CCONJ only", all["kui"])
+	}
+}
+
+func TestBatchLookupForms_NormalizesETDictionaryVerbForm(t *testing.T) {
+	db := newTestDB(t)
+	if _, err := db.db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, feats)
+		 VALUES ('olema', 'olema', 'VERB', 'ET', 'ekilex', 20, 'Case=Ill|VerbForm=Sup')`,
+	); err != nil {
+		t.Fatalf("seed olema form: %v", err)
+	}
+	if _, err := db.db.Exec(
+		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+		 VALUES ('olema', 'VERB', 'accompany; be', 'ET', 'ekilex', 20)`,
+	); err != nil {
+		t.Fatalf("seed olema lemma: %v", err)
+	}
+
+	got := db.BatchLookupForms([]string{"olema"}, "ET", "custom")
+	r, ok := got["olema"]
+	if !ok {
+		t.Fatal("olema: expected resolution")
+	}
+	if r.Feats != "VerbForm=Inf" || r.GrammarLabel != "" {
+		t.Fatalf("olema morphology=(%q,%q), want dictionary-form infinitive without case label", r.Feats, r.GrammarLabel)
+	}
+
+	glosses := db.BatchLookupGlosses([]LemmaKey{{Lemma: "olema", POS: "VERB"}}, "ET")
+	if glosses[LemmaKey{Lemma: "olema", POS: "VERB"}] != "be" {
+		t.Fatalf("olema gloss=%q, want learner override be", glosses[LemmaKey{Lemma: "olema", POS: "VERB"}])
 	}
 }
 

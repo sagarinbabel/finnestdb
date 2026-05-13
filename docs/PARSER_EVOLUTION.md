@@ -62,6 +62,69 @@ committed run.
 
 ## Entries
 
+### 2026-05-12c — Source-backed ET learner cleanup
+
+**Parser stamp**: `2026.05.12c`
+**Scope**: `internal/store/`, `cmd/importekilexdetails/`,
+`pkg/lemmatizer-fi-et/lexadverbs`
+
+Follow-up to the Little Prince learner-row cleanup after a manual
+Sõnaveeb/Ekilex audit of high-frequency Estonian rows. The change
+does not add a new source or a probabilistic disambiguator; it tightens
+the deterministic dictionary path so source-backed but bad learner
+primaries stop leaking into parse output.
+
+**What changed:**
+
+1. Special-capitalized dictionary lemmas now require exact bare-surface
+   matches. The pronoun `ma` and sentence-initial `Ma` no longer match
+   abbreviation entries like `mA` or `MA`; exact `mA` and `MA` still
+   resolve to their dictionary rows.
+
+2. Runtime FEATS sanitization clears nominal case-only labels from
+   invariant closed-class exact rows (`ADV`, `ADP`, `CCONJ`, `SCONJ`,
+   `INTJ`, `PART`, `X`) and normalizes exact special-capitalized
+   dictionary-form rows to nominative display. This protects existing
+   DBs built with stale Ekilex form duplicates.
+
+3. Exact ET verb dictionary forms such as `olema` no longer expose the
+   Ekilex `Sup/Ill` morphology as a learner-facing case label; they
+   display as `VerbForm=Inf`.
+
+4. The Ekilex details importer now treats `ID` form rows as invariant
+   and keeps their FEATS empty. For duplicate bare noun forms, `SgN`
+   can overwrite earlier same-key case duplicates with
+   `Case=Nom|Number=Sing`, preventing future imports from recreating
+   `mA`/`MA` illative or genitive display.
+
+5. ET lexical overlay adds deterministic high-frequency corrections
+   for `ei/ADV`, `ma/PRON`, and `sina/PRON`, avoiding nominal or
+   ET-only source-language fallback rows in custom mode.
+
+6. Known ET source-language-only trap alternatives such as `kui/NOUN`
+   are filtered by exact `(surface, lemma, POS)` before ranking and
+   homonym expansion, so stale nominal FEATS cannot beat the useful
+   `kui/ADV` or `kui/CCONJ` readings.
+
+7. Learner gloss overrides now cover `ei/ADV`, `et/CCONJ`,
+   `kui/CCONJ`, and `olema/VERB` alongside the existing `see/PRON`
+   and `väike/ADJ` overrides. These are source-audited presentation
+   choices, not invented Sõnaveeb/Ekilex translations.
+
+**Verification**:
+
+- `go test ./internal/store`
+- `go test ./cmd/importekilexdetails`
+- `go test ./internal/api ./internal/parsecore ./pkg/lemmatizer-fi-et/lexadverbs`
+- Local API smoke on `olema see väike ma mA MA ei et kui sina` verified
+  `olema -> be`, `see -> this; that`, `väike -> small; little`,
+  `ma -> I`, exact-only `mA`/`MA` abbreviation matches, `ei -> no; not`,
+  `et -> that`, `kui` with no bogus case label, and
+  `sina -> you`.
+
+**Design choices and provenance**: see Decision 22 in
+[`DECISIONS.md`](DECISIONS.md).
+
 ### 2026-05-12a-T1526Z — FI non-finite paradigm coverage + ET FST FEATS mappings (PRs #188/#189/#191)
 
 **PRs**: [#188](https://github.com/sagarinbabel/finnestdb/pull/188), [#189](https://github.com/sagarinbabel/finnestdb/pull/189), [#191](https://github.com/sagarinbabel/finnestdb/pull/191) (also includes follow-ons [#193](https://github.com/sagarinbabel/finnestdb/pull/193) and [#195](https://github.com/sagarinbabel/finnestdb/pull/195))

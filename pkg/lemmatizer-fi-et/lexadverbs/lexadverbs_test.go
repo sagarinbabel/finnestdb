@@ -14,13 +14,13 @@ func TestLookupFI_Hits(t *testing.T) {
 		{"varsin", "varsin", "ADV", ""},   // not varsi/NOUN/Case=Ade
 		{"yleensä", "yleensä", "ADV", ""}, // not ylä-/NOUN/Case=Ill
 		{"Yleensä", "yleensä", "ADV", ""},
-		{"sisään", "sisään", "ADV", ""},                                // not sisä-/NOUN/Case=Ill
-		{"enemmän", "paljon", "ADV", "Degree=Cmp"},                     // lemma is paljon, not paljo
+		{"sisään", "sisään", "ADV", ""},            // not sisä-/NOUN/Case=Ill
+		{"enemmän", "paljon", "ADV", "Degree=Cmp"}, // lemma is paljon, not paljo
 		{"tarpeeksi", "tarpeeksi", "ADV", ""},
 		{"perillä", "perillä", "ADV", ""},
 		{"peräisin", "peräisin", "ADV", ""},
-		{"vahingossa", "vahingossa", "ADV", ""},                        // not vahinko/NOUN/Case=Ine
-		{"asiaan", "asia", "NOUN", "Case=Ill|Number=Sing"},             // not as/NOUN
+		{"vahingossa", "vahingossa", "ADV", ""},            // not vahinko/NOUN/Case=Ine
+		{"asiaan", "asia", "NOUN", "Case=Ill|Number=Sing"}, // not as/NOUN
 		{"kotona", "koti", "NOUN", "Case=Ess|Number=Sing"},
 	}
 	for _, tc := range cases {
@@ -109,18 +109,23 @@ func TestLookupET_Hits(t *testing.T) {
 		surface, wantLemma, wantPOS string
 	}{
 		{"välja", "välja", "ADV"},
-		{"Välja", "välja", "ADV"},   // sentence-initial capital
-		{"seal", "seal", "ADV"},     // not siga/NOUN/Case=Ade
-		{"sisse", "sisse", "ADV"},   // not siss/NOUN/partitive plural
-		{"veel", "veel", "ADV"},     // not vesi/NOUN/Case=Ade
-		{"peale", "peale", "ADP"},   // not pea/NOUN/Case=All
-		{"jaoks", "jaoks", "ADP"},   // not jagu/NOUN/Case=Tra
-		{"Ta", "tema", "PRON"},      // not TA/NOUN or Ta/X
+		{"Välja", "välja", "ADV"},       // sentence-initial capital
+		{"seal", "seal", "ADV"},         // not siga/NOUN/Case=Ade
+		{"sisse", "sisse", "ADV"},       // not siss/NOUN/partitive plural
+		{"veel", "veel", "ADV"},         // not vesi/NOUN/Case=Ade
+		{"peale", "peale", "ADP"},       // not pea/NOUN/Case=All
+		{"jaoks", "jaoks", "ADP"},       // not jagu/NOUN/Case=Tra
+		{"Ta", "tema", "PRON"},          // not TA/NOUN or Ta/X
+		{"ei", "ei", "ADV"},             // not nominal ei/NOUN or interjection fallback
 		{"lihtsalt", "lihtsalt", "ADV"}, // not lihtne/ADJ/Case=Abl
+		{"ma", "ma", "PRON"},            // not mA/MA unit or degree abbreviations
+		{"Ma", "ma", "PRON"},
 		{"tegelikult", "tegelikult", "ADV"},
 		{"Tegelikult", "tegelikult", "ADV"},
 		{"pärast", "pärast", "ADP"},
 		{"eest", "eest", "ADP"},
+		{"sina", "sina", "PRON"}, // not the source-language-only noun sense
+		{"Sina", "sina", "PRON"},
 		{"taga", "taga", "ADP"},
 	}
 	for _, tc := range cases {
@@ -146,13 +151,13 @@ func TestLookupET_Hits(t *testing.T) {
 func TestLookupET_Misses(t *testing.T) {
 	misses := []string{
 		"",
-		"pood",      // bare ET noun, no shadowing needed
-		"linn",      // city
-		"maja",      // house
-		"sõpra",     // partitive noun, productive
+		"pood",        // bare ET noun, no shadowing needed
+		"linn",        // city
+		"maja",        // house
+		"sõpra",       // partitive noun, productive
 		"raamatupoes", // long compound noun
-		"tuskin",    // FI overlay key — must NOT hit the ET table
-		"varsin",    // FI overlay key
+		"tuskin",      // FI overlay key — must NOT hit the ET table
+		"varsin",      // FI overlay key
 	}
 	for _, s := range misses {
 		if _, ok := LookupET(s); ok {
