@@ -744,6 +744,110 @@ test('mobile keeps the correction entry point visible at 375 px', async ({ page 
   await expect(page.locator('.correction-btn').first()).toBeVisible();
 });
 
+// ── EPUB chapters payload: one /api/parse per upload ─────────────────────
+
+test('epub upload sends chapters payload and chapter clicks reuse the cache', async ({ page }) => {
+  await mockMe(page, 'user');
+
+  // /api/import/extract: hand back a tiny 2-chapter book with all metadata
+  // shaped the way the real backend produces it.
+  await page.route('**/api/import/extract', async (route) => {
+    await route.fulfill({
+      status:      200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        text:        'Kissa juoksee.\n\nKoira haukkuu.',
+        filename:    'tiny.epub',
+        char_count:  31,
+        truncated:   false,
+        book_title:  'Tiny',
+        book_author: 'Test',
+        chapters: [
+          { title: 'Cat',  text: 'Kissa juoksee.', char_count: 14 },
+          { title: 'Dog',  text: 'Koira haukkuu.', char_count: 14 },
+        ],
+      }),
+    });
+  });
+
+  // Capture every body that POSTs to /api/parse so we can assert call count
+  // and the chapters-shape of the body.
+  const parseBodies: any[] = [];
+  await page.route('**/api/parse', async (route) => {
+    parseBodies.push(JSON.parse(route.request().postData() || '{}'));
+    await route.fulfill({
+      status:      200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        lang:              'ET',
+        total_tokens:      4,
+        parse_duration_ms: 7,
+        words: [
+          { lemma: 'kissa', pos: 'NOUN', forms: ['Kissa'], count: 1 },
+          { lemma: 'juosta', pos: 'VERB', forms: ['juoksee'], count: 1 },
+          { lemma: 'koira', pos: 'NOUN', forms: ['Koira'], count: 1 },
+          { lemma: 'haukkua', pos: 'VERB', forms: ['haukkuu'], count: 1 },
+        ],
+        chapters: [
+          {
+            title:             'Cat',
+            char_count:        14,
+            sentence_count:    1,
+            token_count:       2,
+            resolved_tokens:   2,
+            unresolved_tokens: 0,
+            lemma_count:       2,
+            words: [
+              { lemma: 'kissa',  pos: 'NOUN', forms: ['Kissa'],   count: 1 },
+              { lemma: 'juosta', pos: 'VERB', forms: ['juoksee'], count: 1 },
+            ],
+          },
+          {
+            title:             'Dog',
+            char_count:        14,
+            sentence_count:    1,
+            token_count:       2,
+            resolved_tokens:   2,
+            unresolved_tokens: 0,
+            lemma_count:       2,
+            words: [
+              { lemma: 'koira',   pos: 'NOUN', forms: ['Koira'],   count: 1 },
+              { lemma: 'haukkua', pos: 'VERB', forms: ['haukkuu'], count: 1 },
+            ],
+          },
+        ],
+      }),
+    });
+  });
+
+  await page.goto('/#/inspect');
+
+  // Drive the hidden file input directly — playwright's file_chooser is the
+  // supported way; the dropzone is just visual UX over this input.
+  await page.locator('#inspect-file').setInputFiles({
+    name: 'tiny.epub',
+    mimeType: 'application/epub+zip',
+    buffer: Buffer.from('placeholder'), // server route stub doesn't read it
+  });
+
+  // Pill should render with the book metadata from the extract response.
+  await expect(page.locator('.loaded-filename').first()).toHaveText('Tiny');
+  await page.getByRole('button', { name: 'Parse text' }).click();
+  await expect(page.locator('#results-page')).toHaveClass(/active/);
+
+  // EXACTLY one /api/parse call so far, with chapters body (not text).
+  expect(parseBodies).toHaveLength(1);
+  expect(parseBodies[0]).toHaveProperty('chapters');
+  expect(parseBodies[0].chapters).toHaveLength(2);
+  expect(parseBodies[0]).not.toHaveProperty('text');
+
+  // Click chapter 1 (Dog) in the sidebar. Cache was pre-seeded from
+  // response.chapters[], so this must NOT fire another /api/parse.
+  await page.locator('[data-chapter-idx="1"]').click();
+  await page.waitForTimeout(150); // let any errant fetch settle
+  expect(parseBodies).toHaveLength(1);
+});
+
 test('mobile landing layout fits at 375 px', async ({ page }) => {
   await mockMe(page, 'anon');
   await page.setViewportSize({ width: 375, height: 800 });

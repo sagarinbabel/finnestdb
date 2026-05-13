@@ -54,12 +54,27 @@ interface WordEntry {
     learning_state?:   LemmaStateStatus;
 }
 
+interface ChapterResponseEntry {
+    title:             string;
+    char_count:        number;
+    sentence_count:    number;
+    token_count:       number;
+    resolved_tokens:   number;
+    unresolved_tokens: number;
+    lemma_count:       number;
+    words:             WordEntry[];
+}
+
 interface ParseResponse {
     lang:              string;
     parse_id?:         number;
     total_tokens:      number;
     parse_duration_ms: number;
     words:             WordEntry[];
+    // Present only when /api/parse was called with a chapters payload (EPUB
+    // import flow). Each entry's words list is independently displayable, so
+    // chapter switches don't require a second /api/parse round-trip.
+    chapters?:         ChapterResponseEntry[];
 }
 
 interface CorrectionRowContext {
@@ -238,9 +253,6 @@ const state = {
     // Sidebar selection: -1 = whole book, 0..N-1 = chapter, null = no EPUB
     // context (sidebar hidden).
     activeChapterIdx:   null as number | null,
-    // Bumped on every fresh Parse press; in-flight background chapter parses
-    // check this and drop their result if the session has moved on.
-    epubParseGen:       0,
 };
 
 // EPUB held in app state between upload and parse press. The full text is the
@@ -1389,50 +1401,18 @@ function afterNextPaint(): Promise<void> {
     );
 }
 
-// Background-parse every chapter in the held EPUB so the sidebar's lemma
-// counts populate without the user clicking each row. Bounded concurrency
-// (4 in flight) caps server load. Workers re-check state.epubParseGen on
-// every iteration so they bail when the user starts a fresh parse.
-async function parseAllChaptersInBackground(
-    lang: string,
-    parserMode: ParserMode,
-    gen: number,
-): Promise<void> {
-    const epub = state.resultsEpub;
-    if (!epub) return;
-    const total = epub.chapters.length;
-    let nextIdx = 0;
-    const CONCURRENCY = 4;
-
-    async function worker(epubRef: LoadedEpub): Promise<void> {
-        while (true) {
-            if (state.epubParseGen !== gen) return;
-            const myIdx = nextIdx++;
-            if (myIdx >= total) return;
-            if (state.epubChapterCache.has(myIdx)) continue;
-            const text = epubRef.chapters[myIdx].text;
-            if (!text.trim()) continue;
-            try {
-                const resp = await fetch('/api/parse', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify({ lang, text, parser: parserMode }),
-                });
-                if (state.epubParseGen !== gen || !resp.ok) continue;
-                const data: ParseResponse = await resp.json();
-                if (state.epubParseGen !== gen) return;
-                state.epubChapterCache.set(myIdx, data);
-                renderChapterNav();
-            } catch {
-                // best-effort: skip and move on to the next chapter
-            }
-        }
-    }
-
-    await Promise.all(
-        Array.from({ length: Math.min(CONCURRENCY, total) }, () => worker(epub)),
-    );
+// synthesizeChapterResponse wraps one ChapterResponseEntry into a
+// ParseResponse-shaped value so the chapter cache stays uniform with the
+// whole-book entry. lang and parser_duration_ms come from the parent response
+// since the chapter's words were produced inside the same parse call.
+function synthesizeChapterResponse(parent: ParseResponse, chapter: ChapterResponseEntry): ParseResponse {
+    return {
+        lang:              parent.lang,
+        // No parse_id: chapters are derived data inside a non-persisted parse.
+        total_tokens:      chapter.token_count,
+        parse_duration_ms: parent.parse_duration_ms,
+        words:             chapter.words,
+    };
 }
 
 // Drop the held EPUB from THIS form and re-enable normal textarea editing.
@@ -1723,18 +1703,26 @@ async function runParse(
     }
 
     // Fresh top-level parse — drop any per-chapter cache from a previous
-    // EPUB. Whole-book result is re-cached below once the request returns.
+    // EPUB. Whole-book result is re-cached below once the request returns,
+    // and per-chapter entries are seeded from response.chapters when the
+    // EPUB path is used.
     state.epubChapterCache.clear();
     state.activeChapterIdx = null;
-    state.epubParseGen += 1;
-    const myParseGen = state.epubParseGen;
+
+    // When an EPUB is loaded, send the chapter array so the server can
+    // produce per-chapter Words in a single response. Plain-text parses still
+    // send `text`. Server rejects both being populated, so they're mutually
+    // exclusive on this side too.
+    const body = epub
+        ? { lang, parser: parserMode, chapters: epub.chapters.map(ch => ({ title: ch.title, text: ch.text })) }
+        : { lang, parser: parserMode, text };
 
     try {
         const resp = await fetch('/api/parse', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify({ lang, text, parser: parserMode }),
+            body: JSON.stringify(body),
         });
         if (!resp.ok) {
             const msg = await resp.text();
@@ -1747,15 +1735,21 @@ async function runParse(
             state.resultsEpub = epub;
             state.epubChapterCache.set(-1, data);
             state.activeChapterIdx = -1;
+            // Seed per-chapter cache from the single response so chapter
+            // clicks render instantly with no extra /api/parse round-trip.
+            // Each chapter's words match what a stand-alone /api/parse for
+            // that chapter would have returned, modulo learning_state which
+            // is already applied server-side for both whole-book and per-
+            // chapter Words.
+            if (data.chapters) {
+                data.chapters.forEach((ch, idx) => {
+                    state.epubChapterCache.set(idx, synthesizeChapterResponse(data, ch));
+                });
+            }
         } else {
             state.resultsEpub = null;
         }
         showResults(data, preview, parserMode, context);
-        if (epub) {
-            // Background-parse every chapter so the sidebar shows real lemma
-            // counts without the user clicking each row. Fire-and-forget.
-            void parseAllChaptersInBackground(lang, parserMode, myParseGen);
-        }
     } catch (err: any) {
         alert(`Parse failed: ${err.message}`);
     } finally {
