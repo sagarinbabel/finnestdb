@@ -358,6 +358,68 @@ func TestHandleParseChaptersPayloadReturnsPerChapterWordsAndState(t *testing.T) 
 	}
 }
 
+func TestHandleParseChaptersPayloadKeepsEmptyChapterWordsEmpty(t *testing.T) {
+	api := newTestAPI(t)
+	idx := func(i int) *int { return &i }
+	api.analyzeChapters = func(_ *store.DB, lang string, chapters []parsecore.ChapterInput, parser string) (*parsecore.ParseResult, error) {
+		if parser == "" {
+			parser = "custom"
+		}
+		return &parsecore.ParseResult{
+			Lang:            lang,
+			Parser:          parser,
+			TotalTokens:     1,
+			ParseDurationNs: 4_000_000,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text:       "Kissa.",
+					ChapterIdx: idx(0),
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kissa", Lemma: "kissa", POS: "NOUN", Resolved: true},
+					},
+				},
+			},
+			Words: []parsecore.WordEntry{
+				{Lemma: "kissa", POS: "NOUN", Forms: []string{"Kissa"}, Count: 1, ExampleSentence: "whole-book parser entry"},
+			},
+			Chapters: []parsecore.ChapterResult{
+				{
+					Title: "Cat", Words: []parsecore.WordEntry{
+						{Lemma: "kissa", POS: "NOUN", Forms: []string{"Kissa"}, Count: 1, ExampleSentence: "chapter parser entry"},
+					},
+				},
+				{Title: "Empty"},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+
+	body := `{"lang":"FI","parser":"custom","chapters":[{"title":"Cat","text":"Kissa."},{"title":"Empty","text":"   "}]}`
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%q", rec.Code, rec.Body.String())
+	}
+	var resp ParseResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(resp.Chapters) != 2 {
+		t.Fatalf("len(chapters)=%d want 2", len(resp.Chapters))
+	}
+	if got := resp.Chapters[1].Words; len(got) != 0 {
+		t.Fatalf("empty chapter words=%+v, want empty instead of whole-book fallback", got)
+	}
+	if resp.Chapters[1].LemmaCount != 0 {
+		t.Fatalf("empty chapter lemma_count=%d want 0", resp.Chapters[1].LemmaCount)
+	}
+	if len(resp.Chapters[0].Words) == 0 || resp.Chapters[0].Words[0].ExampleSentence != "chapter parser entry" {
+		t.Fatalf("chapter parser metadata not preserved: %+v", resp.Chapters[0].Words)
+	}
+}
+
 func TestHandleParseDoesNotPersistForAuthenticatedUser(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {

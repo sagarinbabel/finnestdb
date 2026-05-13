@@ -1621,9 +1621,9 @@ func (a *API) HandleCardKnown(w http.ResponseWriter, r *http.Request) {
 }
 
 type ParseRequest struct {
-	Lang     string                  `json:"lang"`
-	Text     string                  `json:"text,omitempty"`
-	Parser   string                  `json:"parser"` // parser name; defaults to "basic"
+	Lang     string                   `json:"lang"`
+	Text     string                   `json:"text,omitempty"`
+	Parser   string                   `json:"parser"` // parser name; defaults to "basic"
 	Chapters []parsecore.ChapterInput `json:"chapters,omitempty"`
 }
 
@@ -1708,7 +1708,14 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
 	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang, parsed.Parser)
 	dictCandidates, dictGlosses, checkedGlossKeys := a.filterLowValueDictAlternatives(dictCandidates, req.Lang)
-	parsed.Words = a.expandParsedWords(parsed, dictCandidates, dictGlosses, checkedGlossKeys)
+	parserWords := parsed.Words
+	parserChapterWords := make([][]parsecore.WordEntry, len(parsed.Chapters))
+	if hasChapters {
+		for i := range parsed.Chapters {
+			parserChapterWords[i] = parsed.Chapters[i].Words
+		}
+	}
+	parsed.Words = a.expandSentencesToWords(parsed.Sentences, parserWords, parsed.Lang, dictCandidates, dictGlosses, checkedGlossKeys)
 
 	// Per-chapter Words go through the same homonym-expansion pipeline so
 	// switching to a chapter view doesn't surface a different (lemma, pos)
@@ -1717,7 +1724,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	if hasChapters {
 		for i := range parsed.Chapters {
 			chSentences := chapterSentenceSubset(parsed.Sentences, i)
-			parsed.Chapters[i].Words = a.expandSentencesToWords(chSentences, parsed.Words, parsed.Lang, dictCandidates, dictGlosses, checkedGlossKeys)
+			parsed.Chapters[i].Words = a.expandSentencesToWords(chSentences, parserChapterWords[i], parsed.Lang, dictCandidates, dictGlosses, checkedGlossKeys)
 			parsed.Chapters[i].LemmaCount = len(parsed.Chapters[i].Words)
 		}
 	}
