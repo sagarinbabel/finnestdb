@@ -151,16 +151,19 @@ data that is valid as source data but misleading as a learner-primary
 parse row:
 
 - Special-capitalized lemmas such as `mA` and `MA` require an exact
-  bare-surface match. Lowercase `ma` and sentence-initial `Ma` resolve
-  to the pronoun, while exact `mA`/`MA` can still reach their source
-  dictionary entries.
+  bare-surface match in both `basic` and `custom` direct-dictionary
+  lookup. Lowercase `ma` and sentence-initial `Ma` resolve to the
+  pronoun, while exact `mA`/`MA` can still reach their source dictionary
+  entries. Exact all-caps forms such as `TA` bypass lowercase lexical
+  overlays for the same reason.
 - Nominal case-only FEATS are cleared from invariant closed-class exact
   rows (`ADV`, `ADP`, `CCONJ`, `SCONJ`, `INTJ`, `PART`, `X`). This
   prevents duplicate Ekilex morphology rows from displaying genitive or
   illative labels on words such as `ei` and `kui`.
-- Exact ET verb dictionary forms whose source FEATS are
-  `Case=Ill|VerbForm=Sup` display as `VerbForm=Inf`, so entries such
-  as `olema` do not show learner-facing case labels.
+- Exact ET verb dictionary forms whose source FEATS contain
+  `Case=Ill` and `VerbForm=Sup` display as `VerbForm=Inf`, so entries
+  such as `olema` do not show learner-facing case labels. The check is
+  attribute-based rather than tied to importer key order.
 - Known ET source-language-only alternatives are filtered by exact
   `(surface, lemma, POS)`, for example `kui/NOUN`, so stale nominal
   FEATS cannot outrank useful closed-class readings.

@@ -97,7 +97,10 @@ primaries stop leaking into parse output.
 1. Special-capitalized dictionary lemmas now require exact bare-surface
    matches. The pronoun `ma` and sentence-initial `Ma` no longer match
    abbreviation entries like `mA` or `MA`; exact `mA` and `MA` still
-   resolve to their dictionary rows.
+   resolve to their dictionary rows. This direct-dictionary filter runs
+   in both `basic` and `custom` modes. Exact all-caps `TA` also bypasses
+   the lowercase `ta -> tema/PRON` overlay and can resolve to its source
+   dictionary row.
 
 2. Runtime FEATS sanitization clears nominal case-only labels from
    invariant closed-class exact rows (`ADV`, `ADP`, `CCONJ`, `SCONJ`,
@@ -107,7 +110,9 @@ primaries stop leaking into parse output.
 
 3. Exact ET verb dictionary forms such as `olema` no longer expose the
    Ekilex `Sup/Ill` morphology as a learner-facing case label; they
-   display as `VerbForm=Inf`.
+   display as `VerbForm=Inf`. The FEATS check is attribute-based, so
+   `VerbForm=Sup|Case=Ill` and harmless extra attributes are handled
+   the same as the current importer order.
 
 4. The Ekilex details importer now treats `ID` form rows as invariant
    and keeps their FEATS empty. For duplicate bare noun forms, `SgN`

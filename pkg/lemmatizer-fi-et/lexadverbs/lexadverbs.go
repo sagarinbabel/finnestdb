@@ -200,8 +200,10 @@ var etOverlay = map[string]Analysis{
 		Feats:  "Case=Nom|Number=Sing|Person=2|PronType=Prs",
 	},
 	"ta": {
-		// `ta` is the high-frequency personal pronoun, not Ekilex's
-		// raw `TA`/NOUN or `Ta`/X alternatives.
+		// Lowercase `ta` and sentence-initial `Ta` are the
+		// high-frequency personal pronoun. The store layer deliberately
+		// bypasses this overlay for exact all-caps `TA` so source
+		// abbreviation entries can still be reached.
 		Lemma: "tema",
 		UPOS:  "PRON",
 	},

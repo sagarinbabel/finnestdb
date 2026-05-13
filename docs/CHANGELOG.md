@@ -34,9 +34,10 @@ become misleading learner primaries.
 - Added: [`DECISIONS.md`](DECISIONS.md) Decision 22 — why ET learner
   corrections stay deterministic, source-audited, and small: exact
   capitalization for special dictionary lemmas, invariant closed-class
-  morphology cleanup, ET verb dictionary-form display, runtime
-  compatibility for already-imported DBs, and curated overrides only
-  for high-frequency rows with verified bad learner primaries.
+  morphology cleanup, basic-mode direct-dict source filtering, ET verb
+  dictionary-form display, runtime compatibility for already-imported
+  DBs, and curated overrides only for high-frequency rows with verified
+  bad learner primaries.
 - Added: [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) entry
   2026-05-12c — records the parser stamp bump, changed behavior, and
   focused verification commands.
