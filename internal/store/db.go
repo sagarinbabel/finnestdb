@@ -405,6 +405,14 @@ func (d *DB) initSchema() error {
 	if _, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_card_state_introduced_at ON card_state(introduced_at) WHERE introduced_at IS NOT NULL`); err != nil {
 		return err
 	}
+	// Covers GetDeckDetails' per-lemma example-sentence subquery. Without
+	// this, novel-sized decks (e.g. an EPUB import with ~12k unique lemmas)
+	// re-scan the occurrence table once per group and the deck-detail page
+	// takes ~50s to load. Sentence_id + token_ix are included so the LIMIT 1
+	// after ORDER BY uses the index for both the lookup and the ordering.
+	if _, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_occurrence_deck_lemma_pos ON occurrence(deck_id, lemma, pos, sentence_id, token_ix)`); err != nil {
+		return err
+	}
 	if err := EnsureDictMetadataSchema(d.db); err != nil {
 		return err
 	}
