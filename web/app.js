@@ -471,6 +471,11 @@ function onActiveLanguageChanged() {
     renderDashboard();
     if (currentRoute() === '/decks' || currentRoute() === '/decks/official') {
         renderDecksPage();
+    }
+    if (currentRoute() === '/vocab') {
+        // Vocab page reads from state.activeLanguage for stats, hint, and the
+        // POST/DELETE bodies — re-render and re-fetch the per-language list.
+        renderVocabPage();
         void loadKnownWords();
     }
     if (currentRoute() === '/review') {
@@ -741,6 +746,7 @@ const ROUTE_TO_PAGE = {
     '/decks': 'decks-page',
     '/decks/official': 'decks-page',
     '/languages': 'languages-page',
+    '/vocab': 'vocab-page',
     '/review': 'review-page',
     '/admin/workbench': 'admin-workbench-page',
     '/admin/feedback': 'admin-feedback-page',
@@ -791,7 +797,7 @@ function isRouteAllowed(route) {
         return { allowed: false, redirect: '/dashboard' };
     }
     // Authenticated-only routes
-    const userOnly = ['/dashboard', '/inspect', '/decks', '/decks/official', '/languages', '/review', '/results'];
+    const userOnly = ['/dashboard', '/inspect', '/decks', '/decks/official', '/languages', '/vocab', '/review', '/results'];
     const isDeckDetail = DECK_DETAIL_RE.test(route);
     if (userOnly.includes(route) || isDeckDetail) {
         if (role === 'anon')
@@ -836,7 +842,6 @@ function renderRoute() {
         // Highlight the /decks nav link for the Official subroute too.
         setActiveNavLink('/decks');
         renderDecksPage();
-        void loadKnownWords();
         if (state.decksTab === 'official' && !state.officialDecksLoaded) {
             void (async () => {
                 await loadOfficialDecks();
@@ -847,6 +852,10 @@ function renderRoute() {
     }
     if (route === '/languages') {
         renderLanguagesPage();
+    }
+    if (route === '/vocab') {
+        renderVocabPage();
+        void loadKnownWords();
     }
     if (route === '/review') {
         renderReviewPage();
@@ -1234,6 +1243,30 @@ function getDeckByID(deckID) {
     return state.decks.find(deck => deck.id === deckID)
         ?? state.officialDecks.find(deck => deck.id === deckID);
 }
+function renderVocabPage() {
+    const total = document.getElementById('vocab-stat-total');
+    if (total) {
+        const v = state.dashboard?.known_count;
+        total.textContent = v === undefined ? '—' : v.toLocaleString();
+    }
+    renderVocabLangStat();
+}
+function renderVocabLangStat() {
+    const langNameEl = document.getElementById('vocab-stat-lang-name');
+    if (langNameEl) {
+        langNameEl.textContent = languageName(state.activeLanguage);
+    }
+    const langCount = document.getElementById('vocab-stat-lang');
+    if (langCount) {
+        // Prefer the server-side stat (it's the source of truth and stays
+        // accurate even before the in-memory list is loaded). Fall back to
+        // the loaded list length once it lands.
+        const fromStats = state.languageStats?.[state.activeLanguage]?.known_words;
+        const fallback = state.knownWords.length;
+        const value = fromStats !== undefined ? fromStats : fallback;
+        langCount.textContent = value.toLocaleString();
+    }
+}
 function renderKnownWordsPanel() {
     const list = document.getElementById('known-words-list');
     const empty = document.getElementById('known-words-empty');
@@ -1259,6 +1292,7 @@ function renderKnownWordsPanel() {
         <span class="known-word-pos">${escapeHtml(posLabel(word.pos))}</span>
         <button type="button" class="known-word-delete" aria-label="Remove ${escapeAttr(word.lemma)}" data-known-lemma="${escapeAttr(word.lemma)}" data-known-pos="${escapeAttr(word.pos)}">×</button>
     </div>`).join('');
+    renderVocabLangStat();
 }
 function parseKnownWordsInput(raw) {
     const seen = new Set();
@@ -1304,6 +1338,22 @@ async function loadKnownWords() {
         showToast(err.message || 'Failed to load known words.', 'error');
     }
 }
+async function postKnownWords(words) {
+    const resp = await fetch('/api/known-words', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ lang: state.activeLanguage, words }),
+    });
+    if (!resp.ok)
+        throw new Error(await resp.text() || 'Failed to import known words');
+    return await resp.json();
+}
+function describeImportResult(data) {
+    const importedCount = data.imported?.length || 0;
+    const unresolvedCount = data.unresolved?.length || 0;
+    return `${importedCount} imported${unresolvedCount ? `, ${unresolvedCount} unresolved` : ''}`;
+}
 async function importKnownWords() {
     const input = document.getElementById('known-words-input');
     const submitBtn = document.getElementById('known-words-submit');
@@ -1319,22 +1369,11 @@ async function importKnownWords() {
     const label = submitBtn.textContent || '';
     submitBtn.textContent = 'Importing...';
     try {
-        const resp = await fetch('/api/known-words', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ lang: state.activeLanguage, words }),
-        });
-        if (!resp.ok)
-            throw new Error(await resp.text() || 'Failed to import known words');
-        const data = await resp.json();
+        const data = await postKnownWords(words);
         input.value = '';
         renderKnownWordsUnresolved(data.unresolved || []);
-        if (summary) {
-            const importedCount = data.imported?.length || 0;
-            const unresolvedCount = data.unresolved?.length || 0;
-            summary.textContent = `${importedCount} imported${unresolvedCount ? `, ${unresolvedCount} unresolved` : ''}`;
-        }
+        if (summary)
+            summary.textContent = describeImportResult(data);
         await refreshDashboardData();
         await loadKnownWords();
         showToast('Known words imported.', 'success');
@@ -1346,6 +1385,226 @@ async function importKnownWords() {
         submitBtn.disabled = false;
         submitBtn.textContent = label;
     }
+}
+// CSV/TSV first-column extraction. Also handles bare one-per-line word lists.
+function parseFileWords(raw) {
+    const seen = new Set();
+    const words = [];
+    const lines = raw.replace(/^﻿/, '').split(/\r?\n/);
+    for (const line of lines) {
+        if (!line)
+            continue;
+        const firstCol = line.split(/[\t,;]/)[0] || '';
+        const trimmed = firstCol.trim().replace(/^"(.*)"$/, '$1').trim();
+        if (!trimmed)
+            continue;
+        const key = trimmed.toLocaleLowerCase();
+        if (seen.has(key))
+            continue;
+        seen.add(key);
+        words.push(trimmed);
+    }
+    return words;
+}
+async function importKnownWordsFromFile(file) {
+    const status = document.getElementById('vocab-file-status');
+    if (status)
+        status.textContent = `Reading ${file.name}…`;
+    try {
+        const text = await file.text();
+        const words = parseFileWords(text);
+        if (words.length === 0) {
+            if (status)
+                status.textContent = '';
+            showToast('No words found in file.', 'error');
+            return;
+        }
+        if (status)
+            status.textContent = `Importing ${words.length.toLocaleString()} words from ${file.name}…`;
+        const data = await postKnownWords(words);
+        renderKnownWordsUnresolved(data.unresolved || []);
+        if (status)
+            status.textContent = `${file.name}: ${describeImportResult(data)}`;
+        await refreshDashboardData();
+        await loadKnownWords();
+        showToast('Known words imported.', 'success');
+    }
+    catch (err) {
+        if (status)
+            status.textContent = '';
+        showToast(err.message || 'Failed to import file.', 'error');
+    }
+}
+// ── AnkiConnect ────────────────────────────────────────────────────────────
+//
+// AnkiConnect exposes Anki via http://127.0.0.1:8765 with a JSON-RPC-ish API.
+// We pull deck names, then notes from the chosen deck, then the chosen field's
+// value from each note, and pipe the result through the standard import path.
+const ANKI_CONNECT_URL = 'http://127.0.0.1:8765';
+async function ankiInvoke(action, params = {}) {
+    let resp;
+    try {
+        resp = await fetch(ANKI_CONNECT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, version: 6, params }),
+        });
+    }
+    catch {
+        throw new Error('Could not reach Anki on localhost:8765. Is Anki open with the AnkiConnect add-on installed?');
+    }
+    if (!resp.ok)
+        throw new Error(`AnkiConnect HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (data.error)
+        throw new Error(`AnkiConnect: ${data.error}`);
+    return data.result;
+}
+const ankiState = {
+    decks: [],
+    fields: [],
+};
+async function connectToAnki() {
+    const button = document.getElementById('vocab-anki-connect');
+    const status = document.getElementById('vocab-anki-status');
+    const stepConnect = document.getElementById('vocab-anki-step-connect');
+    const stepPick = document.getElementById('vocab-anki-step-pick');
+    if (!button)
+        return;
+    button.disabled = true;
+    if (status)
+        status.textContent = 'Connecting…';
+    try {
+        await ankiInvoke('version');
+        const decks = await ankiInvoke('deckNames');
+        ankiState.decks = decks.slice().sort();
+        const deckSelect = document.getElementById('vocab-anki-deck');
+        if (deckSelect) {
+            deckSelect.innerHTML = ankiState.decks
+                .map(d => `<option value="${escapeAttr(d)}">${escapeHtml(d)}</option>`)
+                .join('');
+        }
+        await refreshAnkiFieldsForSelectedDeck();
+        stepConnect?.classList.add('hidden');
+        stepPick?.classList.remove('hidden');
+        if (status)
+            status.textContent = '';
+    }
+    catch (err) {
+        if (status)
+            status.textContent = err.message || 'Failed to connect.';
+        showToast(err.message || 'Failed to connect to Anki.', 'error');
+    }
+    finally {
+        button.disabled = false;
+    }
+}
+async function refreshAnkiFieldsForSelectedDeck() {
+    const deckSelect = document.getElementById('vocab-anki-deck');
+    const fieldSelect = document.getElementById('vocab-anki-field');
+    if (!deckSelect || !fieldSelect)
+        return;
+    const deck = deckSelect.value;
+    if (!deck) {
+        fieldSelect.innerHTML = '';
+        return;
+    }
+    const noteIDs = await ankiInvoke('findNotes', { query: `deck:"${deck}"` });
+    if (noteIDs.length === 0) {
+        ankiState.fields = [];
+        fieldSelect.innerHTML = '<option value="">(deck is empty)</option>';
+        return;
+    }
+    const sample = await ankiInvoke('notesInfo', { notes: [noteIDs[0]] });
+    const fields = sample[0]?.fields || {};
+    ankiState.fields = Object.entries(fields)
+        .sort((a, b) => (a[1].order || 0) - (b[1].order || 0))
+        .map(([name]) => name);
+    fieldSelect.innerHTML = ankiState.fields
+        .map(name => `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`)
+        .join('');
+}
+function stripHtml(s) {
+    const doc = new DOMParser().parseFromString(s, 'text/html');
+    return (doc.body.textContent || '').trim();
+}
+async function importKnownWordsFromAnki() {
+    const deckSelect = document.getElementById('vocab-anki-deck');
+    const fieldSelect = document.getElementById('vocab-anki-field');
+    const button = document.getElementById('vocab-anki-import');
+    const status = document.getElementById('vocab-anki-status');
+    if (!deckSelect || !fieldSelect || !button)
+        return;
+    const deck = deckSelect.value;
+    const field = fieldSelect.value;
+    if (!deck || !field) {
+        showToast('Pick a deck and a field first.', 'error');
+        return;
+    }
+    button.disabled = true;
+    const origLabel = button.textContent || '';
+    button.textContent = 'Importing…';
+    if (status)
+        status.textContent = `Fetching notes from "${deck}"…`;
+    try {
+        const noteIDs = await ankiInvoke('findNotes', { query: `deck:"${deck}"` });
+        if (noteIDs.length === 0) {
+            if (status)
+                status.textContent = 'Deck is empty.';
+            return;
+        }
+        const notes = await ankiInvoke('notesInfo', { notes: noteIDs });
+        const seen = new Set();
+        const words = [];
+        for (const note of notes) {
+            const raw = note.fields?.[field]?.value || '';
+            const text = stripHtml(raw);
+            if (!text)
+                continue;
+            // A field may itself contain multiple comma/newline-separated words.
+            for (const w of parseKnownWordsInput(text)) {
+                const key = w.toLocaleLowerCase();
+                if (seen.has(key))
+                    continue;
+                seen.add(key);
+                words.push(w);
+            }
+        }
+        if (words.length === 0) {
+            if (status)
+                status.textContent = 'No words extracted from that field.';
+            return;
+        }
+        if (status)
+            status.textContent = `Importing ${words.length.toLocaleString()} words…`;
+        const data = await postKnownWords(words);
+        renderKnownWordsUnresolved(data.unresolved || []);
+        if (status)
+            status.textContent = `${deck} → ${field}: ${describeImportResult(data)}`;
+        await refreshDashboardData();
+        await loadKnownWords();
+        showToast('Known words imported from Anki.', 'success');
+    }
+    catch (err) {
+        if (status)
+            status.textContent = err.message || 'Failed to import.';
+        showToast(err.message || 'Failed to import from Anki.', 'error');
+    }
+    finally {
+        button.disabled = false;
+        button.textContent = origLabel;
+    }
+}
+function disconnectFromAnki() {
+    const stepConnect = document.getElementById('vocab-anki-step-connect');
+    const stepPick = document.getElementById('vocab-anki-step-pick');
+    const status = document.getElementById('vocab-anki-status');
+    ankiState.decks = [];
+    ankiState.fields = [];
+    stepConnect?.classList.remove('hidden');
+    stepPick?.classList.add('hidden');
+    if (status)
+        status.textContent = '';
 }
 async function deleteKnownWord(lemma, pos) {
     try {
@@ -3233,6 +3492,45 @@ function initKnownWordsPanel() {
             void deleteKnownWord(lemma, pos);
     });
 }
+function initVocabFileImport() {
+    const input = document.getElementById('vocab-file-input');
+    const cta = document.getElementById('vocab-file-cta');
+    if (!input || !cta)
+        return;
+    input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file)
+            return;
+        await importKnownWordsFromFile(file);
+        // Allow re-selecting the same file later.
+        input.value = '';
+    });
+    // Drag-and-drop directly on the CTA tile.
+    cta.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        cta.classList.add('is-drag');
+    });
+    cta.addEventListener('dragleave', () => cta.classList.remove('is-drag'));
+    cta.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        cta.classList.remove('is-drag');
+        const file = e.dataTransfer?.files?.[0];
+        if (file)
+            await importKnownWordsFromFile(file);
+    });
+}
+function initVocabAnkiImport() {
+    document.getElementById('vocab-anki-connect')?.addEventListener('click', () => {
+        void connectToAnki();
+    });
+    document.getElementById('vocab-anki-deck')?.addEventListener('change', () => {
+        void refreshAnkiFieldsForSelectedDeck();
+    });
+    document.getElementById('vocab-anki-import')?.addEventListener('click', () => {
+        void importKnownWordsFromAnki();
+    });
+    document.getElementById('vocab-anki-reset')?.addEventListener('click', disconnectFromAnki);
+}
 function initReviewPage() {
     const filter = document.getElementById('review-deck-filter');
     filter?.addEventListener('change', async () => {
@@ -3384,6 +3682,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initKnownWordsPanel();
     initLanguagesPage();
     initNavLanguageSelector();
+    initVocabFileImport();
+    initVocabAnkiImport();
     initReviewPage();
     initResultsSaveForm();
     initAdminFeedbackPage();
