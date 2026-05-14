@@ -69,18 +69,22 @@ type MeResponse struct {
 }
 
 type DeckSummary struct {
-	ID     int64  `json:"id"`
-	Title  string `json:"title"`
-	Lang   string `json:"lang"`
-	Known  int    `json:"known"`
-	Unique int    `json:"unique"`
-	Due    int    `json:"due"`
+	ID         int64  `json:"id"`
+	Title      string `json:"title"`
+	Lang       string `json:"lang"`
+	Known      int    `json:"known"`
+	Unique     int    `json:"unique"`
+	Due        int    `json:"due"`
+	IsPublic   bool   `json:"is_public"`
+	IsOwner    bool   `json:"is_owner,omitempty"`
+	Subscribed bool   `json:"subscribed,omitempty"`
 }
 
 type CreateDeckRequest struct {
-	Title string `json:"title"`
-	Lang  string `json:"lang"`
-	Text  string `json:"text"`
+	Title    string `json:"title"`
+	Lang     string `json:"lang"`
+	Text     string `json:"text"`
+	IsPublic bool   `json:"is_public,omitempty"`
 }
 
 type CreateDeckResponse struct {
@@ -91,8 +95,18 @@ type DeckListResponse struct {
 	Decks []DeckSummary `json:"decks"`
 }
 
+type PublicDeckListResponse struct {
+	Decks []DeckSummary `json:"decks"`
+}
+
 type UpdateDeckRequest struct {
-	Title string `json:"title"`
+	// Title is the new deck name. Empty / omitted means leave unchanged.
+	// Updating the title still requires ownership.
+	Title string `json:"title,omitempty"`
+	// IsPublic toggles the official-deck flag. Pointer so the handler can
+	// distinguish "omitted" (leave alone) from explicit false (unpublish).
+	// Setting this field requires admin privileges.
+	IsPublic *bool `json:"is_public,omitempty"`
 }
 
 type ReviewAnswerRequest struct {
@@ -504,12 +518,14 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 	deckSummaries := make([]DeckSummary, len(decks))
 	for i, deck := range decks {
 		deckSummaries[i] = DeckSummary{
-			ID:     deck.ID,
-			Title:  deck.Title,
-			Lang:   deck.Lang,
-			Known:  deck.Known,
-			Unique: deck.Unique,
-			Due:    deck.Due,
+			ID:         deck.ID,
+			Title:      deck.Title,
+			Lang:       deck.Lang,
+			Known:      deck.Known,
+			Unique:     deck.Unique,
+			Due:        deck.Due,
+			IsPublic:   deck.IsPublic,
+			Subscribed: deck.Subscribed,
 		}
 	}
 
@@ -588,12 +604,54 @@ func (a *API) handleDecksList(w http.ResponseWriter, auth *AuthContext) {
 	resp := DeckListResponse{Decks: make([]DeckSummary, 0, len(decks))}
 	for _, deck := range decks {
 		resp.Decks = append(resp.Decks, DeckSummary{
-			ID:     deck.ID,
-			Title:  deck.Title,
-			Lang:   deck.Lang,
-			Known:  deck.Known,
-			Unique: deck.Unique,
-			Due:    deck.Due,
+			ID:         deck.ID,
+			Title:      deck.Title,
+			Lang:       deck.Lang,
+			Known:      deck.Known,
+			Unique:     deck.Unique,
+			Due:        deck.Due,
+			IsPublic:   deck.IsPublic,
+			Subscribed: deck.Subscribed,
+		})
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// HandlePublicDecks lists every official deck the user does not already own.
+// Each entry carries a "subscribed" flag so the UI can show
+// "Add to studying list" vs "Remove" without an extra round-trip.
+func (a *API) HandlePublicDecks(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	decks, err := a.store.ListPublicDecksForUser(auth.UserID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	resp := PublicDeckListResponse{Decks: make([]DeckSummary, 0, len(decks))}
+	for _, deck := range decks {
+		resp.Decks = append(resp.Decks, DeckSummary{
+			ID:         deck.ID,
+			Title:      deck.Title,
+			Lang:       deck.Lang,
+			Known:      deck.Known,
+			Unique:     deck.Unique,
+			Due:        0,
+			IsPublic:   true,
+			IsOwner:    deck.IsOwner,
+			Subscribed: deck.Subscribed,
 		})
 	}
 	writeJSON(w, http.StatusOK, resp)
@@ -1058,6 +1116,11 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 		return
 	}
 
+	if req.IsPublic && !auth.IsAdmin {
+		http.Error(w, "Admin access required to publish official decks", http.StatusForbidden)
+		return
+	}
+
 	parsed, err := a.analyze(a.store, req.Lang, req.Text, "custom")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -1102,7 +1165,7 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 		sentences = append(sentences, sentence)
 	}
 
-	deckID, err := a.store.CreateDeckWithSentences(auth.UserID, strings.TrimSpace(req.Title), req.Lang, sentences)
+	deckID, err := a.store.CreateDeckWithSentencesOptions(auth.UserID, strings.TrimSpace(req.Title), req.Lang, req.IsPublic, sentences)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -1127,10 +1190,25 @@ func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	idStr := strings.TrimPrefix(r.URL.Path, "/api/decks/")
+	rest := strings.TrimPrefix(r.URL.Path, "/api/decks/")
+	idStr := rest
+	suffix := ""
+	if slash := strings.Index(rest, "/"); slash >= 0 {
+		idStr = rest[:slash]
+		suffix = rest[slash:]
+	}
 	deckID, err := strconv.ParseInt(strings.TrimSpace(idStr), 10, 64)
 	if err != nil || deckID <= 0 {
 		http.Error(w, "Deck ID must be a positive integer", http.StatusBadRequest)
+		return
+	}
+
+	if suffix == "/subscribe" {
+		a.handleDeckSubscribe(w, r, auth, deckID)
+		return
+	}
+	if suffix != "" {
+		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
 
@@ -1143,17 +1221,58 @@ func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		title := strings.TrimSpace(req.Title)
-		if title == "" {
-			http.Error(w, "Title is required", http.StatusBadRequest)
+		if title == "" && req.IsPublic == nil {
+			http.Error(w, "Title or is_public is required", http.StatusBadRequest)
 			return
 		}
-		if err := a.store.UpdateDeckTitle(auth.UserID, deckID, title); err != nil {
-			if err == sql.ErrNoRows {
-				http.Error(w, "Deck not found", http.StatusNotFound)
+		// Authorisation differs between fields: is_public is admin-only on
+		// any deck (admins manage the catalog), title is owner-only. When
+		// both are present we have to check BOTH up front; otherwise an
+		// admin patching a deck they don't own could flip is_public, fail
+		// the title update, and walk away thinking the request 404'd while
+		// the visibility actually changed.
+		if req.IsPublic != nil && !auth.IsAdmin {
+			http.Error(w, "Admin access required to change deck visibility", http.StatusForbidden)
+			return
+		}
+		if title != "" {
+			owns, err := a.store.UserOwnsDeck(auth.UserID, deckID)
+			if err != nil {
+				http.Error(w, "Database error", http.StatusInternalServerError)
 				return
 			}
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
+			if !owns {
+				// Distinguish "deck doesn't exist" from "you're not the
+				// owner" only when the visibility flag isn't also being
+				// changed — otherwise we'd leak existence to a non-owner
+				// admin.
+				if req.IsPublic == nil {
+					http.Error(w, "Deck not found", http.StatusNotFound)
+				} else {
+					http.Error(w, "Only the deck owner can rename it", http.StatusForbidden)
+				}
+				return
+			}
+		}
+		if req.IsPublic != nil {
+			if err := a.store.SetDeckIsPublic(deckID, *req.IsPublic); err != nil {
+				if err == sql.ErrNoRows {
+					http.Error(w, "Deck not found", http.StatusNotFound)
+					return
+				}
+				http.Error(w, "Database error", http.StatusInternalServerError)
+				return
+			}
+		}
+		if title != "" {
+			if err := a.store.UpdateDeckTitle(auth.UserID, deckID, title); err != nil {
+				if err == sql.ErrNoRows {
+					http.Error(w, "Deck not found", http.StatusNotFound)
+					return
+				}
+				http.Error(w, "Database error", http.StatusInternalServerError)
+				return
+			}
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	case http.MethodDelete:
@@ -1180,6 +1299,9 @@ type DeckDetailResponse struct {
 	CreatedAt   time.Time   `json:"created_at"`
 	TotalTokens int         `json:"total_tokens"`
 	Words       []WordEntry `json:"words"`
+	IsPublic    bool        `json:"is_public"`
+	IsOwner     bool        `json:"is_owner"`
+	Subscribed  bool        `json:"subscribed"`
 }
 
 func (a *API) handleGetDeck(w http.ResponseWriter, auth *AuthContext, deckID int64) {
@@ -1191,6 +1313,16 @@ func (a *API) handleGetDeck(w http.ResponseWriter, auth *AuthContext, deckID int
 		}
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
+	}
+
+	isOwner := details.UserID == auth.UserID
+	var subscribed bool
+	if !isOwner && details.IsPublic {
+		subscribed, err = a.store.UserSubscribedToDeck(auth.UserID, deckID)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	keys := make([]store.LemmaKey, 0, len(details.Lemmas))
@@ -1231,7 +1363,42 @@ func (a *API) handleGetDeck(w http.ResponseWriter, auth *AuthContext, deckID int
 		CreatedAt:   details.CreatedAt,
 		TotalTokens: details.TotalTokens,
 		Words:       words,
+		IsPublic:    details.IsPublic,
+		IsOwner:     isOwner,
+		Subscribed:  subscribed,
 	})
+}
+
+// handleDeckSubscribe handles POST/DELETE /api/decks/:id/subscribe. POST adds
+// an official deck to the user's studying list and seeds cards for each
+// (lemma, pos) the user has not already marked known/ignored. DELETE removes
+// the subscription but leaves seeded cards in place — matching how deleting
+// an owned deck preserves global learning state.
+func (a *API) handleDeckSubscribe(w http.ResponseWriter, r *http.Request, auth *AuthContext, deckID int64) {
+	switch r.Method {
+	case http.MethodPost:
+		if err := a.store.SubscribeUserToPublicDeck(auth.UserID, deckID); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "Official deck not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	case http.MethodDelete:
+		if err := a.store.UnsubscribeUserFromPublicDeck(auth.UserID, deckID); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "Subscription not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func (a *API) HandleKnownWords(w http.ResponseWriter, r *http.Request) {
@@ -1455,12 +1622,12 @@ func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Deck ID must be a positive integer", http.StatusBadRequest)
 			return
 		}
-		ownsDeck, err := a.store.UserOwnsDeck(auth.UserID, parsed)
+		canStudy, err := a.store.UserCanStudyDeck(auth.UserID, parsed)
 		if err != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
-		if !ownsDeck {
+		if !canStudy {
 			http.Error(w, "Deck not found", http.StatusNotFound)
 			return
 		}
@@ -2077,8 +2244,12 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/admin/parse-feedback", a.HandleAdminParseFeedback)
 	mux.HandleFunc("/api/admin/users", a.HandleAdminUsers)
 
-	// Decks
+	// Decks. net/http's ServeMux uses longest-prefix matching, not
+	// registration order, so "/api/decks/public" (exact match) wins over
+	// "/api/decks/" (subtree) regardless of which line goes first. Group
+	// is just for readability.
 	mux.HandleFunc("/api/decks", a.HandleDecks)
+	mux.HandleFunc("/api/decks/public", a.HandlePublicDecks)
 	mux.HandleFunc("/api/decks/", a.HandleDeckByID)
 
 	// Import (file upload → plain text)

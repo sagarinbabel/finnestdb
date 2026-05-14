@@ -293,10 +293,10 @@
     <!-- ==================== DECKS ==================== -->
     <div id="decks-page" class="page" data-role-required="user admin">
         <main class="decks-main">
-            <section class="decks-header">
-                <h1>Your decks</h1>
-                <p class="decks-lede">The texts you've imported and the vocabulary you're learning from them.</p>
-            </section>
+            <div class="signin-tabs" role="tablist" aria-label="Deck library">
+                <button type="button" class="signin-tab active" id="decks-tab-mine" role="tab" aria-selected="true" data-decks-tab="mine">My Decks</button>
+                <button type="button" class="signin-tab" id="decks-tab-official" role="tab" aria-selected="false" data-decks-tab="official">Official Decks</button>
+            </div>
 
             <section id="decks-empty" class="placeholder-card hidden">
                 <p>You don't have any decks yet.</p>
@@ -304,6 +304,12 @@
             </section>
 
             <section id="decks-list" class="decks-list" aria-live="polite"></section>
+
+            <section id="official-decks-empty" class="placeholder-card hidden">
+                <p>No official decks have been published yet.</p>
+            </section>
+
+            <section id="official-decks-list" class="decks-list hidden" aria-live="polite"></section>
 
             <section class="known-words-panel">
                 <div class="known-words-header">
@@ -535,6 +541,10 @@
                     <form id="results-save-form" class="results-save-form hidden">
                         <label for="results-deck-title">Deck title</label>
                         <input type="text" id="results-deck-title" maxlength="120" placeholder="Give this text a short title" />
+                        <label class="results-save-public" data-role-show="admin">
+                            <input type="checkbox" id="results-deck-public" />
+                            Publish as an official deck (visible to all users)
+                        </label>
                         <div class="results-save-actions">
                             <button type="submit" id="results-save-submit" class="btn btn-primary btn-sm">Save</button>
                             <button type="button" id="results-save-cancel" class="btn btn-link btn-sm">Cancel</button>
@@ -628,6 +638,26 @@
                     <button type="submit" class="btn btn-primary" id="correction-submit">Send</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ==================== GENERIC CONFIRM / PROMPT ====================
+         Used by showConfirm() / showPrompt() in app.ts as the site-standard
+         replacement for window.alert / .confirm / .prompt. Never call those
+         browser dialogs directly. -->
+    <div id="dialog-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="dialog-modal-title">
+        <div class="modal-backdrop" id="dialog-modal-backdrop"></div>
+        <div class="modal-card" role="document">
+            <h3 id="dialog-modal-title">Confirm</h3>
+            <p id="dialog-modal-message" class="modal-lede"></p>
+            <div class="form-group hidden" id="dialog-modal-input-wrap">
+                <label for="dialog-modal-input" id="dialog-modal-input-label">Value</label>
+                <input type="text" id="dialog-modal-input" autocomplete="off" />
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-link" id="dialog-modal-cancel">Cancel</button>
+                <button type="button" class="btn btn-primary" id="dialog-modal-confirm">OK</button>
+            </div>
         </div>
     </div>
 
