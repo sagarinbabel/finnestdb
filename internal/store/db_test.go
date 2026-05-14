@@ -212,7 +212,7 @@ func TestGetNextReviewCardRespectsDailyNewCardLimit(t *testing.T) {
 		t.Fatalf("EnsureCard(koira): %v", err)
 	}
 
-	card, err := db.GetNextReviewCard(user.ID, nil)
+	card, err := db.GetNextReviewCard(user.ID, nil, "")
 	if err != nil {
 		t.Fatalf("GetNextReviewCard(before answer): %v", err)
 	}
@@ -232,7 +232,7 @@ func TestGetNextReviewCardRespectsDailyNewCardLimit(t *testing.T) {
 		t.Fatalf("remaining new cards=%d want 0 after hitting daily limit", remaining)
 	}
 
-	next, err := db.GetNextReviewCard(user.ID, nil)
+	next, err := db.GetNextReviewCard(user.ID, nil, "")
 	if err != nil {
 		t.Fatalf("GetNextReviewCard(after answer): %v", err)
 	}
@@ -292,7 +292,7 @@ func TestGetNextReviewCardUsesBatchGlossEnrichment(t *testing.T) {
 	seedBadEkilexSeeGloss(t, db)
 	createSingleTokenDeck(t, db, user.ID, "ET", "See.", "See", "see", "PRON")
 
-	card, err := db.GetNextReviewCard(user.ID, nil)
+	card, err := db.GetNextReviewCard(user.ID, nil, "")
 	if err != nil {
 		t.Fatalf("GetNextReviewCard: %v", err)
 	}

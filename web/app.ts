@@ -110,10 +110,61 @@ interface DeckSummary {
     subscribed?: boolean;
 }
 
+interface LanguageStats {
+    decks:       number;
+    known_words: number;
+}
+
+interface UserLanguagesResponse {
+    learning: string[];
+    active:   string;
+    stats?:   Record<string, LanguageStats>;
+}
+
 interface MeResponse {
     authenticated: boolean;
     user:          SessionUser | null;
     dashboard?:    DashboardData;
+    languages?:    UserLanguagesResponse;
+}
+
+// Closed set of language codes the app supports today. Source of truth for
+// the Languages page checkboxes and any code that needs to enumerate options
+// without hitting the server. Keep in sync with store.SupportedLanguages.
+const SUPPORTED_LANGUAGES = ['FI', 'ET'] as const;
+const LANGUAGE_NAMES: Record<string, string> = { FI: 'Finnish', ET: 'Estonian' };
+function languageName(lang: string): string {
+    return LANGUAGE_NAMES[lang] || lang;
+}
+
+// Inline SVG flags — flat, cartoony, system-font-independent. Returned as a
+// string and injected via innerHTML next to language labels. Each flag uses
+// `class="lang-flag"`; CSS sizes them via the parent's font-size (height: 1em)
+// and adds the rounded-corner / soft-shadow treatment that gives them a
+// sticker-like look. Pass `tooltip` to attach data-tooltip directly to the
+// SVG element so the portal tooltip fires only over actual flag pixels —
+// not the surrounding flexbox gap of any wrapper. Keep in sync with
+// SUPPORTED_LANGUAGES.
+function languageFlag(lang: string, tooltip?: string): string {
+    const tipAttr = tooltip ? ` data-tooltip="${escapeAttr(tooltip)}"` : '';
+    if (lang === 'FI') {
+        // Finland: 18:11 white field with a blue Nordic cross.
+        // Cross arms: 4:3:4 vertical, 5:3:10 horizontal (spec proportions).
+        return `<svg class="lang-flag" viewBox="0 0 18 11" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false"${tipAttr}>
+            <rect width="18" height="11" fill="#ffffff"/>
+            <rect y="4" width="18" height="3" fill="#003580"/>
+            <rect x="5" width="3" height="11" fill="#003580"/>
+        </svg>`;
+    }
+    if (lang === 'ET') {
+        // Estonia: 11:7 horizontal triband, blue / black / white.
+        return `<svg class="lang-flag" viewBox="0 0 33 21" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false"${tipAttr}>
+            <rect width="33" height="21" fill="#ffffff"/>
+            <rect width="33" height="7" fill="#0072CE"/>
+            <rect y="7" width="33" height="7" fill="#000000"/>
+        </svg>`;
+    }
+    return '';
 }
 
 interface LoginResponse {
@@ -250,7 +301,13 @@ const state = {
     reviewDeckFilter:   '',
     adminFeedback:      [] as ParseFeedbackItem[],
     adminFeedbackStatus: 'submitted',
-    knownWordsLang:     'FI',
+    // Active language drives the deck list filter, Inspect/Known-Words defaults,
+    // and Review queue. learningLanguages is the user's opt-in set; the nav
+    // dropdown only shows entries from this list. Both are hydrated from
+    // /api/me; defaults are FI active, both languages learning.
+    learningLanguages:  ['FI', 'ET'] as string[],
+    activeLanguage:     'FI',
+    languageStats:      {} as Record<string, LanguageStats>,
     knownWords:         [] as KnownLemma[],
     // resultsEpub: the EPUB whose parse is currently displayed on the
     // results page (drives the chapter sidebar + cache). Each form's
@@ -553,11 +610,352 @@ function applyMeResponse(data: MeResponse): void {
     state.decks = data.dashboard?.decks || [];
     state.role = computeRole(state.user);
 
+    if (data.languages) {
+        applyLanguagesResponse(data.languages);
+    }
+
     const emailEl = document.getElementById('nav-user-email');
     if (emailEl) emailEl.textContent = state.user?.email || '';
 
     applyRoleVisibility();
+    renderNavLanguageSelector();
+    updateInspectLede();
     renderDashboard();
+}
+
+// ── Language settings ──────────────────────────────────────────────────────
+
+function applyLanguagesResponse(langs: UserLanguagesResponse): void {
+    const cleaned = (langs.learning || []).filter(l => (SUPPORTED_LANGUAGES as readonly string[]).includes(l));
+    state.learningLanguages = cleaned.length > 0 ? cleaned : ['FI'];
+    state.activeLanguage = state.learningLanguages.includes(langs.active) ? langs.active : state.learningLanguages[0];
+    state.languageStats = langs.stats || {};
+}
+
+// Build the top-bar dropdown so it lists exactly the user's learning
+// languages plus a trailing "Manage languages…" entry that routes to the
+// dedicated page. The toggle button shows the current active language;
+// clicking opens a custom listbox menu (we style it ourselves so it
+// matches the rest of the app — native <select> popups can't be themed).
+// Toggling *which* languages are studied happens on /languages.
+function renderNavLanguageSelector(): void {
+    const toggle = document.getElementById('nav-language-toggle');
+    const current = document.getElementById('nav-language-current');
+    const menu = document.getElementById('nav-language-menu');
+    if (!toggle || !current || !menu) return;
+    if (state.role === 'anon') {
+        current.innerHTML = '';
+        menu.innerHTML = '';
+        closeNavLanguageMenu();
+        return;
+    }
+    // Flag-only on the toggle. No tooltip here: the dropdown opens directly
+    // below the trigger and would obscure (or push offscreen) any tooltip.
+    const flag = languageFlag(state.activeLanguage);
+    current.innerHTML = flag || escapeHtml(languageName(state.activeLanguage));
+
+    const items = [...state.learningLanguages].sort((a, b) =>
+        languageName(a).localeCompare(languageName(b))
+    ).map(l => {
+        const isActive = l === state.activeLanguage;
+        const name = languageName(l);
+        // Flag-only options. data-tooltip lives on the whole button so the
+        // portal tooltip fires anywhere on the row, not just the flag.
+        // aria-label keeps the option discoverable for screen readers.
+        return `<li role="presentation">
+            <button type="button" class="nav-lang-option nav-lang-option-flagonly" role="option" data-lang="${l}" aria-selected="${isActive ? 'true' : 'false'}" data-tooltip="${escapeAttr(name)}" aria-label="${escapeAttr(name)}">
+                <span class="nav-lang-option-flag" aria-hidden="true">${languageFlag(l)}</span>
+                ${isActive ? '<span class="nav-lang-option-check" aria-hidden="true">✓</span>' : ''}
+            </button>
+        </li>`;
+    });
+    items.push(`<li class="nav-lang-menu-divider" role="presentation" aria-hidden="true"></li>`);
+    items.push(`<li role="presentation">
+        <button type="button" class="nav-lang-option nav-lang-menu-manage" role="option" data-manage="1">More…</button>
+    </li>`);
+    menu.innerHTML = items.join('');
+}
+
+function isNavLanguageMenuOpen(): boolean {
+    const menu = document.getElementById('nav-language-menu');
+    return !!menu && !menu.classList.contains('hidden');
+}
+
+function openNavLanguageMenu(): void {
+    const toggle = document.getElementById('nav-language-toggle');
+    const menu = document.getElementById('nav-language-menu');
+    if (!toggle || !menu) return;
+    menu.classList.remove('hidden');
+    toggle.setAttribute('aria-expanded', 'true');
+    // Don't auto-focus an option here: focusin fires the portal tooltip, and
+    // showing the active language's tooltip immediately on every menu open is
+    // noisy. Mouse users hover to see it; keyboard users press ArrowDown
+    // from the toggle (wired below) to step into the menu.
+}
+
+function closeNavLanguageMenu(): void {
+    const toggle = document.getElementById('nav-language-toggle');
+    const menu = document.getElementById('nav-language-menu');
+    if (!toggle || !menu) return;
+    menu.classList.add('hidden');
+    toggle.setAttribute('aria-expanded', 'false');
+}
+
+// PATCH user settings. Caller passes whichever fields it wants to change;
+// success applies the canonical server response (which dedups, reorders, and
+// re-anchors the active language). Failure surfaces a toast and leaves state
+// untouched. Returns true on success so callers can branch (e.g. don't navigate
+// after a failed toggle).
+async function patchUserLanguages(patch: { learning?: string[]; active?: string }): Promise<boolean> {
+    try {
+        const resp = await fetch('/api/me/languages', {
+            method: 'PATCH',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patch),
+        });
+        if (!resp.ok) {
+            const msg = await resp.text();
+            throw new Error(msg || 'Failed to update languages');
+        }
+        const data = await resp.json() as UserLanguagesResponse;
+        applyLanguagesResponse(data);
+        return true;
+    } catch (err: any) {
+        showToast(err?.message || 'Failed to update languages.', 'error');
+        return false;
+    }
+}
+
+// Switch the site's active language. Persists to the server, then refreshes
+// derived views: nav selector, decks list, known words (per-language fetch),
+// review queue, and Inspect's language-warning gate. Safe to call when the
+// requested language is already active (no-op fast path).
+async function setActiveLanguage(lang: string): Promise<void> {
+    if (!state.learningLanguages.includes(lang) || state.activeLanguage === lang) {
+        renderNavLanguageSelector();
+        return;
+    }
+    const prev = state.activeLanguage;
+    state.activeLanguage = lang;
+    renderNavLanguageSelector();
+    const ok = await patchUserLanguages({ active: lang });
+    if (!ok) {
+        state.activeLanguage = prev;
+        renderNavLanguageSelector();
+        return;
+    }
+    onActiveLanguageChanged();
+}
+
+// Re-render anything that depends on the active language. Called after a
+// successful PATCH; consolidated so the inspect/dropdown/languages-page paths
+// don't drift.
+function onActiveLanguageChanged(): void {
+    renderNavLanguageSelector();
+    renderDashboard();
+    if (currentRoute() === '/decks' || currentRoute() === '/decks/official') {
+        renderDecksPage();
+        void loadKnownWords();
+    }
+    if (currentRoute() === '/review') {
+        // Old card is for whatever language was active before — re-fetch.
+        state.currentReviewCard = null;
+        renderReviewPage();
+        void loadNextReviewCard(false);
+    }
+    if (currentRoute() === '/languages') {
+        renderLanguagesPage();
+    }
+    refreshInspectFormForActiveLanguage();
+}
+
+// Languages page: split rows into "Studying" (active set) and "Other"
+// (inactive). Within each group, sort alphabetically by display name. The
+// active section comes first so the language the user is focused on is
+// always at the top; the divider makes it visually clear which set a
+// language belongs to. The user can't drop their last language — its
+// checkbox is disabled to prevent ending up in a zero-language state.
+function renderLanguagesPage(): void {
+    const list = document.getElementById('languages-list');
+    if (!list) return;
+    const learning = new Set(state.learningLanguages);
+    const onlyOne = learning.size <= 1;
+    const byName = (a: string, b: string) => languageName(a).localeCompare(languageName(b));
+    const activeLangs = SUPPORTED_LANGUAGES.filter(l => learning.has(l)).sort(byName);
+    const inactiveLangs = SUPPORTED_LANGUAGES.filter(l => !learning.has(l)).sort(byName);
+
+    const renderRow = (lang: string): string => {
+        const isLearning = learning.has(lang);
+        const isActive = state.activeLanguage === lang;
+        const stats = state.languageStats[lang] || { decks: 0, known_words: 0 };
+        const statsLine = `${stats.decks} deck${stats.decks === 1 ? '' : 's'} · ${stats.known_words.toLocaleString()} known word${stats.known_words === 1 ? '' : 's'}`;
+        const activeBadge = isActive
+            ? '<span class="language-row-active-badge">Active</span>'
+            : '';
+        const setActiveBtn = isLearning && !isActive
+            ? `<button type="button" class="btn btn-link btn-sm" data-set-active="${lang}">Set active</button>`
+            : '';
+        // Button-driven add/remove instead of a native checkbox so the action
+        // matches the rest of the site's button styling and so we can disable
+        // (with a tooltip) the row that would leave the user with zero
+        // languages.
+        let toggleBtn: string;
+        if (isLearning) {
+            const disabledAttr = onlyOne ? ' disabled data-tooltip="At least one language is required"' : '';
+            toggleBtn = `<button type="button" class="btn btn-outline btn-sm" data-toggle-learning="${lang}" data-studying="1"${disabledAttr}>Remove</button>`;
+        } else {
+            toggleBtn = `<button type="button" class="btn btn-primary btn-sm" data-toggle-learning="${lang}" data-studying="0">Add</button>`;
+        }
+        return `<div class="language-row${isActive ? ' is-active' : ''}">
+            <div class="language-row-info">
+                <span class="language-row-flag" aria-hidden="true">${languageFlag(lang)}</span>
+                <div class="language-row-text">
+                    <span class="language-row-name">${escapeHtml(languageName(lang))} ${activeBadge}</span>
+                    <span class="language-row-sub">${statsLine}</span>
+                </div>
+            </div>
+            <div class="language-row-actions">
+                ${setActiveBtn}
+                ${toggleBtn}
+            </div>
+        </div>`;
+    };
+
+    const sections: string[] = [];
+    sections.push(`<h2 class="languages-section-heading">Studying</h2>`);
+    sections.push(activeLangs.length === 0
+        ? `<p class="empty-state">You're not studying any languages yet.</p>`
+        : activeLangs.map(renderRow).join(''));
+    if (inactiveLangs.length > 0) {
+        sections.push(`<h2 class="languages-section-heading">Other languages</h2>`);
+        sections.push(inactiveLangs.map(renderRow).join(''));
+    }
+    list.innerHTML = sections.join('');
+}
+
+async function toggleLearningLanguage(lang: string, studying: boolean): Promise<void> {
+    const set = new Set(state.learningLanguages);
+    if (studying) set.add(lang);
+    else set.delete(lang);
+    if (set.size === 0) {
+        showToast('You must study at least one language.', 'error');
+        renderLanguagesPage();
+        return;
+    }
+    const next: string[] = SUPPORTED_LANGUAGES.filter(l => set.has(l));
+    const nextActive = next.includes(state.activeLanguage) ? state.activeLanguage : next[0];
+    const prev = { learning: state.learningLanguages.slice(), active: state.activeLanguage };
+    state.learningLanguages = next;
+    state.activeLanguage = nextActive;
+    const ok = await patchUserLanguages({ learning: next, active: nextActive });
+    if (!ok) {
+        state.learningLanguages = prev.learning;
+        state.activeLanguage = prev.active;
+        renderLanguagesPage();
+        renderNavLanguageSelector();
+        return;
+    }
+    onActiveLanguageChanged();
+    showToast(studying ? `Added ${languageName(lang)} to your languages.` : `Removed ${languageName(lang)} from your languages.`, 'success');
+}
+
+function initLanguagesPage(): void {
+    const list = document.getElementById('languages-list');
+    list?.addEventListener('click', (e) => {
+        const target = (e.target as HTMLElement | null)?.closest('button');
+        if (!target) return;
+        const setActive = target.getAttribute('data-set-active');
+        if (setActive) {
+            void setActiveLanguage(setActive);
+            return;
+        }
+        const toggle = target.getAttribute('data-toggle-learning');
+        if (toggle) {
+            // data-studying reflects the *current* state, so the new value
+            // is the negation. Disabled buttons (the "last language" case)
+            // don't fire clicks at all.
+            const studyingNow = target.getAttribute('data-studying') === '1';
+            void toggleLearningLanguage(toggle, !studyingNow);
+        }
+    });
+}
+
+function initNavLanguageSelector(): void {
+    const toggle = document.getElementById('nav-language-toggle');
+    const menu = document.getElementById('nav-language-menu');
+    if (!toggle || !menu) return;
+
+    toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isNavLanguageMenuOpen()) closeNavLanguageMenu();
+        else openNavLanguageMenu();
+    });
+
+    menu.addEventListener('click', (e) => {
+        const btn = (e.target as HTMLElement | null)?.closest<HTMLButtonElement>('.nav-lang-option');
+        if (!btn) return;
+        e.stopPropagation();
+        if (btn.dataset.manage === '1') {
+            closeNavLanguageMenu();
+            navigate('/languages');
+            return;
+        }
+        const lang = btn.dataset.lang;
+        if (lang) {
+            closeNavLanguageMenu();
+            void setActiveLanguage(lang);
+        }
+    });
+
+    // Arrow-key navigation between options inside the open menu. Wired to
+    // the menu container (not each button) so re-renders don't need to
+    // re-attach listeners.
+    menu.addEventListener('keydown', (e) => {
+        if (!isNavLanguageMenuOpen()) return;
+        const options = Array.from(menu.querySelectorAll<HTMLButtonElement>('.nav-lang-option'));
+        const idx = options.indexOf(document.activeElement as HTMLButtonElement);
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            options[(idx + 1 + options.length) % options.length]?.focus();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            options[(idx - 1 + options.length) % options.length]?.focus();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            closeNavLanguageMenu();
+            (toggle as HTMLElement).focus();
+        }
+    });
+
+    // Click-outside / Escape from the toggle close the menu.
+    document.addEventListener('click', (e) => {
+        if (!isNavLanguageMenuOpen()) return;
+        const target = e.target as Node | null;
+        const dropdown = toggle.closest('.nav-lang-dropdown');
+        if (target && dropdown && !dropdown.contains(target)) {
+            closeNavLanguageMenu();
+        }
+    });
+    toggle.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isNavLanguageMenuOpen()) {
+            e.preventDefault();
+            closeNavLanguageMenu();
+            return;
+        }
+        if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (!isNavLanguageMenuOpen()) openNavLanguageMenu();
+            if (e.key === 'ArrowDown') {
+                // Step from the toggle into the menu's first option. Active
+                // option (if present) is preferred so keyboard users land on
+                // a useful default.
+                const active = menu.querySelector<HTMLButtonElement>('.nav-lang-option[aria-selected="true"]')
+                    || menu.querySelector<HTMLButtonElement>('.nav-lang-option');
+                active?.focus();
+            }
+        }
+    });
 }
 
 async function handleSignout(): Promise<void> {
@@ -573,6 +971,9 @@ async function handleSignout(): Promise<void> {
     state.officialDecksLoaded = false;
     state.decksTab = 'mine';
     state.role = 'anon';
+    state.learningLanguages = ['FI', 'ET'];
+    state.activeLanguage = 'FI';
+    state.languageStats = {};
     state.currentResults = null;
     state.currentTextPreview = '';
     state.currentSourceText = '';
@@ -616,6 +1017,7 @@ const ROUTE_TO_PAGE: Record<string, string> = {
     '/inspect':          'inspect-page',
     '/decks':            'decks-page',
     '/decks/official':   'decks-page',
+    '/languages':        'languages-page',
     '/review':           'review-page',
     '/admin/workbench':  'admin-workbench-page',
     '/admin/feedback':   'admin-feedback-page',
@@ -672,7 +1074,7 @@ function isRouteAllowed(route: string): { allowed: boolean; redirect?: string } 
     }
 
     // Authenticated-only routes
-    const userOnly = ['/dashboard', '/inspect', '/decks', '/decks/official', '/review', '/results'];
+    const userOnly = ['/dashboard', '/inspect', '/decks', '/decks/official', '/languages', '/review', '/results'];
     const isDeckDetail = DECK_DETAIL_RE.test(route);
     if (userOnly.includes(route) || isDeckDetail) {
         if (role === 'anon') return { allowed: false, redirect: '/signin' };
@@ -728,6 +1130,9 @@ function renderRoute(): void {
                 if (state.decksTab === 'official') renderDecksPage();
             })();
         }
+    }
+    if (route === '/languages') {
+        renderLanguagesPage();
     }
     if (route === '/review') {
         renderReviewPage();
@@ -905,9 +1310,14 @@ function renderDashboard(): void {
     const decksList = document.getElementById('dashboard-decks-list');
     if (!decksList) return;
 
-    const decks = state.dashboard?.decks || [];
+    const allDecks = state.dashboard?.decks || [];
+    const decks = allDecks.filter(d => d.lang === state.activeLanguage);
     if (decks.length === 0) {
-        decksList.innerHTML = `<p class="empty-state">No decks yet — paste some text under <a href="#/inspect">Parse</a> to get started.</p>`;
+        const langLabel = languageName(state.activeLanguage);
+        const hint = allDecks.length === 0
+            ? `No decks yet — paste some text under <a href="#/inspect">Parse</a> to get started.`
+            : `No ${escapeHtml(langLabel)} decks yet. Switch the language in the top bar to see your other decks, or <a href="#/inspect">parse a ${escapeHtml(langLabel)} text</a>.`;
+        decksList.innerHTML = `<p class="empty-state">${hint}</p>`;
         return;
     }
 
@@ -1004,7 +1414,7 @@ function renderMyDecksTab(): void {
     officialEmpty.classList.add('hidden');
     officialList.classList.add('hidden');
 
-    const decks = state.decks || [];
+    const decks = (state.decks || []).filter(d => d.lang === state.activeLanguage);
     empty.classList.toggle('hidden', decks.length > 0);
     list.classList.toggle('hidden', decks.length === 0);
 
@@ -1056,7 +1466,7 @@ function renderOfficialDecksTab(): void {
     empty.classList.add('hidden');
     list.classList.add('hidden');
 
-    const decks = state.officialDecks || [];
+    const decks = (state.officialDecks || []).filter(d => d.lang === state.activeLanguage);
     if (!state.officialDecksLoaded) {
         officialEmpty.classList.add('hidden');
         officialList.classList.remove('hidden');
@@ -1126,11 +1536,13 @@ function getDeckByID(deckID: number): DeckSummary | undefined {
 }
 
 function renderKnownWordsPanel(): void {
-    const langToggle = bindBtnRadio('known-words-lang');
     const list = document.getElementById('known-words-list');
     const empty = document.getElementById('known-words-empty');
     const summary = document.getElementById('known-words-summary');
-    if (langToggle) langToggle.value = state.knownWordsLang;
+    const hint = document.getElementById('known-words-lang-hint');
+    if (hint) {
+        hint.textContent = `Importing in ${languageName(state.activeLanguage)} — switch the dropdown at the top to import in another language.`;
+    }
     if (!list || !empty) return;
 
     const words = state.knownWords;
@@ -1178,7 +1590,7 @@ function renderKnownWordsUnresolved(unresolved: string[]): void {
 async function loadKnownWords(): Promise<void> {
     if (state.role === 'anon') return;
     try {
-        const resp = await fetch(`/api/known-words?lang=${encodeURIComponent(state.knownWordsLang)}`, { credentials: 'same-origin' });
+        const resp = await fetch(`/api/known-words?lang=${encodeURIComponent(state.activeLanguage)}`, { credentials: 'same-origin' });
         if (!resp.ok) throw new Error(await resp.text() || 'Failed to load known words');
         const data = await resp.json() as KnownWordsListResponse;
         state.knownWords = data.known_words || [];
@@ -1212,7 +1624,7 @@ async function importKnownWords(): Promise<void> {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify({ lang: state.knownWordsLang, words }),
+            body: JSON.stringify({ lang: state.activeLanguage, words }),
         });
         if (!resp.ok) throw new Error(await resp.text() || 'Failed to import known words');
         const data = await resp.json() as KnownWordsImportResponse;
@@ -1236,13 +1648,13 @@ async function importKnownWords(): Promise<void> {
 
 async function deleteKnownWord(lemma: string, pos: string): Promise<void> {
     try {
-        const params = new URLSearchParams({ lang: state.knownWordsLang, lemma, pos });
+        const params = new URLSearchParams({ lang: state.activeLanguage, lemma, pos });
         const resp = await fetch(`/api/known-words?${params.toString()}`, {
             method: 'DELETE',
             credentials: 'same-origin',
         });
         if (!resp.ok) throw new Error(await resp.text() || 'Failed to remove known word');
-        state.knownWords = state.knownWords.filter(word => !(word.lemma === lemma && word.pos === pos && word.lang === state.knownWordsLang));
+        state.knownWords = state.knownWords.filter(word => !(word.lemma === lemma && word.pos === pos && word.lang === state.activeLanguage));
         renderKnownWordsPanel();
         await refreshDashboardData();
         showToast('Known word removed.', 'success');
@@ -1370,8 +1782,17 @@ interface ParseFormElements {
     loadedEpub:  LoadedEpub | null;
 }
 
+// Inspect's "language" is the site-wide active language — there's no
+// per-form radio anymore. We expose it as a read-only BtnRadioLike so the
+// shared parse runner / warning code can stay generic across inspect and the
+// admin workbench (which still has a radio for parser testing).
+const inspectLangBinding: BtnRadioLike = {
+    get value() { return state.activeLanguage; },
+    set value(_v: string) { /* no-op: site-wide language changes go through setActiveLanguage */ },
+    addEventListener(_type: 'change', _listener: () => void) { /* no-op */ },
+};
+
 function getInspectEls(): ParseFormElements | null {
-    const lang     = bindBtnRadio('inspect-lang');
     const text     = document.getElementById('inspect-text')         as HTMLTextAreaElement | null;
     const file     = document.getElementById('inspect-file')         as HTMLInputElement | null;
     const cc       = document.getElementById('inspect-char-count');
@@ -1380,8 +1801,27 @@ function getInspectEls(): ParseFormElements | null {
     const dz       = document.getElementById('inspect-dropzone');
     const pill     = document.getElementById('inspect-loaded');
     const chap     = document.getElementById('inspect-chapters');
-    if (!lang || !text || !file || !cc || !warn || !swBtn || !dz || !pill || !chap) return null;
-    return { lang, text, file, charCount: cc, warning: warn, switchBtn: swBtn, dropzone: dz, loadedPill: pill, chapterList: chap, loadedEpub: null };
+    if (!text || !file || !cc || !warn || !swBtn || !dz || !pill || !chap) return null;
+    return { lang: inspectLangBinding, text, file, charCount: cc, warning: warn, switchBtn: swBtn, dropzone: dz, loadedPill: pill, chapterList: chap, loadedEpub: null };
+}
+
+// Re-run the language-warning gate when the site active language changes.
+// Used by setActiveLanguage so an already-pasted text immediately re-evaluates
+// against the new language (e.g. the user accepts a switch, warning clears).
+function refreshInspectFormForActiveLanguage(): void {
+    updateInspectLede();
+    const els = getInspectEls();
+    if (!els) return;
+    updateLangWarning(els, true);
+}
+
+// The Inspect page lede references the active language by name (e.g.
+// "Paste Finnish text…"). Re-rendered whenever the active language changes
+// so the copy keeps pace with the dropdown.
+function updateInspectLede(): void {
+    const lede = document.getElementById('inspect-lede');
+    if (!lede) return;
+    lede.textContent = `Paste ${languageName(state.activeLanguage)} text. We'll show unique lemmas, forms, definitions, examples, token counts, and row-level known/ignore actions.`;
 }
 
 function getWorkbenchEls(): ParseFormElements | null {
@@ -1817,9 +2257,16 @@ function maybeAutoSwitchFromIngest(
     runLangDetectOnText(els, els.text.value, gateInspectButton, source);
 }
 
-// Same auto-switch logic as maybeAutoSwitchFromIngest, but operates on text
-// supplied by the caller — used when an EPUB is held in state and the textarea
-// is empty.
+// Inspect: never auto-switch the site's active language behind the user's
+// back. updateLangWarning surfaces a "Switch to X" button when detection
+// disagrees with the active language, and the button (wired in
+// initInspectForm) routes through setActiveLanguage so the change persists
+// site-wide.
+//
+// Workbench (admin): the form's lang radio is local-only, so on a paste/file
+// that looks like the other language we still auto-switch the radio — it
+// doesn't touch site state and saves an extra click for the parser-testing
+// flow.
 function runLangDetectOnText(
     els: ParseFormElements,
     sourceText: string,
@@ -1830,11 +2277,13 @@ function runLangDetectOnText(
         updateLangWarning(els, gateInspectButton);
         return;
     }
-    const detected = detectLang(sourceText);
-    if (detected !== 'unknown' && detected !== els.lang.value) {
-        els.lang.value = detected;
-        const sourceLabel = source === 'paste' ? 'pasted text' : 'file content';
-        showToast(`Switched to ${detected === 'FI' ? 'Finnish' : 'Estonian'} — detected from ${sourceLabel}`, 'info');
+    if (!gateInspectButton) {
+        const detected = detectLang(sourceText);
+        if (detected !== 'unknown' && detected !== els.lang.value) {
+            els.lang.value = detected;
+            const sourceLabel = source === 'paste' ? 'pasted text' : 'file content';
+            showToast(`Switched to ${detected === 'FI' ? 'Finnish' : 'Estonian'} — detected from ${sourceLabel}`, 'info');
+        }
     }
     updateLangWarning(els, gateInspectButton);
 }
@@ -1854,13 +2303,19 @@ function initInspectForm(): void {
         }, 0);
     });
 
-    els.lang.addEventListener('change', () => updateLangWarning(els, true));
-
-    els.switchBtn.addEventListener('click', () => {
+    els.switchBtn.addEventListener('click', async () => {
         const ws = getLangWarningState(effectiveSourceText(els), els.lang.value);
-        if (ws.canSwitch) {
-            els.lang.value = ws.detected;
-            updateLangWarning(els, true);
+        if (ws.canSwitch && (ws.detected === 'FI' || ws.detected === 'ET')) {
+            // The site-wide setter handles persistence + dropdown re-render +
+            // re-running the warning. We just need to make sure the language
+            // is in the user's learning set first; otherwise add it for them.
+            if (!state.learningLanguages.includes(ws.detected)) {
+                const next = SUPPORTED_LANGUAGES.filter(l => state.learningLanguages.includes(l) || l === ws.detected);
+                const ok = await patchUserLanguages({ learning: next, active: ws.detected });
+                if (ok) onActiveLanguageChanged();
+                return;
+            }
+            await setActiveLanguage(ws.detected);
         }
     });
 
@@ -2548,10 +3003,19 @@ function renderReviewPage(): void {
     const filter = document.getElementById('review-deck-filter') as HTMLSelectElement | null;
     if (filter) {
         const current = state.reviewDeckFilter;
-        filter.innerHTML = `<option value="">All decks</option>` + state.decks.map(deck =>
+        const decks = state.decks.filter(d => d.lang === state.activeLanguage);
+        filter.innerHTML = `<option value="">All decks</option>` + decks.map(deck =>
             `<option value="${deck.id}">${escapeHtml(deck.title)}</option>`
         ).join('');
-        filter.value = current;
+        // If the previous filter pointed at a deck in the other language, reset
+        // it so the dropdown's visible value matches state.
+        const stillValid = current === '' || decks.some(d => String(d.id) === current);
+        if (!stillValid) {
+            state.reviewDeckFilter = '';
+            filter.value = '';
+        } else {
+            filter.value = current;
+        }
     }
     renderCurrentReviewCard();
 }
@@ -2594,9 +3058,10 @@ function renderCurrentReviewCard(): void {
 async function loadNextReviewCard(showEmptyToast: boolean): Promise<void> {
     if (state.role === 'anon') return;
 
-    const deckParam = state.reviewDeckFilter ? `?deck_id=${encodeURIComponent(state.reviewDeckFilter)}` : '';
+    const params = new URLSearchParams({ lang: state.activeLanguage });
+    if (state.reviewDeckFilter) params.set('deck_id', state.reviewDeckFilter);
     try {
-        const resp = await fetch(`/api/review/next${deckParam}`, { credentials: 'same-origin' });
+        const resp = await fetch(`/api/review/next?${params.toString()}`, { credentials: 'same-origin' });
         if (resp.status === 204) {
             state.currentReviewCard = null;
             renderCurrentReviewCard();
@@ -3151,15 +3616,6 @@ async function handleDeckListClick(e: Event): Promise<void> {
 }
 
 function initKnownWordsPanel(): void {
-    const langToggle = bindBtnRadio('known-words-lang');
-    langToggle?.addEventListener('change', async () => {
-        state.knownWordsLang = langToggle.value;
-        const summary = document.getElementById('known-words-summary');
-        if (summary) summary.textContent = '';
-        renderKnownWordsUnresolved([]);
-        await loadKnownWords();
-    });
-
     const form = document.getElementById('known-words-form') as HTMLFormElement | null;
     form?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -3325,6 +3781,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initCorrectionModal();
     initDecksPage();
     initKnownWordsPanel();
+    initLanguagesPage();
+    initNavLanguageSelector();
     initReviewPage();
     initResultsSaveForm();
     initAdminFeedbackPage();

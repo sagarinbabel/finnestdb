@@ -192,7 +192,7 @@ func (d *DB) initSchema() error {
 		email TEXT UNIQUE,
 		email_verified INTEGER DEFAULT 0,
 		is_admin INTEGER DEFAULT 0,
-		settings_json TEXT DEFAULT '{"new_per_day":20,"retention":0.9,"theme":"system"}'
+		settings_json TEXT DEFAULT '{"new_per_day":20,"retention":0.9,"theme":"system","learning_languages":["FI","ET"],"active_language":"FI"}'
 	);
 
 	CREATE TABLE IF NOT EXISTS decks (
@@ -783,7 +783,7 @@ func (d *DB) CreateUser(email, passwordHash string) (*User, error) {
 }
 
 func (d *DB) createUser(email, passwordHash string, isAdmin bool) (*User, error) {
-	settingsJSON := `{"new_per_day":20,"retention":0.9,"theme":"system"}`
+	settingsJSON := `{"new_per_day":20,"retention":0.9,"theme":"system","learning_languages":["FI","ET"],"active_language":"FI"}`
 	result, err := d.db.Exec(
 		`INSERT INTO users (email, email_verified, is_admin, password_hash, settings_json)
 		 VALUES (?, 1, ?, ?, ?)`,
@@ -1907,6 +1907,31 @@ func (d *DB) CountKnownLemmas(userID int64) (int, error) {
 	return count, err
 }
 
+// CountKnownLemmasByLang returns per-language counts of the user's known
+// lemmas. Languages with zero known words are not included; callers should
+// treat a missing key as zero. Used by the Languages page to surface a
+// "vocab stat" next to each language alongside the deck count.
+func (d *DB) CountKnownLemmasByLang(userID int64) (map[string]int, error) {
+	rows, err := d.db.Query(
+		`SELECT lang, COUNT(*) FROM user_known_lemmas WHERE user_id = ? GROUP BY lang`,
+		userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var lang string
+		var count int
+		if err := rows.Scan(&lang, &count); err != nil {
+			return nil, err
+		}
+		out[lang] = count
+	}
+	return out, rows.Err()
+}
+
 func (d *DB) CountDueCards(userID int64) (int, error) {
 	var count int
 	err := d.db.QueryRow(
@@ -1961,16 +1986,20 @@ func (d *DB) CountNewCards(userID int64) (int, error) {
 	return count, nil
 }
 
-func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error) {
+func (d *DB) GetNextReviewCard(userID int64, deckID *int64, lang string) (*ReviewCard, error) {
 	deckFilter := ""
 	deckOccurrenceFilter := ""
 	newCardFilter := ""
+	langFilter := ""
 	if deckID != nil {
 		deckFilter = ` AND EXISTS (
 			SELECT 1 FROM occurrence o
 			WHERE o.deck_id = ? AND o.lemma = c.lemma AND o.pos = c.pos
 		)`
 		deckOccurrenceFilter = ` AND o.deck_id = ?`
+	}
+	if lang != "" {
+		langFilter = ` AND c.lang = ?`
 	}
 	remainingNewCards, err := d.remainingNewCardsToday(userID)
 	if err != nil {
@@ -2025,7 +2054,7 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error)
 	                 SELECT 1 FROM user_ignored_lemmas ui
 	                  WHERE ui.user_id = c.user_id AND ui.lang = c.lang AND ui.lemma = c.lemma AND ui.pos = c.pos
 	             )
-	             AND (cs.next_due IS NULL OR cs.next_due <= CURRENT_TIMESTAMP)` + newCardFilter + deckFilter + `
+	             AND (cs.next_due IS NULL OR cs.next_due <= CURRENT_TIMESTAMP)` + newCardFilter + deckFilter + langFilter + `
 	        ORDER BY CASE WHEN cs.last_answer_at IS NULL THEN 0 ELSE 1 END,
 	                 COALESCE(cs.next_due, '1970-01-01 00:00:00') ASC,
 	                 c.id ASC
@@ -2034,6 +2063,9 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64) (*ReviewCard, error)
 	queryArgs := []any{userID}
 	if deckID != nil {
 		queryArgs = []any{*deckID, *deckID, userID, *deckID}
+	}
+	if lang != "" {
+		queryArgs = append(queryArgs, lang)
 	}
 
 	var card ReviewCard
@@ -2412,6 +2444,108 @@ func (d *DB) remainingNewCardsToday(userID int64) (int, error) {
 		return 0, nil
 	}
 	return remaining, nil
+}
+
+// SupportedLanguages is the closed set of languages the app knows. Used by
+// settings reads/writes to validate active_language and learning_languages.
+var SupportedLanguages = []string{"FI", "ET"}
+
+// IsSupportedLanguage reports whether lang is one of the app's supported
+// language codes. Codes are case-sensitive uppercase ("FI", "ET").
+func IsSupportedLanguage(lang string) bool {
+	for _, supported := range SupportedLanguages {
+		if lang == supported {
+			return true
+		}
+	}
+	return false
+}
+
+// UserLanguages extracts the learning_languages list and active_language from a
+// user's settings, applying defaults so callers never see an empty list. The
+// defaults match the schema: ["FI","ET"] with "FI" active.
+func UserLanguages(settings map[string]interface{}) (learning []string, active string) {
+	learning = nil
+	if raw, ok := settings["learning_languages"].([]interface{}); ok {
+		for _, item := range raw {
+			if s, ok := item.(string); ok && IsSupportedLanguage(s) {
+				learning = append(learning, s)
+			}
+		}
+	}
+	if len(learning) == 0 {
+		learning = append([]string{}, SupportedLanguages...)
+	}
+
+	if s, ok := settings["active_language"].(string); ok && IsSupportedLanguage(s) {
+		active = s
+	}
+	if active == "" || !containsString(learning, active) {
+		active = learning[0]
+	}
+	return learning, active
+}
+
+func containsString(list []string, target string) bool {
+	for _, item := range list {
+		if item == target {
+			return true
+		}
+	}
+	return false
+}
+
+// UpdateUserLanguages writes learning_languages and active_language into the
+// user's settings_json, leaving other keys (new_per_day, retention, theme)
+// untouched. Validation: each entry in learning must be a supported code,
+// learning must be non-empty, and active must be one of learning.
+func (d *DB) UpdateUserLanguages(userID int64, learning []string, active string) error {
+	if len(learning) == 0 {
+		return fmt.Errorf("at least one learning language is required")
+	}
+	seen := map[string]bool{}
+	cleaned := make([]string, 0, len(learning))
+	for _, lang := range learning {
+		if !IsSupportedLanguage(lang) {
+			return fmt.Errorf("unsupported language: %s", lang)
+		}
+		if seen[lang] {
+			continue
+		}
+		seen[lang] = true
+		cleaned = append(cleaned, lang)
+	}
+	if !IsSupportedLanguage(active) {
+		return fmt.Errorf("unsupported language: %s", active)
+	}
+	if !seen[active] {
+		return fmt.Errorf("active language %s is not in learning_languages", active)
+	}
+
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var settingsJSON string
+	if err := tx.QueryRow(`SELECT settings_json FROM users WHERE id = ?`, userID).Scan(&settingsJSON); err != nil {
+		return err
+	}
+	settings := map[string]interface{}{}
+	if strings.TrimSpace(settingsJSON) != "" {
+		_ = json.Unmarshal([]byte(settingsJSON), &settings)
+	}
+	settings["learning_languages"] = cleaned
+	settings["active_language"] = active
+	updated, err := json.Marshal(settings)
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE users SET settings_json = ? WHERE id = ?`, string(updated), userID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (d *DB) userNewCardsPerDay(userID int64) (int, error) {

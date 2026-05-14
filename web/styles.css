@@ -1388,6 +1388,154 @@ body {
     transition: all 0.15s;
 }
 
+.nav-lang-dropdown {
+    position: relative;
+}
+
+.nav-lang-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 32px;
+    padding: 0 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.nav-lang-current {
+    display: inline-flex;
+    align-items: center;
+    font-size: 1.15rem;
+    line-height: 1;
+}
+
+/* Flat-design SVG flag. Sized by parent font-size so different placements
+ * (nav toggle, dropdown option, languages-page row) scale independently
+ * without touching markup. The rounded corners + soft outline give it a
+ * sticker-y / cartoony feel that reads at small sizes. */
+.lang-flag {
+    height: 1em;
+    width: auto;
+    display: inline-block;
+    flex-shrink: 0;
+    border-radius: 3px;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.nav-lang-toggle:hover,
+.nav-lang-toggle[aria-expanded="true"] {
+    border-color: var(--accent);
+    background: var(--bg-secondary);
+}
+
+.nav-lang-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.nav-lang-caret {
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--text-secondary);
+    transition: transform 0.15s;
+}
+
+.nav-lang-toggle[aria-expanded="true"] .nav-lang-caret {
+    transform: rotate(180deg);
+}
+
+.nav-lang-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 0;
+    margin: 0;
+    padding: 0.35rem;
+    list-style: none;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px var(--shadow);
+    z-index: 200;
+}
+
+.nav-lang-menu.hidden {
+    display: none;
+}
+
+.nav-lang-option {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    width: 100%;
+    padding: 0.5rem 0.7rem;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+    font-size: 0.92rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.nav-lang-option-flag {
+    display: inline-flex;
+    align-items: center;
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+/* Flag-only options in the nav dropdown: compact, square-ish rows with
+ * the flag (and optional checkmark) hugging center. Names are surfaced via
+ * data-tooltip rather than visible text. */
+.nav-lang-option-flagonly {
+    justify-content: flex-start;
+    padding: 0.4rem 0.55rem;
+}
+
+.nav-lang-option-flagonly .nav-lang-option-check {
+    margin-left: 0.35rem;
+}
+
+.nav-lang-option:hover,
+.nav-lang-option:focus-visible {
+    background: var(--bg-secondary);
+    outline: none;
+}
+
+.nav-lang-option[aria-selected="true"] {
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.nav-lang-option-check {
+    color: var(--accent);
+    font-weight: 700;
+    margin-left: 0.35rem;
+}
+
+.nav-lang-menu-divider {
+    height: 1px;
+    margin: 0.3rem 0;
+    background: var(--border);
+}
+
+.nav-lang-menu-manage {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+}
+
 .nav-icon-btn:hover:not(.disabled) {
     background: var(--bg-secondary);
     color: var(--text-primary);
@@ -2301,7 +2449,8 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
 
 /* ── Decks ───────────────────────────────────────────────────── */
 .decks-main,
-.review-main {
+.review-main,
+.languages-main {
     max-width: 980px;
     margin: 0 auto;
     padding: 2.5rem 1.5rem 4rem;
@@ -2309,6 +2458,7 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
 .decks-header h1,
 .known-words-header h2,
 .review-header h1,
+.languages-header h1,
 .placeholder-main h1 {
     font-size: 1.75rem;
     margin-bottom: 0.5rem;
@@ -2316,9 +2466,93 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
 .decks-lede,
 .known-words-lede,
 .review-lede,
+.languages-lede,
 .placeholder-lede {
     color: var(--text-secondary);
     margin-bottom: 1.5rem;
+}
+.known-words-lang-hint {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    margin: 0.25rem 0 0;
+}
+.languages-list {
+    display: grid;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+}
+.language-row {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.language-row-info {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.language-row-flag {
+    display: inline-flex;
+    align-items: center;
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.language-row-flag .lang-flag {
+    border-radius: 4px;
+}
+
+.language-row-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.languages-section-heading {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    font-weight: 700;
+    margin: 1.25rem 0 0.5rem;
+}
+
+.languages-section-heading:first-child {
+    margin-top: 0;
+}
+.language-row-name {
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+.language-row-sub {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+.language-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+.language-row.is-active {
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 6%, var(--card-bg));
+}
+.language-row-active-badge {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    font-weight: 700;
+}
+.languages-note {
+    color: var(--text-secondary);
+    font-size: 0.88rem;
 }
 .decks-list {
     display: grid;
