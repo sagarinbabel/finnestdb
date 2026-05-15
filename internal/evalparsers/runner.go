@@ -253,9 +253,24 @@ func (p *persistentExternalCommand) analyzeLocked(text string) (*parserffi.Analy
 }
 
 func (p *persistentExternalCommand) withContext(action string, err error) error {
-	detail := p.stderr.String()
+	// When the child died (typical when its stdin/stdout pipes return EOF),
+	// `cmd.Wait()` in our goroutine drains and closes the stderr pipe before
+	// it publishes on `done`. We need that drain to finish before we read
+	// `p.stderr` — otherwise the fallback heuristic in isUnsupportedServerMode
+	// gets a bare "read response: EOF" with no "unrecognized arguments"
+	// detail, and the legacy one-shot fallback never fires.
+	//
+	// A 1-second cap keeps the test reliable on slow CI without making a hung
+	// child block the caller forever.
+	var waitErr error
+	waited := false
 	select {
-	case waitErr := <-p.done:
+	case waitErr = <-p.done:
+		waited = true
+	case <-time.After(time.Second):
+	}
+	detail := p.stderr.String()
+	if waited {
 		p.done <- waitErr
 		if waitErr != nil {
 			if detail != "" {
@@ -263,7 +278,6 @@ func (p *persistentExternalCommand) withContext(action string, err error) error 
 			}
 			return fmt.Errorf("%s parser server %s: %w: %v", p.name, action, err, waitErr)
 		}
-	default:
 	}
 	if detail != "" {
 		return fmt.Errorf("%s parser server %s: %w: %s", p.name, action, err, detail)
