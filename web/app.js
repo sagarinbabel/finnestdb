@@ -316,6 +316,13 @@ async function showConfirmWithStatus(opts, statusPromise, classify) {
             confirmBtn.disabled = true;
         }
     };
+    // Important: kick off openDialog FIRST (its Promise body runs sync up to
+    // `modal.classList.remove('hidden')`, which sets confirmBtn.textContent
+    // and shows the dialog). Then override the button with our spinner. If
+    // we called setButton before, openDialog's textContent assignment would
+    // wipe the spinner and the dialog would appear with a plain disabled
+    // button — looking unresponsive to the user.
+    const dialogPromise = openDialog({ ...opts, prompt: false });
     setButton('loading', opts.loadingText);
     let resolvedValue;
     let succeeded = false;
@@ -333,7 +340,7 @@ async function showConfirmWithStatus(opts, statusPromise, classify) {
         const msg = err && err.message ? err.message : 'Failed.';
         setButton('error', msg);
     });
-    const result = await openDialog({ ...opts, prompt: false });
+    const result = await dialogPromise;
     // Reset the button so the next openDialog caller doesn't inherit our
     // spinner / disabled state / temporary label.
     if (confirmBtn) {
@@ -1352,14 +1359,28 @@ function renderVocabPage() {
     renderVocabAnkiSyncButton();
 }
 // Visible only after a successful import for the active language. Clicking
-// it opens the Anki modal in sync mode (skips deck + field pickers).
+// it opens the Anki modal in sync mode (skips deck + field pickers). The
+// "Skip confirmation on next sync" checkbox sits beside the button and
+// controls the same `replaceConfirmSkip` pref the in-dialog remember box
+// used to manage.
 function renderVocabAnkiSyncButton() {
     const btn = document.getElementById('vocab-anki-sync');
+    const skipWrap = document.getElementById('vocab-anki-skip-confirm-wrap');
+    const skipCb = document.getElementById('vocab-anki-skip-confirm');
     if (!btn)
         return;
     const prefs = loadAnkiPrefs(state.activeLanguage);
     const visible = prefs.lastSyncAt > 0 && (prefs.decks?.length ?? 0) > 0;
     btn.classList.toggle('hidden', !visible);
+    if (skipWrap)
+        skipWrap.classList.toggle('hidden', !visible);
+    if (skipCb)
+        skipCb.checked = prefs.replaceConfirmSkip;
+}
+function onVocabAnkiSkipConfirmToggle(checked) {
+    const prefs = loadAnkiPrefs(state.activeLanguage);
+    prefs.replaceConfirmSkip = checked;
+    saveAnkiPrefs(state.activeLanguage, prefs);
 }
 function renderVocabLangStat() {
     const langNameEl = document.getElementById('vocab-stat-lang-name');
@@ -1811,19 +1832,19 @@ async function openAnkiSyncModal() {
     let dialogConfirmed = true;
     if (needsConfirm) {
         const langName = languageName(ankiImport.lang);
+        // No rememberLabel here — the "Skip confirmation on next sync" toggle
+        // lives below the sync button on the vocab page now, so the dialog
+        // stays focused on the confirm action.
         const dialog = await showConfirmWithStatus({
             title: `Replace ${langName} vocabulary?`,
             message: `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
             confirmLabel: 'Sync and replace',
             danger: true,
-            rememberLabel: "Don't show this again",
             loadingText: 'Checking Anki…',
         }, discovery, (val) => val.ok
             ? { state: 'success', text: 'Anki ready.' }
             : { state: 'error', text: val.detail });
         dialogConfirmed = dialog.confirmed;
-        if (dialog.confirmed && dialog.succeeded && dialog.remember)
-            recordReplaceConfirmSkip();
         // status is the SyncDiscoveryResultOrFailure from runSyncDiscovery —
         // undefined only if the promise itself failed (shouldn't happen
         // since runSyncDiscovery catches everything).
@@ -1835,6 +1856,15 @@ async function openAnkiSyncModal() {
             return; // user cancelled a healthy validation
     }
     else {
+        // No confirm dialog → the import modal IS the immediate feedback.
+        // Open it at the loading stage with the sync-flavoured "Syncing
+        // from Anki…" label so the user sees something the moment they
+        // click. Once discovery completes we transition to the running
+        // stage (or to a manual stage on a state-change error).
+        openAnkiModalAtStage('loading');
+        const loadingMsg = document.getElementById('anki-import-loading-msg');
+        if (loadingMsg)
+            loadingMsg.textContent = 'Syncing from Anki…';
         validation = await discovery;
     }
     if (!validation.ok) {
@@ -4943,6 +4973,11 @@ function initVocabAnkiImport() {
     // Vocab page launcher buttons.
     document.getElementById('vocab-anki-connect')?.addEventListener('click', openAnkiImportModal);
     document.getElementById('vocab-anki-sync')?.addEventListener('click', () => { void openAnkiSyncModal(); });
+    document.getElementById('vocab-anki-skip-confirm')?.addEventListener('change', (e) => {
+        const target = e.target;
+        if (target)
+            onVocabAnkiSkipConfirmToggle(target.checked);
+    });
     document.getElementById('vocab-anki-help')?.addEventListener('click', (e) => {
         e.preventDefault();
         openAnkiSetupModal();

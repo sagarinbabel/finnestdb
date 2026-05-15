@@ -2804,6 +2804,18 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     gap: 0.5rem;
     flex-wrap: wrap;
 }
+.vocab-anki-skip-confirm {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    margin-top: 0.25rem;
+}
+.vocab-anki-skip-confirm.hidden { display: none; }
+.vocab-anki-skip-confirm input { margin: 0; cursor: pointer; }
 .vocab-anki-help {
     margin-top: auto;
     align-self: flex-start;

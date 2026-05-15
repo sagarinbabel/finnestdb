@@ -2029,6 +2029,100 @@ test.describe('Anki import popup', () => {
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
   });
 
+  test('Sync without a confirm dialog opens the import modal immediately at the loading stage', async ({ page }) => {
+    // Slow AnkiConnect so we can observe the "loading" window between
+    // click and discovery completion. The user's complaint was "no
+    // response until the check completes" — this test pins down that the
+    // modal IS visible during the check when no confirm dialog is shown.
+    const baseMocks = baselineAnkiMocks();
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await page.route('http://127.0.0.1:8765/**', async (route) => {
+      if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 200, body: '' }); return; }
+      const body = route.request().postDataJSON() as { action: string; params?: Record<string, unknown> };
+      await new Promise(r => setTimeout(r, 250));
+      const handler = baseMocks[body.action];
+      if (!handler) { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ result: null, error: `?${body.action}` }) }); return; }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ result: handler(body.params || {}), error: null }) });
+    });
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ imported: [], unresolved: [] }) });
+        return;
+      }
+      await route.fallback();
+    });
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter: '', decks: ['Estonian::A1'], fieldByModel: { ETBasic: 'Sõna' },
+        includeNew: false, includeSuspended: false, replaceMode: false,
+        lastSyncAt: Date.now(), replaceConfirmSkip: false, preserveManualOnReplace: true,
+      }));
+    });
+    await page.reload();
+    await page.locator('#vocab-anki-sync').click();
+    // The import modal is visible immediately at the loading stage.
+    await expect(page.locator('#anki-import-modal')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-stage-loading')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-loading-msg')).toContainText(/Syncing from Anki/i);
+    // No confirm dialog needed here — replace mode is off.
+    await expect(page.locator('#dialog-modal')).toHaveClass(/hidden/);
+  });
+
+  test("Vocab page has a 'Skip confirmation on next sync' checkbox that controls the pref", async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await page.goto('/#/vocab');
+    const wrap = page.locator('#vocab-anki-skip-confirm-wrap');
+    const cb = page.locator('#vocab-anki-skip-confirm');
+
+    // Hidden by default — no prior sync.
+    await expect(wrap).toHaveClass(/hidden/);
+
+    // Seed a prior successful sync so the button + checkbox become visible.
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter: '', decks: ['Estonian::A1'], fieldByModel: { ETBasic: 'Sõna' },
+        includeNew: false, includeSuspended: false, replaceMode: true,
+        lastSyncAt: Date.now(), replaceConfirmSkip: false, preserveManualOnReplace: true,
+      }));
+    });
+    await page.reload();
+    await expect(wrap).not.toHaveClass(/hidden/);
+    await expect(cb).not.toBeChecked();
+
+    // Tick → pref persists.
+    await cb.check();
+    const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('finest:anki-import:ET') || '{}'));
+    expect(persisted.replaceConfirmSkip).toBe(true);
+
+    // Reload → checkbox stays checked.
+    await page.reload();
+    await expect(page.locator('#vocab-anki-skip-confirm')).toBeChecked();
+  });
+
+  test('Sync dialog no longer carries the inline "Don\'t show this again" checkbox', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter: '', decks: ['Estonian::A1'], fieldByModel: { ETBasic: 'Sõna' },
+        includeNew: false, includeSuspended: false, replaceMode: true,
+        lastSyncAt: Date.now(), replaceConfirmSkip: false, preserveManualOnReplace: true,
+      }));
+    });
+    await page.reload();
+    await page.locator('#vocab-anki-sync').click();
+    const dialog = page.locator('#dialog-modal');
+    await expect(dialog).not.toHaveClass(/hidden/);
+    // The dismiss control moved to the vocab page; the dialog's remember
+    // wrap stays hidden when not requested.
+    await expect(page.locator('#dialog-modal-remember-wrap')).toHaveClass(/hidden/);
+  });
+
   test('Sync with replace mode off skips the dialog and goes straight to import', async ({ page }) => {
     await mockMe(page, 'user', { activeLanguage: 'ET' });
     await mockKnownWordsEmpty(page);
