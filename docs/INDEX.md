@@ -32,7 +32,7 @@ descriptions when two docs sound similar.
 - **Measured parser quality:** [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) (chronological log)
 - **ML roadmap:** [`docs/ML_IDEAS.md`](ML_IDEAS.md)
 - **Calibration data:** [`docs/FREQUENCY_BASELINES.md`](FREQUENCY_BASELINES.md), [`docs/data_enhancement.md`](data_enhancement.md)
-- **Specialized:** [`docs/PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md), [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md), [`docs/PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md), [`docs/SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md), [`docs/srs-deck-spec.md`](srs-deck-spec.md), [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md)
+- **Specialized:** [`docs/CORRECTION_TAXONOMY.md`](CORRECTION_TAXONOMY.md), [`docs/PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md), [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md), [`docs/PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md), [`docs/SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md), [`docs/srs-deck-spec.md`](srs-deck-spec.md), [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md)
 
 ## At a glance
 
@@ -50,6 +50,7 @@ descriptions when two docs sound similar.
 | Design audit + open TODO | [`docs/DESIGN_REVIEW.md`](DESIGN_REVIEW.md) |
 | How parser quality has moved over time | [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) |
 | Why FI and ET diverge measurably | [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md) |
+| How accepted learner corrections should be classified | [`docs/CORRECTION_TAXONOMY.md`](CORRECTION_TAXONOMY.md) |
 | What ML directions fit the project | [`docs/ML_IDEAS.md`](ML_IDEAS.md) |
 
 ## By purpose
@@ -190,6 +191,12 @@ descriptions when two docs sound similar.
   schema for "Suggest fix" parse-feedback flow. Admin queue triage,
   always-attach-parse-session rule, planned writeback to `custom_overrides`
   lexical rows.
+- [`docs/CORRECTION_TAXONOMY.md`](CORRECTION_TAXONOMY.md) — source-agnostic
+  correction categories and learning-target model. Defines how fixes from
+  pasted text, EPUBs, subtitles, articles, and Anki imports should land in
+  parser identity, meaning cue, contextual sense, phrase boundary, example
+  quality, or card-presentation layers without mixing Finnish and Estonian
+  linguistic content.
 - [`../corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) —
   corpus operations manual and architecture map for public-source corpus
   artifacts under `localdata/{fi,et}-corpus/`.
