@@ -27,6 +27,7 @@ descriptions when two docs sound similar.
 - **System architecture:** [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (current), [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) (lexical-layer detail), [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) (offline corpus pipeline)
 - **Product framing:** [`docs/FEATURES.md`](FEATURES.md) (user-facing), [`docs/DESIGN_REVIEW.md`](DESIGN_REVIEW.md) (design folder audit + TODO)
 - **What's done / what's next:** [`../TODO.md`](../TODO.md) (the only doc you need for status)
+- **Native app migration:** [`docs/SWIFT_OFFLINE_MIGRATION_PLAN.md`](SWIFT_OFFLINE_MIGRATION_PLAN.md) — plan for offline Swift iOS/macOS port and shared Android artifacts
 - **Why we made choices:** [`docs/DECISIONS.md`](DECISIONS.md) (latest-first, 22 decisions)
 - **What changed when:** [`docs/CHANGELOG.md`](CHANGELOG.md) (latest-first, cross-linked to DECISIONS)
 - **Measured parser quality:** [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) (chronological log)
@@ -47,6 +48,7 @@ descriptions when two docs sound similar.
 | How the lexical layer works | [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) |
 | How corpora become wordlists, sentence banks, and mining files | [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) |
 | What the product is from a learner's view | [`docs/FEATURES.md`](FEATURES.md) |
+| How to port the app to offline native Swift and coordinate Android | [`docs/SWIFT_OFFLINE_MIGRATION_PLAN.md`](SWIFT_OFFLINE_MIGRATION_PLAN.md) |
 | Design audit + open TODO | [`docs/DESIGN_REVIEW.md`](DESIGN_REVIEW.md) |
 | How parser quality has moved over time | [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) |
 | Why FI and ET diverge measurably | [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md) |
