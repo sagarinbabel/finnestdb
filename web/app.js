@@ -282,69 +282,65 @@ async function showConfirmWithRemember(opts) {
     const result = await openDialog({ ...opts, prompt: false });
     return { confirmed: result !== null, remember: lastDialogRemember };
 }
-// Confirm dialog with a status row driven by an external promise. The caller
-// supplies a `classify` function that maps the resolved value to either a
-// success ("Anki ready ✓") or error state. The Confirm button is disabled
-// until classify returns success, so the user can't kick off the underlying
-// action while validation is still in flight or after it has failed.
+// Confirm dialog whose Confirm button doubles as the loading indicator. The
+// caller supplies a `classify` function that maps the resolved value to a
+// success/error state. The button is disabled the moment the dialog opens
+// and stays disabled until classify returns success — at which point it
+// flips to its normal confirmLabel and re-enables. On failure the button
+// label switches to the error text and stays disabled, so the user can only
+// cancel out.
 //
-// Used by the Anki sync flow: the user sees the "Replace …" dialog
-// immediately with a "Checking Anki…" indicator; the Confirm button is
-// only enabled once discovery returns a clean state.
+// Used by the Anki sync flow: the dialog opens immediately, the Confirm
+// button reads "Checking Anki…" with an inline spinner, and only flips to
+// "Sync and replace" once discovery comes back clean.
 async function showConfirmWithStatus(opts, statusPromise, classify) {
-    const wrap = document.getElementById('dialog-modal-status');
-    const icon = document.getElementById('dialog-modal-status-icon');
-    const text = document.getElementById('dialog-modal-status-text');
     const confirmBtn = document.getElementById('dialog-modal-confirm');
-    const setStatus = (update) => {
-        if (!wrap || !icon || !text)
+    const finalLabel = opts.confirmLabel ?? 'OK';
+    // Renders <spinner> + text inside the button. Used for both the loading
+    // and error states (error skips the spinner). On success the button
+    // resets to the caller's confirmLabel.
+    const setButton = (state, text) => {
+        if (!confirmBtn)
             return;
-        wrap.classList.remove('hidden', 'success', 'error');
-        icon.classList.remove('spinner', 'check');
-        icon.textContent = '';
-        if (update.state === 'loading')
-            icon.classList.add('spinner');
-        else if (update.state === 'success') {
-            icon.classList.add('check');
-            wrap.classList.add('success');
+        if (state === 'success') {
+            confirmBtn.textContent = text;
+            confirmBtn.disabled = false;
+        }
+        else if (state === 'loading') {
+            confirmBtn.innerHTML = '<span class="dialog-btn-spinner" aria-hidden="true"></span>';
+            confirmBtn.append(text);
+            confirmBtn.disabled = true;
         }
         else {
-            wrap.classList.add('error');
-            icon.textContent = '!';
+            confirmBtn.textContent = text;
+            confirmBtn.disabled = true;
         }
-        text.textContent = update.text;
     };
-    setStatus({ state: 'loading', text: opts.loadingText });
-    // Gate confirm during loading; we re-enable on success or leave disabled
-    // on error so a click can't bypass validation.
-    if (confirmBtn)
-        confirmBtn.disabled = true;
+    setButton('loading', opts.loadingText);
     let resolvedValue;
     let succeeded = false;
     statusPromise.then((val) => {
         resolvedValue = val;
         const decision = classify(val);
-        setStatus(decision);
         if (decision.state === 'success') {
             succeeded = true;
-            if (confirmBtn)
-                confirmBtn.disabled = false;
+            setButton('success', finalLabel);
+        }
+        else {
+            setButton('error', decision.text);
         }
     }, (err) => {
         const msg = err && err.message ? err.message : 'Failed.';
-        setStatus({ state: 'error', text: msg });
+        setButton('error', msg);
     });
     const result = await openDialog({ ...opts, prompt: false });
-    // Reset DOM state so a later non-status dialog reused via openDialog
-    // doesn't inherit our spinner / disabled confirm / status row.
-    if (wrap)
-        wrap.classList.add('hidden');
-    if (icon) {
-        icon.classList.remove('spinner', 'check');
-        icon.textContent = '';
-    }
-    if (confirmBtn)
+    // Reset the button so the next openDialog caller doesn't inherit our
+    // spinner / disabled state / temporary label.
+    if (confirmBtn) {
+        confirmBtn.innerHTML = '';
+        confirmBtn.textContent = finalLabel;
         confirmBtn.disabled = false;
+    }
     return {
         confirmed: result !== null,
         remember: lastDialogRemember,

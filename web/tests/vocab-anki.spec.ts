@@ -1862,30 +1862,32 @@ test.describe('Anki import popup', () => {
     await page.locator('#vocab-anki-sync').click();
 
     // The Replace dialog appears immediately; the full import modal stays
-    // hidden. The status row shows the spinner first.
+    // hidden. The Confirm button shows the spinner + "Checking Anki…" label
+    // while validation runs.
     const dialog = page.locator('#dialog-modal');
     await expect(dialog).not.toHaveClass(/hidden/);
     await expect(page.locator('#anki-import-modal')).toHaveClass(/hidden/);
-    await expect(page.locator('#dialog-modal-status')).not.toHaveClass(/hidden/);
     await expect(dialog).toContainText(/Replace Estonian vocabulary/i);
-    // The spinner class is on the icon while validation is in flight; this
-    // expectation MIGHT race past it on a very fast mock, so we only assert
-    // it's at least shown OR has flipped to the check state.
-    const statusIcon = page.locator('#dialog-modal-status-icon');
+    const confirmBtn = page.locator('#dialog-modal-confirm');
+    // While the spinner is in flight the button hosts a <span.dialog-btn-spinner>.
+    // Tests may race past the loading window if the mock resolves
+    // instantly, so we accept either "loading-with-spinner" or
+    // "already-flipped-to-final-label".
     await expect.poll(async () => {
-      const cls = await statusIcon.getAttribute('class') || '';
-      return cls.includes('spinner') || cls.includes('check');
+      const html = await confirmBtn.evaluate(el => el.innerHTML);
+      return html.includes('dialog-btn-spinner') || html.includes('Sync and replace');
     }).toBe(true);
 
-    // Eventually the validation completes and the icon flips to the check.
-    await expect(statusIcon).toHaveClass(/check/);
-    await expect(page.locator('#dialog-modal-status-text')).toHaveText(/Anki ready/i);
+    // Eventually the validation completes and the button flips to its
+    // final label.
+    await expect(confirmBtn).toHaveText('Sync and replace');
+    await expect(confirmBtn).toBeEnabled();
 
     // Modal still hasn't shown — we're waiting for the user.
     await expect(page.locator('#anki-import-modal')).toHaveClass(/hidden/);
 
     // Confirm → modal opens at running stage, PUT fires with scope=anki.
-    await page.locator('#dialog-modal-confirm').click();
+    await confirmBtn.click();
     await expect(page.locator('#anki-import-modal')).not.toHaveClass(/hidden/);
     await expect(page.locator('#anki-import-stage-running')).not.toHaveClass(/hidden/);
     await expect.poll(() => putBody).not.toBeNull();
@@ -1963,9 +1965,9 @@ test.describe('Anki import popup', () => {
     await confirmBtn.click({ force: true }).catch(() => {});
     expect(putCalled).toBe(false);
 
-    // Once the validation completes, Confirm enables and the status flips
-    // to the check.
-    await expect(page.locator('#dialog-modal-status-icon')).toHaveClass(/check/, { timeout: 5000 });
+    // Once validation completes the button flips from the loading label to
+    // its final label and enables.
+    await expect(confirmBtn).toHaveText('Sync and replace', { timeout: 5000 });
     await expect(confirmBtn).toBeEnabled();
     await confirmBtn.click();
     await expect.poll(() => putCalled).toBe(true);
@@ -2016,9 +2018,9 @@ test.describe('Anki import popup', () => {
     await page.locator('#vocab-anki-sync').click();
     const confirmBtn = page.locator('#dialog-modal-confirm');
     await expect(confirmBtn).toBeDisabled();
-    // Wait for the status row to flip to the error state.
-    await expect(page.locator('#dialog-modal-status')).toHaveClass(/error/, { timeout: 5000 });
-    // Confirm stays disabled even after validation completes (failure path).
+    // Once validation completes the button's label flips to the error text
+    // (the discovery's `detail` string) while staying disabled.
+    await expect(confirmBtn).toContainText(/Anki state has changed/i, { timeout: 5000 });
     await expect(confirmBtn).toBeDisabled();
     // Cancel out. The flow should now route to the fields stage in the
     // import modal with a toast.
