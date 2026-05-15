@@ -2070,6 +2070,49 @@ test.describe('Anki import popup', () => {
     await expect(page.locator('#dialog-modal')).toHaveClass(/hidden/);
   });
 
+  test('Sync button itself is disabled while the Anki check is in progress', async ({ page }) => {
+    // Slow AnkiConnect so the in-progress window is observable.
+    const baseMocks = baselineAnkiMocks();
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await page.route('http://127.0.0.1:8765/**', async (route) => {
+      if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 200, body: '' }); return; }
+      const body = route.request().postDataJSON() as { action: string; params?: Record<string, unknown> };
+      await new Promise(r => setTimeout(r, 400));
+      const handler = baseMocks[body.action];
+      if (!handler) { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ result: null, error: `?${body.action}` }) }); return; }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ result: handler(body.params || {}), error: null }) });
+    });
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ imported: [], unresolved: [] }) });
+        return;
+      }
+      await route.fallback();
+    });
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter: '', decks: ['Estonian::A1'], fieldByModel: { ETBasic: 'Sõna' },
+        includeNew: false, includeSuspended: false, replaceMode: false,
+        lastSyncAt: Date.now(), replaceConfirmSkip: false, preserveManualOnReplace: true,
+      }));
+    });
+    await page.reload();
+    const syncBtn = page.locator('#vocab-anki-sync');
+    await expect(syncBtn).toBeEnabled();
+    await syncBtn.click();
+    // Disabled the moment the click handler runs.
+    await expect(syncBtn).toBeDisabled();
+    // Stays disabled through the discovery + import window.
+    await expect(page.locator('#anki-import-stage-loading')).not.toHaveClass(/hidden/);
+    await expect(syncBtn).toBeDisabled();
+    // Re-enabled after the whole flow finishes.
+    await expect(page.locator('#anki-import-done-actions')).not.toHaveClass(/hidden/, { timeout: 10000 });
+    await page.locator('#anki-import-done').click();
+    await expect(syncBtn).toBeEnabled();
+  });
+
   test("Vocab page has a 'Skip confirmation on next sync' checkbox that controls the pref", async ({ page }) => {
     await mockMe(page, 'user', { activeLanguage: 'ET' });
     await mockKnownWordsEmpty(page);

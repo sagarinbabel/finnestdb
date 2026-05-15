@@ -1814,6 +1814,22 @@ function openAnkiImportModal() {
 // mark once discovery completes. The full modal only appears at the running
 // stage, or when discovery surfaces a state change that needs review.
 async function openAnkiSyncModal() {
+    // Disable the trigger button for the duration of the sync so a frantic
+    // double-click can't kick off two parallel imports. Re-enabled in the
+    // finally below — guarantees the button isn't left stuck on any error
+    // or early-return path.
+    const syncBtn = document.getElementById('vocab-anki-sync');
+    if (syncBtn)
+        syncBtn.disabled = true;
+    try {
+        await runAnkiSyncFlow();
+    }
+    finally {
+        if (syncBtn)
+            syncBtn.disabled = false;
+    }
+}
+async function runAnkiSyncFlow() {
     const prefs = loadAnkiPrefs(state.activeLanguage);
     // Sync needs a prior successful import and at least one saved deck.
     // Anything else routes to the manual flow.
@@ -1892,7 +1908,9 @@ async function openAnkiSyncModal() {
     if (needsConfirm)
         ankiImport.replaceConfirmedThisRun = true;
     openAnkiModalAtStage('running');
-    void runAnkiImport();
+    // Await the import so the sync-button disabled-window in
+    // openAnkiSyncModal's finally extends through the entire run.
+    await runAnkiImport();
 }
 function openAnkiModal(sync) {
     const modal = document.getElementById('anki-import-modal');
