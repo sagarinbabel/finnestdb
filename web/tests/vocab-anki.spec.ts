@@ -1892,6 +1892,141 @@ test.describe('Anki import popup', () => {
     expect(putBody!.scope).toBe('anki');
   });
 
+  test("Sync dialog's Confirm button is disabled until Anki validation completes", async ({ page }) => {
+    // Delay AnkiConnect responses to make the "loading" window observable.
+    // Without the delay the resolve fires before our toBeDisabled assertion
+    // gets a chance to read the DOM, and the regression slips through.
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    const baseMocks = baselineAnkiMocks();
+    await page.route('http://127.0.0.1:8765/**', async (route) => {
+      if (route.request().method() === 'OPTIONS') {
+        await route.fulfill({ status: 200, body: '' });
+        return;
+      }
+      const body = route.request().postDataJSON() as { action: string; params?: Record<string, unknown> };
+      const handler = baseMocks[body.action];
+      // Slow every AnkiConnect call by 400ms so the spinner is visible.
+      await new Promise(r => setTimeout(r, 400));
+      if (!handler) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ result: null, error: `unhandled: ${body.action}` }),
+        });
+        return;
+      }
+      const result = handler(body.params || {});
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ result, error: null }),
+      });
+    });
+    let putCalled = false;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'PUT') {
+        putCalled = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ added: [], removed: [], unresolved: [] }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter:                  '',
+        decks:                   ['Estonian::A1'],
+        fieldByModel:            { ETBasic: 'Sõna' },
+        includeNew:              false,
+        includeSuspended:        false,
+        replaceMode:             true,
+        lastSyncAt:              Date.now(),
+        replaceConfirmSkip:      false,
+        preserveManualOnReplace: true,
+      }));
+    });
+    await page.reload();
+    await page.locator('#vocab-anki-sync').click();
+
+    // Dialog visible, status spinner showing. Confirm is disabled — clicking
+    // it shouldn't fire anything.
+    const dialog = page.locator('#dialog-modal');
+    await expect(dialog).not.toHaveClass(/hidden/);
+    const confirmBtn = page.locator('#dialog-modal-confirm');
+    await expect(confirmBtn).toBeDisabled();
+    // Even with .click({force:true}) it shouldn't trigger the handler.
+    await confirmBtn.click({ force: true }).catch(() => {});
+    expect(putCalled).toBe(false);
+
+    // Once the validation completes, Confirm enables and the status flips
+    // to the check.
+    await expect(page.locator('#dialog-modal-status-icon')).toHaveClass(/check/, { timeout: 5000 });
+    await expect(confirmBtn).toBeEnabled();
+    await confirmBtn.click();
+    await expect.poll(() => putCalled).toBe(true);
+  });
+
+  test('Sync dialog leaves Confirm disabled when validation finds a problem (model change)', async ({ page }) => {
+    // ETBasic is saved as the only model; we craft a fixture where a new
+    // model also exists. Discovery returns reason='model-changed' so the
+    // dialog should never enable Confirm and should auto-route to the
+    // fields stage on close.
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    const extra = 9001;
+    const notesInfo: Record<number, { noteId: number; modelName: string; fields: Record<string, { value: string; order: number }> }> = {
+      100: { noteId: 100, modelName: 'ETBasic', fields: { 'Sõna': { value: 'kassi', order: 0 }, 'Tähendus': { value: '', order: 1 }, 'Lause': { value: '', order: 2 } } },
+      [extra]: { noteId: extra, modelName: 'New Type', fields: { Word: { value: 'uus', order: 0 } } },
+    };
+    await mockAnkiConnect(page, {
+      version: () => 6,
+      deckNames: () => SAMPLE_DECKS,
+      findNotes: (params) => {
+        const m = String(params.query || '').match(/deck:"([^"]+)"/);
+        if (m && m[1] === 'Estonian::A1') return [100, extra];
+        return [];
+      },
+      notesInfo: (params) => ((params.notes as number[]) || []).map(id => notesInfo[id]).filter(Boolean),
+      modelFieldNames: (params) => {
+        if (params.modelName === 'ETBasic') return ['Sõna', 'Tähendus', 'Lause'];
+        if (params.modelName === 'New Type') return ['Word'];
+        return [];
+      },
+    });
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter:                  '',
+        decks:                   ['Estonian::A1'],
+        fieldByModel:            { ETBasic: 'Sõna' },
+        includeNew:              false,
+        includeSuspended:        false,
+        replaceMode:             true,
+        lastSyncAt:              Date.now(),
+        replaceConfirmSkip:      false,
+        preserveManualOnReplace: true,
+      }));
+    });
+    await page.reload();
+    await page.locator('#vocab-anki-sync').click();
+    const confirmBtn = page.locator('#dialog-modal-confirm');
+    await expect(confirmBtn).toBeDisabled();
+    // Wait for the status row to flip to the error state.
+    await expect(page.locator('#dialog-modal-status')).toHaveClass(/error/, { timeout: 5000 });
+    // Confirm stays disabled even after validation completes (failure path).
+    await expect(confirmBtn).toBeDisabled();
+    // Cancel out. The flow should now route to the fields stage in the
+    // import modal with a toast.
+    await page.locator('#dialog-modal-cancel').click();
+    await expect(page.locator('#anki-import-modal')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+  });
+
   test('Sync with replace mode off skips the dialog and goes straight to import', async ({ page }) => {
     await mockMe(page, 'user', { activeLanguage: 'ET' });
     await mockKnownWordsEmpty(page);

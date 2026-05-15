@@ -560,24 +560,30 @@ interface StatusUpdate {
     text:  string;
 }
 
-// Confirm dialog with a status row driven by an external promise. While the
-// promise is in flight the row shows a spinner + `loadingText`; on resolve
-// it shows a checkmark + the success text; on rejection an error icon +
-// rejection message. Used by the Anki sync flow so the user sees the
-// "Replace …" dialog *immediately* with a "Checking Anki…" indicator that
-// flips to "Anki ready ✓" once discovery completes.
+// Confirm dialog with a status row driven by an external promise. The caller
+// supplies a `classify` function that maps the resolved value to either a
+// success ("Anki ready ✓") or error state. The Confirm button is disabled
+// until classify returns success, so the user can't kick off the underlying
+// action while validation is still in flight or after it has failed.
+//
+// Used by the Anki sync flow: the user sees the "Replace …" dialog
+// immediately with a "Checking Anki…" indicator; the Confirm button is
+// only enabled once discovery returns a clean state.
 async function showConfirmWithStatus<T>(
-    opts: ConfirmOptions & { rememberLabel?: string; loadingText: string; successText: string },
+    opts: ConfirmOptions & { rememberLabel?: string; loadingText: string },
     statusPromise: Promise<T>,
-): Promise<{ confirmed: boolean; remember: boolean; status: T | { __failed: true; error: unknown } }> {
+    classify: (val: T) => { state: 'success' | 'error'; text: string },
+): Promise<{ confirmed: boolean; remember: boolean; status: T | undefined; succeeded: boolean }> {
     const wrap = document.getElementById('dialog-modal-status');
     const icon = document.getElementById('dialog-modal-status-icon');
     const text = document.getElementById('dialog-modal-status-text');
+    const confirmBtn = document.getElementById('dialog-modal-confirm') as HTMLButtonElement | null;
 
     const setStatus = (update: StatusUpdate) => {
         if (!wrap || !icon || !text) return;
         wrap.classList.remove('hidden', 'success', 'error');
         icon.classList.remove('spinner', 'check');
+        icon.textContent = '';
         if (update.state === 'loading') icon.classList.add('spinner');
         else if (update.state === 'success') {
             icon.classList.add('check');
@@ -590,37 +596,44 @@ async function showConfirmWithStatus<T>(
     };
     setStatus({ state: 'loading', text: opts.loadingText });
 
-    // Track the promise outcome so the caller can read it after the dialog
-    // closes (or while it's still open if they want to gate on validation
-    // BEFORE the user confirms).
+    // Gate confirm during loading; we re-enable on success or leave disabled
+    // on error so a click can't bypass validation.
+    if (confirmBtn) confirmBtn.disabled = true;
+
     let resolvedValue: T | undefined;
-    let rejectedError: unknown;
+    let succeeded = false;
     statusPromise.then(
         (val) => {
             resolvedValue = val;
-            setStatus({ state: 'success', text: opts.successText });
+            const decision = classify(val);
+            setStatus(decision);
+            if (decision.state === 'success') {
+                succeeded = true;
+                if (confirmBtn) confirmBtn.disabled = false;
+            }
         },
         (err) => {
-            rejectedError = err;
             const msg = err && (err as { message?: string }).message ? (err as { message: string }).message : 'Failed.';
             setStatus({ state: 'error', text: msg });
         },
     );
 
     const result = await openDialog({ ...opts, prompt: false });
-    // Hide the status row again so a later non-status dialog doesn't show
-    // stale content.
+    // Reset DOM state so a later non-status dialog reused via openDialog
+    // doesn't inherit our spinner / disabled confirm / status row.
     if (wrap) wrap.classList.add('hidden');
     if (icon) {
         icon.classList.remove('spinner', 'check');
         icon.textContent = '';
     }
+    if (confirmBtn) confirmBtn.disabled = false;
 
-    const status: T | { __failed: true; error: unknown } =
-        rejectedError !== undefined
-            ? { __failed: true, error: rejectedError }
-            : (resolvedValue as T);
-    return { confirmed: result !== null, remember: lastDialogRemember, status };
+    return {
+        confirmed: result !== null,
+        remember:  lastDialogRemember,
+        status:    resolvedValue,
+        succeeded,
+    };
 }
 
 async function showPrompt(opts: PromptOptions): Promise<string | null> {
@@ -2246,18 +2259,22 @@ async function openAnkiSyncModal(): Promise<void> {
             danger:        true,
             rememberLabel: "Don't show this again",
             loadingText:   'Checking Anki…',
-            successText:   'Anki ready.',
-        }, discovery);
+        }, discovery, (val) => val.ok
+            ? { state: 'success', text: 'Anki ready.' }
+            : { state: 'error',   text: val.detail });
         dialogConfirmed = dialog.confirmed;
-        if (dialog.confirmed && dialog.remember) recordReplaceConfirmSkip();
-        validation = '__failed' in dialog.status
-            ? { ok: false, reason: 'connect-failed', detail: 'Failed to reach Anki.' }
-            : dialog.status;
+        if (dialog.confirmed && dialog.succeeded && dialog.remember) recordReplaceConfirmSkip();
+        // status is the SyncDiscoveryResultOrFailure from runSyncDiscovery —
+        // undefined only if the promise itself failed (shouldn't happen
+        // since runSyncDiscovery catches everything).
+        validation = dialog.status || { ok: false, reason: 'connect-failed', detail: 'Discovery did not complete.' };
+        // If validation failed, fall through to the failure-handling
+        // branch below regardless of whether the user cancelled — the
+        // Confirm button was disabled so they could only cancel anyway.
+        if (validation.ok && !dialogConfirmed) return; // user cancelled a healthy validation
     } else {
         validation = await discovery;
     }
-
-    if (!dialogConfirmed) return; // user cancelled the confirm dialog
 
     if (!validation.ok) {
         // Discovery turned up something the user should see — open the modal
