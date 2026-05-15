@@ -2799,6 +2799,11 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     flex-direction: column;
     gap: 0.5rem;
 }
+.vocab-anki-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
 .vocab-anki-help {
     margin-top: auto;
     align-self: flex-start;
@@ -3898,6 +3903,18 @@ a {
     font-size: 0.92rem;
     color: var(--accent);
     font-weight: 500;
+}
+/* Replace mode is destructive (delete-then-add); flag it visually so users
+   notice the difference between additive and replacing imports. */
+.anki-import-replace input:checked ~ span,
+.anki-import-replace input:checked ~ .anki-import-include-new-hint {
+    color: var(--danger);
+}
+.anki-import-replace {
+    border-color: var(--border);
+}
+.anki-import-replace:has(input:checked) {
+    border-color: var(--danger);
 }
 .anki-import-progress {
     height: 6px;

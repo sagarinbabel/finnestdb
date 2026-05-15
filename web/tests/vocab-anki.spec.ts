@@ -345,6 +345,8 @@ test.describe('pure helpers', () => {
         fieldByModel: { Basic: 'Word' },
         includeNew: false,
         includeSuspended: false,
+        replaceMode: false,
+        lastSyncAt: 0,
       });
       w.__finestTest.saveAnkiPrefs('ET', {
         filter: 'custom-et',
@@ -352,6 +354,8 @@ test.describe('pure helpers', () => {
         fieldByModel: { Basic: 'Sõna' },
         includeNew: true,
         includeSuspended: true,
+        replaceMode: true,
+        lastSyncAt: 1700000000000,
       });
       return {
         initialFI,
@@ -360,14 +364,16 @@ test.describe('pure helpers', () => {
         savedET: w.__finestTest.loadAnkiPrefs('ET'),
       };
     });
-    expect(results.initialFI).toEqual({ filter: 'finnish|suomi', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false });
-    expect(results.initialET).toEqual({ filter: 'estonian|eesti', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false });
+    expect(results.initialFI).toEqual({ filter: 'finnish|suomi', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false, replaceMode: false, lastSyncAt: 0 });
+    expect(results.initialET).toEqual({ filter: 'estonian|eesti', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false, replaceMode: false, lastSyncAt: 0 });
     expect(results.savedFI).toEqual({
       filter: 'custom-fi',
       decks: ['Finnish::A1'],
       fieldByModel: { Basic: 'Word' },
       includeNew: false,
       includeSuspended: false,
+      replaceMode: false,
+      lastSyncAt: 0,
     });
     expect(results.savedET).toEqual({
       filter: 'custom-et',
@@ -375,6 +381,8 @@ test.describe('pure helpers', () => {
       fieldByModel: { Basic: 'Sõna' },
       includeNew: true,
       includeSuspended: true,
+      replaceMode: true,
+      lastSyncAt: 1700000000000,
     });
   });
 });
@@ -1345,6 +1353,202 @@ test.describe('Anki import popup', () => {
     ]));
     // The "… all" ellipsis entry must be dropped, not sent through as garbage.
     expect(importBody!.words!.some(w => w.includes('…'))).toBe(false);
+  });
+
+  test('Replace mode confirms before running, then PUTs to /api/known-words', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+
+    let putBody: { lang?: string; words?: string[] } | null = null;
+    let postCalled = false;
+    await page.route('**/api/known-words', async (route) => {
+      const m = route.request().method();
+      if (m === 'PUT') {
+        putBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            added:   [{ lemma: 'kassi', pos: 'NOUN', lang: 'ET' }],
+            removed: [{ lemma: 'gone',  pos: 'NOUN', lang: 'ET' }],
+            unresolved: [],
+          }),
+        });
+        return;
+      }
+      if (m === 'POST') {
+        postCalled = true;
+      }
+      await route.fallback();
+    });
+
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+
+    // Default off.
+    const replaceCb = page.locator('#anki-import-replace-mode');
+    await expect(replaceCb).not.toBeChecked();
+
+    // Enable + import → confirmation dialog must appear.
+    await replaceCb.check();
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    const dialog = page.locator('#dialog-modal');
+    await expect(dialog).not.toHaveClass(/hidden/);
+    await expect(dialog).toContainText(/Replace Estonian vocabulary/i);
+    await expect(dialog).toContainText(/removed/i);
+
+    // Cancel: no network call.
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toHaveClass(/hidden/);
+    expect(putBody).toBeNull();
+    expect(postCalled).toBe(false);
+
+    // Re-run + confirm: PUT fires (not POST).
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    await expect(dialog).not.toHaveClass(/hidden/);
+    await page.locator('#dialog-modal-confirm').click();
+    await expect.poll(() => putBody).not.toBeNull();
+    expect(putBody!.lang).toBe('ET');
+    // All three Estonian::A1 notes contribute (none are flagged new in this
+    // fixture; the suspended/new toggles are unrelated to replace mode).
+    expect(new Set(putBody!.words)).toEqual(new Set(['kassi', 'koer', 'auto']));
+    expect(postCalled).toBe(false);
+  });
+
+  test('Replace toggle persists across modal reopen', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.locator('#anki-import-replace-mode').check();
+    await page.locator('#anki-import-modal-close').click();
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-replace-mode')).toBeChecked();
+  });
+
+  test('"Sync from Anki" button stays hidden until a successful import lands', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ imported: [], unresolved: [] }),
+        });
+      } else {
+        await route.fallback();
+      }
+    });
+
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+    const syncBtn = page.locator('#vocab-anki-sync');
+    await expect(syncBtn).toHaveClass(/hidden/);
+
+    // Run a full import once.
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    // Wait for the Done button to surface, signalling the import wrote the
+    // success timestamp via recordAnkiSyncTime.
+    await expect(page.locator('#anki-import-done-actions')).not.toHaveClass(/hidden/);
+    await page.locator('#anki-import-done').click();
+    await expect(page.locator('#anki-import-modal')).toHaveClass(/hidden/);
+
+    // Sync button now visible on the vocab card.
+    await expect(syncBtn).not.toHaveClass(/hidden/);
+    await expect(syncBtn).toBeVisible();
+  });
+
+  test('Sync button skips the deck + field pickers and runs import directly', async ({ page }) => {
+    // Pre-seed localStorage with prior prefs so the sync flow has something
+    // to run with. This mirrors the "user already did one successful
+    // import" state without having to walk through the popup again.
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    let postBody: { lang?: string; words?: string[] } | null = null;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'POST') {
+        postBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ imported: [], unresolved: [] }),
+        });
+      } else {
+        await route.fallback();
+      }
+    });
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter:           'estonian|eesti',
+        decks:            ['Estonian::A1'],
+        fieldByModel:     { ETBasic: 'Sõna' },
+        includeNew:       false,
+        includeSuspended: false,
+        replaceMode:      false,
+        lastSyncAt:       Date.now(),
+      }));
+    });
+    // Reload so renderVocabPage runs against the seeded prefs.
+    await page.reload();
+    const syncBtn = page.locator('#vocab-anki-sync');
+    await expect(syncBtn).toBeVisible();
+
+    await syncBtn.click();
+    // Modal opens, skips deck + field stages, runs import.
+    await expect(page.locator('#anki-import-modal')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-stage-running')).not.toHaveClass(/hidden/, { timeout: 10000 });
+    await expect.poll(() => postBody).not.toBeNull();
+    expect(postBody!.lang).toBe('ET');
+    // Only Estonian::A1 was saved, so only its notes contribute.
+    expect(new Set(postBody!.words)).toEqual(new Set(['kassi', 'koer', 'auto']));
+  });
+
+  test('Sync falls through to manual picker if saved decks no longer exist', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      // Reference decks that the mocked Anki no longer knows about.
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter:           '',
+        decks:            ['Gone::Deck1', 'Gone::Deck2'],
+        fieldByModel:     {},
+        includeNew:       false,
+        includeSuspended: false,
+        replaceMode:      false,
+        lastSyncAt:       Date.now(),
+      }));
+    });
+    await page.reload();
+    await page.locator('#vocab-anki-sync').click();
+    // Stale deck selection cleared → fall through to deck picker, not auto-run.
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-stage-running')).toHaveClass(/hidden/);
   });
 
   test('Import posts deduped words to /api/known-words from the active field per model', async ({ page }) => {

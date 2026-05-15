@@ -369,7 +369,10 @@
                     <h2>Import from Anki</h2>
                     <p class="vocab-import-lede">Pull cards from a local Anki deck through the AnkiConnect add-on.</p>
                     <div class="vocab-anki-step">
-                        <button type="button" id="vocab-anki-connect" class="btn btn-primary btn-sm">Connect to Anki</button>
+                        <div class="vocab-anki-buttons">
+                            <button type="button" id="vocab-anki-connect" class="btn btn-primary btn-sm">Connect to Anki</button>
+                            <button type="button" id="vocab-anki-sync" class="btn btn-outline btn-sm hidden" data-tooltip="Re-run the last import using your saved decks + field choices.">Sync from Anki</button>
+                        </div>
                         <span id="vocab-anki-status" class="known-words-summary" role="status"></span>
                     </div>
                     <a href="#" id="vocab-anki-help" class="vocab-anki-help">Setup instructions</a>
@@ -802,6 +805,11 @@
                     <input type="checkbox" id="anki-import-include-suspended" />
                     <span>Include suspended cards</span>
                     <span class="anki-import-include-new-hint">Off by default — cards you've paused are excluded from the import.</span>
+                </label>
+                <label class="anki-import-include-new anki-import-replace">
+                    <input type="checkbox" id="anki-import-replace-mode" />
+                    <span>Replace existing vocabulary</span>
+                    <span class="anki-import-include-new-hint">Off by default — additive. When on, the import becomes a sync: words not in this Anki selection are <strong>removed</strong> from your known-words list.</span>
                 </label>
                 <p class="anki-import-estimate" id="anki-import-estimate" aria-live="polite"></p>
                 <div class="modal-actions">

@@ -1723,6 +1723,117 @@ func (d *DB) ImportKnownWords(userID int64, lang string, words []string) ([]Know
 	return imported, unresolved, nil
 }
 
+// ReplaceKnownWords makes the user's known-words for one language exactly
+// match the set produced by resolving `words`. Used by the Anki "sync"
+// flow when the user opts into replace mode: vocabulary that no longer
+// appears in their Anki deck is removed, and new entries are added.
+//
+// The diff happens inside a single transaction so the user never observes a
+// half-applied state, and we never DELETE rows we're about to re-INSERT.
+//
+// Returns:
+//   - added:      lemma+POS pairs newly inserted this call
+//   - removed:    lemma+POS pairs deleted this call
+//   - unresolved: surface forms the parser couldn't resolve (untouched)
+func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string) ([]KnownLemma, []KnownLemma, []string, error) {
+	// Normalise + dedupe input. Mirrors ImportKnownWords so callers can rely
+	// on the same parsing rules.
+	normalized := make([]string, 0, len(words))
+	seen := make(map[string]struct{}, len(words))
+	for _, word := range words {
+		trimmed := strings.TrimSpace(strings.ToLower(word))
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		normalized = append(normalized, trimmed)
+	}
+
+	// Resolve outside the transaction — BatchLookupForms is read-only against
+	// the dictionary side of the store and we want to hold the write lock for
+	// as little time as possible.
+	resolutions := d.BatchLookupForms(normalized, lang, "custom")
+
+	type key struct{ lemma, pos string }
+	target := make(map[key]struct{}, len(resolutions))
+	unresolved := make([]string, 0)
+	for _, word := range normalized {
+		res, ok := resolutions[word]
+		if !ok || res.Lemma == "" || res.POS == "" {
+			unresolved = append(unresolved, word)
+			continue
+		}
+		target[key{res.Lemma, res.POS}] = struct{}{}
+	}
+
+	tx, err := d.db.Begin()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	// Current state for the user+lang.
+	rows, err := tx.Query(
+		`SELECT lemma, pos FROM user_known_lemmas WHERE user_id = ? AND lang = ?`,
+		userID, lang,
+	)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	current := make(map[key]struct{})
+	for rows.Next() {
+		var k key
+		if err := rows.Scan(&k.lemma, &k.pos); err != nil {
+			_ = rows.Close()
+			return nil, nil, nil, err
+		}
+		current[k] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return nil, nil, nil, err
+	}
+	_ = rows.Close()
+
+	// Diff. `removed` and `added` are dedup'd by construction.
+	removed := make([]KnownLemma, 0)
+	for k := range current {
+		if _, keep := target[k]; keep {
+			continue
+		}
+		if _, err := tx.Exec(
+			`DELETE FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
+			userID, lang, k.lemma, k.pos,
+		); err != nil {
+			return nil, nil, nil, err
+		}
+		removed = append(removed, KnownLemma{Lemma: k.lemma, POS: k.pos, Lang: lang})
+	}
+	added := make([]KnownLemma, 0)
+	for k := range target {
+		if _, exists := current[k]; exists {
+			continue
+		}
+		if _, err := tx.Exec(
+			`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
+			userID, lang, k.lemma, k.pos,
+		); err != nil {
+			return nil, nil, nil, err
+		}
+		added = append(added, KnownLemma{Lemma: k.lemma, POS: k.pos, Lang: lang})
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, nil, nil, err
+	}
+	return added, removed, unresolved, nil
+}
+
 func (d *DB) ListKnownWords(userID int64, lang string) ([]KnownLemma, error) {
 	rows, err := d.db.Query(
 		`SELECT lemma, pos, lang

@@ -154,6 +154,15 @@ type KnownWordsResponse struct {
 	Unresolved []string           `json:"unresolved"`
 }
 
+// KnownWordsReplaceResponse is returned by PUT /api/known-words. It mirrors
+// the POST response shape but splits the result into adds/removes so the
+// client can show the delta of an Anki "sync" import.
+type KnownWordsReplaceResponse struct {
+	Added      []store.KnownLemma `json:"added"`
+	Removed    []store.KnownLemma `json:"removed"`
+	Unresolved []string           `json:"unresolved"`
+}
+
 type KnownWordsListResponse struct {
 	KnownWords []store.KnownLemma `json:"known_words"`
 }
@@ -1545,11 +1554,43 @@ func (a *API) HandleKnownWords(w http.ResponseWriter, r *http.Request) {
 		a.handleKnownWordsList(w, r, auth)
 	case http.MethodPost:
 		a.handleKnownWordsImport(w, r, auth)
+	case http.MethodPut:
+		a.handleKnownWordsReplace(w, r, auth)
 	case http.MethodDelete:
 		a.handleKnownWordsDelete(w, r, auth)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func (a *API) handleKnownWordsReplace(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	var req KnownWordsRequest
+	if !decodeJSONRequest(w, r, &req) {
+		return
+	}
+	if req.Lang != "FI" && req.Lang != "ET" {
+		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
+		return
+	}
+	// Unlike POST, an empty words list is meaningful here — it means "clear
+	// this language's vocabulary". We still require the field to be present
+	// (decoded JSON), but len==0 is allowed.
+	if req.Words == nil {
+		http.Error(w, "Words list is required (use [] to clear)", http.StatusBadRequest)
+		return
+	}
+
+	added, removed, unresolved, err := a.store.ReplaceKnownWords(auth.UserID, req.Lang, req.Words)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, KnownWordsReplaceResponse{
+		Added:      added,
+		Removed:    removed,
+		Unresolved: unresolved,
+	})
 }
 
 func (a *API) handleKnownWordsImport(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
