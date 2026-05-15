@@ -318,6 +318,11 @@ func (d *DB) initSchema() error {
 	-- dict_metadata schema is owned by EnsureDictMetadataSchema below; both the
 	-- server and the importer call it so the column set stays in one place.
 
+	-- Source-agnostic correction tables are owned by
+	-- EnsureCorrectionOverlaySchema below; they are kept out of parse_feedback
+	-- so accepted fixes can apply to pasted text, EPUBs, imported decks, and
+	-- future source types without depending on one submission path.
+
 	CREATE TABLE IF NOT EXISTS parse_sessions (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		user_id INTEGER,
@@ -423,6 +428,9 @@ func (d *DB) initSchema() error {
 		return err
 	}
 	if err := EnsureLexicalEntryTables(d.db); err != nil {
+		return err
+	}
+	if err := EnsureCorrectionOverlaySchema(d.db); err != nil {
 		return err
 	}
 
@@ -616,6 +624,75 @@ func EnsureLexicalEntryTables(db *sql.DB) error {
 			source    TEXT NOT NULL,
 			PRIMARY KEY (lemma, pos, lang, sense_idx, source)
 		);
+	`)
+	return err
+}
+
+// EnsureCorrectionOverlaySchema creates the durable tables used after a human
+// correction has been accepted. parse_feedback remains the submission/review
+// queue; these tables are the source-agnostic promotion layer for parser and
+// card-learning fixes from pasted text, imported decks, EPUBs, subtitles, and
+// other source types.
+func EnsureCorrectionOverlaySchema(db *sql.DB) error {
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS learning_targets (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			lang TEXT NOT NULL CHECK (lang IN ('FI', 'ET')),
+			target_kind TEXT NOT NULL CHECK (target_kind IN ('lemma', 'surface', 'phrase', 'proper_name')),
+			target_text TEXT NOT NULL,
+			normalized_key TEXT NOT NULL,
+			lemma TEXT NOT NULL DEFAULT '',
+			pos TEXT NOT NULL DEFAULT '',
+			feats TEXT NOT NULL DEFAULT '',
+			gloss TEXT NOT NULL DEFAULT '',
+			cue TEXT NOT NULL DEFAULT '',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(lang, target_kind, normalized_key, lemma, pos, feats)
+		);
+
+		CREATE TABLE IF NOT EXISTS correction_overlays (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			lang TEXT NOT NULL CHECK (lang IN ('FI', 'ET')),
+			correction_type TEXT NOT NULL CHECK (correction_type IN (
+				'parser_identity',
+				'meaning_cue',
+				'contextual_sense',
+				'phrase_boundary',
+				'example_quality',
+				'card_presentation'
+			)),
+			scope TEXT NOT NULL CHECK (scope IN ('global', 'source', 'sentence', 'occurrence')),
+			target_id INTEGER,
+			surface TEXT NOT NULL DEFAULT '',
+			original_lemma TEXT NOT NULL DEFAULT '',
+			original_pos TEXT NOT NULL DEFAULT '',
+			original_feats TEXT NOT NULL DEFAULT '',
+			corrected_lemma TEXT NOT NULL DEFAULT '',
+			corrected_pos TEXT NOT NULL DEFAULT '',
+			corrected_feats TEXT NOT NULL DEFAULT '',
+			replacement_text TEXT NOT NULL DEFAULT '',
+			source_type TEXT NOT NULL DEFAULT '',
+			source_ref TEXT NOT NULL DEFAULT '',
+			source_locator TEXT NOT NULL DEFAULT '',
+			sentence_hash TEXT NOT NULL DEFAULT '',
+			provenance TEXT NOT NULL DEFAULT '',
+			note TEXT NOT NULL DEFAULT '',
+			active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0, 1)),
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(target_id) REFERENCES learning_targets(id)
+		);
+
+		CREATE INDEX IF NOT EXISTS idx_correction_overlays_lookup
+			ON correction_overlays(lang, active, correction_type, scope, surface, source_type, source_ref, sentence_hash);
+
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_correction_overlays_active_unique
+			ON correction_overlays(
+				lang, correction_type, scope, surface,
+				original_lemma, original_pos,
+				corrected_lemma, corrected_pos,
+				source_type, source_ref, source_locator, sentence_hash
+			)
+			WHERE active = 1;
 	`)
 	return err
 }
