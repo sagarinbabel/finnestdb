@@ -880,7 +880,7 @@ func morphologyScore(res FormResolution) int {
 }
 
 // lookupLexOverlay returns the curated lexadverbs analysis as a
-// FormResolution when one exists for (lang, lower). The overlay
+// FormResolution when one exists for (lang, surface). The overlay
 // catalogues surfaces where the productive dict/FST analysis is a
 // known bug — `tuskin` (kaikki ships as form of `tuska`), `asiaan`
 // (form of bad lemma `as`), `vuotta` (form of bad lemma `vuo`),
@@ -898,21 +898,20 @@ func lookupLexOverlay(lang, surface string) (FormResolution, bool) {
 		// special capitalization and can still hit the lowercase overlay.
 		return FormResolution{}, false
 	}
-	lower := strings.ToLower(surface)
 	var analyses []lemmatizer.Analysis
 	var ok bool
 	switch lang {
 	case "FI":
-		analyses, ok = lexadverbs.LookupFI(lower)
+		analyses, ok = lexadverbs.LookupFI(surface)
 	case "ET":
-		analyses, ok = lexadverbs.LookupET(lower)
+		analyses, ok = lexadverbs.LookupET(surface)
 	default:
 		return FormResolution{}, false
 	}
 	if !ok || len(analyses) == 0 {
 		return FormResolution{}, false
 	}
-	return formResolutionFromFSTAnalysis(lower, analyses[0], "lex-overlay"), true
+	return formResolutionFromFSTAnalysis(surface, analyses[0], "lex-overlay"), true
 }
 
 func formResolutionFromFSTAnalysis(surface string, a lemmatizer.Analysis, source string) FormResolution {
