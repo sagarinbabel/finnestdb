@@ -368,26 +368,24 @@
                 <div class="vocab-import-card">
                     <h2>Import from Anki</h2>
                     <p class="vocab-import-lede">Pull cards from a local Anki deck through the AnkiConnect add-on.</p>
-                    <div class="vocab-anki-step" id="vocab-anki-step-connect">
+                    <div class="vocab-anki-step">
                         <button type="button" id="vocab-anki-connect" class="btn btn-primary btn-sm">Connect to Anki</button>
                         <span id="vocab-anki-status" class="known-words-summary" role="status"></span>
-                    </div>
-                    <div class="vocab-anki-step hidden" id="vocab-anki-step-pick">
-                        <label for="vocab-anki-deck">Deck</label>
-                        <select id="vocab-anki-deck"></select>
-                        <label for="vocab-anki-field">Field with the word</label>
-                        <select id="vocab-anki-field"></select>
-                        <div class="known-words-actions">
-                            <button type="button" id="vocab-anki-import" class="btn btn-primary btn-sm">Import deck</button>
-                            <button type="button" id="vocab-anki-reset" class="btn btn-link btn-sm">Disconnect</button>
-                        </div>
                     </div>
                     <a href="#" id="vocab-anki-help" class="vocab-anki-help">Setup instructions</a>
                 </div>
             </section>
 
             <section class="vocab-list-section">
-                <h2>Your known words</h2>
+                <div class="vocab-list-header">
+                    <h2>Your known words</h2>
+                    <button
+                        type="button"
+                        id="vocab-delete-all"
+                        class="btn btn-outline btn-sm vocab-delete-all"
+                        data-tooltip="You will need to confirm deletion."
+                    >Delete all vocabulary</button>
+                </div>
                 <div id="known-words-unresolved" class="known-words-unresolved hidden"></div>
                 <div id="known-words-empty" class="placeholder-card hidden">
                     <p>No known words imported for this language yet.</p>
@@ -756,6 +754,67 @@
 
             <div class="modal-actions">
                 <button type="button" class="btn btn-primary" id="anki-setup-modal-done">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== ANKI IMPORT MODAL ==================== -->
+    <div id="anki-import-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="anki-import-modal-title">
+        <div class="modal-backdrop" id="anki-import-modal-backdrop"></div>
+        <div class="modal-card modal-card-wide" role="document">
+            <button type="button" class="modal-close" id="anki-import-modal-close" aria-label="Close">×</button>
+            <h3 id="anki-import-modal-title">Connect to Anki</h3>
+
+            <!-- Connecting state -->
+            <div class="anki-import-stage" id="anki-import-stage-loading">
+                <p class="modal-lede" id="anki-import-loading-msg">Connecting to AnkiConnect…</p>
+            </div>
+
+            <!-- Step 1: pick decks -->
+            <div class="anki-import-stage hidden" id="anki-import-stage-decks">
+                <p class="modal-lede">Pick the decks you want to import vocabulary from. Sub-decks are nested under their parents — selecting a parent imports everything beneath it.</p>
+                <div class="anki-import-toolbar">
+                    <input type="search" id="anki-import-filter" class="anki-import-filter" placeholder="Filter decks…" autocomplete="off" />
+                    <button type="button" id="anki-import-clear-filter" class="btn btn-link btn-sm">Clear</button>
+                </div>
+                <div class="anki-import-tree-wrap">
+                    <div id="anki-import-tree" class="anki-import-tree" role="tree" aria-label="Anki decks"></div>
+                    <p id="anki-import-tree-empty" class="anki-import-empty hidden">No decks match this filter.</p>
+                </div>
+                <p class="anki-import-summary" id="anki-import-deck-summary"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-link" id="anki-import-cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="anki-import-next">Continue</button>
+                </div>
+            </div>
+
+            <!-- Step 2: pick fields per card type -->
+            <div class="anki-import-stage hidden" id="anki-import-stage-fields">
+                <p class="modal-lede">For each card type in your selected decks, pick the field that holds the word you want to mark known. Set a card type to <em>Skip</em> to ignore it.</p>
+                <div id="anki-import-fields" class="anki-import-fields"></div>
+                <p class="anki-import-summary" id="anki-import-field-summary"></p>
+                <label class="anki-import-include-new">
+                    <input type="checkbox" id="anki-import-include-new" />
+                    <span>Mark new cards as known</span>
+                    <span class="anki-import-include-new-hint">Off by default — only cards you've reviewed at least once count as "known".</span>
+                </label>
+                <p class="anki-import-estimate" id="anki-import-estimate" aria-live="polite"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-link" id="anki-import-back">Back</button>
+                    <button type="button" class="btn btn-primary" id="anki-import-run">Import</button>
+                </div>
+            </div>
+
+            <!-- Step 3: importing / done -->
+            <div class="anki-import-stage hidden" id="anki-import-stage-running">
+                <p class="modal-lede" id="anki-import-running-msg">Importing…</p>
+                <div class="anki-import-progress">
+                    <div id="anki-import-progress-bar" class="anki-import-progress-bar"></div>
+                </div>
+                <p id="anki-import-running-detail" class="anki-import-summary"></p>
+                <div class="modal-actions hidden" id="anki-import-done-actions">
+                    <button type="button" class="btn btn-primary" id="anki-import-done">Done</button>
+                </div>
             </div>
         </div>
     </div>

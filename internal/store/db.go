@@ -1755,6 +1755,21 @@ func (d *DB) DeleteKnownWord(userID int64, lang, lemma, pos string) error {
 	return err
 }
 
+// DeleteAllKnownWords clears every known-word row for one (user, lang). Used
+// by the vocab page's "Delete all vocabulary" action; the per-language scope
+// keeps a user studying both FI and ET from accidentally wiping the other
+// language. Returns the number of rows removed.
+func (d *DB) DeleteAllKnownWords(userID int64, lang string) (int64, error) {
+	res, err := d.db.Exec(
+		`DELETE FROM user_known_lemmas WHERE user_id = ? AND lang = ?`,
+		userID, lang,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 func (d *DB) BatchLemmaStates(userID int64, lang string, lemmas []LemmaKey) (map[LemmaKey]string, error) {
 	result := make(map[LemmaKey]string, len(lemmas))
 	if len(lemmas) == 0 {

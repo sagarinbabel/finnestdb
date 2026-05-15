@@ -1700,6 +1700,133 @@ func TestKnownWordsImportListAndDelete(t *testing.T) {
 	}
 }
 
+func TestKnownWordsDeleteAll(t *testing.T) {
+	api := newTestAPI(t)
+	// Seed FI and ET lemmas so we can prove the bulk delete is scoped per
+	// language: wiping FI must NOT remove ET rows for the same user.
+	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+		t.Fatalf("UpsertLemma FI: %v", err)
+	}
+	if err := api.store.UpsertForm("kissa", "kissa", "NOUN", "FI"); err != nil {
+		t.Fatalf("UpsertForm FI: %v", err)
+	}
+	if err := api.store.UpsertLemma("juosta", "VERB", "run", "FI"); err != nil {
+		t.Fatalf("UpsertLemma FI verb: %v", err)
+	}
+	if err := api.store.UpsertForm("juosta", "juosta", "VERB", "FI"); err != nil {
+		t.Fatalf("UpsertForm FI verb: %v", err)
+	}
+	if err := api.store.UpsertLemma("kass", "NOUN", "cat", "ET"); err != nil {
+		t.Fatalf("UpsertLemma ET: %v", err)
+	}
+	if err := api.store.UpsertForm("kass", "kass", "NOUN", "ET"); err != nil {
+		t.Fatalf("UpsertForm ET: %v", err)
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "deleteall@example.com")
+
+	importFI := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa","juosta"]}`))
+	for _, c := range cookies {
+		importFI.AddCookie(c)
+	}
+	importFIRec := httptest.NewRecorder()
+	mux.ServeHTTP(importFIRec, importFI)
+	if importFIRec.Code != http.StatusOK {
+		t.Fatalf("import FI status=%d body=%q", importFIRec.Code, importFIRec.Body.String())
+	}
+	importET := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"ET","words":["kass"]}`))
+	for _, c := range cookies {
+		importET.AddCookie(c)
+	}
+	importETRec := httptest.NewRecorder()
+	mux.ServeHTTP(importETRec, importET)
+	if importETRec.Code != http.StatusOK {
+		t.Fatalf("import ET status=%d body=%q", importETRec.Code, importETRec.Body.String())
+	}
+
+	// all=1 combined with lemma/pos must be rejected so accidental clients
+	// can't wipe a whole language by also passing per-row args.
+	bad := httptest.NewRequest(http.MethodDelete, "/api/known-words?lang=FI&all=1&lemma=kissa&pos=NOUN", nil)
+	for _, c := range cookies {
+		bad.AddCookie(c)
+	}
+	badRec := httptest.NewRecorder()
+	mux.ServeHTTP(badRec, bad)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("all=1+lemma status=%d want 400 body=%q", badRec.Code, badRec.Body.String())
+	}
+
+	// all=1 without lang must still 400.
+	noLang := httptest.NewRequest(http.MethodDelete, "/api/known-words?all=1", nil)
+	for _, c := range cookies {
+		noLang.AddCookie(c)
+	}
+	noLangRec := httptest.NewRecorder()
+	mux.ServeHTTP(noLangRec, noLang)
+	if noLangRec.Code != http.StatusBadRequest {
+		t.Fatalf("all=1 no lang status=%d want 400", noLangRec.Code)
+	}
+
+	// Happy path: wipe FI.
+	wipeFI := httptest.NewRequest(http.MethodDelete, "/api/known-words?lang=FI&all=1", nil)
+	for _, c := range cookies {
+		wipeFI.AddCookie(c)
+	}
+	wipeRec := httptest.NewRecorder()
+	mux.ServeHTTP(wipeRec, wipeFI)
+	if wipeRec.Code != http.StatusOK {
+		t.Fatalf("wipe FI status=%d body=%q", wipeRec.Code, wipeRec.Body.String())
+	}
+	var wipeResp struct {
+		Status  string `json:"status"`
+		Deleted int64  `json:"deleted"`
+	}
+	if err := json.NewDecoder(bytes.NewReader(wipeRec.Body.Bytes())).Decode(&wipeResp); err != nil {
+		t.Fatalf("decode wipe response: %v", err)
+	}
+	if wipeResp.Deleted != 2 {
+		t.Fatalf("deleted=%d want 2", wipeResp.Deleted)
+	}
+
+	// FI list is empty.
+	fiReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=FI", nil)
+	for _, c := range cookies {
+		fiReq.AddCookie(c)
+	}
+	fiRec := httptest.NewRecorder()
+	mux.ServeHTTP(fiRec, fiReq)
+	var fiList KnownWordsListResponse
+	_ = json.NewDecoder(bytes.NewReader(fiRec.Body.Bytes())).Decode(&fiList)
+	if len(fiList.KnownWords) != 0 {
+		t.Fatalf("FI after wipe=%d want 0 (%+v)", len(fiList.KnownWords), fiList.KnownWords)
+	}
+
+	// ET is untouched — the wipe is language-scoped.
+	etReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=ET", nil)
+	for _, c := range cookies {
+		etReq.AddCookie(c)
+	}
+	etRec := httptest.NewRecorder()
+	mux.ServeHTTP(etRec, etReq)
+	var etList KnownWordsListResponse
+	_ = json.NewDecoder(bytes.NewReader(etRec.Body.Bytes())).Decode(&etList)
+	if len(etList.KnownWords) != 1 {
+		t.Fatalf("ET after FI wipe=%d want 1 (%+v)", len(etList.KnownWords), etList.KnownWords)
+	}
+
+	// A second wipe with nothing to delete still 200s and returns 0.
+	wipeAgain := httptest.NewRequest(http.MethodDelete, "/api/known-words?lang=FI&all=1", nil)
+	for _, c := range cookies {
+		wipeAgain.AddCookie(c)
+	}
+	wipeAgainRec := httptest.NewRecorder()
+	mux.ServeHTTP(wipeAgainRec, wipeAgain)
+	if wipeAgainRec.Code != http.StatusOK {
+		t.Fatalf("second wipe status=%d body=%q", wipeAgainRec.Code, wipeAgainRec.Body.String())
+	}
+}
+
 func TestLemmaStateMarksKnownAndIgnored(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)

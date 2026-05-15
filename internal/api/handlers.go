@@ -1595,13 +1595,33 @@ func (a *API) handleKnownWordsList(w http.ResponseWriter, r *http.Request, auth 
 }
 
 func (a *API) handleKnownWordsDelete(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
-	lang := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("lang")))
-	lemma := strings.TrimSpace(r.URL.Query().Get("lemma"))
-	pos := strings.TrimSpace(r.URL.Query().Get("pos"))
+	q := r.URL.Query()
+	lang := strings.ToUpper(strings.TrimSpace(q.Get("lang")))
+	lemma := strings.TrimSpace(q.Get("lemma"))
+	pos := strings.TrimSpace(q.Get("pos"))
 	if lang != "FI" && lang != "ET" {
 		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
 		return
 	}
+
+	// Bulk path: `all=1` clears every known-word row for this (user, lang).
+	// Requiring the explicit flag prevents the per-row delete from
+	// accidentally wiping the language when the client forgets to set
+	// lemma/pos.
+	if q.Get("all") == "1" {
+		if lemma != "" || pos != "" {
+			http.Error(w, "all=1 cannot be combined with lemma/pos", http.StatusBadRequest)
+			return
+		}
+		deleted, err := a.store.DeleteAllKnownWords(auth.UserID, lang)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "deleted": deleted})
+		return
+	}
+
 	if lemma == "" || pos == "" {
 		http.Error(w, "Lemma and POS are required", http.StatusBadRequest)
 		return

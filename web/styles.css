@@ -2799,13 +2799,6 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     flex-direction: column;
     gap: 0.5rem;
 }
-.vocab-anki-step label {
-    display: block;
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-    margin-top: 0.25rem;
-}
 .vocab-anki-help {
     margin-top: auto;
     align-self: flex-start;
@@ -2890,6 +2883,24 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
 .vocab-list-section h2 {
     font-size: 1.15rem;
     margin: 0 0 0.75rem;
+}
+.vocab-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+.vocab-list-header h2 {
+    margin: 0;
+}
+.vocab-delete-all {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+.vocab-delete-all:hover:not(:disabled) {
+    background: var(--danger);
+    color: white;
 }
 .sr-only {
     position: absolute;
@@ -3591,6 +3602,321 @@ a {
    them the rounded sitewide popup treatment instead of the squared card look. */
 .modal-card {
     border-radius: 14px;
+}
+
+/* ── Anki import modal ──────────────────────────────────────── */
+.modal-card-wide {
+    max-width: 620px;
+}
+.anki-import-stage {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+.anki-import-stage.hidden {
+    display: none;
+}
+.anki-import-toolbar {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.anki-import-filter {
+    flex: 1;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+.anki-import-filter:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+.anki-import-tree-wrap {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.5rem;
+    max-height: 360px;
+    overflow-y: auto;
+}
+.anki-import-tree {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+}
+.anki-deck-children {
+    display: contents;
+}
+.anki-deck-row {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.35rem;
+    padding-left: calc(0.35rem + (var(--anki-depth, 0) * 1.1rem));
+    border-radius: 6px;
+}
+.anki-deck-row:hover {
+    background: var(--card-bg);
+}
+.anki-deck-toggle {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 0;
+    background: none;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    cursor: pointer;
+    padding: 0;
+    border-radius: 4px;
+}
+.anki-deck-toggle:hover {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+}
+.anki-deck-toggle.is-leaf {
+    visibility: hidden;
+    cursor: default;
+}
+.anki-deck-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    cursor: pointer;
+    padding: 0.1rem 0;
+}
+.anki-deck-check {
+    flex-shrink: 0;
+    cursor: pointer;
+}
+.anki-deck-name {
+    font-size: 0.92rem;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+.anki-import-empty {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 1rem 0;
+    margin: 0;
+}
+.anki-import-summary {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+.anki-import-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+.anki-import-field-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    gap: 0.75rem;
+    align-items: center;
+}
+.anki-import-field-label {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+.anki-import-field-select {
+    width: 100%;
+}
+.field-picker {
+    position: relative;
+    width: 100%;
+}
+.field-picker-toggle {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.92rem;
+    cursor: pointer;
+    text-align: left;
+}
+.field-picker-toggle:hover,
+.field-picker-toggle[aria-expanded="true"] {
+    border-color: var(--accent);
+}
+.field-picker-current {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.field-picker-caret {
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 5px solid var(--text-secondary);
+    transition: transform 0.15s ease;
+}
+.field-picker-toggle[aria-expanded="true"] .field-picker-caret {
+    transform: rotate(180deg);
+}
+.field-picker-menu {
+    /* Fixed so it escapes the modal-card and .anki-import-fields overflow
+       boxes — otherwise the dropdown gets clipped to whichever scroll
+       container it lives in. Positioned via JS on open. */
+    position: fixed;
+    z-index: 2050;
+    margin: 0;
+    padding: 0.25rem;
+    list-style: none;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px var(--shadow);
+    max-height: 240px;
+    overflow-y: auto;
+}
+.field-picker-menu.hidden {
+    display: none;
+}
+.field-picker-menu li {
+    list-style: none;
+}
+.field-picker-option {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    border: 0;
+    background: none;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    cursor: pointer;
+    border-radius: 6px;
+    text-align: left;
+}
+.field-picker-option:hover,
+.field-picker-option:focus-visible {
+    background: var(--bg-secondary);
+}
+.field-picker-option.is-active {
+    color: var(--accent);
+    font-weight: 600;
+}
+.field-picker-option-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.field-picker-option-check {
+    flex-shrink: 0;
+}
+.field-examples-tip {
+    position: fixed;
+    /* Must beat the modal (z-index: 2000 via the design-v2 override) since the
+       tip is appended to <body> rather than inside the modal card. */
+    z-index: 2100;
+    max-width: 280px;
+    padding: 0.6rem 0.8rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 6px 20px var(--shadow);
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.field-examples-tip.visible {
+    opacity: 1;
+    transform: translateX(0);
+}
+.field-examples-tip-title {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.3rem;
+}
+.field-examples-tip-row {
+    padding: 0.15rem 0;
+    word-break: break-word;
+}
+.field-examples-tip-row + .field-examples-tip-row {
+    border-top: 1px dashed var(--border);
+    margin-top: 0.25rem;
+    padding-top: 0.35rem;
+}
+.anki-import-include-new {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 0.6rem;
+    row-gap: 0.15rem;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+.anki-import-include-new input {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    margin: 0;
+    cursor: pointer;
+}
+.anki-import-include-new > span:first-of-type {
+    grid-column: 2;
+    grid-row: 1;
+    color: var(--text-primary);
+    font-size: 0.92rem;
+}
+.anki-import-include-new-hint {
+    grid-column: 2;
+    grid-row: 2;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+.anki-import-estimate {
+    margin: 0.25rem 0 0;
+    font-size: 0.92rem;
+    color: var(--accent);
+    font-weight: 500;
+}
+.anki-import-progress {
+    height: 6px;
+    background: var(--bg-secondary);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.anki-import-progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width 0.2s ease;
+}
+
+@media (max-width: 600px) {
+    .anki-import-field-row {
+        grid-template-columns: 1fr;
+        gap: 0.3rem;
+    }
 }
 
 .value-card {
