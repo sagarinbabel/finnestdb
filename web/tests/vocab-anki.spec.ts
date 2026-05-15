@@ -344,12 +344,14 @@ test.describe('pure helpers', () => {
         decks: ['Finnish::A1'],
         fieldByModel: { Basic: 'Word' },
         includeNew: false,
+        includeSuspended: false,
       });
       w.__finestTest.saveAnkiPrefs('ET', {
         filter: 'custom-et',
         decks: ['Estonian::A1', 'Estonian::A2'],
         fieldByModel: { Basic: 'Sõna' },
         includeNew: true,
+        includeSuspended: true,
       });
       return {
         initialFI,
@@ -358,19 +360,21 @@ test.describe('pure helpers', () => {
         savedET: w.__finestTest.loadAnkiPrefs('ET'),
       };
     });
-    expect(results.initialFI).toEqual({ filter: 'finnish|suomi', decks: [], fieldByModel: {}, includeNew: false });
-    expect(results.initialET).toEqual({ filter: 'estonian|eesti', decks: [], fieldByModel: {}, includeNew: false });
+    expect(results.initialFI).toEqual({ filter: 'finnish|suomi', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false });
+    expect(results.initialET).toEqual({ filter: 'estonian|eesti', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false });
     expect(results.savedFI).toEqual({
       filter: 'custom-fi',
       decks: ['Finnish::A1'],
       fieldByModel: { Basic: 'Word' },
       includeNew: false,
+      includeSuspended: false,
     });
     expect(results.savedET).toEqual({
       filter: 'custom-et',
       decks: ['Estonian::A1', 'Estonian::A2'],
       fieldByModel: { Basic: 'Sõna' },
       includeNew: true,
+      includeSuspended: true,
     });
   });
 });
@@ -594,28 +598,31 @@ function notesInDeck(deck: string): number[] {
 }
 
 // Parse an AnkiConnect findNotes query and return the matching note IDs.
-// Supports `deck:"X"` and an optional `-is:new` predicate that filters out
-// IDs in `newNoteIds` (the test fixture marks specific notes as never-studied).
-// Mirrors how Anki itself treats the search: a deck restriction plus a
-// not-is-new filter.
+// Supports `deck:"X"` and optional `-is:new` / `-is:suspended` predicates that
+// filter out IDs in the corresponding fixture sets. Mirrors Anki's own
+// semantics: a deck restriction plus negative card-state filters.
 function findNotesQuery(
   query: string,
   newNoteIds: Set<number>,
+  suspendedNoteIds: Set<number>,
   resolveDeck: (deck: string) => number[],
 ): number[] {
   const m = query.match(/deck:"([^"]+)"/);
   if (!m) return [];
-  const deckNotes = resolveDeck(m[1]);
-  const excludeNew = /-is:new\b/.test(query);
-  if (!excludeNew) return deckNotes;
-  return deckNotes.filter(id => !newNoteIds.has(id));
+  let ids = resolveDeck(m[1]);
+  if (/-is:new\b/.test(query)) ids = ids.filter(id => !newNoteIds.has(id));
+  if (/-is:suspended\b/.test(query)) ids = ids.filter(id => !suspendedNoteIds.has(id));
+  return ids;
 }
 
-function baselineAnkiMocks(newNoteIds: Set<number> = new Set()): AnkiMocks {
+function baselineAnkiMocks(
+  newNoteIds: Set<number> = new Set(),
+  suspendedNoteIds: Set<number> = new Set(),
+): AnkiMocks {
   return {
     version: () => 6,
     deckNames: () => SAMPLE_DECKS,
-    findNotes: (params) => findNotesQuery(String(params.query || ''), newNoteIds, notesInDeck),
+    findNotes: (params) => findNotesQuery(String(params.query || ''), newNoteIds, suspendedNoteIds, notesInDeck),
     notesInfo: (params) => {
       const ids = (params.notes as number[]) || [];
       return ids.map(id => NOTES_INFO[id]).filter(Boolean);
@@ -1113,6 +1120,107 @@ test.describe('Anki import popup', () => {
     await page.getByRole('button', { name: 'Import', exact: true }).click();
     await expect.poll(() => importBody).not.toBeNull();
     expect(new Set(importBody!.words)).toEqual(new Set(['kassi', 'koer', 'auto']));
+  });
+
+  test('include-suspended toggle is off by default and the estimate excludes suspended cards', async ({ page }) => {
+    // Notes 100/101 active; 102 suspended (within Estonian::A1 = [100,101,102]).
+    const suspendedIds = new Set<number>([102]);
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks(new Set(), suspendedIds));
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+
+    const toggle = page.locator('#anki-import-include-suspended');
+    await expect(toggle).not.toBeChecked();
+
+    const estimate = page.locator('#anki-import-estimate');
+    await expect(estimate).toContainText('2 notes');
+    await expect(estimate).toContainText('1 suspended card excluded');
+    // Toggle on → suspended note counts.
+    await toggle.check();
+    await expect(estimate).toContainText('3 notes');
+    await expect(estimate).not.toContainText('suspended card excluded');
+  });
+
+  test('include-suspended state persists across modal reopen', async ({ page }) => {
+    const suspendedIds = new Set<number>([102]);
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks(new Set(), suspendedIds));
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.locator('#anki-import-include-suspended').check();
+    await page.locator('#anki-import-modal-close').click();
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-include-suspended')).toBeChecked();
+  });
+
+  test('Import respects the include-suspended toggle by default (suspended notes excluded)', async ({ page }) => {
+    // 100 (kassi), 101 (koer) active; 102 (auto) is suspended.
+    const suspendedIds = new Set<number>([102]);
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks(new Set(), suspendedIds));
+
+    let importBody: { lang?: string; words?: string[] } | null = null;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'POST') {
+        importBody = route.request().postDataJSON();
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ imported: [], unresolved: [] }) });
+      } else {
+        await route.fallback();
+      }
+    });
+
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    await expect.poll(() => importBody).not.toBeNull();
+    expect(new Set(importBody!.words)).toEqual(new Set(['kassi', 'koer']));
+  });
+
+  test('Estimate breaks new vs suspended exclusions into separate counts', async ({ page }) => {
+    // 100 is new+suspended (counted once), 101 is suspended only,
+    // 102 is new only, plus 200/201 (Estonian::A2) which are active.
+    const newIds = new Set<number>([100, 102]);
+    const suspendedIds = new Set<number>([100, 101]);
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks(newIds, suspendedIds));
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.locator('[data-deck-check="Estonian::A2"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+    const estimate = page.locator('#anki-import-estimate');
+    // Filter order: new first (100, 102 dropped), then suspended (101 dropped
+    // since 100 was already gone). Active = 200, 201 → 2 notes.
+    await expect(estimate).toContainText('2 notes');
+    await expect(estimate).toContainText('2 new cards excluded');
+    await expect(estimate).toContainText('1 suspended card excluded');
   });
 
   test('clicking the field-picker toggle opens its menu (incl. model names with spaces/parens)', async ({ page }) => {

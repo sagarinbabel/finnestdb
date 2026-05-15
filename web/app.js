@@ -1516,6 +1516,7 @@ function loadAnkiPrefs(lang) {
         decks: [],
         fieldByModel: {},
         includeNew: false,
+        includeSuspended: false,
     };
     try {
         const raw = localStorage.getItem(ankiPrefsKey(lang));
@@ -1527,6 +1528,7 @@ function loadAnkiPrefs(lang) {
             decks: Array.isArray(parsed.decks) ? parsed.decks : empty.decks,
             fieldByModel: parsed.fieldByModel && typeof parsed.fieldByModel === 'object' ? parsed.fieldByModel : empty.fieldByModel,
             includeNew: typeof parsed.includeNew === 'boolean' ? parsed.includeNew : empty.includeNew,
+            includeSuspended: typeof parsed.includeSuspended === 'boolean' ? parsed.includeSuspended : empty.includeSuspended,
         };
     }
     catch {
@@ -1575,6 +1577,7 @@ const ankiImport = {
     examplesByModel: {},
     allNotes: [],
     includeNew: false,
+    includeSuspended: false,
 };
 // Field names that hint "this is the bare word/lemma", per active language.
 // Universal English terms first so any English-labeled deck works; then the
@@ -1643,6 +1646,7 @@ function openAnkiImportModal() {
     ankiImport.selected = new Set(prefs.decks);
     ankiImport.fieldByModel = { ...prefs.fieldByModel };
     ankiImport.includeNew = prefs.includeNew;
+    ankiImport.includeSuspended = prefs.includeSuspended;
     ankiImport.allNotes = [];
     ankiImport.expanded = new Set();
     modal.classList.remove('hidden');
@@ -1779,6 +1783,7 @@ function persistAnkiPrefs() {
         decks: Array.from(ankiImport.selected),
         fieldByModel: ankiImport.fieldByModel,
         includeNew: ankiImport.includeNew,
+        includeSuspended: ankiImport.includeSuspended,
     });
 }
 function onAnkiFilterInput(value) {
@@ -1844,22 +1849,26 @@ async function loadAnkiModelsForSelection() {
         fieldsContainer.innerHTML = '';
     try {
         const decks = Array.from(ankiImport.selected);
-        // For each selected deck, fetch BOTH the full note set and the
-        // "studied" subset (notes with at least one non-new card). We use the
-        // second set to mark each note's `studied` flag so the import-step
-        // estimate and the actual import respect the "include new" toggle
-        // without another round-trip to Anki.
+        // For each selected deck, fetch the full note set plus two subsets:
+        //   - "studied"      = notes with at least one non-new card (-is:new)
+        //   - "notSuspended" = notes with at least one non-suspended card
+        // We invert the suspended set so the snapshot's `suspended` flag is
+        // true only when every card on the note is paused. Three queries per
+        // deck, fired in parallel — even for a few dozen decks the discovery
+        // step stays comfortably under a second.
         const perDeck = await Promise.all(decks.map(async (d) => {
-            const [all, studied] = await Promise.all([
+            const [all, studied, notSuspended] = await Promise.all([
                 ankiInvoke('findNotes', { query: `deck:"${d}"` }),
                 ankiInvoke('findNotes', { query: `deck:"${d}" -is:new` }),
+                ankiInvoke('findNotes', { query: `deck:"${d}" -is:suspended` }),
             ]);
-            return { all, studied };
+            return { all, studied, notSuspended };
         }));
         const studiedSet = new Set();
+        const notSuspendedSet = new Set();
         const allIDsSeen = new Set();
         const allIDs = [];
-        for (const { all, studied } of perDeck) {
+        for (const { all, studied, notSuspended } of perDeck) {
             for (const id of all) {
                 if (allIDsSeen.has(id))
                     continue;
@@ -1868,6 +1877,8 @@ async function loadAnkiModelsForSelection() {
             }
             for (const id of studied)
                 studiedSet.add(id);
+            for (const id of notSuspended)
+                notSuspendedSet.add(id);
         }
         // Fetch every note in the selected decks (chunked to keep payloads
         // reasonable). We need the full data — not just a sample — so that
@@ -1891,6 +1902,7 @@ async function loadAnkiModelsForSelection() {
                     modelName: note.modelName,
                     fields: stripped,
                     studied: studiedSet.has(note.noteId),
+                    suspended: !notSuspendedSet.has(note.noteId),
                 });
             }
             if (summary) {
@@ -2018,14 +2030,22 @@ function onAnkiFieldPick(model, field) {
     renderAnkiFieldPickers();
     renderAnkiImportEstimate();
 }
-// ── Include-new toggle + import-size estimate ──────────────────────────────
+// ── Include-new + include-suspended toggles + import-size estimate ─────────
 function renderAnkiIncludeNewToggle() {
-    const checkbox = document.getElementById('anki-import-include-new');
-    if (checkbox)
-        checkbox.checked = ankiImport.includeNew;
+    const newCb = document.getElementById('anki-import-include-new');
+    if (newCb)
+        newCb.checked = ankiImport.includeNew;
+    const susCb = document.getElementById('anki-import-include-suspended');
+    if (susCb)
+        susCb.checked = ankiImport.includeSuspended;
 }
 function onAnkiIncludeNewToggle(checked) {
     ankiImport.includeNew = checked;
+    persistAnkiPrefs();
+    renderAnkiImportEstimate();
+}
+function onAnkiIncludeSuspendedToggle(checked) {
+    ankiImport.includeSuspended = checked;
     persistAnkiPrefs();
     renderAnkiImportEstimate();
 }
@@ -2035,6 +2055,8 @@ function onAnkiIncludeNewToggle(checked) {
 function selectedAnkiNotes() {
     return ankiImport.allNotes.filter(note => {
         if (!ankiImport.includeNew && !note.studied)
+            return false;
+        if (!ankiImport.includeSuspended && note.suspended)
             return false;
         const field = ankiImport.fieldByModel[note.modelName];
         if (!field)
@@ -2071,25 +2093,29 @@ function renderAnkiImportEstimate() {
         el.textContent = '';
         return;
     }
-    // Separate the two ways a note can be left out so we don't double-count.
-    // (Pre-fix the toggle-excluded new cards were also reported under
-    // "skipped", which made the message read like two independent reasons.)
-    //
-    //   step 1: apply the new-card toggle  → `eligible`
-    //   step 2: apply field-empty / Skip   → `active`
-    const eligible = ankiImport.allNotes.filter(n => ankiImport.includeNew || n.studied);
-    const active = eligible.filter(n => {
+    // Three filter steps, each attributed separately so no note ever shows up
+    // under more than one reason:
+    //   step 1: new-card toggle      → `afterNew`
+    //   step 2: suspended toggle     → `afterSuspended`
+    //   step 3: field-empty / Skip   → `active`
+    const afterNew = ankiImport.allNotes.filter(n => ankiImport.includeNew || n.studied);
+    const afterSuspended = afterNew.filter(n => ankiImport.includeSuspended || !n.suspended);
+    const active = afterSuspended.filter(n => {
         const field = ankiImport.fieldByModel[n.modelName];
         if (!field)
             return false;
         return (n.fields[field] || '').trim() !== '';
     });
-    const newExcluded = ankiImport.allNotes.length - eligible.length;
-    const fieldSkipped = eligible.length - active.length;
+    const newExcluded = ankiImport.allNotes.length - afterNew.length;
+    const suspendedExcluded = afterNew.length - afterSuspended.length;
+    const fieldSkipped = afterSuspended.length - active.length;
     const words = estimateImportWords(active);
     const detailParts = [];
     if (newExcluded > 0) {
         detailParts.push(`${newExcluded.toLocaleString()} new card${newExcluded === 1 ? '' : 's'} excluded`);
+    }
+    if (suspendedExcluded > 0) {
+        detailParts.push(`${suspendedExcluded.toLocaleString()} suspended card${suspendedExcluded === 1 ? '' : 's'} excluded`);
     }
     if (fieldSkipped > 0) {
         detailParts.push(`${fieldSkipped.toLocaleString()} note${fieldSkipped === 1 ? '' : 's'} with empty or skipped field`);
@@ -2254,10 +2280,24 @@ async function runAnkiImport() {
         if (notes.length === 0) {
             if (msg)
                 msg.textContent = 'No notes match the current selection.';
-            if (detail)
-                detail.textContent = ankiImport.includeNew
-                    ? 'Selected decks are empty.'
-                    : 'Every note in the selected decks is still "new" — turn on “Mark new cards as known” to import them.';
+            if (detail) {
+                // Diagnose which filter is responsible so the user knows
+                // which toggle (or field choice) to revisit.
+                const hasNew = ankiImport.allNotes.some(n => !n.studied);
+                const hasSuspended = ankiImport.allNotes.some(n => n.suspended);
+                if (ankiImport.allNotes.length === 0) {
+                    detail.textContent = 'Selected decks are empty.';
+                }
+                else if (!ankiImport.includeNew && hasNew && !ankiImport.allNotes.some(n => n.studied)) {
+                    detail.textContent = 'Every note in the selected decks is still "new" — turn on “Mark new cards as known” to import them.';
+                }
+                else if (!ankiImport.includeSuspended && hasSuspended && !ankiImport.allNotes.some(n => !n.suspended)) {
+                    detail.textContent = 'Every note in the selected decks is suspended — turn on “Include suspended cards” to import them.';
+                }
+                else {
+                    detail.textContent = 'No notes had a non-empty value for the chosen fields.';
+                }
+            }
             if (doneActions)
                 doneActions.classList.remove('hidden');
             return;
@@ -4393,6 +4433,11 @@ function initVocabAnkiImport() {
         const target = e.target;
         if (target)
             onAnkiIncludeNewToggle(target.checked);
+    });
+    document.getElementById('anki-import-include-suspended')?.addEventListener('change', (e) => {
+        const target = e.target;
+        if (target)
+            onAnkiIncludeSuspendedToggle(target.checked);
     });
     // Import modal — custom field picker (click to open/close + select).
     const fieldsContainer = document.getElementById('anki-import-fields');
