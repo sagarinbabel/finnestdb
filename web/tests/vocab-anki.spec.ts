@@ -1827,6 +1827,150 @@ test.describe('Anki import popup', () => {
     expect(postCalled).toBe(false);
   });
 
+  test('Sync click shows the Replace dialog with a status row (no modal opens up front)', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    let putBody: { scope?: string } | null = null;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'PUT') {
+        putBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ added: [], removed: [], unresolved: [] }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter:                  '',
+        decks:                   ['Estonian::A1'],
+        fieldByModel:            { ETBasic: 'Sõna' },
+        includeNew:              false,
+        includeSuspended:        false,
+        replaceMode:             true,
+        lastSyncAt:              Date.now(),
+        replaceConfirmSkip:      false,
+        preserveManualOnReplace: true,
+      }));
+    });
+    await page.reload();
+    await page.locator('#vocab-anki-sync').click();
+
+    // The Replace dialog appears immediately; the full import modal stays
+    // hidden. The status row shows the spinner first.
+    const dialog = page.locator('#dialog-modal');
+    await expect(dialog).not.toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-modal')).toHaveClass(/hidden/);
+    await expect(page.locator('#dialog-modal-status')).not.toHaveClass(/hidden/);
+    await expect(dialog).toContainText(/Replace Estonian vocabulary/i);
+    // The spinner class is on the icon while validation is in flight; this
+    // expectation MIGHT race past it on a very fast mock, so we only assert
+    // it's at least shown OR has flipped to the check state.
+    const statusIcon = page.locator('#dialog-modal-status-icon');
+    await expect.poll(async () => {
+      const cls = await statusIcon.getAttribute('class') || '';
+      return cls.includes('spinner') || cls.includes('check');
+    }).toBe(true);
+
+    // Eventually the validation completes and the icon flips to the check.
+    await expect(statusIcon).toHaveClass(/check/);
+    await expect(page.locator('#dialog-modal-status-text')).toHaveText(/Anki ready/i);
+
+    // Modal still hasn't shown — we're waiting for the user.
+    await expect(page.locator('#anki-import-modal')).toHaveClass(/hidden/);
+
+    // Confirm → modal opens at running stage, PUT fires with scope=anki.
+    await page.locator('#dialog-modal-confirm').click();
+    await expect(page.locator('#anki-import-modal')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-stage-running')).not.toHaveClass(/hidden/);
+    await expect.poll(() => putBody).not.toBeNull();
+    expect(putBody!.scope).toBe('anki');
+  });
+
+  test('Sync with replace mode off skips the dialog and goes straight to import', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    let postBody: { words?: string[] } | null = null;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'POST') {
+        postBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ imported: [], unresolved: [] }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter:                  '',
+        decks:                   ['Estonian::A1'],
+        fieldByModel:            { ETBasic: 'Sõna' },
+        includeNew:              false,
+        includeSuspended:        false,
+        replaceMode:             false, // ← additive, no confirm needed
+        lastSyncAt:              Date.now(),
+        replaceConfirmSkip:      false,
+        preserveManualOnReplace: true,
+      }));
+    });
+    await page.reload();
+    await page.locator('#vocab-anki-sync').click();
+
+    // No dialog. The modal opens at the running stage once discovery is
+    // done (no "Connect to Anki" loading screen up front).
+    await expect(page.locator('#dialog-modal')).toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-stage-running')).not.toHaveClass(/hidden/);
+    await expect.poll(() => postBody).not.toBeNull();
+  });
+
+  test('Sync with replaceConfirmSkip set skips the dialog even with replace mode on', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    let putCalled = false;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'PUT') {
+        putCalled = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ added: [], removed: [], unresolved: [] }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter:                  '',
+        decks:                   ['Estonian::A1'],
+        fieldByModel:            { ETBasic: 'Sõna' },
+        includeNew:              false,
+        includeSuspended:        false,
+        replaceMode:             true,
+        lastSyncAt:              Date.now(),
+        replaceConfirmSkip:      true, // ← dismissed in a previous run
+        preserveManualOnReplace: true,
+      }));
+    });
+    await page.reload();
+    await page.locator('#vocab-anki-sync').click();
+    await expect(page.locator('#dialog-modal')).toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-stage-running')).not.toHaveClass(/hidden/);
+    await expect.poll(() => putCalled).toBe(true);
+  });
+
   test('Sync falls through to manual picker if saved decks no longer exist', async ({ page }) => {
     await mockMe(page, 'user', { activeLanguage: 'ET' });
     await mockKnownWordsEmpty(page);

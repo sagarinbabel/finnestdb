@@ -555,6 +555,74 @@ async function showConfirmWithRemember(opts: ConfirmOptions & { rememberLabel: s
     return { confirmed: result !== null, remember: lastDialogRemember };
 }
 
+interface StatusUpdate {
+    state: 'loading' | 'success' | 'error';
+    text:  string;
+}
+
+// Confirm dialog with a status row driven by an external promise. While the
+// promise is in flight the row shows a spinner + `loadingText`; on resolve
+// it shows a checkmark + the success text; on rejection an error icon +
+// rejection message. Used by the Anki sync flow so the user sees the
+// "Replace …" dialog *immediately* with a "Checking Anki…" indicator that
+// flips to "Anki ready ✓" once discovery completes.
+async function showConfirmWithStatus<T>(
+    opts: ConfirmOptions & { rememberLabel?: string; loadingText: string; successText: string },
+    statusPromise: Promise<T>,
+): Promise<{ confirmed: boolean; remember: boolean; status: T | { __failed: true; error: unknown } }> {
+    const wrap = document.getElementById('dialog-modal-status');
+    const icon = document.getElementById('dialog-modal-status-icon');
+    const text = document.getElementById('dialog-modal-status-text');
+
+    const setStatus = (update: StatusUpdate) => {
+        if (!wrap || !icon || !text) return;
+        wrap.classList.remove('hidden', 'success', 'error');
+        icon.classList.remove('spinner', 'check');
+        if (update.state === 'loading') icon.classList.add('spinner');
+        else if (update.state === 'success') {
+            icon.classList.add('check');
+            wrap.classList.add('success');
+        } else {
+            wrap.classList.add('error');
+            icon.textContent = '!';
+        }
+        text.textContent = update.text;
+    };
+    setStatus({ state: 'loading', text: opts.loadingText });
+
+    // Track the promise outcome so the caller can read it after the dialog
+    // closes (or while it's still open if they want to gate on validation
+    // BEFORE the user confirms).
+    let resolvedValue: T | undefined;
+    let rejectedError: unknown;
+    statusPromise.then(
+        (val) => {
+            resolvedValue = val;
+            setStatus({ state: 'success', text: opts.successText });
+        },
+        (err) => {
+            rejectedError = err;
+            const msg = err && (err as { message?: string }).message ? (err as { message: string }).message : 'Failed.';
+            setStatus({ state: 'error', text: msg });
+        },
+    );
+
+    const result = await openDialog({ ...opts, prompt: false });
+    // Hide the status row again so a later non-status dialog doesn't show
+    // stale content.
+    if (wrap) wrap.classList.add('hidden');
+    if (icon) {
+        icon.classList.remove('spinner', 'check');
+        icon.textContent = '';
+    }
+
+    const status: T | { __failed: true; error: unknown } =
+        rejectedError !== undefined
+            ? { __failed: true, error: rejectedError }
+            : (resolvedValue as T);
+    return { confirmed: result !== null, remember: lastDialogRemember, status };
+}
+
 async function showPrompt(opts: PromptOptions): Promise<string | null> {
     return openDialog({ ...opts, prompt: true });
 }
@@ -2040,6 +2108,10 @@ interface AnkiImportState {
     // and field-picker stages and run the import directly. Set by the
     // "Sync from Anki" quick action on the vocab page.
     syncMode:         boolean;
+    // When the quick-sync flow already showed its own replace confirmation
+    // dialog, runAnkiImport must not pop the same dialog again. Reset after
+    // each runAnkiImport invocation.
+    replaceConfirmedThisRun: boolean;
 }
 
 const ankiImport: AnkiImportState = {
@@ -2060,6 +2132,7 @@ const ankiImport: AnkiImportState = {
     replaceMode: false,
     preserveManualOnReplace: true,
     syncMode: false,
+    replaceConfirmedThisRun: false,
 };
 
 // Field names that hint "this is the bare word/lemma", per active language.
@@ -2138,16 +2211,98 @@ function openAnkiImportModal(): void {
 // deck picker and field-picker stages and go straight to import using the
 // saved prefs. Fails over to the manual flow if discovery turns up no
 // matching decks.
-function openAnkiSyncModal(): void {
-    openAnkiModal(true);
+// Quick-action sync flow. Doesn't show the "Connect to Anki" modal up
+// front — instead surfaces the replace-mode confirmation dialog (if
+// applicable) with a status indicator that flips from a spinner to a check
+// mark once discovery completes. The full modal only appears at the running
+// stage, or when discovery surfaces a state change that needs review.
+async function openAnkiSyncModal(): Promise<void> {
+    const prefs = loadAnkiPrefs(state.activeLanguage);
+    // Sync needs a prior successful import and at least one saved deck.
+    // Anything else routes to the manual flow.
+    if (!prefs.lastSyncAt || prefs.decks.length === 0) {
+        openAnkiModal(false);
+        return;
+    }
+
+    initializeAnkiState(prefs, /* sync */ true);
+
+    // Kick off discovery immediately — runs concurrently with whatever dialog
+    // is shown so the user never waits for sequential steps. The promise
+    // resolves to a structured result rather than throwing so the dialog can
+    // surface "Anki ready" vs an actionable error without separate paths.
+    const discovery = runSyncDiscovery();
+
+    const needsConfirm = ankiImport.replaceMode && !prefs.replaceConfirmSkip;
+    let validation: SyncDiscoveryResultOrFailure;
+    let dialogConfirmed = true;
+
+    if (needsConfirm) {
+        const langName = languageName(ankiImport.lang);
+        const dialog = await showConfirmWithStatus<SyncDiscoveryResultOrFailure>({
+            title:         `Replace ${langName} vocabulary?`,
+            message:       `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
+            confirmLabel:  'Sync and replace',
+            danger:        true,
+            rememberLabel: "Don't show this again",
+            loadingText:   'Checking Anki…',
+            successText:   'Anki ready.',
+        }, discovery);
+        dialogConfirmed = dialog.confirmed;
+        if (dialog.confirmed && dialog.remember) recordReplaceConfirmSkip();
+        validation = '__failed' in dialog.status
+            ? { ok: false, reason: 'connect-failed', detail: 'Failed to reach Anki.' }
+            : dialog.status;
+    } else {
+        validation = await discovery;
+    }
+
+    if (!dialogConfirmed) return; // user cancelled the confirm dialog
+
+    if (!validation.ok) {
+        // Discovery turned up something the user should see — open the modal
+        // in the appropriate manual-flow stage with the toast we'd normally
+        // show in the auto-advance path.
+        if (validation.reason === 'connect-failed') {
+            showToast(validation.detail || 'Could not reach Anki.', 'error');
+            openAnkiSetupModal();
+            return;
+        }
+        // Deck-related issues (missing decks, fully empty selection) route to
+        // the deck-picker stage so the user can re-select. A model-set change
+        // routes to the field-picker stage so they can review the new card
+        // types.
+        const stage = validation.reason === 'model-changed' ? 'fields' : 'decks';
+        openAnkiModalAtStage(stage);
+        showToast(validation.detail || 'Anki state has changed. Review your selection.', 'info', 6000);
+        return;
+    }
+
+    // All clear — show the modal at the running stage and execute the
+    // import. The note snapshots are already in memory from discovery.
+    // Flag the run as already-confirmed so runAnkiImport doesn't pop a
+    // second replace dialog on top of the one the user just dismissed.
+    if (needsConfirm) ankiImport.replaceConfirmedThisRun = true;
+    openAnkiModalAtStage('running');
+    void runAnkiImport();
 }
 
 function openAnkiModal(sync: boolean): void {
     const modal = document.getElementById('anki-import-modal');
     if (!modal) return;
+    initializeAnkiState(loadAnkiPrefs(state.activeLanguage), sync);
+    modal.classList.remove('hidden');
+    showAnkiStage('loading');
+    const loadingMsg = document.getElementById('anki-import-loading-msg');
+    if (loadingMsg) loadingMsg.textContent = sync ? 'Syncing from Anki…' : 'Connecting to AnkiConnect…';
+    void connectAndLoadDecks();
+}
+
+// Pre-populate `ankiImport` state from saved prefs without touching the DOM.
+// Shared between the manual and the silent (quick-sync) entry points.
+function initializeAnkiState(prefs: AnkiImportPrefs, sync: boolean): void {
     ankiImport.open = true;
     ankiImport.lang = state.activeLanguage;
-    const prefs = loadAnkiPrefs(ankiImport.lang);
     ankiImport.filter = prefs.filter;
     ankiImport.selected = new Set(prefs.decks);
     ankiImport.fieldByModel = { ...prefs.fieldByModel };
@@ -2158,11 +2313,190 @@ function openAnkiModal(sync: boolean): void {
     ankiImport.syncMode = sync;
     ankiImport.allNotes = [];
     ankiImport.expanded = new Set<string>();
+}
+
+// Open the modal at a specific stage. Used by the sync flow once discovery
+// has populated `ankiImport.allNotes` etc — we skip the "loading" stage
+// because there's nothing left to load.
+function openAnkiModalAtStage(stage: AnkiStage): void {
+    const modal = document.getElementById('anki-import-modal');
+    if (!modal) return;
     modal.classList.remove('hidden');
-    showAnkiStage('loading');
-    const loadingMsg = document.getElementById('anki-import-loading-msg');
-    if (loadingMsg) loadingMsg.textContent = sync ? 'Syncing from Anki…' : 'Connecting to AnkiConnect…';
-    void connectAndLoadDecks();
+    // The sync flow has already populated state but didn't render any
+    // section — fill in everything the target stage needs to look right.
+    if (stage === 'decks') {
+        // Build the deck tree from the deckNames we cached during discovery.
+        if (ankiImport.tree.length === 0) {
+            ankiImport.tree = buildAnkiDeckTree(ankiImport.deckNames);
+        }
+        // Auto-expand ancestors of every preselected deck so they're
+        // visible without the user having to drill in.
+        for (const deck of ankiImport.selected) {
+            for (const ancestor of ancestorPaths(deck)) ankiImport.expanded.add(ancestor);
+        }
+        renderAnkiFilter();
+        renderAnkiDeckTree();
+        renderAnkiDeckSummary();
+    } else if (stage === 'fields') {
+        renderAnkiFieldPickers();
+        renderAnkiIncludeNewToggle();
+        renderReplaceModeToggle();
+        renderAnkiImportEstimate();
+    } else if (stage === 'running') {
+        const msg = document.getElementById('anki-import-running-msg');
+        const bar = document.getElementById('anki-import-progress-bar');
+        if (msg) msg.textContent = 'Starting…';
+        if (bar) bar.style.width = '0%';
+    }
+    showAnkiStage(stage);
+}
+
+interface SyncDiscoveryResult {
+    ok:     true;
+}
+interface SyncDiscoveryFailure {
+    ok:     false;
+    reason: 'connect-failed' | 'deck-missing' | 'model-changed' | 'empty-selection';
+    detail: string;
+}
+type SyncDiscoveryResultOrFailure = SyncDiscoveryResult | SyncDiscoveryFailure;
+
+// Runs the full discovery pipeline silently (no modal side effects beyond
+// populating `ankiImport.allNotes` / `ankiImport.fieldByModel` / etc). Used
+// by the quick-sync flow. Mirrors connectAndLoadDecks +
+// loadAnkiModelsForSelection but condensed and returns a structured result
+// instead of branching into stages.
+async function runSyncDiscovery(): Promise<SyncDiscoveryResultOrFailure> {
+    try {
+        await ankiInvoke<number>('version');
+        const deckNames = await ankiInvoke<string[]>('deckNames');
+        ankiImport.deckNames = deckNames;
+        ankiImport.tree = buildAnkiDeckTree(deckNames);
+        const valid = new Set(deckNames);
+        const savedDecks = Array.from(ankiImport.selected);
+        const missingDecks = savedDecks.filter(d => !valid.has(d));
+        for (const d of missingDecks) ankiImport.selected.delete(d);
+        if (ankiImport.selected.size === 0) {
+            return { ok: false, reason: 'empty-selection', detail: missingDecks.length > 0
+                ? `${missingDecks.length} previously-imported deck${missingDecks.length === 1 ? '' : 's'} no longer exist in Anki. Pick a new selection.`
+                : 'No previously-imported decks exist in Anki any more.' };
+        }
+        if (missingDecks.length > 0) {
+            return { ok: false, reason: 'deck-missing', detail: `${missingDecks.length} previously-imported deck${missingDecks.length === 1 ? '' : 's'} no longer exist${missingDecks.length === 1 ? 's' : ''} in Anki. Review your selection.` };
+        }
+
+        // Fetch notes (all + studied + non-suspended sets per deck).
+        const decks = Array.from(ankiImport.selected);
+        const perDeck = await Promise.all(decks.map(async (d) => {
+            const [all, studied, notSuspended] = await Promise.all([
+                ankiInvoke<number[]>('findNotes', { query: `deck:"${d}"` }),
+                ankiInvoke<number[]>('findNotes', { query: `deck:"${d}" -is:new` }),
+                ankiInvoke<number[]>('findNotes', { query: `deck:"${d}" -is:suspended` }),
+            ]);
+            return { all, studied, notSuspended };
+        }));
+        const studiedSet = new Set<number>();
+        const notSuspendedSet = new Set<number>();
+        const seenIDs = new Set<number>();
+        const allIDs: number[] = [];
+        for (const { all, studied, notSuspended } of perDeck) {
+            for (const id of all) {
+                if (seenIDs.has(id)) continue;
+                seenIDs.add(id);
+                allIDs.push(id);
+            }
+            for (const id of studied) studiedSet.add(id);
+            for (const id of notSuspended) notSuspendedSet.add(id);
+        }
+
+        const snapshots: AnkiNoteSnapshot[] = [];
+        const CHUNK = 500;
+        for (let i = 0; i < allIDs.length; i += CHUNK) {
+            const chunk = allIDs.slice(i, i + CHUNK);
+            const notes = await ankiInvoke<Array<{ noteId: number; modelName: string; fields: Record<string, { value: string }> }>>(
+                'notesInfo',
+                { notes: chunk },
+            );
+            for (const note of notes) {
+                if (!note?.modelName) continue;
+                const stripped: Record<string, string> = {};
+                for (const [name, info] of Object.entries(note.fields || {})) {
+                    stripped[name] = stripHtml(info.value || '');
+                }
+                snapshots.push({
+                    noteId:    note.noteId,
+                    modelName: note.modelName,
+                    fields:    stripped,
+                    studied:   studiedSet.has(note.noteId),
+                    suspended: !notSuspendedSet.has(note.noteId),
+                });
+            }
+        }
+        ankiImport.allNotes = snapshots;
+
+        const savedModelKeys = new Set(Object.keys(ankiImport.fieldByModel));
+        const modelSet = new Set<string>();
+        for (const n of snapshots) modelSet.add(n.modelName);
+        const models = Array.from(modelSet).sort((a, b) => a.localeCompare(b));
+        ankiImport.models = models;
+
+        // Field lists per model.
+        const fieldsByModel: Record<string, string[]> = {};
+        await Promise.all(models.map(async (model) => {
+            try {
+                fieldsByModel[model] = await ankiInvoke<string[]>('modelFieldNames', { modelName: model });
+            } catch {
+                fieldsByModel[model] = [];
+            }
+        }));
+        ankiImport.fieldsByModel = fieldsByModel;
+
+        // Per-(model, field) examples — same as loadAnkiModelsForSelection,
+        // also auto-picks a field for models the user hasn't seen yet.
+        const examplesByModel: Record<string, Record<string, string[]>> = {};
+        for (const model of models) {
+            const fieldList = fieldsByModel[model] || [];
+            const examples: Record<string, string[]> = {};
+            for (const f of fieldList) examples[f] = [];
+            for (const note of snapshots) {
+                if (note.modelName !== model) continue;
+                for (const f of fieldList) {
+                    const v = (note.fields[f] || '').trim();
+                    if (!v) continue;
+                    const bucket = examples[f];
+                    if (bucket.length < 2 && !bucket.includes(v)) bucket.push(v);
+                }
+            }
+            examplesByModel[model] = examples;
+            if (!(model in ankiImport.fieldByModel)) {
+                ankiImport.fieldByModel[model] = pickBestField(fieldList, examples, ankiImport.lang);
+            }
+        }
+        ankiImport.examplesByModel = examplesByModel;
+        persistAnkiPrefs();
+
+        // Detect model-set drift (new card type / removed one). Same contract
+        // as the modal-driven sync flow.
+        const newModels = models.filter(m => !savedModelKeys.has(m));
+        const goneModels = Array.from(savedModelKeys).filter(m => !modelSet.has(m));
+        if (newModels.length > 0 || goneModels.length > 0) {
+            const parts: string[] = [];
+            if (newModels.length > 0) parts.push(`${newModels.length} new card type${newModels.length === 1 ? '' : 's'}`);
+            if (goneModels.length > 0) parts.push(`${goneModels.length} card type${goneModels.length === 1 ? '' : 's'} removed`);
+            return { ok: false, reason: 'model-changed', detail: `Anki state has changed (${parts.join(', ')}). Review the field selection before syncing.` };
+        }
+
+        if (selectedAnkiNotes().length === 0) {
+            return { ok: false, reason: 'empty-selection', detail: 'No notes match the current selection.' };
+        }
+
+        return { ok: true };
+    } catch (err: unknown) {
+        const msg = err && (err as { message?: string }).message
+            ? (err as { message: string }).message
+            : 'Failed to reach Anki.';
+        return { ok: false, reason: 'connect-failed', detail: msg };
+    }
 }
 
 function closeAnkiImportModal(): void {
@@ -2875,8 +3209,10 @@ async function runAnkiImport(): Promise<void> {
     // Replace-mode confirmation: a destructive operation that deletes lemmas
     // not in the new selection (including ones added through the textbox or
     // a file). Skipped on a per-language basis once the user has explicitly
-    // checked "Don't show this again" on the dialog.
-    if (ankiImport.replaceMode) {
+    // checked "Don't show this again" on the dialog. Also skipped when the
+    // quick-sync flow has already shown its own status-bearing version of
+    // the same dialog (replaceConfirmedThisRun).
+    if (ankiImport.replaceMode && !ankiImport.replaceConfirmedThisRun) {
         const langName = languageName(ankiImport.lang);
         const prefs = loadAnkiPrefs(ankiImport.lang);
         if (!prefs.replaceConfirmSkip) {
@@ -2891,6 +3227,8 @@ async function runAnkiImport(): Promise<void> {
             if (result.remember) recordReplaceConfirmSkip();
         }
     }
+    // Reset for the next run regardless of which path we took.
+    ankiImport.replaceConfirmedThisRun = false;
 
     if (runBtn) runBtn.disabled = true;
     if (backBtn) backBtn.disabled = true;
@@ -5103,7 +5441,7 @@ function initVocabFileImport(): void {
 function initVocabAnkiImport(): void {
     // Vocab page launcher buttons.
     document.getElementById('vocab-anki-connect')?.addEventListener('click', openAnkiImportModal);
-    document.getElementById('vocab-anki-sync')?.addEventListener('click', openAnkiSyncModal);
+    document.getElementById('vocab-anki-sync')?.addEventListener('click', () => { void openAnkiSyncModal(); });
     document.getElementById('vocab-anki-help')?.addEventListener('click', (e) => {
         e.preventDefault();
         openAnkiSetupModal();
