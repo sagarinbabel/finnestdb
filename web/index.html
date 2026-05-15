@@ -811,6 +811,11 @@
                     <span>Replace existing vocabulary</span>
                     <span class="anki-import-include-new-hint">Off by default — additive. When on, the import becomes a sync: words not in this Anki selection are <strong>removed</strong> from your known-words list.</span>
                 </label>
+                <label class="anki-import-include-new anki-import-preserve-manual hidden" id="anki-import-preserve-manual-wrap">
+                    <input type="checkbox" id="anki-import-preserve-manual" checked />
+                    <span>Preserve manually-imported words</span>
+                    <span class="anki-import-include-new-hint">On by default — words you added through the textbox, a file, or by marking a row known on the Parse page are kept. Uncheck to make the sync replace <em>everything</em>.</span>
+                </label>
                 <p class="anki-import-estimate" id="anki-import-estimate" aria-live="polite"></p>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-link" id="anki-import-back">Back</button>

@@ -348,6 +348,7 @@ test.describe('pure helpers', () => {
         replaceMode: false,
         lastSyncAt: 0,
         replaceConfirmSkip: false,
+        preserveManualOnReplace: true,
       });
       w.__finestTest.saveAnkiPrefs('ET', {
         filter: 'custom-et',
@@ -358,6 +359,7 @@ test.describe('pure helpers', () => {
         replaceMode: true,
         lastSyncAt: 1700000000000,
         replaceConfirmSkip: true,
+        preserveManualOnReplace: false,
       });
       return {
         initialFI,
@@ -366,8 +368,8 @@ test.describe('pure helpers', () => {
         savedET: w.__finestTest.loadAnkiPrefs('ET'),
       };
     });
-    expect(results.initialFI).toEqual({ filter: 'finnish|suomi', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false, replaceMode: false, lastSyncAt: 0, replaceConfirmSkip: false });
-    expect(results.initialET).toEqual({ filter: 'estonian|eesti', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false, replaceMode: false, lastSyncAt: 0, replaceConfirmSkip: false });
+    expect(results.initialFI).toEqual({ filter: 'finnish|suomi', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false, replaceMode: false, lastSyncAt: 0, replaceConfirmSkip: false, preserveManualOnReplace: true });
+    expect(results.initialET).toEqual({ filter: 'estonian|eesti', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false, replaceMode: false, lastSyncAt: 0, replaceConfirmSkip: false, preserveManualOnReplace: true });
     expect(results.savedFI).toEqual({
       filter: 'custom-fi',
       decks: ['Finnish::A1'],
@@ -377,6 +379,7 @@ test.describe('pure helpers', () => {
       replaceMode: false,
       lastSyncAt: 0,
       replaceConfirmSkip: false,
+      preserveManualOnReplace: true,
     });
     expect(results.savedET).toEqual({
       filter: 'custom-et',
@@ -387,6 +390,7 @@ test.describe('pure helpers', () => {
       replaceMode: true,
       lastSyncAt: 1700000000000,
       replaceConfirmSkip: true,
+      preserveManualOnReplace: false,
     });
   });
 });
@@ -1424,6 +1428,135 @@ test.describe('Anki import popup', () => {
     // fixture; the suspended/new toggles are unrelated to replace mode).
     expect(new Set(putBody!.words)).toEqual(new Set(['kassi', 'koer', 'auto']));
     expect(postCalled).toBe(false);
+  });
+
+  test('Preserve-manual toggle is hidden until replace is on, defaults on, and sends scope=anki', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    let putBody: { lang?: string; words?: string[]; scope?: string } | null = null;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'PUT') {
+        putBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ added: [], removed: [], unresolved: [] }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+
+    // Replace toggle off → preserve toggle is hidden.
+    const preserveWrap = page.locator('#anki-import-preserve-manual-wrap');
+    const preserveCb   = page.locator('#anki-import-preserve-manual');
+    await expect(preserveWrap).toHaveClass(/hidden/);
+
+    // Flip replace on → preserve appears, checked by default.
+    await page.locator('#anki-import-replace-mode').check();
+    await expect(preserveWrap).not.toHaveClass(/hidden/);
+    await expect(preserveCb).toBeChecked();
+
+    // Import → confirm dialog appears, scope='anki' on the PUT.
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    await page.locator('#dialog-modal-confirm').click();
+    await expect.poll(() => putBody).not.toBeNull();
+    expect(putBody!.scope).toBe('anki');
+  });
+
+  test('Unchecking preserve-manual sends scope=all on the PUT', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    let putBody: { scope?: string } | null = null;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'PUT') {
+        putBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ added: [], removed: [], unresolved: [] }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.locator('#anki-import-replace-mode').check();
+    await page.locator('#anki-import-preserve-manual').uncheck();
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    await page.locator('#dialog-modal-confirm').click();
+    await expect.poll(() => putBody).not.toBeNull();
+    expect(putBody!.scope).toBe('all');
+  });
+
+  test('Anki additive POST tags new rows with source=anki', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    let postBody: { source?: string; words?: string[] } | null = null;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'POST') {
+        postBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ imported: [], unresolved: [] }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    await expect.poll(() => postBody).not.toBeNull();
+    expect(postBody!.source).toBe('anki');
+  });
+
+  test('Textbox import POST stays source=manual', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'FI' });
+    await mockKnownWordsEmpty(page);
+    let postBody: { source?: string } | null = null;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'POST') {
+        postBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ imported: [], unresolved: [] }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+    await page.goto('/#/vocab');
+    await page.locator('#known-words-input').fill('kissa');
+    await page.getByRole('button', { name: 'Import words' }).click();
+    await expect.poll(() => postBody).not.toBeNull();
+    expect(postBody!.source).toBe('manual');
   });
 
   test('Replace toggle persists across modal reopen', async ({ page }) => {

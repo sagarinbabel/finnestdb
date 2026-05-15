@@ -280,6 +280,11 @@ func (d *DB) initSchema() error {
 		lang TEXT NOT NULL DEFAULT '',
 		lemma TEXT NOT NULL,
 		pos TEXT NOT NULL,
+		-- Where the entry came from: 'manual' (textbox / file / inspect /
+		-- review marking) or 'anki' (Anki sync). Lets the Anki sync flow
+		-- scope its diff to only anki-source rows so words a user marked
+		-- through any other path stay protected.
+		source TEXT NOT NULL DEFAULT 'manual',
 		PRIMARY KEY(user_id, lang, lemma, pos),
 		FOREIGN KEY(user_id) REFERENCES users(id)
 	);
@@ -388,6 +393,9 @@ func (d *DB) initSchema() error {
 	}
 
 	if err := d.ensureLangScopedKnownTable("user_known_lemmas"); err != nil {
+		return err
+	}
+	if err := d.ensureUserKnownLemmasSource(); err != nil {
 		return err
 	}
 	if err := d.ensureLangScopedKnownTable("user_ignored_lemmas"); err != nil {
@@ -1677,7 +1685,22 @@ func (d *DB) UpsertForm(form, lemma, pos, lang string) error {
 	return err
 }
 
-func (d *DB) ImportKnownWords(userID int64, lang string, words []string) ([]KnownLemma, []string, error) {
+// SourceManual / SourceAnki tag where a known-lemma row came from. The
+// strings live on the wire (POST/PUT body and response) so they're stable
+// here too. Other strings are accepted by the store but rejected by the
+// handlers — keep the supported set small.
+const (
+	SourceManual = "manual"
+	SourceAnki   = "anki"
+)
+
+// ImportKnownWords is additive: new rows are inserted with the given source,
+// existing rows are left alone (their source isn't changed). source defaults
+// to "manual" if empty.
+func (d *DB) ImportKnownWords(userID int64, lang string, words []string, source string) ([]KnownLemma, []string, error) {
+	if source == "" {
+		source = SourceManual
+	}
 	normalized := make([]string, 0, len(words))
 	seen := make(map[string]struct{}, len(words))
 	for _, word := range words {
@@ -1703,8 +1726,8 @@ func (d *DB) ImportKnownWords(userID int64, lang string, words []string) ([]Know
 			continue
 		}
 		if _, err := d.db.Exec(
-			`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
-			userID, lang, resolution.Lemma, resolution.POS,
+			`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos, source) VALUES (?, ?, ?, ?, ?)`,
+			userID, lang, resolution.Lemma, resolution.POS, source,
 		); err != nil {
 			return nil, nil, err
 		}
@@ -1728,14 +1751,33 @@ func (d *DB) ImportKnownWords(userID int64, lang string, words []string) ([]Know
 // flow when the user opts into replace mode: vocabulary that no longer
 // appears in their Anki deck is removed, and new entries are added.
 //
+// `scope` controls which rows the diff is allowed to remove:
+//   - "all": every row in the user/lang scope is in play. A row not in the
+//     new target set is deleted regardless of its source.
+//   - "anki" (default): only rows with source='anki' can be deleted. Rows
+//     the user marked manually (textbox, file, inspect/review) survive
+//     the sync.
+//
+// New rows are always inserted with source='anki' since they came from a
+// sync. INSERT OR IGNORE means an existing row keeps its current source —
+// a word that's both in Anki and was previously marked manually stays
+// manual and is therefore preserved by the next "anki" scope sync.
+//
 // The diff happens inside a single transaction so the user never observes a
 // half-applied state, and we never DELETE rows we're about to re-INSERT.
 //
 // Returns:
-//   - added:      lemma+POS pairs newly inserted this call
+//   - added:      lemma+POS pairs newly inserted this call (rows that
+//                 actually changed; pre-existing rows aren't counted)
 //   - removed:    lemma+POS pairs deleted this call
 //   - unresolved: surface forms the parser couldn't resolve (untouched)
-func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string) ([]KnownLemma, []KnownLemma, []string, error) {
+func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string, scope string) ([]KnownLemma, []KnownLemma, []string, error) {
+	if scope == "" {
+		scope = SourceAnki
+	}
+	if scope != "all" && scope != SourceAnki {
+		return nil, nil, nil, fmt.Errorf("invalid scope %q", scope)
+	}
 	// Normalise + dedupe input. Mirrors ImportKnownWords so callers can rely
 	// on the same parsing rules.
 	normalized := make([]string, 0, len(words))
@@ -1777,11 +1819,17 @@ func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string) ([]Kno
 		_ = tx.Rollback()
 	}()
 
-	// Current state for the user+lang.
-	rows, err := tx.Query(
-		`SELECT lemma, pos FROM user_known_lemmas WHERE user_id = ? AND lang = ?`,
-		userID, lang,
-	)
+	// Current state for the user+lang, narrowed by scope. With scope='anki'
+	// we only see rows that came from a prior Anki import, so the diff can
+	// only ever delete those. Rows the user added through other paths
+	// (textbox, file, inspect/review) are invisible to the diff and survive.
+	currentQuery := `SELECT lemma, pos FROM user_known_lemmas WHERE user_id = ? AND lang = ?`
+	args := []any{userID, lang}
+	if scope == SourceAnki {
+		currentQuery += ` AND source = ?`
+		args = append(args, SourceAnki)
+	}
+	rows, err := tx.Query(currentQuery, args...)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -1800,16 +1848,19 @@ func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string) ([]Kno
 	}
 	_ = rows.Close()
 
-	// Diff. `removed` and `added` are dedup'd by construction.
+	// Diff.
 	removed := make([]KnownLemma, 0)
 	for k := range current {
 		if _, keep := target[k]; keep {
 			continue
 		}
-		if _, err := tx.Exec(
-			`DELETE FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
-			userID, lang, k.lemma, k.pos,
-		); err != nil {
+		deleteQuery := `DELETE FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`
+		deleteArgs := []any{userID, lang, k.lemma, k.pos}
+		if scope == SourceAnki {
+			deleteQuery += ` AND source = ?`
+			deleteArgs = append(deleteArgs, SourceAnki)
+		}
+		if _, err := tx.Exec(deleteQuery, deleteArgs...); err != nil {
 			return nil, nil, nil, err
 		}
 		removed = append(removed, KnownLemma{Lemma: k.lemma, POS: k.pos, Lang: lang})
@@ -1819,13 +1870,23 @@ func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string) ([]Kno
 		if _, exists := current[k]; exists {
 			continue
 		}
-		if _, err := tx.Exec(
-			`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
-			userID, lang, k.lemma, k.pos,
-		); err != nil {
+		// INSERT OR IGNORE: if a row already exists with source='manual' (so
+		// it wasn't in `current` because we filtered to anki-source), we
+		// leave it alone — the user marked this word through another path
+		// and we don't want to "claim" it for Anki. RowsAffected lets us
+		// distinguish real inserts from ignored conflicts so `added`
+		// reflects what actually changed.
+		res, err := tx.Exec(
+			`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos, source) VALUES (?, ?, ?, ?, ?)`,
+			userID, lang, k.lemma, k.pos, SourceAnki,
+		)
+		if err != nil {
 			return nil, nil, nil, err
 		}
-		added = append(added, KnownLemma{Lemma: k.lemma, POS: k.pos, Lang: lang})
+		n, _ := res.RowsAffected()
+		if n > 0 {
+			added = append(added, KnownLemma{Lemma: k.lemma, POS: k.pos, Lang: lang})
+		}
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -2754,6 +2815,22 @@ func reviewIntervalForStep(step int, easy bool) time.Duration {
 
 func sqliteTime(t time.Time) string {
 	return t.UTC().Format("2006-01-02 15:04:05")
+}
+
+// ensureUserKnownLemmasSource adds the `source` column to user_known_lemmas
+// on existing databases. New columns are added with DEFAULT 'manual' so any
+// pre-migration row is treated as user-provided and survives an Anki sync
+// with scope='anki' (the default replace behaviour).
+func (d *DB) ensureUserKnownLemmasSource() error {
+	has, err := d.tableHasColumn("user_known_lemmas", "source")
+	if err != nil {
+		return err
+	}
+	if has {
+		return nil
+	}
+	_, err = d.db.Exec(`ALTER TABLE user_known_lemmas ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'`)
+	return err
 }
 
 func (d *DB) ensureLangScopedKnownTable(table string) error {

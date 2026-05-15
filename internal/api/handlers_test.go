@@ -1849,8 +1849,10 @@ func TestKnownWordsReplaceDiffs(t *testing.T) {
 	mux := newTestMux(t, api)
 	cookies := loginAndReturnCookies(t, mux, "replace@example.com")
 
-	// Seed FI vocab via POST: kissa, koira, juosta.
-	importReq := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa","koira","juosta"]}`))
+	// Seed FI vocab via POST tagged as Anki-sourced so the default-scope
+	// PUT diff (which only touches source='anki' rows) can remove them.
+	// The manual-preservation case is exercised by a separate test below.
+	importReq := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa","koira","juosta"],"source":"anki"}`))
 	for _, c := range cookies {
 		importReq.AddCookie(c)
 	}
@@ -1861,7 +1863,7 @@ func TestKnownWordsReplaceDiffs(t *testing.T) {
 	}
 
 	// Also seed ET so we can prove it's untouched.
-	importET := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"ET","words":["kass"]}`))
+	importET := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"ET","words":["kass"],"source":"anki"}`))
 	for _, c := range cookies {
 		importET.AddCookie(c)
 	}
@@ -1962,6 +1964,123 @@ func TestKnownWordsReplaceDiffs(t *testing.T) {
 	}
 	if len(noopResp.Added) != 0 || len(noopResp.Removed) != 0 {
 		t.Fatalf("noop add=%d remove=%d want 0/0", len(noopResp.Added), len(noopResp.Removed))
+	}
+}
+
+func TestKnownWordsReplacePreservesManualSourceByDefault(t *testing.T) {
+	// Verifies the per-row source tagging: rows imported as 'manual' (via the
+	// textbox / file flow, or via /api/lemma-state from the inspect page)
+	// survive an Anki sync's default scope='anki' diff. Only with scope='all'
+	// can a sync drop them.
+	api := newTestAPI(t)
+	for _, l := range []struct{ lemma, pos, lang string }{
+		{"kissa", "NOUN", "FI"},
+		{"koira", "NOUN", "FI"},
+		{"juosta", "VERB", "FI"},
+		{"kala", "NOUN", "FI"},
+		{"hauki", "NOUN", "FI"},
+	} {
+		if err := api.store.UpsertLemma(l.lemma, l.pos, "x", l.lang); err != nil {
+			t.Fatalf("UpsertLemma %s: %v", l.lemma, err)
+		}
+		if err := api.store.UpsertForm(l.lemma, l.lemma, l.pos, l.lang); err != nil {
+			t.Fatalf("UpsertForm %s: %v", l.lemma, err)
+		}
+	}
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "preserve@example.com")
+
+	// Manual rows (textbox/file flow): kissa, koira.
+	postReq := func(body string) {
+		req := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(body))
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("POST %s status=%d body=%q", body, rec.Code, rec.Body.String())
+		}
+	}
+	// No explicit source → defaults to 'manual'.
+	postReq(`{"lang":"FI","words":["kissa","koira"]}`)
+	// Anki additive: juosta, kala.
+	postReq(`{"lang":"FI","words":["juosta","kala"],"source":"anki"}`)
+
+	// PUT default scope (anki): new target is {kissa, hauki}.
+	//   - kissa: already exists as manual. Cannot be re-tagged. NOT in
+	//     scope='anki' current set, so it's invisible to the diff; INSERT OR
+	//     IGNORE is a no-op → not in `added`.
+	//   - hauki: new, gets source='anki' → in `added`.
+	//   - juosta, kala: were source='anki' but missing from new target →
+	//     `removed`.
+	//   - koira: source='manual', not in new target, but invisible to the
+	//     diff at scope='anki' → preserved.
+	put := func(body string) KnownWordsReplaceResponse {
+		req := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(body))
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("PUT %s status=%d body=%q", body, rec.Code, rec.Body.String())
+		}
+		var resp KnownWordsReplaceResponse
+		if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+			t.Fatalf("decode PUT %s: %v", body, err)
+		}
+		return resp
+	}
+
+	resp := put(`{"lang":"FI","words":["kissa","hauki"]}`)
+	addedKeys := lemmaSet(resp.Added)
+	removedKeys := lemmaSet(resp.Removed)
+	if !addedKeys["hauki/NOUN"] || len(addedKeys) != 1 {
+		t.Fatalf("added=%v want {hauki/NOUN}", addedKeys)
+	}
+	if !removedKeys["juosta/VERB"] || !removedKeys["kala/NOUN"] || len(removedKeys) != 2 {
+		t.Fatalf("removed=%v want {juosta/VERB, kala/NOUN}", removedKeys)
+	}
+
+	got := listKnownWordsForLang(t, mux, cookies, "FI")
+	// Manual rows (kissa, koira) survive. Anki re-confirmed (kissa not added
+	// again since it was already present as manual). New anki row: hauki.
+	if !got["kissa/NOUN"] || !got["koira/NOUN"] || !got["hauki/NOUN"] || len(got) != 3 {
+		t.Fatalf("after default-scope PUT got=%v want {kissa/NOUN, koira/NOUN, hauki/NOUN}", got)
+	}
+
+	// Now scope='all': koira should be removed (it's manual but in scope).
+	resp2 := put(`{"lang":"FI","words":["kissa","hauki"],"scope":"all"}`)
+	removed2 := lemmaSet(resp2.Removed)
+	if !removed2["koira/NOUN"] || len(removed2) != 1 {
+		t.Fatalf("scope=all removed=%v want {koira/NOUN}", removed2)
+	}
+	got2 := listKnownWordsForLang(t, mux, cookies, "FI")
+	if !got2["kissa/NOUN"] || !got2["hauki/NOUN"] || len(got2) != 2 {
+		t.Fatalf("after scope=all got=%v want {kissa/NOUN, hauki/NOUN}", got2)
+	}
+
+	// Invalid scope is a 400.
+	badScope := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(`{"lang":"FI","words":[],"scope":"bogus"}`))
+	for _, c := range cookies {
+		badScope.AddCookie(c)
+	}
+	badRec := httptest.NewRecorder()
+	mux.ServeHTTP(badRec, badScope)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("scope=bogus status=%d want 400 body=%q", badRec.Code, badRec.Body.String())
+	}
+
+	// Invalid source is a 400.
+	badSrc := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa"],"source":"bogus"}`))
+	for _, c := range cookies {
+		badSrc.AddCookie(c)
+	}
+	badSrcRec := httptest.NewRecorder()
+	mux.ServeHTTP(badSrcRec, badSrc)
+	if badSrcRec.Code != http.StatusBadRequest {
+		t.Fatalf("source=bogus status=%d want 400", badSrcRec.Code)
 	}
 }
 

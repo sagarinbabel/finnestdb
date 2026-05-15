@@ -1382,12 +1382,12 @@ async function loadKnownWords() {
         showToast(err.message || 'Failed to load known words.', 'error');
     }
 }
-async function postKnownWords(words) {
+async function postKnownWords(words, source = 'manual') {
     const resp = await fetch('/api/known-words', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang: state.activeLanguage, words }),
+        body: JSON.stringify({ lang: state.activeLanguage, words, source }),
     });
     if (!resp.ok)
         throw new Error(await resp.text() || 'Failed to import known words');
@@ -1398,12 +1398,12 @@ function describeImportResult(data) {
     const unresolvedCount = data.unresolved?.length || 0;
     return `${importedCount} imported${unresolvedCount ? `, ${unresolvedCount} unresolved` : ''}`;
 }
-async function putKnownWords(words) {
+async function putKnownWords(words, scope = 'anki') {
     const resp = await fetch('/api/known-words', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang: state.activeLanguage, words }),
+        body: JSON.stringify({ lang: state.activeLanguage, words, scope }),
     });
     if (!resp.ok)
         throw new Error(await resp.text() || 'Failed to sync known words');
@@ -1586,6 +1586,7 @@ function loadAnkiPrefs(lang) {
         replaceMode: false,
         lastSyncAt: 0,
         replaceConfirmSkip: false,
+        preserveManualOnReplace: true,
     };
     try {
         const raw = localStorage.getItem(ankiPrefsKey(lang));
@@ -1601,6 +1602,7 @@ function loadAnkiPrefs(lang) {
             replaceMode: typeof parsed.replaceMode === 'boolean' ? parsed.replaceMode : empty.replaceMode,
             lastSyncAt: typeof parsed.lastSyncAt === 'number' ? parsed.lastSyncAt : empty.lastSyncAt,
             replaceConfirmSkip: typeof parsed.replaceConfirmSkip === 'boolean' ? parsed.replaceConfirmSkip : empty.replaceConfirmSkip,
+            preserveManualOnReplace: typeof parsed.preserveManualOnReplace === 'boolean' ? parsed.preserveManualOnReplace : empty.preserveManualOnReplace,
         };
     }
     catch {
@@ -1651,6 +1653,7 @@ const ankiImport = {
     includeNew: false,
     includeSuspended: false,
     replaceMode: false,
+    preserveManualOnReplace: true,
     syncMode: false,
 };
 // Field names that hint "this is the bare word/lemma", per active language.
@@ -1733,6 +1736,7 @@ function openAnkiModal(sync) {
     ankiImport.includeNew = prefs.includeNew;
     ankiImport.includeSuspended = prefs.includeSuspended;
     ankiImport.replaceMode = prefs.replaceMode;
+    ankiImport.preserveManualOnReplace = prefs.preserveManualOnReplace;
     ankiImport.syncMode = sync;
     ankiImport.allNotes = [];
     ankiImport.expanded = new Set();
@@ -1901,6 +1905,7 @@ function persistAnkiPrefs() {
         includeNew: ankiImport.includeNew,
         includeSuspended: ankiImport.includeSuspended,
         replaceMode: ankiImport.replaceMode,
+        preserveManualOnReplace: ankiImport.preserveManualOnReplace,
         lastSyncAt: existing.lastSyncAt,
         replaceConfirmSkip: existing.replaceConfirmSkip,
     });
@@ -2220,9 +2225,23 @@ function renderReplaceModeToggle() {
     const cb = document.getElementById('anki-import-replace-mode');
     if (cb)
         cb.checked = ankiImport.replaceMode;
+    renderPreserveManualToggle();
+}
+function renderPreserveManualToggle() {
+    const wrap = document.getElementById('anki-import-preserve-manual-wrap');
+    const cb = document.getElementById('anki-import-preserve-manual');
+    if (wrap)
+        wrap.classList.toggle('hidden', !ankiImport.replaceMode);
+    if (cb)
+        cb.checked = ankiImport.preserveManualOnReplace;
 }
 function onAnkiReplaceModeToggle(checked) {
     ankiImport.replaceMode = checked;
+    persistAnkiPrefs();
+    renderPreserveManualToggle();
+}
+function onAnkiPreserveManualToggle(checked) {
+    ankiImport.preserveManualOnReplace = checked;
     persistAnkiPrefs();
 }
 // Returns the set of notes that would actually be imported given the current
@@ -2548,7 +2567,11 @@ async function runAnkiImport() {
                 ? `Syncing ${words.length.toLocaleString()} words…`
                 : `Importing ${words.length.toLocaleString()} words…`;
         if (ankiImport.replaceMode) {
-            const data = await putKnownWords(words);
+            // scope='anki' (default) preserves words the user added through
+            // the textbox / file / inspect / review flows; scope='all' wipes
+            // every row not in the new Anki state.
+            const scope = ankiImport.preserveManualOnReplace ? 'anki' : 'all';
+            const data = await putKnownWords(words, scope);
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg)
                 msg.textContent = 'Done.';
@@ -2559,7 +2582,10 @@ async function runAnkiImport() {
             showToast('Vocabulary synced from Anki.', 'success');
         }
         else {
-            const data = await postKnownWords(words);
+            // Additive Anki import — tag new rows so a later sync can diff
+            // them. Manual rows (textbox/file/inspect/review) keep their
+            // own source.
+            const data = await postKnownWords(words, 'anki');
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg)
                 msg.textContent = 'Done.';
@@ -4660,6 +4686,11 @@ function initVocabAnkiImport() {
         const target = e.target;
         if (target)
             onAnkiReplaceModeToggle(target.checked);
+    });
+    document.getElementById('anki-import-preserve-manual')?.addEventListener('change', (e) => {
+        const target = e.target;
+        if (target)
+            onAnkiPreserveManualToggle(target.checked);
     });
     // Import modal — custom field picker (click to open/close + select).
     const fieldsContainer = document.getElementById('anki-import-fields');

@@ -147,6 +147,12 @@ type ReviewCardMutationRequest struct {
 type KnownWordsRequest struct {
 	Lang  string   `json:"lang"`
 	Words []string `json:"words"`
+	// Source tag for new rows on POST. Omit / empty → "manual".
+	// Accepted: "manual" | "anki".
+	Source string `json:"source,omitempty"`
+	// Diff scope on PUT. Omit / empty → "anki" (preserve manual rows).
+	// Accepted: "anki" | "all".
+	Scope string `json:"scope,omitempty"`
 }
 
 type KnownWordsResponse struct {
@@ -1580,7 +1586,16 @@ func (a *API) handleKnownWordsReplace(w http.ResponseWriter, r *http.Request, au
 		return
 	}
 
-	added, removed, unresolved, err := a.store.ReplaceKnownWords(auth.UserID, req.Lang, req.Words)
+	scope := req.Scope
+	if scope == "" {
+		scope = store.SourceAnki
+	}
+	if scope != "all" && scope != store.SourceAnki {
+		http.Error(w, "scope must be 'anki' or 'all'", http.StatusBadRequest)
+		return
+	}
+
+	added, removed, unresolved, err := a.store.ReplaceKnownWords(auth.UserID, req.Lang, req.Words, scope)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -1607,7 +1622,16 @@ func (a *API) handleKnownWordsImport(w http.ResponseWriter, r *http.Request, aut
 		return
 	}
 
-	imported, unresolved, err := a.store.ImportKnownWords(auth.UserID, req.Lang, req.Words)
+	source := req.Source
+	if source == "" {
+		source = store.SourceManual
+	}
+	if source != store.SourceManual && source != store.SourceAnki {
+		http.Error(w, "source must be 'manual' or 'anki'", http.StatusBadRequest)
+		return
+	}
+
+	imported, unresolved, err := a.store.ImportKnownWords(auth.UserID, req.Lang, req.Words, source)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return

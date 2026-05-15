@@ -1696,12 +1696,12 @@ async function loadKnownWords(): Promise<void> {
     }
 }
 
-async function postKnownWords(words: string[]): Promise<KnownWordsImportResponse> {
+async function postKnownWords(words: string[], source: 'manual' | 'anki' = 'manual'): Promise<KnownWordsImportResponse> {
     const resp = await fetch('/api/known-words', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang: state.activeLanguage, words }),
+        body: JSON.stringify({ lang: state.activeLanguage, words, source }),
     });
     if (!resp.ok) throw new Error(await resp.text() || 'Failed to import known words');
     return await resp.json() as KnownWordsImportResponse;
@@ -1713,12 +1713,12 @@ function describeImportResult(data: KnownWordsImportResponse): string {
     return `${importedCount} imported${unresolvedCount ? `, ${unresolvedCount} unresolved` : ''}`;
 }
 
-async function putKnownWords(words: string[]): Promise<KnownWordsReplaceResponse> {
+async function putKnownWords(words: string[], scope: 'anki' | 'all' = 'anki'): Promise<KnownWordsReplaceResponse> {
     const resp = await fetch('/api/known-words', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang: state.activeLanguage, words }),
+        body: JSON.stringify({ lang: state.activeLanguage, words, scope }),
     });
     if (!resp.ok) throw new Error(await resp.text() || 'Failed to sync known words');
     return await resp.json() as KnownWordsReplaceResponse;
@@ -1911,6 +1911,10 @@ interface AnkiImportPrefs {
     // confirmation. Cleared automatically if the user re-enables replace
     // mode from scratch (e.g. after disconnecting and reconnecting).
     replaceConfirmSkip: boolean;
+    // When replace mode is on, only diff rows that were originally imported
+    // from Anki (source='anki'). Rows the user added through textbox / file /
+    // inspect / review survive the sync. Default true.
+    preserveManualOnReplace: boolean;
 }
 
 function ankiPrefsKey(lang: string): string {
@@ -1927,28 +1931,30 @@ function defaultAnkiFilter(lang: string): string {
 
 function loadAnkiPrefs(lang: string): AnkiImportPrefs {
     const empty: AnkiImportPrefs = {
-        filter:             defaultAnkiFilter(lang),
-        decks:              [],
-        fieldByModel:       {},
-        includeNew:         false,
-        includeSuspended:   false,
-        replaceMode:        false,
-        lastSyncAt:         0,
-        replaceConfirmSkip: false,
+        filter:                  defaultAnkiFilter(lang),
+        decks:                   [],
+        fieldByModel:            {},
+        includeNew:              false,
+        includeSuspended:        false,
+        replaceMode:             false,
+        lastSyncAt:              0,
+        replaceConfirmSkip:      false,
+        preserveManualOnReplace: true,
     };
     try {
         const raw = localStorage.getItem(ankiPrefsKey(lang));
         if (!raw) return empty;
         const parsed = JSON.parse(raw) as Partial<AnkiImportPrefs>;
         return {
-            filter:             typeof parsed.filter === 'string' ? parsed.filter : empty.filter,
-            decks:              Array.isArray(parsed.decks) ? parsed.decks : empty.decks,
-            fieldByModel:       parsed.fieldByModel && typeof parsed.fieldByModel === 'object' ? parsed.fieldByModel : empty.fieldByModel,
-            includeNew:         typeof parsed.includeNew === 'boolean' ? parsed.includeNew : empty.includeNew,
-            includeSuspended:   typeof parsed.includeSuspended === 'boolean' ? parsed.includeSuspended : empty.includeSuspended,
-            replaceMode:        typeof parsed.replaceMode === 'boolean' ? parsed.replaceMode : empty.replaceMode,
-            lastSyncAt:         typeof parsed.lastSyncAt === 'number' ? parsed.lastSyncAt : empty.lastSyncAt,
-            replaceConfirmSkip: typeof parsed.replaceConfirmSkip === 'boolean' ? parsed.replaceConfirmSkip : empty.replaceConfirmSkip,
+            filter:                  typeof parsed.filter === 'string' ? parsed.filter : empty.filter,
+            decks:                   Array.isArray(parsed.decks) ? parsed.decks : empty.decks,
+            fieldByModel:            parsed.fieldByModel && typeof parsed.fieldByModel === 'object' ? parsed.fieldByModel : empty.fieldByModel,
+            includeNew:              typeof parsed.includeNew === 'boolean' ? parsed.includeNew : empty.includeNew,
+            includeSuspended:        typeof parsed.includeSuspended === 'boolean' ? parsed.includeSuspended : empty.includeSuspended,
+            replaceMode:             typeof parsed.replaceMode === 'boolean' ? parsed.replaceMode : empty.replaceMode,
+            lastSyncAt:              typeof parsed.lastSyncAt === 'number' ? parsed.lastSyncAt : empty.lastSyncAt,
+            replaceConfirmSkip:      typeof parsed.replaceConfirmSkip === 'boolean' ? parsed.replaceConfirmSkip : empty.replaceConfirmSkip,
+            preserveManualOnReplace: typeof parsed.preserveManualOnReplace === 'boolean' ? parsed.preserveManualOnReplace : empty.preserveManualOnReplace,
         };
     } catch {
         return empty;
@@ -2026,9 +2032,10 @@ interface AnkiImportState {
     // can be computed in-memory (no extra Anki round-trips on toggle/field
     // changes) and so the import step can reuse it without a second fetch.
     allNotes: AnkiNoteSnapshot[];
-    includeNew:       boolean;
-    includeSuspended: boolean;
-    replaceMode:      boolean;
+    includeNew:              boolean;
+    includeSuspended:        boolean;
+    replaceMode:             boolean;
+    preserveManualOnReplace: boolean;
     // Sync-mode opens the modal pre-armed: after discovery, skip the deck
     // and field-picker stages and run the import directly. Set by the
     // "Sync from Anki" quick action on the vocab page.
@@ -2051,6 +2058,7 @@ const ankiImport: AnkiImportState = {
     includeNew: false,
     includeSuspended: false,
     replaceMode: false,
+    preserveManualOnReplace: true,
     syncMode: false,
 };
 
@@ -2146,6 +2154,7 @@ function openAnkiModal(sync: boolean): void {
     ankiImport.includeNew = prefs.includeNew;
     ankiImport.includeSuspended = prefs.includeSuspended;
     ankiImport.replaceMode = prefs.replaceMode;
+    ankiImport.preserveManualOnReplace = prefs.preserveManualOnReplace;
     ankiImport.syncMode = sync;
     ankiImport.allNotes = [];
     ankiImport.expanded = new Set<string>();
@@ -2305,14 +2314,15 @@ function persistAnkiPrefs(): void {
     // managed by separate code paths (successful import / dismiss-dialog).
     const existing = loadAnkiPrefs(ankiImport.lang);
     saveAnkiPrefs(ankiImport.lang, {
-        filter:             ankiImport.filter,
-        decks:              Array.from(ankiImport.selected),
-        fieldByModel:       ankiImport.fieldByModel,
-        includeNew:         ankiImport.includeNew,
-        includeSuspended:   ankiImport.includeSuspended,
-        replaceMode:        ankiImport.replaceMode,
-        lastSyncAt:         existing.lastSyncAt,
-        replaceConfirmSkip: existing.replaceConfirmSkip,
+        filter:                  ankiImport.filter,
+        decks:                   Array.from(ankiImport.selected),
+        fieldByModel:            ankiImport.fieldByModel,
+        includeNew:              ankiImport.includeNew,
+        includeSuspended:        ankiImport.includeSuspended,
+        replaceMode:             ankiImport.replaceMode,
+        preserveManualOnReplace: ankiImport.preserveManualOnReplace,
+        lastSyncAt:              existing.lastSyncAt,
+        replaceConfirmSkip:      existing.replaceConfirmSkip,
     });
 }
 
@@ -2633,10 +2643,24 @@ function onAnkiIncludeSuspendedToggle(checked: boolean): void {
 function renderReplaceModeToggle(): void {
     const cb = document.getElementById('anki-import-replace-mode') as HTMLInputElement | null;
     if (cb) cb.checked = ankiImport.replaceMode;
+    renderPreserveManualToggle();
+}
+
+function renderPreserveManualToggle(): void {
+    const wrap = document.getElementById('anki-import-preserve-manual-wrap');
+    const cb   = document.getElementById('anki-import-preserve-manual') as HTMLInputElement | null;
+    if (wrap) wrap.classList.toggle('hidden', !ankiImport.replaceMode);
+    if (cb) cb.checked = ankiImport.preserveManualOnReplace;
 }
 
 function onAnkiReplaceModeToggle(checked: boolean): void {
     ankiImport.replaceMode = checked;
+    persistAnkiPrefs();
+    renderPreserveManualToggle();
+}
+
+function onAnkiPreserveManualToggle(checked: boolean): void {
+    ankiImport.preserveManualOnReplace = checked;
     persistAnkiPrefs();
 }
 
@@ -2945,7 +2969,11 @@ async function runAnkiImport(): Promise<void> {
             : `Importing ${words.length.toLocaleString()} words…`;
 
         if (ankiImport.replaceMode) {
-            const data = await putKnownWords(words);
+            // scope='anki' (default) preserves words the user added through
+            // the textbox / file / inspect / review flows; scope='all' wipes
+            // every row not in the new Anki state.
+            const scope = ankiImport.preserveManualOnReplace ? 'anki' : 'all';
+            const data = await putKnownWords(words, scope);
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg) msg.textContent = 'Done.';
             if (detail) detail.textContent = describeReplaceResult(data);
@@ -2953,7 +2981,10 @@ async function runAnkiImport(): Promise<void> {
             await loadKnownWords();
             showToast('Vocabulary synced from Anki.', 'success');
         } else {
-            const data = await postKnownWords(words);
+            // Additive Anki import — tag new rows so a later sync can diff
+            // them. Manual rows (textbox/file/inspect/review) keep their
+            // own source.
+            const data = await postKnownWords(words, 'anki');
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg) msg.textContent = 'Done.';
             if (detail) detail.textContent = describeImportResult(data);
@@ -5144,6 +5175,10 @@ function initVocabAnkiImport(): void {
     document.getElementById('anki-import-replace-mode')?.addEventListener('change', (e) => {
         const target = e.target as HTMLInputElement | null;
         if (target) onAnkiReplaceModeToggle(target.checked);
+    });
+    document.getElementById('anki-import-preserve-manual')?.addEventListener('change', (e) => {
+        const target = e.target as HTMLInputElement | null;
+        if (target) onAnkiPreserveManualToggle(target.checked);
     });
 
     // Import modal — custom field picker (click to open/close + select).
