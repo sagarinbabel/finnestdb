@@ -347,6 +347,7 @@ test.describe('pure helpers', () => {
         includeSuspended: false,
         replaceMode: false,
         lastSyncAt: 0,
+        replaceConfirmSkip: false,
       });
       w.__finestTest.saveAnkiPrefs('ET', {
         filter: 'custom-et',
@@ -356,6 +357,7 @@ test.describe('pure helpers', () => {
         includeSuspended: true,
         replaceMode: true,
         lastSyncAt: 1700000000000,
+        replaceConfirmSkip: true,
       });
       return {
         initialFI,
@@ -364,8 +366,8 @@ test.describe('pure helpers', () => {
         savedET: w.__finestTest.loadAnkiPrefs('ET'),
       };
     });
-    expect(results.initialFI).toEqual({ filter: 'finnish|suomi', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false, replaceMode: false, lastSyncAt: 0 });
-    expect(results.initialET).toEqual({ filter: 'estonian|eesti', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false, replaceMode: false, lastSyncAt: 0 });
+    expect(results.initialFI).toEqual({ filter: 'finnish|suomi', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false, replaceMode: false, lastSyncAt: 0, replaceConfirmSkip: false });
+    expect(results.initialET).toEqual({ filter: 'estonian|eesti', decks: [], fieldByModel: {}, includeNew: false, includeSuspended: false, replaceMode: false, lastSyncAt: 0, replaceConfirmSkip: false });
     expect(results.savedFI).toEqual({
       filter: 'custom-fi',
       decks: ['Finnish::A1'],
@@ -374,6 +376,7 @@ test.describe('pure helpers', () => {
       includeSuspended: false,
       replaceMode: false,
       lastSyncAt: 0,
+      replaceConfirmSkip: false,
     });
     expect(results.savedET).toEqual({
       filter: 'custom-et',
@@ -383,6 +386,7 @@ test.describe('pure helpers', () => {
       includeSuspended: true,
       replaceMode: true,
       lastSyncAt: 1700000000000,
+      replaceConfirmSkip: true,
     });
   });
 });
@@ -1525,6 +1529,169 @@ test.describe('Anki import popup', () => {
     expect(postBody!.lang).toBe('ET');
     // Only Estonian::A1 was saved, so only its notes contribute.
     expect(new Set(postBody!.words)).toEqual(new Set(['kassi', 'koer', 'auto']));
+  });
+
+  test("Replace confirm has a 'Don't show this again' checkbox that persists across runs", async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    let putCount = 0;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'PUT') {
+        putCount += 1;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ added: [], removed: [], unresolved: [] }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+    await page.locator('#anki-import-replace-mode').check();
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+
+    const dialog = page.locator('#dialog-modal');
+    await expect(dialog).not.toHaveClass(/hidden/);
+    // Remember checkbox is visible and unchecked by default.
+    const remember = page.locator('#dialog-modal-remember');
+    await expect(page.locator('#dialog-modal-remember-wrap')).not.toHaveClass(/hidden/);
+    await expect(remember).not.toBeChecked();
+    // Tick + confirm.
+    await remember.check();
+    await page.locator('#dialog-modal-confirm').click();
+    await expect.poll(() => putCount).toBe(1);
+    // Wait for the import flow to settle.
+    await expect(page.locator('#anki-import-done-actions')).not.toHaveClass(/hidden/);
+    await page.locator('#anki-import-done').click();
+
+    // Re-open and re-import — no confirmation dialog this time.
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+    // Replace mode is still on from the saved prefs.
+    await expect(page.locator('#anki-import-replace-mode')).toBeChecked();
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    // Confirm dialog must NOT appear; the running stage opens directly.
+    await expect(page.locator('#anki-import-stage-running')).not.toHaveClass(/hidden/);
+    await expect(dialog).toHaveClass(/hidden/);
+    await expect.poll(() => putCount).toBe(2);
+  });
+
+  test('Sync detects a previously-imported deck that no longer exists and routes to manual flow', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    let postCalled = false;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'POST') postCalled = true;
+      await route.fallback();
+    });
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter:           '',
+        // Estonian::A1 still exists; Bogus::Deck does not.
+        decks:            ['Estonian::A1', 'Bogus::Deck'],
+        fieldByModel:     { ETBasic: 'Sõna' },
+        includeNew:       false,
+        includeSuspended: false,
+        replaceMode:      false,
+        lastSyncAt:       Date.now(),
+        replaceConfirmSkip: false,
+      }));
+    });
+    await page.reload();
+    await page.locator('#vocab-anki-sync').click();
+
+    // Routed to the deck picker (NOT running). The toast surfaces the
+    // missing-deck reason.
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-stage-running')).toHaveClass(/hidden/);
+    await expect(page.locator('.toast').filter({ hasText: /no longer exist/i })).toBeVisible();
+    expect(postCalled).toBe(false);
+
+    // Estonian::A1 is still preselected so the user can just click Continue.
+    await expect(page.locator('[data-deck-check="Estonian::A1"]')).toBeChecked();
+  });
+
+  test('Sync detects a new card type in the discovered set and stops at the fields stage with a toast', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    let postCalled = false;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'POST') postCalled = true;
+      await route.fallback();
+    });
+    // Estonian::A1 has notes 100-102 in ETBasic + we craft one extra note in
+    // a brand-new model "Brand New". Discovery surfaces both models; the
+    // saved prefs only mention ETBasic, so the sync should stop with a toast.
+    const extra = 999;
+    const extraInfo = {
+      noteId: extra,
+      modelName: 'Brand New',
+      fields: { Word: { value: 'uus', order: 0 }, Translation: { value: 'new', order: 1 } },
+    };
+    await mockAnkiConnect(page, {
+      version: () => 6,
+      deckNames: () => SAMPLE_DECKS,
+      findNotes: (params) => {
+        const m = String(params.query || '').match(/deck:"([^"]+)"/);
+        if (!m) return [];
+        if (m[1] === 'Estonian::A1::Verbs') return [100, 101];
+        if (m[1] === 'Estonian::A1::Nouns') return [102];
+        if (m[1] === 'Estonian::A1') return [100, 101, 102, extra];
+        return [];
+      },
+      notesInfo: (params) => {
+        const ids = (params.notes as number[]) || [];
+        return ids.map(id => {
+          if (id === extra) return extraInfo;
+          return NOTES_INFO[id];
+        }).filter(Boolean);
+      },
+      modelFieldNames: (params) => {
+        const m = String(params.modelName || '');
+        if (m === 'ETBasic') return ['Sõna', 'Tähendus', 'Lause'];
+        if (m === 'Brand New') return ['Word', 'Translation'];
+        return [];
+      },
+    });
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter:           '',
+        decks:            ['Estonian::A1'],
+        // Only ETBasic was configured before; "Brand New" is the surprise.
+        fieldByModel:     { ETBasic: 'Sõna' },
+        includeNew:       false,
+        includeSuspended: false,
+        replaceMode:      false,
+        lastSyncAt:       Date.now(),
+        replaceConfirmSkip: false,
+      }));
+    });
+    await page.reload();
+    await page.locator('#vocab-anki-sync').click();
+
+    // Sync stops on the field-picker stage — both ETBasic and the new
+    // "Brand New" model are visible so the user can review.
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-stage-running')).toHaveClass(/hidden/);
+    await expect(page.locator('.toast').filter({ hasText: /new card type/i })).toBeVisible();
+    await expect(page.locator('[data-field-picker="ETBasic"]')).toBeVisible();
+    await expect(page.locator('[data-field-picker="Brand New"]')).toBeVisible();
+    expect(postCalled).toBe(false);
   });
 
   test('Sync falls through to manual picker if saved decks no longer exist', async ({ page }) => {

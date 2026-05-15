@@ -163,6 +163,10 @@ function showToast(message, type = 'info', duration = 3000) {
 // Without this, the first Promise would hang forever — listeners get torn
 // down, but the resolve() function was never called.
 let activeDialog = null;
+// Last dialog's "Don't show this again" checkbox state — captured by
+// openDialog when a rememberLabel is provided so showConfirmWithRemember can
+// surface it alongside the confirm/cancel result.
+let lastDialogRemember = false;
 function openDialog(opts) {
     return new Promise(resolve => {
         const modal = document.getElementById('dialog-modal');
@@ -171,6 +175,9 @@ function openDialog(opts) {
         const inputWrap = document.getElementById('dialog-modal-input-wrap');
         const inputLabel = document.getElementById('dialog-modal-input-label');
         const input = document.getElementById('dialog-modal-input');
+        const rememberWrap = document.getElementById('dialog-modal-remember-wrap');
+        const rememberInput = document.getElementById('dialog-modal-remember');
+        const rememberLabel = document.getElementById('dialog-modal-remember-label');
         const backdrop = document.getElementById('dialog-modal-backdrop');
         const confirmBtn = document.getElementById('dialog-modal-confirm');
         const cancelBtn = document.getElementById('dialog-modal-cancel');
@@ -203,6 +210,21 @@ function openDialog(opts) {
         else {
             inputWrap.classList.add('hidden');
         }
+        // Optional "Don't show this again"-style checkbox. Hidden by default
+        // — only callers passing rememberLabel see it, and only that caller
+        // reads lastDialogRemember afterwards.
+        lastDialogRemember = false;
+        if (rememberWrap && rememberInput) {
+            if (opts.rememberLabel) {
+                rememberWrap.classList.remove('hidden');
+                rememberInput.checked = false;
+                if (rememberLabel)
+                    rememberLabel.textContent = opts.rememberLabel;
+            }
+            else {
+                rememberWrap.classList.add('hidden');
+            }
+        }
         let settled = false;
         const detachListeners = () => {
             confirmBtn.removeEventListener('click', onConfirm);
@@ -214,6 +236,11 @@ function openDialog(opts) {
             if (settled)
                 return;
             settled = true;
+            // Snapshot the remember checkbox before tearing down. Only
+            // meaningful when the dialog was opened with rememberLabel; other
+            // callers ignore lastDialogRemember.
+            if (opts.rememberLabel && rememberInput)
+                lastDialogRemember = rememberInput.checked;
             modal.classList.add('hidden');
             detachListeners();
             if (activeDialog && activeDialog.cancel === onCancel) {
@@ -248,6 +275,12 @@ function openDialog(opts) {
 async function showConfirm(opts) {
     const result = await openDialog({ ...opts, prompt: false });
     return result !== null;
+}
+// Same as showConfirm but the result includes whether the user checked the
+// "Don't show this again" box. Pass `rememberLabel` to customise the wording.
+async function showConfirmWithRemember(opts) {
+    const result = await openDialog({ ...opts, prompt: false });
+    return { confirmed: result !== null, remember: lastDialogRemember };
 }
 async function showPrompt(opts) {
     return openDialog({ ...opts, prompt: true });
@@ -1552,6 +1585,7 @@ function loadAnkiPrefs(lang) {
         includeSuspended: false,
         replaceMode: false,
         lastSyncAt: 0,
+        replaceConfirmSkip: false,
     };
     try {
         const raw = localStorage.getItem(ankiPrefsKey(lang));
@@ -1566,6 +1600,7 @@ function loadAnkiPrefs(lang) {
             includeSuspended: typeof parsed.includeSuspended === 'boolean' ? parsed.includeSuspended : empty.includeSuspended,
             replaceMode: typeof parsed.replaceMode === 'boolean' ? parsed.replaceMode : empty.replaceMode,
             lastSyncAt: typeof parsed.lastSyncAt === 'number' ? parsed.lastSyncAt : empty.lastSyncAt,
+            replaceConfirmSkip: typeof parsed.replaceConfirmSkip === 'boolean' ? parsed.replaceConfirmSkip : empty.replaceConfirmSkip,
         };
     }
     catch {
@@ -1723,17 +1758,31 @@ async function connectAndLoadDecks() {
         ankiImport.tree = buildAnkiDeckTree(deckNames);
         // Forget previously-selected decks that no longer exist.
         const valid = new Set(deckNames);
-        for (const d of Array.from(ankiImport.selected)) {
-            if (!valid.has(d))
-                ankiImport.selected.delete(d);
-        }
-        // Sync mode: if we still have a non-empty saved deck set, skip the
-        // picker and proceed straight to model discovery. The user can still
-        // cancel from the running stage. If the saved decks are all stale,
-        // fall through to the manual picker so they can re-select.
-        if (ankiImport.syncMode && ankiImport.selected.size > 0) {
-            void loadAnkiModelsForSelection();
-            return;
+        // Snapshot which saved decks no longer exist BEFORE dropping them.
+        // The sync flow uses that to bail to the manual picker rather than
+        // silently importing a smaller set than the user expects.
+        const savedDecks = Array.from(ankiImport.selected);
+        const missingDecks = savedDecks.filter(d => !valid.has(d));
+        for (const d of missingDecks)
+            ankiImport.selected.delete(d);
+        // Sync mode: route to the manual picker on ANY state mismatch
+        // (missing deck, or zero remaining decks). This is the "no surprises"
+        // contract — the user explicitly hit Sync, they should review changes
+        // before we apply a destructive replace. The deck-picker stage opens
+        // pre-populated with whatever still exists.
+        if (ankiImport.syncMode) {
+            if (missingDecks.length > 0 || ankiImport.selected.size === 0) {
+                ankiImport.syncMode = false;
+                const msg = missingDecks.length > 0
+                    ? `${missingDecks.length} previously-imported deck${missingDecks.length === 1 ? '' : 's'} no longer exist${missingDecks.length === 1 ? 's' : ''} in Anki. Review your selection.`
+                    : 'No previously-imported decks exist in Anki any more. Pick a new selection.';
+                showToast(msg, 'info', 5000);
+                // Fall through to the manual deck picker below.
+            }
+            else {
+                void loadAnkiModelsForSelection();
+                return;
+            }
         }
         ankiImport.syncMode = false; // sync prereqs not met → manual flow
         // Expand ancestors of every preselected deck so the user sees them
@@ -1842,7 +1891,8 @@ function renderAnkiDeckSummary() {
         : `${n.toLocaleString()} deck${n === 1 ? '' : 's'} selected.`;
 }
 function persistAnkiPrefs() {
-    // Preserve lastSyncAt across writes — only updated on successful import.
+    // Preserve lastSyncAt + replaceConfirmSkip across writes — those are
+    // managed by separate code paths (successful import / dismiss-dialog).
     const existing = loadAnkiPrefs(ankiImport.lang);
     saveAnkiPrefs(ankiImport.lang, {
         filter: ankiImport.filter,
@@ -1852,7 +1902,13 @@ function persistAnkiPrefs() {
         includeSuspended: ankiImport.includeSuspended,
         replaceMode: ankiImport.replaceMode,
         lastSyncAt: existing.lastSyncAt,
+        replaceConfirmSkip: existing.replaceConfirmSkip,
     });
+}
+function recordReplaceConfirmSkip() {
+    const prefs = loadAnkiPrefs(ankiImport.lang);
+    prefs.replaceConfirmSkip = true;
+    saveAnkiPrefs(ankiImport.lang, prefs);
 }
 function recordAnkiSyncTime() {
     const prefs = loadAnkiPrefs(ankiImport.lang);
@@ -2004,6 +2060,11 @@ async function loadAnkiModelsForSelection() {
             }
         }));
         ankiImport.fieldsByModel = fieldsByModel;
+        // Snapshot the saved field-by-model keys BEFORE auto-pick mutates
+        // them. Sync-mode change detection compares this against the
+        // discovered model set so newly-added card types force a manual
+        // review.
+        const savedModelKeys = new Set(Object.keys(ankiImport.fieldByModel));
         // Build the per-(model, field) example list from the in-memory
         // snapshots, then auto-pick a field for any model the user hasn't
         // manually picked in a previous session. Saved picks always win.
@@ -2037,11 +2098,36 @@ async function loadAnkiModelsForSelection() {
         renderReplaceModeToggle();
         renderAnkiImportEstimate();
         // Sync mode: skip the manual confirmation and run the import using
-        // the saved prefs. If discovery turned up no usable models, fall
-        // through to the regular field-picker UI so the user can fix it.
-        if (ankiImport.syncMode && ankiImport.models.length > 0 && selectedAnkiNotes().length > 0) {
-            ankiImport.syncMode = false;
-            void runAnkiImport();
+        // the saved prefs — UNLESS Anki state has drifted in a way the user
+        // should review. Specifically:
+        //   - A new card type has appeared in the discovered set that
+        //     wasn't in the saved fieldByModel
+        //   - A previously-saved card type is no longer present
+        // Either case routes back to the field-picker stage with a toast so
+        // the user can decide whether to import the new model and what
+        // field to use.
+        if (ankiImport.syncMode) {
+            // savedModelKeys may include models from earlier-different deck
+            // selections, but if the deck set is unchanged it's exactly the
+            // models the user previously saw.
+            const discoveredSet = new Set(models);
+            const newModels = models.filter(m => !savedModelKeys.has(m));
+            const goneModels = Array.from(savedModelKeys).filter(m => !discoveredSet.has(m));
+            if (newModels.length > 0 || goneModels.length > 0) {
+                ankiImport.syncMode = false;
+                const parts = [];
+                if (newModels.length > 0)
+                    parts.push(`${newModels.length} new card type${newModels.length === 1 ? '' : 's'}`);
+                if (goneModels.length > 0)
+                    parts.push(`${goneModels.length} card type${goneModels.length === 1 ? '' : 's'} removed`);
+                showToast(`Anki state has changed (${parts.join(', ')}). Review the field selection before syncing.`, 'info', 6000);
+                // Stay on the fields stage — the picker is already rendered.
+                return;
+            }
+            if (selectedAnkiNotes().length > 0) {
+                ankiImport.syncMode = false;
+                void runAnkiImport();
+            }
         }
     }
     catch (err) {
@@ -2350,19 +2436,26 @@ async function runAnkiImport() {
         showToast('Pick a field for at least one card type, or set all to Skip and cancel.', 'error');
         return;
     }
-    // Confirm replace mode — it deletes lemmas not in the new selection,
-    // including anything the user added through the textbox or file import.
-    // The default sync flow runs without this prompt; opt-in is explicit.
+    // Replace-mode confirmation: a destructive operation that deletes lemmas
+    // not in the new selection (including ones added through the textbox or
+    // a file). Skipped on a per-language basis once the user has explicitly
+    // checked "Don't show this again" on the dialog.
     if (ankiImport.replaceMode) {
         const langName = languageName(ankiImport.lang);
-        const confirmed = await showConfirm({
-            title: `Replace ${langName} vocabulary?`,
-            message: `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
-            confirmLabel: 'Sync and replace',
-            danger: true,
-        });
-        if (!confirmed)
-            return;
+        const prefs = loadAnkiPrefs(ankiImport.lang);
+        if (!prefs.replaceConfirmSkip) {
+            const result = await showConfirmWithRemember({
+                title: `Replace ${langName} vocabulary?`,
+                message: `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
+                confirmLabel: 'Sync and replace',
+                danger: true,
+                rememberLabel: "Don't show this again",
+            });
+            if (!result.confirmed)
+                return;
+            if (result.remember)
+                recordReplaceConfirmSkip();
+        }
     }
     if (runBtn)
         runBtn.disabled = true;
