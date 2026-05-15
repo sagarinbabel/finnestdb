@@ -1683,25 +1683,14 @@ function renderVocabPage(): void {
 
 // Visible only after a successful import for the active language. Clicking
 // it opens the Anki modal in sync mode (skips deck + field pickers). The
-// "Skip confirmation on next sync" checkbox sits beside the button and
-// controls the same `replaceConfirmSkip` pref the in-dialog remember box
-// used to manage.
+// "Skip confirmation on next sync" toggle lives inside the Anki import
+// settings popup now.
 function renderVocabAnkiSyncButton(): void {
     const btn = document.getElementById('vocab-anki-sync');
-    const skipWrap = document.getElementById('vocab-anki-skip-confirm-wrap');
-    const skipCb = document.getElementById('vocab-anki-skip-confirm') as HTMLInputElement | null;
     if (!btn) return;
     const prefs = loadAnkiPrefs(state.activeLanguage);
     const visible = prefs.lastSyncAt > 0 && (prefs.decks?.length ?? 0) > 0;
     btn.classList.toggle('hidden', !visible);
-    if (skipWrap) skipWrap.classList.toggle('hidden', !visible);
-    if (skipCb) skipCb.checked = prefs.replaceConfirmSkip;
-}
-
-function onVocabAnkiSkipConfirmToggle(checked: boolean): void {
-    const prefs = loadAnkiPrefs(state.activeLanguage);
-    prefs.replaceConfirmSkip = checked;
-    saveAnkiPrefs(state.activeLanguage, prefs);
 }
 
 function renderVocabLangStat(): void {
@@ -2396,8 +2385,6 @@ function openAnkiModalAtStage(stage: AnkiStage): void {
         renderAnkiDeckSummary();
     } else if (stage === 'fields') {
         renderAnkiFieldPickers();
-        renderAnkiIncludeNewToggle();
-        renderReplaceModeToggle();
         renderAnkiImportEstimate();
     } else if (stage === 'running') {
         const msg = document.getElementById('anki-import-running-msg');
@@ -2903,8 +2890,6 @@ async function loadAnkiModelsForSelection(): Promise<void> {
         persistAnkiPrefs();
 
         renderAnkiFieldPickers();
-        renderAnkiIncludeNewToggle();
-        renderReplaceModeToggle();
         renderAnkiImportEstimate();
 
         // Sync mode: skip the manual confirmation and run the import using
@@ -3010,49 +2995,81 @@ function onAnkiFieldPick(model: string, field: string): void {
     renderAnkiImportEstimate();
 }
 
-// ── Include-new + include-suspended toggles + import-size estimate ─────────
+// ── Anki import settings popup ─────────────────────────────────────────────
+//
+// All sync-affecting prefs live in a single popup so the user can tweak them
+// from the vocab page (before clicking Sync) OR from step 2 of the import
+// modal (during the manual flow). The popup reads the active language's
+// prefs each time it opens; change handlers write back to prefs AND to
+// ankiImport state so an open import modal sees the new values immediately.
 
-function renderAnkiIncludeNewToggle(): void {
-    const newCb = document.getElementById('anki-import-include-new') as HTMLInputElement | null;
-    if (newCb) newCb.checked = ankiImport.includeNew;
-    const susCb = document.getElementById('anki-import-include-suspended') as HTMLInputElement | null;
-    if (susCb) susCb.checked = ankiImport.includeSuspended;
+function openAnkiSettingsModal(): void {
+    const modal = document.getElementById('anki-settings-modal');
+    if (!modal) return;
+    renderAnkiSettings();
+    modal.classList.remove('hidden');
 }
 
-function onAnkiIncludeNewToggle(checked: boolean): void {
-    ankiImport.includeNew = checked;
-    persistAnkiPrefs();
-    renderAnkiImportEstimate();
+function closeAnkiSettingsModal(): void {
+    document.getElementById('anki-settings-modal')?.classList.add('hidden');
+    // If the import modal is open at the fields stage, refresh the estimate
+    // — toggle changes might have shifted what gets imported.
+    if (ankiImport.open) renderAnkiImportEstimate();
 }
 
-function onAnkiIncludeSuspendedToggle(checked: boolean): void {
-    ankiImport.includeSuspended = checked;
-    persistAnkiPrefs();
-    renderAnkiImportEstimate();
+function renderAnkiSettings(): void {
+    const prefs = loadAnkiPrefs(state.activeLanguage);
+    const setCb = (id: string, checked: boolean): void => {
+        const cb = document.getElementById(id) as HTMLInputElement | null;
+        if (cb) cb.checked = checked;
+    };
+    setCb('anki-settings-include-new',       prefs.includeNew);
+    setCb('anki-settings-include-suspended', prefs.includeSuspended);
+    setCb('anki-settings-replace-mode',      prefs.replaceMode);
+    setCb('anki-settings-preserve-manual',   prefs.preserveManualOnReplace);
+    setCb('anki-settings-skip-confirm',      prefs.replaceConfirmSkip);
+    const preserveWrap = document.getElementById('anki-settings-preserve-manual-wrap');
+    if (preserveWrap) preserveWrap.classList.toggle('hidden', !prefs.replaceMode);
 }
 
-function renderReplaceModeToggle(): void {
-    const cb = document.getElementById('anki-import-replace-mode') as HTMLInputElement | null;
-    if (cb) cb.checked = ankiImport.replaceMode;
-    renderPreserveManualToggle();
+// Generic helper: update a single boolean pref + mirror it onto ankiImport
+// state so any open import modal stays in sync.
+function updateAnkiPref<K extends keyof AnkiImportPrefs>(key: K, value: AnkiImportPrefs[K]): void {
+    const prefs = loadAnkiPrefs(state.activeLanguage);
+    prefs[key] = value;
+    saveAnkiPrefs(state.activeLanguage, prefs);
+    // Mirror onto ankiImport so an open import modal's filter / estimate
+    // reflect the change without waiting for a re-open.
+    if (key === 'includeNew')              ankiImport.includeNew = value as boolean;
+    if (key === 'includeSuspended')        ankiImport.includeSuspended = value as boolean;
+    if (key === 'replaceMode')             ankiImport.replaceMode = value as boolean;
+    if (key === 'preserveManualOnReplace') ankiImport.preserveManualOnReplace = value as boolean;
+    // replaceConfirmSkip lives in prefs only — runAnkiImport reads it
+    // directly at confirm time.
 }
 
-function renderPreserveManualToggle(): void {
-    const wrap = document.getElementById('anki-import-preserve-manual-wrap');
-    const cb   = document.getElementById('anki-import-preserve-manual') as HTMLInputElement | null;
-    if (wrap) wrap.classList.toggle('hidden', !ankiImport.replaceMode);
-    if (cb) cb.checked = ankiImport.preserveManualOnReplace;
+function onSettingsIncludeNewToggle(checked: boolean): void {
+    updateAnkiPref('includeNew', checked);
 }
 
-function onAnkiReplaceModeToggle(checked: boolean): void {
-    ankiImport.replaceMode = checked;
-    persistAnkiPrefs();
-    renderPreserveManualToggle();
+function onSettingsIncludeSuspendedToggle(checked: boolean): void {
+    updateAnkiPref('includeSuspended', checked);
 }
 
-function onAnkiPreserveManualToggle(checked: boolean): void {
-    ankiImport.preserveManualOnReplace = checked;
-    persistAnkiPrefs();
+function onSettingsReplaceModeToggle(checked: boolean): void {
+    updateAnkiPref('replaceMode', checked);
+    // The "Preserve manually-imported words" sub-toggle is only relevant
+    // when Replace is on.
+    const wrap = document.getElementById('anki-settings-preserve-manual-wrap');
+    if (wrap) wrap.classList.toggle('hidden', !checked);
+}
+
+function onSettingsPreserveManualToggle(checked: boolean): void {
+    updateAnkiPref('preserveManualOnReplace', checked);
+}
+
+function onSettingsSkipConfirmToggle(checked: boolean): void {
+    updateAnkiPref('replaceConfirmSkip', checked);
 }
 
 // Returns the set of notes that would actually be imported given the current
@@ -5499,13 +5516,42 @@ function initVocabAnkiImport(): void {
     // Vocab page launcher buttons.
     document.getElementById('vocab-anki-connect')?.addEventListener('click', openAnkiImportModal);
     document.getElementById('vocab-anki-sync')?.addEventListener('click', () => { void openAnkiSyncModal(); });
-    document.getElementById('vocab-anki-skip-confirm')?.addEventListener('change', (e) => {
-        const target = e.target as HTMLInputElement | null;
-        if (target) onVocabAnkiSkipConfirmToggle(target.checked);
+    document.getElementById('vocab-anki-settings')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openAnkiSettingsModal();
+    });
+    document.getElementById('anki-import-open-settings')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openAnkiSettingsModal();
     });
     document.getElementById('vocab-anki-help')?.addEventListener('click', (e) => {
         e.preventDefault();
         openAnkiSetupModal();
+    });
+
+    // Settings popup close + toggle handlers.
+    document.getElementById('anki-settings-modal-close')?.addEventListener('click', closeAnkiSettingsModal);
+    document.getElementById('anki-settings-modal-done')?.addEventListener('click', closeAnkiSettingsModal);
+    document.getElementById('anki-settings-modal-backdrop')?.addEventListener('click', closeAnkiSettingsModal);
+    document.getElementById('anki-settings-include-new')?.addEventListener('change', (e) => {
+        const t = e.target as HTMLInputElement | null;
+        if (t) onSettingsIncludeNewToggle(t.checked);
+    });
+    document.getElementById('anki-settings-include-suspended')?.addEventListener('change', (e) => {
+        const t = e.target as HTMLInputElement | null;
+        if (t) onSettingsIncludeSuspendedToggle(t.checked);
+    });
+    document.getElementById('anki-settings-replace-mode')?.addEventListener('change', (e) => {
+        const t = e.target as HTMLInputElement | null;
+        if (t) onSettingsReplaceModeToggle(t.checked);
+    });
+    document.getElementById('anki-settings-preserve-manual')?.addEventListener('change', (e) => {
+        const t = e.target as HTMLInputElement | null;
+        if (t) onSettingsPreserveManualToggle(t.checked);
+    });
+    document.getElementById('anki-settings-skip-confirm')?.addEventListener('change', (e) => {
+        const t = e.target as HTMLInputElement | null;
+        if (t) onSettingsSkipConfirmToggle(t.checked);
     });
 
     // Setup-instructions modal close + copy.
@@ -5562,23 +5608,9 @@ function initVocabAnkiImport(): void {
         void runAnkiImport();
     });
 
-    // Include-new toggle — flips the active note set + refreshes the estimate.
-    document.getElementById('anki-import-include-new')?.addEventListener('change', (e) => {
-        const target = e.target as HTMLInputElement | null;
-        if (target) onAnkiIncludeNewToggle(target.checked);
-    });
-    document.getElementById('anki-import-include-suspended')?.addEventListener('change', (e) => {
-        const target = e.target as HTMLInputElement | null;
-        if (target) onAnkiIncludeSuspendedToggle(target.checked);
-    });
-    document.getElementById('anki-import-replace-mode')?.addEventListener('change', (e) => {
-        const target = e.target as HTMLInputElement | null;
-        if (target) onAnkiReplaceModeToggle(target.checked);
-    });
-    document.getElementById('anki-import-preserve-manual')?.addEventListener('change', (e) => {
-        const target = e.target as HTMLInputElement | null;
-        if (target) onAnkiPreserveManualToggle(target.checked);
-    });
+    // (The four behavioural toggles — include-new, include-suspended,
+    // replace-mode, preserve-manual — now live inside the Anki settings
+    // popup. Their handlers are wired above with the settings popup.)
 
     // Import modal — custom field picker (click to open/close + select).
     const fieldsContainer = document.getElementById('anki-import-fields');

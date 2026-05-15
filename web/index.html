@@ -373,10 +373,7 @@
                             <button type="button" id="vocab-anki-connect" class="btn btn-primary btn-sm">Connect to Anki</button>
                             <button type="button" id="vocab-anki-sync" class="btn btn-outline btn-sm hidden" data-tooltip="Re-run the last import using your saved decks + field choices.">Sync from Anki</button>
                         </div>
-                        <label class="vocab-anki-skip-confirm hidden" id="vocab-anki-skip-confirm-wrap">
-                            <input type="checkbox" id="vocab-anki-skip-confirm" />
-                            <span>Skip confirmation on next sync</span>
-                        </label>
+                        <a href="#" id="vocab-anki-settings" class="vocab-anki-link">Settings</a>
                         <span id="vocab-anki-status" class="known-words-summary" role="status"></span>
                     </div>
                     <a href="#" id="vocab-anki-help" class="vocab-anki-help">Setup instructions</a>
@@ -765,6 +762,48 @@
         </div>
     </div>
 
+    <!-- ==================== ANKI IMPORT SETTINGS MODAL ==================== -->
+    <div id="anki-settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="anki-settings-modal-title">
+        <div class="modal-backdrop" id="anki-settings-modal-backdrop"></div>
+        <div class="modal-card" role="document">
+            <button type="button" class="modal-close" id="anki-settings-modal-close" aria-label="Close">×</button>
+            <h3 id="anki-settings-modal-title">Anki import settings</h3>
+            <p class="modal-lede">These apply to both <em>Connect to Anki</em> and <em>Sync from Anki</em> for the active language.</p>
+
+            <div class="anki-settings-list">
+                <label class="anki-import-include-new">
+                    <input type="checkbox" id="anki-settings-include-new" />
+                    <span>Mark new cards as known</span>
+                    <span class="anki-import-include-new-hint">Off by default — only cards you've reviewed at least once count as "known".</span>
+                </label>
+                <label class="anki-import-include-new">
+                    <input type="checkbox" id="anki-settings-include-suspended" />
+                    <span>Include suspended cards</span>
+                    <span class="anki-import-include-new-hint">Off by default — cards you've paused are excluded from the import.</span>
+                </label>
+                <label class="anki-import-include-new anki-import-replace">
+                    <input type="checkbox" id="anki-settings-replace-mode" />
+                    <span>Replace existing vocabulary</span>
+                    <span class="anki-import-include-new-hint">Off by default — additive. When on, the import becomes a sync: words not in this Anki selection are <strong>removed</strong> from your known-words list.</span>
+                </label>
+                <label class="anki-import-include-new anki-import-preserve-manual hidden" id="anki-settings-preserve-manual-wrap">
+                    <input type="checkbox" id="anki-settings-preserve-manual" checked />
+                    <span>Preserve manually-imported words</span>
+                    <span class="anki-import-include-new-hint">On by default — words you added through the textbox, a file, or by marking a row known on the Parse page are kept. Uncheck to make the sync replace <em>everything</em>.</span>
+                </label>
+                <label class="anki-import-include-new">
+                    <input type="checkbox" id="anki-settings-skip-confirm" />
+                    <span>Skip confirmation on next sync</span>
+                    <span class="anki-import-include-new-hint">Off by default — when on, <em>Sync from Anki</em> runs without pausing for the replace-vocabulary confirmation dialog. Stays set across runs until you uncheck it.</span>
+                </label>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-primary" id="anki-settings-modal-done">Done</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ==================== ANKI IMPORT MODAL ==================== -->
     <div id="anki-import-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="anki-import-modal-title">
         <div class="modal-backdrop" id="anki-import-modal-backdrop"></div>
@@ -800,26 +839,7 @@
                 <p class="modal-lede">For each card type in your selected decks, pick the field that holds the word you want to mark known. Set a card type to <em>Skip</em> to ignore it.</p>
                 <div id="anki-import-fields" class="anki-import-fields"></div>
                 <p class="anki-import-summary" id="anki-import-field-summary"></p>
-                <label class="anki-import-include-new">
-                    <input type="checkbox" id="anki-import-include-new" />
-                    <span>Mark new cards as known</span>
-                    <span class="anki-import-include-new-hint">Off by default — only cards you've reviewed at least once count as "known".</span>
-                </label>
-                <label class="anki-import-include-new">
-                    <input type="checkbox" id="anki-import-include-suspended" />
-                    <span>Include suspended cards</span>
-                    <span class="anki-import-include-new-hint">Off by default — cards you've paused are excluded from the import.</span>
-                </label>
-                <label class="anki-import-include-new anki-import-replace">
-                    <input type="checkbox" id="anki-import-replace-mode" />
-                    <span>Replace existing vocabulary</span>
-                    <span class="anki-import-include-new-hint">Off by default — additive. When on, the import becomes a sync: words not in this Anki selection are <strong>removed</strong> from your known-words list.</span>
-                </label>
-                <label class="anki-import-include-new anki-import-preserve-manual hidden" id="anki-import-preserve-manual-wrap">
-                    <input type="checkbox" id="anki-import-preserve-manual" checked />
-                    <span>Preserve manually-imported words</span>
-                    <span class="anki-import-include-new-hint">On by default — words you added through the textbox, a file, or by marking a row known on the Parse page are kept. Uncheck to make the sync replace <em>everything</em>.</span>
-                </label>
+                <a href="#" id="anki-import-open-settings" class="vocab-anki-link" data-tooltip="Mark new / include suspended / replace existing / preserve manual">Import settings</a>
                 <p class="anki-import-estimate" id="anki-import-estimate" aria-live="polite"></p>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-link" id="anki-import-back">Back</button>

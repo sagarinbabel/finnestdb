@@ -2815,18 +2815,32 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     gap: 0.5rem;
     flex-wrap: wrap;
 }
-.vocab-anki-skip-confirm {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
+/* Small underlined link beneath the connect/sync buttons that opens the
+   Anki import settings popup. Same treatment as the "Setup instructions"
+   link so the two read as peers. */
+.vocab-anki-link {
+    display: inline-block;
+    margin-top: 0.4rem;
+    align-self: flex-start;
     font-size: 0.85rem;
-    color: var(--text-secondary);
-    cursor: pointer;
-    user-select: none;
-    margin-top: 0.25rem;
+    color: var(--accent);
+    text-decoration: underline;
 }
-.vocab-anki-skip-confirm.hidden { display: none; }
-.vocab-anki-skip-confirm input { margin: 0; cursor: pointer; }
+.vocab-anki-link:hover { text-decoration: none; }
+
+/* The settings popup can open ON TOP of the import modal (via the step-2
+   "Import settings" link). Both share the .modal z-index (2000); since the
+   import modal comes later in the DOM it would otherwise win the stacking
+   contest and swallow clicks. Lift the settings modal above it. */
+#anki-settings-modal {
+    z-index: 2100;
+}
+.anki-settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin: 0.5rem 0 1rem;
+}
 .vocab-anki-help {
     margin-top: auto;
     align-self: flex-start;

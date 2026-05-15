@@ -119,6 +119,25 @@ async function clearStorage(page: Page): Promise<void> {
   });
 }
 
+// The four behavioural toggles + skip-confirmation now live in the Anki
+// import settings popup, reachable from a "Settings" link on the vocab page
+// and from step 2 of the import modal. This helper picks whichever Settings
+// link is currently visible, opens the popup, toggles the requested setting,
+// and closes the popup.
+async function setAnkiSetting(page: Page, settingId: string, checked: boolean): Promise<void> {
+  const importSettings = page.locator('#anki-import-open-settings');
+  const vocabSettings  = page.locator('#vocab-anki-settings');
+  if (await importSettings.isVisible().catch(() => false)) {
+    await importSettings.click();
+  } else {
+    await vocabSettings.click();
+  }
+  const cb = page.locator(settingId);
+  if (checked) await cb.check();
+  else         await cb.uncheck();
+  await page.locator('#anki-settings-modal-done').click();
+}
+
 // ── 1. Pure-logic helpers via window.__finestTest ──────────────────────────
 
 test.describe('pure helpers', () => {
@@ -953,25 +972,22 @@ test.describe('Anki import popup', () => {
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
 
-    // Toggle is off by default.
-    const toggle = page.locator('#anki-import-include-new');
-    await expect(toggle).not.toBeChecked();
-
-    // The picker defaulted to "Sõna" for ETBasic. With toggle OFF, the new
-    // note (102 = "auto") is excluded — estimate counts 2 notes / 2 words.
+    // Picker defaulted to "Sõna" for ETBasic. With include-new OFF (the
+    // default), the new note (102 = "auto") is excluded — estimate counts
+    // 2 notes / 2 words.
     const estimate = page.locator('#anki-import-estimate');
     await expect(estimate).toContainText('2 notes');
     await expect(estimate).toContainText('2 words');
     await expect(estimate).toContainText('1 new card excluded');
 
-    // Flip the toggle: now all 3 notes count.
-    await toggle.check();
+    // Flip the toggle via the Settings popup: now all 3 notes count.
+    await setAnkiSetting(page, '#anki-settings-include-new', true);
     await expect(estimate).toContainText('3 notes');
     await expect(estimate).toContainText('3 words');
     await expect(estimate).not.toContainText('new card excluded');
 
     // Flip off again: estimate snaps back to 2.
-    await toggle.uncheck();
+    await setAnkiSetting(page, '#anki-settings-include-new', false);
     await expect(estimate).toContainText('2 notes');
   });
 
@@ -1058,7 +1074,7 @@ test.describe('Anki import popup', () => {
     await page.locator('[data-deck-toggle="Estonian"]').click();
     await page.locator('[data-deck-check="Estonian::A1"]').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await page.locator('#anki-import-include-new').check();
+    await setAnkiSetting(page, '#anki-settings-include-new', true);
     // Close + reopen.
     await page.locator('#anki-import-modal-close').click();
     await expect(page.locator('#anki-import-modal')).toHaveClass(/hidden/);
@@ -1066,7 +1082,10 @@ test.describe('Anki import popup', () => {
     await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
-    await expect(page.locator('#anki-import-include-new')).toBeChecked();
+    // Re-opening the settings popup should show the value still checked.
+    await page.locator('#anki-import-open-settings').click();
+    await expect(page.locator('#anki-settings-include-new')).toBeChecked();
+    await page.locator('#anki-settings-modal-done').click();
   });
 
   test('Import respects the include-new toggle and only sends studied-note words by default', async ({ page }) => {
@@ -1132,7 +1151,7 @@ test.describe('Anki import popup', () => {
     await page.locator('[data-deck-check="Estonian::A1"]').check();
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
-    await page.locator('#anki-import-include-new').check();
+    await setAnkiSetting(page, '#anki-settings-include-new', true);
     await page.getByRole('button', { name: 'Import', exact: true }).click();
     await expect.poll(() => importBody).not.toBeNull();
     expect(new Set(importBody!.words)).toEqual(new Set(['kassi', 'koer', 'auto']));
@@ -1153,14 +1172,11 @@ test.describe('Anki import popup', () => {
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
 
-    const toggle = page.locator('#anki-import-include-suspended');
-    await expect(toggle).not.toBeChecked();
-
     const estimate = page.locator('#anki-import-estimate');
     await expect(estimate).toContainText('2 notes');
     await expect(estimate).toContainText('1 suspended card excluded');
     // Toggle on → suspended note counts.
-    await toggle.check();
+    await setAnkiSetting(page, '#anki-settings-include-suspended', true);
     await expect(estimate).toContainText('3 notes');
     await expect(estimate).not.toContainText('suspended card excluded');
   });
@@ -1177,12 +1193,14 @@ test.describe('Anki import popup', () => {
     await page.locator('[data-deck-toggle="Estonian"]').click();
     await page.locator('[data-deck-check="Estonian::A1"]').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await page.locator('#anki-import-include-suspended').check();
+    await setAnkiSetting(page, '#anki-settings-include-suspended', true);
     await page.locator('#anki-import-modal-close').click();
     await page.getByRole('button', { name: 'Connect to Anki' }).click();
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
-    await expect(page.locator('#anki-import-include-suspended')).toBeChecked();
+    await page.locator('#anki-import-open-settings').click();
+    await expect(page.locator('#anki-settings-include-suspended')).toBeChecked();
+    await page.locator('#anki-settings-modal-done').click();
   });
 
   test('Import respects the include-suspended toggle by default (suspended notes excluded)', async ({ page }) => {
@@ -1400,12 +1418,9 @@ test.describe('Anki import popup', () => {
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
 
-    // Default off.
-    const replaceCb = page.locator('#anki-import-replace-mode');
-    await expect(replaceCb).not.toBeChecked();
-
-    // Enable + import → confirmation dialog must appear.
-    await replaceCb.check();
+    // Enable replace via the Settings popup, then import → confirmation
+    // dialog must appear.
+    await setAnkiSetting(page, '#anki-settings-replace-mode', true);
     await page.getByRole('button', { name: 'Import', exact: true }).click();
     const dialog = page.locator('#dialog-modal');
     await expect(dialog).not.toHaveClass(/hidden/);
@@ -1457,15 +1472,17 @@ test.describe('Anki import popup', () => {
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
 
-    // Replace toggle off → preserve toggle is hidden.
-    const preserveWrap = page.locator('#anki-import-preserve-manual-wrap');
-    const preserveCb   = page.locator('#anki-import-preserve-manual');
+    // Open Settings — Replace off by default, preserve-manual sub-toggle
+    // hidden.
+    await page.locator('#anki-import-open-settings').click();
+    const preserveWrap = page.locator('#anki-settings-preserve-manual-wrap');
+    const preserveCb   = page.locator('#anki-settings-preserve-manual');
     await expect(preserveWrap).toHaveClass(/hidden/);
-
     // Flip replace on → preserve appears, checked by default.
-    await page.locator('#anki-import-replace-mode').check();
+    await page.locator('#anki-settings-replace-mode').check();
     await expect(preserveWrap).not.toHaveClass(/hidden/);
     await expect(preserveCb).toBeChecked();
+    await page.locator('#anki-settings-modal-done').click();
 
     // Import → confirm dialog appears, scope='anki' on the PUT.
     await page.getByRole('button', { name: 'Import', exact: true }).click();
@@ -1499,8 +1516,11 @@ test.describe('Anki import popup', () => {
     await page.locator('[data-deck-toggle="Estonian"]').click();
     await page.locator('[data-deck-check="Estonian::A1"]').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await page.locator('#anki-import-replace-mode').check();
-    await page.locator('#anki-import-preserve-manual').uncheck();
+    // Enable replace, then uncheck preserve-manual — both via Settings.
+    await page.locator('#anki-import-open-settings').click();
+    await page.locator('#anki-settings-replace-mode').check();
+    await page.locator('#anki-settings-preserve-manual').uncheck();
+    await page.locator('#anki-settings-modal-done').click();
     await page.getByRole('button', { name: 'Import', exact: true }).click();
     await page.locator('#dialog-modal-confirm').click();
     await expect.poll(() => putBody).not.toBeNull();
@@ -1570,12 +1590,14 @@ test.describe('Anki import popup', () => {
     await page.locator('[data-deck-toggle="Estonian"]').click();
     await page.locator('[data-deck-check="Estonian::A1"]').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    await page.locator('#anki-import-replace-mode').check();
+    await setAnkiSetting(page, '#anki-settings-replace-mode', true);
     await page.locator('#anki-import-modal-close').click();
     await page.getByRole('button', { name: 'Connect to Anki' }).click();
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
-    await expect(page.locator('#anki-import-replace-mode')).toBeChecked();
+    await page.locator('#anki-import-open-settings').click();
+    await expect(page.locator('#anki-settings-replace-mode')).toBeChecked();
+    await page.locator('#anki-settings-modal-done').click();
   });
 
   test('"Sync from Anki" button stays hidden until a successful import lands', async ({ page }) => {
@@ -1690,7 +1712,7 @@ test.describe('Anki import popup', () => {
     await page.locator('[data-deck-check="Estonian::A1"]').check();
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
-    await page.locator('#anki-import-replace-mode').check();
+    await setAnkiSetting(page, '#anki-settings-replace-mode', true);
     await page.getByRole('button', { name: 'Import', exact: true }).click();
 
     const dialog = page.locator('#dialog-modal');
@@ -1712,8 +1734,10 @@ test.describe('Anki import popup', () => {
     await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
-    // Replace mode is still on from the saved prefs.
-    await expect(page.locator('#anki-import-replace-mode')).toBeChecked();
+    // Replace mode is still on from the saved prefs — verify via Settings.
+    await page.locator('#anki-import-open-settings').click();
+    await expect(page.locator('#anki-settings-replace-mode')).toBeChecked();
+    await page.locator('#anki-settings-modal-done').click();
     await page.getByRole('button', { name: 'Import', exact: true }).click();
     // Confirm dialog must NOT appear; the running stage opens directly.
     await expect(page.locator('#anki-import-stage-running')).not.toHaveClass(/hidden/);
@@ -2113,36 +2137,62 @@ test.describe('Anki import popup', () => {
     await expect(syncBtn).toBeEnabled();
   });
 
-  test("Vocab page has a 'Skip confirmation on next sync' checkbox that controls the pref", async ({ page }) => {
+  test('Settings popup is reachable from the vocab page and from import step 2, sharing one pref store', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+
+    // Open from the vocab-page Settings link, enable replace mode.
+    await page.locator('#vocab-anki-settings').click();
+    await expect(page.locator('#anki-settings-modal')).not.toHaveClass(/hidden/);
+    await page.locator('#anki-settings-replace-mode').check();
+    // Preserve-manual sub-toggle becomes visible when replace is on.
+    await expect(page.locator('#anki-settings-preserve-manual-wrap')).not.toHaveClass(/hidden/);
+    await page.locator('#anki-settings-modal-close').click();
+    await expect(page.locator('#anki-settings-modal')).toHaveClass(/hidden/);
+
+    // Walk into the import modal's step 2 and open Settings from THERE —
+    // it should reflect the replace-mode value just set on the vocab page.
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+    await page.locator('#anki-import-open-settings').click();
+    // Settings popup must stack ABOVE the import modal (regression: it
+    // previously opened behind it and swallowed clicks).
+    await expect(page.locator('#anki-settings-modal')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#anki-settings-replace-mode')).toBeChecked();
+    const z = await page.evaluate(() => {
+      const s = Number(getComputedStyle(document.getElementById('anki-settings-modal')!).zIndex || '0');
+      const i = Number(getComputedStyle(document.getElementById('anki-import-modal')!).zIndex || '0');
+      return s > i;
+    });
+    expect(z).toBe(true);
+    await page.locator('#anki-settings-modal-done').click();
+  });
+
+  test("Settings popup hosts the 'Skip confirmation on next sync' checkbox and persists it", async ({ page }) => {
     await mockMe(page, 'user', { activeLanguage: 'ET' });
     await mockKnownWordsEmpty(page);
     await page.goto('/#/vocab');
-    const wrap = page.locator('#vocab-anki-skip-confirm-wrap');
-    const cb = page.locator('#vocab-anki-skip-confirm');
-
-    // Hidden by default — no prior sync.
-    await expect(wrap).toHaveClass(/hidden/);
-
-    // Seed a prior successful sync so the button + checkbox become visible.
-    await page.evaluate(() => {
-      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
-        filter: '', decks: ['Estonian::A1'], fieldByModel: { ETBasic: 'Sõna' },
-        includeNew: false, includeSuspended: false, replaceMode: true,
-        lastSyncAt: Date.now(), replaceConfirmSkip: false, preserveManualOnReplace: true,
-      }));
-    });
-    await page.reload();
-    await expect(wrap).not.toHaveClass(/hidden/);
+    // Open settings — checkbox is unchecked by default.
+    await page.locator('#vocab-anki-settings').click();
+    const cb = page.locator('#anki-settings-skip-confirm');
     await expect(cb).not.toBeChecked();
 
-    // Tick → pref persists.
+    // Tick → pref persists immediately.
     await cb.check();
     const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('finest:anki-import:ET') || '{}'));
     expect(persisted.replaceConfirmSkip).toBe(true);
 
-    // Reload → checkbox stays checked.
-    await page.reload();
-    await expect(page.locator('#vocab-anki-skip-confirm')).toBeChecked();
+    // Close + reopen settings → checkbox stays checked.
+    await page.locator('#anki-settings-modal-done').click();
+    await page.locator('#vocab-anki-settings').click();
+    await expect(page.locator('#anki-settings-skip-confirm')).toBeChecked();
   });
 
   test('Sync dialog no longer carries the inline "Don\'t show this again" checkbox', async ({ page }) => {
