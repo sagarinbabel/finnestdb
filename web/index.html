@@ -38,6 +38,13 @@
             </div>
 
             <div class="nav-actions">
+                <div class="nav-lang-dropdown" data-role-show="user admin">
+                    <button type="button" id="nav-language-toggle" class="nav-lang-toggle" aria-haspopup="listbox" aria-expanded="false" aria-label="Active language">
+                        <span id="nav-language-current" class="nav-lang-current">—</span>
+                        <span class="nav-lang-caret" aria-hidden="true"></span>
+                    </button>
+                    <ul id="nav-language-menu" class="nav-lang-menu hidden" role="listbox" aria-labelledby="nav-language-toggle"></ul>
+                </div>
                 <button id="theme-toggle" class="nav-icon-btn" aria-label="Toggle theme">
                     <span class="theme-icon">🌙</span>
                 </button>
@@ -69,6 +76,7 @@
                 <a href="#/inspect" class="nav-mobile-link" data-route="/inspect">Parse</a>
                 <a href="#/decks" class="nav-mobile-link" data-route="/decks">Decks</a>
                 <a href="#/review" class="nav-mobile-link" data-route="/review">Review</a>
+                <a href="#/languages" class="nav-mobile-link" data-route="/languages">Languages</a>
             </div>
             <div data-role-show="admin">
                 <div class="nav-mobile-divider">Admin</div>
@@ -245,18 +253,10 @@
         <main class="inspect-main">
             <section class="inspect-header">
                 <h1>Parse a text</h1>
-                <p class="inspect-lede">Paste Finnish or Estonian text. We'll show unique lemmas, forms, definitions, examples, token counts, and row-level known/ignore actions.</p>
+                <p class="inspect-lede" id="inspect-lede">Paste Finnish text. We'll show unique lemmas, forms, definitions, examples, token counts, and row-level known/ignore actions.</p>
             </section>
 
             <form id="inspect-form" class="inspect-form">
-                <div class="form-group">
-                    <span class="form-group-label" id="inspect-lang-label">Language</span>
-                    <div class="btn-radio" id="inspect-lang" role="radiogroup" aria-labelledby="inspect-lang-label" data-value="FI">
-                        <button type="button" class="btn-radio-option is-active" role="radio" data-value="FI" aria-checked="true">Finnish</button>
-                        <button type="button" class="btn-radio-option" role="radio" data-value="ET" aria-checked="false">Estonian</button>
-                    </div>
-                </div>
-
                 <div class="form-group">
                     <label for="inspect-text">Your text <span id="inspect-char-count" class="char-count">0 / 1,500,000</span></label>
                     <div class="dropzone" id="inspect-dropzone">
@@ -316,13 +316,7 @@
                     <div>
                         <h2>Known words</h2>
                         <p class="known-words-lede">Import words you already know so deck coverage and review selection start from your real vocabulary.</p>
-                    </div>
-                    <div class="known-words-lang">
-                        <span class="form-group-label" id="known-words-lang-label">Language</span>
-                        <div class="btn-radio" id="known-words-lang" role="radiogroup" aria-labelledby="known-words-lang-label" data-value="FI">
-                            <button type="button" class="btn-radio-option is-active" role="radio" data-value="FI" aria-checked="true">Finnish</button>
-                            <button type="button" class="btn-radio-option" role="radio" data-value="ET" aria-checked="false">Estonian</button>
-                        </div>
+                        <p class="known-words-lang-hint" id="known-words-lang-hint"></p>
                     </div>
                 </div>
                 <form id="known-words-form" class="known-words-form">
@@ -339,6 +333,18 @@
                 </div>
                 <div id="known-words-list" class="known-words-list" aria-live="polite"></div>
             </section>
+        </main>
+    </div>
+
+    <!-- ==================== LANGUAGES ==================== -->
+    <div id="languages-page" class="page" data-role-required="user admin">
+        <main class="languages-main">
+            <section class="languages-header">
+                <h1>Languages</h1>
+                <p class="languages-lede">Choose which languages you're learning. Decks, review, and Parse default to your active language — switch it from the dropdown in the top bar.</p>
+            </section>
+            <section id="languages-list" class="languages-list" aria-live="polite"></section>
+            <p class="languages-note">More languages will be added as we expand the dictionary.</p>
         </main>
     </div>
 

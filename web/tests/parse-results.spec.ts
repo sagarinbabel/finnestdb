@@ -4,7 +4,22 @@ const mixedFinnishText = 'Viisutubettaja lauloi nopeasti. Menin pankkiin eilen.'
 
 type Role = 'anon' | 'user' | 'admin';
 
-async function mockMe(page: Page, role: Role): Promise<void> {
+interface MockMeOptions {
+  /** Override the active language. Defaults to 'FI'. */
+  activeLanguage?: string;
+  /** Override the user's learning languages. Defaults to ['FI','ET']. */
+  learningLanguages?: string[];
+  /** Per-language vocab stats; absent languages default to zeros on render. */
+  stats?: Record<string, { decks: number; known_words: number }>;
+  /** Override the dashboard decks list. Defaults to []. */
+  decks?: Array<{
+    id: number; title: string; lang: string;
+    known: number; unique: number; due: number;
+    is_public: boolean; is_owner?: boolean; subscribed?: boolean;
+  }>;
+}
+
+async function mockMe(page: Page, role: Role, opts: MockMeOptions = {}): Promise<void> {
   await page.route('**/api/me', async (route) => {
     if (role === 'anon') {
       await route.fulfill({
@@ -19,6 +34,9 @@ async function mockMe(page: Page, role: Role): Promise<void> {
       email: role === 'admin' ? 'admin@example.com' : 'alice@example.com',
       is_admin: role === 'admin',
     };
+    const learning = opts.learningLanguages ?? ['FI', 'ET'];
+    const active = opts.activeLanguage ?? 'FI';
+    const stats = opts.stats ?? Object.fromEntries(learning.map(l => [l, { decks: 0, known_words: 0 }]));
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -29,9 +47,33 @@ async function mockMe(page: Page, role: Role): Promise<void> {
           known_count: 1234,
           due_count: 87,
           new_capacity_today: 12,
-          decks: [],
+          decks: opts.decks ?? [],
         },
+        languages: { learning, active, stats },
       }),
+    });
+  });
+}
+
+// Capture-and-respond mock for PATCH /api/me/languages. The handler echoes
+// the patched fields back (merged with defaults) so the frontend's
+// applyLanguagesResponse path is exercised, and pushes each request's body
+// into `received` for assertions.
+async function mockLanguagesPatch(
+  page: Page,
+  received: Array<{ learning?: string[]; active?: string }>,
+  baseline: { learning: string[]; active: string },
+): Promise<void> {
+  await page.route('**/api/me/languages', async (route) => {
+    const body = route.request().postDataJSON() as { learning?: string[]; active?: string };
+    received.push(body);
+    const learning = body.learning ?? baseline.learning;
+    const active = body.active ?? baseline.active;
+    const stats = Object.fromEntries(learning.map(l => [l, { decks: 0, known_words: 0 }]));
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ learning, active, stats }),
     });
   });
 }
@@ -496,13 +538,17 @@ test('admin can review parser feedback queue', async ({ page }) => {
   });
 });
 
-// ── Language mismatch (still important regression coverage) ────────────────
+// ── Language mismatch (regression coverage for the warn-and-switch flow) ───
 
-test('inspect lang mismatch warning blocks parse until switching languages', async ({ page }) => {
-  await mockMe(page, 'user');
+test('inspect lang mismatch warning blocks parse until switching site language', async ({ page }) => {
+  // Active language is Estonian. Pasting Finnish text should surface the
+  // warning, gate the Parse button, and offer a Switch-to-Finnish button
+  // that flips the site's active language via PATCH /api/me/languages.
+  await mockMe(page, 'user', { activeLanguage: 'ET' });
+  const patchCalls: Array<{ learning?: string[]; active?: string }> = [];
+  await mockLanguagesPatch(page, patchCalls, { learning: ['FI', 'ET'], active: 'ET' });
   await page.goto('/#/inspect');
 
-  await page.locator('#inspect-lang button[data-value="ET"]').click();
   await page.locator('#inspect-text').fill('Menin pankkiin tänään ja söin hyvää leipää.');
 
   await expect(page.locator('#inspect-lang-warning')).toContainText('looks like Finnish');
@@ -510,16 +556,25 @@ test('inspect lang mismatch warning blocks parse until switching languages', asy
   await expect(page.locator('#inspect-submit')).toBeDisabled();
 
   await page.getByRole('button', { name: 'Switch to Finnish' }).click();
-  await expect(page.locator('#inspect-lang')).toHaveAttribute('data-value', 'FI');
+
+  // PATCH was hit with active=FI, warning cleared, submit re-enabled.
+  await expect.poll(() => patchCalls).toContainEqual(expect.objectContaining({ active: 'FI' }));
   await expect(page.locator('#inspect-lang-warning')).toBeHidden();
   await expect(page.locator('#inspect-submit')).toBeEnabled();
 });
 
-test('inspect paste auto-switches high-confidence language', async ({ page }) => {
-  await mockMe(page, 'user');
+test('inspect does not auto-switch the site language on paste — it warns instead', async ({ page }) => {
+  // Inspect must never silently flip the user's site-wide language behind
+  // their back. Pasting the other language surfaces the warning + switch
+  // button and disables Parse until the user explicitly confirms.
+  await mockMe(page, 'user', { activeLanguage: 'ET' });
+  const patchCalls: Array<unknown> = [];
+  await page.route('**/api/me/languages', async (route) => {
+    patchCalls.push(route.request().postDataJSON());
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
   await page.goto('/#/inspect');
 
-  await page.locator('#inspect-lang button[data-value="ET"]').click();
   const finnish = 'Menin pankkiin tänään ja söin hyvää leipää.';
   await page.locator('#inspect-text').evaluate((el, value) => {
     const input = el as HTMLTextAreaElement;
@@ -527,25 +582,32 @@ test('inspect paste auto-switches high-confidence language', async ({ page }) =>
     input.dispatchEvent(new Event('paste', { bubbles: true }));
   }, finnish);
 
-  await expect(page.locator('#inspect-lang')).toHaveAttribute('data-value', 'FI');
-  await expect(page.locator('#inspect-lang-warning')).toBeHidden();
-  await expect(page.locator('#inspect-submit')).toBeEnabled();
+  await expect(page.locator('#inspect-lang-warning')).toContainText('looks like Finnish');
+  await expect(page.locator('#inspect-lang-switch')).toBeVisible();
+  await expect(page.locator('#inspect-submit')).toBeDisabled();
+  // No silent PATCH issued.
+  expect(patchCalls).toEqual([]);
 });
 
-test('inspect file load auto-switches high-confidence language', async ({ page }) => {
-  await mockMe(page, 'user');
+test('inspect does not auto-switch the site language on file load — it warns instead', async ({ page }) => {
+  await mockMe(page, 'user', { activeLanguage: 'ET' });
+  const patchCalls: Array<unknown> = [];
+  await page.route('**/api/me/languages', async (route) => {
+    patchCalls.push(route.request().postDataJSON());
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+  });
   await page.goto('/#/inspect');
 
-  await page.locator('#inspect-lang button[data-value="ET"]').click();
   await page.locator('#inspect-file').setInputFiles({
     name: 'finnish.txt',
     mimeType: 'text/plain',
     buffer: Buffer.from('Menin pankkiin tänään ja söin hyvää leipää.'),
   });
 
-  await expect(page.locator('#inspect-lang')).toHaveAttribute('data-value', 'FI');
-  await expect(page.locator('#inspect-lang-warning')).toBeHidden();
-  await expect(page.locator('#inspect-submit')).toBeEnabled();
+  await expect(page.locator('#inspect-lang-warning')).toContainText('looks like Finnish');
+  await expect(page.locator('#inspect-lang-switch')).toBeVisible();
+  await expect(page.locator('#inspect-submit')).toBeDisabled();
+  expect(patchCalls).toEqual([]);
 });
 
 // ── Results route is auth-only and signout clears prior parse state ────────
@@ -863,4 +925,174 @@ test('mobile landing layout fits at 375 px', async ({ page }) => {
   // No admin terminology visible in the mobile menu for anonymous users
   await expect(page.getByRole('link', { name: 'Workbench' })).toBeHidden();
   await expect(page.getByRole('link', { name: 'Feedback' })).toBeHidden();
+});
+
+// ── Top-bar language dropdown ──────────────────────────────────────────────
+
+test('nav language dropdown opens and lists the user\'s learning languages', async ({ page }) => {
+  await mockMe(page, 'user', { activeLanguage: 'FI', learningLanguages: ['FI', 'ET'] });
+  await page.goto('/#/dashboard');
+
+  // Closed state: just the trigger, menu hidden.
+  await expect(page.locator('#nav-language-menu')).toHaveClass(/hidden/);
+  await expect(page.locator('#nav-language-toggle')).toHaveAttribute('aria-expanded', 'false');
+
+  await page.locator('#nav-language-toggle').click();
+
+  // Open state: menu visible, one option per learning language plus "More…".
+  await expect(page.locator('#nav-language-menu')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#nav-language-toggle')).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#nav-language-menu .nav-lang-option[data-lang]')).toHaveCount(2);
+  await expect(page.locator('#nav-language-menu [data-lang="FI"]')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#nav-language-menu [data-lang="ET"]')).toHaveAttribute('aria-selected', 'false');
+  await expect(page.locator('#nav-language-menu [data-manage="1"]')).toContainText('More');
+});
+
+test('nav language dropdown is anon-hidden and not anchored to a removed select', async ({ page }) => {
+  // Regression guard: the dropdown shouldn't render for anonymous users
+  // (they have no `learning_languages`). Belt-and-suspenders: also assert
+  // the legacy `<select id="nav-language">` is gone.
+  await mockMe(page, 'anon');
+  await page.goto('/');
+  await expect(page.locator('select#nav-language')).toHaveCount(0);
+  await expect(page.locator('.nav-lang-dropdown')).toHaveClass(/role-hidden/);
+});
+
+test('selecting a language from the dropdown PATCHes the API and re-renders', async ({ page }) => {
+  await mockMe(page, 'user', { activeLanguage: 'FI', learningLanguages: ['FI', 'ET'] });
+  const patchCalls: Array<{ learning?: string[]; active?: string }> = [];
+  await mockLanguagesPatch(page, patchCalls, { learning: ['FI', 'ET'], active: 'FI' });
+  await page.goto('/#/dashboard');
+
+  await page.locator('#nav-language-toggle').click();
+  await page.locator('#nav-language-menu [data-lang="ET"]').click();
+
+  // Server got the PATCH with active=ET; menu closes; the option marked
+  // selected updates after the response merges into state.
+  await expect.poll(() => patchCalls).toContainEqual({ active: 'ET' });
+  await expect(page.locator('#nav-language-menu')).toHaveClass(/hidden/);
+
+  // Re-open and confirm ET is now the selected option.
+  await page.locator('#nav-language-toggle').click();
+  await expect(page.locator('#nav-language-menu [data-lang="ET"]')).toHaveAttribute('aria-selected', 'true');
+});
+
+test('"More" in the dropdown routes to the Languages page', async ({ page }) => {
+  await mockMe(page, 'user');
+  await page.goto('/#/dashboard');
+
+  await page.locator('#nav-language-toggle').click();
+  await page.locator('#nav-language-menu [data-manage="1"]').click();
+
+  await expect(page).toHaveURL(/#\/languages$/);
+  await expect(page.locator('#languages-page')).toHaveClass(/active/);
+});
+
+// ── Languages page ─────────────────────────────────────────────────────────
+
+test('languages page splits Studying and Other, sorted alphabetically with stats', async ({ page }) => {
+  // Only FI is in learning; ET is not. Provide stats so the row copy is
+  // checkable. Section headings are present in this exact order: Studying
+  // first, then Other languages.
+  await mockMe(page, 'user', {
+    activeLanguage: 'FI',
+    learningLanguages: ['FI'],
+    stats: { FI: { decks: 3, known_words: 142 }, ET: { decks: 0, known_words: 0 } },
+  });
+  await page.goto('/#/languages');
+
+  await expect(page.locator('#languages-page')).toHaveClass(/active/);
+  const headings = page.locator('.languages-section-heading');
+  await expect(headings).toHaveCount(2);
+  await expect(headings.nth(0)).toHaveText('Studying');
+  await expect(headings.nth(1)).toHaveText('Other languages');
+
+  // Studying section: Finnish row only, with stats line, Active badge,
+  // and a disabled Remove (only one language).
+  const studying = page.locator('.language-row').filter({ hasText: 'Finnish' });
+  await expect(studying).toHaveCount(1);
+  await expect(studying).toContainText('3 decks · 142 known words');
+  await expect(studying.locator('.language-row-active-badge')).toHaveText('Active');
+  await expect(studying.getByRole('button', { name: 'Remove' })).toBeDisabled();
+
+  // Other section: Estonian row with an Add button.
+  const other = page.locator('.language-row').filter({ hasText: 'Estonian' });
+  await expect(other).toHaveCount(1);
+  await expect(other.getByRole('button', { name: 'Add' })).toBeEnabled();
+});
+
+test('languages page Add adds the language to the studying list', async ({ page }) => {
+  await mockMe(page, 'user', { activeLanguage: 'FI', learningLanguages: ['FI'] });
+  const patchCalls: Array<{ learning?: string[]; active?: string }> = [];
+  await mockLanguagesPatch(page, patchCalls, { learning: ['FI'], active: 'FI' });
+  await page.goto('/#/languages');
+
+  const estonianRow = page.locator('.language-row').filter({ hasText: 'Estonian' });
+  await estonianRow.getByRole('button', { name: 'Add' }).click();
+
+  await expect.poll(() => patchCalls).toContainEqual(expect.objectContaining({
+    learning: ['FI', 'ET'],
+    active: 'FI',
+  }));
+  // After Add, Estonian should now appear in the Studying section (above
+  // the Other heading) and offer Remove + Set active instead of Add.
+  const studyingNow = page.locator('.language-row').filter({ hasText: 'Estonian' });
+  await expect(studyingNow.getByRole('button', { name: 'Remove' })).toBeEnabled();
+  await expect(studyingNow.getByRole('button', { name: 'Set active' })).toBeVisible();
+});
+
+test('languages page Remove disabled when only one language remains', async ({ page }) => {
+  // Mirrors "at least one language required" — the Remove button on the
+  // user's only language is disabled, with the explanation in a tooltip.
+  await mockMe(page, 'user', { activeLanguage: 'FI', learningLanguages: ['FI'] });
+  await page.goto('/#/languages');
+
+  const removeBtn = page.locator('.language-row').filter({ hasText: 'Finnish' }).getByRole('button', { name: 'Remove' });
+  await expect(removeBtn).toBeDisabled();
+  await expect(removeBtn).toHaveAttribute('data-tooltip', /at least one/i);
+});
+
+test('languages page Set active flips the active language', async ({ page }) => {
+  await mockMe(page, 'user', { activeLanguage: 'FI', learningLanguages: ['FI', 'ET'] });
+  const patchCalls: Array<{ learning?: string[]; active?: string }> = [];
+  await mockLanguagesPatch(page, patchCalls, { learning: ['FI', 'ET'], active: 'FI' });
+  await page.goto('/#/languages');
+
+  const estonianRow = page.locator('.language-row').filter({ hasText: 'Estonian' });
+  await estonianRow.getByRole('button', { name: 'Set active' }).click();
+
+  await expect.poll(() => patchCalls).toContainEqual(expect.objectContaining({ active: 'ET' }));
+  // Active badge moves to Estonian; Set active disappears from the active row.
+  await expect(estonianRow.locator('.language-row-active-badge')).toHaveText('Active');
+  await expect(estonianRow.getByRole('button', { name: 'Set active' })).toHaveCount(0);
+});
+
+// ── Active-language drives surfaces (decks + inspect lede) ─────────────────
+
+test('decks list filters to the active language', async ({ page }) => {
+  const decks = [
+    { id: 1, title: 'FI deck',  lang: 'FI', known: 0, unique: 10, due: 0, is_public: false },
+    { id: 2, title: 'ET deck',  lang: 'ET', known: 0, unique: 20, due: 0, is_public: false },
+    { id: 3, title: 'FI deck2', lang: 'FI', known: 0, unique: 30, due: 0, is_public: false },
+  ];
+  await mockMe(page, 'user', { activeLanguage: 'FI', learningLanguages: ['FI', 'ET'], decks });
+  await page.route('**/api/known-words**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"known_words":[]}' });
+  });
+  await page.goto('/#/decks');
+
+  // Only the two FI decks render; the ET deck is filtered out.
+  await expect(page.locator('#decks-list .deck-list-item')).toHaveCount(2);
+  await expect(page.locator('#decks-list')).toContainText('FI deck');
+  await expect(page.locator('#decks-list')).toContainText('FI deck2');
+  await expect(page.locator('#decks-list')).not.toContainText('ET deck');
+});
+
+test('inspect lede references the active language by name', async ({ page }) => {
+  await mockMe(page, 'user', { activeLanguage: 'ET', learningLanguages: ['FI', 'ET'] });
+  await page.goto('/#/inspect');
+
+  await expect(page.locator('#inspect-lede')).toContainText(/Paste Estonian text/);
+  // And: the legacy per-page radio is gone.
+  await expect(page.locator('#inspect-lang')).toHaveCount(0);
 });

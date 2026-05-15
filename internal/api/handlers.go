@@ -63,9 +63,35 @@ type SessionUser struct {
 }
 
 type MeResponse struct {
-	Authenticated bool           `json:"authenticated"`
-	User          *SessionUser   `json:"user"`
-	Dashboard     *DashboardData `json:"dashboard,omitempty"`
+	Authenticated bool             `json:"authenticated"`
+	User          *SessionUser     `json:"user"`
+	Dashboard     *DashboardData   `json:"dashboard,omitempty"`
+	Languages     *UserLanguages   `json:"languages,omitempty"`
+}
+
+// UserLanguages is the per-user view of language settings sent to the client.
+// `Learning` is the list of language codes the user is studying (closed set:
+// "FI", "ET"). `Active` is the currently-selected language; it drives all
+// list/filter views and the Inspect/Known-Words defaults. `Stats` carries
+// vocab counts the Languages page renders next to each row; the key is the
+// language code (e.g. "FI"). Languages with no decks/known words may be
+// absent from the map — treat as zero.
+type UserLanguages struct {
+	Learning []string                 `json:"learning"`
+	Active   string                   `json:"active"`
+	Stats    map[string]LanguageStats `json:"stats"`
+}
+
+type LanguageStats struct {
+	Decks      int `json:"decks"`
+	KnownWords int `json:"known_words"`
+}
+
+// UpdateLanguagesRequest is the body for PATCH /api/me/languages. Either or
+// both fields may be set; omitted fields leave the existing value alone.
+type UpdateLanguagesRequest struct {
+	Learning *[]string `json:"learning,omitempty"`
+	Active   *string   `json:"active,omitempty"`
 }
 
 type DeckSummary struct {
@@ -562,6 +588,13 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 		newCount = newPerDay
 	}
 
+	learning, active := store.UserLanguages(user.Settings)
+	stats, err := a.buildLanguageStats(auth.UserID, decks)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
 	writeJSON(w, http.StatusOK, MeResponse{
 		Authenticated: true,
 		User:          sessionUserFromAuth(auth),
@@ -571,6 +604,101 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 			NewCapacityToday: newCount,
 			Decks:            deckSummaries,
 		},
+		Languages: &UserLanguages{
+			Learning: learning,
+			Active:   active,
+			Stats:    stats,
+		},
+	})
+}
+
+// buildLanguageStats produces the per-language stat map sent to the client.
+// `decks` is the user's full deck list (already loaded by the caller) so we
+// don't re-query it; the known-word counts come straight from the store.
+// Languages with no decks AND no known words are still emitted with zeros
+// so the UI can render a row for every supported language.
+func (a *API) buildLanguageStats(userID int64, decks []store.DeckStats) (map[string]LanguageStats, error) {
+	known, err := a.store.CountKnownLemmasByLang(userID)
+	if err != nil {
+		return nil, err
+	}
+	stats := map[string]LanguageStats{}
+	for _, lang := range store.SupportedLanguages {
+		stats[lang] = LanguageStats{KnownWords: known[lang]}
+	}
+	for _, deck := range decks {
+		if entry, ok := stats[deck.Lang]; ok {
+			entry.Decks++
+			stats[deck.Lang] = entry
+		}
+	}
+	return stats, nil
+}
+
+// HandleUserLanguages updates the user's learning_languages list and/or
+// active_language. PATCH only; both fields are optional. Validation lives in
+// store.UpdateUserLanguages (closed set, non-empty list, active must be in
+// learning).
+func (a *API) HandleUserLanguages(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if auth == nil {
+		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+
+	var req UpdateLanguagesRequest
+	if !decodeJSONRequest(w, r, &req) {
+		return
+	}
+
+	user, err := a.store.GetUserByID(auth.UserID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	learning, active := store.UserLanguages(user.Settings)
+	if req.Learning != nil {
+		learning = *req.Learning
+	}
+	if req.Active != nil {
+		active = *req.Active
+	}
+
+	if err := a.store.UpdateUserLanguages(auth.UserID, learning, active); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Re-read so the response reflects exactly what was persisted (dedup,
+	// canonical order, fallback active).
+	user, err = a.store.GetUserByID(auth.UserID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	persistedLearning, persistedActive := store.UserLanguages(user.Settings)
+	decks, err := a.store.GetUserDeckStats(auth.UserID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	stats, err := a.buildLanguageStats(auth.UserID, decks)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, UserLanguages{
+		Learning: persistedLearning,
+		Active:   persistedActive,
+		Stats:    stats,
 	})
 }
 
@@ -1634,7 +1762,13 @@ func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
 		deckID = &parsed
 	}
 
-	card, err := a.store.GetNextReviewCard(auth.UserID, deckID)
+	lang := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("lang")))
+	if lang != "" && !store.IsSupportedLanguage(lang) {
+		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
+		return
+	}
+
+	card, err := a.store.GetNextReviewCard(auth.UserID, deckID, lang)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -2237,6 +2371,7 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 
 	// Dashboard
 	mux.HandleFunc("/api/me", a.HandleMe)
+	mux.HandleFunc("/api/me/languages", a.HandleUserLanguages)
 
 	// Parse (word list view)
 	mux.HandleFunc("/api/parse", a.HandleParse)
