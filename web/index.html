@@ -367,9 +367,7 @@
 
                 <div class="vocab-import-card">
                     <h2>Import from Anki</h2>
-                    <p class="vocab-import-lede">
-                        Requires the <a href="https://ankiweb.net/shared/info/2055492159" target="_blank" rel="noreferrer">AnkiConnect</a> add-on running locally. Open Anki, then click connect.
-                    </p>
+                    <p class="vocab-import-lede">Pull cards from a local Anki deck through the AnkiConnect add-on.</p>
                     <div class="vocab-anki-step" id="vocab-anki-step-connect">
                         <button type="button" id="vocab-anki-connect" class="btn btn-primary btn-sm">Connect to Anki</button>
                         <span id="vocab-anki-status" class="known-words-summary" role="status"></span>
@@ -384,6 +382,7 @@
                             <button type="button" id="vocab-anki-reset" class="btn btn-link btn-sm">Disconnect</button>
                         </div>
                     </div>
+                    <a href="#" id="vocab-anki-help" class="vocab-anki-help">Setup instructions</a>
                 </div>
             </section>
 
@@ -706,6 +705,58 @@
                     <button type="submit" class="btn btn-primary" id="correction-submit">Send</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ==================== ANKI SETUP MODAL ==================== -->
+    <div id="anki-setup-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="anki-setup-modal-title">
+        <div class="modal-backdrop" id="anki-setup-modal-backdrop"></div>
+        <div class="modal-card" role="document">
+            <button type="button" class="modal-close" id="anki-setup-modal-close" aria-label="Close">×</button>
+            <h3 id="anki-setup-modal-title">Set up AnkiConnect</h3>
+            <p class="modal-lede">Finnest imports cards from your local Anki collection via an Anki add-on called AnkiConnect. There's a one-time setup:</p>
+
+            <ol class="anki-setup-steps">
+                <li>
+                    <strong>Install Anki desktop.</strong>
+                    Download from <a href="https://apps.ankiweb.net" target="_blank" rel="noreferrer">apps.ankiweb.net</a> if you don't already have it. The mobile and web versions can't expose your collection over HTTP.
+                </li>
+                <li>
+                    <strong>Install AnkiConnect.</strong>
+                    <ol class="anki-setup-substeps">
+                        <li>In Anki, open <em>Tools → Add-ons</em> (or press <kbd id="anki-setup-shortcut">Ctrl+Shift+A</kbd>).</li>
+                        <li>Click the <em>Get Add-ons…</em> button.</li>
+                        <li>Paste the code <code class="anki-setup-code">2055492159</code> (or visit the <a href="https://ankiweb.net/shared/info/2055492159" target="_blank" rel="noreferrer">AnkiConnect page</a>) and click <em>OK</em>.</li>
+                        <li>Double-click the <em>AnkiConnect</em> entry in the add-ons list to open its config.</li>
+                        <li>
+                            Add <code class="anki-setup-code">"https://finne.st"</code> to the <code>webCorsOriginList</code> section. It should look something like:
+                            <div class="anki-setup-copy-wrap">
+<pre class="anki-setup-config anki-setup-copy" id="anki-setup-copy-source">{
+    "apiKey": null,
+    "apiLogPath": null,
+    "ignoreOriginList": [],
+    "webBindAddress": "127.0.0.1",
+    "webBindPort": 8765,
+    "webCorsOriginList": [
+        "http://localhost",
+        <span class="anki-setup-config-finnest">"https://finne.st"</span>
+    ]
+}</pre>
+                                <button type="button" class="btn btn-outline btn-sm anki-setup-copy-btn" id="anki-setup-copy-btn" aria-live="polite">Copy</button>
+                            </div>
+                        </li>
+                        <li>Click <em>OK</em>, then restart Anki.</li>
+                    </ol>
+                </li>
+                <li>
+                    <strong>Keep Anki running.</strong>
+                    AnkiConnect only answers while the Anki desktop app is open. Leave it open, then click <em>Connect to Anki</em>.
+                </li>
+            </ol>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-primary" id="anki-setup-modal-done">Got it</button>
+            </div>
         </div>
     </div>
 

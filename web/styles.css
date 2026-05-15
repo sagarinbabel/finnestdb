@@ -2806,6 +2806,87 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     font-weight: 500;
     margin-top: 0.25rem;
 }
+.vocab-anki-help {
+    margin-top: auto;
+    align-self: flex-start;
+    font-size: 0.88rem;
+    color: var(--accent);
+    text-decoration: underline;
+}
+.vocab-anki-help:hover {
+    text-decoration: none;
+}
+.anki-setup-steps {
+    margin: 0 0 1rem;
+    padding-left: 1.25rem;
+    display: grid;
+    gap: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+.anki-setup-steps strong {
+    color: var(--text-primary);
+}
+.anki-setup-steps a {
+    color: var(--accent);
+}
+.anki-setup-code {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.1rem 0.4rem;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.9em;
+    user-select: all;
+}
+.anki-setup-steps kbd {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 5px;
+    padding: 0.05rem 0.45rem;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.85em;
+    color: var(--text-primary);
+}
+.anki-setup-substeps {
+    margin: 0.5rem 0 0;
+    padding-left: 1.25rem;
+    display: grid;
+    gap: 0.5rem;
+    list-style-type: lower-alpha;
+}
+.anki-setup-config {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin: 0.5rem 0 0;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--text-primary);
+    overflow-x: auto;
+    white-space: pre;
+    user-select: all;
+}
+.anki-setup-config-finnest {
+    color: rgb(34, 197, 94);
+    font-weight: 600;
+}
+.anki-setup-copy-wrap {
+    position: relative;
+}
+.anki-setup-copy-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 1;
+}
+.anki-setup-copy {
+    padding-right: 5.5rem;
+}
 .vocab-list-section h2 {
     font-size: 1.15rem;
     margin: 0 0 0.75rem;
@@ -3504,6 +3585,12 @@ a {
     border: 0;
     border-radius: 0;
     box-shadow: none;
+}
+
+/* Modal popups float on a backdrop, not inline with the flat-card grid — give
+   them the rounded sitewide popup treatment instead of the squared card look. */
+.modal-card {
+    border-radius: 14px;
 }
 
 .value-card {

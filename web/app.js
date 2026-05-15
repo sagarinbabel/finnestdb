@@ -1494,6 +1494,11 @@ async function connectToAnki() {
         if (status)
             status.textContent = err.message || 'Failed to connect.';
         showToast(err.message || 'Failed to connect to Anki.', 'error');
+        // Almost every first-time failure is "AnkiConnect isn't installed /
+        // Anki isn't running / origin isn't allowed" — surface the setup
+        // instructions directly instead of making the user hunt for the
+        // help link.
+        openAnkiSetupModal();
     }
     finally {
         button.disabled = false;
@@ -1605,6 +1610,42 @@ function disconnectFromAnki() {
     stepPick?.classList.add('hidden');
     if (status)
         status.textContent = '';
+}
+function openAnkiSetupModal() {
+    const modal = document.getElementById('anki-setup-modal');
+    if (!modal)
+        return;
+    // OS-aware Add-ons shortcut. Anki uses Cmd on macOS, Ctrl elsewhere.
+    const shortcut = document.getElementById('anki-setup-shortcut');
+    if (shortcut) {
+        const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+        shortcut.textContent = isMac ? '⌘+Shift+A' : 'Ctrl+Shift+A';
+    }
+    modal.classList.remove('hidden');
+    document.getElementById('anki-setup-modal-done')?.focus();
+}
+function closeAnkiSetupModal() {
+    document.getElementById('anki-setup-modal')?.classList.add('hidden');
+}
+async function copyAnkiSetupConfig() {
+    const source = document.getElementById('anki-setup-copy-source');
+    const button = document.getElementById('anki-setup-copy-btn');
+    if (!source || !button)
+        return;
+    const text = source.textContent || '';
+    try {
+        await navigator.clipboard.writeText(text);
+        const original = button.textContent || 'Copy';
+        button.textContent = 'Copied!';
+        button.disabled = true;
+        setTimeout(() => {
+            button.textContent = original;
+            button.disabled = false;
+        }, 1500);
+    }
+    catch {
+        showToast('Could not access the clipboard — copy manually.', 'error');
+    }
 }
 async function deleteKnownWord(lemma, pos) {
     try {
@@ -3530,6 +3571,25 @@ function initVocabAnkiImport() {
         void importKnownWordsFromAnki();
     });
     document.getElementById('vocab-anki-reset')?.addEventListener('click', disconnectFromAnki);
+    document.getElementById('vocab-anki-help')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openAnkiSetupModal();
+    });
+    // Modal close handlers: backdrop, ×, "Got it", and Escape.
+    document.getElementById('anki-setup-modal-close')?.addEventListener('click', closeAnkiSetupModal);
+    document.getElementById('anki-setup-modal-done')?.addEventListener('click', closeAnkiSetupModal);
+    document.getElementById('anki-setup-modal-backdrop')?.addEventListener('click', closeAnkiSetupModal);
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape')
+            return;
+        const modal = document.getElementById('anki-setup-modal');
+        if (modal && !modal.classList.contains('hidden'))
+            closeAnkiSetupModal();
+    });
+    // Copy-to-clipboard for the shortcut config block.
+    document.getElementById('anki-setup-copy-btn')?.addEventListener('click', () => {
+        void copyAnkiSetupConfig();
+    });
 }
 function initReviewPage() {
     const filter = document.getElementById('review-deck-filter');
