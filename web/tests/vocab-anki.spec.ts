@@ -2175,7 +2175,7 @@ test.describe('Anki import popup', () => {
     await page.locator('#anki-settings-modal-done').click();
   });
 
-  test("Settings popup hosts the 'Skip confirmation on next sync' checkbox and persists it", async ({ page }) => {
+  test("Settings popup hosts the 'Skip confirmation when syncing' checkbox and persists it", async ({ page }) => {
     await mockMe(page, 'user', { activeLanguage: 'ET' });
     await mockKnownWordsEmpty(page);
     await page.goto('/#/vocab');
@@ -2193,6 +2193,61 @@ test.describe('Anki import popup', () => {
     await page.locator('#anki-settings-modal-done').click();
     await page.locator('#vocab-anki-settings').click();
     await expect(page.locator('#anki-settings-skip-confirm')).toBeChecked();
+  });
+
+  test('Settings popup label reads "Skip confirmation when syncing" with no "by default" hint lines', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await page.goto('/#/vocab');
+    await page.locator('#vocab-anki-settings').click();
+    const modal = page.locator('#anki-settings-modal');
+    await expect(modal).toContainText('Skip confirmation when syncing');
+    await expect(modal).not.toContainText('on next sync');
+    // The "These apply to both…" lede is gone.
+    await expect(modal).not.toContainText('These apply to both');
+    // None of the hint lines start with "Off by default" / "On by default".
+    await expect(modal).not.toContainText(/by default/i);
+  });
+
+  test('"Reset defaults" restores the five behavioural prefs without touching decks/filter', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await page.goto('/#/vocab');
+    // Seed non-default prefs + a deck selection that must survive the reset.
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter: 'estonian|eesti', decks: ['Estonian::A1'], fieldByModel: { ETBasic: 'Sõna' },
+        includeNew: true, includeSuspended: true, replaceMode: true,
+        lastSyncAt: 1700000000000, replaceConfirmSkip: true, preserveManualOnReplace: false,
+      }));
+    });
+    await page.reload();
+    await page.locator('#vocab-anki-settings').click();
+    // All five reflect the seeded non-default state.
+    await expect(page.locator('#anki-settings-include-new')).toBeChecked();
+    await expect(page.locator('#anki-settings-include-suspended')).toBeChecked();
+    await expect(page.locator('#anki-settings-replace-mode')).toBeChecked();
+    await expect(page.locator('#anki-settings-preserve-manual')).not.toBeChecked();
+    await expect(page.locator('#anki-settings-skip-confirm')).toBeChecked();
+
+    await page.locator('#anki-settings-reset').click();
+
+    // Back to defaults: all off except preserve-manual on.
+    await expect(page.locator('#anki-settings-include-new')).not.toBeChecked();
+    await expect(page.locator('#anki-settings-include-suspended')).not.toBeChecked();
+    await expect(page.locator('#anki-settings-replace-mode')).not.toBeChecked();
+    await expect(page.locator('#anki-settings-preserve-manual')).toBeChecked();
+    await expect(page.locator('#anki-settings-skip-confirm')).not.toBeChecked();
+
+    // Decks / filter / lastSyncAt are untouched.
+    const prefs = await page.evaluate(() => JSON.parse(localStorage.getItem('finest:anki-import:ET') || '{}'));
+    expect(prefs.decks).toEqual(['Estonian::A1']);
+    expect(prefs.fieldByModel).toEqual({ ETBasic: 'Sõna' });
+    expect(prefs.filter).toBe('estonian|eesti');
+    expect(prefs.lastSyncAt).toBe(1700000000000);
+    expect(prefs.includeNew).toBe(false);
+    expect(prefs.preserveManualOnReplace).toBe(true);
+    expect(prefs.replaceConfirmSkip).toBe(false);
   });
 
   test('Sync dialog no longer carries the inline "Don\'t show this again" checkbox', async ({ page }) => {

@@ -3072,6 +3072,20 @@ function onSettingsSkipConfirmToggle(checked: boolean): void {
     updateAnkiPref('replaceConfirmSkip', checked);
 }
 
+// Restore the five behavioural prefs to their out-of-the-box values for the
+// active language. Filter / decks / fieldByModel / lastSyncAt are left
+// untouched — "Reset defaults" is about the import behaviour, not which
+// decks you've picked or whether you've synced before.
+function onSettingsResetDefaults(): void {
+    updateAnkiPref('includeNew', false);
+    updateAnkiPref('includeSuspended', false);
+    updateAnkiPref('replaceMode', false);
+    updateAnkiPref('preserveManualOnReplace', true);
+    updateAnkiPref('replaceConfirmSkip', false);
+    renderAnkiSettings();
+    if (ankiImport.open) renderAnkiImportEstimate();
+}
+
 // Returns the set of notes that would actually be imported given the current
 // toggle + field choices. Used both for the estimate (count + unique word
 // preview) and the import step itself, so the two can't drift.
@@ -5533,6 +5547,7 @@ function initVocabAnkiImport(): void {
     document.getElementById('anki-settings-modal-close')?.addEventListener('click', closeAnkiSettingsModal);
     document.getElementById('anki-settings-modal-done')?.addEventListener('click', closeAnkiSettingsModal);
     document.getElementById('anki-settings-modal-backdrop')?.addEventListener('click', closeAnkiSettingsModal);
+    document.getElementById('anki-settings-reset')?.addEventListener('click', onSettingsResetDefaults);
     document.getElementById('anki-settings-include-new')?.addEventListener('change', (e) => {
         const t = e.target as HTMLInputElement | null;
         if (t) onSettingsIncludeNewToggle(t.checked);
