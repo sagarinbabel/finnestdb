@@ -3988,11 +3988,44 @@ a {
 .anki-import-replace input:checked ~ .anki-import-include-new-hint {
     color: var(--danger);
 }
-.anki-import-replace {
-    border-color: var(--border);
+
+/* "Replace existing vocabulary" + its "Preserve manually-imported words"
+   sub-option share one card so they read as a unit. The group provides the
+   card chrome; the inner labels drop their own background/border. */
+.anki-settings-replace-group {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
 }
-.anki-import-replace:has(input:checked) {
+.anki-settings-replace-group:has(#anki-settings-replace-mode:checked) {
     border-color: var(--danger);
+}
+.anki-settings-grouped {
+    background: none;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+}
+/* The preserve sub-option animates in/out when Replace is toggled. Collapsed
+   by default; .expanded grows max-height + fades in. The indent + left
+   rule mark it as a child of the Replace option. */
+.anki-settings-subgroup {
+    overflow: hidden;
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    padding-left: 0;
+    border-left: 2px solid transparent;
+    transition: max-height 0.25s ease, opacity 0.2s ease,
+                margin-top 0.25s ease, padding-left 0.25s ease;
+}
+.anki-settings-subgroup.expanded {
+    max-height: 160px;
+    opacity: 1;
+    margin-top: 0.5rem;
+    padding-left: 0.75rem;
+    border-left-color: var(--border);
 }
 .anki-import-progress {
     height: 6px;

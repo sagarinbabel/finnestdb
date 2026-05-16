@@ -773,23 +773,27 @@
                 <label class="anki-import-include-new">
                     <input type="checkbox" id="anki-settings-include-new" />
                     <span>Mark new cards as known</span>
-                    <span class="anki-import-include-new-hint">Only cards you've reviewed at least once count as "known".</span>
+                    <span class="anki-import-include-new-hint">New cards (cards you haven't studied yet) aren't imported by default.</span>
                 </label>
                 <label class="anki-import-include-new">
                     <input type="checkbox" id="anki-settings-include-suspended" />
                     <span>Include suspended cards</span>
-                    <span class="anki-import-include-new-hint">Cards you've paused are excluded from the import.</span>
+                    <span class="anki-import-include-new-hint">Suspended cards aren't imported by default.</span>
                 </label>
-                <label class="anki-import-include-new anki-import-replace">
-                    <input type="checkbox" id="anki-settings-replace-mode" />
-                    <span>Replace existing vocabulary</span>
-                    <span class="anki-import-include-new-hint">The import becomes a sync: words not in this Anki selection are <strong>removed</strong> from your known-words list.</span>
-                </label>
-                <label class="anki-import-include-new anki-import-preserve-manual hidden" id="anki-settings-preserve-manual-wrap">
-                    <input type="checkbox" id="anki-settings-preserve-manual" checked />
-                    <span>Preserve manually-imported words</span>
-                    <span class="anki-import-include-new-hint">Words you added through the textbox, a file, or by marking a row known on the Parse page are kept. Uncheck to make the sync replace <em>everything</em>.</span>
-                </label>
+                <div class="anki-settings-replace-group">
+                    <label class="anki-import-include-new anki-import-replace anki-settings-grouped">
+                        <input type="checkbox" id="anki-settings-replace-mode" />
+                        <span>Replace existing vocabulary</span>
+                        <span class="anki-import-include-new-hint">The import becomes a sync: words not in this Anki selection are <strong>removed</strong> from your known-words list.</span>
+                    </label>
+                    <div class="anki-settings-subgroup" id="anki-settings-preserve-manual-wrap">
+                        <label class="anki-import-include-new anki-import-preserve-manual anki-settings-grouped">
+                            <input type="checkbox" id="anki-settings-preserve-manual" checked />
+                            <span>Preserve manually-imported words</span>
+                            <span class="anki-import-include-new-hint">Words you added through the textbox, a file, or by marking a row known on the Parse page are kept. Uncheck to make the sync replace <em>everything</em>.</span>
+                        </label>
+                    </div>
+                </div>
                 <label class="anki-import-include-new">
                     <input type="checkbox" id="anki-settings-skip-confirm" />
                     <span>Skip confirmation when syncing</span>

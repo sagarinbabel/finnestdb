@@ -3029,7 +3029,7 @@ function renderAnkiSettings(): void {
     setCb('anki-settings-preserve-manual',   prefs.preserveManualOnReplace);
     setCb('anki-settings-skip-confirm',      prefs.replaceConfirmSkip);
     const preserveWrap = document.getElementById('anki-settings-preserve-manual-wrap');
-    if (preserveWrap) preserveWrap.classList.toggle('hidden', !prefs.replaceMode);
+    if (preserveWrap) preserveWrap.classList.toggle('expanded', prefs.replaceMode);
 }
 
 // Generic helper: update a single boolean pref + mirror it onto ankiImport
@@ -3058,10 +3058,10 @@ function onSettingsIncludeSuspendedToggle(checked: boolean): void {
 
 function onSettingsReplaceModeToggle(checked: boolean): void {
     updateAnkiPref('replaceMode', checked);
-    // The "Preserve manually-imported words" sub-toggle is only relevant
-    // when Replace is on.
+    // The "Preserve manually-imported words" sub-option is only relevant
+    // when Replace is on — animate it in/out via the .expanded class.
     const wrap = document.getElementById('anki-settings-preserve-manual-wrap');
-    if (wrap) wrap.classList.toggle('hidden', !checked);
+    if (wrap) wrap.classList.toggle('expanded', checked);
 }
 
 function onSettingsPreserveManualToggle(checked: boolean): void {

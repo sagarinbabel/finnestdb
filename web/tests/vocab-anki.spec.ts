@@ -1472,15 +1472,15 @@ test.describe('Anki import popup', () => {
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
 
-    // Open Settings — Replace off by default, preserve-manual sub-toggle
-    // hidden.
+    // Open Settings — Replace off by default, preserve-manual sub-option
+    // collapsed (not .expanded).
     await page.locator('#anki-import-open-settings').click();
     const preserveWrap = page.locator('#anki-settings-preserve-manual-wrap');
     const preserveCb   = page.locator('#anki-settings-preserve-manual');
-    await expect(preserveWrap).toHaveClass(/hidden/);
-    // Flip replace on → preserve appears, checked by default.
+    await expect(preserveWrap).not.toHaveClass(/expanded/);
+    // Flip replace on → preserve animates in (.expanded), checked by default.
     await page.locator('#anki-settings-replace-mode').check();
-    await expect(preserveWrap).not.toHaveClass(/hidden/);
+    await expect(preserveWrap).toHaveClass(/expanded/);
     await expect(preserveCb).toBeChecked();
     await page.locator('#anki-settings-modal-done').click();
 
@@ -2148,8 +2148,8 @@ test.describe('Anki import popup', () => {
     await page.locator('#vocab-anki-settings').click();
     await expect(page.locator('#anki-settings-modal')).not.toHaveClass(/hidden/);
     await page.locator('#anki-settings-replace-mode').check();
-    // Preserve-manual sub-toggle becomes visible when replace is on.
-    await expect(page.locator('#anki-settings-preserve-manual-wrap')).not.toHaveClass(/hidden/);
+    // Preserve-manual sub-option animates in (.expanded) when replace is on.
+    await expect(page.locator('#anki-settings-preserve-manual-wrap')).toHaveClass(/expanded/);
     await page.locator('#anki-settings-modal-close').click();
     await expect(page.locator('#anki-settings-modal')).toHaveClass(/hidden/);
 
@@ -2195,7 +2195,7 @@ test.describe('Anki import popup', () => {
     await expect(page.locator('#anki-settings-skip-confirm')).toBeChecked();
   });
 
-  test('Settings popup label reads "Skip confirmation when syncing" with no "by default" hint lines', async ({ page }) => {
+  test('Settings popup copy: new label, no stale lede, refreshed new/suspended hints', async ({ page }) => {
     await mockMe(page, 'user', { activeLanguage: 'ET' });
     await mockKnownWordsEmpty(page);
     await page.goto('/#/vocab');
@@ -2205,8 +2205,13 @@ test.describe('Anki import popup', () => {
     await expect(modal).not.toContainText('on next sync');
     // The "These apply to both…" lede is gone.
     await expect(modal).not.toContainText('These apply to both');
-    // None of the hint lines start with "Off by default" / "On by default".
-    await expect(modal).not.toContainText(/by default/i);
+    // The refreshed new/suspended hints.
+    await expect(modal).toContainText("New cards (cards you haven't studied yet) aren't imported by default.");
+    await expect(modal).toContainText("Suspended cards aren't imported by default.");
+    // The old "Off by default — …" preamble style is gone (only the two
+    // explicit new/suspended hints mention "by default" now).
+    await expect(modal).not.toContainText(/Off by default/i);
+    await expect(modal).not.toContainText(/On by default/i);
   });
 
   test('"Reset defaults" restores the five behavioural prefs without touching decks/filter', async ({ page }) => {
