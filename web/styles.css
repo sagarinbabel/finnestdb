@@ -4008,15 +4008,14 @@ a {
     padding: 0;
 }
 /* The preserve sub-option animates in/out when Replace is toggled. Collapsed
-   by default; .expanded grows max-height + fades in. The indent + left
-   rule mark it as a child of the Replace option. */
+   by default; .expanded grows max-height + fades in. A slight indent marks
+   it as a child of the Replace option. */
 .anki-settings-subgroup {
     overflow: hidden;
     max-height: 0;
     opacity: 0;
     margin-top: 0;
     padding-left: 0;
-    border-left: 2px solid transparent;
     transition: max-height 0.25s ease, opacity 0.2s ease,
                 margin-top 0.25s ease, padding-left 0.25s ease;
 }
@@ -4024,8 +4023,7 @@ a {
     max-height: 160px;
     opacity: 1;
     margin-top: 0.5rem;
-    padding-left: 0.75rem;
-    border-left-color: var(--border);
+    padding-left: 1rem;
 }
 .anki-import-progress {
     height: 6px;
