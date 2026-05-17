@@ -2150,6 +2150,21 @@ test.describe('Anki import popup', () => {
     await page.keyboard.press('Escape');
     await expect(page.locator('#anki-settings-modal')).toHaveClass(/hidden/);
 
+    // 1b. Escape still works when focus is on a control INSIDE the popup
+    //     (the realistic case — the user just toggled a setting). The
+    //     document-level keydown listener must catch it regardless of
+    //     which form control holds focus.
+    await page.locator('#vocab-anki-settings').click();
+    await page.locator('#anki-settings-replace-mode').check();
+    await page.locator('#anki-settings-replace-mode').focus();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#anki-settings-modal')).toHaveClass(/hidden/);
+    // Reset the pref the sub-test flipped so later phases start clean.
+    await page.evaluate(() => {
+      const raw = localStorage.getItem('finest:anki-import:ET');
+      if (raw) { const p = JSON.parse(raw); p.replaceMode = false; localStorage.setItem('finest:anki-import:ET', JSON.stringify(p)); }
+    });
+
     // 2. Stacked over the import modal: Escape closes only the settings
     //    popup, leaving the import modal open underneath.
     await page.getByRole('button', { name: 'Connect to Anki' }).click();
