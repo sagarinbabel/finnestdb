@@ -241,6 +241,44 @@ func TestGetNextReviewCardRespectsDailyNewCardLimit(t *testing.T) {
 	}
 }
 
+func TestUpdateDeckTitleAndPublicRollsBackOnTitleFailure(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "deck-atomic@example.com")
+	deckID, err := db.CreateDeck(user.ID, "Original title", "FI")
+	if err != nil {
+		t.Fatalf("CreateDeck: %v", err)
+	}
+	if _, err := db.db.Exec(`
+		CREATE TRIGGER fail_deck_title_update
+		BEFORE UPDATE OF title ON decks
+		WHEN NEW.title = 'explode'
+		BEGIN
+			SELECT RAISE(FAIL, 'forced title update failure');
+		END;
+	`); err != nil {
+		t.Fatalf("create trigger: %v", err)
+	}
+
+	if err := db.UpdateDeckTitleAndPublic(user.ID, deckID, "explode", true); err == nil {
+		t.Fatal("UpdateDeckTitleAndPublic succeeded despite forced title failure")
+	}
+
+	var title string
+	var isPublic bool
+	if err := db.db.QueryRow(
+		`SELECT title, is_public FROM decks WHERE id = ?`,
+		deckID,
+	).Scan(&title, &isPublic); err != nil {
+		t.Fatalf("read deck after failed patch: %v", err)
+	}
+	if title != "Original title" {
+		t.Fatalf("title=%q want original after rollback", title)
+	}
+	if isPublic {
+		t.Fatal("is_public changed despite title failure")
+	}
+}
+
 func TestGetDeckDetailsUsesBatchGlossEnrichment(t *testing.T) {
 	t.Run("ekilex override", func(t *testing.T) {
 		db := newTestDB(t)
