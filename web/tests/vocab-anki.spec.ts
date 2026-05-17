@@ -2137,6 +2137,36 @@ test.describe('Anki import popup', () => {
     await expect(syncBtn).toBeEnabled();
   });
 
+  test('Escape closes the settings popup (incl. when it is stacked over the import modal)', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+
+    // 1. Standalone: open from the vocab page, Escape closes it.
+    await page.locator('#vocab-anki-settings').click();
+    await expect(page.locator('#anki-settings-modal')).not.toHaveClass(/hidden/);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#anki-settings-modal')).toHaveClass(/hidden/);
+
+    // 2. Stacked over the import modal: Escape closes only the settings
+    //    popup, leaving the import modal open underneath.
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+    await page.locator('#anki-import-open-settings').click();
+    await expect(page.locator('#anki-settings-modal')).not.toHaveClass(/hidden/);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#anki-settings-modal')).toHaveClass(/hidden/);
+    // Import modal still open behind it.
+    await expect(page.locator('#anki-import-modal')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+  });
+
   test('Settings popup is reachable from the vocab page and from import step 2, sharing one pref store', async ({ page }) => {
     await mockMe(page, 'user', { activeLanguage: 'ET' });
     await mockKnownWordsEmpty(page);

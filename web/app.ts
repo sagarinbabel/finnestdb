@@ -5674,9 +5674,13 @@ function initVocabAnkiImport(): void {
     document.getElementById('anki-import-fields')?.addEventListener('scroll', () => closeAllFieldPickers());
     document.querySelector('#anki-import-modal .modal-card')?.addEventListener('scroll', () => closeAllFieldPickers());
 
-    // Escape closes whichever Anki modal is open.
+    // Escape closes whichever Anki modal is open. Order matters: the
+    // settings popup can stack on TOP of the import modal (z-index 2100),
+    // so close it first if it's open.
     document.addEventListener('keydown', (e) => {
         if (e.key !== 'Escape') return;
+        const settings = document.getElementById('anki-settings-modal');
+        if (settings && !settings.classList.contains('hidden')) { closeAnkiSettingsModal(); return; }
         const setup = document.getElementById('anki-setup-modal');
         if (setup && !setup.classList.contains('hidden')) { closeAnkiSetupModal(); return; }
         const importModal = document.getElementById('anki-import-modal');
