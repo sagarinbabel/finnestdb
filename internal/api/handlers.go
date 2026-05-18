@@ -63,10 +63,10 @@ type SessionUser struct {
 }
 
 type MeResponse struct {
-	Authenticated bool             `json:"authenticated"`
-	User          *SessionUser     `json:"user"`
-	Dashboard     *DashboardData   `json:"dashboard,omitempty"`
-	Languages     *UserLanguages   `json:"languages,omitempty"`
+	Authenticated bool           `json:"authenticated"`
+	User          *SessionUser   `json:"user"`
+	Dashboard     *DashboardData `json:"dashboard,omitempty"`
+	Languages     *UserLanguages `json:"languages,omitempty"`
 }
 
 // UserLanguages is the per-user view of language settings sent to the client.
@@ -1381,6 +1381,18 @@ func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
 				}
 				return
 			}
+		}
+		if req.IsPublic != nil && title != "" {
+			if err := a.store.UpdateDeckTitleAndPublic(auth.UserID, deckID, title, *req.IsPublic); err != nil {
+				if err == sql.ErrNoRows {
+					http.Error(w, "Deck not found", http.StatusNotFound)
+					return
+				}
+				http.Error(w, "Database error", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
 		}
 		if req.IsPublic != nil {
 			if err := a.store.SetDeckIsPublic(deckID, *req.IsPublic); err != nil {

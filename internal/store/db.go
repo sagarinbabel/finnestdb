@@ -1466,6 +1466,50 @@ func (d *DB) SetDeckIsPublic(deckID int64, isPublic bool) error {
 	return nil
 }
 
+// UpdateDeckTitleAndPublic applies a combined title/visibility PATCH
+// atomically. Visibility is admin-authorized at the handler layer; title still
+// requires ownership here so the transaction cannot publish a deck if the
+// rename half fails.
+func (d *DB) UpdateDeckTitleAndPublic(userID, deckID int64, title string, isPublic bool) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	result, err := tx.Exec(
+		`UPDATE decks SET is_public = ? WHERE id = ?`,
+		boolToInt(isPublic), deckID,
+	)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	result, err = tx.Exec(
+		`UPDATE decks SET title = ? WHERE id = ? AND user_id = ?`,
+		title, deckID, userID,
+	)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err = result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return tx.Commit()
+}
+
 func (d *DB) UpdateDeckTitle(userID, deckID int64, title string) error {
 	result, err := d.db.Exec(
 		`UPDATE decks SET title = ? WHERE id = ? AND user_id = ?`,
