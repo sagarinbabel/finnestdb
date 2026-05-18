@@ -26,6 +26,23 @@ capitalized `Norjan` as the genitive of `Norja`.
   `parser-baseline-2026-05-12-b-T1606Z`; a new freeze is still needed
   for headline aggregate numbers.
 
+## 2026-05-15 — Source-agnostic correction taxonomy
+
+Documents how learner-reported card and parser fixes should land in FinEstDB
+without tying the workflow to any one source corpus or Anki. The new taxonomy
+keeps Finnish and Estonian correction content separate while sharing the same
+admin workflow, target model, and overlay categories.
+
+- Added: [`CORRECTION_TAXONOMY.md`](CORRECTION_TAXONOMY.md) — learning targets
+  can be lemma, surface, phrase, or proper-name entries; accepted fixes are
+  classified as parser identity, meaning cue, contextual sense, phrase boundary,
+  example quality, or card presentation.
+- Modified: [`PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md) — admin
+  acceptance should classify feedback before writeback, because many
+  learner-visible bad cards are not parser-identity bugs.
+- Modified: [`INDEX.md`](INDEX.md) and [`TODO.md`](../TODO.md) — add the new
+  correction taxonomy to canonical navigation and open implementation work.
+
 ## 2026-05-13 — ET review follow-ups parser stamp (PR #205)
 
 Documents the parser-stamp bump for the PR #205 follow-ups that landed

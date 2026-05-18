@@ -107,6 +107,15 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 
 - [ ] **Highest-leverage study ordering across decks**. Extend new-card ranking to consider comprehension gain across all study-list decks, not just `token_count` within a single source; user weighting (high/medium/low) for deck priority. Cross-deck variant of marginal gain.
 
+- [ ] **Source-agnostic learning-target correction overlays**. Implement the
+  DB-backed model described in [`docs/CORRECTION_TAXONOMY.md`](docs/CORRECTION_TAXONOMY.md):
+  learning targets can be lemma, surface, phrase, or proper-name entries, and
+  accepted feedback writes to parser-identity, meaning-cue, contextual-sense,
+  phrase-boundary, example-quality, or card-presentation overlay rows. This
+  must work for pasted text, EPUBs, articles, subtitles, Anki imports, and
+  future catalog decks, with Finnish and Estonian correction content kept
+  separate.
+
 - [x] **EPUB and file upload support**. Server-side extraction lives in `internal/epub` (zip walk + XHTML strip, ported from `corpus_pipeline/cmd/extractcorpus/extract_epub.go`). The inspect and workbench forms now accept `.txt`, `.md`, and `.epub`; `.epub` uploads are POSTed to `POST /api/import/extract` which returns plain text that lands in the textarea so the existing parse → save-deck flow handles books. Plain text continues to be read client-side. Auth-gated, 16 MiB upload cap, 300k-char return cap matching the textarea limit. The TODO originally named `POST /api/import/decks`; an extract-only primitive was chosen because the user flow goes through the existing `/api/decks` save path — a one-shot deck-from-file endpoint can be layered on later if needed.
 
 - [ ] **External vocabulary import (Anki, CSV)**. Design `POST /api/import/known-words` accepting list of known lemma+POS pairs; support Anki deck export (`.apkg` or exported `.txt`); support plain CSV/TSV. Map imported surface forms to known lemmas via existing dictionary lookup + fallback chain.
