@@ -41,6 +41,25 @@ import "finnestdb/pkg/lemmatizer-fi-et/voikkomap"
 // separate voikkomap import just to declare a return type.
 type Analysis = voikkomap.Analysis
 
+// fiExactOverlay maps exact-case Finnish surfaces to the curated
+// analysis. Use this only when case is part of the correction; lowercase
+// homonyms must keep falling through to the dictionary/FST path.
+var fiExactOverlay = map[string]Analysis{
+	"Maria": {
+		Lemma:  "Maria",
+		UPOS:   "PROPN",
+		Number: "Sing",
+		Feats:  "Number=Sing",
+	},
+	"Norjan": {
+		Lemma:        "Norja",
+		UPOS:         "PROPN",
+		GrammarLabel: "genitive",
+		Number:       "Sing",
+		Feats:        "Case=Gen|Number=Sing",
+	},
+}
+
 // fiOverlay maps a lowercased Finnish surface form to the curated
 // analysis that should be returned in place of any FST reading.
 //
@@ -91,6 +110,17 @@ var fiOverlay = map[string]Analysis{
 	"perillä": {
 		Lemma: "perillä",
 		UPOS:  "ADV",
+	},
+	"sanoin": {
+		Lemma:    "sanoa",
+		UPOS:     "VERB",
+		Number:   "Sing",
+		Tense:    "Past",
+		Mood:     "Ind",
+		Person:   "1",
+		Voice:    "Act",
+		VerbForm: "Fin",
+		Feats:    "Mood=Ind|Number=Sing|Person=1|Tense=Past|VerbForm=Fin|Voice=Act",
 	},
 	"siitä": {
 		// Suspicious (siitä, siittää) per yle_subs — the analyzer ranks
@@ -230,9 +260,13 @@ var etOverlay = map[string]Analysis{
 // can mutate without affecting the shared table); ok is false when no
 // overlay exists, in which case the caller falls through to the FST.
 //
-// Surface matching is case-folded against the keys, so "Tuskin" at
-// sentence-initial position hits the same entry as "tuskin".
+// Surface matching is exact for proper-name fixes and otherwise
+// case-folded against the keys, so "Tuskin" at sentence-initial
+// position hits the same entry as "tuskin".
 func LookupFI(surface string) ([]Analysis, bool) {
+	if analyses, ok := lookupExact(fiExactOverlay, surface); ok {
+		return analyses, true
+	}
 	return lookup(fiOverlay, surface)
 }
 
@@ -240,6 +274,9 @@ func LookupFI(surface string) ([]Analysis, bool) {
 // without allocating the analysis slice. Useful for callers that
 // only need to know "should I bypass the FST."
 func HasFI(surface string) bool {
+	if hasExact(fiExactOverlay, surface) {
+		return true
+	}
 	return has(fiOverlay, surface)
 }
 
@@ -253,6 +290,25 @@ func LookupET(surface string) ([]Analysis, bool) {
 // HasET is the Estonian counterpart to HasFI.
 func HasET(surface string) bool {
 	return has(etOverlay, surface)
+}
+
+func lookupExact(table map[string]Analysis, surface string) ([]Analysis, bool) {
+	if surface == "" {
+		return nil, false
+	}
+	a, ok := table[surface]
+	if !ok {
+		return nil, false
+	}
+	return []Analysis{a}, true
+}
+
+func hasExact(table map[string]Analysis, surface string) bool {
+	if surface == "" {
+		return false
+	}
+	_, ok := table[surface]
+	return ok
 }
 
 // lookup is the shared implementation. The single-element slice is

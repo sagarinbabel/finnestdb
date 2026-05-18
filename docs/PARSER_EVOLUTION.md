@@ -64,6 +64,36 @@ committed run.
 
 ## Entries
 
+### 2026-05-15a — FI manual-card trap promotions: `sanoin`, `Maria`, `Norjan`
+
+**Parser stamp**: `2026.05.15a`
+**Scope**: `internal/store/`, `pkg/lemmatizer-fi-et/lexadverbs`, `testdata/parser-eval/fi/gold`
+
+Promotes recent source-backed Finnish card corrections into parser
+behavior and analyzer-trap gold coverage so arbitrary pasted/imported
+text benefits from the same fixes as the manually repaired cards.
+
+**What changed:**
+
+1. `sanoin` now resolves to `sanoa/VERB` with finite past-tense FEATS,
+   rather than the learner-facing card inheriting the `sana/NOUN`
+   dictionary trap.
+2. Exact capitalized `Maria` now resolves to `Maria/PROPN`, while
+   lowercase `maria` still falls through to the dictionary/FST path.
+3. Exact capitalized `Norjan` now resolves to `Norja/PROPN` genitive,
+   while lowercase `norjan` remains available for non-name dictionary
+   readings.
+4. The FI analyzer-traps gold set now includes these three cases, so
+   future parser changes have to preserve the promoted manual fixes.
+
+**Verification:**
+
+- `go test ./pkg/lemmatizer-fi-et/lexadverbs ./internal/store`
+
+**No new freeze yet.** This is a parser-behavior change and the parser
+stamp moves to `2026.05.15a`, but headline baselines still need a
+dedicated re-freeze before docs claim new aggregate numbers.
+
 ### 2026-05-12e — ET review follow-ups: basic-mode parity, attribute-based FEATS, TA bypass test (PR #205)
 
 **Parser stamp**: `2026.05.12e`

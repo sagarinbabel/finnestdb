@@ -208,6 +208,43 @@
       ]
     },
     {
+      "id": "fi-trap-sanoin",
+      "text": "Kuten jo sanoin, ei mitään ongelmaa.",
+      "tokens": [
+        {
+          "surface": "sanoin",
+          "lemma": "sanoa",
+          "pos": "VERB",
+          "feats": "Mood=Ind|Number=Sing|Person=1|Tense=Past|VerbForm=Fin|Voice=Act"
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-maria-proper-name",
+      "text": "Essi ja Maria odottavat ulkona.",
+      "tokens": [
+        {
+          "surface": "Maria",
+          "lemma": "Maria",
+          "pos": "PROPN",
+          "feats": "Number=Sing"
+        }
+      ]
+    },
+    {
+      "id": "fi-trap-norjan-proper-genitive",
+      "text": "Norjan TV 2 kertoi asiasta eilen.",
+      "tokens": [
+        {
+          "surface": "Norjan",
+          "lemma": "Norja",
+          "pos": "PROPN",
+          "grammar_label": "genitive",
+          "feats": "Case=Gen|Number=Sing"
+        }
+      ]
+    },
+    {
       "id": "fi-trap-tarjoamaan-ma-infinitive",
       "text": "Yritys alkoi tarjoamaan ilmaisia kursseja.",
       "tokens": [

@@ -10,6 +10,22 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-05-15 — FI manual-card trap promotions
+
+Documents the parser-stamp bump for promoting recent manual Finnish card
+fixes into source-agnostic parser behavior: `sanoin` resolves as
+`sanoa/VERB`, exact capitalized `Maria` as a proper name, and exact
+capitalized `Norjan` as the genitive of `Norja`.
+
+- Added: [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) entry
+  `2026-05-15a` — records the behavior changes, source-agnostic
+  rationale, and focused verification command.
+- Modified: [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) and
+  [`TODO.md`](../TODO.md) — current parser behavior tag is
+  `2026.05.15a`. The latest frozen baseline remains
+  `parser-baseline-2026-05-12-b-T1606Z`; a new freeze is still needed
+  for headline aggregate numbers.
+
 ## 2026-05-15 — Source-agnostic correction taxonomy
 
 Documents how learner-reported card and parser fixes should land in FinEstDB

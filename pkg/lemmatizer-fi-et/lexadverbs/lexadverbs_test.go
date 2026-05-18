@@ -22,6 +22,10 @@ func TestLookupFI_Hits(t *testing.T) {
 		{"vahingossa", "vahingossa", "ADV", ""},            // not vahinko/NOUN/Case=Ine
 		{"asiaan", "asia", "NOUN", "Case=Ill|Number=Sing"}, // not as/NOUN
 		{"kotona", "koti", "NOUN", "Case=Ess|Number=Sing"},
+		{"sanoin", "sanoa", "VERB", "Mood=Ind|Number=Sing|Person=1|Tense=Past|VerbForm=Fin|Voice=Act"}, // not sana/NOUN
+		{"Sanoin", "sanoa", "VERB", "Mood=Ind|Number=Sing|Person=1|Tense=Past|VerbForm=Fin|Voice=Act"},
+		{"Maria", "Maria", "PROPN", "Number=Sing"},           // exact-case proper name, not mari/NOUN
+		{"Norjan", "Norja", "PROPN", "Case=Gen|Number=Sing"}, // exact-case country name
 	}
 	for _, tc := range cases {
 		analyses, ok := LookupFI(tc.surface)
@@ -58,6 +62,8 @@ func TestLookupFI_Misses(t *testing.T) {
 		"talossa",  // ordinary inessive
 		"juoksen",  // ordinary verb
 		"hyvä",     // bare adjective
+		"maria",    // lowercase homonym must not hit exact proper-name overlay
+		"norjan",   // lowercase adjective form must not hit exact country-name overlay
 	}
 	for _, s := range misses {
 		if _, ok := LookupFI(s); ok {
@@ -90,6 +96,12 @@ func TestHasFI(t *testing.T) {
 	}
 	if !HasFI("Tuskin") {
 		t.Error("HasFI(\"Tuskin\") = false; want true (case-fold)")
+	}
+	if !HasFI("Maria") {
+		t.Error("HasFI(\"Maria\") = false; want true (exact proper-name overlay)")
+	}
+	if HasFI("maria") {
+		t.Error("HasFI(\"maria\") = true; want false (exact overlay must not case-fold)")
 	}
 	if HasFI("pankki") {
 		t.Error("HasFI(\"pankki\") = true; want false (not in overlay)")
