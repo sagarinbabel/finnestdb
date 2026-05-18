@@ -212,6 +212,32 @@ func TestHandleImportExtractTxtHasNoChapters(t *testing.T) {
 	}
 }
 
+func TestTruncateImportChaptersKeepsPayloadWithinParseCap(t *testing.T) {
+	chapters := []ImportChapter{
+		{Title: "One", Text: "12345", CharCount: 5},
+		{Title: "Two", Text: "abcdef", CharCount: 6},
+		{Title: "Three", Text: "ignored", CharCount: 7},
+	}
+
+	got := truncateImportChapters(chapters, 8)
+	if len(got) != 2 {
+		t.Fatalf("got %d chapters, want 2: %+v", len(got), got)
+	}
+	if got[0].Text != "12345" || got[0].CharCount != 5 {
+		t.Fatalf("first chapter changed unexpectedly: %+v", got[0])
+	}
+	if got[1].Text != "abc" || got[1].CharCount != 3 {
+		t.Fatalf("second chapter = %+v, want truncated text abc with count 3", got[1])
+	}
+	total := 0
+	for _, ch := range got {
+		total += ch.CharCount
+	}
+	if total > 8 {
+		t.Fatalf("truncated chapters exceed cap: %d", total)
+	}
+}
+
 func TestHandleImportExtractRejectsUnsupportedExtension(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)
