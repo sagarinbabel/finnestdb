@@ -413,7 +413,9 @@ test('user can import and remove known words', async ({ page }) => {
     });
   });
 
-  await page.goto('/#/decks');
+  // The known-words panel lives on /vocab now (moved from /decks during the
+  // Vocab-page extraction). The flow is otherwise identical.
+  await page.goto('/#/vocab');
 
   await expect(page.locator('#known-words-list')).toContainText('kissa "oma"');
   await expect(page.getByRole('button', { name: 'Remove kissa "oma"' })).toBeVisible();

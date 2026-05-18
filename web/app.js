@@ -163,6 +163,10 @@ function showToast(message, type = 'info', duration = 3000) {
 // Without this, the first Promise would hang forever — listeners get torn
 // down, but the resolve() function was never called.
 let activeDialog = null;
+// Last dialog's "Don't show this again" checkbox state — captured by
+// openDialog when a rememberLabel is provided so showConfirmWithRemember can
+// surface it alongside the confirm/cancel result.
+let lastDialogRemember = false;
 function openDialog(opts) {
     return new Promise(resolve => {
         const modal = document.getElementById('dialog-modal');
@@ -171,6 +175,9 @@ function openDialog(opts) {
         const inputWrap = document.getElementById('dialog-modal-input-wrap');
         const inputLabel = document.getElementById('dialog-modal-input-label');
         const input = document.getElementById('dialog-modal-input');
+        const rememberWrap = document.getElementById('dialog-modal-remember-wrap');
+        const rememberInput = document.getElementById('dialog-modal-remember');
+        const rememberLabel = document.getElementById('dialog-modal-remember-label');
         const backdrop = document.getElementById('dialog-modal-backdrop');
         const confirmBtn = document.getElementById('dialog-modal-confirm');
         const cancelBtn = document.getElementById('dialog-modal-cancel');
@@ -203,6 +210,21 @@ function openDialog(opts) {
         else {
             inputWrap.classList.add('hidden');
         }
+        // Optional "Don't show this again"-style checkbox. Hidden by default
+        // — only callers passing rememberLabel see it, and only that caller
+        // reads lastDialogRemember afterwards.
+        lastDialogRemember = false;
+        if (rememberWrap && rememberInput) {
+            if (opts.rememberLabel) {
+                rememberWrap.classList.remove('hidden');
+                rememberInput.checked = false;
+                if (rememberLabel)
+                    rememberLabel.textContent = opts.rememberLabel;
+            }
+            else {
+                rememberWrap.classList.add('hidden');
+            }
+        }
         let settled = false;
         const detachListeners = () => {
             confirmBtn.removeEventListener('click', onConfirm);
@@ -214,6 +236,11 @@ function openDialog(opts) {
             if (settled)
                 return;
             settled = true;
+            // Snapshot the remember checkbox before tearing down. Only
+            // meaningful when the dialog was opened with rememberLabel; other
+            // callers ignore lastDialogRemember.
+            if (opts.rememberLabel && rememberInput)
+                lastDialogRemember = rememberInput.checked;
             modal.classList.add('hidden');
             detachListeners();
             if (activeDialog && activeDialog.cancel === onCancel) {
@@ -248,6 +275,85 @@ function openDialog(opts) {
 async function showConfirm(opts) {
     const result = await openDialog({ ...opts, prompt: false });
     return result !== null;
+}
+// Same as showConfirm but the result includes whether the user checked the
+// "Don't show this again" box. Pass `rememberLabel` to customise the wording.
+async function showConfirmWithRemember(opts) {
+    const result = await openDialog({ ...opts, prompt: false });
+    return { confirmed: result !== null, remember: lastDialogRemember };
+}
+// Confirm dialog whose Confirm button doubles as the loading indicator. The
+// caller supplies a `classify` function that maps the resolved value to a
+// success/error state. The button is disabled the moment the dialog opens
+// and stays disabled until classify returns success — at which point it
+// flips to its normal confirmLabel and re-enables. On failure the button
+// label switches to the error text and stays disabled, so the user can only
+// cancel out.
+//
+// Used by the Anki sync flow: the dialog opens immediately, the Confirm
+// button reads "Checking Anki…" with an inline spinner, and only flips to
+// "Sync and replace" once discovery comes back clean.
+async function showConfirmWithStatus(opts, statusPromise, classify) {
+    const confirmBtn = document.getElementById('dialog-modal-confirm');
+    const finalLabel = opts.confirmLabel ?? 'OK';
+    // Renders <spinner> + text inside the button. Used for both the loading
+    // and error states (error skips the spinner). On success the button
+    // resets to the caller's confirmLabel.
+    const setButton = (state, text) => {
+        if (!confirmBtn)
+            return;
+        if (state === 'success') {
+            confirmBtn.textContent = text;
+            confirmBtn.disabled = false;
+        }
+        else if (state === 'loading') {
+            confirmBtn.innerHTML = '<span class="dialog-btn-spinner" aria-hidden="true"></span>';
+            confirmBtn.append(text);
+            confirmBtn.disabled = true;
+        }
+        else {
+            confirmBtn.textContent = text;
+            confirmBtn.disabled = true;
+        }
+    };
+    // Important: kick off openDialog FIRST (its Promise body runs sync up to
+    // `modal.classList.remove('hidden')`, which sets confirmBtn.textContent
+    // and shows the dialog). Then override the button with our spinner. If
+    // we called setButton before, openDialog's textContent assignment would
+    // wipe the spinner and the dialog would appear with a plain disabled
+    // button — looking unresponsive to the user.
+    const dialogPromise = openDialog({ ...opts, prompt: false });
+    setButton('loading', opts.loadingText);
+    let resolvedValue;
+    let succeeded = false;
+    statusPromise.then((val) => {
+        resolvedValue = val;
+        const decision = classify(val);
+        if (decision.state === 'success') {
+            succeeded = true;
+            setButton('success', finalLabel);
+        }
+        else {
+            setButton('error', decision.text);
+        }
+    }, (err) => {
+        const msg = err && err.message ? err.message : 'Failed.';
+        setButton('error', msg);
+    });
+    const result = await dialogPromise;
+    // Reset the button so the next openDialog caller doesn't inherit our
+    // spinner / disabled state / temporary label.
+    if (confirmBtn) {
+        confirmBtn.innerHTML = '';
+        confirmBtn.textContent = finalLabel;
+        confirmBtn.disabled = false;
+    }
+    return {
+        confirmed: result !== null,
+        remember: lastDialogRemember,
+        status: resolvedValue,
+        succeeded,
+    };
 }
 async function showPrompt(opts) {
     return openDialog({ ...opts, prompt: true });
@@ -471,6 +577,11 @@ function onActiveLanguageChanged() {
     renderDashboard();
     if (currentRoute() === '/decks' || currentRoute() === '/decks/official') {
         renderDecksPage();
+    }
+    if (currentRoute() === '/vocab') {
+        // Vocab page reads from state.activeLanguage for stats, hint, and the
+        // POST/DELETE bodies — re-render and re-fetch the per-language list.
+        renderVocabPage();
         void loadKnownWords();
     }
     if (currentRoute() === '/review') {
@@ -741,6 +852,7 @@ const ROUTE_TO_PAGE = {
     '/decks': 'decks-page',
     '/decks/official': 'decks-page',
     '/languages': 'languages-page',
+    '/vocab': 'vocab-page',
     '/review': 'review-page',
     '/admin/workbench': 'admin-workbench-page',
     '/admin/feedback': 'admin-feedback-page',
@@ -791,7 +903,7 @@ function isRouteAllowed(route) {
         return { allowed: false, redirect: '/dashboard' };
     }
     // Authenticated-only routes
-    const userOnly = ['/dashboard', '/inspect', '/decks', '/decks/official', '/languages', '/review', '/results'];
+    const userOnly = ['/dashboard', '/inspect', '/decks', '/decks/official', '/languages', '/vocab', '/review', '/results'];
     const isDeckDetail = DECK_DETAIL_RE.test(route);
     if (userOnly.includes(route) || isDeckDetail) {
         if (role === 'anon')
@@ -836,7 +948,6 @@ function renderRoute() {
         // Highlight the /decks nav link for the Official subroute too.
         setActiveNavLink('/decks');
         renderDecksPage();
-        void loadKnownWords();
         if (state.decksTab === 'official' && !state.officialDecksLoaded) {
             void (async () => {
                 await loadOfficialDecks();
@@ -847,6 +958,10 @@ function renderRoute() {
     }
     if (route === '/languages') {
         renderLanguagesPage();
+    }
+    if (route === '/vocab') {
+        renderVocabPage();
+        void loadKnownWords();
     }
     if (route === '/review') {
         renderReviewPage();
@@ -1234,6 +1349,43 @@ function getDeckByID(deckID) {
     return state.decks.find(deck => deck.id === deckID)
         ?? state.officialDecks.find(deck => deck.id === deckID);
 }
+function renderVocabPage() {
+    const total = document.getElementById('vocab-stat-total');
+    if (total) {
+        const v = state.dashboard?.known_count;
+        total.textContent = v === undefined ? '—' : v.toLocaleString();
+    }
+    renderVocabLangStat();
+    renderVocabAnkiSyncButton();
+}
+// Visible only after a successful import for the active language. Clicking
+// it opens the Anki modal in sync mode (skips deck + field pickers). The
+// "Skip confirmation on next sync" toggle lives inside the Anki import
+// settings popup now.
+function renderVocabAnkiSyncButton() {
+    const btn = document.getElementById('vocab-anki-sync');
+    if (!btn)
+        return;
+    const prefs = loadAnkiPrefs(state.activeLanguage);
+    const visible = prefs.lastSyncAt > 0 && (prefs.decks?.length ?? 0) > 0;
+    btn.classList.toggle('hidden', !visible);
+}
+function renderVocabLangStat() {
+    const langNameEl = document.getElementById('vocab-stat-lang-name');
+    if (langNameEl) {
+        langNameEl.textContent = languageName(state.activeLanguage);
+    }
+    const langCount = document.getElementById('vocab-stat-lang');
+    if (langCount) {
+        // Prefer the server-side stat (it's the source of truth and stays
+        // accurate even before the in-memory list is loaded). Fall back to
+        // the loaded list length once it lands.
+        const fromStats = state.languageStats?.[state.activeLanguage]?.known_words;
+        const fallback = state.knownWords.length;
+        const value = fromStats !== undefined ? fromStats : fallback;
+        langCount.textContent = value.toLocaleString();
+    }
+}
 function renderKnownWordsPanel() {
     const list = document.getElementById('known-words-list');
     const empty = document.getElementById('known-words-empty');
@@ -1259,6 +1411,7 @@ function renderKnownWordsPanel() {
         <span class="known-word-pos">${escapeHtml(posLabel(word.pos))}</span>
         <button type="button" class="known-word-delete" aria-label="Remove ${escapeAttr(word.lemma)}" data-known-lemma="${escapeAttr(word.lemma)}" data-known-pos="${escapeAttr(word.pos)}">×</button>
     </div>`).join('');
+    renderVocabLangStat();
 }
 function parseKnownWordsInput(raw) {
     const seen = new Set();
@@ -1304,6 +1457,44 @@ async function loadKnownWords() {
         showToast(err.message || 'Failed to load known words.', 'error');
     }
 }
+async function postKnownWords(words, source = 'manual') {
+    const resp = await fetch('/api/known-words', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ lang: state.activeLanguage, words, source }),
+    });
+    if (!resp.ok)
+        throw new Error(await resp.text() || 'Failed to import known words');
+    return await resp.json();
+}
+function describeImportResult(data) {
+    const importedCount = data.imported?.length || 0;
+    const unresolvedCount = data.unresolved?.length || 0;
+    return `${importedCount} imported${unresolvedCount ? `, ${unresolvedCount} unresolved` : ''}`;
+}
+async function putKnownWords(words, scope = 'anki') {
+    const resp = await fetch('/api/known-words', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ lang: state.activeLanguage, words, scope }),
+    });
+    if (!resp.ok)
+        throw new Error(await resp.text() || 'Failed to sync known words');
+    return await resp.json();
+}
+function describeReplaceResult(data) {
+    const added = data.added?.length || 0;
+    const removed = data.removed?.length || 0;
+    const unresolved = data.unresolved?.length || 0;
+    const parts = [];
+    parts.push(`${added} added`);
+    parts.push(`${removed} removed`);
+    if (unresolved > 0)
+        parts.push(`${unresolved} unresolved`);
+    return parts.join(', ');
+}
 async function importKnownWords() {
     const input = document.getElementById('known-words-input');
     const submitBtn = document.getElementById('known-words-submit');
@@ -1319,22 +1510,11 @@ async function importKnownWords() {
     const label = submitBtn.textContent || '';
     submitBtn.textContent = 'Importing...';
     try {
-        const resp = await fetch('/api/known-words', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ lang: state.activeLanguage, words }),
-        });
-        if (!resp.ok)
-            throw new Error(await resp.text() || 'Failed to import known words');
-        const data = await resp.json();
+        const data = await postKnownWords(words);
         input.value = '';
         renderKnownWordsUnresolved(data.unresolved || []);
-        if (summary) {
-            const importedCount = data.imported?.length || 0;
-            const unresolvedCount = data.unresolved?.length || 0;
-            summary.textContent = `${importedCount} imported${unresolvedCount ? `, ${unresolvedCount} unresolved` : ''}`;
-        }
+        if (summary)
+            summary.textContent = describeImportResult(data);
         await refreshDashboardData();
         await loadKnownWords();
         showToast('Known words imported.', 'success');
@@ -1345,6 +1525,1541 @@ async function importKnownWords() {
     finally {
         submitBtn.disabled = false;
         submitBtn.textContent = label;
+    }
+}
+// CSV/TSV first-column extraction. Also handles bare one-per-line word lists.
+function parseFileWords(raw) {
+    const seen = new Set();
+    const words = [];
+    const lines = raw.replace(/^﻿/, '').split(/\r?\n/);
+    for (const line of lines) {
+        if (!line)
+            continue;
+        const firstCol = line.split(/[\t,;]/)[0] || '';
+        const trimmed = firstCol.trim().replace(/^"(.*)"$/, '$1').trim();
+        if (!trimmed)
+            continue;
+        const key = trimmed.toLocaleLowerCase();
+        if (seen.has(key))
+            continue;
+        seen.add(key);
+        words.push(trimmed);
+    }
+    return words;
+}
+async function importKnownWordsFromFile(file) {
+    const status = document.getElementById('vocab-file-status');
+    if (status)
+        status.textContent = `Reading ${file.name}…`;
+    try {
+        const text = await file.text();
+        const words = parseFileWords(text);
+        if (words.length === 0) {
+            if (status)
+                status.textContent = '';
+            showToast('No words found in file.', 'error');
+            return;
+        }
+        if (status)
+            status.textContent = `Importing ${words.length.toLocaleString()} words from ${file.name}…`;
+        const data = await postKnownWords(words);
+        renderKnownWordsUnresolved(data.unresolved || []);
+        if (status)
+            status.textContent = `${file.name}: ${describeImportResult(data)}`;
+        await refreshDashboardData();
+        await loadKnownWords();
+        showToast('Known words imported.', 'success');
+    }
+    catch (err) {
+        if (status)
+            status.textContent = '';
+        showToast(err.message || 'Failed to import file.', 'error');
+    }
+}
+// ── AnkiConnect ────────────────────────────────────────────────────────────
+//
+// AnkiConnect exposes Anki via http://127.0.0.1:8765 with a JSON-RPC-ish API.
+// We pull deck names, then notes from the chosen deck, then the chosen field's
+// value from each note, and pipe the result through the standard import path.
+const ANKI_CONNECT_URL = 'http://127.0.0.1:8765';
+async function ankiInvoke(action, params = {}) {
+    let resp;
+    try {
+        resp = await fetch(ANKI_CONNECT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, version: 6, params }),
+        });
+    }
+    catch {
+        throw new Error('Could not reach Anki on localhost:8765. Is Anki open with the AnkiConnect add-on installed?');
+    }
+    if (!resp.ok)
+        throw new Error(`AnkiConnect HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (data.error)
+        throw new Error(`AnkiConnect: ${data.error}`);
+    return data.result;
+}
+// Strip Anki's HTML formatting (cards often contain <b>, <img>, …) so we send
+// a clean text value to the parser.
+function stripHtml(s) {
+    const doc = new DOMParser().parseFromString(s, 'text/html');
+    return (doc.body.textContent || '').trim();
+}
+// Anki decks built from textbooks routinely include pedagogical notation that
+// our parser can't lemmatise: `anna/n` for "stem + 1sg ending", `diréktor`
+// with an acute-accent stress mark, `iial(gi)` for an optional suffix, etc.
+// Each rewrite here is grounded in a real textbook convention and confirmed
+// to recover entries that were otherwise dropped as unresolved.
+//
+// Returns "" to drop a surface form entirely (used for phrase-pattern slots
+// like `… all` that can never resolve).
+function cleanAnkiSurfaceForm(word) {
+    let s = word.trim();
+    if (!s)
+        return '';
+    // Phrase-pattern slots: anything containing an ellipsis isn't a word.
+    if (s.includes('…') || s.includes('...'))
+        return '';
+    // Drop combining acute accents over vowels (`é`, `á`, `ó`, …). Neither
+    // Estonian nor Finnish orthography uses acutes for stress; textbooks do.
+    // NFD decomposes precomposed letters; the regex strips just the acute.
+    s = s.normalize('NFD').replace(/́/g, '').normalize('NFC');
+    // 1sg verb-stem notation: `anna/n` means "stem 'anna' + 1sg suffix '-n'"
+    // = the actual surface form `annan`. Concatenate by rewriting `/n` (at a
+    // word boundary) into a bare `n`.
+    s = s.replace(/([\p{L}])\/n(\b|$)/gu, '$1n');
+    // Parenthetical alternates: `iial(gi)` ≈ "iial, optionally with -gi";
+    // `tool (n)` ≈ "tool, noun". Strip the parenthetical and any leading
+    // whitespace that was holding it apart.
+    s = s.replace(/\s*\([^)]*\)/g, '');
+    // Trailing sentence punctuation: `mine!` → `mine`. Keeps the bare imperative
+    // resolvable. Doesn't affect mid-word punctuation (none expected here).
+    s = s.replace(/[!?.,;:]+$/, '');
+    return s.trim();
+}
+function ankiPrefsKey(lang) {
+    return `finest:anki-import:${lang}`;
+}
+// Default filter is a case-insensitive substring/regex match that picks up the
+// language's English and native names. Users override by typing in the filter.
+function defaultAnkiFilter(lang) {
+    if (lang === 'ET')
+        return 'estonian|eesti';
+    if (lang === 'FI')
+        return 'finnish|suomi';
+    return '';
+}
+function loadAnkiPrefs(lang) {
+    const empty = {
+        filter: defaultAnkiFilter(lang),
+        decks: [],
+        fieldByModel: {},
+        includeNew: false,
+        includeSuspended: false,
+        replaceMode: false,
+        lastSyncAt: 0,
+        replaceConfirmSkip: false,
+        preserveManualOnReplace: true,
+    };
+    try {
+        const raw = localStorage.getItem(ankiPrefsKey(lang));
+        if (!raw)
+            return empty;
+        const parsed = JSON.parse(raw);
+        return {
+            filter: typeof parsed.filter === 'string' ? parsed.filter : empty.filter,
+            decks: Array.isArray(parsed.decks) ? parsed.decks : empty.decks,
+            fieldByModel: parsed.fieldByModel && typeof parsed.fieldByModel === 'object' ? parsed.fieldByModel : empty.fieldByModel,
+            includeNew: typeof parsed.includeNew === 'boolean' ? parsed.includeNew : empty.includeNew,
+            includeSuspended: typeof parsed.includeSuspended === 'boolean' ? parsed.includeSuspended : empty.includeSuspended,
+            replaceMode: typeof parsed.replaceMode === 'boolean' ? parsed.replaceMode : empty.replaceMode,
+            lastSyncAt: typeof parsed.lastSyncAt === 'number' ? parsed.lastSyncAt : empty.lastSyncAt,
+            replaceConfirmSkip: typeof parsed.replaceConfirmSkip === 'boolean' ? parsed.replaceConfirmSkip : empty.replaceConfirmSkip,
+            preserveManualOnReplace: typeof parsed.preserveManualOnReplace === 'boolean' ? parsed.preserveManualOnReplace : empty.preserveManualOnReplace,
+        };
+    }
+    catch {
+        return empty;
+    }
+}
+function saveAnkiPrefs(lang, prefs) {
+    try {
+        localStorage.setItem(ankiPrefsKey(lang), JSON.stringify(prefs));
+    }
+    catch {
+        // localStorage may be unavailable (private browsing). Silently skip —
+        // the user just loses the preset for this session.
+    }
+}
+function buildAnkiDeckTree(deckNames) {
+    const root = { name: '', fullName: '', children: [] };
+    const sorted = deckNames.slice().sort((a, b) => a.localeCompare(b));
+    for (const name of sorted) {
+        const parts = name.split('::');
+        let node = root;
+        let path = '';
+        for (const part of parts) {
+            path = path ? `${path}::${part}` : part;
+            let child = node.children.find(c => c.name === part);
+            if (!child) {
+                child = { name: part, fullName: path, children: [] };
+                node.children.push(child);
+            }
+            node = child;
+        }
+    }
+    return root.children;
+}
+const ankiImport = {
+    open: false,
+    lang: 'FI',
+    deckNames: [],
+    tree: [],
+    selected: new Set(),
+    expanded: new Set(),
+    filter: '',
+    models: [],
+    fieldsByModel: {},
+    fieldByModel: {},
+    examplesByModel: {},
+    allNotes: [],
+    includeNew: false,
+    includeSuspended: false,
+    replaceMode: false,
+    preserveManualOnReplace: true,
+    syncMode: false,
+    replaceConfirmedThisRun: false,
+};
+// Field names that hint "this is the bare word/lemma", per active language.
+// Universal English terms first so any English-labeled deck works; then the
+// native-language equivalents so users whose deck templates use Estonian or
+// Finnish names get a sensible guess too. Matched by case-insensitive
+// substring so variants like "Word (FI)" or "Sõna (lihtne)" still hit.
+const PREFERRED_FIELD_NAMES = {
+    FI: ['word', 'expression', 'term', 'lemma', 'headword', 'vocab', 'sana', 'ilmaisu', 'käsite', 'termi'],
+    ET: ['word', 'expression', 'term', 'lemma', 'headword', 'vocab', 'sõna', 'väljend', 'mõiste', 'termin'],
+};
+// Pick the field most likely to hold a single bare word for this model.
+// Strategy: rank candidates by what fraction of sampled non-empty values are
+// a single token (no internal whitespace). Among the ones that pass the
+// single-word bar, prefer field names matching the language's word/expression
+// vocabulary. Fall back to the field with the highest single-word ratio, or
+// to the model's first field if we have no examples at all.
+function pickBestField(fields, examples, lang) {
+    if (fields.length === 0)
+        return '';
+    const singleWordRatio = {};
+    for (const f of fields) {
+        const nonEmpty = (examples[f] || []).filter(v => v.trim() !== '');
+        if (nonEmpty.length === 0) {
+            singleWordRatio[f] = 0;
+            continue;
+        }
+        const singleCount = nonEmpty.filter(v => !/\s/.test(v.trim())).length;
+        singleWordRatio[f] = singleCount / nonEmpty.length;
+    }
+    const candidates = fields.filter(f => singleWordRatio[f] >= 0.5);
+    if (candidates.length === 1)
+        return candidates[0];
+    const preferred = PREFERRED_FIELD_NAMES[lang] || PREFERRED_FIELD_NAMES.FI;
+    const pool = candidates.length > 0 ? candidates : fields;
+    for (const hint of preferred) {
+        const match = pool.find(f => f.toLowerCase().includes(hint.toLowerCase()));
+        if (match)
+            return match;
+    }
+    if (candidates.length > 0)
+        return candidates[0];
+    // No single-word fields and no name hints — pick whichever field at least
+    // had any non-empty content, falling back to the first.
+    const withContent = fields.find(f => (examples[f] || []).some(v => v.trim() !== ''));
+    return withContent || fields[0];
+}
+const ANKI_STAGE_IDS = {
+    loading: 'anki-import-stage-loading',
+    decks: 'anki-import-stage-decks',
+    fields: 'anki-import-stage-fields',
+    running: 'anki-import-stage-running',
+};
+function showAnkiStage(stage) {
+    for (const s of Object.keys(ANKI_STAGE_IDS)) {
+        document.getElementById(ANKI_STAGE_IDS[s])?.classList.toggle('hidden', s !== stage);
+    }
+}
+function openAnkiImportModal() {
+    openAnkiModal(false);
+}
+// Quick-action "Sync from Anki" entry point. Same setup as the manual flow,
+// but flags `syncMode = true` so once discovery completes we skip past the
+// deck picker and field-picker stages and go straight to import using the
+// saved prefs. Fails over to the manual flow if discovery turns up no
+// matching decks.
+// Quick-action sync flow. Doesn't show the "Connect to Anki" modal up
+// front — instead surfaces the replace-mode confirmation dialog (if
+// applicable) with a status indicator that flips from a spinner to a check
+// mark once discovery completes. The full modal only appears at the running
+// stage, or when discovery surfaces a state change that needs review.
+async function openAnkiSyncModal() {
+    // Disable the trigger button for the duration of the sync so a frantic
+    // double-click can't kick off two parallel imports. Re-enabled in the
+    // finally below — guarantees the button isn't left stuck on any error
+    // or early-return path.
+    const syncBtn = document.getElementById('vocab-anki-sync');
+    if (syncBtn)
+        syncBtn.disabled = true;
+    try {
+        await runAnkiSyncFlow();
+    }
+    finally {
+        if (syncBtn)
+            syncBtn.disabled = false;
+    }
+}
+async function runAnkiSyncFlow() {
+    const prefs = loadAnkiPrefs(state.activeLanguage);
+    // Sync needs a prior successful import and at least one saved deck.
+    // Anything else routes to the manual flow.
+    if (!prefs.lastSyncAt || prefs.decks.length === 0) {
+        openAnkiModal(false);
+        return;
+    }
+    initializeAnkiState(prefs, /* sync */ true);
+    // Kick off discovery immediately — runs concurrently with whatever dialog
+    // is shown so the user never waits for sequential steps. The promise
+    // resolves to a structured result rather than throwing so the dialog can
+    // surface "Anki ready" vs an actionable error without separate paths.
+    const discovery = runSyncDiscovery();
+    const needsConfirm = ankiImport.replaceMode && !prefs.replaceConfirmSkip;
+    let validation;
+    let dialogConfirmed = true;
+    if (needsConfirm) {
+        const langName = languageName(ankiImport.lang);
+        // No rememberLabel here — the "Skip confirmation on next sync" toggle
+        // lives below the sync button on the vocab page now, so the dialog
+        // stays focused on the confirm action.
+        const dialog = await showConfirmWithStatus({
+            title: `Replace ${langName} vocabulary?`,
+            message: `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
+            confirmLabel: 'Sync and replace',
+            danger: true,
+            loadingText: 'Checking Anki…',
+        }, discovery, (val) => val.ok
+            ? { state: 'success', text: 'Anki ready.' }
+            : { state: 'error', text: val.detail });
+        dialogConfirmed = dialog.confirmed;
+        // status is the SyncDiscoveryResultOrFailure from runSyncDiscovery —
+        // undefined only if the promise itself failed (shouldn't happen
+        // since runSyncDiscovery catches everything).
+        validation = dialog.status || { ok: false, reason: 'connect-failed', detail: 'Discovery did not complete.' };
+        // If validation failed, fall through to the failure-handling
+        // branch below regardless of whether the user cancelled — the
+        // Confirm button was disabled so they could only cancel anyway.
+        if (validation.ok && !dialogConfirmed)
+            return; // user cancelled a healthy validation
+    }
+    else {
+        // No confirm dialog → the import modal IS the immediate feedback.
+        // Open it at the loading stage with the sync-flavoured "Syncing
+        // from Anki…" label so the user sees something the moment they
+        // click. Once discovery completes we transition to the running
+        // stage (or to a manual stage on a state-change error).
+        openAnkiModalAtStage('loading');
+        const loadingMsg = document.getElementById('anki-import-loading-msg');
+        if (loadingMsg)
+            loadingMsg.textContent = 'Syncing from Anki…';
+        validation = await discovery;
+    }
+    if (!validation.ok) {
+        // Discovery turned up something the user should see — open the modal
+        // in the appropriate manual-flow stage with the toast we'd normally
+        // show in the auto-advance path.
+        if (validation.reason === 'connect-failed') {
+            showToast(validation.detail || 'Could not reach Anki.', 'error');
+            openAnkiSetupModal();
+            return;
+        }
+        // Deck-related issues (missing decks, fully empty selection) route to
+        // the deck-picker stage so the user can re-select. A model-set change
+        // routes to the field-picker stage so they can review the new card
+        // types.
+        const stage = validation.reason === 'model-changed' ? 'fields' : 'decks';
+        openAnkiModalAtStage(stage);
+        showToast(validation.detail || 'Anki state has changed. Review your selection.', 'info', 6000);
+        return;
+    }
+    // All clear — show the modal at the running stage and execute the
+    // import. The note snapshots are already in memory from discovery.
+    // Flag the run as already-confirmed so runAnkiImport doesn't pop a
+    // second replace dialog on top of the one the user just dismissed.
+    if (needsConfirm)
+        ankiImport.replaceConfirmedThisRun = true;
+    openAnkiModalAtStage('running');
+    // Await the import so the sync-button disabled-window in
+    // openAnkiSyncModal's finally extends through the entire run.
+    await runAnkiImport();
+}
+function openAnkiModal(sync) {
+    const modal = document.getElementById('anki-import-modal');
+    if (!modal)
+        return;
+    initializeAnkiState(loadAnkiPrefs(state.activeLanguage), sync);
+    modal.classList.remove('hidden');
+    showAnkiStage('loading');
+    const loadingMsg = document.getElementById('anki-import-loading-msg');
+    if (loadingMsg)
+        loadingMsg.textContent = sync ? 'Syncing from Anki…' : 'Connecting to AnkiConnect…';
+    void connectAndLoadDecks();
+}
+// Pre-populate `ankiImport` state from saved prefs without touching the DOM.
+// Shared between the manual and the silent (quick-sync) entry points.
+function initializeAnkiState(prefs, sync) {
+    ankiImport.open = true;
+    ankiImport.lang = state.activeLanguage;
+    ankiImport.filter = prefs.filter;
+    ankiImport.selected = new Set(prefs.decks);
+    ankiImport.fieldByModel = { ...prefs.fieldByModel };
+    ankiImport.includeNew = prefs.includeNew;
+    ankiImport.includeSuspended = prefs.includeSuspended;
+    ankiImport.replaceMode = prefs.replaceMode;
+    ankiImport.preserveManualOnReplace = prefs.preserveManualOnReplace;
+    ankiImport.syncMode = sync;
+    ankiImport.allNotes = [];
+    ankiImport.expanded = new Set();
+}
+// Open the modal at a specific stage. Used by the sync flow once discovery
+// has populated `ankiImport.allNotes` etc — we skip the "loading" stage
+// because there's nothing left to load.
+function openAnkiModalAtStage(stage) {
+    const modal = document.getElementById('anki-import-modal');
+    if (!modal)
+        return;
+    modal.classList.remove('hidden');
+    // The sync flow has already populated state but didn't render any
+    // section — fill in everything the target stage needs to look right.
+    if (stage === 'decks') {
+        // Build the deck tree from the deckNames we cached during discovery.
+        if (ankiImport.tree.length === 0) {
+            ankiImport.tree = buildAnkiDeckTree(ankiImport.deckNames);
+        }
+        // Auto-expand ancestors of every preselected deck so they're
+        // visible without the user having to drill in.
+        for (const deck of ankiImport.selected) {
+            for (const ancestor of ancestorPaths(deck))
+                ankiImport.expanded.add(ancestor);
+        }
+        renderAnkiFilter();
+        renderAnkiDeckTree();
+        renderAnkiDeckSummary();
+    }
+    else if (stage === 'fields') {
+        renderAnkiFieldPickers();
+        renderAnkiImportEstimate();
+    }
+    else if (stage === 'running') {
+        const msg = document.getElementById('anki-import-running-msg');
+        const bar = document.getElementById('anki-import-progress-bar');
+        if (msg)
+            msg.textContent = 'Starting…';
+        if (bar)
+            bar.style.width = '0%';
+    }
+    showAnkiStage(stage);
+}
+// Runs the full discovery pipeline silently (no modal side effects beyond
+// populating `ankiImport.allNotes` / `ankiImport.fieldByModel` / etc). Used
+// by the quick-sync flow. Mirrors connectAndLoadDecks +
+// loadAnkiModelsForSelection but condensed and returns a structured result
+// instead of branching into stages.
+async function runSyncDiscovery() {
+    try {
+        await ankiInvoke('version');
+        const deckNames = await ankiInvoke('deckNames');
+        ankiImport.deckNames = deckNames;
+        ankiImport.tree = buildAnkiDeckTree(deckNames);
+        const valid = new Set(deckNames);
+        const savedDecks = Array.from(ankiImport.selected);
+        const missingDecks = savedDecks.filter(d => !valid.has(d));
+        for (const d of missingDecks)
+            ankiImport.selected.delete(d);
+        if (ankiImport.selected.size === 0) {
+            return { ok: false, reason: 'empty-selection', detail: missingDecks.length > 0
+                    ? `${missingDecks.length} previously-imported deck${missingDecks.length === 1 ? '' : 's'} no longer exist in Anki. Pick a new selection.`
+                    : 'No previously-imported decks exist in Anki any more.' };
+        }
+        if (missingDecks.length > 0) {
+            return { ok: false, reason: 'deck-missing', detail: `${missingDecks.length} previously-imported deck${missingDecks.length === 1 ? '' : 's'} no longer exist${missingDecks.length === 1 ? 's' : ''} in Anki. Review your selection.` };
+        }
+        // Fetch notes (all + studied + non-suspended sets per deck).
+        const decks = Array.from(ankiImport.selected);
+        const perDeck = await Promise.all(decks.map(async (d) => {
+            const [all, studied, notSuspended] = await Promise.all([
+                ankiInvoke('findNotes', { query: `deck:"${d}"` }),
+                ankiInvoke('findNotes', { query: `deck:"${d}" -is:new` }),
+                ankiInvoke('findNotes', { query: `deck:"${d}" -is:suspended` }),
+            ]);
+            return { all, studied, notSuspended };
+        }));
+        const studiedSet = new Set();
+        const notSuspendedSet = new Set();
+        const seenIDs = new Set();
+        const allIDs = [];
+        for (const { all, studied, notSuspended } of perDeck) {
+            for (const id of all) {
+                if (seenIDs.has(id))
+                    continue;
+                seenIDs.add(id);
+                allIDs.push(id);
+            }
+            for (const id of studied)
+                studiedSet.add(id);
+            for (const id of notSuspended)
+                notSuspendedSet.add(id);
+        }
+        const snapshots = [];
+        const CHUNK = 500;
+        for (let i = 0; i < allIDs.length; i += CHUNK) {
+            const chunk = allIDs.slice(i, i + CHUNK);
+            const notes = await ankiInvoke('notesInfo', { notes: chunk });
+            for (const note of notes) {
+                if (!note?.modelName)
+                    continue;
+                const stripped = {};
+                for (const [name, info] of Object.entries(note.fields || {})) {
+                    stripped[name] = stripHtml(info.value || '');
+                }
+                snapshots.push({
+                    noteId: note.noteId,
+                    modelName: note.modelName,
+                    fields: stripped,
+                    studied: studiedSet.has(note.noteId),
+                    suspended: !notSuspendedSet.has(note.noteId),
+                });
+            }
+        }
+        ankiImport.allNotes = snapshots;
+        const savedModelKeys = new Set(Object.keys(ankiImport.fieldByModel));
+        const modelSet = new Set();
+        for (const n of snapshots)
+            modelSet.add(n.modelName);
+        const models = Array.from(modelSet).sort((a, b) => a.localeCompare(b));
+        ankiImport.models = models;
+        // Field lists per model.
+        const fieldsByModel = {};
+        await Promise.all(models.map(async (model) => {
+            try {
+                fieldsByModel[model] = await ankiInvoke('modelFieldNames', { modelName: model });
+            }
+            catch {
+                fieldsByModel[model] = [];
+            }
+        }));
+        ankiImport.fieldsByModel = fieldsByModel;
+        // Per-(model, field) examples — same as loadAnkiModelsForSelection,
+        // also auto-picks a field for models the user hasn't seen yet.
+        const examplesByModel = {};
+        for (const model of models) {
+            const fieldList = fieldsByModel[model] || [];
+            const examples = {};
+            for (const f of fieldList)
+                examples[f] = [];
+            for (const note of snapshots) {
+                if (note.modelName !== model)
+                    continue;
+                for (const f of fieldList) {
+                    const v = (note.fields[f] || '').trim();
+                    if (!v)
+                        continue;
+                    const bucket = examples[f];
+                    if (bucket.length < 2 && !bucket.includes(v))
+                        bucket.push(v);
+                }
+            }
+            examplesByModel[model] = examples;
+            if (!(model in ankiImport.fieldByModel)) {
+                ankiImport.fieldByModel[model] = pickBestField(fieldList, examples, ankiImport.lang);
+            }
+        }
+        ankiImport.examplesByModel = examplesByModel;
+        persistAnkiPrefs();
+        // Detect model-set drift (new card type / removed one). Same contract
+        // as the modal-driven sync flow.
+        const newModels = models.filter(m => !savedModelKeys.has(m));
+        const goneModels = Array.from(savedModelKeys).filter(m => !modelSet.has(m));
+        if (newModels.length > 0 || goneModels.length > 0) {
+            const parts = [];
+            if (newModels.length > 0)
+                parts.push(`${newModels.length} new card type${newModels.length === 1 ? '' : 's'}`);
+            if (goneModels.length > 0)
+                parts.push(`${goneModels.length} card type${goneModels.length === 1 ? '' : 's'} removed`);
+            return { ok: false, reason: 'model-changed', detail: `Anki state has changed (${parts.join(', ')}). Review the field selection before syncing.` };
+        }
+        if (selectedAnkiNotes().length === 0) {
+            return { ok: false, reason: 'empty-selection', detail: 'No notes match the current selection.' };
+        }
+        return { ok: true };
+    }
+    catch (err) {
+        const msg = err && err.message
+            ? err.message
+            : 'Failed to reach Anki.';
+        return { ok: false, reason: 'connect-failed', detail: msg };
+    }
+}
+function closeAnkiImportModal() {
+    ankiImport.open = false;
+    document.getElementById('anki-import-modal')?.classList.add('hidden');
+}
+async function connectAndLoadDecks() {
+    const loadingMsg = document.getElementById('anki-import-loading-msg');
+    try {
+        await ankiInvoke('version');
+        if (loadingMsg)
+            loadingMsg.textContent = 'Fetching decks…';
+        const deckNames = await ankiInvoke('deckNames');
+        ankiImport.deckNames = deckNames;
+        ankiImport.tree = buildAnkiDeckTree(deckNames);
+        // Forget previously-selected decks that no longer exist.
+        const valid = new Set(deckNames);
+        // Snapshot which saved decks no longer exist BEFORE dropping them.
+        // The sync flow uses that to bail to the manual picker rather than
+        // silently importing a smaller set than the user expects.
+        const savedDecks = Array.from(ankiImport.selected);
+        const missingDecks = savedDecks.filter(d => !valid.has(d));
+        for (const d of missingDecks)
+            ankiImport.selected.delete(d);
+        // Sync mode: route to the manual picker on ANY state mismatch
+        // (missing deck, or zero remaining decks). This is the "no surprises"
+        // contract — the user explicitly hit Sync, they should review changes
+        // before we apply a destructive replace. The deck-picker stage opens
+        // pre-populated with whatever still exists.
+        if (ankiImport.syncMode) {
+            if (missingDecks.length > 0 || ankiImport.selected.size === 0) {
+                ankiImport.syncMode = false;
+                const msg = missingDecks.length > 0
+                    ? `${missingDecks.length} previously-imported deck${missingDecks.length === 1 ? '' : 's'} no longer exist${missingDecks.length === 1 ? 's' : ''} in Anki. Review your selection.`
+                    : 'No previously-imported decks exist in Anki any more. Pick a new selection.';
+                showToast(msg, 'info', 5000);
+                // Fall through to the manual deck picker below.
+            }
+            else {
+                void loadAnkiModelsForSelection();
+                return;
+            }
+        }
+        ankiImport.syncMode = false; // sync prereqs not met → manual flow
+        // Expand ancestors of every preselected deck so the user sees them
+        // immediately rather than having to drill in.
+        for (const deck of ankiImport.selected) {
+            for (const ancestor of ancestorPaths(deck))
+                ankiImport.expanded.add(ancestor);
+        }
+        showAnkiStage('decks');
+        renderAnkiFilter();
+        renderAnkiDeckTree();
+        renderAnkiDeckSummary();
+    }
+    catch (err) {
+        closeAnkiImportModal();
+        showToast(err.message || 'Failed to connect to Anki.', 'error');
+        openAnkiSetupModal();
+    }
+}
+function ancestorPaths(deckName) {
+    const parts = deckName.split('::');
+    const out = [];
+    for (let i = 1; i < parts.length; i++)
+        out.push(parts.slice(0, i).join('::'));
+    return out;
+}
+function renderAnkiFilter() {
+    const input = document.getElementById('anki-import-filter');
+    if (input && input.value !== ankiImport.filter)
+        input.value = ankiImport.filter;
+}
+// Split filter on `|` and treat each chunk as a case-insensitive substring.
+// Matches the way the user expressed the default ("estonian|eesti") without
+// forcing them to know regex.
+function deckMatchesFilter(name, filter) {
+    const f = filter.trim().toLowerCase();
+    if (!f)
+        return true;
+    const haystack = name.toLowerCase();
+    return f.split('|').some(part => part.trim() !== '' && haystack.includes(part.trim()));
+}
+// A node is visible if it (or any descendant) matches the filter. We compute
+// this once per render so descendants of a matching ancestor still show even
+// if their leaf name doesn't itself match.
+function collectVisible(tree, filter) {
+    const visible = new Set();
+    const walk = (node) => {
+        let anyDescendantMatches = false;
+        for (const child of node.children) {
+            if (walk(child))
+                anyDescendantMatches = true;
+        }
+        const matches = deckMatchesFilter(node.fullName, filter) || anyDescendantMatches;
+        if (matches)
+            visible.add(node.fullName);
+        return matches;
+    };
+    for (const node of tree)
+        walk(node);
+    return visible;
+}
+function renderAnkiDeckTree() {
+    const container = document.getElementById('anki-import-tree');
+    const empty = document.getElementById('anki-import-tree-empty');
+    if (!container || !empty)
+        return;
+    const visible = collectVisible(ankiImport.tree, ankiImport.filter);
+    if (visible.size === 0) {
+        container.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+    }
+    empty.classList.add('hidden');
+    const renderNode = (node, depth) => {
+        if (!visible.has(node.fullName))
+            return '';
+        const hasChildren = node.children.length > 0;
+        // Auto-expand a folder when filter is active so matches deeper in the
+        // tree aren't hidden by collapsed parents.
+        const filterActive = ankiImport.filter.trim() !== '';
+        const expanded = ankiImport.expanded.has(node.fullName) || filterActive;
+        const checked = ankiImport.selected.has(node.fullName);
+        const id = `anki-deck-${node.fullName.replace(/[^A-Za-z0-9_-]/g, '_')}`;
+        const children = hasChildren && expanded
+            ? `<div class="anki-deck-children">${node.children.map(c => renderNode(c, depth + 1)).join('')}</div>`
+            : '';
+        return `<div class="anki-deck-row" style="--anki-depth: ${depth};" role="treeitem">
+            <button type="button" class="anki-deck-toggle${hasChildren ? '' : ' is-leaf'}" data-deck-toggle="${escapeAttr(node.fullName)}" aria-label="${expanded ? 'Collapse' : 'Expand'} ${escapeAttr(node.name)}">
+                ${hasChildren ? (expanded ? '▾' : '▸') : ''}
+            </button>
+            <label class="anki-deck-label">
+                <input type="checkbox" class="anki-deck-check" data-deck-check="${escapeAttr(node.fullName)}" id="${id}" ${checked ? 'checked' : ''} />
+                <span class="anki-deck-name">${escapeHtml(node.name)}</span>
+            </label>
+        </div>${children}`;
+    };
+    container.innerHTML = ankiImport.tree.map(n => renderNode(n, 0)).join('');
+}
+function renderAnkiDeckSummary() {
+    const el = document.getElementById('anki-import-deck-summary');
+    if (!el)
+        return;
+    const n = ankiImport.selected.size;
+    el.textContent = n === 0
+        ? 'No decks selected.'
+        : `${n.toLocaleString()} deck${n === 1 ? '' : 's'} selected.`;
+}
+function persistAnkiPrefs() {
+    // Preserve lastSyncAt + replaceConfirmSkip across writes — those are
+    // managed by separate code paths (successful import / dismiss-dialog).
+    const existing = loadAnkiPrefs(ankiImport.lang);
+    saveAnkiPrefs(ankiImport.lang, {
+        filter: ankiImport.filter,
+        decks: Array.from(ankiImport.selected),
+        fieldByModel: ankiImport.fieldByModel,
+        includeNew: ankiImport.includeNew,
+        includeSuspended: ankiImport.includeSuspended,
+        replaceMode: ankiImport.replaceMode,
+        preserveManualOnReplace: ankiImport.preserveManualOnReplace,
+        lastSyncAt: existing.lastSyncAt,
+        replaceConfirmSkip: existing.replaceConfirmSkip,
+    });
+}
+function recordReplaceConfirmSkip() {
+    const prefs = loadAnkiPrefs(ankiImport.lang);
+    prefs.replaceConfirmSkip = true;
+    saveAnkiPrefs(ankiImport.lang, prefs);
+}
+function recordAnkiSyncTime() {
+    const prefs = loadAnkiPrefs(ankiImport.lang);
+    prefs.lastSyncAt = Date.now();
+    saveAnkiPrefs(ankiImport.lang, prefs);
+}
+function onAnkiFilterInput(value) {
+    ankiImport.filter = value;
+    renderAnkiDeckTree();
+    persistAnkiPrefs();
+}
+function onAnkiDeckToggle(fullName) {
+    if (ankiImport.expanded.has(fullName))
+        ankiImport.expanded.delete(fullName);
+    else
+        ankiImport.expanded.add(fullName);
+    renderAnkiDeckTree();
+}
+function findAnkiNode(roots, fullName) {
+    for (const node of roots) {
+        if (node.fullName === fullName)
+            return node;
+        const hit = findAnkiNode(node.children, fullName);
+        if (hit)
+            return hit;
+    }
+    return null;
+}
+function collectAnkiSubtree(node) {
+    const out = [node.fullName];
+    for (const child of node.children)
+        out.push(...collectAnkiSubtree(child));
+    return out;
+}
+// Checking a parent deck cascades to every descendant, and unchecking
+// cascades the same way. This matches the user's mental model: "select the
+// Estonian folder" means "import everything under Estonian", not just the
+// parent placeholder deck (which often has zero notes of its own).
+function onAnkiDeckCheck(fullName, checked) {
+    const node = findAnkiNode(ankiImport.tree, fullName);
+    const names = node ? collectAnkiSubtree(node) : [fullName];
+    if (checked) {
+        for (const name of names)
+            ankiImport.selected.add(name);
+    }
+    else {
+        for (const name of names)
+            ankiImport.selected.delete(name);
+    }
+    // Re-render so cascaded descendant checkboxes reflect the new state.
+    renderAnkiDeckTree();
+    renderAnkiDeckSummary();
+    persistAnkiPrefs();
+}
+// Step 2: discover the note models (card types) used in the user's selected
+// decks, then ask which field of each model holds the word. We sample a
+// handful of notes per deck rather than every note — fast enough that even a
+// 50-deck selection feels instant, and we'd never offer the user a field that
+// no real note has, since `modelFieldNames` returns the canonical schema.
+async function loadAnkiModelsForSelection() {
+    const summary = document.getElementById('anki-import-field-summary');
+    if (summary)
+        summary.textContent = 'Inspecting card types…';
+    showAnkiStage('fields');
+    const fieldsContainer = document.getElementById('anki-import-fields');
+    if (fieldsContainer)
+        fieldsContainer.innerHTML = '';
+    try {
+        const decks = Array.from(ankiImport.selected);
+        // For each selected deck, fetch the full note set plus two subsets:
+        //   - "studied"      = notes with at least one non-new card (-is:new)
+        //   - "notSuspended" = notes with at least one non-suspended card
+        // We invert the suspended set so the snapshot's `suspended` flag is
+        // true only when every card on the note is paused. Three queries per
+        // deck, fired in parallel — even for a few dozen decks the discovery
+        // step stays comfortably under a second.
+        const perDeck = await Promise.all(decks.map(async (d) => {
+            const [all, studied, notSuspended] = await Promise.all([
+                ankiInvoke('findNotes', { query: `deck:"${d}"` }),
+                ankiInvoke('findNotes', { query: `deck:"${d}" -is:new` }),
+                ankiInvoke('findNotes', { query: `deck:"${d}" -is:suspended` }),
+            ]);
+            return { all, studied, notSuspended };
+        }));
+        const studiedSet = new Set();
+        const notSuspendedSet = new Set();
+        const allIDsSeen = new Set();
+        const allIDs = [];
+        for (const { all, studied, notSuspended } of perDeck) {
+            for (const id of all) {
+                if (allIDsSeen.has(id))
+                    continue;
+                allIDsSeen.add(id);
+                allIDs.push(id);
+            }
+            for (const id of studied)
+                studiedSet.add(id);
+            for (const id of notSuspended)
+                notSuspendedSet.add(id);
+        }
+        // Fetch every note in the selected decks (chunked to keep payloads
+        // reasonable). We need the full data — not just a sample — so that
+        // (a) rare models that only appear later don't go missing and (b) the
+        // estimate at the bottom of step 2 reflects the real set, not a
+        // projection.
+        const snapshots = [];
+        const CHUNK = 500;
+        for (let i = 0; i < allIDs.length; i += CHUNK) {
+            const chunk = allIDs.slice(i, i + CHUNK);
+            const notes = await ankiInvoke('notesInfo', { notes: chunk });
+            for (const note of notes) {
+                if (!note?.modelName)
+                    continue;
+                const stripped = {};
+                for (const [name, info] of Object.entries(note.fields || {})) {
+                    stripped[name] = stripHtml(info.value || '');
+                }
+                snapshots.push({
+                    noteId: note.noteId,
+                    modelName: note.modelName,
+                    fields: stripped,
+                    studied: studiedSet.has(note.noteId),
+                    suspended: !notSuspendedSet.has(note.noteId),
+                });
+            }
+            if (summary) {
+                const scanned = Math.min(i + CHUNK, allIDs.length);
+                summary.textContent = `Inspecting card types… (${scanned.toLocaleString()} / ${allIDs.length.toLocaleString()} notes scanned)`;
+            }
+        }
+        ankiImport.allNotes = snapshots;
+        // Enumerate models from the full set (not just a sample) and grab
+        // each model's canonical field list. modelFieldNames is the source
+        // of truth for which fields exist and in what order — sampled notes
+        // may omit empty fields entirely depending on the model definition.
+        const modelSet = new Set();
+        for (const n of snapshots)
+            modelSet.add(n.modelName);
+        const models = Array.from(modelSet).sort((a, b) => a.localeCompare(b));
+        ankiImport.models = models;
+        const fieldsByModel = {};
+        await Promise.all(models.map(async (model) => {
+            try {
+                const fields = await ankiInvoke('modelFieldNames', { modelName: model });
+                fieldsByModel[model] = fields;
+            }
+            catch {
+                fieldsByModel[model] = [];
+            }
+        }));
+        ankiImport.fieldsByModel = fieldsByModel;
+        // Snapshot the saved field-by-model keys BEFORE auto-pick mutates
+        // them. Sync-mode change detection compares this against the
+        // discovered model set so newly-added card types force a manual
+        // review.
+        const savedModelKeys = new Set(Object.keys(ankiImport.fieldByModel));
+        // Build the per-(model, field) example list from the in-memory
+        // snapshots, then auto-pick a field for any model the user hasn't
+        // manually picked in a previous session. Saved picks always win.
+        const examplesByModel = {};
+        for (const model of models) {
+            const fieldList = fieldsByModel[model] || [];
+            const examples = {};
+            for (const f of fieldList)
+                examples[f] = [];
+            for (const note of snapshots) {
+                if (note.modelName !== model)
+                    continue;
+                for (const f of fieldList) {
+                    const v = (note.fields[f] || '').trim();
+                    if (!v)
+                        continue;
+                    const bucket = examples[f];
+                    if (bucket.length < 2 && !bucket.includes(v))
+                        bucket.push(v);
+                }
+            }
+            examplesByModel[model] = examples;
+            if (!(model in ankiImport.fieldByModel)) {
+                ankiImport.fieldByModel[model] = pickBestField(fieldList, examples, ankiImport.lang);
+            }
+        }
+        ankiImport.examplesByModel = examplesByModel;
+        persistAnkiPrefs();
+        renderAnkiFieldPickers();
+        renderAnkiImportEstimate();
+        // Sync mode: skip the manual confirmation and run the import using
+        // the saved prefs — UNLESS Anki state has drifted in a way the user
+        // should review. Specifically:
+        //   - A new card type has appeared in the discovered set that
+        //     wasn't in the saved fieldByModel
+        //   - A previously-saved card type is no longer present
+        // Either case routes back to the field-picker stage with a toast so
+        // the user can decide whether to import the new model and what
+        // field to use.
+        if (ankiImport.syncMode) {
+            // savedModelKeys may include models from earlier-different deck
+            // selections, but if the deck set is unchanged it's exactly the
+            // models the user previously saw.
+            const discoveredSet = new Set(models);
+            const newModels = models.filter(m => !savedModelKeys.has(m));
+            const goneModels = Array.from(savedModelKeys).filter(m => !discoveredSet.has(m));
+            if (newModels.length > 0 || goneModels.length > 0) {
+                ankiImport.syncMode = false;
+                const parts = [];
+                if (newModels.length > 0)
+                    parts.push(`${newModels.length} new card type${newModels.length === 1 ? '' : 's'}`);
+                if (goneModels.length > 0)
+                    parts.push(`${goneModels.length} card type${goneModels.length === 1 ? '' : 's'} removed`);
+                showToast(`Anki state has changed (${parts.join(', ')}). Review the field selection before syncing.`, 'info', 6000);
+                // Stay on the fields stage — the picker is already rendered.
+                return;
+            }
+            if (selectedAnkiNotes().length > 0) {
+                ankiImport.syncMode = false;
+                void runAnkiImport();
+            }
+        }
+    }
+    catch (err) {
+        if (summary)
+            summary.textContent = err.message || 'Failed to read card types.';
+        showToast(err.message || 'Failed to read card types from Anki.', 'error');
+    }
+}
+// Label for the picker trigger button. Empty string = "Skip this card type",
+// otherwise the field name itself.
+function fieldDisplayLabel(field) {
+    return field === '' ? 'Skip this card type' : field;
+}
+function renderAnkiFieldPickers() {
+    const container = document.getElementById('anki-import-fields');
+    const summary = document.getElementById('anki-import-field-summary');
+    if (!container || !summary)
+        return;
+    if (ankiImport.models.length === 0) {
+        container.innerHTML = '<p class="anki-import-empty">No card types found in the selected decks.</p>';
+        summary.textContent = '';
+        return;
+    }
+    summary.textContent = `${ankiImport.models.length} card type${ankiImport.models.length === 1 ? '' : 's'} found.`;
+    container.innerHTML = ankiImport.models.map(model => {
+        const fields = ankiImport.fieldsByModel[model] || [];
+        const examples = ankiImport.examplesByModel[model] || {};
+        const current = ankiImport.fieldByModel[model] ?? '';
+        // Skip option always sits at the top so an "ignore this card type"
+        // choice is one click away. We attach data-examples even on real
+        // fields so the hover-tooltip handler doesn't need a separate lookup.
+        const options = [];
+        options.push(renderFieldOption(model, '', current === '', []));
+        for (const f of fields) {
+            options.push(renderFieldOption(model, f, current === f, examples[f] || []));
+        }
+        return `<div class="anki-import-field-row" data-model-row="${escapeAttr(model)}">
+            <div class="anki-import-field-label">${escapeHtml(model)}</div>
+            <div class="field-picker" data-field-picker="${escapeAttr(model)}">
+                <button type="button" class="field-picker-toggle" data-field-toggle="${escapeAttr(model)}" aria-haspopup="listbox" aria-expanded="false">
+                    <span class="field-picker-current">${escapeHtml(fieldDisplayLabel(current))}</span>
+                    <span class="field-picker-caret" aria-hidden="true"></span>
+                </button>
+                <ul class="field-picker-menu hidden" role="listbox" aria-label="Field for ${escapeAttr(model)}">
+                    ${options.join('')}
+                </ul>
+            </div>
+        </div>`;
+    }).join('');
+}
+function renderFieldOption(model, field, isSelected, examples) {
+    // Encode examples in a data attribute so the hover handler can read them
+    // without a separate state lookup. Newline-joined and escaped — the
+    // showFieldExamplesTip handler splits on \n when rendering.
+    const exAttr = examples.length > 0 ? escapeAttr(examples.join('\n')) : '';
+    const label = fieldDisplayLabel(field);
+    return `<li role="presentation">
+        <button type="button" class="field-picker-option${isSelected ? ' is-active' : ''}" role="option" aria-selected="${isSelected ? 'true' : 'false'}" data-field-option="${escapeAttr(model)}" data-field-value="${escapeAttr(field)}" data-field-examples="${exAttr}">
+            <span class="field-picker-option-label">${escapeHtml(label)}</span>
+            ${isSelected ? '<span class="field-picker-option-check" aria-hidden="true">✓</span>' : ''}
+        </button>
+    </li>`;
+}
+function onAnkiFieldPick(model, field) {
+    ankiImport.fieldByModel[model] = field;
+    persistAnkiPrefs();
+    renderAnkiFieldPickers();
+    renderAnkiImportEstimate();
+}
+// ── Anki import settings popup ─────────────────────────────────────────────
+//
+// All sync-affecting prefs live in a single popup so the user can tweak them
+// from the vocab page (before clicking Sync) OR from step 2 of the import
+// modal (during the manual flow). The popup reads the active language's
+// prefs each time it opens; change handlers write back to prefs AND to
+// ankiImport state so an open import modal sees the new values immediately.
+function openAnkiSettingsModal() {
+    const modal = document.getElementById('anki-settings-modal');
+    if (!modal)
+        return;
+    renderAnkiSettings();
+    modal.classList.remove('hidden');
+}
+function closeAnkiSettingsModal() {
+    document.getElementById('anki-settings-modal')?.classList.add('hidden');
+    // If the import modal is open at the fields stage, refresh the estimate
+    // — toggle changes might have shifted what gets imported.
+    if (ankiImport.open)
+        renderAnkiImportEstimate();
+}
+function renderAnkiSettings() {
+    const prefs = loadAnkiPrefs(state.activeLanguage);
+    const setCb = (id, checked) => {
+        const cb = document.getElementById(id);
+        if (cb)
+            cb.checked = checked;
+    };
+    setCb('anki-settings-include-new', prefs.includeNew);
+    setCb('anki-settings-include-suspended', prefs.includeSuspended);
+    setCb('anki-settings-replace-mode', prefs.replaceMode);
+    setCb('anki-settings-preserve-manual', prefs.preserveManualOnReplace);
+    setCb('anki-settings-skip-confirm', prefs.replaceConfirmSkip);
+    const preserveWrap = document.getElementById('anki-settings-preserve-manual-wrap');
+    if (preserveWrap)
+        preserveWrap.classList.toggle('expanded', prefs.replaceMode);
+}
+// Generic helper: update a single boolean pref + mirror it onto ankiImport
+// state so any open import modal stays in sync.
+function updateAnkiPref(key, value) {
+    const prefs = loadAnkiPrefs(state.activeLanguage);
+    prefs[key] = value;
+    saveAnkiPrefs(state.activeLanguage, prefs);
+    // Mirror onto ankiImport so an open import modal's filter / estimate
+    // reflect the change without waiting for a re-open.
+    if (key === 'includeNew')
+        ankiImport.includeNew = value;
+    if (key === 'includeSuspended')
+        ankiImport.includeSuspended = value;
+    if (key === 'replaceMode')
+        ankiImport.replaceMode = value;
+    if (key === 'preserveManualOnReplace')
+        ankiImport.preserveManualOnReplace = value;
+    // replaceConfirmSkip lives in prefs only — runAnkiImport reads it
+    // directly at confirm time.
+}
+function onSettingsIncludeNewToggle(checked) {
+    updateAnkiPref('includeNew', checked);
+}
+function onSettingsIncludeSuspendedToggle(checked) {
+    updateAnkiPref('includeSuspended', checked);
+}
+function onSettingsReplaceModeToggle(checked) {
+    updateAnkiPref('replaceMode', checked);
+    // The "Preserve manually-imported words" sub-option is only relevant
+    // when Replace is on — animate it in/out via the .expanded class.
+    const wrap = document.getElementById('anki-settings-preserve-manual-wrap');
+    if (wrap)
+        wrap.classList.toggle('expanded', checked);
+}
+function onSettingsPreserveManualToggle(checked) {
+    updateAnkiPref('preserveManualOnReplace', checked);
+}
+function onSettingsSkipConfirmToggle(checked) {
+    updateAnkiPref('replaceConfirmSkip', checked);
+}
+// Restore the five behavioural prefs to their out-of-the-box values for the
+// active language. Filter / decks / fieldByModel / lastSyncAt are left
+// untouched — "Reset defaults" is about the import behaviour, not which
+// decks you've picked or whether you've synced before.
+function onSettingsResetDefaults() {
+    updateAnkiPref('includeNew', false);
+    updateAnkiPref('includeSuspended', false);
+    updateAnkiPref('replaceMode', false);
+    updateAnkiPref('preserveManualOnReplace', true);
+    updateAnkiPref('replaceConfirmSkip', false);
+    renderAnkiSettings();
+    if (ankiImport.open)
+        renderAnkiImportEstimate();
+}
+// Returns the set of notes that would actually be imported given the current
+// toggle + field choices. Used both for the estimate (count + unique word
+// preview) and the import step itself, so the two can't drift.
+function selectedAnkiNotes() {
+    return ankiImport.allNotes.filter(note => {
+        if (!ankiImport.includeNew && !note.studied)
+            return false;
+        if (!ankiImport.includeSuspended && note.suspended)
+            return false;
+        const field = ankiImport.fieldByModel[note.modelName];
+        if (!field)
+            return false;
+        return (note.fields[field] || '').trim() !== '';
+    });
+}
+// Run the same surface-form extraction + dedupe the actual import does. With
+// every snapshot already in memory this is a few milliseconds even for many
+// thousand notes.
+function estimateImportWords(notes) {
+    const seen = new Set();
+    for (const note of notes) {
+        const field = ankiImport.fieldByModel[note.modelName];
+        if (!field)
+            continue;
+        const text = note.fields[field] || '';
+        if (!text)
+            continue;
+        for (const raw of parseKnownWordsInput(text)) {
+            const w = cleanAnkiSurfaceForm(raw);
+            if (!w)
+                continue;
+            seen.add(w.toLocaleLowerCase());
+        }
+    }
+    return seen.size;
+}
+function renderAnkiImportEstimate() {
+    const el = document.getElementById('anki-import-estimate');
+    if (!el)
+        return;
+    if (ankiImport.allNotes.length === 0) {
+        el.textContent = '';
+        return;
+    }
+    // Three filter steps, each attributed separately so no note ever shows up
+    // under more than one reason:
+    //   step 1: new-card toggle      → `afterNew`
+    //   step 2: suspended toggle     → `afterSuspended`
+    //   step 3: field-empty / Skip   → `active`
+    const afterNew = ankiImport.allNotes.filter(n => ankiImport.includeNew || n.studied);
+    const afterSuspended = afterNew.filter(n => ankiImport.includeSuspended || !n.suspended);
+    const active = afterSuspended.filter(n => {
+        const field = ankiImport.fieldByModel[n.modelName];
+        if (!field)
+            return false;
+        return (n.fields[field] || '').trim() !== '';
+    });
+    const newExcluded = ankiImport.allNotes.length - afterNew.length;
+    const suspendedExcluded = afterNew.length - afterSuspended.length;
+    const fieldSkipped = afterSuspended.length - active.length;
+    const words = estimateImportWords(active);
+    const detailParts = [];
+    if (newExcluded > 0) {
+        detailParts.push(`${newExcluded.toLocaleString()} new card${newExcluded === 1 ? '' : 's'} excluded`);
+    }
+    if (suspendedExcluded > 0) {
+        detailParts.push(`${suspendedExcluded.toLocaleString()} suspended card${suspendedExcluded === 1 ? '' : 's'} excluded`);
+    }
+    if (fieldSkipped > 0) {
+        detailParts.push(`${fieldSkipped.toLocaleString()} note${fieldSkipped === 1 ? '' : 's'} with empty or skipped field`);
+    }
+    const detail = detailParts.length ? ' · ' + detailParts.join(' · ') : '';
+    el.textContent = `${active.length.toLocaleString()} note${active.length === 1 ? '' : 's'} → ≈ ${words.toLocaleString()} word${words === 1 ? '' : 's'} to import${detail}`;
+}
+// ── Field-picker open/close + hover examples ───────────────────────────────
+// Look up a field picker by model name without going through a CSS attribute
+// selector. Anki ships with model names that contain spaces and parentheses
+// (e.g. "Basic (and reversed card)"); CSS.escape on those would emit
+// backslash-escapes that the browser then treats literally inside a quoted
+// attribute selector, so the lookup silently returns nothing.
+function findFieldPicker(model) {
+    const els = document.querySelectorAll('[data-field-picker]');
+    for (const el of Array.from(els)) {
+        if (el.getAttribute('data-field-picker') === model)
+            return el;
+    }
+    return null;
+}
+function toggleFieldPicker(model) {
+    closeAllFieldPickers(model);
+    const picker = findFieldPicker(model);
+    if (!picker)
+        return;
+    const menu = picker.querySelector('.field-picker-menu');
+    const toggle = picker.querySelector('.field-picker-toggle');
+    if (!menu || !toggle)
+        return;
+    const willOpen = menu.classList.contains('hidden');
+    if (willOpen) {
+        positionFieldPickerMenu(toggle, menu);
+        menu.classList.remove('hidden');
+        toggle.setAttribute('aria-expanded', 'true');
+    }
+    else {
+        menu.classList.add('hidden');
+        toggle.setAttribute('aria-expanded', 'false');
+        hideFieldExamplesTip();
+    }
+}
+// Anchor the fixed-position menu just below its toggle, matched to the
+// toggle's width. If the menu would run off the bottom of the viewport,
+// flip it above instead.
+function positionFieldPickerMenu(toggle, menu) {
+    const rect = toggle.getBoundingClientRect();
+    menu.style.left = `${rect.left}px`;
+    menu.style.width = `${rect.width}px`;
+    menu.style.top = `${rect.bottom + 4}px`;
+    // Measure with visibility:hidden so the layout cost is paid without a
+    // visible flash; then restore. The `hidden` class is left in place — the
+    // caller flips it after we return.
+    const prevVisibility = menu.style.visibility;
+    menu.style.visibility = 'hidden';
+    menu.classList.remove('hidden');
+    const menuRect = menu.getBoundingClientRect();
+    menu.classList.add('hidden');
+    menu.style.visibility = prevVisibility;
+    if (rect.bottom + 4 + menuRect.height > window.innerHeight - 8) {
+        menu.style.top = `${Math.max(8, rect.top - menuRect.height - 4)}px`;
+    }
+}
+function closeAllFieldPickers(except) {
+    document.querySelectorAll('[data-field-picker]').forEach(picker => {
+        if (except !== undefined && picker.getAttribute('data-field-picker') === except)
+            return;
+        picker.querySelector('.field-picker-menu')?.classList.add('hidden');
+        picker.querySelector('.field-picker-toggle')?.setAttribute('aria-expanded', 'false');
+    });
+    hideFieldExamplesTip();
+}
+let fieldExamplesTip = null;
+function ensureFieldExamplesTip() {
+    if (fieldExamplesTip)
+        return fieldExamplesTip;
+    fieldExamplesTip = document.createElement('div');
+    fieldExamplesTip.className = 'field-examples-tip';
+    fieldExamplesTip.setAttribute('role', 'tooltip');
+    document.body.appendChild(fieldExamplesTip);
+    return fieldExamplesTip;
+}
+// Position the tooltip to the right of the hovered option so it doesn't
+// overlap the dropdown itself. If the menu is too close to the right edge,
+// flip the tooltip to the left of the menu.
+function showFieldExamplesTip(option) {
+    const data = option.getAttribute('data-field-examples') || '';
+    if (!data) {
+        hideFieldExamplesTip();
+        return;
+    }
+    const examples = data.split('\n').filter(Boolean);
+    if (examples.length === 0) {
+        hideFieldExamplesTip();
+        return;
+    }
+    const tip = ensureFieldExamplesTip();
+    tip.innerHTML = `<div class="field-examples-tip-title">Examples</div>` +
+        examples.map(e => `<div class="field-examples-tip-row">${escapeHtml(e)}</div>`).join('');
+    // Position relative to the parent picker so the tooltip stays anchored
+    // even as the menu scrolls internally.
+    const picker = option.closest('[data-field-picker]') || option;
+    const rect = picker.getBoundingClientRect();
+    tip.style.visibility = 'hidden';
+    tip.classList.add('visible');
+    const tipRect = tip.getBoundingClientRect();
+    const margin = 12;
+    const flipLeft = rect.right + tipRect.width + margin > window.innerWidth;
+    if (flipLeft) {
+        tip.style.left = `${rect.left - tipRect.width - margin}px`;
+    }
+    else {
+        tip.style.left = `${rect.right + margin}px`;
+    }
+    // Vertically align with the hovered option, but clamp to viewport.
+    const optionRect = option.getBoundingClientRect();
+    let top = optionRect.top;
+    const maxTop = window.innerHeight - tipRect.height - 8;
+    if (top > maxTop)
+        top = Math.max(8, maxTop);
+    tip.style.top = `${top}px`;
+    tip.style.visibility = '';
+}
+function hideFieldExamplesTip() {
+    fieldExamplesTip?.classList.remove('visible');
+}
+// Step 3: actually run the import. For each selected deck, fetch all note IDs,
+// then notesInfo in chunks (AnkiConnect handles big batches but chunking lets
+// us update the progress bar). For each note, look up the field its model
+// maps to (or skip if "Skip"). Extract the field text, run through the same
+// parser as the textbox import so multi-word fields split sensibly.
+async function runAnkiImport() {
+    const runBtn = document.getElementById('anki-import-run');
+    const backBtn = document.getElementById('anki-import-back');
+    const detail = document.getElementById('anki-import-running-detail');
+    const msg = document.getElementById('anki-import-running-msg');
+    const bar = document.getElementById('anki-import-progress-bar');
+    const doneActions = document.getElementById('anki-import-done-actions');
+    // Skip-only sanity check.
+    const usedModels = ankiImport.models.filter(m => (ankiImport.fieldByModel[m] || '').trim() !== '');
+    if (usedModels.length === 0) {
+        showToast('Pick a field for at least one card type, or set all to Skip and cancel.', 'error');
+        return;
+    }
+    // Replace-mode confirmation: a destructive operation that deletes lemmas
+    // not in the new selection (including ones added through the textbox or
+    // a file). Skipped on a per-language basis once the user has explicitly
+    // checked "Don't show this again" on the dialog. Also skipped when the
+    // quick-sync flow has already shown its own status-bearing version of
+    // the same dialog (replaceConfirmedThisRun).
+    if (ankiImport.replaceMode && !ankiImport.replaceConfirmedThisRun) {
+        const langName = languageName(ankiImport.lang);
+        const prefs = loadAnkiPrefs(ankiImport.lang);
+        if (!prefs.replaceConfirmSkip) {
+            const result = await showConfirmWithRemember({
+                title: `Replace ${langName} vocabulary?`,
+                message: `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
+                confirmLabel: 'Sync and replace',
+                danger: true,
+                rememberLabel: "Don't show this again",
+            });
+            if (!result.confirmed)
+                return;
+            if (result.remember)
+                recordReplaceConfirmSkip();
+        }
+    }
+    // Reset for the next run regardless of which path we took.
+    ankiImport.replaceConfirmedThisRun = false;
+    if (runBtn)
+        runBtn.disabled = true;
+    if (backBtn)
+        backBtn.disabled = true;
+    showAnkiStage('running');
+    if (msg)
+        msg.textContent = 'Fetching notes…';
+    if (bar)
+        bar.style.width = '0%';
+    if (doneActions)
+        doneActions.classList.add('hidden');
+    persistAnkiPrefs();
+    try {
+        // The note snapshots — including the studied/new flag — were fetched
+        // during discovery, so we don't hit Anki again here. The filter
+        // applies both the toggle and the per-model field choice.
+        const notes = selectedAnkiNotes();
+        if (notes.length === 0) {
+            if (msg)
+                msg.textContent = 'No notes match the current selection.';
+            if (detail) {
+                // Diagnose which filter is responsible so the user knows
+                // which toggle (or field choice) to revisit.
+                const hasNew = ankiImport.allNotes.some(n => !n.studied);
+                const hasSuspended = ankiImport.allNotes.some(n => n.suspended);
+                if (ankiImport.allNotes.length === 0) {
+                    detail.textContent = 'Selected decks are empty.';
+                }
+                else if (!ankiImport.includeNew && hasNew && !ankiImport.allNotes.some(n => n.studied)) {
+                    detail.textContent = 'Every note in the selected decks is still "new" — turn on “Mark new cards as known” to import them.';
+                }
+                else if (!ankiImport.includeSuspended && hasSuspended && !ankiImport.allNotes.some(n => !n.suspended)) {
+                    detail.textContent = 'Every note in the selected decks is suspended — turn on “Include suspended cards” to import them.';
+                }
+                else {
+                    detail.textContent = 'No notes had a non-empty value for the chosen fields.';
+                }
+            }
+            if (doneActions)
+                doneActions.classList.remove('hidden');
+            return;
+        }
+        // Process snapshots in chunks so the progress bar still moves on
+        // very large imports. The work is in-memory and fast — the chunk
+        // boundary mostly exists to keep the UI thread responsive.
+        const CHUNK = 500;
+        const seen = new Set();
+        const words = [];
+        for (let i = 0; i < notes.length; i += CHUNK) {
+            const chunk = notes.slice(i, i + CHUNK);
+            for (const note of chunk) {
+                const field = ankiImport.fieldByModel[note.modelName];
+                if (!field)
+                    continue;
+                const text = note.fields[field] || '';
+                if (!text)
+                    continue;
+                for (const raw of parseKnownWordsInput(text)) {
+                    const w = cleanAnkiSurfaceForm(raw);
+                    if (!w)
+                        continue;
+                    const key = w.toLocaleLowerCase();
+                    if (seen.has(key))
+                        continue;
+                    seen.add(key);
+                    words.push(w);
+                }
+            }
+            const processed = Math.min(i + CHUNK, notes.length);
+            const pct = Math.round((processed / notes.length) * 100);
+            if (bar)
+                bar.style.width = `${pct}%`;
+            if (detail)
+                detail.textContent = `${processed.toLocaleString()} / ${notes.length.toLocaleString()} notes processed`;
+            // Yield to the event loop so the progress bar repaints.
+            await new Promise(r => setTimeout(r, 0));
+        }
+        if (words.length === 0) {
+            if (msg)
+                msg.textContent = 'No words extracted.';
+            if (detail)
+                detail.textContent = 'The chosen fields were empty for every note in the selected decks.';
+            if (doneActions)
+                doneActions.classList.remove('hidden');
+            return;
+        }
+        if (msg)
+            msg.textContent = ankiImport.replaceMode
+                ? `Syncing ${words.length.toLocaleString()} words…`
+                : `Importing ${words.length.toLocaleString()} words…`;
+        if (ankiImport.replaceMode) {
+            // scope='anki' (default) preserves words the user added through
+            // the textbox / file / inspect / review flows; scope='all' wipes
+            // every row not in the new Anki state.
+            const scope = ankiImport.preserveManualOnReplace ? 'anki' : 'all';
+            const data = await putKnownWords(words, scope);
+            renderKnownWordsUnresolved(data.unresolved || []);
+            if (msg)
+                msg.textContent = 'Done.';
+            if (detail)
+                detail.textContent = describeReplaceResult(data);
+            await refreshDashboardData();
+            await loadKnownWords();
+            showToast('Vocabulary synced from Anki.', 'success');
+        }
+        else {
+            // Additive Anki import — tag new rows so a later sync can diff
+            // them. Manual rows (textbox/file/inspect/review) keep their
+            // own source.
+            const data = await postKnownWords(words, 'anki');
+            renderKnownWordsUnresolved(data.unresolved || []);
+            if (msg)
+                msg.textContent = 'Done.';
+            if (detail)
+                detail.textContent = describeImportResult(data);
+            await refreshDashboardData();
+            await loadKnownWords();
+            showToast('Known words imported from Anki.', 'success');
+        }
+        // Record the successful run so the vocab page can offer the
+        // one-click "Sync from Anki" shortcut next time.
+        recordAnkiSyncTime();
+        renderVocabAnkiSyncButton();
+        if (doneActions)
+            doneActions.classList.remove('hidden');
+    }
+    catch (err) {
+        if (msg)
+            msg.textContent = err.message || 'Import failed.';
+        showToast(err.message || 'Failed to import from Anki.', 'error');
+        if (doneActions)
+            doneActions.classList.remove('hidden');
+    }
+    finally {
+        if (runBtn)
+            runBtn.disabled = false;
+        if (backBtn)
+            backBtn.disabled = false;
+    }
+}
+function openAnkiSetupModal() {
+    const modal = document.getElementById('anki-setup-modal');
+    if (!modal)
+        return;
+    // OS-aware Add-ons shortcut. Anki uses Cmd on macOS, Ctrl elsewhere.
+    const shortcut = document.getElementById('anki-setup-shortcut');
+    if (shortcut) {
+        const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+        shortcut.textContent = isMac ? '⌘+Shift+A' : 'Ctrl+Shift+A';
+    }
+    modal.classList.remove('hidden');
+    document.getElementById('anki-setup-modal-done')?.focus();
+}
+function closeAnkiSetupModal() {
+    document.getElementById('anki-setup-modal')?.classList.add('hidden');
+}
+async function copyAnkiSetupConfig() {
+    const source = document.getElementById('anki-setup-copy-source');
+    const button = document.getElementById('anki-setup-copy-btn');
+    if (!source || !button)
+        return;
+    const text = source.textContent || '';
+    try {
+        await navigator.clipboard.writeText(text);
+        const original = button.textContent || 'Copy';
+        button.textContent = 'Copied!';
+        button.disabled = true;
+        setTimeout(() => {
+            button.textContent = original;
+            button.disabled = false;
+        }, 1500);
+    }
+    catch {
+        showToast('Could not access the clipboard — copy manually.', 'error');
     }
 }
 async function deleteKnownWord(lemma, pos) {
@@ -1363,6 +3078,47 @@ async function deleteKnownWord(lemma, pos) {
     }
     catch (err) {
         showToast(err.message || 'Failed to remove known word.', 'error');
+    }
+}
+async function deleteAllKnownWords() {
+    const lang = state.activeLanguage;
+    const langName = languageName(lang);
+    const count = state.knownWords.length;
+    if (count === 0) {
+        showToast(`No ${langName} vocabulary to delete.`, 'info');
+        return;
+    }
+    const confirmed = await showConfirm({
+        title: `Delete all ${langName} vocabulary?`,
+        message: `This removes all ${count.toLocaleString()} known ${langName} words from your account. Deck coverage and review selection will reset to "nothing known". This cannot be undone.`,
+        confirmLabel: 'Delete all',
+        danger: true,
+    });
+    if (!confirmed)
+        return;
+    const button = document.getElementById('vocab-delete-all');
+    if (button)
+        button.disabled = true;
+    try {
+        const params = new URLSearchParams({ lang, all: '1' });
+        const resp = await fetch(`/api/known-words?${params.toString()}`, {
+            method: 'DELETE',
+            credentials: 'same-origin',
+        });
+        if (!resp.ok)
+            throw new Error(await resp.text() || 'Failed to delete vocabulary');
+        state.knownWords = [];
+        renderKnownWordsPanel();
+        renderKnownWordsUnresolved([]);
+        await refreshDashboardData();
+        showToast(`${langName} vocabulary cleared.`, 'success');
+    }
+    catch (err) {
+        showToast(err.message || 'Failed to delete vocabulary.', 'error');
+    }
+    finally {
+        if (button)
+            button.disabled = false;
     }
 }
 // ── Language detection (shared between inspect + workbench) ────────────────
@@ -3232,6 +4988,210 @@ function initKnownWordsPanel() {
         if (lemma && pos)
             void deleteKnownWord(lemma, pos);
     });
+    document.getElementById('vocab-delete-all')?.addEventListener('click', () => {
+        void deleteAllKnownWords();
+    });
+}
+function initVocabFileImport() {
+    const input = document.getElementById('vocab-file-input');
+    const cta = document.getElementById('vocab-file-cta');
+    if (!input || !cta)
+        return;
+    input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file)
+            return;
+        await importKnownWordsFromFile(file);
+        // Allow re-selecting the same file later.
+        input.value = '';
+    });
+    // Drag-and-drop directly on the CTA tile.
+    cta.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        cta.classList.add('is-drag');
+    });
+    cta.addEventListener('dragleave', () => cta.classList.remove('is-drag'));
+    cta.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        cta.classList.remove('is-drag');
+        const file = e.dataTransfer?.files?.[0];
+        if (file)
+            await importKnownWordsFromFile(file);
+    });
+}
+function initVocabAnkiImport() {
+    // Vocab page launcher buttons.
+    document.getElementById('vocab-anki-connect')?.addEventListener('click', openAnkiImportModal);
+    document.getElementById('vocab-anki-sync')?.addEventListener('click', () => { void openAnkiSyncModal(); });
+    document.getElementById('vocab-anki-settings')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openAnkiSettingsModal();
+    });
+    document.getElementById('anki-import-open-settings')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openAnkiSettingsModal();
+    });
+    document.getElementById('vocab-anki-help')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        openAnkiSetupModal();
+    });
+    // Settings popup close + toggle handlers.
+    document.getElementById('anki-settings-modal-close')?.addEventListener('click', closeAnkiSettingsModal);
+    document.getElementById('anki-settings-modal-done')?.addEventListener('click', closeAnkiSettingsModal);
+    document.getElementById('anki-settings-modal-backdrop')?.addEventListener('click', closeAnkiSettingsModal);
+    document.getElementById('anki-settings-reset')?.addEventListener('click', onSettingsResetDefaults);
+    document.getElementById('anki-settings-include-new')?.addEventListener('change', (e) => {
+        const t = e.target;
+        if (t)
+            onSettingsIncludeNewToggle(t.checked);
+    });
+    document.getElementById('anki-settings-include-suspended')?.addEventListener('change', (e) => {
+        const t = e.target;
+        if (t)
+            onSettingsIncludeSuspendedToggle(t.checked);
+    });
+    document.getElementById('anki-settings-replace-mode')?.addEventListener('change', (e) => {
+        const t = e.target;
+        if (t)
+            onSettingsReplaceModeToggle(t.checked);
+    });
+    document.getElementById('anki-settings-preserve-manual')?.addEventListener('change', (e) => {
+        const t = e.target;
+        if (t)
+            onSettingsPreserveManualToggle(t.checked);
+    });
+    document.getElementById('anki-settings-skip-confirm')?.addEventListener('change', (e) => {
+        const t = e.target;
+        if (t)
+            onSettingsSkipConfirmToggle(t.checked);
+    });
+    // Setup-instructions modal close + copy.
+    document.getElementById('anki-setup-modal-close')?.addEventListener('click', closeAnkiSetupModal);
+    document.getElementById('anki-setup-modal-done')?.addEventListener('click', closeAnkiSetupModal);
+    document.getElementById('anki-setup-modal-backdrop')?.addEventListener('click', closeAnkiSetupModal);
+    document.getElementById('anki-setup-copy-btn')?.addEventListener('click', () => {
+        void copyAnkiSetupConfig();
+    });
+    // Import modal — close handlers.
+    document.getElementById('anki-import-modal-close')?.addEventListener('click', closeAnkiImportModal);
+    document.getElementById('anki-import-modal-backdrop')?.addEventListener('click', closeAnkiImportModal);
+    document.getElementById('anki-import-cancel')?.addEventListener('click', closeAnkiImportModal);
+    document.getElementById('anki-import-done')?.addEventListener('click', closeAnkiImportModal);
+    // Import modal — filter input + clear.
+    const filterInput = document.getElementById('anki-import-filter');
+    filterInput?.addEventListener('input', () => onAnkiFilterInput(filterInput.value));
+    document.getElementById('anki-import-clear-filter')?.addEventListener('click', () => {
+        if (filterInput)
+            filterInput.value = '';
+        onAnkiFilterInput('');
+    });
+    // Import modal — deck tree click delegation.
+    document.getElementById('anki-import-tree')?.addEventListener('click', (e) => {
+        const target = e.target;
+        if (!target)
+            return;
+        const toggle = target.closest('[data-deck-toggle]');
+        if (toggle) {
+            const name = toggle.getAttribute('data-deck-toggle');
+            if (name)
+                onAnkiDeckToggle(name);
+        }
+    });
+    document.getElementById('anki-import-tree')?.addEventListener('change', (e) => {
+        const target = e.target;
+        if (!target || target.type !== 'checkbox')
+            return;
+        const name = target.getAttribute('data-deck-check');
+        if (name)
+            onAnkiDeckCheck(name, target.checked);
+    });
+    // Import modal — step transitions.
+    document.getElementById('anki-import-next')?.addEventListener('click', () => {
+        if (ankiImport.selected.size === 0) {
+            showToast('Pick at least one deck to continue.', 'error');
+            return;
+        }
+        void loadAnkiModelsForSelection();
+    });
+    document.getElementById('anki-import-back')?.addEventListener('click', () => {
+        showAnkiStage('decks');
+    });
+    document.getElementById('anki-import-run')?.addEventListener('click', () => {
+        void runAnkiImport();
+    });
+    // (The four behavioural toggles — include-new, include-suspended,
+    // replace-mode, preserve-manual — now live inside the Anki settings
+    // popup. Their handlers are wired above with the settings popup.)
+    // Import modal — custom field picker (click to open/close + select).
+    const fieldsContainer = document.getElementById('anki-import-fields');
+    fieldsContainer?.addEventListener('click', (e) => {
+        const target = e.target;
+        if (!target)
+            return;
+        const toggle = target.closest('[data-field-toggle]');
+        if (toggle) {
+            const model = toggle.getAttribute('data-field-toggle');
+            if (model)
+                toggleFieldPicker(model);
+            return;
+        }
+        const option = target.closest('[data-field-option]');
+        if (option) {
+            const model = option.getAttribute('data-field-option');
+            const field = option.getAttribute('data-field-value') || '';
+            if (model !== null) {
+                onAnkiFieldPick(model, field);
+                closeAllFieldPickers();
+            }
+        }
+    });
+    // Hover on an option → show its examples in a tooltip to the right.
+    fieldsContainer?.addEventListener('mouseover', (e) => {
+        const target = e.target;
+        const option = target?.closest('[data-field-option]');
+        if (option)
+            showFieldExamplesTip(option);
+    });
+    fieldsContainer?.addEventListener('mouseout', (e) => {
+        const target = e.target;
+        const option = target?.closest('[data-field-option]');
+        const related = e.relatedTarget;
+        if (option && !related?.closest('[data-field-option]'))
+            hideFieldExamplesTip();
+    });
+    // Click outside any open picker closes them all.
+    document.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target?.closest('.field-picker'))
+            return;
+        closeAllFieldPickers();
+    });
+    // The menu uses position:fixed (so it escapes the modal/fields-container
+    // overflow boxes); when the underlying layout moves, close the menu so it
+    // doesn't visually detach from its anchor.
+    window.addEventListener('resize', () => closeAllFieldPickers());
+    document.getElementById('anki-import-fields')?.addEventListener('scroll', () => closeAllFieldPickers());
+    document.querySelector('#anki-import-modal .modal-card')?.addEventListener('scroll', () => closeAllFieldPickers());
+    // Escape closes whichever Anki modal is open. Order matters: the
+    // settings popup can stack on TOP of the import modal (z-index 2100),
+    // so close it first if it's open.
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape')
+            return;
+        const settings = document.getElementById('anki-settings-modal');
+        if (settings && !settings.classList.contains('hidden')) {
+            closeAnkiSettingsModal();
+            return;
+        }
+        const setup = document.getElementById('anki-setup-modal');
+        if (setup && !setup.classList.contains('hidden')) {
+            closeAnkiSetupModal();
+            return;
+        }
+        const importModal = document.getElementById('anki-import-modal');
+        if (importModal && !importModal.classList.contains('hidden'))
+            closeAnkiImportModal();
+    });
 }
 function initReviewPage() {
     const filter = document.getElementById('review-deck-filter');
@@ -3371,6 +5331,22 @@ function initPortalTooltips() {
     });
     window.addEventListener('scroll', hidePortalTooltip, true);
 }
+// ── Test surface ───────────────────────────────────────────────────────────
+//
+// Pure helpers exposed on `window.__finestTest` so the Playwright spec can
+// exercise them via `page.evaluate()` without standing up a full e2e flow.
+// Adds a tiny constant to the bundle; not used by the app itself.
+window.__finestTest = {
+    buildAnkiDeckTree,
+    deckMatchesFilter,
+    pickBestField,
+    defaultAnkiFilter,
+    parseFileWords,
+    loadAnkiPrefs,
+    saveAnkiPrefs,
+    ankiPrefsKey,
+    cleanAnkiSurfaceForm,
+};
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
@@ -3384,6 +5360,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     initKnownWordsPanel();
     initLanguagesPage();
     initNavLanguageSelector();
+    initVocabFileImport();
+    initVocabAnkiImport();
     initReviewPage();
     initResultsSaveForm();
     initAdminFeedbackPage();
