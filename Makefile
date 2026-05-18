@@ -97,6 +97,7 @@ gen-lemmatizer-tables-fi:
 # lang-est-x-utee analyser-gt-desc.hfstol, kept locally; the generated
 # table goes into localdata/lemmatizer-fi-et/tables/et_min.json and is
 # not committed.
+HFSTOL_PATH ?= localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol
 gen-lemmatizer-tables-et:
 	@if [ -z "$(HFSTOL_PATH)" ] || [ ! -f "$(HFSTOL_PATH)" ]; then \
 		echo "HFSTOL_PATH must point to analyser-gt-desc.hfstol (local-only; do not commit)."; \

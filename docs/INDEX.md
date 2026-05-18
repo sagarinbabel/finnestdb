@@ -133,7 +133,7 @@ descriptions when two docs sound similar.
   promoted.
 - [`docs/baselines/`](baselines/) — frozen per-PR eval reports (FI +
   ET, compressed JSON + summary markdown). Latest logical reference set
-  is `2026-05-07k-T1118Z`.
+  is `2026-05-12b-T1606Z`.
   See [`docs/baselines/README.md`](baselines/README.md) for the
   baseline schema.
 - [`docs/SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) — how parser

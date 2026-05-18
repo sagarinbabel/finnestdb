@@ -81,7 +81,9 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	sort.Slice(now, func(i, j int) bool { return now[i].Dataset.Name < now[j].Dataset.Name })
+	sort.Slice(now, func(i, j int) bool {
+		return reportDatasetKey(now[i].Dataset) < reportDatasetKey(now[j].Dataset)
+	})
 
 	var prev map[string]*eval.Report
 	if *baselineDir != "" {
@@ -136,9 +138,11 @@ func emitStratifiedTables(now []*eval.Report, prev map[string]*eval.Report) {
 	// to disambiguate, but the labels should be the short report IDs
 	// rather than the binary "prev" / "now" pair.
 	useShortIDLabels := !useExplicitPrevNow && hasDuplicateDatasetParser(now)
+	nameCounts := datasetNameCounts(now)
 
 	inputs := make([]eval.StratifiedReportInput, 0)
 	for _, r := range now {
+		datasetName := reportDatasetLabel(r.Dataset, nameCounts)
 		for _, parser := range r.Parsers {
 			strat := eval.ComputeStratification(parser, r.Cases)
 			if strat == nil {
@@ -151,17 +155,18 @@ func emitStratifiedTables(now []*eval.Report, prev map[string]*eval.Report) {
 				label = eval.ReportShortLabel(r)
 			}
 			inputs = append(inputs, eval.StratifiedReportInput{
-				DatasetName: r.Dataset.Name,
+				DatasetName: datasetName,
 				Parser:      parser,
 				Label:       label,
 				Stratified:  strat,
 			})
 		}
 		if useExplicitPrevNow {
-			prevReport, ok := prev[r.Dataset.Name]
+			prevReport, ok := prev[reportDatasetKey(r.Dataset)]
 			if !ok {
 				continue
 			}
+			prevDatasetName := reportDatasetLabel(prevReport.Dataset, nameCounts)
 			for _, parser := range prevReport.Parsers {
 				strat := eval.ComputeStratification(parser, prevReport.Cases)
 				if strat == nil {
@@ -172,7 +177,7 @@ func emitStratifiedTables(now []*eval.Report, prev map[string]*eval.Report) {
 					continue
 				}
 				inputs = append(inputs, eval.StratifiedReportInput{
-					DatasetName: prevReport.Dataset.Name,
+					DatasetName: prevDatasetName,
 					Parser:      parser,
 					Label:       "prev",
 					Stratified:  strat,
@@ -192,7 +197,7 @@ func hasDuplicateDatasetParser(reports []*eval.Report) bool {
 	seen := make(map[string]struct{})
 	for _, r := range reports {
 		for _, parser := range r.Parsers {
-			key := r.Dataset.Name + "\x00" + parser
+			key := reportDatasetKey(r.Dataset) + "\x00" + parser
 			if _, ok := seen[key]; ok {
 				return true
 			}
@@ -247,8 +252,9 @@ func readReportBytes(path string) ([]byte, error) {
 }
 
 // loadBaselineDir scans a directory for JSON reports and returns them keyed
-// by dataset name. Multiple files for the same dataset name resolve by the
-// report's generated_at timestamp, with filename as a deterministic fallback.
+// by dataset name + version. Multiple files for the same dataset identity
+// resolve by the report's generated_at timestamp, with filename as a
+// deterministic fallback.
 // Avoid filesystem mtimes: git checkouts do not preserve historical report
 // creation times.
 func loadBaselineDir(dir string) (map[string]*eval.Report, error) {
@@ -273,13 +279,36 @@ func loadBaselineDir(dir string) (map[string]*eval.Report, error) {
 			continue
 		}
 		key := baselineSelectionKey(r, e.Name())
-		if existingKey, ok := selectedKeys[r.Dataset.Name]; ok && key <= existingKey {
+		datasetKey := reportDatasetKey(r.Dataset)
+		if existingKey, ok := selectedKeys[datasetKey]; ok && key <= existingKey {
 			continue
 		}
-		out[r.Dataset.Name] = r
-		selectedKeys[r.Dataset.Name] = key
+		out[datasetKey] = r
+		selectedKeys[datasetKey] = key
 	}
 	return out, nil
+}
+
+func reportDatasetKey(d eval.ReportDataset) string {
+	if d.Version == "" {
+		return d.Name
+	}
+	return d.Name + "\x00" + d.Version
+}
+
+func datasetNameCounts(reports []*eval.Report) map[string]int {
+	counts := make(map[string]int)
+	for _, r := range reports {
+		counts[r.Dataset.Name]++
+	}
+	return counts
+}
+
+func reportDatasetLabel(d eval.ReportDataset, nameCounts map[string]int) string {
+	if d.Version == "" || nameCounts[d.Name] <= 1 || strings.HasSuffix(d.Name, "-"+d.Version) {
+		return d.Name
+	}
+	return d.Name + "-" + d.Version
 }
 
 func isReportJSONName(name string) bool {
@@ -297,6 +326,7 @@ func baselineSelectionKey(r *eval.Report, filename string) string {
 // custom-now, Δ, analyzer) table, plus an entry-marker for missing baselines
 // or analyzers.
 func emitBeforeAfterTable(now []*eval.Report, prev map[string]*eval.Report, mainParser string, bootstrap int, rng *rand.Rand) {
+	nameCounts := datasetNameCounts(now)
 	fmt.Printf("## Headline — %s before/after, with analyzer upper bound\n\n", mainParser)
 	fmt.Println("Δ shows percentage-point change in the main parser since the prior report.")
 	if bootstrap > 0 {
@@ -308,9 +338,9 @@ func emitBeforeAfterTable(now []*eval.Report, prev map[string]*eval.Report, main
 
 	for _, nowR := range now {
 		analyzer := analyzerParserFor(nowR)
-		ds := nowR.Dataset.Name
+		ds := reportDatasetLabel(nowR.Dataset, nameCounts)
 		cases := nowR.Dataset.CaseCount
-		prevR := prev[ds]
+		prevR := prev[reportDatasetKey(nowR.Dataset)]
 
 		for _, m := range []metric{metricLemma, metricPOS, metricLemmaPOS, metricGrammar, metricCoverage} {
 			nowVal := metricFromReport(nowR, mainParser, m)
@@ -347,6 +377,7 @@ func emitBeforeAfterTable(now []*eval.Report, prev map[string]*eval.Report, main
 // retained as an appendix when -baseline-dir is set, and as the default
 // output when -baseline-dir is not set (back-compat).
 func emitLegacyTable(reports []*eval.Report) {
+	nameCounts := datasetNameCounts(reports)
 	fmt.Println("| Dataset | Cases | Parser | Lemma | POS | Lemma+POS | Grammar | Full | Coverage | Avg ms |")
 	fmt.Println("|---|---:|---|---:|---:|---:|---:|---:|---:|---:|")
 
@@ -357,7 +388,7 @@ func emitLegacyTable(reports []*eval.Report) {
 				continue
 			}
 			fmt.Printf("| %s | %d | %s | %.1f%% | %.1f%% | %.1f%% | %.1f%% | %.1f%% | %.1f%% | %.1f |\n",
-				r.Dataset.Name, r.Dataset.CaseCount, parser,
+				reportDatasetLabel(r.Dataset, nameCounts), r.Dataset.CaseCount, parser,
 				s.LemmaAccuracy*100, s.POSAccuracy*100,
 				lemmaPOSDisplay(s, r, parser)*100,
 				s.GrammarAccuracy*100,
@@ -384,7 +415,7 @@ func emitLegacyTable(reports []*eval.Report) {
 				continue
 			}
 			fmt.Printf("| %s | %s vs %s | %+.1f | %+.1f | %+.1f |\n",
-				r.Dataset.Name, parser, r.Parsers[0],
+				reportDatasetLabel(r.Dataset, nameCounts), parser, r.Parsers[0],
 				(s.LemmaAccuracy-base.LemmaAccuracy)*100,
 				(s.POSAccuracy-base.POSAccuracy)*100,
 				(s.ResolvedCoverage-base.ResolvedCoverage)*100,
@@ -400,6 +431,7 @@ func emitLegacyTable(reports []*eval.Report) {
 // Number, Tense, …); the accuracy is computed against the gold tokens
 // whose FEATS contained that attribute.
 func emitFeatsAttributeTable(reports []*eval.Report) {
+	nameCounts := datasetNameCounts(reports)
 	type row struct {
 		dataset  string
 		parser   string
@@ -417,7 +449,7 @@ func emitFeatsAttributeTable(reports []*eval.Report) {
 			}
 			for _, m := range s.FeatsAttributes {
 				rows = append(rows, row{
-					dataset:  r.Dataset.Name,
+					dataset:  reportDatasetLabel(r.Dataset, nameCounts),
 					parser:   parser,
 					attr:     m.Attribute,
 					eligible: m.Eligible,

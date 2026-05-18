@@ -40,10 +40,10 @@ Current product surface on `main`:
   (FI Kotus class join key), `feats` (UD-style morph features as JSON),
   plus dedicated `translations` and `definitions` tables
 - Estonian source-data pipeline end-to-end: `cmd/fetchekilex` resumable
-  scraper → `cmd/reduceekilex` golden-tested reducer → tracked CC BY 4.0
+  scraper → `cmd/reduceekilex` golden-tested reducer → gitignored CC BY 4.0
   artifacts under `localdata/ekilex/` (~177k headwords) → loaded into the
-  dictionary tables by `cmd/importekilexdetails` (~178k lemmas, ~6.2M
-  form rows, ~15s wall time)
+  dictionary tables by `cmd/importekilexdetails` (~178k lemmas, ~6.2M form
+  rows, ~15s wall time)
 - multi-lemma `forms` PK `(form, lang, lemma, pos)`: a single ambiguous
   surface form (e.g. ET `joon` = noun "line" + 1Sg of `jooma`) maps to
   multiple `(lemma, pos)` candidates; deck ingest emits one card per
@@ -453,7 +453,7 @@ Estonian (live):
 
 - analyzer baseline: EstNLTK / Vabamorf via the `estnltk` adapter
 - lexical sources: kaikki.org (priority 10) + EKI/Ekilex (priority 20)
-- Ekilex bulk path: `cmd/fetchekilex` → `cmd/reduceekilex` → tracked
+- Ekilex bulk path: `cmd/fetchekilex` → `cmd/reduceekilex` → gitignored
   sharded artifacts in `localdata/ekilex/` → loaded by
   `cmd/importekilexdetails` (multi-lemma aware, with morph-class
   homonym disambiguation and `(lemma, pos)` gloss merging)

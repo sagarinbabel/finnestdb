@@ -266,10 +266,13 @@ original Voikko seed plan.
   `localdata/lemmatizer-fi-et/tables/` (gitignored); the runtime loads
   it from disk on `New()`.
 - `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst`
-  regenerates the current FI smoke table from
-  `cmd/genlemmatizertables/wordlists/fi_smoke.txt`.
-- A production FI/ET table PR must add a production word list,
-  provenance, generator command, row counts, and fresh eval.
+  regenerates the current FI runtime table from the DB-derived local
+  wordlist at `localdata/lemmatizer-fi-et/wordlists/fi.txt`; if that
+  wordlist is missing, the Make target creates it from `finnestdb.db`.
+- The ET Make target still uses the tracked smoke wordlist until a
+  production ET wordlist is chosen.
+- Any production-table claim must record provenance, generator command,
+  row counts, and fresh eval for the exact local tables used.
 
 ### `cmd/importdict/` — kaikki.org (source key `kaikki`, default priority 10)
 
@@ -369,7 +372,7 @@ API key needed at deploy time, only during the offline scrape):
 
 ```bash
 make import-dict-et            # kaikki.org Estonian
-make import-ekilex-et          # tracked CC BY 4.0 public-word snapshot
+make import-ekilex-et          # local/bootstrap CC BY 4.0 public-word snapshot
 make import-ekilex-details-et  # ~178k lemmas + ~6.2M form rows from
                                 # the reduced Ekilex artifacts under
                                 # localdata/ekilex/

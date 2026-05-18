@@ -33,7 +33,8 @@
 #   7.  Scrape Gutenberg-FI silver corpus (~4 MB) via
 #       cmd/scrapegutenberg.
 #   8.  Import all of the above into finnestdb.db.
-#   9.  Generate FI lemmatizer tables (best effort; needs VFST_PATH).
+#   9.  Generate FI/ET lemmatizer tables (best effort; FI needs VFST_PATH,
+#       ET uses HFSTOL_PATH or localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol).
 #   10. Fetch public frequency baselines (~10 MB) via cmd/fetchfrequency.
 #
 # Usage:
@@ -178,8 +179,8 @@ fi
 # Per docs/ARTIFACT_POLICY.md the JSON tables consumed by
 # pkg/lemmatizer-fi-et are not tracked in git. The runtime loads them
 # from localdata/lemmatizer-fi-et/tables/ on New(); without them, the
-# custom-mode parser still works via dict + case-suffix stopgap, but the
-# FST step (Step 5 fallback) is disabled.
+# custom-mode parser still works via dictionary rows, but the FST candidate
+# merge/scoring path is reduced.
 LEMMATIZER_FI_TABLE="localdata/lemmatizer-fi-et/tables/fi_min.json"
 if [[ -f "$LEMMATIZER_FI_TABLE" ]]; then
     log "Lemmatizer FI table already present at $LEMMATIZER_FI_TABLE — skipping gen."
@@ -188,12 +189,24 @@ elif [[ -n "${VFST_PATH:-}" ]]; then
     make gen-lemmatizer-tables-fi VFST_PATH="$VFST_PATH"
 else
     warn "VFST_PATH not set — skipping lemmatizer FI table generation."
-    warn "   Without it, FST step 5 in custom-mode parser is disabled."
+    warn "   Without it, the FI FST candidate merge/scoring path is reduced."
     warn "   To enable: install libvoikko (e.g. brew install libvoikko on macOS) and"
     warn "   re-run with VFST_PATH=/path/to/mor.vfst (locate via 'voikkospell -t')."
 fi
-# ET table generation is not yet wired into a generator. Until then, FST
-# analysis for Estonian is disabled by design — the dict-only path runs.
+
+LEMMATIZER_ET_TABLE="localdata/lemmatizer-fi-et/tables/et_min.json"
+DEFAULT_HFSTOL_PATH="localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol"
+HFSTOL_FOR_GEN="${HFSTOL_PATH:-$DEFAULT_HFSTOL_PATH}"
+if [[ -f "$LEMMATIZER_ET_TABLE" ]]; then
+    log "Lemmatizer ET table already present at $LEMMATIZER_ET_TABLE — skipping gen."
+elif [[ -f "$HFSTOL_FOR_GEN" ]]; then
+    log "Generating lemmatizer ET table from $HFSTOL_FOR_GEN …"
+    make gen-lemmatizer-tables-et HFSTOL_PATH="$HFSTOL_FOR_GEN"
+else
+    warn "HFSTOL_PATH not set and default analyser missing at $DEFAULT_HFSTOL_PATH — skipping lemmatizer ET table generation."
+    warn "   Without it, the ET FST candidate merge/scoring path is reduced."
+    warn "   Run 'make doctor' and read docs/LOCAL_TOOLING.md before assuming the analyser is absent."
+fi
 
 # ── 10. public frequency baselines (best effort) ──────────────────────────────
 # OpenSubtitles 2018 + UD-FI-TDT + UD-ET-EDT → localdata/frequency/{fi,et}/.
