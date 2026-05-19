@@ -1581,8 +1581,13 @@ test.describe('Anki import popup', () => {
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
 
-    await page.locator('#nav-language-toggle').click();
-    await page.locator('#nav-language-menu [data-lang="FI"]').click();
+    // Pointer clicks are blocked by the modal backdrop, but focus is not
+    // trapped. A keyboard user can still activate the nav language control
+    // behind the modal, which used to retarget the pending import.
+    await page.locator('#nav-language-toggle').focus();
+    await page.keyboard.press('Enter');
+    await page.locator('#nav-language-menu [data-lang="FI"]').focus();
+    await page.keyboard.press('Enter');
     await expect.poll(() => languagePatches).toContainEqual({ active: 'FI' });
 
     // Settings opened from the still-active import modal must continue to
