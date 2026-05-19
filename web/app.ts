@@ -1781,12 +1781,12 @@ async function loadKnownWords(): Promise<void> {
     }
 }
 
-async function postKnownWords(words: string[], source: 'manual' | 'anki' = 'manual'): Promise<KnownWordsImportResponse> {
+async function postKnownWords(words: string[], source: 'manual' | 'anki' = 'manual', lang = state.activeLanguage): Promise<KnownWordsImportResponse> {
     const resp = await fetch('/api/known-words', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang: state.activeLanguage, words, source }),
+        body: JSON.stringify({ lang, words, source }),
     });
     if (!resp.ok) throw new Error(await resp.text() || 'Failed to import known words');
     return await resp.json() as KnownWordsImportResponse;
@@ -1798,12 +1798,12 @@ function describeImportResult(data: KnownWordsImportResponse): string {
     return `${importedCount} imported${unresolvedCount ? `, ${unresolvedCount} unresolved` : ''}`;
 }
 
-async function putKnownWords(words: string[], scope: 'anki' | 'all' = 'anki'): Promise<KnownWordsReplaceResponse> {
+async function putKnownWords(words: string[], scope: 'anki' | 'all' = 'anki', lang = state.activeLanguage): Promise<KnownWordsReplaceResponse> {
     const resp = await fetch('/api/known-words', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang: state.activeLanguage, words, scope }),
+        body: JSON.stringify({ lang, words, scope }),
     });
     if (!resp.ok) throw new Error(await resp.text() || 'Failed to sync known words');
     return await resp.json() as KnownWordsReplaceResponse;
@@ -2275,7 +2275,7 @@ async function runAnkiSyncFlow(): Promise<void> {
         // stays focused on the confirm action.
         const dialog = await showConfirmWithStatus<SyncDiscoveryResultOrFailure>({
             title:         `Replace ${langName} vocabulary?`,
-            message:       `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
+            message:       replaceKnownWordsConfirmMessage(langName),
             confirmLabel:  'Sync and replace',
             danger:        true,
             loadingText:   'Checking Anki…',
@@ -2716,6 +2716,17 @@ function recordAnkiSyncTime(): void {
     saveAnkiPrefs(ankiImport.lang, prefs);
 }
 
+function ankiPrefsTargetLang(): string {
+    return ankiImport.open ? ankiImport.lang : state.activeLanguage;
+}
+
+function replaceKnownWordsConfirmMessage(langName: string): string {
+    if (ankiImport.preserveManualOnReplace) {
+        return `This will sync your ${langName} known-words to the selected Anki decks. Anki-imported lemmas no longer in this selection will be removed; words you added through the textbox, file import, inspect, or review will be kept.`;
+    }
+    return `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`;
+}
+
 function onAnkiFilterInput(value: string): void {
     ankiImport.filter = value;
     renderAnkiDeckTree();
@@ -2999,9 +3010,10 @@ function onAnkiFieldPick(model: string, field: string): void {
 //
 // All sync-affecting prefs live in a single popup so the user can tweak them
 // from the vocab page (before clicking Sync) OR from step 2 of the import
-// modal (during the manual flow). The popup reads the active language's
-// prefs each time it opens; change handlers write back to prefs AND to
-// ankiImport state so an open import modal sees the new values immediately.
+// modal (during the manual flow). The popup reads the active language's prefs
+// from the vocab page, or the import's pinned language while a run is open;
+// change handlers write back to prefs AND to ankiImport state so an open
+// import modal sees the new values immediately.
 
 function openAnkiSettingsModal(): void {
     const modal = document.getElementById('anki-settings-modal');
@@ -3018,7 +3030,7 @@ function closeAnkiSettingsModal(): void {
 }
 
 function renderAnkiSettings(): void {
-    const prefs = loadAnkiPrefs(state.activeLanguage);
+    const prefs = loadAnkiPrefs(ankiPrefsTargetLang());
     const setCb = (id: string, checked: boolean): void => {
         const cb = document.getElementById(id) as HTMLInputElement | null;
         if (cb) cb.checked = checked;
@@ -3035,9 +3047,10 @@ function renderAnkiSettings(): void {
 // Generic helper: update a single boolean pref + mirror it onto ankiImport
 // state so any open import modal stays in sync.
 function updateAnkiPref<K extends keyof AnkiImportPrefs>(key: K, value: AnkiImportPrefs[K]): void {
-    const prefs = loadAnkiPrefs(state.activeLanguage);
+    const lang = ankiPrefsTargetLang();
+    const prefs = loadAnkiPrefs(lang);
     prefs[key] = value;
-    saveAnkiPrefs(state.activeLanguage, prefs);
+    saveAnkiPrefs(lang, prefs);
     // Mirror onto ankiImport so an open import modal's filter / estimate
     // reflect the change without waiting for a re-open.
     if (key === 'includeNew')              ankiImport.includeNew = value as boolean;
@@ -3295,8 +3308,8 @@ async function runAnkiImport(): Promise<void> {
     }
 
     // Replace-mode confirmation: a destructive operation that deletes lemmas
-    // not in the new selection (including ones added through the textbox or
-    // a file). Skipped on a per-language basis once the user has explicitly
+    // not in the new selection; scope='all' also deletes manually added rows.
+    // Skipped on a per-language basis once the user has explicitly
     // checked "Don't show this again" on the dialog. Also skipped when the
     // quick-sync flow has already shown its own status-bearing version of
     // the same dialog (replaceConfirmedThisRun).
@@ -3306,7 +3319,7 @@ async function runAnkiImport(): Promise<void> {
         if (!prefs.replaceConfirmSkip) {
             const result = await showConfirmWithRemember({
                 title:         `Replace ${langName} vocabulary?`,
-                message:       `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
+                message:       replaceKnownWordsConfirmMessage(langName),
                 confirmLabel:  'Sync and replace',
                 danger:        true,
                 rememberLabel: "Don't show this again",
@@ -3399,7 +3412,7 @@ async function runAnkiImport(): Promise<void> {
             // the textbox / file / inspect / review flows; scope='all' wipes
             // every row not in the new Anki state.
             const scope = ankiImport.preserveManualOnReplace ? 'anki' : 'all';
-            const data = await putKnownWords(words, scope);
+            const data = await putKnownWords(words, scope, ankiImport.lang);
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg) msg.textContent = 'Done.';
             if (detail) detail.textContent = describeReplaceResult(data);
@@ -3410,7 +3423,7 @@ async function runAnkiImport(): Promise<void> {
             // Additive Anki import — tag new rows so a later sync can diff
             // them. Manual rows (textbox/file/inspect/review) keep their
             // own source.
-            const data = await postKnownWords(words, 'anki');
+            const data = await postKnownWords(words, 'anki', ankiImport.lang);
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg) msg.textContent = 'Done.';
             if (detail) detail.textContent = describeImportResult(data);

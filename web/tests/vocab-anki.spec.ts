@@ -68,6 +68,28 @@ async function mockKnownWordsEmpty(page: Page): Promise<void> {
   });
 }
 
+async function mockLanguagesPatch(
+  page: Page,
+  received: Array<{ learning?: string[]; active?: string }>,
+  baseline: { learning: string[]; active: string },
+): Promise<void> {
+  await page.route('**/api/me/languages', async (route) => {
+    const body = route.request().postDataJSON() as { learning?: string[]; active?: string };
+    received.push(body);
+    const learning = body.learning ?? baseline.learning;
+    const active = body.active ?? baseline.active;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        learning,
+        active,
+        stats: Object.fromEntries(learning.map(l => [l, { decks: 0, known_words: 0 }])),
+      }),
+    });
+  });
+}
+
 // Builds an AnkiConnect mock that dispatches on the `action` field in the JSON
 // body. Caller provides per-action handlers; anything not listed responds with
 // `{ error: 'unhandled', result: null }`.
@@ -1486,6 +1508,8 @@ test.describe('Anki import popup', () => {
 
     // Import → confirm dialog appears, scope='anki' on the PUT.
     await page.getByRole('button', { name: 'Import', exact: true }).click();
+    await expect(page.locator('#dialog-modal')).toContainText(/will be kept/i);
+    await expect(page.locator('#dialog-modal')).not.toContainText(/including ones you added through the textbox or a file/i);
     await page.locator('#dialog-modal-confirm').click();
     await expect.poll(() => putBody).not.toBeNull();
     expect(putBody!.scope).toBe('anki');
@@ -1522,9 +1546,67 @@ test.describe('Anki import popup', () => {
     await page.locator('#anki-settings-preserve-manual').uncheck();
     await page.locator('#anki-settings-modal-done').click();
     await page.getByRole('button', { name: 'Import', exact: true }).click();
+    await expect(page.locator('#dialog-modal')).toContainText(/including ones you added through the textbox or a file/i);
     await page.locator('#dialog-modal-confirm').click();
     await expect.poll(() => putBody).not.toBeNull();
     expect(putBody!.scope).toBe('all');
+  });
+
+  test('Anki replace import keeps its original language after the nav language changes', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET', learningLanguages: ['FI', 'ET'] });
+    const languagePatches: Array<{ learning?: string[]; active?: string }> = [];
+    await mockLanguagesPatch(page, languagePatches, { learning: ['FI', 'ET'], active: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await mockAnkiConnect(page, baselineAnkiMocks());
+    let putBody: { lang?: string; scope?: string; words?: string[] } | null = null;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'PUT') {
+        putBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ added: [], removed: [], unresolved: [] }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+
+    await page.goto('/#/vocab');
+    await clearStorage(page);
+    await page.getByRole('button', { name: 'Connect to Anki' }).click();
+    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
+    await page.locator('[data-deck-toggle="Estonian"]').click();
+    await page.locator('[data-deck-check="Estonian::A1"]').check();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
+
+    await page.locator('#nav-language-toggle').click();
+    await page.locator('#nav-language-menu [data-lang="FI"]').click();
+    await expect.poll(() => languagePatches).toContainEqual({ active: 'FI' });
+
+    // Settings opened from the still-active import modal must continue to
+    // update the Estonian Anki prefs, not the newly active Finnish page prefs.
+    await page.locator('#anki-import-open-settings').click();
+    await page.locator('#anki-settings-replace-mode').check();
+    await page.locator('#anki-settings-preserve-manual').uncheck();
+    await page.locator('#anki-settings-modal-done').click();
+    const savedPrefs = await page.evaluate(() => ({
+      et: JSON.parse(localStorage.getItem('finest:anki-import:ET') || '{}'),
+      fi: JSON.parse(localStorage.getItem('finest:anki-import:FI') || '{}'),
+    }));
+    expect(savedPrefs.et.replaceMode).toBe(true);
+    expect(savedPrefs.et.preserveManualOnReplace).toBe(false);
+    expect(savedPrefs.fi.replaceMode).toBeUndefined();
+
+    await page.getByRole('button', { name: 'Import', exact: true }).click();
+    await expect(page.locator('#dialog-modal')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#dialog-modal')).toContainText(/Replace Estonian vocabulary/i);
+    await page.locator('#dialog-modal-confirm').click();
+    await expect.poll(() => putBody).not.toBeNull();
+    expect(putBody!.lang).toBe('ET');
+    expect(putBody!.scope).toBe('all');
+    expect(new Set(putBody!.words)).toEqual(new Set(['kassi', 'koer', 'auto']));
   });
 
   test('Anki additive POST tags new rows with source=anki', async ({ page }) => {
