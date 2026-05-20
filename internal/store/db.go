@@ -555,7 +555,7 @@ func EnsureDictionarySourceColumns(db *sql.DB) error {
 
 // BackfillLegacyKaikkiProvenance labels FI/ET rows that were imported before
 // cmd/importdict threaded -source-key / -source-priority through. Those rows
-// carry the SQLite column defaults (source='' and source_priority=0), which
+// carry the SQLite column defaults (source=” and source_priority=0), which
 // makes verify-dict and `make doctor` flag the entire dictionary as untracked
 // even though it's the kaikki dump every fresh install gets.
 //
@@ -1738,8 +1738,9 @@ const (
 	SourceAnki   = "anki"
 )
 
-// ImportKnownWords is additive: new rows are inserted with the given source,
-// existing rows are left alone (their source isn't changed). source defaults
+// ImportKnownWords is additive: new rows are inserted with the given source.
+// Manual imports also reclaim existing Anki rows so a later Anki replace sync
+// cannot delete words the user explicitly marked outside Anki. source defaults
 // to "manual" if empty.
 func (d *DB) ImportKnownWords(userID int64, lang string, words []string, source string) ([]KnownLemma, []string, error) {
 	if source == "" {
@@ -1769,11 +1770,17 @@ func (d *DB) ImportKnownWords(userID int64, lang string, words []string, source 
 			unresolved = append(unresolved, word)
 			continue
 		}
-		if _, err := d.db.Exec(
-			`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos, source) VALUES (?, ?, ?, ?, ?)`,
-			userID, lang, resolution.Lemma, resolution.POS, source,
-		); err != nil {
-			return nil, nil, err
+		if source == SourceManual {
+			if err := d.upsertManualKnownLemma(d.db, userID, lang, resolution.Lemma, resolution.POS); err != nil {
+				return nil, nil, err
+			}
+		} else {
+			if _, err := d.db.Exec(
+				`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos, source) VALUES (?, ?, ?, ?, ?)`,
+				userID, lang, resolution.Lemma, resolution.POS, source,
+			); err != nil {
+				return nil, nil, err
+			}
 		}
 		key := resolution.Lemma + "\x00" + resolution.POS
 		if _, ok := importedSeen[key]; ok {
@@ -1812,7 +1819,7 @@ func (d *DB) ImportKnownWords(userID int64, lang string, words []string, source 
 //
 // Returns:
 //   - added:      lemma+POS pairs newly inserted this call (rows that
-//                 actually changed; pre-existing rows aren't counted)
+//     actually changed; pre-existing rows aren't counted)
 //   - removed:    lemma+POS pairs deleted this call
 //   - unresolved: surface forms the parser couldn't resolve (untouched)
 func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string, scope string) ([]KnownLemma, []KnownLemma, []string, error) {
@@ -1963,6 +1970,17 @@ func (d *DB) ListKnownWords(userID int64, lang string) ([]KnownLemma, error) {
 	return lemmas, rows.Err()
 }
 
+func (d *DB) upsertManualKnownLemma(q sqlReadWriter, userID int64, lang, lemma, pos string) error {
+	_, err := q.Exec(
+		`INSERT INTO user_known_lemmas (user_id, lang, lemma, pos, source)
+		 VALUES (?, ?, ?, ?, ?)
+		 ON CONFLICT(user_id, lang, lemma, pos) DO UPDATE SET source = excluded.source
+		 WHERE user_known_lemmas.source = ?`,
+		userID, lang, lemma, pos, SourceManual, SourceAnki,
+	)
+	return err
+}
+
 func (d *DB) DeleteKnownWord(userID int64, lang, lemma, pos string) error {
 	_, err := d.db.Exec(
 		`DELETE FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
@@ -2044,10 +2062,7 @@ func (d *DB) MarkLemmaKnown(userID int64, lang, lemma, pos string) error {
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.Exec(
-		`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
-		userID, lang, lemma, pos,
-	); err != nil {
+	if err := d.upsertManualKnownLemma(tx, userID, lang, lemma, pos); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(
@@ -2409,10 +2424,7 @@ func (d *DB) MarkCardKnown(userID, cardID int64) error {
 	if card == nil {
 		return sql.ErrNoRows
 	}
-	if _, err := tx.Exec(
-		`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
-		userID, card.Lang, card.Lemma, card.POS,
-	); err != nil {
+	if err := d.upsertManualKnownLemma(tx, userID, card.Lang, card.Lemma, card.POS); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(

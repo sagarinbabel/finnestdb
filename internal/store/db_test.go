@@ -279,6 +279,93 @@ func TestUpdateDeckTitleAndPublicRollsBackOnTitleFailure(t *testing.T) {
 	}
 }
 
+func TestManualKnownWordWritesPromoteAnkiRows(t *testing.T) {
+	t.Run("manual import protects a prior Anki row from replace sync", func(t *testing.T) {
+		db := newTestDB(t)
+		user := createTestUser(t, db, "known-source-import@example.com")
+		if err := db.UpsertForm("kissa", "kissa", "NOUN", "FI"); err != nil {
+			t.Fatalf("UpsertForm kissa: %v", err)
+		}
+
+		if _, _, err := db.ImportKnownWords(user.ID, "FI", []string{"kissa"}, SourceAnki); err != nil {
+			t.Fatalf("ImportKnownWords anki: %v", err)
+		}
+		if _, _, err := db.ImportKnownWords(user.ID, "FI", []string{"kissa"}, SourceManual); err != nil {
+			t.Fatalf("ImportKnownWords manual: %v", err)
+		}
+		if source := knownLemmaSource(t, db, user.ID, "FI", "kissa", "NOUN"); source != SourceManual {
+			t.Fatalf("source=%q want manual after manual import", source)
+		}
+
+		_, removed, _, err := db.ReplaceKnownWords(user.ID, "FI", nil, SourceAnki)
+		if err != nil {
+			t.Fatalf("ReplaceKnownWords: %v", err)
+		}
+		if len(removed) != 0 {
+			t.Fatalf("removed=%v want manual-promoted row preserved", removed)
+		}
+		if source := knownLemmaSource(t, db, user.ID, "FI", "kissa", "NOUN"); source != SourceManual {
+			t.Fatalf("source after replace=%q want manual", source)
+		}
+	})
+
+	t.Run("inspect known protects a prior Anki row from replace sync", func(t *testing.T) {
+		db := newTestDB(t)
+		user := createTestUser(t, db, "known-source-inspect@example.com")
+		if _, err := db.db.Exec(
+			`INSERT INTO user_known_lemmas (user_id, lang, lemma, pos, source) VALUES (?, 'FI', 'koira', 'NOUN', ?)`,
+			user.ID, SourceAnki,
+		); err != nil {
+			t.Fatalf("seed anki row: %v", err)
+		}
+
+		if err := db.MarkLemmaKnown(user.ID, "FI", "koira", "NOUN"); err != nil {
+			t.Fatalf("MarkLemmaKnown: %v", err)
+		}
+		if source := knownLemmaSource(t, db, user.ID, "FI", "koira", "NOUN"); source != SourceManual {
+			t.Fatalf("source=%q want manual after MarkLemmaKnown", source)
+		}
+
+		_, removed, _, err := db.ReplaceKnownWords(user.ID, "FI", nil, SourceAnki)
+		if err != nil {
+			t.Fatalf("ReplaceKnownWords: %v", err)
+		}
+		if len(removed) != 0 {
+			t.Fatalf("removed=%v want manual-promoted row preserved", removed)
+		}
+	})
+
+	t.Run("review known protects a prior Anki row from replace sync", func(t *testing.T) {
+		db := newTestDB(t)
+		user := createTestUser(t, db, "known-source-review@example.com")
+		cardID, err := db.EnsureCard(user.ID, "FI", "auto", "NOUN")
+		if err != nil {
+			t.Fatalf("EnsureCard: %v", err)
+		}
+		if _, err := db.db.Exec(
+			`INSERT INTO user_known_lemmas (user_id, lang, lemma, pos, source) VALUES (?, 'FI', 'auto', 'NOUN', ?)`,
+			user.ID, SourceAnki,
+		); err != nil {
+			t.Fatalf("seed anki row: %v", err)
+		}
+
+		if err := db.MarkCardKnown(user.ID, cardID); err != nil {
+			t.Fatalf("MarkCardKnown: %v", err)
+		}
+		if source := knownLemmaSource(t, db, user.ID, "FI", "auto", "NOUN"); source != SourceManual {
+			t.Fatalf("source=%q want manual after MarkCardKnown", source)
+		}
+
+		_, removed, _, err := db.ReplaceKnownWords(user.ID, "FI", nil, SourceAnki)
+		if err != nil {
+			t.Fatalf("ReplaceKnownWords: %v", err)
+		}
+		if len(removed) != 0 {
+			t.Fatalf("removed=%v want manual-promoted row preserved", removed)
+		}
+	})
+}
+
 func TestGetDeckDetailsUsesBatchGlossEnrichment(t *testing.T) {
 	t.Run("ekilex override", func(t *testing.T) {
 		db := newTestDB(t)
@@ -349,6 +436,18 @@ func createTestUser(t *testing.T, db *DB, email string) *User {
 		t.Fatalf("GetOrCreateUser: %v", err)
 	}
 	return user
+}
+
+func knownLemmaSource(t *testing.T, db *DB, userID int64, lang, lemma, pos string) string {
+	t.Helper()
+	var source string
+	if err := db.db.QueryRow(
+		`SELECT source FROM user_known_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
+		userID, lang, lemma, pos,
+	).Scan(&source); err != nil {
+		t.Fatalf("query known lemma source: %v", err)
+	}
+	return source
 }
 
 func seedBadEkilexSeeGloss(t *testing.T, db *DB) {

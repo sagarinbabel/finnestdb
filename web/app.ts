@@ -887,7 +887,10 @@ function onActiveLanguageChanged(): void {
     if (currentRoute() === '/vocab') {
         // Vocab page reads from state.activeLanguage for stats, hint, and the
         // POST/DELETE bodies — re-render and re-fetch the per-language list.
+        state.knownWords = [];
         renderVocabPage();
+        renderKnownWordsPanel();
+        renderKnownWordsUnresolved([]);
         void loadKnownWords();
     }
     if (currentRoute() === '/review') {
@@ -1723,9 +1726,7 @@ function renderKnownWordsPanel(): void {
     const words = state.knownWords;
     empty.classList.toggle('hidden', words.length > 0);
     list.classList.toggle('hidden', words.length === 0);
-    if (summary && !summary.textContent) {
-        summary.textContent = words.length === 0 ? '' : `${words.length.toLocaleString()} known`;
-    }
+    if (summary) summary.textContent = words.length === 0 ? '' : `${words.length.toLocaleString()} known`;
 
     if (words.length === 0) {
         list.innerHTML = '';
@@ -1735,7 +1736,7 @@ function renderKnownWordsPanel(): void {
     list.innerHTML = words.map(word => `<div class="known-word-chip">
         <span>${escapeHtml(word.lemma)}</span>
         <span class="known-word-pos">${escapeHtml(posLabel(word.pos))}</span>
-        <button type="button" class="known-word-delete" aria-label="Remove ${escapeAttr(word.lemma)}" data-known-lemma="${escapeAttr(word.lemma)}" data-known-pos="${escapeAttr(word.pos)}">×</button>
+        <button type="button" class="known-word-delete" aria-label="Remove ${escapeAttr(word.lemma)}" data-known-lang="${escapeAttr(word.lang)}" data-known-lemma="${escapeAttr(word.lemma)}" data-known-pos="${escapeAttr(word.pos)}">×</button>
     </div>`).join('');
 
     renderVocabLangStat();
@@ -1766,27 +1767,30 @@ function renderKnownWordsUnresolved(unresolved: string[]): void {
 
 async function loadKnownWords(): Promise<void> {
     if (state.role === 'anon') return;
+    const lang = state.activeLanguage;
     try {
-        const resp = await fetch(`/api/known-words?lang=${encodeURIComponent(state.activeLanguage)}`, { credentials: 'same-origin' });
+        const resp = await fetch(`/api/known-words?lang=${encodeURIComponent(lang)}`, { credentials: 'same-origin' });
         if (!resp.ok) throw new Error(await resp.text() || 'Failed to load known words');
         const data = await resp.json() as KnownWordsListResponse;
+        if (state.activeLanguage !== lang) return;
         state.knownWords = data.known_words || [];
         const summary = document.getElementById('known-words-summary');
         if (summary) summary.textContent = state.knownWords.length === 0 ? '' : `${state.knownWords.length.toLocaleString()} known`;
         renderKnownWordsPanel();
     } catch (err: any) {
+        if (state.activeLanguage !== lang) return;
         state.knownWords = [];
         renderKnownWordsPanel();
         showToast(err.message || 'Failed to load known words.', 'error');
     }
 }
 
-async function postKnownWords(words: string[], source: 'manual' | 'anki' = 'manual'): Promise<KnownWordsImportResponse> {
+async function postKnownWords(words: string[], source: 'manual' | 'anki' = 'manual', lang = state.activeLanguage): Promise<KnownWordsImportResponse> {
     const resp = await fetch('/api/known-words', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang: state.activeLanguage, words, source }),
+        body: JSON.stringify({ lang, words, source }),
     });
     if (!resp.ok) throw new Error(await resp.text() || 'Failed to import known words');
     return await resp.json() as KnownWordsImportResponse;
@@ -1798,12 +1802,12 @@ function describeImportResult(data: KnownWordsImportResponse): string {
     return `${importedCount} imported${unresolvedCount ? `, ${unresolvedCount} unresolved` : ''}`;
 }
 
-async function putKnownWords(words: string[], scope: 'anki' | 'all' = 'anki'): Promise<KnownWordsReplaceResponse> {
+async function putKnownWords(words: string[], scope: 'anki' | 'all' = 'anki', lang = state.activeLanguage): Promise<KnownWordsReplaceResponse> {
     const resp = await fetch('/api/known-words', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang: state.activeLanguage, words, scope }),
+        body: JSON.stringify({ lang, words, scope }),
     });
     if (!resp.ok) throw new Error(await resp.text() || 'Failed to sync known words');
     return await resp.json() as KnownWordsReplaceResponse;
@@ -3399,7 +3403,7 @@ async function runAnkiImport(): Promise<void> {
             // the textbox / file / inspect / review flows; scope='all' wipes
             // every row not in the new Anki state.
             const scope = ankiImport.preserveManualOnReplace ? 'anki' : 'all';
-            const data = await putKnownWords(words, scope);
+            const data = await putKnownWords(words, scope, ankiImport.lang);
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg) msg.textContent = 'Done.';
             if (detail) detail.textContent = describeReplaceResult(data);
@@ -3410,7 +3414,7 @@ async function runAnkiImport(): Promise<void> {
             // Additive Anki import — tag new rows so a later sync can diff
             // them. Manual rows (textbox/file/inspect/review) keep their
             // own source.
-            const data = await postKnownWords(words, 'anki');
+            const data = await postKnownWords(words, 'anki', ankiImport.lang);
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg) msg.textContent = 'Done.';
             if (detail) detail.textContent = describeImportResult(data);
@@ -3473,15 +3477,15 @@ async function copyAnkiSetupConfig(): Promise<void> {
     }
 }
 
-async function deleteKnownWord(lemma: string, pos: string): Promise<void> {
+async function deleteKnownWord(lang: string, lemma: string, pos: string): Promise<void> {
     try {
-        const params = new URLSearchParams({ lang: state.activeLanguage, lemma, pos });
+        const params = new URLSearchParams({ lang, lemma, pos });
         const resp = await fetch(`/api/known-words?${params.toString()}`, {
             method: 'DELETE',
             credentials: 'same-origin',
         });
         if (!resp.ok) throw new Error(await resp.text() || 'Failed to remove known word');
-        state.knownWords = state.knownWords.filter(word => !(word.lemma === lemma && word.pos === pos && word.lang === state.activeLanguage));
+        state.knownWords = state.knownWords.filter(word => !(word.lemma === lemma && word.pos === pos && word.lang === lang));
         renderKnownWordsPanel();
         await refreshDashboardData();
         showToast('Known word removed.', 'success');
@@ -5489,9 +5493,10 @@ function initKnownWordsPanel(): void {
     document.getElementById('known-words-list')?.addEventListener('click', (e) => {
         const target = e.target as HTMLElement | null;
         if (!target) return;
+        const lang = target.getAttribute('data-known-lang');
         const lemma = target.getAttribute('data-known-lemma');
         const pos = target.getAttribute('data-known-pos');
-        if (lemma && pos) void deleteKnownWord(lemma, pos);
+        if (lang && lemma && pos) void deleteKnownWord(lang, lemma, pos);
     });
 
     document.getElementById('vocab-delete-all')?.addEventListener('click', () => {

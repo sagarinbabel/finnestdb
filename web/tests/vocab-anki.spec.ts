@@ -68,6 +68,25 @@ async function mockKnownWordsEmpty(page: Page): Promise<void> {
   });
 }
 
+async function mockLanguagesPatch(
+  page: Page,
+  received: Array<{ learning?: string[]; active?: string }>,
+  baseline: { learning: string[]; active: string },
+): Promise<void> {
+  await page.route('**/api/me/languages', async (route) => {
+    const body = route.request().postDataJSON() as { learning?: string[]; active?: string };
+    received.push(body);
+    const learning = body.learning ?? baseline.learning;
+    const active = body.active ?? baseline.active;
+    const stats = Object.fromEntries(learning.map(l => [l, { decks: 0, known_words: 0 }]));
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ learning, active, stats }),
+    });
+  });
+}
+
 // Builds an AnkiConnect mock that dispatches on the `action` field in the JSON
 // body. Caller provides per-action handlers; anything not listed responds with
 // `{ error: 'unhandled', result: null }`.
@@ -442,6 +461,67 @@ test.describe('vocab page', () => {
     await expect(page.locator('#vocab-stat-total')).toHaveText('200');
     await expect(page.locator('#vocab-stat-lang-name')).toHaveText('Estonian');
     await expect(page.locator('#vocab-stat-lang')).toHaveText('120');
+  });
+
+  test('active-language switch clears stale vocabulary before delete actions', async ({ page }) => {
+    await mockMe(page, 'user', {
+      activeLanguage: 'FI',
+      stats: { FI: { decks: 0, known_words: 2 }, ET: { decks: 0, known_words: 0 } },
+    });
+    const patchCalls: Array<{ learning?: string[]; active?: string }> = [];
+    await mockLanguagesPatch(page, patchCalls, { learning: ['FI', 'ET'], active: 'FI' });
+
+    let releaseEtLoad!: () => void;
+    const etLoadPending = new Promise<void>(resolve => { releaseEtLoad = resolve; });
+    let deleteCalled = false;
+    await page.route('**/api/known-words?**', async (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      const lang = url.searchParams.get('lang');
+      if (request.method() === 'DELETE') {
+        deleteCalled = true;
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ status: 'ok', deleted: 0 }),
+        });
+        return;
+      }
+      if (request.method() !== 'GET') {
+        await route.fallback();
+        return;
+      }
+      if (lang === 'ET') await etLoadPending;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          known_words: lang === 'FI'
+            ? [
+              { lemma: 'kissa', pos: 'NOUN', lang: 'FI' },
+              { lemma: 'koira', pos: 'NOUN', lang: 'FI' },
+            ]
+            : [],
+        }),
+      });
+    });
+
+    await page.goto('/#/vocab');
+    await expect(page.locator('#known-words-list')).toContainText('kissa');
+
+    await page.locator('#nav-language-toggle').click();
+    await page.locator('#nav-language-menu [data-lang="ET"]').click();
+    await expect.poll(() => patchCalls).toContainEqual({ active: 'ET' });
+
+    await expect(page.locator('#known-words-empty')).not.toHaveClass(/hidden/);
+    await expect(page.locator('#known-words-list')).not.toContainText('kissa');
+    await expect(page.locator('#known-words-summary')).toHaveText('');
+
+    await page.locator('#vocab-delete-all').click();
+    await expect(page.locator('#dialog-modal')).toHaveClass(/hidden/);
+    expect(deleteCalled).toBe(false);
+
+    releaseEtLoad();
   });
 
   test('Delete all vocabulary requires confirm and sends DELETE …?lang=…&all=1', async ({ page }) => {
