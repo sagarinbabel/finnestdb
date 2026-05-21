@@ -2094,6 +2094,44 @@ test.describe('Anki import popup', () => {
     await expect(page.locator('#dialog-modal')).toHaveClass(/hidden/);
   });
 
+  test('Escape during no-confirm replace sync cancels before the destructive PUT', async ({ page }) => {
+    const baseMocks = baselineAnkiMocks();
+    await mockMe(page, 'user', { activeLanguage: 'ET' });
+    await mockKnownWordsEmpty(page);
+    await page.route('http://127.0.0.1:8765/**', async (route) => {
+      if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 200, body: '' }); return; }
+      const body = route.request().postDataJSON() as { action: string; params?: Record<string, unknown> };
+      await new Promise(r => setTimeout(r, 150));
+      const handler = baseMocks[body.action];
+      if (!handler) { await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ result: null, error: `?${body.action}` }) }); return; }
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ result: handler(body.params || {}), error: null }) });
+    });
+    let destructivePutCalled = false;
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'PUT') {
+        destructivePutCalled = true;
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ added: [], removed: [], unresolved: [] }) });
+        return;
+      }
+      await route.fallback();
+    });
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter: '', decks: ['Estonian::A1'], fieldByModel: { ETBasic: 'Sõna' },
+        includeNew: false, includeSuspended: false, replaceMode: true,
+        lastSyncAt: Date.now(), replaceConfirmSkip: true, preserveManualOnReplace: false,
+      }));
+    });
+    await page.reload();
+    await page.locator('#vocab-anki-sync').click();
+    await expect(page.locator('#anki-import-stage-loading')).not.toHaveClass(/hidden/);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#anki-import-modal')).toHaveClass(/hidden/);
+    await page.waitForTimeout(1500);
+    expect(destructivePutCalled).toBe(false);
+  });
+
   test('Sync button itself is disabled while the Anki check is in progress', async ({ page }) => {
     // Slow AnkiConnect so the in-progress window is observable.
     const baseMocks = baselineAnkiMocks();
