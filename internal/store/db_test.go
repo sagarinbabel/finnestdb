@@ -241,6 +241,62 @@ func TestGetNextReviewCardRespectsDailyNewCardLimit(t *testing.T) {
 	}
 }
 
+func TestManualKnownActionsUpgradeAnkiSource(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "source-upgrade@example.com")
+	for _, l := range []struct{ lemma, pos string }{
+		{"kissa", "NOUN"},
+		{"koira", "NOUN"},
+		{"juosta", "VERB"},
+	} {
+		if err := db.UpsertLemma(l.lemma, l.pos, "x", "FI"); err != nil {
+			t.Fatalf("UpsertLemma %s: %v", l.lemma, err)
+		}
+		if err := db.UpsertForm(l.lemma, l.lemma, l.pos, "FI"); err != nil {
+			t.Fatalf("UpsertForm %s: %v", l.lemma, err)
+		}
+	}
+
+	if _, _, err := db.ImportKnownWords(user.ID, "FI", []string{"kissa", "koira", "juosta"}, SourceAnki); err != nil {
+		t.Fatalf("ImportKnownWords anki: %v", err)
+	}
+	if _, _, err := db.ImportKnownWords(user.ID, "FI", []string{"kissa"}, SourceManual); err != nil {
+		t.Fatalf("ImportKnownWords manual: %v", err)
+	}
+	if err := db.MarkLemmaKnown(user.ID, "FI", "koira", "NOUN"); err != nil {
+		t.Fatalf("MarkLemmaKnown: %v", err)
+	}
+	cardID, err := db.EnsureCard(user.ID, "FI", "juosta", "VERB")
+	if err != nil {
+		t.Fatalf("EnsureCard: %v", err)
+	}
+	if err := db.MarkCardKnown(user.ID, cardID); err != nil {
+		t.Fatalf("MarkCardKnown: %v", err)
+	}
+
+	_, removed, _, err := db.ReplaceKnownWords(user.ID, "FI", nil, SourceAnki)
+	if err != nil {
+		t.Fatalf("ReplaceKnownWords: %v", err)
+	}
+	if len(removed) != 0 {
+		t.Fatalf("default Anki sync removed manually confirmed words: %+v", removed)
+	}
+
+	got, err := db.ListKnownWords(user.ID, "FI")
+	if err != nil {
+		t.Fatalf("ListKnownWords: %v", err)
+	}
+	seen := map[string]bool{}
+	for _, l := range got {
+		seen[l.Lemma+"/"+l.POS] = true
+	}
+	for _, want := range []string{"kissa/NOUN", "koira/NOUN", "juosta/VERB"} {
+		if !seen[want] {
+			t.Fatalf("known words after Anki sync=%v, missing %s", seen, want)
+		}
+	}
+}
+
 func TestUpdateDeckTitleAndPublicRollsBackOnTitleFailure(t *testing.T) {
 	db := newTestDB(t)
 	user := createTestUser(t, db, "deck-atomic@example.com")
