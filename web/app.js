@@ -1457,12 +1457,12 @@ async function loadKnownWords() {
         showToast(err.message || 'Failed to load known words.', 'error');
     }
 }
-async function postKnownWords(words, source = 'manual', lang = state.activeLanguage) {
+async function postKnownWords(words, source = 'manual') {
     const resp = await fetch('/api/known-words', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang, words, source }),
+        body: JSON.stringify({ lang: state.activeLanguage, words, source }),
     });
     if (!resp.ok)
         throw new Error(await resp.text() || 'Failed to import known words');
@@ -1473,12 +1473,12 @@ function describeImportResult(data) {
     const unresolvedCount = data.unresolved?.length || 0;
     return `${importedCount} imported${unresolvedCount ? `, ${unresolvedCount} unresolved` : ''}`;
 }
-async function putKnownWords(words, scope = 'anki', lang = state.activeLanguage) {
+async function putKnownWords(words, scope = 'anki') {
     const resp = await fetch('/api/known-words', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang, words, scope }),
+        body: JSON.stringify({ lang: state.activeLanguage, words, scope }),
     });
     if (!resp.ok)
         throw new Error(await resp.text() || 'Failed to sync known words');
@@ -2855,7 +2855,6 @@ async function runAnkiImport() {
     const msg = document.getElementById('anki-import-running-msg');
     const bar = document.getElementById('anki-import-progress-bar');
     const doneActions = document.getElementById('anki-import-done-actions');
-    const importLang = ankiImport.lang;
     // Skip-only sanity check.
     const usedModels = ankiImport.models.filter(m => (ankiImport.fieldByModel[m] || '').trim() !== '');
     if (usedModels.length === 0) {
@@ -2982,7 +2981,7 @@ async function runAnkiImport() {
             // the textbox / file / inspect / review flows; scope='all' wipes
             // every row not in the new Anki state.
             const scope = ankiImport.preserveManualOnReplace ? 'anki' : 'all';
-            const data = await putKnownWords(words, scope, importLang);
+            const data = await putKnownWords(words, scope);
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg)
                 msg.textContent = 'Done.';
@@ -2996,7 +2995,7 @@ async function runAnkiImport() {
             // Additive Anki import — tag new rows so a later sync can diff
             // them. Manual rows (textbox/file/inspect/review) keep their
             // own source.
-            const data = await postKnownWords(words, 'anki', importLang);
+            const data = await postKnownWords(words, 'anki');
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg)
                 msg.textContent = 'Done.';

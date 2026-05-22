@@ -68,25 +68,6 @@ async function mockKnownWordsEmpty(page: Page): Promise<void> {
   });
 }
 
-async function mockLanguagesPatch(
-  page: Page,
-  received: Array<{ learning?: string[]; active?: string }>,
-  baseline: { learning: string[]; active: string },
-): Promise<void> {
-  await page.route('**/api/me/languages', async (route) => {
-    const body = route.request().postDataJSON() as { learning?: string[]; active?: string };
-    received.push(body);
-    const learning = body.learning ?? baseline.learning;
-    const active = body.active ?? baseline.active;
-    const stats = Object.fromEntries(learning.map(l => [l, { decks: 0, known_words: 0 }]));
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ learning, active, stats }),
-    });
-  });
-}
-
 // Builds an AnkiConnect mock that dispatches on the `action` field in the JSON
 // body. Caller provides per-action handlers; anything not listed responds with
 // `{ error: 'unhandled', result: null }`.
@@ -1139,47 +1120,6 @@ test.describe('Anki import popup', () => {
     // Default toggle OFF — "auto" is new and should be excluded.
     await page.getByRole('button', { name: 'Import', exact: true }).click();
     await expect.poll(() => importBody).not.toBeNull();
-    expect(new Set(importBody!.words)).toEqual(new Set(['kassi', 'koer']));
-  });
-
-  test('Import keeps writing to the language selected when the Anki flow opened', async ({ page }) => {
-    const newIds = new Set<number>([102]);
-    await mockMe(page, 'user', { activeLanguage: 'ET' });
-    await mockKnownWordsEmpty(page);
-    const languagePatches: Array<{ learning?: string[]; active?: string }> = [];
-    await mockLanguagesPatch(page, languagePatches, { learning: ['FI', 'ET'], active: 'ET' });
-    await mockAnkiConnect(page, baselineAnkiMocks(newIds));
-
-    let importBody: { lang?: string; words?: string[] } | null = null;
-    await page.route('**/api/known-words', async (route) => {
-      if (route.request().method() === 'POST') {
-        importBody = route.request().postDataJSON();
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ imported: [], unresolved: [] }),
-        });
-      } else {
-        await route.fallback();
-      }
-    });
-
-    await page.goto('/#/vocab');
-    await clearStorage(page);
-    await page.getByRole('button', { name: 'Connect to Anki' }).click();
-    await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
-    await page.locator('[data-deck-toggle="Estonian"]').click();
-    await page.locator('[data-deck-check="Estonian::A1"]').check();
-    await page.getByRole('button', { name: 'Continue' }).click();
-    await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
-
-    await page.locator('#nav-language-toggle').click();
-    await page.locator('#nav-language-menu [data-lang="FI"]').click();
-    await expect.poll(() => languagePatches.at(-1)?.active).toBe('FI');
-
-    await page.getByRole('button', { name: 'Import', exact: true }).click();
-    await expect.poll(() => importBody).not.toBeNull();
-    expect(importBody!.lang).toBe('ET');
     expect(new Set(importBody!.words)).toEqual(new Set(['kassi', 'koer']));
   });
 
