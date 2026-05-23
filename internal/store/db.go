@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -555,7 +556,7 @@ func EnsureDictionarySourceColumns(db *sql.DB) error {
 
 // BackfillLegacyKaikkiProvenance labels FI/ET rows that were imported before
 // cmd/importdict threaded -source-key / -source-priority through. Those rows
-// carry the SQLite column defaults (source='' and source_priority=0), which
+// carry the SQLite column defaults (source=” and source_priority=0), which
 // makes verify-dict and `make doctor` flag the entire dictionary as untracked
 // even though it's the kaikki dump every fresh install gets.
 //
@@ -1738,6 +1739,8 @@ const (
 	SourceAnki   = "anki"
 )
 
+var ErrKnownWordsReplaceNoResolvedWords = errors.New("no submitted words could be resolved; refusing to replace known words")
+
 // ImportKnownWords is additive: new rows are inserted with the given source,
 // existing rows are left alone (their source isn't changed). source defaults
 // to "manual" if empty.
@@ -1812,7 +1815,7 @@ func (d *DB) ImportKnownWords(userID int64, lang string, words []string, source 
 //
 // Returns:
 //   - added:      lemma+POS pairs newly inserted this call (rows that
-//                 actually changed; pre-existing rows aren't counted)
+//     actually changed; pre-existing rows aren't counted)
 //   - removed:    lemma+POS pairs deleted this call
 //   - unresolved: surface forms the parser couldn't resolve (untouched)
 func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string, scope string) ([]KnownLemma, []KnownLemma, []string, error) {
@@ -1853,6 +1856,9 @@ func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string, scope 
 			continue
 		}
 		target[key{res.Lemma, res.POS}] = struct{}{}
+	}
+	if len(normalized) > 0 && len(target) == 0 {
+		return nil, nil, unresolved, ErrKnownWordsReplaceNoResolvedWords
 	}
 
 	tx, err := d.db.Begin()

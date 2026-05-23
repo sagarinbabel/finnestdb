@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -1609,6 +1610,10 @@ func (a *API) handleKnownWordsReplace(w http.ResponseWriter, r *http.Request, au
 
 	added, removed, unresolved, err := a.store.ReplaceKnownWords(auth.UserID, req.Lang, req.Words, scope)
 	if err != nil {
+		if errors.Is(err, store.ErrKnownWordsReplaceNoResolvedWords) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
 	}
