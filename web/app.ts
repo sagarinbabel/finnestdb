@@ -1781,12 +1781,12 @@ async function loadKnownWords(): Promise<void> {
     }
 }
 
-async function postKnownWords(words: string[], source: 'manual' | 'anki' = 'manual'): Promise<KnownWordsImportResponse> {
+async function postKnownWords(words: string[], source: 'manual' | 'anki' = 'manual', lang: string = state.activeLanguage): Promise<KnownWordsImportResponse> {
     const resp = await fetch('/api/known-words', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang: state.activeLanguage, words, source }),
+        body: JSON.stringify({ lang, words, source }),
     });
     if (!resp.ok) throw new Error(await resp.text() || 'Failed to import known words');
     return await resp.json() as KnownWordsImportResponse;
@@ -1798,12 +1798,12 @@ function describeImportResult(data: KnownWordsImportResponse): string {
     return `${importedCount} imported${unresolvedCount ? `, ${unresolvedCount} unresolved` : ''}`;
 }
 
-async function putKnownWords(words: string[], scope: 'anki' | 'all' = 'anki'): Promise<KnownWordsReplaceResponse> {
+async function putKnownWords(words: string[], scope: 'anki' | 'all' = 'anki', lang: string = state.activeLanguage): Promise<KnownWordsReplaceResponse> {
     const resp = await fetch('/api/known-words', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang: state.activeLanguage, words, scope }),
+        body: JSON.stringify({ lang, words, scope }),
     });
     if (!resp.ok) throw new Error(await resp.text() || 'Failed to sync known words');
     return await resp.json() as KnownWordsReplaceResponse;
@@ -3399,7 +3399,7 @@ async function runAnkiImport(): Promise<void> {
             // the textbox / file / inspect / review flows; scope='all' wipes
             // every row not in the new Anki state.
             const scope = ankiImport.preserveManualOnReplace ? 'anki' : 'all';
-            const data = await putKnownWords(words, scope);
+            const data = await putKnownWords(words, scope, ankiImport.lang);
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg) msg.textContent = 'Done.';
             if (detail) detail.textContent = describeReplaceResult(data);
@@ -3410,7 +3410,7 @@ async function runAnkiImport(): Promise<void> {
             // Additive Anki import — tag new rows so a later sync can diff
             // them. Manual rows (textbox/file/inspect/review) keep their
             // own source.
-            const data = await postKnownWords(words, 'anki');
+            const data = await postKnownWords(words, 'anki', ankiImport.lang);
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg) msg.textContent = 'Done.';
             if (detail) detail.textContent = describeImportResult(data);

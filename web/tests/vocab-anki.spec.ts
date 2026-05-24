@@ -68,6 +68,27 @@ async function mockKnownWordsEmpty(page: Page): Promise<void> {
   });
 }
 
+async function mockLanguagePatch(page: Page, learning: string[] = ['FI', 'ET']): Promise<void> {
+  await page.route('**/api/me/languages', async (route) => {
+    if (route.request().method() !== 'PATCH') {
+      await route.fallback();
+      return;
+    }
+    const body = route.request().postDataJSON() as { active?: string; learning?: string[] };
+    const nextLearning = body.learning ?? learning;
+    const active = body.active && nextLearning.includes(body.active) ? body.active : nextLearning[0];
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        learning: nextLearning,
+        active,
+        stats: Object.fromEntries(nextLearning.map(lang => [lang, { decks: 0, known_words: 0 }])),
+      }),
+    });
+  });
+}
+
 // Builds an AnkiConnect mock that dispatches on the `action` field in the JSON
 // body. Caller provides per-action handlers; anything not listed responds with
 // `{ error: 'unhandled', result: null }`.
@@ -1684,6 +1705,87 @@ test.describe('Anki import popup', () => {
     expect(postBody!.lang).toBe('ET');
     // Only Estonian::A1 was saved, so only its notes contribute.
     expect(new Set(postBody!.words)).toEqual(new Set(['kassi', 'koer', 'auto']));
+  });
+
+  test('Anki replace sync writes to the language captured at sync start', async ({ page }) => {
+    await mockMe(page, 'user', { activeLanguage: 'ET', learningLanguages: ['FI', 'ET'] });
+    await mockKnownWordsEmpty(page);
+    await mockLanguagePatch(page, ['FI', 'ET']);
+
+    const baseMocks = baselineAnkiMocks();
+    await page.route('http://127.0.0.1:8765/**', async (route) => {
+      if (route.request().method() === 'OPTIONS') {
+        await route.fulfill({ status: 200, body: '' });
+        return;
+      }
+      const body = route.request().postDataJSON() as { action: string; params?: Record<string, unknown> };
+      const handler = baseMocks[body.action];
+      await new Promise(r => setTimeout(r, 500));
+      if (!handler) {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ result: null, error: `unhandled action: ${body.action}` }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ result: handler(body.params || {}), error: null }),
+      });
+    });
+
+    let languagePatchBody: { active?: string } | null = null;
+    let putBody: { lang?: string; words?: string[]; scope?: string } | null = null;
+    await page.route('**/api/me/languages', async (route) => {
+      if (route.request().method() === 'PATCH') {
+        languagePatchBody = route.request().postDataJSON();
+      }
+      await route.fallback();
+    });
+    await page.route('**/api/known-words', async (route) => {
+      if (route.request().method() === 'PUT') {
+        putBody = route.request().postDataJSON();
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ added: [], removed: [], unresolved: [] }),
+        });
+        return;
+      }
+      await route.fallback();
+    });
+
+    await page.goto('/#/vocab');
+    await page.evaluate(() => {
+      localStorage.setItem('finest:anki-import:ET', JSON.stringify({
+        filter:                  'estonian|eesti',
+        decks:                   ['Estonian::A1'],
+        fieldByModel:            { ETBasic: 'Sõna' },
+        includeNew:              false,
+        includeSuspended:        false,
+        replaceMode:             true,
+        lastSyncAt:              Date.now(),
+        replaceConfirmSkip:      true,
+        preserveManualOnReplace: false,
+      }));
+    });
+    await page.reload();
+
+    await page.locator('#vocab-anki-sync').click();
+    await expect(page.locator('#anki-import-stage-loading')).not.toHaveClass(/hidden/);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#anki-import-modal')).toHaveClass(/hidden/);
+
+    await page.locator('#nav-language-toggle').click();
+    await page.locator('.nav-lang-option[data-lang="FI"]').click();
+    await expect.poll(() => languagePatchBody?.active).toBe('FI');
+
+    await expect.poll(() => putBody, { timeout: 10000 }).not.toBeNull();
+    expect(putBody!.lang).toBe('ET');
+    expect(putBody!.scope).toBe('all');
+    expect(new Set(putBody!.words)).toEqual(new Set(['kassi', 'koer', 'auto']));
   });
 
   test("Replace confirm has a 'Don't show this again' checkbox that persists across runs", async ({ page }) => {
