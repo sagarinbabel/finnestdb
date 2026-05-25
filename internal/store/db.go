@@ -1738,9 +1738,10 @@ const (
 	SourceAnki   = "anki"
 )
 
-// ImportKnownWords is additive: new rows are inserted with the given source,
-// existing rows are left alone (their source isn't changed). source defaults
-// to "manual" if empty.
+// ImportKnownWords is additive: new rows are inserted with the given source.
+// If a manual import sees an existing Anki row, upgrade it to manual so future
+// Anki-scoped syncs cannot delete an explicitly user-confirmed word. source
+// defaults to "manual" if empty.
 func (d *DB) ImportKnownWords(userID int64, lang string, words []string, source string) ([]KnownLemma, []string, error) {
 	if source == "" {
 		source = SourceManual
@@ -1770,7 +1771,9 @@ func (d *DB) ImportKnownWords(userID int64, lang string, words []string, source 
 			continue
 		}
 		if _, err := d.db.Exec(
-			`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos, source) VALUES (?, ?, ?, ?, ?)`,
+			`INSERT INTO user_known_lemmas (user_id, lang, lemma, pos, source) VALUES (?, ?, ?, ?, ?)
+			 ON CONFLICT(user_id, lang, lemma, pos) DO UPDATE SET source = excluded.source
+			 WHERE excluded.source = 'manual'`,
 			userID, lang, resolution.Lemma, resolution.POS, source,
 		); err != nil {
 			return nil, nil, err
@@ -1812,7 +1815,7 @@ func (d *DB) ImportKnownWords(userID int64, lang string, words []string, source 
 //
 // Returns:
 //   - added:      lemma+POS pairs newly inserted this call (rows that
-//                 actually changed; pre-existing rows aren't counted)
+//     actually changed; pre-existing rows aren't counted)
 //   - removed:    lemma+POS pairs deleted this call
 //   - unresolved: surface forms the parser couldn't resolve (untouched)
 func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string, scope string) ([]KnownLemma, []KnownLemma, []string, error) {
@@ -2045,8 +2048,9 @@ func (d *DB) MarkLemmaKnown(userID int64, lang, lemma, pos string) error {
 	defer tx.Rollback()
 
 	if _, err := tx.Exec(
-		`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
-		userID, lang, lemma, pos,
+		`INSERT INTO user_known_lemmas (user_id, lang, lemma, pos, source) VALUES (?, ?, ?, ?, ?)
+		 ON CONFLICT(user_id, lang, lemma, pos) DO UPDATE SET source = excluded.source`,
+		userID, lang, lemma, pos, SourceManual,
 	); err != nil {
 		return err
 	}
@@ -2410,8 +2414,9 @@ func (d *DB) MarkCardKnown(userID, cardID int64) error {
 		return sql.ErrNoRows
 	}
 	if _, err := tx.Exec(
-		`INSERT OR IGNORE INTO user_known_lemmas (user_id, lang, lemma, pos) VALUES (?, ?, ?, ?)`,
-		userID, card.Lang, card.Lemma, card.POS,
+		`INSERT INTO user_known_lemmas (user_id, lang, lemma, pos, source) VALUES (?, ?, ?, ?, ?)
+		 ON CONFLICT(user_id, lang, lemma, pos) DO UPDATE SET source = excluded.source`,
+		userID, card.Lang, card.Lemma, card.POS, SourceManual,
 	); err != nil {
 		return err
 	}
