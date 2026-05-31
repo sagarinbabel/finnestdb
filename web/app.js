@@ -1457,12 +1457,13 @@ async function loadKnownWords() {
         showToast(err.message || 'Failed to load known words.', 'error');
     }
 }
-async function postKnownWords(words, source = 'manual') {
+async function postKnownWords(words, source = 'manual', lang = state.activeLanguage, signal) {
     const resp = await fetch('/api/known-words', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang: state.activeLanguage, words, source }),
+        body: JSON.stringify({ lang, words, source }),
+        signal,
     });
     if (!resp.ok)
         throw new Error(await resp.text() || 'Failed to import known words');
@@ -1473,12 +1474,13 @@ function describeImportResult(data) {
     const unresolvedCount = data.unresolved?.length || 0;
     return `${importedCount} imported${unresolvedCount ? `, ${unresolvedCount} unresolved` : ''}`;
 }
-async function putKnownWords(words, scope = 'anki') {
+async function putKnownWords(words, scope = 'anki', lang = state.activeLanguage, signal) {
     const resp = await fetch('/api/known-words', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ lang: state.activeLanguage, words, scope }),
+        body: JSON.stringify({ lang, words, scope }),
+        signal,
     });
     if (!resp.ok)
         throw new Error(await resp.text() || 'Failed to sync known words');
@@ -1714,6 +1716,9 @@ function buildAnkiDeckTree(deckNames) {
 }
 const ankiImport = {
     open: false,
+    sessionID: 0,
+    cancelRequested: false,
+    abortController: null,
     lang: 'FI',
     deckNames: [],
     tree: [],
@@ -1826,11 +1831,12 @@ async function runAnkiSyncFlow() {
         return;
     }
     initializeAnkiState(prefs, /* sync */ true);
+    const sessionID = ankiImport.sessionID;
     // Kick off discovery immediately — runs concurrently with whatever dialog
     // is shown so the user never waits for sequential steps. The promise
     // resolves to a structured result rather than throwing so the dialog can
     // surface "Anki ready" vs an actionable error without separate paths.
-    const discovery = runSyncDiscovery();
+    const discovery = runSyncDiscovery(sessionID);
     const needsConfirm = ankiImport.replaceMode && !prefs.replaceConfirmSkip;
     let validation;
     let dialogConfirmed = true;
@@ -1870,8 +1876,14 @@ async function runAnkiSyncFlow() {
         if (loadingMsg)
             loadingMsg.textContent = 'Syncing from Anki…';
         validation = await discovery;
+        if (!validation.ok && validation.reason === 'cancelled')
+            return;
     }
+    if (isAnkiImportCancelled(sessionID))
+        return;
     if (!validation.ok) {
+        if (validation.reason === 'cancelled')
+            return;
         // Discovery turned up something the user should see — open the modal
         // in the appropriate manual-flow stage with the toast we'd normally
         // show in the auto-advance path.
@@ -1915,7 +1927,11 @@ function openAnkiModal(sync) {
 // Pre-populate `ankiImport` state from saved prefs without touching the DOM.
 // Shared between the manual and the silent (quick-sync) entry points.
 function initializeAnkiState(prefs, sync) {
+    ankiImport.abortController?.abort();
+    ankiImport.sessionID += 1;
     ankiImport.open = true;
+    ankiImport.cancelRequested = false;
+    ankiImport.abortController = null;
     ankiImport.lang = state.activeLanguage;
     ankiImport.filter = prefs.filter;
     ankiImport.selected = new Set(prefs.decks);
@@ -1927,6 +1943,9 @@ function initializeAnkiState(prefs, sync) {
     ankiImport.syncMode = sync;
     ankiImport.allNotes = [];
     ankiImport.expanded = new Set();
+}
+function isAnkiImportCancelled(sessionID) {
+    return ankiImport.cancelRequested || ankiImport.sessionID !== sessionID;
 }
 // Open the modal at a specific stage. Used by the sync flow once discovery
 // has populated `ankiImport.allNotes` etc — we skip the "loading" stage
@@ -1972,10 +1991,15 @@ function openAnkiModalAtStage(stage) {
 // by the quick-sync flow. Mirrors connectAndLoadDecks +
 // loadAnkiModelsForSelection but condensed and returns a structured result
 // instead of branching into stages.
-async function runSyncDiscovery() {
+async function runSyncDiscovery(sessionID) {
+    const cancelled = () => ({ ok: false, reason: 'cancelled', detail: '' });
     try {
         await ankiInvoke('version');
+        if (isAnkiImportCancelled(sessionID))
+            return cancelled();
         const deckNames = await ankiInvoke('deckNames');
+        if (isAnkiImportCancelled(sessionID))
+            return cancelled();
         ankiImport.deckNames = deckNames;
         ankiImport.tree = buildAnkiDeckTree(deckNames);
         const valid = new Set(deckNames);
@@ -2001,6 +2025,8 @@ async function runSyncDiscovery() {
             ]);
             return { all, studied, notSuspended };
         }));
+        if (isAnkiImportCancelled(sessionID))
+            return cancelled();
         const studiedSet = new Set();
         const notSuspendedSet = new Set();
         const seenIDs = new Set();
@@ -2020,8 +2046,12 @@ async function runSyncDiscovery() {
         const snapshots = [];
         const CHUNK = 500;
         for (let i = 0; i < allIDs.length; i += CHUNK) {
+            if (isAnkiImportCancelled(sessionID))
+                return cancelled();
             const chunk = allIDs.slice(i, i + CHUNK);
             const notes = await ankiInvoke('notesInfo', { notes: chunk });
+            if (isAnkiImportCancelled(sessionID))
+                return cancelled();
             for (const note of notes) {
                 if (!note?.modelName)
                     continue;
@@ -2055,6 +2085,8 @@ async function runSyncDiscovery() {
                 fieldsByModel[model] = [];
             }
         }));
+        if (isAnkiImportCancelled(sessionID))
+            return cancelled();
         ankiImport.fieldsByModel = fieldsByModel;
         // Per-(model, field) examples — same as loadAnkiModelsForSelection,
         // also auto-picks a field for models the user hasn't seen yet.
@@ -2082,6 +2114,8 @@ async function runSyncDiscovery() {
             }
         }
         ankiImport.examplesByModel = examplesByModel;
+        if (isAnkiImportCancelled(sessionID))
+            return cancelled();
         persistAnkiPrefs();
         // Detect model-set drift (new card type / removed one). Same contract
         // as the modal-driven sync flow.
@@ -2108,6 +2142,9 @@ async function runSyncDiscovery() {
     }
 }
 function closeAnkiImportModal() {
+    ankiImport.cancelRequested = true;
+    ankiImport.abortController?.abort();
+    ankiImport.abortController = null;
     ankiImport.open = false;
     document.getElementById('anki-import-modal')?.classList.add('hidden');
 }
@@ -2849,6 +2886,7 @@ function hideFieldExamplesTip() {
 // maps to (or skip if "Skip"). Extract the field text, run through the same
 // parser as the textbox import so multi-word fields split sensibly.
 async function runAnkiImport() {
+    const sessionID = ankiImport.sessionID;
     const runBtn = document.getElementById('anki-import-run');
     const backBtn = document.getElementById('anki-import-back');
     const detail = document.getElementById('anki-import-running-detail');
@@ -2884,8 +2922,13 @@ async function runAnkiImport() {
                 recordReplaceConfirmSkip();
         }
     }
+    if (isAnkiImportCancelled(sessionID))
+        return;
     // Reset for the next run regardless of which path we took.
     ankiImport.replaceConfirmedThisRun = false;
+    const abortController = new AbortController();
+    ankiImport.abortController?.abort();
+    ankiImport.abortController = abortController;
     if (runBtn)
         runBtn.disabled = true;
     if (backBtn)
@@ -2935,6 +2978,8 @@ async function runAnkiImport() {
         const seen = new Set();
         const words = [];
         for (let i = 0; i < notes.length; i += CHUNK) {
+            if (isAnkiImportCancelled(sessionID))
+                return;
             const chunk = notes.slice(i, i + CHUNK);
             for (const note of chunk) {
                 const field = ankiImport.fieldByModel[note.modelName];
@@ -2962,6 +3007,8 @@ async function runAnkiImport() {
                 detail.textContent = `${processed.toLocaleString()} / ${notes.length.toLocaleString()} notes processed`;
             // Yield to the event loop so the progress bar repaints.
             await new Promise(r => setTimeout(r, 0));
+            if (isAnkiImportCancelled(sessionID))
+                return;
         }
         if (words.length === 0) {
             if (msg)
@@ -2976,12 +3023,16 @@ async function runAnkiImport() {
             msg.textContent = ankiImport.replaceMode
                 ? `Syncing ${words.length.toLocaleString()} words…`
                 : `Importing ${words.length.toLocaleString()} words…`;
+        if (isAnkiImportCancelled(sessionID))
+            return;
         if (ankiImport.replaceMode) {
             // scope='anki' (default) preserves words the user added through
             // the textbox / file / inspect / review flows; scope='all' wipes
             // every row not in the new Anki state.
             const scope = ankiImport.preserveManualOnReplace ? 'anki' : 'all';
-            const data = await putKnownWords(words, scope);
+            const data = await putKnownWords(words, scope, ankiImport.lang, abortController.signal);
+            if (isAnkiImportCancelled(sessionID))
+                return;
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg)
                 msg.textContent = 'Done.';
@@ -2995,7 +3046,9 @@ async function runAnkiImport() {
             // Additive Anki import — tag new rows so a later sync can diff
             // them. Manual rows (textbox/file/inspect/review) keep their
             // own source.
-            const data = await postKnownWords(words, 'anki');
+            const data = await postKnownWords(words, 'anki', ankiImport.lang, abortController.signal);
+            if (isAnkiImportCancelled(sessionID))
+                return;
             renderKnownWordsUnresolved(data.unresolved || []);
             if (msg)
                 msg.textContent = 'Done.';
@@ -3013,6 +3066,8 @@ async function runAnkiImport() {
             doneActions.classList.remove('hidden');
     }
     catch (err) {
+        if (isAnkiImportCancelled(sessionID) || err?.name === 'AbortError')
+            return;
         if (msg)
             msg.textContent = err.message || 'Import failed.';
         showToast(err.message || 'Failed to import from Anki.', 'error');
@@ -3020,10 +3075,14 @@ async function runAnkiImport() {
             doneActions.classList.remove('hidden');
     }
     finally {
-        if (runBtn)
-            runBtn.disabled = false;
-        if (backBtn)
-            backBtn.disabled = false;
+        if (ankiImport.abortController === abortController)
+            ankiImport.abortController = null;
+        if (!isAnkiImportCancelled(sessionID)) {
+            if (runBtn)
+                runBtn.disabled = false;
+            if (backBtn)
+                backBtn.disabled = false;
+        }
     }
 }
 function openAnkiSetupModal() {

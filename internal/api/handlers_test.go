@@ -1967,6 +1967,52 @@ func TestKnownWordsReplaceDiffs(t *testing.T) {
 	}
 }
 
+func TestKnownWordsReplaceRejectsAllUnresolvedInput(t *testing.T) {
+	api := newTestAPI(t)
+	for _, l := range []struct{ lemma, pos, lang string }{
+		{"kissa", "NOUN", "FI"},
+		{"koira", "NOUN", "FI"},
+	} {
+		if err := api.store.UpsertLemma(l.lemma, l.pos, "x", l.lang); err != nil {
+			t.Fatalf("UpsertLemma %s: %v", l.lemma, err)
+		}
+		if err := api.store.UpsertForm(l.lemma, l.lemma, l.pos, l.lang); err != nil {
+			t.Fatalf("UpsertForm %s: %v", l.lemma, err)
+		}
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "replace-unresolved@example.com")
+
+	seed := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa","koira"],"source":"anki"}`))
+	for _, c := range cookies {
+		seed.AddCookie(c)
+	}
+	seedRec := httptest.NewRecorder()
+	mux.ServeHTTP(seedRec, seed)
+	if seedRec.Code != http.StatusOK {
+		t.Fatalf("seed status=%d body=%q", seedRec.Code, seedRec.Body.String())
+	}
+
+	replace := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["not-a-finnish-word-123","still-unresolved-456"]}`))
+	for _, c := range cookies {
+		replace.AddCookie(c)
+	}
+	replaceRec := httptest.NewRecorder()
+	mux.ServeHTTP(replaceRec, replace)
+	if replaceRec.Code != http.StatusBadRequest {
+		t.Fatalf("replace status=%d want 400 body=%q", replaceRec.Code, replaceRec.Body.String())
+	}
+	if !strings.Contains(replaceRec.Body.String(), store.ErrKnownWordsReplaceNoResolvedWords.Error()) {
+		t.Fatalf("replace body=%q missing unresolved guard", replaceRec.Body.String())
+	}
+
+	got := listKnownWordsForLang(t, mux, cookies, "FI")
+	if !got["kissa/NOUN"] || !got["koira/NOUN"] || len(got) != 2 {
+		t.Fatalf("FI list after rejected replace=%v want {kissa/NOUN, koira/NOUN}", got)
+	}
+}
+
 func TestKnownWordsReplacePreservesManualSourceByDefault(t *testing.T) {
 	// Verifies the per-row source tagging: rows imported as 'manual' (via the
 	// textbox / file flow, or via /api/lemma-state from the inspect page)

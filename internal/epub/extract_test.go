@@ -93,6 +93,29 @@ func TestExtractTextRejectsNonZipBytes(t *testing.T) {
 	}
 }
 
+func TestReadZipFileContentsRejectsOversizedMember(t *testing.T) {
+	data := buildEPUB(t, map[string]string{
+		"OEBPS/ch01.xhtml": `<html><body><p>large enough for a low test cap</p></body></html>`,
+	})
+	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	if err != nil {
+		t.Fatalf("NewReader: %v", err)
+	}
+	var content *zip.File
+	for _, f := range zr.File {
+		if f.Name == "OEBPS/ch01.xhtml" {
+			content = f
+			break
+		}
+	}
+	if content == nil {
+		t.Fatal("test EPUB missing content file")
+	}
+	if _, err := readZipFileContents(content, 8); err == nil {
+		t.Fatalf("expected oversized member to be rejected")
+	}
+}
+
 func TestNaturalLessOrdersNumericSuffixes(t *testing.T) {
 	cases := []struct {
 		a, b string
