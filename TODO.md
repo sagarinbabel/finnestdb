@@ -122,6 +122,12 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 
 - [ ] **Progress dashboard**. Fill the existing dashboard tab with: total known lemmas, cards in review, comprehension trend per deck, daily review count, cumulative comprehension chart over time.
 
+- [ ] **Native iOS app for FinnEstDB (post-go-live)**. After the responsive
+  web alpha is shipped and stable, create a native iOS app for FinnEstDB.
+  Treat draft PR [#212](https://github.com/sagarinbabel/finnestdb/pull/212)
+  as parked planning input; do not pull this into current go-live scope unless
+  explicitly reprioritized.
+
 - [ ] **Parse history / deletion UI** so logged-in users can review and delete source context retained by saved decks and parser feedback.
 
 - [x] **Ephemeral Inspect parse behavior** on `/api/parse` so logged-in users get non-persisted parses by default.
@@ -188,11 +194,10 @@ Snapshot. Refresh by running:
 gh pr list --state open --json number,title,headRefName --jq '.[] | "- #\(.number) `\(.headRefName)` — \(.title)"'
 ```
 
-Currently open as of 2026-05-18:
+Currently open as of 2026-06-01:
 
-- [#212](https://github.com/sagarinbabel/finnestdb/pull/212) `codex/swift-offline-migration-plan` — [codex] Document Swift offline migration plan.
-- [#211](https://github.com/sagarinbabel/finnestdb/pull/211) `codex/correction-overlay-schema` — Add source-agnostic correction overlay schema.
-- [#208](https://github.com/sagarinbabel/finnestdb/pull/208) `vocab/anki-import-popup` — Vocab page: Anki import popup, file import, delete-all.
+- [#212](https://github.com/sagarinbabel/finnestdb/pull/212) `codex/swift-offline-migration-plan` — draft/parked Swift offline migration plan.
+- [#211](https://github.com/sagarinbabel/finnestdb/pull/211) `codex/correction-overlay-schema` — correction overlay schema; uniqueness-index feedback has been addressed on the PR branch and is awaiting review/CI.
 
 ## Research Goals
 
