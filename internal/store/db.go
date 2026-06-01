@@ -694,11 +694,13 @@ func EnsureCorrectionOverlaySchema(db *sql.DB) error {
 		CREATE INDEX IF NOT EXISTS idx_correction_overlays_lookup
 			ON correction_overlays(lang, active, correction_type, scope, surface, source_type, source_ref, sentence_hash);
 
-		CREATE UNIQUE INDEX IF NOT EXISTS idx_correction_overlays_active_unique
+		DROP INDEX IF EXISTS idx_correction_overlays_active_unique;
+		CREATE UNIQUE INDEX idx_correction_overlays_active_unique
 			ON correction_overlays(
-				lang, correction_type, scope, surface,
-				original_lemma, original_pos,
-				corrected_lemma, corrected_pos,
+				lang, correction_type, scope, COALESCE(target_id, 0), surface,
+				original_lemma, original_pos, original_feats,
+				corrected_lemma, corrected_pos, corrected_feats,
+				replacement_text,
 				source_type, source_ref, source_locator, sentence_hash
 			)
 			WHERE active = 1;

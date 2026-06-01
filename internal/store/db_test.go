@@ -221,6 +221,7 @@ func TestEnsureCorrectionOverlaySchema_BackfillsAndConstrains(t *testing.T) {
 			(lang, target_kind, target_text, normalized_key, lemma, pos, feats, gloss, cue)
 		VALUES
 			('FI', 'proper_name', 'Maria', 'maria', 'Maria', 'PROPN', 'Number=Sing', '', 'person name'),
+			('FI', 'proper_name', 'Matti', 'matti', 'Matti', 'PROPN', 'Number=Sing', '', 'person name'),
 			('ET', 'proper_name', 'Maria', 'maria', 'Maria', 'PROPN', 'Number=Sing', '', 'person name')
 	`); err != nil {
 		t.Fatalf("insert language-separated targets: %v", err)
@@ -242,6 +243,13 @@ func TestEnsureCorrectionOverlaySchema_BackfillsAndConstrains(t *testing.T) {
 		WHERE lang = 'FI' AND target_kind = 'proper_name' AND normalized_key = 'maria'
 	`).Scan(&targetID); err != nil {
 		t.Fatalf("query target id: %v", err)
+	}
+	var secondTargetID int64
+	if err := raw.QueryRow(`
+		SELECT id FROM learning_targets
+		WHERE lang = 'FI' AND target_kind = 'proper_name' AND normalized_key = 'matti'
+	`).Scan(&secondTargetID); err != nil {
+		t.Fatalf("query second target id: %v", err)
 	}
 
 	insertOverlay := `
@@ -276,6 +284,22 @@ func TestEnsureCorrectionOverlaySchema_BackfillsAndConstrains(t *testing.T) {
 	if _, err := raw.Exec(insertOverlay, targetID); err != nil {
 		t.Fatalf("insert replacement active overlay after deactivation: %v", err)
 	}
+
+	insertMeaningCue := `
+		INSERT INTO correction_overlays
+			(lang, correction_type, scope, target_id, replacement_text, provenance)
+		VALUES ('FI', 'meaning_cue', 'global', ?, ?, 'accepted_feedback')
+	`
+	if _, err := raw.Exec(insertMeaningCue, targetID, "female given name"); err != nil {
+		t.Fatalf("insert meaning cue for first target: %v", err)
+	}
+	if _, err := raw.Exec(insertMeaningCue, secondTargetID, "male given name"); err != nil {
+		t.Fatalf("insert meaning cue for distinct target: %v", err)
+	}
+	if _, err := raw.Exec(insertMeaningCue, targetID, "common Finnish name"); err != nil {
+		t.Fatalf("insert second meaning cue payload for same target: %v", err)
+	}
+	expectExecError(t, raw, insertMeaningCue, targetID, "female given name")
 
 	if err := EnsureCorrectionOverlaySchema(raw); err != nil {
 		t.Fatalf("EnsureCorrectionOverlaySchema rerun: %v", err)
