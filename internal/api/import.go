@@ -84,6 +84,7 @@ func (a *API) HandleImportExtract(w http.ResponseWriter, r *http.Request) {
 	truncated := false
 	if originalCharCount > maxImportTextChars {
 		text = truncateRunes(text, maxImportTextChars)
+		chapters = truncateImportChapters(chapters, maxImportTextChars)
 		truncated = true
 	}
 
@@ -157,4 +158,28 @@ func truncateRunes(s string, maxRunes int) string {
 		count++
 	}
 	return s
+}
+
+func truncateImportChapters(chapters []ImportChapter, maxRunes int) []ImportChapter {
+	if maxRunes <= 0 || len(chapters) == 0 {
+		return nil
+	}
+	out := make([]ImportChapter, 0, len(chapters))
+	remaining := maxRunes
+	for _, ch := range chapters {
+		if remaining <= 0 {
+			break
+		}
+		chRunes := utf8.RuneCountInString(ch.Text)
+		if chRunes > remaining {
+			ch.Text = truncateRunes(ch.Text, remaining)
+			ch.CharCount = utf8.RuneCountInString(ch.Text)
+			out = append(out, ch)
+			break
+		}
+		ch.CharCount = chRunes
+		out = append(out, ch)
+		remaining -= chRunes
+	}
+	return out
 }
