@@ -153,8 +153,9 @@ Layout, top to bottom:
    `.action-card`, and `.placeholder-card`; pattern-match on whichever
    is closest, or a plain `<section>` with the variable applied:
    - language toggle (Auto / FI / ET) as a segmented control
-   - textarea with 10 rows, 300,000 char max
-   - file picker accepting .txt, .md, .epub, .apkg (drag-and-drop too)
+   - textarea with 10 rows, 1,500,000 char max
+   - file picker accepting .txt, .md, .epub (drag-and-drop too); .apkg is a
+     separate future import flow
    - LIVE stats strip below the textarea: "Detected: Finnish · 4,213
      chars · 612 tokens · 287 unique forms · 0 numbers". Updates
      debounced as the user types.

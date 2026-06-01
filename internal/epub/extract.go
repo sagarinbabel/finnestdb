@@ -19,6 +19,14 @@ import (
 	"unicode/utf8"
 )
 
+const (
+	maxEPUBMetadataBytes     int64 = 1 << 20
+	maxEPUBContentFileBytes  int64 = 32 << 20
+	maxEPUBTotalContentBytes int64 = 64 << 20
+)
+
+var errEPUBFileTooLarge = errors.New("EPUB file is too large")
+
 // Chapter is one extracted content document from an EPUB.
 type Chapter struct {
 	// Title is the chapter's display name. Sourced from the first <h1>...</h1>
@@ -75,15 +83,25 @@ func ExtractChapters(r io.ReaderAt, size int64) ([]Chapter, error) {
 	}
 
 	chapters := make([]Chapter, 0, len(docs))
+	var rawContentBytes int64
 	for _, d := range docs {
-		rc, err := d.f.Open()
+		if d.f.UncompressedSize64 > uint64(maxEPUBContentFileBytes) {
+			return nil, fmt.Errorf("EPUB content document %q is too large", d.name)
+		}
+		if d.f.UncompressedSize64 > 0 && rawContentBytes+int64(d.f.UncompressedSize64) > maxEPUBTotalContentBytes {
+			return nil, errors.New("EPUB content is too large")
+		}
+
+		raw, err := readZipFileContents(d.f, maxEPUBContentFileBytes)
 		if err != nil {
+			if errors.Is(err, errEPUBFileTooLarge) {
+				return nil, err
+			}
 			continue
 		}
-		raw, err := io.ReadAll(rc)
-		rc.Close()
-		if err != nil {
-			continue
+		rawContentBytes += int64(len(raw))
+		if rawContentBytes > maxEPUBTotalContentBytes {
+			return nil, errors.New("EPUB content is too large")
 		}
 		rawStr := string(raw)
 		text := cleanExtractedText(stripXHTML(rawStr))
@@ -228,12 +246,7 @@ func walkContentDocs(zr *zip.Reader) []docEntry {
 func readZipFile(zr *zip.Reader, name string) string {
 	for _, f := range zr.File {
 		if f.Name == name {
-			rc, err := f.Open()
-			if err != nil {
-				return ""
-			}
-			defer rc.Close()
-			data, err := io.ReadAll(rc)
+			data, err := readZipFileContents(f, maxEPUBMetadataBytes)
 			if err != nil {
 				return ""
 			}
@@ -241,6 +254,28 @@ func readZipFile(zr *zip.Reader, name string) string {
 		}
 	}
 	return ""
+}
+
+func readZipFileContents(f *zip.File, maxBytes int64) ([]byte, error) {
+	if maxBytes < 0 {
+		return nil, errors.New("zip read limit must be non-negative")
+	}
+	if f.UncompressedSize64 > uint64(maxBytes) {
+		return nil, fmt.Errorf("%w: %q", errEPUBFileTooLarge, f.Name)
+	}
+	rc, err := f.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer rc.Close()
+	data, err := io.ReadAll(io.LimitReader(rc, maxBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(data)) > maxBytes {
+		return nil, fmt.Errorf("%w: %q", errEPUBFileTooLarge, f.Name)
+	}
+	return data, nil
 }
 
 // joinZipPath resolves an href like "Text/ch1.xhtml" relative to an OPF
@@ -344,12 +379,7 @@ func readMetadataFromZip(zr *zip.Reader) BookMetadata {
 		if !strings.HasSuffix(strings.ToLower(f.Name), ".opf") {
 			continue
 		}
-		rc, err := f.Open()
-		if err != nil {
-			continue
-		}
-		raw, err := io.ReadAll(rc)
-		rc.Close()
+		raw, err := readZipFileContents(f, maxEPUBMetadataBytes)
 		if err != nil {
 			continue
 		}

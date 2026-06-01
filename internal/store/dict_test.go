@@ -355,6 +355,9 @@ func TestBatchLookupAllForms_LexOverlaySuppressesRawDictTrapsInCustomMode(t *tes
 	seedForms(t, db, [][4]string{
 		{"varsin", "varsi", "NOUN", "FI"},
 		{"vuotta", "vuo", "NOUN", "FI"},
+		{"sanoin", "sana", "NOUN", "FI"},
+		{"maria", "mari", "NOUN", "FI"},
+		{"norjan", "norja", "ADJ", "FI"},
 		{"välja", "väli", "NOUN", "ET"},
 		{"välja", "väljama", "VERB", "ET"},
 		{"peale", "pea", "NOUN", "ET"},
@@ -381,9 +384,20 @@ func TestBatchLookupAllForms_LexOverlaySuppressesRawDictTrapsInCustomMode(t *tes
 		}
 	}
 
-	fi := db.BatchLookupAllForms([]string{"varsin", "Vuotta"}, "FI", "custom")
+	fi := db.BatchLookupAllForms([]string{"varsin", "Vuotta", "Sanoin", "Maria", "Norjan"}, "FI", "custom")
 	assertOnly(fi, "varsin", "varsin", "ADV")
 	assertOnly(fi, "Vuotta", "vuosi", "NOUN")
+	assertOnly(fi, "Sanoin", "sanoa", "VERB")
+	assertOnly(fi, "Maria", "Maria", "PROPN")
+	assertOnly(fi, "Norjan", "Norja", "PROPN")
+
+	fiLower := db.BatchLookupAllForms([]string{"maria", "norjan"}, "FI", "custom")
+	if c := fiLower["maria"]; len(c) != 1 || c[0].Lemma != "mari" || c[0].POS != "NOUN" || c[0].Source != "dict" {
+		t.Fatalf("maria: got %+v, want lowercase homonym from dict", c)
+	}
+	if c := fiLower["norjan"]; len(c) != 1 || c[0].Lemma != "norja" || c[0].POS != "ADJ" || c[0].Source != "dict" {
+		t.Fatalf("norjan: got %+v, want lowercase adjective from dict", c)
+	}
 
 	et := db.BatchLookupAllForms([]string{"välja", "peale", "sisse", "veel", "jaoks", "Ta"}, "ET", "custom")
 	assertOnly(et, "välja", "välja", "ADV")
@@ -2241,6 +2255,9 @@ func TestBatchLookupForms_LexOverlayBeatsDictTrap(t *testing.T) {
 		{"varsin", "varsi", "NOUN", "FI", "kaikki", 10},
 		{"siitä", "siittää", "VERB", "FI", "kaikki", 10},
 		{"muuta", "muuttaa", "VERB", "FI", "kaikki", 10},
+		{"sanoin", "sana", "NOUN", "FI", "kaikki", 10},
+		{"maria", "mari", "NOUN", "FI", "kaikki", 10},
+		{"norjan", "norja", "ADJ", "FI", "kaikki", 10},
 	})
 
 	cases := []struct {
@@ -2252,14 +2269,18 @@ func TestBatchLookupForms_LexOverlayBeatsDictTrap(t *testing.T) {
 		{"varsin", "varsin", "ADV"},
 		{"siitä", "se", "PRON"},
 		{"muuta", "muu", "PRON"},
+		{"sanoin", "sanoa", "VERB"},
+		{"Maria", "Maria", "PROPN"},
+		{"Norjan", "Norja", "PROPN"},
 		// Sentence-initial capitals must also short-circuit through
 		// the overlay (case-folded match before dict lookup).
 		{"Tuskin", "tuskin", "ADV"},
 		{"Vuotta", "vuosi", "NOUN"},
+		{"Sanoin", "sanoa", "VERB"},
 	}
 	got := db.BatchLookupForms([]string{
 		"tuskin", "asiaan", "vuotta", "varsin", "siitä", "muuta",
-		"Tuskin", "Vuotta",
+		"sanoin", "Maria", "Norjan", "Tuskin", "Vuotta", "Sanoin",
 	}, "FI", "custom")
 	for _, tc := range cases {
 		r, ok := got[tc.surface]
@@ -2274,6 +2295,14 @@ func TestBatchLookupForms_LexOverlayBeatsDictTrap(t *testing.T) {
 		if r.Source != "lex-overlay" {
 			t.Errorf("%s: got source=%q, want lex-overlay", tc.surface, r.Source)
 		}
+	}
+
+	gotLower := db.BatchLookupForms([]string{"maria", "norjan"}, "FI", "custom")
+	if r := gotLower["maria"]; r.Lemma != "mari" || r.POS != "NOUN" || r.Source != "dict" {
+		t.Errorf("maria: got %+v, want lowercase homonym from dict, not exact-case overlay", r)
+	}
+	if r := gotLower["norjan"]; r.Lemma != "norja" || r.POS != "ADJ" || r.Source != "dict" {
+		t.Errorf("norjan: got %+v, want lowercase adjective from dict, not exact-case overlay", r)
 	}
 }
 

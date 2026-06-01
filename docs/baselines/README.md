@@ -137,20 +137,20 @@ refuses to overwrite an existing target, so baseline IDs remain append-only.
 
 ## Current reference set
 
-The newest committed baselines are dated **2026-05-07** with two suffixes:
+The newest committed baseline family is **`2026-05-12b-T1606Z`**. It is the
+current logical reference set for parser-regression comparisons unless a task
+explicitly asks for an older historical point.
 
-- **`2026-05-07-post-fst-*`** (j) — pre-FEATS-data state. The `feats_attributes`
-  arrays in these reports are empty because the manual gold sets had no
-  FEATS to score against; the FEATS comparison in `internal/eval/eval.go`
-  is a no-op when gold has no FEATS.
-- **`2026-05-07-feats-rich-*`** (k) — first baseline where every committed
-  gold set carries UD FEATS and the per-FEATS-attribute table fires for
-  all parsers. See [`2026-05-07-feats-rich.md`](2026-05-07-feats-rich.md)
-  for the methodology and the omorfi/estnltk reference numbers (≥99% on
-  every attribute on every dataset). The `custom` parser scores 0% on
-  FEATS in this entry because the live SQLite DB hasn't been re-imported
-  with the new FEATS mappers yet — see the methodology doc for the
-  re-import runbook.
+Earlier **2026-05-07** sets remain useful historical references:
 
-Both sets are valid references; pick `feats-rich` for any FEATS-related
-comparison and `post-fst` when you specifically want the pre-FEATS state.
+- **`2026-05-07-post-fst-*`** (j) — pre-FEATS-data state. The
+  `feats_attributes` arrays in these reports are empty because the manual gold
+  sets had no FEATS to score against; the FEATS comparison in
+  `internal/eval/eval.go` is a no-op when gold has no FEATS.
+- **`2026-05-07-feats-rich-*`** (k) — first baseline where every committed gold
+  set carries UD FEATS and the per-FEATS-attribute table fires for all parsers.
+  See [`2026-05-07-feats-rich.md`](2026-05-07-feats-rich.md) for the
+  methodology and the omorfi/estnltk reference numbers.
+
+Use the 2026-05-07 reports only when you need a specific before/after anchor
+for the FEATS migration or early FST work.

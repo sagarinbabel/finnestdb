@@ -1,6 +1,6 @@
 # Local Tooling Inventory
 
-_Current as of 2026-05-12._
+_Current as of 2026-05-18._
 
 This is the first stop when an agent or maintainer thinks a parser tool,
 analyzer, model, table, or local data file is missing.
@@ -64,19 +64,27 @@ machine. This keeps one physical source of truth and avoids stale blobs.
 
 ## Regeneration Commands
 
-Finnish FST smoke table:
+Finnish FST runtime table:
 
 ```sh
 make gen-lemmatizer-tables-fi VFST_PATH=/absolute/path/to/mor.vfst
 ```
 
-Estonian FST smoke table, using the canonical HFSTOL path:
+If `localdata/lemmatizer-fi-et/wordlists/fi.txt` is missing, this target
+derives it from `finnestdb.db` before writing
+`localdata/lemmatizer-fi-et/tables/fi_min.json`. Both outputs are
+gitignored bootstrap artifacts.
+
+Estonian FST table, using the canonical HFSTOL path:
 
 ```sh
 make gen-lemmatizer-tables-et
 ```
 
-Estonian FST smoke table, using a fallback path reported by `make doctor`:
+The current ET target still uses the tracked smoke wordlist until a
+production ET wordlist is chosen.
+
+Estonian FST table, using a fallback path reported by `make doctor`:
 
 ```sh
 make gen-lemmatizer-tables-et HFSTOL_PATH=/absolute/path/to/analyser-gt-desc.hfstol

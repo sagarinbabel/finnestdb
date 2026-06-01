@@ -1700,6 +1700,459 @@ func TestKnownWordsImportListAndDelete(t *testing.T) {
 	}
 }
 
+func TestKnownWordsDeleteAll(t *testing.T) {
+	api := newTestAPI(t)
+	// Seed FI and ET lemmas so we can prove the bulk delete is scoped per
+	// language: wiping FI must NOT remove ET rows for the same user.
+	if err := api.store.UpsertLemma("kissa", "NOUN", "cat", "FI"); err != nil {
+		t.Fatalf("UpsertLemma FI: %v", err)
+	}
+	if err := api.store.UpsertForm("kissa", "kissa", "NOUN", "FI"); err != nil {
+		t.Fatalf("UpsertForm FI: %v", err)
+	}
+	if err := api.store.UpsertLemma("juosta", "VERB", "run", "FI"); err != nil {
+		t.Fatalf("UpsertLemma FI verb: %v", err)
+	}
+	if err := api.store.UpsertForm("juosta", "juosta", "VERB", "FI"); err != nil {
+		t.Fatalf("UpsertForm FI verb: %v", err)
+	}
+	if err := api.store.UpsertLemma("kass", "NOUN", "cat", "ET"); err != nil {
+		t.Fatalf("UpsertLemma ET: %v", err)
+	}
+	if err := api.store.UpsertForm("kass", "kass", "NOUN", "ET"); err != nil {
+		t.Fatalf("UpsertForm ET: %v", err)
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "deleteall@example.com")
+
+	importFI := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa","juosta"]}`))
+	for _, c := range cookies {
+		importFI.AddCookie(c)
+	}
+	importFIRec := httptest.NewRecorder()
+	mux.ServeHTTP(importFIRec, importFI)
+	if importFIRec.Code != http.StatusOK {
+		t.Fatalf("import FI status=%d body=%q", importFIRec.Code, importFIRec.Body.String())
+	}
+	importET := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"ET","words":["kass"]}`))
+	for _, c := range cookies {
+		importET.AddCookie(c)
+	}
+	importETRec := httptest.NewRecorder()
+	mux.ServeHTTP(importETRec, importET)
+	if importETRec.Code != http.StatusOK {
+		t.Fatalf("import ET status=%d body=%q", importETRec.Code, importETRec.Body.String())
+	}
+
+	// all=1 combined with lemma/pos must be rejected so accidental clients
+	// can't wipe a whole language by also passing per-row args.
+	bad := httptest.NewRequest(http.MethodDelete, "/api/known-words?lang=FI&all=1&lemma=kissa&pos=NOUN", nil)
+	for _, c := range cookies {
+		bad.AddCookie(c)
+	}
+	badRec := httptest.NewRecorder()
+	mux.ServeHTTP(badRec, bad)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("all=1+lemma status=%d want 400 body=%q", badRec.Code, badRec.Body.String())
+	}
+
+	// all=1 without lang must still 400.
+	noLang := httptest.NewRequest(http.MethodDelete, "/api/known-words?all=1", nil)
+	for _, c := range cookies {
+		noLang.AddCookie(c)
+	}
+	noLangRec := httptest.NewRecorder()
+	mux.ServeHTTP(noLangRec, noLang)
+	if noLangRec.Code != http.StatusBadRequest {
+		t.Fatalf("all=1 no lang status=%d want 400", noLangRec.Code)
+	}
+
+	// Happy path: wipe FI.
+	wipeFI := httptest.NewRequest(http.MethodDelete, "/api/known-words?lang=FI&all=1", nil)
+	for _, c := range cookies {
+		wipeFI.AddCookie(c)
+	}
+	wipeRec := httptest.NewRecorder()
+	mux.ServeHTTP(wipeRec, wipeFI)
+	if wipeRec.Code != http.StatusOK {
+		t.Fatalf("wipe FI status=%d body=%q", wipeRec.Code, wipeRec.Body.String())
+	}
+	var wipeResp struct {
+		Status  string `json:"status"`
+		Deleted int64  `json:"deleted"`
+	}
+	if err := json.NewDecoder(bytes.NewReader(wipeRec.Body.Bytes())).Decode(&wipeResp); err != nil {
+		t.Fatalf("decode wipe response: %v", err)
+	}
+	if wipeResp.Deleted != 2 {
+		t.Fatalf("deleted=%d want 2", wipeResp.Deleted)
+	}
+
+	// FI list is empty.
+	fiReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=FI", nil)
+	for _, c := range cookies {
+		fiReq.AddCookie(c)
+	}
+	fiRec := httptest.NewRecorder()
+	mux.ServeHTTP(fiRec, fiReq)
+	var fiList KnownWordsListResponse
+	_ = json.NewDecoder(bytes.NewReader(fiRec.Body.Bytes())).Decode(&fiList)
+	if len(fiList.KnownWords) != 0 {
+		t.Fatalf("FI after wipe=%d want 0 (%+v)", len(fiList.KnownWords), fiList.KnownWords)
+	}
+
+	// ET is untouched — the wipe is language-scoped.
+	etReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=ET", nil)
+	for _, c := range cookies {
+		etReq.AddCookie(c)
+	}
+	etRec := httptest.NewRecorder()
+	mux.ServeHTTP(etRec, etReq)
+	var etList KnownWordsListResponse
+	_ = json.NewDecoder(bytes.NewReader(etRec.Body.Bytes())).Decode(&etList)
+	if len(etList.KnownWords) != 1 {
+		t.Fatalf("ET after FI wipe=%d want 1 (%+v)", len(etList.KnownWords), etList.KnownWords)
+	}
+
+	// A second wipe with nothing to delete still 200s and returns 0.
+	wipeAgain := httptest.NewRequest(http.MethodDelete, "/api/known-words?lang=FI&all=1", nil)
+	for _, c := range cookies {
+		wipeAgain.AddCookie(c)
+	}
+	wipeAgainRec := httptest.NewRecorder()
+	mux.ServeHTTP(wipeAgainRec, wipeAgain)
+	if wipeAgainRec.Code != http.StatusOK {
+		t.Fatalf("second wipe status=%d body=%q", wipeAgainRec.Code, wipeAgainRec.Body.String())
+	}
+}
+
+func TestKnownWordsReplaceDiffs(t *testing.T) {
+	// Seed three lemmas in both languages so we can verify both diff
+	// semantics and language scoping in one pass.
+	api := newTestAPI(t)
+	for _, l := range []struct{ lemma, pos, gloss, lang string }{
+		{"kissa", "NOUN", "cat", "FI"},
+		{"koira", "NOUN", "dog", "FI"},
+		{"juosta", "VERB", "run", "FI"},
+		{"kala", "NOUN", "fish", "FI"},
+		{"kass", "NOUN", "cat", "ET"},
+	} {
+		if err := api.store.UpsertLemma(l.lemma, l.pos, l.gloss, l.lang); err != nil {
+			t.Fatalf("UpsertLemma %s: %v", l.lemma, err)
+		}
+		if err := api.store.UpsertForm(l.lemma, l.lemma, l.pos, l.lang); err != nil {
+			t.Fatalf("UpsertForm %s: %v", l.lemma, err)
+		}
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "replace@example.com")
+
+	// Seed FI vocab via POST tagged as Anki-sourced so the default-scope
+	// PUT diff (which only touches source='anki' rows) can remove them.
+	// The manual-preservation case is exercised by a separate test below.
+	importReq := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa","koira","juosta"],"source":"anki"}`))
+	for _, c := range cookies {
+		importReq.AddCookie(c)
+	}
+	importRec := httptest.NewRecorder()
+	mux.ServeHTTP(importRec, importReq)
+	if importRec.Code != http.StatusOK {
+		t.Fatalf("seed status=%d body=%q", importRec.Code, importRec.Body.String())
+	}
+
+	// Also seed ET so we can prove it's untouched.
+	importET := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"ET","words":["kass"],"source":"anki"}`))
+	for _, c := range cookies {
+		importET.AddCookie(c)
+	}
+	importETRec := httptest.NewRecorder()
+	mux.ServeHTTP(importETRec, importET)
+	if importETRec.Code != http.StatusOK {
+		t.Fatalf("seed ET status=%d body=%q", importETRec.Code, importETRec.Body.String())
+	}
+
+	// PUT a new FI set: kissa (kept), kala (new), juoksen (unresolvable).
+	// koira and juosta should be removed; kissa should not be re-touched.
+	replaceReq := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa","kala","juoksen-no-such-form"]}`))
+	for _, c := range cookies {
+		replaceReq.AddCookie(c)
+	}
+	replaceRec := httptest.NewRecorder()
+	mux.ServeHTTP(replaceRec, replaceReq)
+	if replaceRec.Code != http.StatusOK {
+		t.Fatalf("replace status=%d body=%q", replaceRec.Code, replaceRec.Body.String())
+	}
+	var resp KnownWordsReplaceResponse
+	if err := json.NewDecoder(bytes.NewReader(replaceRec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode replace: %v", err)
+	}
+	addedLemmas := lemmaSet(resp.Added)
+	removedLemmas := lemmaSet(resp.Removed)
+	if !addedLemmas["kala/NOUN"] || len(addedLemmas) != 1 {
+		t.Fatalf("added=%v want {kala/NOUN}", addedLemmas)
+	}
+	if !removedLemmas["koira/NOUN"] || !removedLemmas["juosta/VERB"] || len(removedLemmas) != 2 {
+		t.Fatalf("removed=%v want {koira/NOUN, juosta/VERB}", removedLemmas)
+	}
+	if len(resp.Unresolved) != 1 || resp.Unresolved[0] != "juoksen-no-such-form" {
+		t.Fatalf("unresolved=%v want [juoksen-no-such-form]", resp.Unresolved)
+	}
+
+	// Verify state via GET — FI is now exactly {kissa, kala}.
+	got := listKnownWordsForLang(t, mux, cookies, "FI")
+	if !got["kissa/NOUN"] || !got["kala/NOUN"] || len(got) != 2 {
+		t.Fatalf("FI list after replace=%v want {kissa/NOUN, kala/NOUN}", got)
+	}
+
+	// ET untouched.
+	gotET := listKnownWordsForLang(t, mux, cookies, "ET")
+	if !gotET["kass/NOUN"] || len(gotET) != 1 {
+		t.Fatalf("ET list after FI replace=%v want {kass/NOUN}", gotET)
+	}
+
+	// Empty words list clears the language.
+	clearReq := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(`{"lang":"FI","words":[]}`))
+	for _, c := range cookies {
+		clearReq.AddCookie(c)
+	}
+	clearRec := httptest.NewRecorder()
+	mux.ServeHTTP(clearRec, clearReq)
+	if clearRec.Code != http.StatusOK {
+		t.Fatalf("clear status=%d body=%q", clearRec.Code, clearRec.Body.String())
+	}
+	var clearResp KnownWordsReplaceResponse
+	if err := json.NewDecoder(bytes.NewReader(clearRec.Body.Bytes())).Decode(&clearResp); err != nil {
+		t.Fatalf("decode clear: %v", err)
+	}
+	if len(clearResp.Added) != 0 {
+		t.Fatalf("clear added=%v want []", clearResp.Added)
+	}
+	if len(clearResp.Removed) != 2 {
+		t.Fatalf("clear removed=%d want 2", len(clearResp.Removed))
+	}
+
+	// Missing words key (not just empty array) is a 400 — keeps clients
+	// from accidentally clearing on a malformed payload.
+	bad := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(`{"lang":"FI"}`))
+	for _, c := range cookies {
+		bad.AddCookie(c)
+	}
+	badRec := httptest.NewRecorder()
+	mux.ServeHTTP(badRec, bad)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("missing words status=%d want 400", badRec.Code)
+	}
+
+	// Replacing with the same set as current is a no-op: zero added, zero
+	// removed.
+	seedAgain := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa"]}`))
+	for _, c := range cookies {
+		seedAgain.AddCookie(c)
+	}
+	mux.ServeHTTP(httptest.NewRecorder(), seedAgain)
+	noopReq := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa"]}`))
+	for _, c := range cookies {
+		noopReq.AddCookie(c)
+	}
+	noopRec := httptest.NewRecorder()
+	mux.ServeHTTP(noopRec, noopReq)
+	var noopResp KnownWordsReplaceResponse
+	if err := json.NewDecoder(bytes.NewReader(noopRec.Body.Bytes())).Decode(&noopResp); err != nil {
+		t.Fatalf("decode noop: %v", err)
+	}
+	if len(noopResp.Added) != 0 || len(noopResp.Removed) != 0 {
+		t.Fatalf("noop add=%d remove=%d want 0/0", len(noopResp.Added), len(noopResp.Removed))
+	}
+}
+
+func TestKnownWordsReplaceRejectsAllUnresolvedInput(t *testing.T) {
+	api := newTestAPI(t)
+	for _, l := range []struct{ lemma, pos, lang string }{
+		{"kissa", "NOUN", "FI"},
+		{"koira", "NOUN", "FI"},
+	} {
+		if err := api.store.UpsertLemma(l.lemma, l.pos, "x", l.lang); err != nil {
+			t.Fatalf("UpsertLemma %s: %v", l.lemma, err)
+		}
+		if err := api.store.UpsertForm(l.lemma, l.lemma, l.pos, l.lang); err != nil {
+			t.Fatalf("UpsertForm %s: %v", l.lemma, err)
+		}
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "replace-unresolved@example.com")
+
+	seed := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa","koira"],"source":"anki"}`))
+	for _, c := range cookies {
+		seed.AddCookie(c)
+	}
+	seedRec := httptest.NewRecorder()
+	mux.ServeHTTP(seedRec, seed)
+	if seedRec.Code != http.StatusOK {
+		t.Fatalf("seed status=%d body=%q", seedRec.Code, seedRec.Body.String())
+	}
+
+	replace := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["not-a-finnish-word-123","still-unresolved-456"]}`))
+	for _, c := range cookies {
+		replace.AddCookie(c)
+	}
+	replaceRec := httptest.NewRecorder()
+	mux.ServeHTTP(replaceRec, replace)
+	if replaceRec.Code != http.StatusBadRequest {
+		t.Fatalf("replace status=%d want 400 body=%q", replaceRec.Code, replaceRec.Body.String())
+	}
+	if !strings.Contains(replaceRec.Body.String(), store.ErrKnownWordsReplaceNoResolvedWords.Error()) {
+		t.Fatalf("replace body=%q missing unresolved guard", replaceRec.Body.String())
+	}
+
+	got := listKnownWordsForLang(t, mux, cookies, "FI")
+	if !got["kissa/NOUN"] || !got["koira/NOUN"] || len(got) != 2 {
+		t.Fatalf("FI list after rejected replace=%v want {kissa/NOUN, koira/NOUN}", got)
+	}
+}
+
+func TestKnownWordsReplacePreservesManualSourceByDefault(t *testing.T) {
+	// Verifies the per-row source tagging: rows imported as 'manual' (via the
+	// textbox / file flow, or via /api/lemma-state from the inspect page)
+	// survive an Anki sync's default scope='anki' diff. Only with scope='all'
+	// can a sync drop them.
+	api := newTestAPI(t)
+	for _, l := range []struct{ lemma, pos, lang string }{
+		{"kissa", "NOUN", "FI"},
+		{"koira", "NOUN", "FI"},
+		{"juosta", "VERB", "FI"},
+		{"kala", "NOUN", "FI"},
+		{"hauki", "NOUN", "FI"},
+	} {
+		if err := api.store.UpsertLemma(l.lemma, l.pos, "x", l.lang); err != nil {
+			t.Fatalf("UpsertLemma %s: %v", l.lemma, err)
+		}
+		if err := api.store.UpsertForm(l.lemma, l.lemma, l.pos, l.lang); err != nil {
+			t.Fatalf("UpsertForm %s: %v", l.lemma, err)
+		}
+	}
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "preserve@example.com")
+
+	// Manual rows (textbox/file flow): kissa, koira.
+	postReq := func(body string) {
+		req := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(body))
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("POST %s status=%d body=%q", body, rec.Code, rec.Body.String())
+		}
+	}
+	// No explicit source → defaults to 'manual'.
+	postReq(`{"lang":"FI","words":["kissa","koira"]}`)
+	// Anki additive: juosta, kala.
+	postReq(`{"lang":"FI","words":["juosta","kala"],"source":"anki"}`)
+
+	// PUT default scope (anki): new target is {kissa, hauki}.
+	//   - kissa: already exists as manual. Cannot be re-tagged. NOT in
+	//     scope='anki' current set, so it's invisible to the diff; INSERT OR
+	//     IGNORE is a no-op → not in `added`.
+	//   - hauki: new, gets source='anki' → in `added`.
+	//   - juosta, kala: were source='anki' but missing from new target →
+	//     `removed`.
+	//   - koira: source='manual', not in new target, but invisible to the
+	//     diff at scope='anki' → preserved.
+	put := func(body string) KnownWordsReplaceResponse {
+		req := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(body))
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("PUT %s status=%d body=%q", body, rec.Code, rec.Body.String())
+		}
+		var resp KnownWordsReplaceResponse
+		if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+			t.Fatalf("decode PUT %s: %v", body, err)
+		}
+		return resp
+	}
+
+	resp := put(`{"lang":"FI","words":["kissa","hauki"]}`)
+	addedKeys := lemmaSet(resp.Added)
+	removedKeys := lemmaSet(resp.Removed)
+	if !addedKeys["hauki/NOUN"] || len(addedKeys) != 1 {
+		t.Fatalf("added=%v want {hauki/NOUN}", addedKeys)
+	}
+	if !removedKeys["juosta/VERB"] || !removedKeys["kala/NOUN"] || len(removedKeys) != 2 {
+		t.Fatalf("removed=%v want {juosta/VERB, kala/NOUN}", removedKeys)
+	}
+
+	got := listKnownWordsForLang(t, mux, cookies, "FI")
+	// Manual rows (kissa, koira) survive. Anki re-confirmed (kissa not added
+	// again since it was already present as manual). New anki row: hauki.
+	if !got["kissa/NOUN"] || !got["koira/NOUN"] || !got["hauki/NOUN"] || len(got) != 3 {
+		t.Fatalf("after default-scope PUT got=%v want {kissa/NOUN, koira/NOUN, hauki/NOUN}", got)
+	}
+
+	// Now scope='all': koira should be removed (it's manual but in scope).
+	resp2 := put(`{"lang":"FI","words":["kissa","hauki"],"scope":"all"}`)
+	removed2 := lemmaSet(resp2.Removed)
+	if !removed2["koira/NOUN"] || len(removed2) != 1 {
+		t.Fatalf("scope=all removed=%v want {koira/NOUN}", removed2)
+	}
+	got2 := listKnownWordsForLang(t, mux, cookies, "FI")
+	if !got2["kissa/NOUN"] || !got2["hauki/NOUN"] || len(got2) != 2 {
+		t.Fatalf("after scope=all got=%v want {kissa/NOUN, hauki/NOUN}", got2)
+	}
+
+	// Invalid scope is a 400.
+	badScope := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(`{"lang":"FI","words":[],"scope":"bogus"}`))
+	for _, c := range cookies {
+		badScope.AddCookie(c)
+	}
+	badRec := httptest.NewRecorder()
+	mux.ServeHTTP(badRec, badScope)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("scope=bogus status=%d want 400 body=%q", badRec.Code, badRec.Body.String())
+	}
+
+	// Invalid source is a 400.
+	badSrc := httptest.NewRequest(http.MethodPost, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["kissa"],"source":"bogus"}`))
+	for _, c := range cookies {
+		badSrc.AddCookie(c)
+	}
+	badSrcRec := httptest.NewRecorder()
+	mux.ServeHTTP(badSrcRec, badSrc)
+	if badSrcRec.Code != http.StatusBadRequest {
+		t.Fatalf("source=bogus status=%d want 400", badSrcRec.Code)
+	}
+}
+
+func lemmaSet(lemmas []store.KnownLemma) map[string]bool {
+	out := make(map[string]bool, len(lemmas))
+	for _, l := range lemmas {
+		out[l.Lemma+"/"+l.POS] = true
+	}
+	return out
+}
+
+func listKnownWordsForLang(t *testing.T, mux http.Handler, cookies []*http.Cookie, lang string) map[string]bool {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, "/api/known-words?lang="+lang, nil)
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	var resp KnownWordsListResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode list %s: %v", lang, err)
+	}
+	return lemmaSet(resp.KnownWords)
+}
+
 func TestLemmaStateMarksKnownAndIgnored(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)

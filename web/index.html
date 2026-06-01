@@ -26,6 +26,7 @@
                 <a href="#/dashboard" class="nav-link" data-route="/dashboard">Dashboard</a>
                 <a href="#/inspect" class="nav-link" data-route="/inspect">Parse</a>
                 <a href="#/decks" class="nav-link" data-route="/decks">Decks</a>
+                <a href="#/vocab" class="nav-link" data-route="/vocab">Vocab</a>
                 <a href="#/review" class="nav-link" data-route="/review">Review</a>
             </div>
 
@@ -75,6 +76,7 @@
                 <a href="#/dashboard" class="nav-mobile-link" data-route="/dashboard">Dashboard</a>
                 <a href="#/inspect" class="nav-mobile-link" data-route="/inspect">Parse</a>
                 <a href="#/decks" class="nav-mobile-link" data-route="/decks">Decks</a>
+                <a href="#/vocab" class="nav-mobile-link" data-route="/vocab">Vocab</a>
                 <a href="#/review" class="nav-mobile-link" data-route="/review">Review</a>
                 <a href="#/languages" class="nav-mobile-link" data-route="/languages">Languages</a>
             </div>
@@ -310,23 +312,84 @@
             </section>
 
             <section id="official-decks-list" class="decks-list hidden" aria-live="polite"></section>
+        </main>
+    </div>
 
-            <section class="known-words-panel">
-                <div class="known-words-header">
-                    <div>
-                        <h2>Known words</h2>
-                        <p class="known-words-lede">Import words you already know so deck coverage and review selection start from your real vocabulary.</p>
-                        <p class="known-words-lang-hint" id="known-words-lang-hint"></p>
-                    </div>
+    <!-- ==================== VOCAB ==================== -->
+    <div id="vocab-page" class="page" data-role-required="user admin">
+        <main class="vocab-main">
+            <section class="vocab-header">
+                <div>
+                    <h1>Vocabulary</h1>
+                    <p class="vocab-lede">Words you already know shape deck coverage and review selection. Import from a list, a file, or pull straight from Anki.</p>
+                    <p class="known-words-lang-hint" id="known-words-lang-hint"></p>
                 </div>
-                <form id="known-words-form" class="known-words-form">
-                    <label for="known-words-input">Import known words</label>
-                    <textarea id="known-words-input" rows="4" placeholder="Paste one word per line, or separate words with commas."></textarea>
-                    <div class="known-words-actions">
-                        <button type="submit" id="known-words-submit" class="btn btn-primary btn-sm">Import words</button>
-                        <span id="known-words-summary" class="known-words-summary" role="status"></span>
+            </section>
+
+            <section class="vocab-stats">
+                <div class="stat-card">
+                    <span class="stat-label">Known words (total)</span>
+                    <span class="stat-value" id="vocab-stat-total">—</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Known <span id="vocab-stat-lang-name">Finnish</span></span>
+                    <span class="stat-value" id="vocab-stat-lang">—</span>
+                </div>
+            </section>
+
+            <section class="vocab-import-grid">
+                <div class="vocab-import-card">
+                    <h2>Paste a list</h2>
+                    <p class="vocab-import-lede">One word per line, or separated by commas or semicolons.</p>
+                    <form id="known-words-form" class="known-words-form">
+                        <label for="known-words-input" class="sr-only">Words to import</label>
+                        <textarea id="known-words-input" rows="6" placeholder="kissa&#10;koira&#10;auto"></textarea>
+                        <div class="known-words-actions">
+                            <button type="submit" id="known-words-submit" class="btn btn-primary btn-sm">Import words</button>
+                            <span id="known-words-summary" class="known-words-summary" role="status"></span>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="vocab-import-card">
+                    <h2>Import from file</h2>
+                    <p class="vocab-import-lede">Drop a <code>.txt</code>, <code>.csv</code>, or <code>.tsv</code> file. One word per line, or the first column.</p>
+                    <label for="vocab-file-input" class="vocab-file-cta" id="vocab-file-cta">
+                        <span class="vocab-file-icon" aria-hidden="true">📄</span>
+                        <span class="vocab-file-text">
+                            <strong>Drop a file here</strong>
+                            <span class="vocab-file-sub">or click to choose</span>
+                        </span>
+                    </label>
+                    <input type="file" id="vocab-file-input" accept=".txt,.csv,.tsv,.md" hidden>
+                    <span id="vocab-file-status" class="known-words-summary" role="status"></span>
+                </div>
+
+                <div class="vocab-import-card">
+                    <h2>Import from Anki</h2>
+                    <p class="vocab-import-lede">Pull cards from a local Anki deck through the AnkiConnect add-on.</p>
+                    <div class="vocab-anki-step">
+                        <div class="vocab-anki-buttons">
+                            <button type="button" id="vocab-anki-connect" class="btn btn-primary btn-sm">Connect to Anki</button>
+                            <button type="button" id="vocab-anki-sync" class="btn btn-outline btn-sm hidden" data-tooltip="Re-run the last import using your saved decks + field choices.">Sync from Anki</button>
+                        </div>
+                        <a href="#" id="vocab-anki-settings" class="vocab-anki-link">Settings</a>
+                        <span id="vocab-anki-status" class="known-words-summary" role="status"></span>
                     </div>
-                </form>
+                    <a href="#" id="vocab-anki-help" class="vocab-anki-help">Setup instructions</a>
+                </div>
+            </section>
+
+            <section class="vocab-list-section">
+                <div class="vocab-list-header">
+                    <h2>Your known words</h2>
+                    <button
+                        type="button"
+                        id="vocab-delete-all"
+                        class="btn btn-outline btn-sm vocab-delete-all"
+                        data-tooltip="You will need to confirm deletion."
+                    >Delete all vocabulary</button>
+                </div>
                 <div id="known-words-unresolved" class="known-words-unresolved hidden"></div>
                 <div id="known-words-empty" class="placeholder-card hidden">
                     <p>No known words imported for this language yet.</p>
@@ -647,6 +710,161 @@
         </div>
     </div>
 
+    <!-- ==================== ANKI SETUP MODAL ==================== -->
+    <div id="anki-setup-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="anki-setup-modal-title">
+        <div class="modal-backdrop" id="anki-setup-modal-backdrop"></div>
+        <div class="modal-card" role="document">
+            <button type="button" class="modal-close" id="anki-setup-modal-close" aria-label="Close">×</button>
+            <h3 id="anki-setup-modal-title">Set up AnkiConnect</h3>
+            <p class="modal-lede">Finnest imports cards from your local Anki collection via an Anki add-on called AnkiConnect. There's a one-time setup:</p>
+
+            <ol class="anki-setup-steps">
+                <li>
+                    <strong>Install Anki desktop.</strong>
+                    Download from <a href="https://apps.ankiweb.net" target="_blank" rel="noreferrer">apps.ankiweb.net</a> if you don't already have it. The mobile and web versions can't expose your collection over HTTP.
+                </li>
+                <li>
+                    <strong>Install AnkiConnect.</strong>
+                    <ol class="anki-setup-substeps">
+                        <li>In Anki, open <em>Tools → Add-ons</em> (or press <kbd id="anki-setup-shortcut">Ctrl+Shift+A</kbd>).</li>
+                        <li>Click the <em>Get Add-ons…</em> button.</li>
+                        <li>Paste the code <code class="anki-setup-code">2055492159</code> (or visit the <a href="https://ankiweb.net/shared/info/2055492159" target="_blank" rel="noreferrer">AnkiConnect page</a>) and click <em>OK</em>.</li>
+                        <li>Double-click the <em>AnkiConnect</em> entry in the add-ons list to open its config.</li>
+                        <li>
+                            Add <code class="anki-setup-code">"https://finne.st"</code> to the <code>webCorsOriginList</code> section. It should look something like:
+                            <div class="anki-setup-copy-wrap">
+<pre class="anki-setup-config anki-setup-copy" id="anki-setup-copy-source">{
+    "apiKey": null,
+    "apiLogPath": null,
+    "ignoreOriginList": [],
+    "webBindAddress": "127.0.0.1",
+    "webBindPort": 8765,
+    "webCorsOriginList": [
+        "http://localhost",
+        <span class="anki-setup-config-finnest">"https://finne.st"</span>
+    ]
+}</pre>
+                                <button type="button" class="btn btn-outline btn-sm anki-setup-copy-btn" id="anki-setup-copy-btn" aria-live="polite">Copy</button>
+                            </div>
+                        </li>
+                        <li>Click <em>OK</em>, then restart Anki.</li>
+                    </ol>
+                </li>
+                <li>
+                    <strong>Keep Anki running.</strong>
+                    AnkiConnect only answers while the Anki desktop app is open. Leave it open, then click <em>Connect to Anki</em>.
+                </li>
+            </ol>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-primary" id="anki-setup-modal-done">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== ANKI IMPORT SETTINGS MODAL ==================== -->
+    <div id="anki-settings-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="anki-settings-modal-title">
+        <div class="modal-backdrop" id="anki-settings-modal-backdrop"></div>
+        <div class="modal-card" role="document">
+            <button type="button" class="modal-close" id="anki-settings-modal-close" aria-label="Close">×</button>
+            <h3 id="anki-settings-modal-title">Anki import settings</h3>
+
+            <div class="anki-settings-list">
+                <label class="anki-import-include-new">
+                    <input type="checkbox" id="anki-settings-include-new" />
+                    <span>Mark new cards as known</span>
+                    <span class="anki-import-include-new-hint">New cards (cards you haven't studied yet) aren't imported by default.</span>
+                </label>
+                <label class="anki-import-include-new">
+                    <input type="checkbox" id="anki-settings-include-suspended" />
+                    <span>Include suspended cards</span>
+                    <span class="anki-import-include-new-hint">Suspended cards aren't imported by default.</span>
+                </label>
+                <div class="anki-settings-replace-group">
+                    <label class="anki-import-include-new anki-import-replace anki-settings-grouped">
+                        <input type="checkbox" id="anki-settings-replace-mode" />
+                        <span>Replace existing vocabulary</span>
+                        <span class="anki-import-include-new-hint">The import becomes a sync: words not in this Anki selection are <strong>removed</strong> from your known-words list.</span>
+                    </label>
+                    <div class="anki-settings-subgroup" id="anki-settings-preserve-manual-wrap">
+                        <label class="anki-import-include-new anki-import-preserve-manual anki-settings-grouped">
+                            <input type="checkbox" id="anki-settings-preserve-manual" checked />
+                            <span>Preserve manually-imported words</span>
+                            <span class="anki-import-include-new-hint">Words you added through the textbox, a file, or by marking a row known on the Parse page are kept. Uncheck to make the sync replace <em>everything</em>.</span>
+                        </label>
+                    </div>
+                </div>
+                <label class="anki-import-include-new">
+                    <input type="checkbox" id="anki-settings-skip-confirm" />
+                    <span>Skip confirmation when syncing</span>
+                    <span class="anki-import-include-new-hint"><em>Sync from Anki</em> runs without pausing for the replace-vocabulary confirmation dialog.</span>
+                </label>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-link" id="anki-settings-reset">Reset defaults</button>
+                <button type="button" class="btn btn-primary" id="anki-settings-modal-done">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== ANKI IMPORT MODAL ==================== -->
+    <div id="anki-import-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="anki-import-modal-title">
+        <div class="modal-backdrop" id="anki-import-modal-backdrop"></div>
+        <div class="modal-card modal-card-wide" role="document">
+            <button type="button" class="modal-close" id="anki-import-modal-close" aria-label="Close">×</button>
+            <h3 id="anki-import-modal-title">Connect to Anki</h3>
+
+            <!-- Connecting state -->
+            <div class="anki-import-stage" id="anki-import-stage-loading">
+                <p class="modal-lede" id="anki-import-loading-msg">Connecting to AnkiConnect…</p>
+            </div>
+
+            <!-- Step 1: pick decks -->
+            <div class="anki-import-stage hidden" id="anki-import-stage-decks">
+                <p class="modal-lede">Pick the decks you want to import vocabulary from. Sub-decks are nested under their parents — selecting a parent imports everything beneath it.</p>
+                <div class="anki-import-toolbar">
+                    <input type="search" id="anki-import-filter" class="anki-import-filter" placeholder="Filter decks…" autocomplete="off" />
+                    <button type="button" id="anki-import-clear-filter" class="btn btn-link btn-sm">Clear</button>
+                </div>
+                <div class="anki-import-tree-wrap">
+                    <div id="anki-import-tree" class="anki-import-tree" role="tree" aria-label="Anki decks"></div>
+                    <p id="anki-import-tree-empty" class="anki-import-empty hidden">No decks match this filter.</p>
+                </div>
+                <p class="anki-import-summary" id="anki-import-deck-summary"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-link" id="anki-import-cancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="anki-import-next">Continue</button>
+                </div>
+            </div>
+
+            <!-- Step 2: pick fields per card type -->
+            <div class="anki-import-stage hidden" id="anki-import-stage-fields">
+                <p class="modal-lede">For each card type in your selected decks, pick the field that holds the word you want to mark known. Set a card type to <em>Skip</em> to ignore it.</p>
+                <div id="anki-import-fields" class="anki-import-fields"></div>
+                <p class="anki-import-summary" id="anki-import-field-summary"></p>
+                <a href="#" id="anki-import-open-settings" class="vocab-anki-link" data-tooltip="Mark new / include suspended / replace existing / preserve manual">Import settings</a>
+                <p class="anki-import-estimate" id="anki-import-estimate" aria-live="polite"></p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-link" id="anki-import-back">Back</button>
+                    <button type="button" class="btn btn-primary" id="anki-import-run">Import</button>
+                </div>
+            </div>
+
+            <!-- Step 3: importing / done -->
+            <div class="anki-import-stage hidden" id="anki-import-stage-running">
+                <p class="modal-lede" id="anki-import-running-msg">Importing…</p>
+                <div class="anki-import-progress">
+                    <div id="anki-import-progress-bar" class="anki-import-progress-bar"></div>
+                </div>
+                <p id="anki-import-running-detail" class="anki-import-summary"></p>
+                <div class="modal-actions hidden" id="anki-import-done-actions">
+                    <button type="button" class="btn btn-primary" id="anki-import-done">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ==================== GENERIC CONFIRM / PROMPT ====================
          Used by showConfirm() / showPrompt() in app.ts as the site-standard
          replacement for window.alert / .confirm / .prompt. Never call those
@@ -660,6 +878,10 @@
                 <label for="dialog-modal-input" id="dialog-modal-input-label">Value</label>
                 <input type="text" id="dialog-modal-input" autocomplete="off" />
             </div>
+            <label class="dialog-modal-remember hidden" id="dialog-modal-remember-wrap">
+                <input type="checkbox" id="dialog-modal-remember" />
+                <span id="dialog-modal-remember-label">Don't show this again</span>
+            </label>
             <div class="modal-actions">
                 <button type="button" class="btn btn-link" id="dialog-modal-cancel">Cancel</button>
                 <button type="button" class="btn btn-primary" id="dialog-modal-confirm">OK</button>

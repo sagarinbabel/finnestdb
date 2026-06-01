@@ -1057,16 +1057,16 @@ it:
 
 ### Trade-off Accepted
 
-This leaves a real privacy gap for alpha:
+This originally left a privacy gap for alpha because logged-in Inspect parses
+were stored automatically. The current alpha closes that gap by making
+`/api/parse` ephemeral by default, including for signed-in users. Source text is
+stored only when a user saves a deck or submits parser feedback.
 
-> Logged-in users have their pasted text stored automatically during Inspect,
-> without a separate per-paste consent moment.
+The remaining retention work is:
 
-That gap is accepted for alpha only. It will be closed with:
-
-- a parse-history UI
+- a parse-history/deletion UI for saved deck and feedback source context
 - per-user delete controls for stored parse sessions
-- an opt-in ephemeral parse mode for logged-in users
+- clear UI copy on the parse form, not only in documentation
 
 ### Post-v1 Reconsideration
 

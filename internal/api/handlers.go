@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -63,10 +64,10 @@ type SessionUser struct {
 }
 
 type MeResponse struct {
-	Authenticated bool             `json:"authenticated"`
-	User          *SessionUser     `json:"user"`
-	Dashboard     *DashboardData   `json:"dashboard,omitempty"`
-	Languages     *UserLanguages   `json:"languages,omitempty"`
+	Authenticated bool           `json:"authenticated"`
+	User          *SessionUser   `json:"user"`
+	Dashboard     *DashboardData `json:"dashboard,omitempty"`
+	Languages     *UserLanguages `json:"languages,omitempty"`
 }
 
 // UserLanguages is the per-user view of language settings sent to the client.
@@ -147,10 +148,25 @@ type ReviewCardMutationRequest struct {
 type KnownWordsRequest struct {
 	Lang  string   `json:"lang"`
 	Words []string `json:"words"`
+	// Source tag for new rows on POST. Omit / empty → "manual".
+	// Accepted: "manual" | "anki".
+	Source string `json:"source,omitempty"`
+	// Diff scope on PUT. Omit / empty → "anki" (preserve manual rows).
+	// Accepted: "anki" | "all".
+	Scope string `json:"scope,omitempty"`
 }
 
 type KnownWordsResponse struct {
 	Imported   []store.KnownLemma `json:"imported"`
+	Unresolved []string           `json:"unresolved"`
+}
+
+// KnownWordsReplaceResponse is returned by PUT /api/known-words. It mirrors
+// the POST response shape but splits the result into adds/removes so the
+// client can show the delta of an Anki "sync" import.
+type KnownWordsReplaceResponse struct {
+	Added      []store.KnownLemma `json:"added"`
+	Removed    []store.KnownLemma `json:"removed"`
 	Unresolved []string           `json:"unresolved"`
 }
 
@@ -1382,6 +1398,18 @@ func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
+		if req.IsPublic != nil && title != "" {
+			if err := a.store.UpdateDeckTitleAndPublic(auth.UserID, deckID, title, *req.IsPublic); err != nil {
+				if err == sql.ErrNoRows {
+					http.Error(w, "Deck not found", http.StatusNotFound)
+					return
+				}
+				http.Error(w, "Database error", http.StatusInternalServerError)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+			return
+		}
 		if req.IsPublic != nil {
 			if err := a.store.SetDeckIsPublic(deckID, *req.IsPublic); err != nil {
 				if err == sql.ErrNoRows {
@@ -1545,11 +1573,56 @@ func (a *API) HandleKnownWords(w http.ResponseWriter, r *http.Request) {
 		a.handleKnownWordsList(w, r, auth)
 	case http.MethodPost:
 		a.handleKnownWordsImport(w, r, auth)
+	case http.MethodPut:
+		a.handleKnownWordsReplace(w, r, auth)
 	case http.MethodDelete:
 		a.handleKnownWordsDelete(w, r, auth)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func (a *API) handleKnownWordsReplace(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	var req KnownWordsRequest
+	if !decodeJSONRequest(w, r, &req) {
+		return
+	}
+	if req.Lang != "FI" && req.Lang != "ET" {
+		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
+		return
+	}
+	// Unlike POST, an empty words list is meaningful here — it means "clear
+	// this language's vocabulary". We still require the field to be present
+	// (decoded JSON), but len==0 is allowed.
+	if req.Words == nil {
+		http.Error(w, "Words list is required (use [] to clear)", http.StatusBadRequest)
+		return
+	}
+
+	scope := req.Scope
+	if scope == "" {
+		scope = store.SourceAnki
+	}
+	if scope != "all" && scope != store.SourceAnki {
+		http.Error(w, "scope must be 'anki' or 'all'", http.StatusBadRequest)
+		return
+	}
+
+	added, removed, unresolved, err := a.store.ReplaceKnownWords(auth.UserID, req.Lang, req.Words, scope)
+	if err != nil {
+		if errors.Is(err, store.ErrKnownWordsReplaceNoResolvedWords) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, KnownWordsReplaceResponse{
+		Added:      added,
+		Removed:    removed,
+		Unresolved: unresolved,
+	})
 }
 
 func (a *API) handleKnownWordsImport(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
@@ -1566,7 +1639,16 @@ func (a *API) handleKnownWordsImport(w http.ResponseWriter, r *http.Request, aut
 		return
 	}
 
-	imported, unresolved, err := a.store.ImportKnownWords(auth.UserID, req.Lang, req.Words)
+	source := req.Source
+	if source == "" {
+		source = store.SourceManual
+	}
+	if source != store.SourceManual && source != store.SourceAnki {
+		http.Error(w, "source must be 'manual' or 'anki'", http.StatusBadRequest)
+		return
+	}
+
+	imported, unresolved, err := a.store.ImportKnownWords(auth.UserID, req.Lang, req.Words, source)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -1595,13 +1677,33 @@ func (a *API) handleKnownWordsList(w http.ResponseWriter, r *http.Request, auth 
 }
 
 func (a *API) handleKnownWordsDelete(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
-	lang := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("lang")))
-	lemma := strings.TrimSpace(r.URL.Query().Get("lemma"))
-	pos := strings.TrimSpace(r.URL.Query().Get("pos"))
+	q := r.URL.Query()
+	lang := strings.ToUpper(strings.TrimSpace(q.Get("lang")))
+	lemma := strings.TrimSpace(q.Get("lemma"))
+	pos := strings.TrimSpace(q.Get("pos"))
 	if lang != "FI" && lang != "ET" {
 		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
 		return
 	}
+
+	// Bulk path: `all=1` clears every known-word row for this (user, lang).
+	// Requiring the explicit flag prevents the per-row delete from
+	// accidentally wiping the language when the client forgets to set
+	// lemma/pos.
+	if q.Get("all") == "1" {
+		if lemma != "" || pos != "" {
+			http.Error(w, "all=1 cannot be combined with lemma/pos", http.StatusBadRequest)
+			return
+		}
+		deleted, err := a.store.DeleteAllKnownWords(auth.UserID, lang)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "deleted": deleted})
+		return
+	}
+
 	if lemma == "" || pos == "" {
 		http.Error(w, "Lemma and POS are required", http.StatusBadRequest)
 		return

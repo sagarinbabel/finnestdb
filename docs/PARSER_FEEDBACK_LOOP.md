@@ -17,6 +17,13 @@ The downstream loop (accepted correction → lexical row update) is
 tracked in [`TODO.md`](../TODO.md) "Close the self-improving feedback
 loop".
 
+Accepted feedback should be classified with
+[`CORRECTION_TAXONOMY.md`](CORRECTION_TAXONOMY.md) before writeback. Not every
+learner-visible bad card is a parser identity bug: some are meaning-cue,
+contextual-sense, phrase-boundary, example-quality, or card-presentation fixes.
+Writing each fix to the smallest durable layer keeps pasted text, EPUBs,
+articles, subtitles, Anki imports, and future catalog decks on the same path.
+
 ## UX recommendations
 
 ### Always attach a parse session
@@ -78,6 +85,19 @@ Acceptance is not yet wired to lexical updates. See
 plan to wire accepted corrections into `custom_overrides` lexical rows
 (Phase 1) and FEATS updates (Phase 2).
 
+Before accepting, admins should choose one primary correction type:
+
+- parser identity;
+- meaning cue;
+- contextual sense;
+- phrase boundary;
+- example quality;
+- card presentation.
+
+Parser identity fixes can write lexical overrides and promote eval cases.
+Meaning/card fixes should write the appropriate overlay row and add render tests
+instead of pretending the parser lemma was wrong.
+
 ## Estonian uses the same path
 
 The correction flow is shared — language-specific differences live in
@@ -85,6 +105,10 @@ analyzer choice and lexical sources, not in how users report mistakes
 or how admins review them. ET-specific source choices live in
 [`LEXICAL_PLAN.md`](LEXICAL_PLAN.md) "Estonian-specific source choices
 and adapter contract".
+
+The taxonomy is shared, but correction content stays language-specific. A
+Finnish `sanoin` fix and an Estonian `peatus` fix use the same workflow; they
+must not share overlay rows, morphology assumptions, or gold fixtures.
 
 ## See also
 

@@ -288,6 +288,59 @@ func TestLoadBaselineDir_ReadsCompressedJSON(t *testing.T) {
 	}
 }
 
+func TestLoadBaselineDir_KeysByDatasetVersion(t *testing.T) {
+	dir := t.TempDir()
+	v1 := &eval.Report{
+		Generated: "2026-05-12T16:06:00Z",
+		Dataset:   eval.ReportDataset{Name: "fi-manual", Version: "v1", CaseCount: 22},
+		Summary: map[string]eval.ParserSummary{
+			"custom": {LemmaAccuracy: 0.81},
+		},
+	}
+	v2 := &eval.Report{
+		Generated: "2026-05-12T16:06:00Z",
+		Dataset:   eval.ReportDataset{Name: "fi-manual", Version: "v2", CaseCount: 4},
+		Summary: map[string]eval.ParserSummary{
+			"custom": {LemmaAccuracy: 0.89},
+		},
+	}
+	writeReport(t, filepath.Join(dir, "2026-05-12b-T1606Z-fi-manual-v1.json"), v1)
+	writeReport(t, filepath.Join(dir, "2026-05-12b-T1606Z-fi-manual-v2.json"), v2)
+
+	reports, err := loadBaselineDir(dir)
+	if err != nil {
+		t.Fatalf("loadBaselineDir: %v", err)
+	}
+	if got := reports[reportDatasetKey(v1.Dataset)]; got == nil || got.Dataset.Version != "v1" {
+		t.Fatalf("missing fi-manual v1 baseline: %#v", got)
+	}
+	if got := reports[reportDatasetKey(v2.Dataset)]; got == nil || got.Dataset.Version != "v2" {
+		t.Fatalf("missing fi-manual v2 baseline: %#v", got)
+	}
+	if len(reports) != 2 {
+		t.Fatalf("reports len=%d, want 2", len(reports))
+	}
+}
+
+func TestReportDatasetLabel_DisambiguatesDuplicateVersions(t *testing.T) {
+	reports := []*eval.Report{
+		{Dataset: eval.ReportDataset{Name: "fi-manual", Version: "v1"}},
+		{Dataset: eval.ReportDataset{Name: "fi-manual", Version: "v2"}},
+		{Dataset: eval.ReportDataset{Name: "ud-fi-tdt-test-v1", Version: "v1"}},
+	}
+	counts := datasetNameCounts(reports)
+
+	if got, want := reportDatasetLabel(reports[0].Dataset, counts), "fi-manual-v1"; got != want {
+		t.Fatalf("v1 label=%q, want %q", got, want)
+	}
+	if got, want := reportDatasetLabel(reports[1].Dataset, counts), "fi-manual-v2"; got != want {
+		t.Fatalf("v2 label=%q, want %q", got, want)
+	}
+	if got, want := reportDatasetLabel(reports[2].Dataset, counts), "ud-fi-tdt-test-v1"; got != want {
+		t.Fatalf("already-versioned label=%q, want %q", got, want)
+	}
+}
+
 func writeReport(t *testing.T, path string, r *eval.Report) {
 	t.Helper()
 	data, err := json.Marshal(r)
