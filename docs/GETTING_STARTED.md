@@ -134,8 +134,8 @@ The server will start on `http://localhost:8080` by default.
 ### Parsing Text
 
 1. Sign in and open **Parse**.
-2. Paste text into the textarea or load a `.txt` / `.md` file.
-3. Keep the input under **300,000 Unicode characters**.
+2. Paste text into the textarea or load a `.txt`, `.md`, or `.epub` file.
+3. Keep the input under **1,500,000 Unicode characters**.
 4. Click **Parse text**.
 5. Review the results page:
    - dictionary coverage
@@ -233,8 +233,9 @@ This is an alpha implementation with the following limitations:
 - **Parser core**: Rust tokenization and heuristic POS guessing, not real morphology
 - **Admin parser modes**: Basic is direct dictionary lookup; Custom adds
   rule-based enrichment, still not Omorfi/Vabamorf
-- **Retention controls**: signed-in Parse submissions are stored, but parse history
-  deletion is not yet exposed
+- **Retention controls**: Inspect parses are ephemeral until saved as a deck or
+  submitted as parser feedback; deletion controls for stored deck/feedback
+  parse context are not yet exposed
 
 ### Next Steps
 

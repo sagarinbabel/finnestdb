@@ -30,8 +30,8 @@ enjoyable instead of a dictionary lookup grind.
 
 The signed-in core loop is `paste -> inspect -> correct -> deck -> review`.
 
-1. Sign in, then paste or upload text in Finnish or Estonian. Signed-in
-   parses are stored on your account; see
+1. Sign in, then paste or upload text in Finnish or Estonian. Inspect parses
+   are ephemeral until you save a deck or submit parser feedback; see
    [What We Store During Alpha](#what-we-store-during-alpha).
 2. Inspect the parsed result: every unique word, its lemma, its meaning.
 3. Correct the parser if it gets a word wrong (logged-in users only).
@@ -131,14 +131,17 @@ Anonymous correction submission is out of scope for alpha.
 - In the browser alpha, Parse is behind sign-in. Direct unauthenticated API
   parses, when used by development tooling, are ephemeral and do not return a
   stored parse ID.
-- When you are **signed in**, the text you paste into Inspect is stored with
-  your account. We do this so parser corrections can keep their original
-  context and so a parse-history UI can exist later.
-- Submitting a correction is the only way today to surface a parse to admins.
-  Accepted corrections are used to improve parser quality.
-- We do **not** yet have a delete-my-parse-history button. That is a planned
-  follow-up. Until it exists, do not paste anything while signed in that you
-  would not want stored.
+- When you are **signed in**, the text you paste into Inspect is ephemeral by
+  default. `/api/parse` returns results without creating a stored parse ID.
+- Source text is stored only when you make the parse durable: saving it as a
+  deck, or submitting parser feedback. Feedback stores the original context so
+  admins can review the correction.
+- Accepted corrections are triaged data today. They are queued for the
+  correction-overlay work that will feed future parser improvements; they do
+  not yet change parser output automatically.
+- We do **not** yet have deletion controls for stored deck/feedback parse
+  context. Until those exist, do not save or submit feedback for text you would
+  not want stored.
 - We do not sell, share, or use your pasted text to train external models.
 
 ## Technology Differentiators
@@ -150,9 +153,10 @@ FinEstDB is positioned around four technical bets:
 - **Benchmarked quality**: every release is measured against an
   external reference — Omorfi for Finnish, EstNLTK / Vabamorf for
   Estonian — and against frozen gold datasets in `docs/baselines/`.
-- **User correction loop**: real users submit parser corrections from
-  inspect and deck-detail result rows; admins triage them; accepted corrections feed
-  live quality metrics and future parser improvements.
+- **User correction loop**: real users submit parser corrections from inspect
+  and deck-detail result rows; admins triage them; accepted corrections are the
+  input to the correction-overlay work that will feed live quality metrics and
+  future parser improvements.
 - **Post-live improvement ideas**: once the app is shipped and live, the
   dictionary/lemma layer can absorb new sources of evidence into a
   canonical lexical knowledge graph over time. `AUTORESEARCH.md` is an
@@ -177,9 +181,9 @@ before a release goes out.
 
 - **Track A (offline)**: gold datasets plus the external benchmark for
   each language. Frozen reports live under `docs/baselines/`.
-- **Track B (live)**: accepted-correction rates from real usage,
-  segmented by language and parser mode, surfaced in a weekly admin
-  report.
+- **Track B (live)**: accepted-correction rates from real usage, segmented by
+  language and parser mode. The weekly admin report is planned alongside the
+  correction-overlay work.
 
 Track A tells us whether we regressed against fixed reference data.
 Track B tells us whether real users are actually being helped.

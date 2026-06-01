@@ -282,20 +282,23 @@ when no higher-priority entry exists.
 The Ekilex snapshot is a compact export from EKI ühendsõnastik 2026 public
 headwords. It adds missing Estonian direct headword lookups without overwriting
 richer Kaikki-derived lemma/POS/gloss rows. The API key used to refresh that
-snapshot must stay local and is not needed to import the tracked snapshot.
+snapshot must stay local and is not needed when importing from an existing
+local bootstrap.
 For end-to-end Ekilex enrichment (definitions, paradigms, ~6M form rows), the
 pipeline is `cmd/fetchekilex` (resumable scrape) → `cmd/reduceekilex`
-(golden-tested reduce) → tracked sharded data under
+(golden-tested reduce) → gitignored sharded data under
 `localdata/ekilex/` → `cmd/importekilexdetails` (bulk-load into
 the dictionary tables, multi-lemma aware). The first three stages run
-offline; only the loader step is required at deploy time.
+offline; only the loader step is required at deploy time if a bootstrap already
+provides the reduced shards.
 
 #### Refreshing Ekilex Data
 
-**Most contributors will not need to run this — the reduced output is already
-committed under `localdata/ekilex/`.** You only need to run it when
-refreshing the latest Ekilex data. The full pipeline is four ordered steps;
-most users will only need step 4:
+**Most contributors will not need to run the fetch/reduce stages if they have a
+current local bootstrap containing `localdata/ekilex/`.** You only need to run
+them when refreshing the latest Ekilex data or rebuilding a bootstrap from
+scratch. The full pipeline is four ordered steps; bootstrap users will only
+need step 4:
 
 1. **Fetch the list of words** — `make fetch-ekilex-refresh`
    - re-fetches `/api/public_word/eki` and overwrites the local headword list
@@ -383,7 +386,7 @@ go run ./cmd/importdict -lang fi -db finnestdb.db -custom-glosses ./my-overrides
 2. Sign in with an email address and password (8+ chars).
 3. Open **Parse**.
 4. Select a language: **Finnish (FI)** or **Estonian (ET)**.
-5. Paste text into the textarea (up to 300,000 Unicode characters).
+5. Paste text into the textarea (up to 1,500,000 Unicode characters).
 6. Click **Parse text**.
 7. You'll see a word list table:
 

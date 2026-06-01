@@ -37,8 +37,10 @@ See also:
   - `giellaltmap/`
 - [`cmd/genlemmatizertables`](../cmd/genlemmatizertables/), a FI/ET table
   generator that reads a local `mor.vfst` for FI or `.hfstol` analyser for
-  ET plus a seed wordlist and writes generated JSON to
-  `localdata/lemmatizer-fi-et/tables/`.
+  ET plus a wordlist and writes generated JSON to
+  `localdata/lemmatizer-fi-et/tables/`. The current FI Make target uses
+  a DB-derived local wordlist; the ET target still uses a small smoke
+  wordlist until a production ET wordlist is chosen.
 
 Test fixtures under [`testdata/lemmatizer/`](../testdata/lemmatizer/)
 are hand-authored and intentionally tiny — they cover the words used
@@ -290,19 +292,31 @@ The Finnish generator:
 make gen-lemmatizer-tables-fi VFST_PATH=/absolute/path/to/mor.vfst
 ```
 
-That target runs:
+That target writes two gitignored runtime artifacts:
+
+- `localdata/lemmatizer-fi-et/wordlists/fi.txt`
+- `localdata/lemmatizer-fi-et/tables/fi_min.json`
+
+If the FI wordlist is missing, the target first derives it from
+`finnestdb.db`:
+
+```sh
+make gen-lemmatizer-wordlist-fi
+```
+
+Then it runs the table generator:
 
 ```sh
 mkdir -p localdata/lemmatizer-fi-et/tables
 go run ./cmd/genlemmatizertables \
   -lang fi \
   -vfst "$VFST_PATH" \
-  -wordlist cmd/genlemmatizertables/wordlists/fi_smoke.txt \
+  -wordlist localdata/lemmatizer-fi-et/wordlists/fi.txt \
   -out localdata/lemmatizer-fi-et/tables/fi_min.json
 ```
 
-`VFST_PATH` must point to a local Voikko `mor.vfst`. The file itself
-must not be committed.
+`VFST_PATH` must point to a local Voikko `mor.vfst`. The analyzer file,
+generated wordlist, and generated JSON table must not be committed.
 
 `scripts/setup-local.sh` invokes the FI generator best-effort — if
 `VFST_PATH` is set, it generates; otherwise it skips with a warning
@@ -335,9 +349,10 @@ make gen-lemmatizer-tables-et HFSTOL_PATH=/absolute/path/to/analyser-gt-desc.hfs
 
 See [`docs/LOCAL_TOOLING.md`](LOCAL_TOOLING.md) before assuming the
 analyzer is absent. The analyzer file itself must not be committed. The
-current Make targets use smoke wordlists; production promotion still
-needs a production wordlist, provenance notes, row counts, and eval gate
-before any accuracy claim is made from those local tables.
+current ET Make target still uses a smoke wordlist; production ET
+promotion still needs a production wordlist, provenance notes, row
+counts, and an eval gate before any accuracy claim is made from those
+local ET tables.
 
 ## What the test fixtures prove
 
@@ -348,7 +363,7 @@ prove that:
   transducer blobs.
 - FI and ET can share one runtime package and `Analysis` shape.
 - The runtime stays deterministic and testable on a hermetic file set.
-- Future production tables can be reviewed as plain generated data.
+- Future production ET tables can be reviewed as plain generated data.
 
 They do **not** prove broad runtime coverage, grammar-label gains, or
 final eval deltas. Any accuracy or coverage claim must be generated
@@ -361,7 +376,7 @@ recorded alongside.
 Before promoting this package as a production replacement for the older
 dictionary/rule path:
 
-1. Choose the production input word list for each language.
+1. Confirm the production input word list for each language.
 2. Generate FI and ET factual tables from local upstream analysers
    into `localdata/lemmatizer-fi-et/tables/`.
 3. Record the generator command, upstream source/version, and table
@@ -370,8 +385,10 @@ dictionary/rule path:
 5. Update `docs/baselines/` only with results from runs that loaded
    production tables.
 
-Until then, the package should be described as a generated-table
-scaffold with smoke fixtures and offline analyser-reader support.
+Until ET has a production wordlist and current eval, describe ET table
+coverage as smoke/local-only. Describe FI table coverage by the exact
+local `fi_min.json` that `make doctor` reports, not by a committed
+artifact.
 
 ## Upstream attribution
 
@@ -389,11 +406,9 @@ generation, even though their transducer blobs are not committed.
 
 ## Follow-up work
 
-- Add a production-sized FI word list and regenerate
-  `localdata/lemmatizer-fi-et/tables/fi_min.json` into a properly named
-  production table.
+- Store FI table provenance in machine-readable metadata next to the JSON
+  table, including the DB snapshot used to derive
+  `localdata/lemmatizer-fi-et/wordlists/fi.txt`.
 - Promote the ET generator path from smoke wordlists to a production wordlist
   with provenance, row counts, and fresh eval.
-- Store table provenance in machine-readable metadata next to the JSON
-  tables.
 - Rebaseline parser eval only after production generated tables land.

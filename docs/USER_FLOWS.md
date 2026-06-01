@@ -115,7 +115,7 @@ is anonymous-first; sign-up is a hook *after* a successful parse.
 │      │ │                                             │    │    │
 │      │ └─────────────────────────────────────────────┘    │    │
 │      │                                                    │    │
-│      │ [📎 Upload .txt / .md / .epub / Anki .apkg]        │    │
+│      │ [📎 Upload .txt / .md / .epub]                     │    │
 │      │                                                    │    │
 │      │ ▽ Detected: Finnish · 4,213 chars · 612 tokens     │    │
 │      │   · 287 unique forms · 0 numbers                   │    │
@@ -128,16 +128,16 @@ is anonymous-first; sign-up is a hook *after* a successful parse.
 ```
 
 **Behavior**
-- Paste / upload / drag-and-drop. Accepted: `.txt`, `.md`, `.epub`,
-  Anki `.apkg` (extract front-field text on the client; one card per
-  line into the textarea).
+- Paste / upload / drag-and-drop. Current accepted file types are `.txt`,
+  `.md`, and `.epub`. Anki `.apkg` import is a separate known-words/import
+  follow-up, not part of the current parse upload surface.
 - The **stats strip under the textarea** (`Detected: ... · N chars · N
   tokens · ...`) is live, debounced. It also drives the language
   selector: high-confidence detection silently switches the radio (per
   current hybrid policy); selector–detection conflict on manually-typed
   text shows a non-blocking banner with a one-click "Switch to Finnish"
   affordance.
-- 300,000 char limit (current cap; preserved).
+- 1,500,000 char limit (current cap; preserved).
 - Anonymous parse runs **ephemerally**: nothing is stored server-side,
   no parse_session row, no IP retained beyond rate-limit window.
 - Empty state below the box invites: _"Don't have text handy? [Try a
@@ -189,8 +189,8 @@ Today's `/results` page already exists (`web/index.html` lines
   account — this is a value drop that converts.
 - The sign-up ribbon dismisses for the rest of the session if "Later"
   is clicked, but reappears on the next parse.
-- Privacy footer near the table: _"This parse wasn't saved. Sign in to
-  keep your parse history and pick up where you left off."_
+- Privacy footer near the table: _"This parse wasn't saved. Save it as a deck
+  or submit feedback if you want FinEstDB to retain the source context."_
 
 ### 3. Sign-up / sign-in
 
@@ -278,18 +278,15 @@ shipping. Until then, the empty state shows only Paste and Import.
 
 Same UX as the anonymous landing, **plus**:
 
-- A **"Recent parses"** list below the form, sorted by `parsed_at`
-  desc, each row: title (auto-derived from first line; editable),
-  language, parse date, unique-form count, and a `[ ⋯ ]` menu with
-  `Open results`, `Save as deck`, `Add to existing deck`, and **`Delete
-  from server`** (irreversible, with confirmation).
-- A persistent **privacy chip** under the textarea: _"Saved to your
-  account. [Manage]_" — `Manage` opens the parse-history page (which
-  for alpha is just an extended Recent parses list with bulk delete).
-- An **opt-out toggle** for the next parse: _"Don't save this one"_ —
-  produces an ephemeral parse for sensitive text. (This is the
-  "Opt-in ephemeral parse flag" already in [`TODO.md`](../TODO.md);
-  treating it as opt-out per parse is the simpler UX.)
+- A **"Saved source context"** list below the form, sorted by `parsed_at`
+  desc. It includes parses retained because the user saved a deck or submitted
+  parser feedback. Each row: title (auto-derived from first line; editable),
+  language, parse date, unique-form count, and a `[ ... ]` menu with `Open
+  results`, `Save as deck`, `Add to existing deck`, and **`Delete from
+  server`** (irreversible, with confirmation).
+- A persistent **privacy chip** under the textarea: _"Not saved until
+  deck/feedback. [Details]"_ — `Details` opens the parse-history/deletion page
+  once that page exists.
 
 ### 6. Results (signed-in) → Save / Add-to-existing
 
@@ -485,16 +482,13 @@ losing today.
 The dictation emphasized privacy. This is what we should put in front
 of the user, in priority order:
 
-1. **Anonymous parses are ephemeral** — communicated as a
-   below-the-fold note on the landing page and (more importantly) in
-   the post-parse sign-up ribbon: _"Your text wasn't saved. Sign up to
-   keep your parse history."_
-2. **Signed-in parses are saved, and you can delete them** — the
-   per-parse `Delete from server` action and the bulk parse-history
-   page. Currently a [`TODO.md`](../TODO.md) item; user-facing copy
-   should not promise the feature until it ships.
-3. **Per-parse opt-out** — "Don't save this one" toggle for sensitive
-   text.
+1. **Inspect parses are ephemeral until saved or submitted as feedback** —
+   communicated below the textarea and in the post-parse ribbon: _"Your text
+   was not saved. Save as a deck or submit feedback to retain source context."_
+2. **Stored deck/feedback context needs deletion controls** — the per-parse
+   `Delete from server` action and the bulk parse-history page are still
+   [`TODO.md`](../TODO.md) items; user-facing copy should not promise deletion
+   until it ships.
 4. **No external model training** — repeat in the privacy footer and
    privacy page (already in `FEATURES.md`).
 5. **What we share with admins**: only the parses you submit
@@ -531,10 +525,9 @@ Open question from the dictation. Three options:
   add a `/api/translate-sentence` endpoint backed by Sonnet 4.6 with
   prompt caching on the per-language system prompt. Stream tokens.
   Cache results in a `sentence_translations` SQLite table only for
-  persisted parse/deck content whose retention semantics allow derived
-  text to survive the request. Skip the shared persistent cache for
-  anonymous parses and signed-in parses marked "Don't save this one";
-  use only request-local/session-local state for those flows. The cache
+  persisted parse/deck content whose retention semantics allow derived text to
+  survive the request. Skip the shared persistent cache for ephemeral Inspect
+  parses; use only request-local/session-local state for those flows. The cache
   key should include source language, target language, prompt version,
   and `hash(sentence_text)`, and deleted source content must either
   delete or orphan-expire derived translations according to the same
@@ -592,14 +585,12 @@ yet in the codebase:
   `/api/parse` (already a `TODO.md` item).
 - Live stats panel under the textarea (chars, tokens, unique forms,
   numbers). Today only char count exists.
-- File-upload support for `.epub` and Anki `.apkg`. Already in
-  [`TODO.md`](../TODO.md) ("EPUB and file upload support") for
-  signed-in import; extend to anonymous parse and to the alpha sign-in
-  flow's "carry forward".
+- File-upload support for Anki `.apkg`. `.txt`, `.md`, and `.epub` are already
+  implemented for the signed-in inspect/workbench forms.
 - Google OAuth.
 - "Add to existing deck" path on the results page.
-- Per-parse opt-out toggle ("Don't save this one").
-- Parse-history UI with bulk delete.
+- Parse-history UI with bulk delete for source context retained by saved decks
+  and parser feedback.
 - Correction flow: flag-only path; ✎-icon entry point.
 - Cold-start "top 1000" CTA (gated on the research project).
 - Sentence translation (LLM-backed).

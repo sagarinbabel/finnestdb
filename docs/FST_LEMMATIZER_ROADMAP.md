@@ -54,7 +54,9 @@ Adjacent inputs (committed, not under `pkg/`):
   hand-authored unit-test fixtures; `lemmatizer_test.go` loads these
   via `NewFromDir`.
 - [`cmd/genlemmatizertables/wordlists/fi_smoke.txt`](../cmd/genlemmatizertables/wordlists/fi_smoke.txt) -
-  seed word list for the current FI smoke generator run.
+  seed word list for legacy FI smoke generator fixture runs. The current
+  FI Make target derives its runtime wordlist under `localdata/` from
+  `finnestdb.db`.
 - [`cmd/genlemmatizertables/wordlists/et_smoke.txt`](../cmd/genlemmatizertables/wordlists/et_smoke.txt) -
   seed word list for the ET smoke generator run; mirrors the surface
   forms in `testdata/lemmatizer/et_min.json` so a local run reproduces
@@ -83,7 +85,7 @@ VFST_PATH=...` and `make gen-lemmatizer-tables-et HFSTOL_PATH=...`.
 
 | PR | Scope after cleanup | Merge gate |
 |---|---|---|
-| #107 | FI table-backed lemmatizer scaffold, VFST reader/generator support, minimal FI smoke table | No vendored blobs; no production eval claims unless production table is committed |
+| #107 | FI table-backed lemmatizer scaffold, VFST reader/generator support, minimal FI smoke table | No vendored blobs; no production eval claims without exact local table provenance and eval |
 | #108 | HFST optimised-lookup reader and Giellalt FI tag mapping support for offline generation | No vendored blobs; no claim that runtime uses a production Giellalt FI table |
 | #110 | ET table runtime path and minimal ET smoke table | No vendored blobs; ET eval claims deferred until production ET table exists |
 | #112 | Documentation aligned with generated-table policy | No stale references to shipped transducers, embedded binary growth, or old final deltas |

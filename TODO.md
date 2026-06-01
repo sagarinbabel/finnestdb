@@ -116,15 +116,15 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
   future catalog decks, with Finnish and Estonian correction content kept
   separate.
 
-- [x] **EPUB and file upload support**. Server-side extraction lives in `internal/epub` (zip walk + XHTML strip, ported from `corpus_pipeline/cmd/extractcorpus/extract_epub.go`). The inspect and workbench forms now accept `.txt`, `.md`, and `.epub`; `.epub` uploads are POSTed to `POST /api/import/extract` which returns plain text that lands in the textarea so the existing parse → save-deck flow handles books. Plain text continues to be read client-side. Auth-gated, 16 MiB upload cap, 300k-char return cap matching the textarea limit. The TODO originally named `POST /api/import/decks`; an extract-only primitive was chosen because the user flow goes through the existing `/api/decks` save path — a one-shot deck-from-file endpoint can be layered on later if needed.
+- [x] **EPUB and file upload support**. Server-side extraction lives in `internal/epub` (zip walk + XHTML strip, ported from `corpus_pipeline/cmd/extractcorpus/extract_epub.go`). The inspect and workbench forms now accept `.txt`, `.md`, and `.epub`; `.epub` uploads are POSTed to `POST /api/import/extract` which returns plain text that lands in the textarea so the existing parse → save-deck flow handles books. Plain text continues to be read client-side. Auth-gated, 16 MiB upload cap, 1.5M-char return cap matching the textarea limit. The TODO originally named `POST /api/import/decks`; an extract-only primitive was chosen because the user flow goes through the existing `/api/decks` save path — a one-shot deck-from-file endpoint can be layered on later if needed.
 
 - [ ] **External vocabulary import (Anki, CSV)**. Design `POST /api/import/known-words` accepting list of known lemma+POS pairs; support Anki deck export (`.apkg` or exported `.txt`); support plain CSV/TSV. Map imported surface forms to known lemmas via existing dictionary lookup + fallback chain.
 
 - [ ] **Progress dashboard**. Fill the existing dashboard tab with: total known lemmas, cards in review, comprehension trend per deck, daily review count, cumulative comprehension chart over time.
 
-- [ ] **Parse history UI** so logged-in users can review and delete their stored parse sessions.
+- [ ] **Parse history / deletion UI** so logged-in users can review and delete source context retained by saved decks and parser feedback.
 
-- [ ] **Opt-in ephemeral parse flag** on `/api/parse` so logged-in users can request a non-persisted parse.
+- [x] **Ephemeral Inspect parse behavior** on `/api/parse` so logged-in users get non-persisted parses by default.
 
 ### Self-improving feedback loop
 
@@ -148,12 +148,13 @@ Phase 1 is gated on FEATS threading (already shipped via [PR #130](https://githu
 ### Backend hardening (mostly @chickendude / go-live)
 
 - [x] **Legacy mock-auth/raw-cookie replacement** — current auth uses Argon2id password hashes and DB-backed `session_token` sessions. Remaining go-live auth work is bootstrap retirement, CSRF/Origin posture, and operational controls in [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md).
-- [ ] **@chickendude go-live**: add rate limiting and abuse controls to `POST /api/parse`, `POST /api/parse/feedback`, login, and register routes before broad public rollout. See [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md).
-- [ ] Define and implement a retention policy for `parse_sessions.source_text`; current alpha behavior documented in [`docs/FEATURES.md`](docs/FEATURES.md).
+- [ ] **@chickendude go-live**: add rate limiting, abuse controls, and CSRF/strict-Origin posture to `POST /api/parse`, `POST /api/parse/feedback`, login, register, and other cookie-authenticated state-changing routes before broad public rollout. See [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md).
+- [ ] Define and implement a retention policy for `parse_sessions.source_text`; current alpha behavior is ephemeral parse by default, with source context retained only for saved decks and parser feedback.
 - [ ] Preserve existing `card_state` scheduling data when rebuilding `cards` during schema migrations instead of dropping and recreating.
 - [ ] Batch known/ignored checks during deck creation so card seeding does not do one lookup per unique `(lang, lemma, pos)` pair.
 - [ ] Replace `COUNT(*)` existence checks in known-word and parse-feedback paths with `EXISTS`/short-circuit queries.
 - [ ] Document parse-session storage behavior directly in the parse UI, not only in docs.
+- [ ] Add a production startup guard that refuses to serve if `finnestdb.db` is missing, empty, or lacks expected FI/ET dictionary rows unless an explicit dev-only degraded mode is set. The 2026-05-18 audit confirmed an empty temp DB still boots and returns stub parse rows.
 - [ ] **Security review and hardening pass**: session bootstrap retirement, role enforcement, CSRF/Origin checks, XSS, request-size caps before JSON decode, HTTP timeouts, rate limiting, data isolation, admin-route leakage, and correction-submission abuse. Findings doc is planned as `docs/SECURITY_REVIEW_ALPHA.md`.
 - [ ] Either implement real auth/deck/review behavior or narrow the exposed stub endpoints to match current product focus. Remove or isolate non-parser scaffolding that no longer reflects the active roadmap.
 - [ ] **Background job system** for deck creation: design async architecture, implement job queue (in-memory or external), add "processing" state to deck model, webhook/polling status updates.
@@ -187,9 +188,11 @@ Snapshot. Refresh by running:
 gh pr list --state open --json number,title,headRefName --jq '.[] | "- #\(.number) `\(.headRefName)` — \(.title)"'
 ```
 
-Currently open as of 2026-05-12:
+Currently open as of 2026-05-18:
 
-- [#182](https://github.com/sagarinbabel/finnestdb/pull/182) `codex/preserve-ekilex-translation-order` — draft: preserve Ekilex translation order.
+- [#212](https://github.com/sagarinbabel/finnestdb/pull/212) `codex/swift-offline-migration-plan` — [codex] Document Swift offline migration plan.
+- [#211](https://github.com/sagarinbabel/finnestdb/pull/211) `codex/correction-overlay-schema` — Add source-agnostic correction overlay schema.
+- [#208](https://github.com/sagarinbabel/finnestdb/pull/208) `vocab/anki-import-popup` — Vocab page: Anki import popup, file import, delete-all.
 
 ## Research Goals
 
@@ -605,21 +608,24 @@ Companion docs:
 
 New work surfaced by the review (not yet broken into sequenced PRs):
 
-- [ ] **Anonymous parse path**. Reverse the alpha "Parse is sign-in only" decision; add ephemeral `/api/parse` for unauth callers. Pairs with the rate-limiting work already on this list. See `docs/USER_FLOWS.md` §1.
+- [ ] **Anonymous browser parse surface**. The `/api/parse` endpoint already
+  supports ephemeral unauthenticated calls; decide whether to expose that path
+  in the public browser UI. Pairs with the rate-limiting work already on this
+  list. See `docs/USER_FLOWS.md` §1.
 - [ ] **Live stats strip under the textarea**. Detected language, char count, token count, unique-form count, number count — debounced. Drives the language-mismatch banner. See `docs/USER_FLOWS.md` §1.
 - [ ] **Anki .apkg upload**. Front-field extraction client-side, dropped into the textarea. New file-upload type alongside `.txt` / `.md` / `.epub`.
 - [ ] **Carry-forward of anonymous parses on sign-up**. Last-N parses held in **`sessionStorage`** (tab-scoped — `localStorage` would survive browser restarts and break the anonymous-is-ephemeral promise), POSTed and persisted after account creation so the user doesn't lose what they just did. Cross-restart survival, if we ever ship it, must be an explicit opt-in checkbox.
 - [ ] **Google OAuth**. Adds `auth_provider`, `auth_provider_uid` columns; `password_hash` becomes nullable for OAuth accounts. Verify the Google ID token and copy/require its `email_verified` claim rather than assuming every returned email is verified. Email+password path stays the default. See `docs/USER_FLOWS.md` §3.
 - [ ] **`first_name` on the user profile**. Required at signup; used for greeting copy on the dashboard.
 - [ ] **"Add to existing deck" save path**. Results-page save panel gains a radio for new-deck vs. add-to-existing; merge by `(lemma, pos)` with `deck_lemma_stats` accumulation. New verb on the deck-import API. See `docs/USER_FLOWS.md` §6.
-- [ ] **Per-parse opt-out toggle**. "Don't save this one" checkbox on the signed-in parse form, producing an ephemeral parse without writing `parse_sessions`. Different framing of the existing TODO entry — opt-out per parse rather than an opt-in feature flag.
+- [x] **Ephemeral Inspect parses by default**. `/api/parse` does not write `parse_sessions`; source context is retained only when the user saves a deck or submits parser feedback.
 - [ ] **Parse-history UI**. Already on this list; flows doc spells out the bulk-delete and per-row delete-from-server affordances.
 - [ ] **Correction flow lighter entry point**. Replace the per-row correction button with a hover/focus-revealed `✎ Wrong?` link. Add a "flag-only" radio path so users who notice a wrong parse but don't know the right answer can still submit signal. Backend: `parse_feedback.proposed_lemma`/`proposed_pos` become nullable; add `flag_only` boolean. See `docs/USER_FLOWS.md` §10.
-- [ ] **Sentence translation endpoint**. `POST /api/translate-sentence` backed by Sonnet 4.6 with prompt caching. Persist results in a new `sentence_translations` table only for retained parse/deck content, keyed on source/target language + prompt version + `hash(text)`; anonymous parses and "Don't save this one" parses use no shared persistent cache. Wires into the review-card back and the deck-detail rows. Companion to `docs/ideas.md` "Making it AI native" Phase 1.
+- [ ] **Sentence translation endpoint**. `POST /api/translate-sentence` backed by Sonnet 4.6 with prompt caching. Persist results in a new `sentence_translations` table only for retained parse/deck content, keyed on source/target language + prompt version + `hash(text)`; ephemeral Inspect parses use no shared persistent cache. Wires into the review-card back and the deck-detail rows. Companion to `docs/ideas.md` "Making it AI native" Phase 1.
 - [ ] **Cold-start "Top 1000" CTA**. Dashboard empty state and a `/decks/top-1000-{lang}` route that creates a private deck seeded from the baseline TSV. Gated on the research project shipping.
 - [ ] **First-run register picker**. Once on first sign-in, ask "What kinds of texts do you want to read most? Conversation / News & books / Mixed." Persists to `user_language_settings`. Drives which top-1000 register the cold-start uses, and may later weight new-card ranking.
 - [ ] **Account deletion**. Cascade through parses, decks, known-word lists, sessions. Profile page is otherwise out of scope for the first version, but deletion is privacy-table-stakes.
-- [ ] **Privacy chip on the parse form**. Persistent visible signifier ("Saved to your account. [Manage]") under the signed-in parse textarea. Replaces the doc-only privacy commitment in `FEATURES.md`.
+- [ ] **Privacy chip on the parse form**. Persistent visible signifier ("Not saved until deck/feedback. [Details]") under the signed-in parse textarea. Replaces the doc-only privacy commitment in `FEATURES.md`.
 
 Already on this list and just confirmed by the review:
 
@@ -634,13 +640,13 @@ Already on this list and just confirmed by the review:
 ### Post-Alpha Follow-Ups from Alpha PR Review
 
 - [x] Replace the legacy mock-auth/raw-cookie path; current auth uses Argon2id password hashes and DB-backed `session_token` sessions
-- [ ] @chickendude go-live: add rate limiting and abuse controls to `POST /api/parse`, `POST /api/parse/feedback`, login, and register routes before broad public rollout; see `docs/GO_LIVE_CHECKLIST.md`
-- [ ] Define and implement a retention policy for `parse_sessions.source_text`; current alpha behavior is documented in `docs/FEATURES.md`
+- [ ] @chickendude go-live: add rate limiting, abuse controls, and CSRF/strict-Origin posture to parse, feedback, login, register, and other cookie-authenticated state-changing routes; see `docs/GO_LIVE_CHECKLIST.md`
+- [ ] Define and implement a retention policy for `parse_sessions.source_text`; current alpha behavior is ephemeral parse by default, with source context retained only for saved decks and parser feedback
 - [ ] Preserve existing `card_state` scheduling data when rebuilding `cards` during schema migrations instead of dropping and recreating the table
 - [ ] Batch known/ignored checks during deck creation so card seeding does not do one lookup per unique `(lang, lemma, pos)` pair
 - [ ] Replace `COUNT(*)` existence checks in known-word and parse-feedback paths with `EXISTS`/short-circuit queries once alpha correctness work is merged
-- [ ] Parse history UI so logged-in users can review and delete their stored parse sessions
-- [ ] Add an opt-in ephemeral parse flag on `/api/parse` so logged-in users can request a non-persisted parse
+- [ ] Parse history / deletion UI so logged-in users can review and delete source context retained by saved decks and parser feedback
+- [x] Make signed-in `/api/parse` ephemeral by default; no per-parse opt-out flag needed
 - [ ] Document parse-session storage behavior directly in the parse UI, not only in docs
 
 - These findings were identified during PRD review and stub implementation
