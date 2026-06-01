@@ -556,7 +556,7 @@ func EnsureDictionarySourceColumns(db *sql.DB) error {
 
 // BackfillLegacyKaikkiProvenance labels FI/ET rows that were imported before
 // cmd/importdict threaded -source-key / -source-priority through. Those rows
-// carry the SQLite column defaults (source=” and source_priority=0), which
+// carry the SQLite column defaults (source='' and source_priority=0), which
 // makes verify-dict and `make doctor` flag the entire dictionary as untracked
 // even though it's the kaikki dump every fresh install gets.
 //
