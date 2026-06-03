@@ -137,9 +137,12 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 
 ### Self-improving feedback loop
 
-Today, accepted parse-feedback corrections sit in `parse_feedback` as data with no downstream consumer. The "self-improving system" thesis fails until this loop closes. See [`docs/FEATURES.md` "User correction loop"](docs/FEATURES.md).
+Accepted lemma/POS parse-feedback corrections now write `custom_overrides`
+lexical rows after admin approval. Grammar/FEATS corrections, gold promotion,
+and eval-gated safety checks still need follow-up. See
+[`docs/FEATURES.md` "User correction loop"](docs/FEATURES.md).
 
-- [ ] **Phase 1 — apply accepted lemma/POS corrections** as a `custom_overrides` lexical row (new source, priority 1000, named in [`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md) "Resolution Layer" but not wired up). On admin acceptance, write a `forms`/`lemmas` row with `source='custom_overrides'`, `source_priority=1000`, proposed `lemma`/`pos`, back-pointer to `parse_feedback.id`. ~1-week task, high confidence.
+- [x] **Phase 1 — apply accepted lemma/POS corrections** as a `custom_overrides` lexical row. On admin acceptance, write `forms`/`lemmas` rows with `source='custom_overrides'`, `source_priority=1000`, proposed `lemma`/`pos`, and a back-pointer to `parse_feedback.id`.
 - [ ] **Phase 2 — apply accepted grammar-label corrections** to `forms.feats` for the specific surface form. Smaller blast radius. Few-day task.
 - [ ] **Phase 3 — auto-promote a corrected `(surface, lemma, pos)` tuple to a gold-eval case** when N independent users submit the same correction. Threshold and review workflow TBD.
 - [ ] **Phase 4 — eval-backed safety check before applying.** Run candidate `custom_overrides` row against frozen gold sets; reject on regression of ≥N cases. Reuse the existing parser-eval/baseline discipline, but do not revive or expand `cmd/autoresearch` for alpha. If it adds >100ms to admin-accept latency, push to background job.
@@ -287,14 +290,13 @@ sampling artifacts.
 
 **Added 2026-05-07.**
 
-**What.** Today, a logged-in user can submit a parse correction
+**What.** A logged-in user can submit a parse correction
 (`POST /api/parse/feedback`, [internal/api/handlers.go](internal/api/handlers.go))
 and an admin can change its status to `accepted`
-([internal/store/db.go::UpdateParseFeedbackStatus](internal/store/db.go)).
-**Accepted corrections do not currently update any lexical row, gold case,
-or future parse output.** They sit in `parse_feedback` as data with no
-downstream consumer. The "self-improving system" thesis fails until this
-loop closes.
+([internal/store/db.go::ReviewParseFeedback](internal/store/db.go)).
+Accepted lemma/POS corrections now write `custom_overrides` lexical rows
+that can change future parser output. FEATS corrections, gold-case
+promotion, and eval-gated safety checks remain open.
 
 **Why.** The correction-feedback moat is one of the project's core
 differentiators (see
@@ -304,11 +306,11 @@ something for the next learner — and didn't.
 
 **Tasks (sequenced).**
 
-- [ ] **Phase 1 — apply accepted lemma/POS corrections as a `custom_overrides`
+- [x] **Phase 1 — apply accepted lemma/POS corrections as a `custom_overrides`
       lexical row.** Schema: a new source `custom_overrides` with the
-      highest priority (1000), already mentioned in
-      [`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md) "Resolution Layer" but not wired up.
-      On admin acceptance, write a row to `forms` (or `lemmas`) with
+      highest priority (1000), as described in
+      [`docs/LEXICAL_PLAN.md`](docs/LEXICAL_PLAN.md) "Resolution Layer".
+      On admin acceptance, write rows to `forms` and `lemmas` with
       `source='custom_overrides'`, `source_priority=1000`, the proposed
       `lemma`/`pos`, and a back-pointer to `parse_feedback.id`.
 - [ ] **Phase 2 — apply accepted grammar-label corrections to `forms.feats`**

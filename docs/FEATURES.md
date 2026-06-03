@@ -144,9 +144,9 @@ Anonymous correction submission is out of scope for alpha.
 - The History page lists retained parse sessions and lets you delete one
   session or all retained sessions. Deleting a parse session removes that
   retained source context and parser feedback tied to it; saved decks remain.
-- Accepted corrections are triaged data today. They are queued for the
-  correction-overlay work that will feed future parser improvements; they do
-  not yet change parser output automatically.
+- Accepted lemma/POS corrections write `custom_overrides` lexical rows after
+  admin approval, so the same surface can change subsequent parser output.
+  Grammar/FEATS corrections and eval-gated promotion remain future work.
 - Account deletion removes the account and retained user data server-side,
   including decks, parse sessions, parser feedback, review cards, sessions,
   and known/ignored word lists.
@@ -162,9 +162,9 @@ FinEstDB is positioned around four technical bets:
   external reference — Omorfi for Finnish, EstNLTK / Vabamorf for
   Estonian — and against frozen gold datasets in `docs/baselines/`.
 - **User correction loop**: real users submit parser corrections from inspect
-  and deck-detail result rows; admins triage them; accepted corrections are the
-  input to the correction-overlay work that will feed live quality metrics and
-  future parser improvements.
+  and deck-detail result rows; admins triage them; accepted lemma/POS
+  corrections feed `custom_overrides` lexical rows that can improve future
+  parser output, while accepted-correction metrics guide later quality work.
 - **Post-live improvement ideas**: once the app is shipped and live, the
   dictionary/lemma layer can absorb new sources of evidence into a
   canonical lexical knowledge graph over time. `AUTORESEARCH.md` is an

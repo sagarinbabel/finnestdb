@@ -189,8 +189,8 @@ descriptions when two docs sound similar.
   per-PR sequencing of the FST migration work.
 - [`docs/PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md) — UX and
   schema for "Suggest fix" parse-feedback flow. Admin queue triage,
-  always-attach-parse-session rule, planned writeback to `custom_overrides`
-  lexical rows.
+  always-attach-parse-session rule, and accepted lemma/POS writeback to
+  `custom_overrides` lexical rows.
 - [`docs/CORRECTION_TAXONOMY.md`](CORRECTION_TAXONOMY.md) — source-agnostic
   correction categories and learning-target model. Defines how fixes from
   pasted text, EPUBs, subtitles, articles, and Anki imports should land in

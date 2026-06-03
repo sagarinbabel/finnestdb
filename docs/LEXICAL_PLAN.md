@@ -403,11 +403,11 @@ form-to-lemma lookup:
 
 Default priority order for current sources:
 
-- `custom_overrides` (1000, planned) > `ekilex` (20, ET) > `kaikki` (10)
+- `custom_overrides` (1000) > `ekilex` (20, ET) > `kaikki` (10)
   / `kotus` (10, FI)
 
-`custom_overrides` is the existing `-custom-glosses` CSV path, promoted
-to a real source.
+`custom_overrides` includes accepted parser-feedback lemma/POS corrections
+and the existing `-custom-glosses` CSV path promoted to a real source.
 
 ### Risk to watch
 

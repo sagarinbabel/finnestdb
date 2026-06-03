@@ -28,6 +28,10 @@ type DB struct {
 }
 
 const DefaultParseSourceRetentionDays = 30
+const (
+	SourceCustomOverrides         = "custom_overrides"
+	CustomOverridesSourcePriority = 1000
+)
 
 // fstLemmatizer returns the (lazy-loaded) FST lemmatizer, or nil if
 // loading failed (e.g. no tables under localdata/lemmatizer-fi-et/tables/
@@ -251,6 +255,7 @@ func (d *DB) initSchema() error {
 		lang TEXT NOT NULL,
 		source TEXT NOT NULL DEFAULT '',
 		source_priority INTEGER NOT NULL DEFAULT 0,
+		parse_feedback_id INTEGER,
 		paradigm_class TEXT,
 		PRIMARY KEY(lemma, pos, lang)
 	);
@@ -327,6 +332,7 @@ func (d *DB) initSchema() error {
 		lang  TEXT NOT NULL,
 		source TEXT NOT NULL DEFAULT '',
 		source_priority INTEGER NOT NULL DEFAULT 0,
+		parse_feedback_id INTEGER,
 		feats TEXT,
 		PRIMARY KEY (form, lang, lemma, pos)
 	);
@@ -442,6 +448,9 @@ func (d *DB) initSchema() error {
 	if err := EnsureDictionarySourceColumns(d.db); err != nil {
 		return err
 	}
+	if err := EnsureCorrectionBackpointerColumns(d.db); err != nil {
+		return err
+	}
 	if err := EnsureLexicalEnrichmentColumns(d.db); err != nil {
 		return err
 	}
@@ -462,6 +471,21 @@ func (d *DB) initSchema() error {
 		return err
 	}
 
+	return nil
+}
+
+// EnsureCorrectionBackpointerColumns backfills the feedback provenance columns
+// used by accepted learner corrections. Fresh DBs already include these
+// columns in CREATE TABLE; older DB files need idempotent ALTER TABLEs.
+func EnsureCorrectionBackpointerColumns(db *sql.DB) error {
+	for table, column := range map[string]string{
+		"lemmas": "parse_feedback_id INTEGER",
+		"forms":  "parse_feedback_id INTEGER",
+	} {
+		if _, err := db.Exec(`ALTER TABLE ` + table + ` ADD COLUMN ` + column); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -2830,7 +2854,27 @@ func (d *DB) ListParseFeedback(status string) ([]ParseFeedback, error) {
 }
 
 func (d *DB) ReviewParseFeedback(feedbackID, reviewerUserID int64, status, reviewNote string) error {
-	result, err := d.db.Exec(
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var feedback ParseFeedback
+	err = tx.QueryRow(
+		`SELECT id, lang, surface, proposed_lemma, proposed_pos
+		 FROM parse_feedback
+		 WHERE id = ?`,
+		feedbackID,
+	).Scan(&feedback.ID, &feedback.Lang, &feedback.Surface, &feedback.ProposedLemma, &feedback.ProposedPOS)
+	if err == sql.ErrNoRows {
+		return sql.ErrNoRows
+	}
+	if err != nil {
+		return err
+	}
+
+	result, err := tx.Exec(
 		`UPDATE parse_feedback
 		 SET status = ?, review_note = ?, reviewed_by_user_id = ?, reviewed_at = CURRENT_TIMESTAMP
 		 WHERE id = ?`,
@@ -2845,6 +2889,46 @@ func (d *DB) ReviewParseFeedback(feedbackID, reviewerUserID int64, status, revie
 	}
 	if rowsAffected == 0 {
 		return sql.ErrNoRows
+	}
+	if status == "accepted" {
+		if err := writeAcceptedParseFeedbackOverride(tx, feedback); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+func writeAcceptedParseFeedbackOverride(tx *sql.Tx, feedback ParseFeedback) error {
+	lemma := strings.TrimSpace(feedback.ProposedLemma)
+	pos := strings.TrimSpace(feedback.ProposedPOS)
+	lang := strings.TrimSpace(feedback.Lang)
+	form := strings.ToLower(strings.TrimSpace(feedback.Surface))
+	if lemma == "" || pos == "" || lang == "" || form == "" {
+		return fmt.Errorf("accepted parse feedback %d is missing override fields", feedback.ID)
+	}
+	if _, err := tx.Exec(
+		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority, parse_feedback_id)
+		 VALUES (?, ?, NULL, ?, ?, ?, ?)
+		 ON CONFLICT(lemma, pos, lang) DO UPDATE SET
+			source = excluded.source,
+			source_priority = excluded.source_priority,
+			parse_feedback_id = excluded.parse_feedback_id
+		 WHERE lemmas.source_priority <= excluded.source_priority`,
+		lemma, pos, lang, SourceCustomOverrides, CustomOverridesSourcePriority, feedback.ID,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, parse_feedback_id)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET
+			source = excluded.source,
+			source_priority = excluded.source_priority,
+			parse_feedback_id = excluded.parse_feedback_id
+		 WHERE forms.source_priority <= excluded.source_priority`,
+		form, lemma, pos, lang, SourceCustomOverrides, CustomOverridesSourcePriority, feedback.ID,
+	); err != nil {
+		return err
 	}
 	return nil
 }
