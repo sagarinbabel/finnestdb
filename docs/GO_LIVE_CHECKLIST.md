@@ -56,23 +56,29 @@ Required before go-live:
 
 ## Runtime Reproducibility and Data Readiness
 
-Current status: healthy locally after the 2026-05-18 audit; production
-guardrails still needed.
+Current status: healthy locally after the 2026-05-18 audit; production startup
+now fails fast when the dictionary DB is missing or undersized.
 
 `make doctor` verifies the restored DB, FST tables, NLP venv, Ekilex shards,
 UD cache, and parser dylib. A clean clone without gitignored artifacts fails
 doctor clearly, and the documented symlink/bootstrap path restores the expected
-FI dict + FST / ET dict + Ekilex + FST quality mode. The server still starts
-against an empty SQLite DB, though, which is acceptable for local smoke tests
-but unsafe for public production.
+FI dict + FST / ET dict + Ekilex + FST quality mode. When `APP_ENV=production`,
+the server checks `finnestdb.db` before opening it for migrations or starting
+the HTTP listener. Missing, empty, stub, or undersized dictionary DBs fail
+startup. The default production minimums are 20,000,000 FI forms and 6,000,000
+ET forms; override only with `FINNESTDB_PRODUCTION_MIN_FORMS_FI` /
+`FINNESTDB_PRODUCTION_MIN_FORMS_ET` when the production artifact policy changes.
+`FINNESTDB_ALLOW_DEGRADED_DB=1` disables the guard and should be treated as a
+development or emergency-only override.
 
 Required before go-live:
 
-- Fail production startup when `finnestdb.db` is missing, empty, or lacks the
-  expected FI/ET dictionary row counts, unless an explicit development-only
-  degraded mode is set.
+- Keep the production startup DB guard enabled for public deployments
+  (`APP_ENV=production`, no `FINNESTDB_ALLOW_DEGRADED_DB=1`).
 - Keep the fast-bootstrap/symlink runbook verified with `make doctor` after
   artifact restore.
+- If startup fails on DB readiness, restore/symlink the production DB artifact,
+  run `make doctor`, run `make db-invariants`, then restart the server.
 - Verify public frequency baselines are present in the production artifact, or
   intentionally disable calibration features so they cannot silently run without
   comparison anchors.

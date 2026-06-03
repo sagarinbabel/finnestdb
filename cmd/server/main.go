@@ -23,6 +23,14 @@ func main() {
 	dbPath := flag.String("db", "finnestdb.db", "Path to SQLite database")
 	flag.Parse()
 
+	if productionMode() && allowDegradedDB() {
+		log.Printf("WARNING: %s=1 set in production; dictionary DB readiness guard is disabled", allowDegradedDBEnvVar)
+	}
+	dbReady, err := requireProductionDBReady(*dbPath)
+	if err != nil {
+		log.Fatalf("Production DB readiness check failed: %v", err)
+	}
+
 	// Initialize database
 	db, err := store.NewDB(*dbPath)
 	if err != nil {
@@ -33,7 +41,7 @@ func main() {
 	// Check dictionary status for each language and report clearly.
 	missingDicts := []string{}
 	for _, lang := range []string{"FI", "ET"} {
-		n, err := db.FormsCount(lang)
+		n, err := dictionaryFormsCount(db, dbReady, lang)
 		if err != nil {
 			log.Printf("warn: could not check %s dictionary: %v", lang, err)
 			continue
@@ -86,4 +94,14 @@ func main() {
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+func dictionaryFormsCount(db *store.DB, ready *dictionaryReadiness, lang string) (int64, error) {
+	if ready != nil && ready.Counts != nil {
+		if count, ok := ready.Counts[lang]; ok {
+			return count, nil
+		}
+	}
+	count, err := db.FormsCount(lang)
+	return int64(count), err
 }
