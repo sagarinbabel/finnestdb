@@ -55,6 +55,9 @@ func (a *API) HandleImportExtract(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if !allowStateChangingRequest(w, r) {
+		return
+	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxImportUploadBytes)
 	if err := r.ParseMultipartForm(maxImportUploadBytes); err != nil {

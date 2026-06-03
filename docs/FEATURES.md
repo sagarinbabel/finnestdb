@@ -128,20 +128,24 @@ Anonymous correction submission is out of scope for alpha.
 
 ## What We Store During Alpha
 
-- In the browser alpha, Parse is behind sign-in. Direct unauthenticated API
-  parses, when used by development tooling, are ephemeral and do not return a
-  stored parse ID.
+- In the browser alpha, the signed-in app remains the primary product loop.
+  Direct unauthenticated `POST /api/parse` is intentionally allowed for
+  ephemeral inspect/discovery use, guarded by rate limits, and does not return
+  a stored parse ID.
 - When you are **signed in**, the text you paste into Inspect is ephemeral by
   default. `/api/parse` returns results without creating a stored parse ID.
 - Source text is stored only when you make the parse durable: saving it as a
   deck, or submitting parser feedback. Feedback stores the original context so
   admins can review the correction.
+- The History page lists retained parse sessions and lets you delete one
+  session or all retained sessions. Deleting a parse session removes that
+  retained source context and parser feedback tied to it; saved decks remain.
 - Accepted corrections are triaged data today. They are queued for the
   correction-overlay work that will feed future parser improvements; they do
   not yet change parser output automatically.
-- We do **not** yet have deletion controls for stored deck/feedback parse
-  context. Until those exist, do not save or submit feedback for text you would
-  not want stored.
+- Account deletion removes the account and retained user data server-side,
+  including decks, parse sessions, parser feedback, review cards, sessions,
+  and known/ignored word lists.
 - We do not sell, share, or use your pasted text to train external models.
 
 ## Technology Differentiators

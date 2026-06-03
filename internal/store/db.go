@@ -150,6 +150,18 @@ type ParseSession struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+type ParseSessionHistoryItem struct {
+	ID            int64     `json:"id"`
+	Lang          string    `json:"lang"`
+	Parser        string    `json:"parser"`
+	SourcePreview string    `json:"source_preview"`
+	TotalTokens   int       `json:"total_tokens"`
+	UniqueWords   int       `json:"unique_words"`
+	DeckCount     int       `json:"deck_count"`
+	FeedbackCount int       `json:"feedback_count"`
+	CreatedAt     time.Time `json:"created_at"`
+}
+
 type ParseFeedback struct {
 	ID                   int64      `json:"id"`
 	ParseSessionID       int64      `json:"parse_session_id"`
@@ -556,7 +568,7 @@ func EnsureDictionarySourceColumns(db *sql.DB) error {
 
 // BackfillLegacyKaikkiProvenance labels FI/ET rows that were imported before
 // cmd/importdict threaded -source-key / -source-priority through. Those rows
-// carry the SQLite column defaults (source='' and source_priority=0), which
+// carry the SQLite column defaults (source=” and source_priority=0), which
 // makes verify-dict and `make doctor` flag the entire dictionary as untracked
 // even though it's the kaikki dump every fresh install gets.
 //
@@ -936,6 +948,80 @@ func (d *DB) ListUsers() ([]User, error) {
 func (d *DB) SetUserAdmin(userID int64, isAdmin bool) error {
 	_, err := d.db.Exec(`UPDATE users SET is_admin = ? WHERE id = ?`, boolToInt(isAdmin), userID)
 	return err
+}
+
+// DeleteUserCascade removes the user and every user-owned row that can carry
+// private learning data or pasted source text. SQLite foreign keys are not
+// enabled for this app, so the cascade is explicit and ordered.
+func (d *DB) DeleteUserCascade(userID int64) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`
+		DELETE FROM parse_feedback
+		 WHERE user_id = ?
+		    OR reviewed_by_user_id = ?
+		    OR parse_session_id IN (SELECT id FROM parse_sessions WHERE user_id = ?)`,
+		userID, userID, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`
+		DELETE FROM user_deck_subscriptions
+		 WHERE user_id = ?
+		    OR deck_id IN (SELECT id FROM decks WHERE user_id = ?)`,
+		userID, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`
+		DELETE FROM occurrence
+		 WHERE deck_id IN (SELECT id FROM decks WHERE user_id = ?)`,
+		userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`
+		DELETE FROM sentences
+		 WHERE deck_id IN (SELECT id FROM decks WHERE user_id = ?)`,
+		userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM decks WHERE user_id = ?`, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`
+		DELETE FROM card_state
+		 WHERE card_id IN (SELECT id FROM cards WHERE user_id = ?)`,
+		userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM cards WHERE user_id = ?`, userID); err != nil {
+		return err
+	}
+	for _, table := range []string{
+		"user_known_lemmas",
+		"user_ignored_lemmas",
+		"user_sessions",
+		"parse_sessions",
+	} {
+		if _, err := tx.Exec(`DELETE FROM `+table+` WHERE user_id = ?`, userID); err != nil {
+			return err
+		}
+	}
+	result, err := tx.Exec(`DELETE FROM users WHERE id = ?`, userID)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+
+	return tx.Commit()
 }
 
 type sqlReadWriter interface {
@@ -2509,6 +2595,124 @@ func (d *DB) GetParseSession(parseSessionID int64) (*ParseSession, error) {
 		session.UserID = &userID.Int64
 	}
 	return &session, nil
+}
+
+func (d *DB) ListUserParseSessions(userID int64) ([]ParseSessionHistoryItem, error) {
+	rows, err := d.db.Query(
+		`SELECT ps.id, ps.lang, ps.parser,
+		        substr(replace(replace(ps.source_text, char(10), ' '), char(13), ' '), 1, 240),
+		        ps.total_tokens, ps.unique_words, ps.created_at,
+		        (SELECT COUNT(*) FROM decks d WHERE d.user_id = ? AND d.parse_session_id = ps.id),
+		        (SELECT COUNT(*) FROM parse_feedback pf WHERE pf.user_id = ? AND pf.parse_session_id = ps.id)
+		   FROM parse_sessions ps
+		  WHERE ps.user_id = ?
+		  ORDER BY ps.created_at DESC, ps.id DESC
+		  LIMIT 200`,
+		userID, userID, userID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	sessions := []ParseSessionHistoryItem{}
+	for rows.Next() {
+		var item ParseSessionHistoryItem
+		if err := rows.Scan(
+			&item.ID,
+			&item.Lang,
+			&item.Parser,
+			&item.SourcePreview,
+			&item.TotalTokens,
+			&item.UniqueWords,
+			&item.CreatedAt,
+			&item.DeckCount,
+			&item.FeedbackCount,
+		); err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, item)
+	}
+	return sessions, rows.Err()
+}
+
+func (d *DB) DeleteUserParseSession(userID, parseSessionID int64) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(
+		`UPDATE decks SET parse_session_id = NULL
+		  WHERE user_id = ? AND parse_session_id = ?`,
+		userID, parseSessionID,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(
+		`DELETE FROM parse_feedback
+		  WHERE parse_session_id IN (
+			SELECT id FROM parse_sessions WHERE id = ? AND user_id = ?
+		  )`,
+		parseSessionID, userID,
+	); err != nil {
+		return err
+	}
+	result, err := tx.Exec(
+		`DELETE FROM parse_sessions WHERE id = ? AND user_id = ?`,
+		parseSessionID, userID,
+	)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
+	}
+	return tx.Commit()
+}
+
+func (d *DB) DeleteUserParseSessions(userID int64) (int64, error) {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(
+		`UPDATE decks SET parse_session_id = NULL
+		  WHERE user_id = ? AND parse_session_id IN (
+			SELECT id FROM parse_sessions WHERE user_id = ?
+		  )`,
+		userID, userID,
+	); err != nil {
+		return 0, err
+	}
+	if _, err := tx.Exec(
+		`DELETE FROM parse_feedback
+		  WHERE parse_session_id IN (
+			SELECT id FROM parse_sessions WHERE user_id = ?
+		  )`,
+		userID,
+	); err != nil {
+		return 0, err
+	}
+	result, err := tx.Exec(`DELETE FROM parse_sessions WHERE user_id = ?`, userID)
+	if err != nil {
+		return 0, err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return rowsAffected, nil
 }
 
 func (d *DB) CreateParseFeedback(feedback ParseFeedback) (int64, error) {

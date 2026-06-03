@@ -10,6 +10,22 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+func chdirForTest(t *testing.T, dir string) {
+	t.Helper()
+	prev, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd: %v", err)
+	}
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("Chdir(%q): %v", dir, err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(prev); err != nil {
+			t.Fatalf("restore cwd %q: %v", prev, err)
+		}
+	})
+}
+
 // TestCheckDB_LegacyKaikkiRowsTriggerProvenanceWarning is the regression
 // test for the original bug report: a DB whose lemmas/forms still carry
 // empty source / source_priority=0 must produce a clear "provenance
@@ -95,7 +111,7 @@ func TestCheckDB_MissingDBFails(t *testing.T) {
 }
 
 func TestCheckETAnalyserHintUsesLocaldata(t *testing.T) {
-	t.Chdir(t.TempDir())
+	chdirForTest(t, t.TempDir())
 
 	checks := checkETAnalyser()
 	if len(checks) != 1 {
@@ -112,7 +128,7 @@ func TestCheckETAnalyserHintUsesLocaldata(t *testing.T) {
 }
 
 func TestCheckRustParserFindsCargoReleaseLibrary(t *testing.T) {
-	t.Chdir(t.TempDir())
+	chdirForTest(t, t.TempDir())
 
 	path := filepath.Join("parser", "target", "release", "libparser.dylib")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -132,7 +148,7 @@ func TestCheckRustParserFindsCargoReleaseLibrary(t *testing.T) {
 }
 
 func TestFindHFSTOLUsesLocaldataPath(t *testing.T) {
-	t.Chdir(t.TempDir())
+	chdirForTest(t, t.TempDir())
 
 	path := filepath.Join("localdata", "lemmatizer-fi-et", "analyser-gt-desc.hfstol")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -148,7 +164,7 @@ func TestFindHFSTOLUsesLocaldataPath(t *testing.T) {
 }
 
 func TestFindHFSTOLFallsBackToLegacyPackageDataPath(t *testing.T) {
-	t.Chdir(t.TempDir())
+	chdirForTest(t, t.TempDir())
 
 	path := filepath.Join("pkg", "lemmatizer-fi-et", "data", "et", "analyser-gt-desc.hfstol")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
