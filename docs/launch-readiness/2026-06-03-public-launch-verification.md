@@ -1,7 +1,10 @@
 # Public Launch Verification - 2026-06-03
 
 Scope: current workspace at `/Users/sagar/Downloads/projects/finnestdb`, local
-public-launch verification through FIN-23.
+public-launch verification through FIN-27 readiness checks.
+
+Latest verification pass: `2026-06-03T20:22:44Z`
+(`2026-06-03T23:22:44+0300 EEST`).
 
 ## Summary
 
@@ -21,8 +24,8 @@ public-launch verification through FIN-23.
 | `go test ./...` in `corpus_pipeline/` | PASS | Corpus pipeline tests passed. |
 | `npm run build` in `web/` | PASS | TypeScript build passed. |
 | `npm test` in `web/` | PASS | Playwright: 108 browser tests passed, including parse-history access, cancel/delete, bulk delete, and empty-state coverage. |
-| `make compare-parsers` | PASS | FI comparison completed; reports written with timestamp `20260603T183545Z`. |
-| `make compare-parsers-et` | PASS | ET comparison completed; reports written with timestamp `20260603T183545Z`. |
+| `make compare-parsers` | PASS | FI comparison completed on rerun after an initial SQLite lock from concurrent DB use; reports written with timestamp `20260603T201917Z`. |
+| `make compare-parsers-et` | PASS | ET comparison completed; reports written with timestamp `20260603T201703Z`. |
 | Live API smoke/security probes | PASS | 15/15 passed. |
 | `make live-api-smoke` | PASS | Repeatable script passed against `http://127.0.0.1:8092`; 15/15 checks. |
 | `go test -race ./internal/api ./internal/auth ./internal/store` | PASS | Race run passed. |
@@ -97,8 +100,9 @@ remaining non-code or not-yet-automated public-launch items are:
 
 The full Codex Security repository-wide scan was not completed because the
 Codex Security workflow requires explicit authorization to use subagents for
-exhaustive repository-wide coverage. I requested that authorization in the
-thread. Once approved, run the Codex Security phases in order:
+exhaustive repository-wide coverage. That authorization has not been granted in
+the thread, so no Codex Security subagents were spawned and FIN-27 remains open.
+Once approved, run the Codex Security phases in order:
 
 1. threat model
 2. finding discovery
