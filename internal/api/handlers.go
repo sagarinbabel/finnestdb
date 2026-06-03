@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"sort"
 	"strconv"
@@ -30,6 +31,7 @@ type API struct {
 	store           *store.DB
 	analyze         func(*store.DB, string, string, string) (*parsecore.ParseResult, error)
 	analyzeChapters func(*store.DB, string, []parsecore.ChapterInput, string) (*parsecore.ParseResult, error)
+	rateLimits      *rateLimitSet
 }
 
 func NewAPI(store *store.DB) *API {
@@ -37,6 +39,7 @@ func NewAPI(store *store.DB) *API {
 		store:           store,
 		analyze:         parsecore.Analyze,
 		analyzeChapters: parsecore.AnalyzeChapters,
+		rateLimits:      newRateLimitSetFromEnv(),
 	}
 }
 
@@ -235,6 +238,14 @@ type ParseFeedbackReviewRequest struct {
 	ReviewNote string `json:"review_note"`
 }
 
+type ParseSessionsResponse struct {
+	Sessions []store.ParseSessionHistoryItem `json:"sessions"`
+}
+
+type DeleteParseSessionsResponse struct {
+	Deleted int64 `json:"deleted"`
+}
+
 type ParseFeedbackResponse struct {
 	FeedbackID int64  `json:"feedback_id"`
 	Status     string `json:"status"`
@@ -372,8 +383,55 @@ func (a *API) requireAuth(next func(http.ResponseWriter, *http.Request, *AuthCon
 			http.Error(w, "Authentication required", http.StatusUnauthorized)
 			return
 		}
+		if !allowStateChangingRequest(w, r) {
+			return
+		}
 		next(w, r, auth)
 	}
+}
+
+func allowStateChangingRequest(w http.ResponseWriter, r *http.Request) bool {
+	if !isStateChangingMethod(r.Method) {
+		return true
+	}
+	if sameOrigin(r.Header.Get("Origin"), r) {
+		return true
+	}
+	if sameOrigin(r.Header.Get("Referer"), r) {
+		return true
+	}
+	if r.Header.Get("Origin") == "" && r.Header.Get("Referer") == "" {
+		return true
+	}
+	http.Error(w, "Cross-origin request rejected", http.StatusForbidden)
+	return false
+}
+
+func isStateChangingMethod(method string) bool {
+	switch method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		return true
+	default:
+		return false
+	}
+}
+
+func sameOrigin(raw string, r *http.Request) bool {
+	if raw == "" {
+		return false
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return false
+	}
+	requestScheme := "http"
+	if r.TLS != nil {
+		requestScheme = "https"
+	}
+	if forwardedProto := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")); forwardedProto != "" {
+		requestScheme = strings.ToLower(forwardedProto)
+	}
+	return strings.EqualFold(u.Scheme, requestScheme) && strings.EqualFold(u.Host, r.Host)
 }
 
 func (a *API) requireAdmin(next func(http.ResponseWriter, *http.Request, *AuthContext)) http.HandlerFunc {
@@ -415,6 +473,9 @@ func (a *API) HandleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := validatePassword(req.Password); err != nil {
 		writeAuthError(w, err)
+		return
+	}
+	if !a.rateLimits.allowRegister(w, r, email) {
 		return
 	}
 
@@ -471,6 +532,9 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		writeAuthError(w, err)
 		return
 	}
+	if !a.rateLimits.allowLogin(w, r, email) {
+		return
+	}
 
 	user, err := a.store.GetUserByEmail(email)
 	if err != nil {
@@ -482,20 +546,11 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Bootstrap-on-first-login: existing alpha accounts have empty
-	// password_hash. The first password they submit becomes their permanent
-	// password. Subsequent logins verify normally.
 	if user.PasswordHash == "" {
-		hash, hashErr := auth.HashPassword(req.Password)
-		if hashErr != nil {
-			http.Error(w, "Unable to secure password", http.StatusInternalServerError)
-			return
-		}
-		if err := a.store.SetUserPassword(user.ID, hash); err != nil {
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
-		}
-	} else if !auth.VerifyPassword(req.Password, user.PasswordHash) {
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+	if !auth.VerifyPassword(req.Password, user.PasswordHash) {
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
@@ -520,6 +575,9 @@ func (a *API) HandleLogout(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	if !allowStateChangingRequest(w, r) {
+		return
+	}
 
 	// Revoke server-side session if a token is presented; expire the cookie
 	// either way so the browser stops sending it.
@@ -532,6 +590,10 @@ func (a *API) HandleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	auth, err := a.getCurrentUser(r)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -542,6 +604,22 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 			Authenticated: false,
 			User:          nil,
 		})
+		return
+	}
+	if r.Method == http.MethodDelete {
+		if !allowStateChangingRequest(w, r) {
+			return
+		}
+		if err := a.store.DeleteUserCascade(auth.UserID); err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "User not found", http.StatusNotFound)
+				return
+			}
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		http.SetCookie(w, sessionCookie("", -1))
+		writeJSON(w, http.StatusOK, map[string]string{"status": "deleted"})
 		return
 	}
 
@@ -669,6 +747,9 @@ func (a *API) HandleUserLanguages(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Authentication required", http.StatusUnauthorized)
 		return
 	}
+	if !allowStateChangingRequest(w, r) {
+		return
+	}
 
 	var req UpdateLanguagesRequest
 	if !decodeJSONRequest(w, r, &req) {
@@ -726,6 +807,9 @@ func (a *API) HandleDecks(w http.ResponseWriter, r *http.Request) {
 	}
 	if auth == nil {
 		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+	if !allowStateChangingRequest(w, r) {
 		return
 	}
 
@@ -1333,6 +1417,9 @@ func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Authentication required", http.StatusUnauthorized)
 		return
 	}
+	if !allowStateChangingRequest(w, r) {
+		return
+	}
 
 	rest := strings.TrimPrefix(r.URL.Path, "/api/decks/")
 	idStr := rest
@@ -1565,6 +1652,9 @@ func (a *API) HandleKnownWords(w http.ResponseWriter, r *http.Request) {
 	}
 	if auth == nil {
 		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+	if !allowStateChangingRequest(w, r) {
 		return
 	}
 
@@ -1929,6 +2019,9 @@ func (a *API) HandleReviewAnswer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Authentication required", http.StatusUnauthorized)
 		return
 	}
+	if !allowStateChangingRequest(w, r) {
+		return
+	}
 
 	var req ReviewAnswerRequest
 	if !decodeJSONRequest(w, r, &req) {
@@ -1969,6 +2062,9 @@ func (a *API) HandleCardIgnore(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Authentication required", http.StatusUnauthorized)
 		return
 	}
+	if !allowStateChangingRequest(w, r) {
+		return
+	}
 
 	var req ReviewCardMutationRequest
 	if !decodeJSONRequest(w, r, &req) {
@@ -2001,6 +2097,9 @@ func (a *API) HandleCardKnown(w http.ResponseWriter, r *http.Request) {
 	}
 	if auth == nil {
 		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		return
+	}
+	if !allowStateChangingRequest(w, r) {
 		return
 	}
 
@@ -2057,6 +2156,14 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	auth, err := a.getCurrentUser(r)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if !a.rateLimits.allowParse(w, r, auth) {
+		return
+	}
 
 	var req ParseRequest
 	if !decodeJSONRequest(w, r, &req) {
@@ -2082,26 +2189,26 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var parsed *parsecore.ParseResult
-	var err error
+	var parseErr error
 	if hasChapters {
-		parsed, err = a.analyzeChapters(a.store, req.Lang, req.Chapters, req.Parser)
+		parsed, parseErr = a.analyzeChapters(a.store, req.Lang, req.Chapters, req.Parser)
 	} else {
-		parsed, err = a.analyze(a.store, req.Lang, req.Text, req.Parser)
+		parsed, parseErr = a.analyze(a.store, req.Lang, req.Text, req.Parser)
 	}
-	if err != nil {
+	if parseErr != nil {
 		status := http.StatusInternalServerError
-		switch err.Error() {
+		switch parseErr.Error() {
 		case "language must be FI or ET", "text is required", "chapters is required":
 			status = http.StatusBadRequest
 		default:
-			if len(err.Error()) >= 13 && err.Error()[:13] == "text exceeds " {
+			if len(parseErr.Error()) >= 13 && parseErr.Error()[:13] == "text exceeds " {
 				status = http.StatusBadRequest
 			}
-			if len(err.Error()) >= 19 && err.Error()[:19] == "unsupported parser " {
+			if len(parseErr.Error()) >= 19 && parseErr.Error()[:19] == "unsupported parser " {
 				status = http.StatusBadRequest
 			}
 		}
-		http.Error(w, err.Error(), status)
+		http.Error(w, parseErr.Error(), status)
 		return
 	}
 
@@ -2130,12 +2237,6 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 			parsed.Chapters[i].Words = a.expandSentencesToWords(chSentences, parserChapterWords[i], parsed.Lang, dictCandidates, dictGlosses, checkedGlossKeys)
 			parsed.Chapters[i].LemmaCount = len(parsed.Chapters[i].Words)
 		}
-	}
-
-	auth, err := a.getCurrentUser(r)
-	if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
-		return
 	}
 
 	// /api/parse no longer creates a parse_sessions row. Persistence is
@@ -2212,6 +2313,61 @@ func applyLemmaStatesInPlace(db *store.DB, userID int64, lang string, words []pa
 	}
 }
 
+func (a *API) HandleParseSessions(w http.ResponseWriter, r *http.Request) {
+	a.requireAuth(a.handleParseSessions).ServeHTTP(w, r)
+}
+
+func (a *API) handleParseSessions(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	switch r.Method {
+	case http.MethodGet:
+		sessions, err := a.store.ListUserParseSessions(auth.UserID)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, ParseSessionsResponse{Sessions: sessions})
+	case http.MethodDelete:
+		deleted, err := a.store.DeleteUserParseSessions(auth.UserID)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, DeleteParseSessionsResponse{Deleted: deleted})
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (a *API) HandleParseSessionByID(w http.ResponseWriter, r *http.Request) {
+	a.requireAuth(a.handleParseSessionByID).ServeHTTP(w, r)
+}
+
+func (a *API) handleParseSessionByID(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	idPart := strings.TrimPrefix(r.URL.Path, "/api/parse/sessions/")
+	if idPart == "" || strings.Contains(idPart, "/") {
+		http.Error(w, "Parse session not found", http.StatusNotFound)
+		return
+	}
+	parseSessionID, err := strconv.ParseInt(idPart, 10, 64)
+	if err != nil || parseSessionID <= 0 {
+		http.Error(w, "Parse session not found", http.StatusNotFound)
+		return
+	}
+	if err := a.store.DeleteUserParseSession(auth.UserID, parseSessionID); err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Parse session not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
 func (a *API) HandleParseFeedback(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -2221,6 +2377,9 @@ func (a *API) HandleParseFeedback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) handleParseFeedback(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	if !a.rateLimits.allowFeedback(w, r, auth) {
+		return
+	}
 	var req ParseFeedbackRequest
 	if !decodeJSONRequest(w, r, &req) {
 		return
@@ -2477,6 +2636,8 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 
 	// Parse (word list view)
 	mux.HandleFunc("/api/parse", a.HandleParse)
+	mux.HandleFunc("/api/parse/sessions", a.HandleParseSessions)
+	mux.HandleFunc("/api/parse/sessions/", a.HandleParseSessionByID)
 	mux.HandleFunc("/api/parse/feedback", a.HandleParseFeedback)
 	mux.HandleFunc("/api/admin/parse-feedback", a.HandleAdminParseFeedback)
 	mux.HandleFunc("/api/admin/users", a.HandleAdminUsers)

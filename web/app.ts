@@ -271,6 +271,22 @@ interface ParseFeedbackListResponse {
     feedback: ParseFeedbackItem[];
 }
 
+interface ParseSessionHistoryItem {
+    id:             number;
+    lang:           string;
+    parser:         string;
+    source_preview: string;
+    total_tokens:   number;
+    unique_words:   number;
+    deck_count:     number;
+    feedback_count: number;
+    created_at:     string;
+}
+
+interface ParseSessionsResponse {
+    sessions: ParseSessionHistoryItem[];
+}
+
 type Role = 'anon' | 'user' | 'admin';
 type SortKey = 'row' | 'lemma' | 'pos' | 'forms' | 'definition' | 'tokens';
 type POSFilter = 'all' | 'NOUN' | 'VERB' | 'ADJ' | 'ADV' | 'other';
@@ -307,6 +323,8 @@ const state = {
     pendingLemmaStates: new Set<string>(),
     currentReviewCard:  null as ReviewCardResponse | null,
     reviewDeckFilter:   '',
+    parseSessions:      [] as ParseSessionHistoryItem[],
+    parseSessionsLoaded: false,
     adminFeedback:      [] as ParseFeedbackItem[],
     adminFeedbackStatus: 'submitted',
     // Active language drives the deck list filter, Inspect/Known-Words defaults,
@@ -1115,6 +1133,8 @@ async function handleSignout(): Promise<void> {
     state.currentLemmaStates.clear();
     state.currentReviewCard = null;
     state.reviewDeckFilter = '';
+    state.parseSessions = [];
+    state.parseSessionsLoaded = false;
     try { sessionStorage.removeItem(LAST_PARSE_KEY); } catch {}
     clearResultsDom();
     applyRoleVisibility();
@@ -1147,6 +1167,7 @@ const ROUTE_TO_PAGE: Record<string, string> = {
     '/signin':           'signin-page',
     '/dashboard':        'dashboard-page',
     '/inspect':          'inspect-page',
+    '/history':          'history-page',
     '/decks':            'decks-page',
     '/decks/official':   'decks-page',
     '/languages':        'languages-page',
@@ -1207,7 +1228,7 @@ function isRouteAllowed(route: string): { allowed: boolean; redirect?: string } 
     }
 
     // Authenticated-only routes
-    const userOnly = ['/dashboard', '/inspect', '/decks', '/decks/official', '/languages', '/vocab', '/review', '/results'];
+    const userOnly = ['/dashboard', '/inspect', '/history', '/decks', '/decks/official', '/languages', '/vocab', '/review', '/results'];
     const isDeckDetail = DECK_DETAIL_RE.test(route);
     if (userOnly.includes(route) || isDeckDetail) {
         if (role === 'anon') return { allowed: false, redirect: '/signin' };
@@ -1248,6 +1269,10 @@ function renderRoute(): void {
 
     // Per-page hooks
     if (route === '/dashboard') renderDashboard();
+    if (route === '/history') {
+        renderHistoryPage();
+        void loadParseSessions();
+    }
     if (route === '/decks' || route === '/decks/official') {
         // Tab state is derived from the route so refreshing the page or
         // sharing a link keeps the same tab open. Both routes share the
@@ -1471,6 +1496,126 @@ async function refreshDashboardData(options: { rerenderRoute?: boolean } = {}): 
     await fetchMe();
     if (options.rerenderRoute !== false) {
         renderRoute();
+    }
+}
+
+function formatHistoryDate(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString(undefined, {
+        year:   'numeric',
+        month:  'short',
+        day:    'numeric',
+        hour:   '2-digit',
+        minute: '2-digit',
+    });
+}
+
+function renderHistoryPage(): void {
+    const list = document.getElementById('history-list');
+    const empty = document.getElementById('history-empty');
+    const deleteAll = document.getElementById('history-delete-all') as HTMLButtonElement | null;
+    if (!list || !empty) return;
+
+    if (!state.parseSessionsLoaded) {
+        empty.classList.add('hidden');
+        list.innerHTML = '<p class="empty-state">Loading parse history...</p>';
+        if (deleteAll) deleteAll.disabled = true;
+        return;
+    }
+
+    const sessions = state.parseSessions;
+    if (deleteAll) deleteAll.disabled = sessions.length === 0;
+    empty.classList.toggle('hidden', sessions.length > 0);
+    if (sessions.length === 0) {
+        list.innerHTML = '';
+        return;
+    }
+
+    list.innerHTML = sessions.map(item => {
+        const lang = escapeHtml(languageName(item.lang));
+        const parser = escapeHtml(item.parser || 'custom');
+        const preview = escapeHtml(item.source_preview || '(empty text)');
+        const deckPart = `${item.deck_count.toLocaleString()} deck${item.deck_count === 1 ? '' : 's'}`;
+        const feedbackPart = `${item.feedback_count.toLocaleString()} feedback item${item.feedback_count === 1 ? '' : 's'}`;
+        return `<article class="history-row">
+            <div class="history-row-main">
+                <p class="history-row-meta">${lang} · ${parser} · ${formatHistoryDate(item.created_at)}</p>
+                <p class="history-row-preview">${preview}</p>
+                <p class="history-row-counts">${item.total_tokens.toLocaleString()} tokens · ${item.unique_words.toLocaleString()} unique words · ${deckPart} · ${feedbackPart}</p>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" data-delete-parse-session="${item.id}">Delete</button>
+        </article>`;
+    }).join('');
+}
+
+async function loadParseSessions(): Promise<void> {
+    state.parseSessionsLoaded = false;
+    renderHistoryPage();
+    try {
+        const resp = await fetch('/api/parse/sessions', { credentials: 'same-origin' });
+        if (!resp.ok) throw new Error(await resp.text() || 'Failed to load parse history');
+        const data = await resp.json() as ParseSessionsResponse;
+        state.parseSessions = data.sessions || [];
+        state.parseSessionsLoaded = true;
+        renderHistoryPage();
+    } catch (err: any) {
+        state.parseSessionsLoaded = true;
+        state.parseSessions = [];
+        renderHistoryPage();
+        showToast(err.message || 'Failed to load parse history.', 'error');
+    }
+}
+
+async function deleteParseSession(id: number): Promise<void> {
+    const item = state.parseSessions.find(s => s.id === id);
+    const confirmed = await showConfirm({
+        title:        'Delete parse session?',
+        message:      item
+            ? `Delete this retained ${languageName(item.lang)} parse? Linked decks stay, but feedback tied to this parse is removed.`
+            : 'Delete this retained parse? Linked decks stay, but feedback tied to this parse is removed.',
+        confirmLabel: 'Delete',
+        danger:       true,
+    });
+    if (!confirmed) return;
+
+    try {
+        const resp = await fetch(`/api/parse/sessions/${id}`, {
+            method:      'DELETE',
+            credentials: 'same-origin',
+        });
+        if (!resp.ok) throw new Error(await resp.text() || 'Delete failed');
+        showToast('Parse session deleted.', 'success');
+        await loadParseSessions();
+    } catch (err: any) {
+        showToast(err.message || 'Failed to delete parse session.', 'error');
+    }
+}
+
+async function deleteAllParseSessions(): Promise<void> {
+    const count = state.parseSessions.length;
+    if (count === 0) {
+        showToast('No retained parse sessions to delete.', 'info');
+        return;
+    }
+    const confirmed = await showConfirm({
+        title:        'Delete all parse history?',
+        message:      `Delete ${count.toLocaleString()} retained parse session${count === 1 ? '' : 's'}? Linked decks stay, but feedback tied to these parses is removed.`,
+        confirmLabel: 'Delete all',
+        danger:       true,
+    });
+    if (!confirmed) return;
+
+    try {
+        const resp = await fetch('/api/parse/sessions', {
+            method:      'DELETE',
+            credentials: 'same-origin',
+        });
+        if (!resp.ok) throw new Error(await resp.text() || 'Delete failed');
+        showToast('Parse history deleted.', 'success');
+        await loadParseSessions();
+    } catch (err: any) {
+        showToast(err.message || 'Failed to delete parse history.', 'error');
     }
 }
 
@@ -5545,6 +5690,18 @@ function initKnownWordsPanel(): void {
     });
 }
 
+function initHistoryPage(): void {
+    document.getElementById('history-list')?.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement | null;
+        if (!target) return;
+        const id = Number(target.getAttribute('data-delete-parse-session') || 0);
+        if (id > 0) void deleteParseSession(id);
+    });
+    document.getElementById('history-delete-all')?.addEventListener('click', () => {
+        void deleteAllParseSessions();
+    });
+}
+
 function initVocabFileImport(): void {
     const input = document.getElementById('vocab-file-input') as HTMLInputElement | null;
     const cta = document.getElementById('vocab-file-cta');
@@ -5901,6 +6058,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initCorrectionModal();
     initDecksPage();
     initKnownWordsPanel();
+    initHistoryPage();
     initLanguagesPage();
     initNavLanguageSelector();
     initVocabFileImport();

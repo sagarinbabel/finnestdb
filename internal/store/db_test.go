@@ -3,7 +3,9 @@ package store
 import (
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -333,6 +335,207 @@ func TestUpdateDeckTitleAndPublicRollsBackOnTitleFailure(t *testing.T) {
 	if isPublic {
 		t.Fatal("is_public changed despite title failure")
 	}
+}
+
+func TestDeleteUserCascadeRemovesPrivateRows(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "delete-me@example.com")
+	other := createTestUser(t, db, "keep-me@example.com")
+
+	ownedDeckID := createSingleTokenDeck(t, db, user.ID, "FI", "Kissa.", "Kissa", "kissa", "NOUN")
+	publicDeckID := createSingleTokenDeck(t, db, other.ID, "FI", "Koira.", "Koira", "koira", "NOUN")
+	if err := db.SetDeckIsPublic(publicDeckID, true); err != nil {
+		t.Fatalf("SetDeckIsPublic: %v", err)
+	}
+	if err := db.SubscribeUserToPublicDeck(user.ID, publicDeckID); err != nil {
+		t.Fatalf("SubscribeUserToPublicDeck: %v", err)
+	}
+	if err := db.MarkLemmaKnown(user.ID, "FI", "hauki", "NOUN"); err != nil {
+		t.Fatalf("MarkLemmaKnown: %v", err)
+	}
+	if cardID, err := db.EnsureCard(user.ID, "FI", "ahven", "NOUN"); err != nil {
+		t.Fatalf("EnsureCard: %v", err)
+	} else if err := db.MarkCardIgnored(user.ID, cardID); err != nil {
+		t.Fatalf("MarkCardIgnored: %v", err)
+	}
+	if err := db.CreateSession(user.ID, "delete-session-hash", time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "Kissa.", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	if _, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "Kissa",
+		OriginalLemma:  "kissa",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "kissa",
+		ProposedPOS:    "NOUN",
+	}); err != nil {
+		t.Fatalf("CreateParseFeedback: %v", err)
+	}
+
+	if err := db.DeleteUserCascade(user.ID); err != nil {
+		t.Fatalf("DeleteUserCascade: %v", err)
+	}
+
+	if _, err := db.GetUserByID(user.ID); err != sql.ErrNoRows {
+		t.Fatalf("GetUserByID deleted user err=%v want sql.ErrNoRows", err)
+	}
+	for _, check := range []struct {
+		name  string
+		query string
+		args  []any
+	}{
+		{"user sessions", `SELECT COUNT(*) FROM user_sessions WHERE user_id = ?`, []any{user.ID}},
+		{"parse sessions", `SELECT COUNT(*) FROM parse_sessions WHERE user_id = ?`, []any{user.ID}},
+		{"parse feedback", `SELECT COUNT(*) FROM parse_feedback WHERE user_id = ? OR parse_session_id = ? OR reviewed_by_user_id = ?`, []any{user.ID, parseID, user.ID}},
+		{"owned decks", `SELECT COUNT(*) FROM decks WHERE user_id = ?`, []any{user.ID}},
+		{"owned sentences", `SELECT COUNT(*) FROM sentences WHERE deck_id = ?`, []any{ownedDeckID}},
+		{"owned occurrence", `SELECT COUNT(*) FROM occurrence WHERE deck_id = ?`, []any{ownedDeckID}},
+		{"subscriptions", `SELECT COUNT(*) FROM user_deck_subscriptions WHERE user_id = ? OR deck_id = ?`, []any{user.ID, ownedDeckID}},
+		{"cards", `SELECT COUNT(*) FROM cards WHERE user_id = ?`, []any{user.ID}},
+		{"card state", `SELECT COUNT(*) FROM card_state WHERE card_id NOT IN (SELECT id FROM cards)`, nil},
+		{"known lemmas", `SELECT COUNT(*) FROM user_known_lemmas WHERE user_id = ?`, []any{user.ID}},
+		{"ignored lemmas", `SELECT COUNT(*) FROM user_ignored_lemmas WHERE user_id = ?`, []any{user.ID}},
+	} {
+		if got := countRows(t, db, check.query, check.args...); got != 0 {
+			t.Fatalf("%s rows=%d want 0", check.name, got)
+		}
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM decks WHERE id = ? AND user_id = ?`, publicDeckID, other.ID); got != 1 {
+		t.Fatalf("other user's public deck rows=%d want 1", got)
+	}
+}
+
+func TestParseSessionHistoryListAndDelete(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "parse-history@example.com")
+	other := createTestUser(t, db, "parse-history-other@example.com")
+
+	deckID := createSingleTokenDeck(t, db, user.ID, "FI", "Kissa.", "Kissa", "kissa", "NOUN")
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "Kissa juoksee.\nSe on nopea.", 4, 3)
+	if err != nil {
+		t.Fatalf("CreateParseSession user: %v", err)
+	}
+	if err := db.SetDeckParseSession(user.ID, deckID, parseID); err != nil {
+		t.Fatalf("SetDeckParseSession: %v", err)
+	}
+	if _, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "Kissa",
+		OriginalLemma:  "kissa",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "kissa",
+		ProposedPOS:    "NOUN",
+	}); err != nil {
+		t.Fatalf("CreateParseFeedback: %v", err)
+	}
+	otherParseID, err := db.CreateParseSession(&other.ID, "ET", "custom", "Koer jookseb.", 2, 2)
+	if err != nil {
+		t.Fatalf("CreateParseSession other: %v", err)
+	}
+
+	sessions, err := db.ListUserParseSessions(user.ID)
+	if err != nil {
+		t.Fatalf("ListUserParseSessions: %v", err)
+	}
+	if len(sessions) != 1 {
+		t.Fatalf("sessions=%d want 1: %+v", len(sessions), sessions)
+	}
+	got := sessions[0]
+	if got.ID != parseID || got.DeckCount != 1 || got.FeedbackCount != 1 {
+		t.Fatalf("unexpected session summary: %+v", got)
+	}
+	if strings.Contains(got.SourcePreview, "\n") || !strings.Contains(got.SourcePreview, "Kissa juoksee") {
+		t.Fatalf("source preview=%q", got.SourcePreview)
+	}
+
+	if err := db.DeleteUserParseSession(user.ID, otherParseID); err != sql.ErrNoRows {
+		t.Fatalf("DeleteUserParseSession other err=%v want sql.ErrNoRows", err)
+	}
+	if err := db.DeleteUserParseSession(user.ID, parseID); err != nil {
+		t.Fatalf("DeleteUserParseSession user: %v", err)
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM parse_sessions WHERE id = ?`, parseID); got != 0 {
+		t.Fatalf("deleted parse session rows=%d want 0", got)
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM parse_feedback WHERE parse_session_id = ?`, parseID); got != 0 {
+		t.Fatalf("deleted parse feedback rows=%d want 0", got)
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM decks WHERE id = ? AND parse_session_id IS NULL`, deckID); got != 1 {
+		t.Fatalf("deck parse_session_id NULL rows=%d want 1", got)
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM parse_sessions WHERE id = ?`, otherParseID); got != 1 {
+		t.Fatalf("other parse session rows=%d want 1", got)
+	}
+}
+
+func TestDeleteUserParseSessionsBulk(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "parse-history-bulk@example.com")
+	other := createTestUser(t, db, "parse-history-bulk-other@example.com")
+
+	parseID1, err := db.CreateParseSession(&user.ID, "FI", "custom", "Kissa.", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession user 1: %v", err)
+	}
+	parseID2, err := db.CreateParseSession(&user.ID, "ET", "custom", "Koer.", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession user 2: %v", err)
+	}
+	otherParseID, err := db.CreateParseSession(&other.ID, "FI", "custom", "Koira.", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession other: %v", err)
+	}
+	for _, parseID := range []int64{parseID1, parseID2} {
+		if _, err := db.CreateParseFeedback(ParseFeedback{
+			ParseSessionID: parseID,
+			UserID:         user.ID,
+			Lang:           "FI",
+			Parser:         "custom",
+			Surface:        "Kissa",
+			OriginalLemma:  "kissa",
+			OriginalPOS:    "NOUN",
+			ProposedLemma:  "kissa",
+			ProposedPOS:    "NOUN",
+		}); err != nil {
+			t.Fatalf("CreateParseFeedback: %v", err)
+		}
+	}
+
+	deleted, err := db.DeleteUserParseSessions(user.ID)
+	if err != nil {
+		t.Fatalf("DeleteUserParseSessions: %v", err)
+	}
+	if deleted != 2 {
+		t.Fatalf("deleted=%d want 2", deleted)
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM parse_sessions WHERE user_id = ?`, user.ID); got != 0 {
+		t.Fatalf("user parse sessions=%d want 0", got)
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM parse_feedback WHERE user_id = ?`, user.ID); got != 0 {
+		t.Fatalf("user parse feedback=%d want 0", got)
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM parse_sessions WHERE id = ?`, otherParseID); got != 1 {
+		t.Fatalf("other parse session rows=%d want 1", got)
+	}
+}
+
+func countRows(t *testing.T, db *DB, query string, args ...any) int {
+	t.Helper()
+	var n int
+	if err := db.db.QueryRow(query, args...).Scan(&n); err != nil {
+		t.Fatalf("count query %q: %v", query, err)
+	}
+	return n
 }
 
 func TestGetDeckDetailsUsesBatchGlossEnrichment(t *testing.T) {

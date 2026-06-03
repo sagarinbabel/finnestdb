@@ -4,12 +4,12 @@
         fetch-ekilex-refresh fetch-ekilex-sample fetch-ekilex \
         reduce-ekilex \
         gen-lemmatizer-tables-fi gen-lemmatizer-tables-et gen-lemmatizer-wordlist-fi \
-        reimport-dict-fi reimport-dict-et reimport-dict verify-dict \
+        reimport-dict-fi reimport-dict-et reimport-dict verify-dict db-invariants \
         setup-omorfi setup-estnltk eval eval-watch eval-check compare-parsers compare-parsers-et \
         import-ud-gold import-ud-gold-fi import-ud-gold-et \
         scrape-gutenberg-fi \
         fetch-frequency-baselines \
-        doctor
+        doctor live-api-smoke
 
 # Default target
 all: build
@@ -302,6 +302,12 @@ verify-dict:
 	else \
 		echo "(empty)"; \
 	fi
+
+db-invariants:
+	@sqlite3 finnestdb.db < scripts/db-invariants.sql
+
+live-api-smoke:
+	@node scripts/live-api-smoke.mjs
 
 # ── NLP tool setup (unified venv) ─────────────────────────────────────────────
 #

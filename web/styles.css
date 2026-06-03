@@ -2438,6 +2438,59 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     font-style: italic;
 }
 
+/* ── Parse history ──────────────────────────────────────────── */
+.history-main {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+}
+.history-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.history-header h1 {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+.history-lede {
+    color: var(--text-secondary);
+    margin: 0;
+}
+.history-list {
+    display: grid;
+    gap: 0.75rem;
+}
+.history-row {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: start;
+}
+.history-row-main {
+    min-width: 0;
+}
+.history-row-meta {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin: 0 0 0.45rem;
+}
+.history-row-preview {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+.history-row-counts {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin: 0.45rem 0 0;
+}
+
 /* ── Inspect (lightweight user parse) ───────────────────────── */
 .inspect-main {
     max-width: 760px;
@@ -2456,6 +2509,16 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+}
+.parse-privacy-chip {
+    margin: 0.75rem 0 0;
+    padding: 0.625rem 0.75rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    background: var(--surface-subtle);
+    font-size: 0.875rem;
+    line-height: 1.4;
 }
 
 /* ── Decks ───────────────────────────────────────────────────── */
@@ -3346,6 +3409,9 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     .value-grid { grid-template-columns: 1fr; }
     .dashboard-stats { grid-template-columns: repeat(2, 1fr); }
     .dashboard-actions { grid-template-columns: 1fr; }
+    .history-header { flex-direction: column; }
+    .history-row { grid-template-columns: 1fr; }
+    .history-row .btn { width: 100%; }
     .col-actions { padding-left: 0.25rem; padding-right: 0.25rem; }
     .word-actions { justify-content: flex-start; }
     .col-actions .correction-btn,

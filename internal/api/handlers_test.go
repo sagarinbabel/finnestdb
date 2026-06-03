@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"finnestdb/internal/parsecore"
 	"finnestdb/internal/store"
@@ -125,6 +127,35 @@ func TestHandleParseRejectsOversizedJSONBeforeAnalyze(t *testing.T) {
 	}
 	if called {
 		t.Fatal("analyze was called for oversized request body")
+	}
+}
+
+func TestHandleParseRateLimitRunsBeforeAnalyze(t *testing.T) {
+	api := newTestAPI(t)
+	api.rateLimits.parseIP = newFixedWindowRateLimiter(1, time.Hour)
+	api.rateLimits.parseAccount = newFixedWindowRateLimiter(100, time.Hour)
+	called := false
+	api.analyze = func(_ *store.DB, _, _, _ string) (*parsecore.ParseResult, error) {
+		called = true
+		return nil, fmt.Errorf("analyze should not run")
+	}
+	mux := newTestMux(t, api)
+
+	first := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{`))
+	firstRec := httptest.NewRecorder()
+	mux.ServeHTTP(firstRec, first)
+	if firstRec.Code != http.StatusBadRequest {
+		t.Fatalf("first status=%d want 400 body=%q", firstRec.Code, firstRec.Body.String())
+	}
+
+	second := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"FI","text":"kissa"}`))
+	secondRec := httptest.NewRecorder()
+	mux.ServeHTTP(secondRec, second)
+	if secondRec.Code != http.StatusTooManyRequests {
+		t.Fatalf("second status=%d want 429 body=%q", secondRec.Code, secondRec.Body.String())
+	}
+	if called {
+		t.Fatal("analyze was called after parse rate limit was exceeded")
 	}
 }
 
@@ -1374,10 +1405,54 @@ func TestHandleRegisterRejectsWeakPassword(t *testing.T) {
 	}
 }
 
-func TestHandleLoginBootstrapsExistingAccountWithoutPassword(t *testing.T) {
-	// Simulate a pre-migration alpha account: created via GetOrCreateUser
-	// with no password. The first /api/auth/login should accept any password
-	// and persist it as the user's permanent password.
+func TestHandleRegisterRateLimit(t *testing.T) {
+	api := newTestAPI(t)
+	api.rateLimits.registerIP = newFixedWindowRateLimiter(1, time.Hour)
+	api.rateLimits.registerEmail = newFixedWindowRateLimiter(100, time.Hour)
+	mux := newTestMux(t, api)
+
+	body := fmt.Sprintf(`{"email":"first@example.com","password":%q}`, testPassword)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("first status=%d want 200 body=%q", rec.Code, rec.Body.String())
+	}
+
+	body = fmt.Sprintf(`{"email":"second@example.com","password":%q}`, testPassword)
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("second status=%d want 429 body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleLoginRateLimit(t *testing.T) {
+	api := newTestAPI(t)
+	api.rateLimits.loginIP = newFixedWindowRateLimiter(1, time.Hour)
+	api.rateLimits.loginEmail = newFixedWindowRateLimiter(100, time.Hour)
+	mux := newTestMux(t, api)
+
+	body := fmt.Sprintf(`{"email":"ghost@example.com","password":%q}`, testPassword)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("first status=%d want 401 body=%q", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("second status=%d want 429 body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleLoginRejectsExistingAccountWithoutPassword(t *testing.T) {
+	// Legacy alpha accounts with empty password_hash must not be claimable
+	// through the public login form. They need an explicit migration/reset path.
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)
 
@@ -1385,22 +1460,19 @@ func TestHandleLoginBootstrapsExistingAccountWithoutPassword(t *testing.T) {
 		t.Fatalf("seed legacy user: %v", err)
 	}
 
-	// First login with chosen password sets it.
 	body := fmt.Sprintf(`{"email":"legacy@example.com","password":%q}`, testPassword)
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("first login status=%d want 200 body=%q", rec.Code, rec.Body.String())
-	}
-
-	// Subsequent login with a different password is rejected.
-	wrongBody := `{"email":"legacy@example.com","password":"different-passwordxx"}`
-	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(wrongBody))
-	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("second login (wrong pw) status=%d want 401 body=%q", rec.Code, rec.Body.String())
+		t.Fatalf("status=%d want 401 body=%q", rec.Code, rec.Body.String())
+	}
+	user, err := api.store.GetUserByEmail("legacy@example.com")
+	if err != nil {
+		t.Fatalf("GetUserByEmail: %v", err)
+	}
+	if user.PasswordHash != "" {
+		t.Fatal("login wrote a password hash for an empty-hash legacy account")
 	}
 }
 
@@ -1452,6 +1524,48 @@ func TestHandleLogoutClearsSessionCookieAndDropsAuth(t *testing.T) {
 	}
 	if meResp.Authenticated {
 		t.Fatal("expected /api/me to be unauthenticated after logout (session must be revoked server-side)")
+	}
+}
+
+func TestHandleMeDeleteDeletesAccountAndClearsSession(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "delete-me@example.com")
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/me", nil)
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("delete status=%d want 200 body=%q", rec.Code, rec.Body.String())
+	}
+	cleared := false
+	for _, cookie := range rec.Result().Cookies() {
+		if cookie.Name == "session_token" && cookie.MaxAge < 0 {
+			cleared = true
+		}
+	}
+	if !cleared {
+		t.Fatalf("delete response did not clear session cookie: %+v", rec.Result().Cookies())
+	}
+	if _, err := api.store.GetUserByEmail("delete-me@example.com"); err != sql.ErrNoRows {
+		t.Fatalf("GetUserByEmail err=%v want sql.ErrNoRows", err)
+	}
+
+	meReq := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	for _, cookie := range cookies {
+		meReq.AddCookie(cookie)
+	}
+	meRec := httptest.NewRecorder()
+	mux.ServeHTTP(meRec, meReq)
+	var me MeResponse
+	if err := json.NewDecoder(bytes.NewReader(meRec.Body.Bytes())).Decode(&me); err != nil {
+		t.Fatalf("decode /api/me: %v", err)
+	}
+	if me.Authenticated {
+		t.Fatal("deleted user's old session still authenticates")
 	}
 }
 
@@ -2202,6 +2316,80 @@ func TestLemmaStateMarksKnownAndIgnored(t *testing.T) {
 	}
 	if len(listResp.KnownWords) != 0 {
 		t.Fatalf("known_words=%d want 0 after ignore (%+v)", len(listResp.KnownWords), listResp.KnownWords)
+	}
+}
+
+func TestAuthenticatedMutationRejectsForeignOrigin(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "csrf@example.com")
+	user, err := api.store.GetOrCreateUser("csrf@example.com")
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"known"}`))
+	req.Header.Set("Origin", "https://evil.example")
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want 403 body=%q", rec.Code, rec.Body.String())
+	}
+
+	state, err := api.store.BatchLemmaStates(user.ID, "FI", []store.LemmaKey{{Lemma: "kissa", POS: "NOUN"}})
+	if err != nil {
+		t.Fatalf("BatchLemmaStates: %v", err)
+	}
+	if got := state[store.LemmaKey{Lemma: "kissa", POS: "NOUN"}]; got != "" {
+		t.Fatalf("foreign-origin mutation persisted state=%q", got)
+	}
+}
+
+func TestAuthenticatedMutationAllowsSameOrigin(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "same-origin@example.com")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"known"}`))
+	req.Header.Set("Origin", "http://example.com")
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200 body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleParseFeedbackRateLimit(t *testing.T) {
+	api := newTestAPI(t)
+	api.rateLimits.feedbackIP = newFixedWindowRateLimiter(1, time.Hour)
+	api.rateLimits.feedbackAccount = newFixedWindowRateLimiter(100, time.Hour)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "feedback-limit@example.com")
+
+	req := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(`{`))
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("first status=%d want 400 body=%q", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(`{`))
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("second status=%d want 429 body=%q", rec.Code, rec.Body.String())
 	}
 }
 
@@ -4092,6 +4280,132 @@ func TestParseFeedbackLazilyCreatesParseSession(t *testing.T) {
 	}
 	if sess.SourceText != "kissa juoksee" {
 		t.Fatalf("lazy session source_text=%q, want %q", sess.SourceText, "kissa juoksee")
+	}
+}
+
+func TestHandleParseSessionsListAndDeleteOne(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "history@example.com")
+	otherCookies := loginAndReturnCookies(t, mux, "history-other@example.com")
+
+	user, err := api.store.GetUserByEmail("history@example.com")
+	if err != nil {
+		t.Fatalf("GetUserByEmail user: %v", err)
+	}
+	other, err := api.store.GetUserByEmail("history-other@example.com")
+	if err != nil {
+		t.Fatalf("GetUserByEmail other: %v", err)
+	}
+	parseID, err := api.store.CreateParseSession(&user.ID, "FI", "custom", "Kissa juoksee.", 2, 2)
+	if err != nil {
+		t.Fatalf("CreateParseSession user: %v", err)
+	}
+	if _, err := api.store.CreateParseFeedback(store.ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "Kissa",
+		OriginalLemma:  "kissa",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "kissa",
+		ProposedPOS:    "NOUN",
+	}); err != nil {
+		t.Fatalf("CreateParseFeedback: %v", err)
+	}
+	otherParseID, err := api.store.CreateParseSession(&other.ID, "ET", "custom", "Koer jookseb.", 2, 2)
+	if err != nil {
+		t.Fatalf("CreateParseSession other: %v", err)
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/parse/sessions", nil)
+	for _, cookie := range cookies {
+		listReq.AddCookie(cookie)
+	}
+	listRec := httptest.NewRecorder()
+	mux.ServeHTTP(listRec, listReq)
+	if listRec.Code != http.StatusOK {
+		t.Fatalf("list status=%d want %d body=%q", listRec.Code, http.StatusOK, listRec.Body.String())
+	}
+	var listResp ParseSessionsResponse
+	if err := json.NewDecoder(bytes.NewReader(listRec.Body.Bytes())).Decode(&listResp); err != nil {
+		t.Fatalf("decode list response: %v", err)
+	}
+	if len(listResp.Sessions) != 1 {
+		t.Fatalf("sessions=%d want 1: %+v", len(listResp.Sessions), listResp.Sessions)
+	}
+	if got := listResp.Sessions[0]; got.ID != parseID || got.FeedbackCount != 1 || !strings.Contains(got.SourcePreview, "Kissa") {
+		t.Fatalf("unexpected parse session summary: %+v", got)
+	}
+
+	foreignReq := httptest.NewRequest(http.MethodDelete, "/api/parse/sessions/"+strconv.FormatInt(parseID, 10), nil)
+	foreignReq.Header.Set("Origin", "https://evil.example")
+	for _, cookie := range cookies {
+		foreignReq.AddCookie(cookie)
+	}
+	foreignRec := httptest.NewRecorder()
+	mux.ServeHTTP(foreignRec, foreignReq)
+	if foreignRec.Code != http.StatusForbidden {
+		t.Fatalf("foreign-origin delete status=%d want %d body=%q", foreignRec.Code, http.StatusForbidden, foreignRec.Body.String())
+	}
+
+	crossUserReq := httptest.NewRequest(http.MethodDelete, "/api/parse/sessions/"+strconv.FormatInt(parseID, 10), nil)
+	for _, cookie := range otherCookies {
+		crossUserReq.AddCookie(cookie)
+	}
+	crossUserRec := httptest.NewRecorder()
+	mux.ServeHTTP(crossUserRec, crossUserReq)
+	if crossUserRec.Code != http.StatusNotFound {
+		t.Fatalf("cross-user delete status=%d want %d body=%q", crossUserRec.Code, http.StatusNotFound, crossUserRec.Body.String())
+	}
+
+	deleteReq := httptest.NewRequest(http.MethodDelete, "/api/parse/sessions/"+strconv.FormatInt(parseID, 10), nil)
+	for _, cookie := range cookies {
+		deleteReq.AddCookie(cookie)
+	}
+	deleteRec := httptest.NewRecorder()
+	mux.ServeHTTP(deleteRec, deleteReq)
+	if deleteRec.Code != http.StatusOK {
+		t.Fatalf("delete status=%d want %d body=%q", deleteRec.Code, http.StatusOK, deleteRec.Body.String())
+	}
+	if _, err := api.store.GetParseSession(parseID); err != sql.ErrNoRows {
+		t.Fatalf("GetParseSession deleted err=%v want sql.ErrNoRows", err)
+	}
+	if _, err := api.store.GetParseSession(otherParseID); err != nil {
+		t.Fatalf("other parse session should remain: %v", err)
+	}
+}
+
+func TestHandleParseSessionsBulkDelete(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "history-bulk@example.com")
+	user, err := api.store.GetUserByEmail("history-bulk@example.com")
+	if err != nil {
+		t.Fatalf("GetUserByEmail: %v", err)
+	}
+	for _, source := range []string{"Kissa.", "Koira."} {
+		if _, err := api.store.CreateParseSession(&user.ID, "FI", "custom", source, 1, 1); err != nil {
+			t.Fatalf("CreateParseSession: %v", err)
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/parse/sessions", nil)
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("bulk delete status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var resp DeleteParseSessionsResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode bulk delete response: %v", err)
+	}
+	if resp.Deleted != 2 {
+		t.Fatalf("deleted=%d want 2", resp.Deleted)
 	}
 }
 

@@ -127,6 +127,14 @@ test('anonymous user trying inspect is redirected to sign-in', async ({ page }) 
   await expect(page.locator('#signin-page')).toHaveClass(/active/);
 });
 
+test('anonymous user trying parse history is redirected to sign-in', async ({ page }) => {
+  await mockMe(page, 'anon');
+  await page.goto('/#/history');
+
+  await expect(page.locator('#signin-page')).toHaveClass(/active/);
+  await expect(page.locator('#history-page')).not.toHaveClass(/active/);
+});
+
 // ── Sign-in flow ───────────────────────────────────────────────────────────
 
 test('successful sign-in lands on dashboard', async ({ page }) => {
@@ -216,11 +224,99 @@ test('user dashboard shows stats and product nav, no admin links', async ({ page
 
   // User nav visible
   await expect(page.getByRole('link', { name: 'Parse' }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: 'History' }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Decks' }).first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Review' }).first()).toBeVisible();
 
   // Admin nav must NOT be visible to a regular user
   await expect(page.locator('.nav-admin').first()).toBeHidden();
+});
+
+test('user can review and delete retained parse history', async ({ page }) => {
+  await mockMe(page, 'user');
+
+  let sessions = [
+    {
+      id: 11,
+      lang: 'FI',
+      parser: 'custom',
+      source_preview: 'Kissa juoksee nopeasti.',
+      total_tokens: 3,
+      unique_words: 3,
+      deck_count: 1,
+      feedback_count: 1,
+      created_at: '2026-06-03T12:00:00Z',
+    },
+    {
+      id: 12,
+      lang: 'ET',
+      parser: 'custom',
+      source_preview: 'Koer jookseb kiiresti.',
+      total_tokens: 3,
+      unique_words: 3,
+      deck_count: 0,
+      feedback_count: 1,
+      created_at: '2026-06-03T13:00:00Z',
+    },
+  ];
+  const deleteURLs: string[] = [];
+
+  await page.route('**/api/parse/sessions**', async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ sessions }),
+      });
+      return;
+    }
+    if (request.method() === 'DELETE') {
+      deleteURLs.push(url.pathname);
+      const match = url.pathname.match(/\/api\/parse\/sessions\/(\d+)$/);
+      if (match) {
+        const deletedID = Number(match[1]);
+        sessions = sessions.filter(session => session.id !== deletedID);
+      } else {
+        sessions = [];
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'ok', deleted: 1 }),
+      });
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.goto('/#/history');
+
+  await expect(page.locator('#history-page')).toHaveClass(/active/);
+  await expect(page.locator('#history-list')).toContainText('Kissa juoksee nopeasti.');
+  await expect(page.locator('#history-list')).toContainText('Koer jookseb kiiresti.');
+  await expect(page.locator('#history-list')).toContainText('1 deck');
+  await expect(page.locator('#history-list')).toContainText('1 feedback item');
+
+  await page.locator('[data-delete-parse-session="11"]').click();
+  await expect(page.locator('#dialog-modal')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#dialog-modal-message')).toContainText('Linked decks stay');
+  await page.locator('#dialog-modal-cancel').click();
+  expect(deleteURLs).toEqual([]);
+
+  await page.locator('[data-delete-parse-session="11"]').click();
+  await page.locator('#dialog-modal-confirm').click();
+  await expect.poll(() => deleteURLs).toEqual(['/api/parse/sessions/11']);
+  await expect(page.locator('#history-list')).not.toContainText('Kissa juoksee nopeasti.');
+  await expect(page.locator('#history-list')).toContainText('Koer jookseb kiiresti.');
+
+  await page.locator('#history-delete-all').click();
+  await expect(page.locator('#dialog-modal-message')).toContainText('Delete 1 retained parse session');
+  await page.locator('#dialog-modal-confirm').click();
+  await expect.poll(() => deleteURLs).toEqual(['/api/parse/sessions/11', '/api/parse/sessions']);
+  await expect(page.locator('#history-empty')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#history-empty')).toContainText('No retained parse sessions.');
 });
 
 test('user inspect flow parses text and shows results with correction entry point', async ({ page }) => {

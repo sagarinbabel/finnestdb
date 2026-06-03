@@ -25,6 +25,7 @@
             <div class="nav-links nav-user" data-role-show="user admin">
                 <a href="#/dashboard" class="nav-link" data-route="/dashboard">Dashboard</a>
                 <a href="#/inspect" class="nav-link" data-route="/inspect">Parse</a>
+                <a href="#/history" class="nav-link" data-route="/history">History</a>
                 <a href="#/decks" class="nav-link" data-route="/decks">Decks</a>
                 <a href="#/vocab" class="nav-link" data-route="/vocab">Vocab</a>
                 <a href="#/review" class="nav-link" data-route="/review">Review</a>
@@ -75,6 +76,7 @@
             <div data-role-show="user admin">
                 <a href="#/dashboard" class="nav-mobile-link" data-route="/dashboard">Dashboard</a>
                 <a href="#/inspect" class="nav-mobile-link" data-route="/inspect">Parse</a>
+                <a href="#/history" class="nav-mobile-link" data-route="/history">History</a>
                 <a href="#/decks" class="nav-mobile-link" data-route="/decks">Decks</a>
                 <a href="#/vocab" class="nav-mobile-link" data-route="/vocab">Vocab</a>
                 <a href="#/review" class="nav-mobile-link" data-route="/review">Review</a>
@@ -239,6 +241,10 @@
                     <h3>Your decks</h3>
                     <p>Texts you've imported and the vocabulary you're building from them.</p>
                 </a>
+                <a href="#/history" class="action-card">
+                    <h3>Parse history</h3>
+                    <p>Review retained parse text and delete saved parse sessions.</p>
+                </a>
             </section>
 
             <section class="dashboard-decks">
@@ -247,6 +253,24 @@
                     <p class="empty-state">No decks yet — paste some text under <a href="#/inspect">Parse</a> to get started.</p>
                 </div>
             </section>
+        </main>
+    </div>
+
+    <!-- ==================== PARSE HISTORY ==================== -->
+    <div id="history-page" class="page" data-role-required="user admin">
+        <main class="history-main">
+            <section class="history-header">
+                <div>
+                    <h1>Parse history</h1>
+                    <p class="history-lede">Parses appear here only after you save a deck or submit feedback.</p>
+                </div>
+                <button type="button" id="history-delete-all" class="btn btn-outline btn-sm">Delete all</button>
+            </section>
+            <section id="history-empty" class="placeholder-card hidden">
+                <p>No retained parse sessions.</p>
+                <a href="#/inspect" class="btn btn-primary">Parse a text</a>
+            </section>
+            <section id="history-list" class="history-list" aria-live="polite"></section>
         </main>
     </div>
 
@@ -282,6 +306,9 @@
                         <input type="file" id="inspect-file" accept=".txt,.md,.epub" hidden>
                         <div class="dropzone-overlay" aria-hidden="true">Release to import</div>
                     </div>
+                    <p class="parse-privacy-chip" id="inspect-privacy-chip">
+                        Not saved until you save a deck or submit feedback. Account deletion removes retained parse data.
+                    </p>
                 </div>
 
                 <div id="inspect-lang-warning" class="lang-warning hidden" role="status" aria-live="polite"></div>
