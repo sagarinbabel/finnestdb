@@ -577,8 +577,10 @@ Product-surface limitations (alpha):
 - review scheduling is a hand-rolled step scheduler, **not FSRS** —
   see [`docs/srs-deck-spec.md`](docs/srs-deck-spec.md) and
   [`TODO.md`](TODO.md) "Migrate alpha scheduler to real FSRS"
-- accepted parse corrections are recorded but do not yet update lexical
-  rows — see [`TODO.md`](TODO.md) "Self-improving feedback loop"
+- accepted lemma/POS parse corrections now write `custom_overrides`
+  lexical rows when an admin accepts them; grammar/FEATS corrections and
+  eval-gated promotion remain future work — see [`TODO.md`](TODO.md)
+  "Self-improving feedback loop"
 
 So the custom mode is stronger than the basic mode for many dictionary-backed
 cases, but it is still not a full morphology parser. Production FST tables

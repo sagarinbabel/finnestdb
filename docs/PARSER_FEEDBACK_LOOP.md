@@ -12,10 +12,10 @@ human-facing contract.
 
 "Suggest fix" is **parser feedback**, not an immediate "fix my deck"
 action. Submissions are queued for admin review and inform future
-dictionary/enrichment/parser improvements. They are not auto-applied.
-The downstream loop (accepted correction → lexical row update) is
-tracked in [`TODO.md`](../TODO.md) "Close the self-improving feedback
-loop".
+dictionary/enrichment/parser improvements. Accepted lemma/POS fixes are
+applied only after admin approval, as `custom_overrides` lexical rows.
+Grammar/FEATS writeback and eval-gated promotion are tracked in
+[`TODO.md`](../TODO.md) "Close the self-improving feedback loop".
 
 Accepted feedback should be classified with
 [`CORRECTION_TAXONOMY.md`](CORRECTION_TAXONOMY.md) before writeback. Not every
@@ -80,10 +80,12 @@ Parse-feedback rows live in `parse_feedback` per
 The shared queue is at `/api/admin/parse-feedback` (admin-only). Filters
 by `status` and language; admins can change `status` per submission.
 
-Acceptance is not yet wired to lexical updates. See
+When an admin marks feedback `accepted`, proposed lemma/POS corrections write
+`forms` and `lemmas` rows with `source='custom_overrides'`,
+`source_priority=1000`, and `parse_feedback_id` back-pointers. Later parses
+rank those rows above lower-priority dictionary sources. See
 [`TODO.md`](../TODO.md) "Close the self-improving feedback loop" for the
-plan to wire accepted corrections into `custom_overrides` lexical rows
-(Phase 1) and FEATS updates (Phase 2).
+remaining FEATS update and eval-gated promotion phases.
 
 Before accepting, admins should choose one primary correction type:
 

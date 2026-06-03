@@ -70,6 +70,12 @@ func TestEnsureLexicalEnrichmentColumns_FreshDB(t *testing.T) {
 	if !columnExists(t, d.db, "forms", "feats") {
 		t.Error("forms.feats missing on fresh DB")
 	}
+	if !columnExists(t, d.db, "lemmas", "parse_feedback_id") {
+		t.Error("lemmas.parse_feedback_id missing on fresh DB")
+	}
+	if !columnExists(t, d.db, "forms", "parse_feedback_id") {
+		t.Error("forms.parse_feedback_id missing on fresh DB")
+	}
 	if !columnExists(t, d.db, "occurrence", "surface") {
 		t.Error("occurrence.surface missing on fresh DB")
 	}
@@ -119,12 +125,18 @@ func TestEnsureLexicalEnrichmentColumns_BackfillsOldDB(t *testing.T) {
 	if columnExists(t, raw, "lemmas", "paradigm_class") {
 		t.Fatal("paradigm_class unexpectedly present in old-shape seed")
 	}
+	if columnExists(t, raw, "lemmas", "parse_feedback_id") {
+		t.Fatal("parse_feedback_id unexpectedly present in old-shape seed")
+	}
 	if tableExists(t, raw, "translations") {
 		t.Fatal("translations unexpectedly present in old-shape seed")
 	}
 
 	if err := EnsureLexicalEnrichmentColumns(raw); err != nil {
 		t.Fatalf("EnsureLexicalEnrichmentColumns: %v", err)
+	}
+	if err := EnsureCorrectionBackpointerColumns(raw); err != nil {
+		t.Fatalf("EnsureCorrectionBackpointerColumns: %v", err)
 	}
 	if err := EnsureLexicalEntryTables(raw); err != nil {
 		t.Fatalf("EnsureLexicalEntryTables: %v", err)
@@ -136,6 +148,12 @@ func TestEnsureLexicalEnrichmentColumns_BackfillsOldDB(t *testing.T) {
 	if !columnExists(t, raw, "forms", "feats") {
 		t.Error("feats not added by backfill")
 	}
+	if !columnExists(t, raw, "lemmas", "parse_feedback_id") {
+		t.Error("lemmas.parse_feedback_id not added by backfill")
+	}
+	if !columnExists(t, raw, "forms", "parse_feedback_id") {
+		t.Error("forms.parse_feedback_id not added by backfill")
+	}
 	if !tableExists(t, raw, "translations") {
 		t.Error("translations not created by backfill")
 	}
@@ -146,6 +164,9 @@ func TestEnsureLexicalEnrichmentColumns_BackfillsOldDB(t *testing.T) {
 	// Idempotent: re-running both helpers must not error.
 	if err := EnsureLexicalEnrichmentColumns(raw); err != nil {
 		t.Errorf("EnsureLexicalEnrichmentColumns rerun: %v", err)
+	}
+	if err := EnsureCorrectionBackpointerColumns(raw); err != nil {
+		t.Errorf("EnsureCorrectionBackpointerColumns rerun: %v", err)
 	}
 	if err := EnsureLexicalEntryTables(raw); err != nil {
 		t.Errorf("EnsureLexicalEntryTables rerun: %v", err)
@@ -475,6 +496,87 @@ func TestParseSessionHistoryListAndDelete(t *testing.T) {
 	}
 	if got := countRows(t, db, `SELECT COUNT(*) FROM parse_sessions WHERE id = ?`, otherParseID); got != 1 {
 		t.Fatalf("other parse session rows=%d want 1", got)
+	}
+}
+
+func TestAcceptedParseFeedbackWritesCustomOverrideAndChangesLookup(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "feedback-override-user@example.com")
+	admin := createTestUser(t, db, "feedback-override-admin@example.com")
+
+	if _, err := db.db.Exec(
+		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
+		 VALUES ('oldlemma', 'NOUN', 'old gloss', 'FI', 'kaikki', 10)`,
+	); err != nil {
+		t.Fatalf("seed old lemma: %v", err)
+	}
+	if _, err := db.db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority)
+		 VALUES ('loopword', 'oldlemma', 'NOUN', 'FI', 'kaikki', 10)`,
+	); err != nil {
+		t.Fatalf("seed old form: %v", err)
+	}
+
+	before := db.BatchLookupForms([]string{"loopword"}, "FI", "custom")["loopword"]
+	if before.Lemma != "oldlemma" || before.POS != "NOUN" {
+		t.Fatalf("before acceptance got %s/%s, want oldlemma/NOUN", before.Lemma, before.POS)
+	}
+
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "loopword", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	feedbackID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "Loopword",
+		OriginalLemma:  "oldlemma",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "newlemma",
+		ProposedPOS:    "VERB",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback: %v", err)
+	}
+	if err := db.ReviewParseFeedback(feedbackID, admin.ID, "accepted", "promote"); err != nil {
+		t.Fatalf("ReviewParseFeedback: %v", err)
+	}
+
+	after := db.BatchLookupForms([]string{"loopword"}, "FI", "custom")["loopword"]
+	if after.Lemma != "newlemma" || after.POS != "VERB" {
+		t.Fatalf("after acceptance got %s/%s, want newlemma/VERB", after.Lemma, after.POS)
+	}
+
+	var formSource string
+	var formPriority int
+	var formFeedbackID int64
+	if err := db.db.QueryRow(
+		`SELECT source, source_priority, parse_feedback_id
+		 FROM forms
+		 WHERE form = 'loopword' AND lang = 'FI' AND lemma = 'newlemma' AND pos = 'VERB'`,
+	).Scan(&formSource, &formPriority, &formFeedbackID); err != nil {
+		t.Fatalf("lookup override form row: %v", err)
+	}
+	if formSource != SourceCustomOverrides || formPriority != CustomOverridesSourcePriority || formFeedbackID != feedbackID {
+		t.Fatalf("form provenance got %q/%d/%d, want %q/%d/%d",
+			formSource, formPriority, formFeedbackID, SourceCustomOverrides, CustomOverridesSourcePriority, feedbackID)
+	}
+
+	var lemmaSource string
+	var lemmaPriority int
+	var lemmaFeedbackID int64
+	if err := db.db.QueryRow(
+		`SELECT source, source_priority, parse_feedback_id
+		 FROM lemmas
+		 WHERE lemma = 'newlemma' AND lang = 'FI' AND pos = 'VERB'`,
+	).Scan(&lemmaSource, &lemmaPriority, &lemmaFeedbackID); err != nil {
+		t.Fatalf("lookup override lemma row: %v", err)
+	}
+	if lemmaSource != SourceCustomOverrides || lemmaPriority != CustomOverridesSourcePriority || lemmaFeedbackID != feedbackID {
+		t.Fatalf("lemma provenance got %q/%d/%d, want %q/%d/%d",
+			lemmaSource, lemmaPriority, lemmaFeedbackID, SourceCustomOverrides, CustomOverridesSourcePriority, feedbackID)
 	}
 }
 
