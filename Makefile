@@ -9,7 +9,7 @@
         import-ud-gold import-ud-gold-fi import-ud-gold-et \
         scrape-gutenberg-fi \
         fetch-frequency-baselines \
-        doctor live-api-smoke
+        doctor live-api-smoke purge-parse-context
 
 # Default target
 all: build
@@ -308,6 +308,11 @@ db-invariants:
 
 live-api-smoke:
 	@node scripts/live-api-smoke.mjs
+
+RETENTION_DAYS ?= 30
+PURGE_PARSE_CONTEXT_FLAGS ?=
+purge-parse-context:
+	go run ./cmd/purgeparsecontext -db finnestdb.db -older-than-days "$(RETENTION_DAYS)" $(PURGE_PARSE_CONTEXT_FLAGS)
 
 # ── NLP tool setup (unified venv) ─────────────────────────────────────────────
 #

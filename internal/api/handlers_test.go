@@ -4409,6 +4409,43 @@ func TestHandleParseSessionsBulkDelete(t *testing.T) {
 	}
 }
 
+func TestHandleParseSessionsShowsPurgedSourceText(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "history-purged@example.com")
+	user, err := api.store.GetUserByEmail("history-purged@example.com")
+	if err != nil {
+		t.Fatalf("GetUserByEmail: %v", err)
+	}
+	_, err = api.store.CreateParseSession(&user.ID, "FI", "custom", "Sensitive old source.", 3, 3)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	if _, err := api.store.PurgeParseSessionSourceText(time.Now().UTC().Add(time.Second)); err != nil {
+		t.Fatalf("PurgeParseSessionSourceText: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/parse/sessions", nil)
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var resp ParseSessionsResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode list response: %v", err)
+	}
+	if len(resp.Sessions) != 1 {
+		t.Fatalf("sessions=%d want 1: %+v", len(resp.Sessions), resp.Sessions)
+	}
+	if resp.Sessions[0].SourcePreview != "(source text purged)" {
+		t.Fatalf("source preview=%q want purged marker", resp.Sessions[0].SourcePreview)
+	}
+}
+
 func TestParseFeedbackSubmissionAndAdminReview(t *testing.T) {
 	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
 

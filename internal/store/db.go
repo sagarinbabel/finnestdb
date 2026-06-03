@@ -27,6 +27,8 @@ type DB struct {
 	lem     *lemmatizer.Lemmatizer
 }
 
+const DefaultParseSourceRetentionDays = 30
+
 // fstLemmatizer returns the (lazy-loaded) FST lemmatizer, or nil if
 // loading failed (e.g. no tables under localdata/lemmatizer-fi-et/tables/
 // on a fresh clone without scripts/setup-local.sh). Callers must
@@ -2600,7 +2602,10 @@ func (d *DB) GetParseSession(parseSessionID int64) (*ParseSession, error) {
 func (d *DB) ListUserParseSessions(userID int64) ([]ParseSessionHistoryItem, error) {
 	rows, err := d.db.Query(
 		`SELECT ps.id, ps.lang, ps.parser,
-		        substr(replace(replace(ps.source_text, char(10), ' '), char(13), ' '), 1, 240),
+		        CASE
+		          WHEN ps.source_text = '' THEN '(source text purged)'
+		          ELSE substr(replace(replace(ps.source_text, char(10), ' '), char(13), ' '), 1, 240)
+		        END,
 		        ps.total_tokens, ps.unique_words, ps.created_at,
 		        (SELECT COUNT(*) FROM decks d WHERE d.user_id = ? AND d.parse_session_id = ps.id),
 		        (SELECT COUNT(*) FROM parse_feedback pf WHERE pf.user_id = ? AND pf.parse_session_id = ps.id)
@@ -2634,6 +2639,29 @@ func (d *DB) ListUserParseSessions(userID int64) ([]ParseSessionHistoryItem, err
 		sessions = append(sessions, item)
 	}
 	return sessions, rows.Err()
+}
+
+func (d *DB) CountPurgeableParseSessionSourceText(cutoff time.Time) (int64, error) {
+	var n int64
+	err := d.db.QueryRow(
+		`SELECT COUNT(*) FROM parse_sessions
+		  WHERE created_at < ? AND source_text <> ''`,
+		sqliteTime(cutoff),
+	).Scan(&n)
+	return n, err
+}
+
+func (d *DB) PurgeParseSessionSourceText(cutoff time.Time) (int64, error) {
+	result, err := d.db.Exec(
+		`UPDATE parse_sessions
+		    SET source_text = ''
+		  WHERE created_at < ? AND source_text <> ''`,
+		sqliteTime(cutoff),
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 func (d *DB) DeleteUserParseSession(userID, parseSessionID int64) error {

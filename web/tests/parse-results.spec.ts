@@ -294,6 +294,7 @@ test('user can review and delete retained parse history', async ({ page }) => {
   await page.goto('/#/history');
 
   await expect(page.locator('#history-page')).toHaveClass(/active/);
+  await expect(page.locator('.history-lede')).toContainText('Raw source text is kept for 30 days');
   await expect(page.locator('#history-list')).toContainText('Kissa juoksee nopeasti.');
   await expect(page.locator('#history-list')).toContainText('Koer jookseb kiiresti.');
   await expect(page.locator('#history-list')).toContainText('1 deck');
