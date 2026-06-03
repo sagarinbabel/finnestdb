@@ -31,6 +31,7 @@ aligned with `origin/main` plus the uncommitted public-launch blocker changes.
 | `npm audit` / `npm audit --omit=dev` | PASS | 0 vulnerabilities. |
 | `go vet ./...` | PASS | Fixed `cmd/doctor/main_test.go` to avoid `testing.Chdir` so module Go 1.21 compatibility is preserved. |
 | `go test ./cmd/doctor` | PASS | Focused regression for the vet-compatible helper. |
+| `go test ./cmd/server` | PASS | Production DB readiness guard rejects missing, empty, stub, and undersized DBs before server startup; explicit degraded override is covered. |
 | `govulncheck ./...` | FAIL | Reachable Go stdlib vulnerabilities from Go 1.25.4; fixed by newer Go patch releases. |
 | `govulncheck ./...` in `corpus_pipeline/` | FAIL | Same Go stdlib issue; corpus pipeline also reaches `archive/tar` vulnerable code under current Go. |
 | `cargo audit` in `parser/` | PASS | Installed `cargo-audit v0.22.1`; scanned `Cargo.lock` with 15 crate dependencies and no vulnerabilities reported. |
@@ -85,7 +86,6 @@ remaining non-code or not-yet-automated public-launch items are:
 
 - Go release/runtime toolchain update to `1.25.11+`, followed by clean
   `govulncheck ./...` runs in the root module and `corpus_pipeline/`
-- production startup guard for missing/empty/stub `finnestdb.db` or missing FI/ET dictionary row counts
 - deployment-level WAF / edge throttling / monitoring in addition to app rate limits
 - final human parser regression review against the frozen baseline reports
   before deploy sign-off
