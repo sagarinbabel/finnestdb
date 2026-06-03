@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: '1.25.11'
           cache: true
 
       # internal/parserffi is cgo-linked against the Rust parser. Even tests
@@ -63,7 +63,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: '1.25.11'
           cache: true
 
       - name: go vet
@@ -98,7 +98,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: '1.25.11'
           cache: true
 
       - uses: dtolnay/rust-toolchain@stable

@@ -1,13 +1,13 @@
 # Public Launch Verification - 2026-06-03
 
-Scope: current workspace at `/Users/sagar/Downloads/projects/finnestdb`, local `main`
-aligned with `origin/main` plus the uncommitted public-launch blocker changes.
+Scope: current workspace at `/Users/sagar/Downloads/projects/finnestdb`, local
+public-launch verification through FIN-23.
 
 ## Summary
 
 - PASS: local tooling health via `make doctor`.
 - PASS: Go, Rust, corpus-pipeline, TypeScript, Playwright browser, parser-comparison, race, `go vet`, live API smoke, and database invariant checks.
-- FAIL: `govulncheck` reports reachable Go standard-library vulnerabilities because local Go is `go1.25.4`; public release should build with Go `1.25.11` or newer.
+- PASS: `govulncheck` is clean in the root module and `corpus_pipeline/` when run with Go `1.25.11`; CI now pins that Go runtime.
 - PASS: `cargo audit` is now installed and the parser crate lockfile audit passed.
 - DEFERRED: exhaustive Codex Security repository-wide scan is pending explicit subagent authorization. Non-subagent smoke/security probes completed.
 
@@ -32,8 +32,8 @@ aligned with `origin/main` plus the uncommitted public-launch blocker changes.
 | `go vet ./...` | PASS | Fixed `cmd/doctor/main_test.go` to avoid `testing.Chdir` so module Go 1.21 compatibility is preserved. |
 | `go test ./cmd/doctor` | PASS | Focused regression for the vet-compatible helper. |
 | `go test ./cmd/server` | PASS | Production DB readiness guard rejects missing, empty, stub, and undersized DBs before server startup; explicit degraded override is covered. |
-| `govulncheck ./...` | FAIL | Reachable Go stdlib vulnerabilities from Go 1.25.4; fixed by newer Go patch releases. |
-| `govulncheck ./...` in `corpus_pipeline/` | FAIL | Same Go stdlib issue; corpus pipeline also reaches `archive/tar` vulnerable code under current Go. |
+| `GOTOOLCHAIN=go1.25.11 go run golang.org/x/vuln/cmd/govulncheck@latest ./...` | PASS | No reachable vulnerabilities found in the root module. |
+| `GOTOOLCHAIN=go1.25.11 go run golang.org/x/vuln/cmd/govulncheck@latest ./...` in `corpus_pipeline/` | PASS | No vulnerabilities found. |
 | `cargo audit` in `parser/` | PASS | Installed `cargo-audit v0.22.1`; scanned `Cargo.lock` with 15 crate dependencies and no vulnerabilities reported. |
 
 ## Live Smoke Coverage
@@ -58,11 +58,15 @@ The live probe against `http://127.0.0.1:8092` verified:
 
 ## Security Findings
 
-### S1 - Build/runtime Go version has reachable vulnerabilities
+### S1 - Build/runtime Go version has reachable vulnerabilities - resolved
 
 `govulncheck` reports reachable vulnerabilities in the Go standard library for
 the current local toolchain `go1.25.4`. Public launch builds should use Go
 `1.25.11` or newer.
+
+FIN-23 resolved this launch blocker by pinning GitHub Actions CI to Go
+`1.25.11` and re-running `govulncheck` under that toolchain in both the root
+module and `corpus_pipeline/`. Both scans passed.
 
 Examples reported in the root module:
 
@@ -76,16 +80,14 @@ Examples reported in the root module:
 Corpus pipeline scan reports the same Go patch-level issue plus a reachable
 `archive/tar` issue in `cmd/extractcorpus/extract_leipzig.go`.
 
-Recommended action: pin CI/release builders to Go `1.25.11+` and re-run
-`govulncheck ./...` in both root and `corpus_pipeline/`.
+Action taken: CI is pinned to Go `1.25.11`; `govulncheck` passed in both root
+and `corpus_pipeline/`.
 
 ## Missing / Still Open Launch Features
 
 From `docs/GO_LIVE_CHECKLIST.md`, `docs/FEATURES.md`, and `TODO.md`, the
 remaining non-code or not-yet-automated public-launch items are:
 
-- Go release/runtime toolchain update to `1.25.11+`, followed by clean
-  `govulncheck ./...` runs in the root module and `corpus_pipeline/`
 - deployment-level WAF / edge throttling / monitoring in addition to app rate limits
 - final human parser regression review against the frozen baseline reports
   before deploy sign-off

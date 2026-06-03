@@ -107,8 +107,8 @@ Required before go-live:
   SQLite integrity, source breakdown, orphan checks, and known/ignored overlap
   checks.
 - Run `go vet ./...`, `go test ./...`, `go test -race ./internal/api
-  ./internal/auth ./internal/store`, `govulncheck ./...`, `npm audit`, and
-  Rust dependency audit in CI/release tooling.
+  ./internal/auth ./internal/store`, `govulncheck ./...` with Go `1.25.11`
+  or newer, `npm audit`, and Rust dependency audit in CI/release tooling.
 
 ## Privacy and Retention Transparency
 
