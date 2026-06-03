@@ -122,10 +122,16 @@ list retained parse sessions and delete one or all retained sessions. Deleting
 a parse session removes the retained source context and feedback tied to that
 session; saved decks remain.
 
+Retention policy: raw source text retained through saved decks or feedback is
+kept for 30 days, then purged with `make purge-parse-context`. The purge clears
+`parse_sessions.source_text` while preserving decks, cards, feedback rows, and
+admin review state. Use `make purge-parse-context PURGE_PARSE_CONTEXT_FLAGS=-dry-run`
+before applying the purge to a production candidate DB.
+
 Required before go-live:
 
 - Keep this behavior documented in `docs/FEATURES.md`.
 - Keep the storage behavior surfaced in the parse UI before broad public
   release.
-- Define the long-term retention policy for retained deck/feedback parse
-  context before handling sensitive production user data.
+- Run the dry-run and purge against the production candidate DB before launch,
+  then schedule the same command in deployment operations.

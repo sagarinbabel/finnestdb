@@ -529,6 +529,91 @@ func TestDeleteUserParseSessionsBulk(t *testing.T) {
 	}
 }
 
+func TestPurgeParseSessionSourceTextPreservesDerivedRecords(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "parse-retention@example.com")
+
+	deckID := createSingleTokenDeck(t, db, user.ID, "FI", "Kissa.", "Kissa", "kissa", "NOUN")
+	oldParseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "Old retained source.", 3, 3)
+	if err != nil {
+		t.Fatalf("CreateParseSession old: %v", err)
+	}
+	if err := db.SetDeckParseSession(user.ID, deckID, oldParseID); err != nil {
+		t.Fatalf("SetDeckParseSession: %v", err)
+	}
+	if _, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: oldParseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "Old",
+		OriginalLemma:  "old",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "old",
+		ProposedPOS:    "NOUN",
+	}); err != nil {
+		t.Fatalf("CreateParseFeedback: %v", err)
+	}
+	recentParseID, err := db.CreateParseSession(&user.ID, "ET", "custom", "Recent retained source.", 3, 3)
+	if err != nil {
+		t.Fatalf("CreateParseSession recent: %v", err)
+	}
+	oldCreatedAt := sqliteTime(time.Now().UTC().AddDate(0, 0, -DefaultParseSourceRetentionDays-1))
+	if _, err := db.db.Exec(`UPDATE parse_sessions SET created_at = ? WHERE id = ?`, oldCreatedAt, oldParseID); err != nil {
+		t.Fatalf("backdate old parse session: %v", err)
+	}
+
+	cutoff := time.Now().UTC().AddDate(0, 0, -DefaultParseSourceRetentionDays)
+	count, err := db.CountPurgeableParseSessionSourceText(cutoff)
+	if err != nil {
+		t.Fatalf("CountPurgeableParseSessionSourceText: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("purgeable count=%d want 1", count)
+	}
+	purged, err := db.PurgeParseSessionSourceText(cutoff)
+	if err != nil {
+		t.Fatalf("PurgeParseSessionSourceText: %v", err)
+	}
+	if purged != 1 {
+		t.Fatalf("purged=%d want 1", purged)
+	}
+
+	oldSession, err := db.GetParseSession(oldParseID)
+	if err != nil {
+		t.Fatalf("GetParseSession old: %v", err)
+	}
+	if oldSession.SourceText != "" {
+		t.Fatalf("old source_text=%q want purged empty string", oldSession.SourceText)
+	}
+	recentSession, err := db.GetParseSession(recentParseID)
+	if err != nil {
+		t.Fatalf("GetParseSession recent: %v", err)
+	}
+	if recentSession.SourceText != "Recent retained source." {
+		t.Fatalf("recent source_text=%q", recentSession.SourceText)
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM decks WHERE id = ? AND parse_session_id = ?`, deckID, oldParseID); got != 1 {
+		t.Fatalf("deck link rows=%d want 1", got)
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM parse_feedback WHERE parse_session_id = ?`, oldParseID); got != 1 {
+		t.Fatalf("feedback rows=%d want 1", got)
+	}
+	sessions, err := db.ListUserParseSessions(user.ID)
+	if err != nil {
+		t.Fatalf("ListUserParseSessions: %v", err)
+	}
+	foundPurgedPreview := false
+	for _, session := range sessions {
+		if session.ID == oldParseID && session.SourcePreview == "(source text purged)" {
+			foundPurgedPreview = true
+		}
+	}
+	if !foundPurgedPreview {
+		t.Fatalf("purged session preview not found in history: %+v", sessions)
+	}
+}
+
 func countRows(t *testing.T, db *DB, query string, args ...any) int {
 	t.Helper()
 	var n int

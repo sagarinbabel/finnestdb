@@ -485,10 +485,10 @@ of the user, in priority order:
 1. **Inspect parses are ephemeral until saved or submitted as feedback** —
    communicated below the textarea and in the post-parse ribbon: _"Your text
    was not saved. Save as a deck or submit feedback to retain source context."_
-2. **Stored deck/feedback context needs deletion controls** — the per-parse
-   `Delete from server` action and the bulk parse-history page are still
-   [`TODO.md`](../TODO.md) items; user-facing copy should not promise deletion
-   until it ships.
+2. **Stored deck/feedback context has deletion and retention controls** — the
+   History page lets users delete retained source context immediately, and raw
+   retained source text is purged after 30 days while deck and feedback records
+   remain.
 4. **No external model training** — repeat in the privacy footer and
    privacy page (already in `FEATURES.md`).
 5. **What we share with admins**: only the parses you submit

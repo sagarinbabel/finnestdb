@@ -158,7 +158,7 @@ Phase 1 is gated on FEATS threading (already shipped via [PR #130](https://githu
 
 - [x] **Legacy mock-auth/raw-cookie replacement** — current auth uses Argon2id password hashes and DB-backed `session_token` sessions. Remaining go-live auth work is bootstrap retirement, CSRF/Origin posture, and operational controls in [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md).
 - [x] **@chickendude go-live app-level controls**: add rate limiting and CSRF/strict-Origin posture to `POST /api/parse`, `POST /api/parse/feedback`, login, register, and cookie-authenticated state-changing routes before broad public rollout. Deployment-level WAF/monitoring remains in [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md).
-- [ ] Define and implement a retention policy for `parse_sessions.source_text`; current alpha behavior is ephemeral parse by default, with source context retained only for saved decks and parser feedback.
+- [x] Define and implement a retention policy for `parse_sessions.source_text`; current alpha behavior is ephemeral parse by default, with raw source text retained only for saved decks and parser feedback, then purged after 30 days by `make purge-parse-context`.
 - [ ] Preserve existing `card_state` scheduling data when rebuilding `cards` during schema migrations instead of dropping and recreating.
 - [ ] Batch known/ignored checks during deck creation so card seeding does not do one lookup per unique `(lang, lemma, pos)` pair.
 - [ ] Replace `COUNT(*)` existence checks in known-word and parse-feedback paths with `EXISTS`/short-circuit queries.

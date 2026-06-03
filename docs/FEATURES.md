@@ -137,6 +137,10 @@ Anonymous correction submission is out of scope for alpha.
 - Source text is stored only when you make the parse durable: saving it as a
   deck, or submitting parser feedback. Feedback stores the original context so
   admins can review the correction.
+- Raw retained source text is kept for 30 days, then purged by the
+  `make purge-parse-context` retention run. Decks, cards, feedback rows, and
+  admin review status remain; the raw pasted text no longer appears in history
+  or admin context after purge.
 - The History page lists retained parse sessions and lets you delete one
   session or all retained sessions. Deleting a parse session removes that
   retained source context and parser feedback tied to it; saved decks remain.

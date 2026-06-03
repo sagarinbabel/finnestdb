@@ -91,7 +91,6 @@ remaining non-code or not-yet-automated public-launch items are:
 - deployment-level WAF / edge throttling / monitoring in addition to app rate limits
 - final human parser regression review against the frozen baseline reports
   before deploy sign-off
-- long-term retention policy for retained deck/feedback parse context
 - optional identity-provider decision for public auth
 
 ## Codex Security Status
