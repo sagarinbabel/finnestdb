@@ -1979,9 +1979,10 @@ func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string, scope 
 		target[key{res.Lemma, res.POS}] = struct{}{}
 	}
 	// Guard against a destructive wipe: if the caller submitted words but none
-	// resolved, the diff below would delete every current row. Refuse before
-	// opening the write transaction. An explicit empty list still clears.
-	if len(normalized) > 0 && len(target) == 0 {
+	// produced a target lemma, the diff below would delete every current row.
+	// Refuse before opening the write transaction. An explicit empty list still
+	// clears; blank-only input is not an explicit clear.
+	if len(words) > 0 && len(target) == 0 {
 		return nil, nil, unresolved, ErrKnownWordsReplaceNoResolvedWords
 	}
 

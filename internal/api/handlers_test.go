@@ -2125,6 +2125,24 @@ func TestKnownWordsReplaceRejectsAllUnresolvedInput(t *testing.T) {
 	if !got["kissa/NOUN"] || !got["koira/NOUN"] || len(got) != 2 {
 		t.Fatalf("FI list after rejected replace=%v want {kissa/NOUN, koira/NOUN}", got)
 	}
+
+	blankOnly := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["   ","\n\t"]}`))
+	for _, c := range cookies {
+		blankOnly.AddCookie(c)
+	}
+	blankOnlyRec := httptest.NewRecorder()
+	mux.ServeHTTP(blankOnlyRec, blankOnly)
+	if blankOnlyRec.Code != http.StatusBadRequest {
+		t.Fatalf("blank-only replace status=%d want 400 body=%q", blankOnlyRec.Code, blankOnlyRec.Body.String())
+	}
+	if !strings.Contains(blankOnlyRec.Body.String(), store.ErrKnownWordsReplaceNoResolvedWords.Error()) {
+		t.Fatalf("blank-only replace body=%q missing unresolved guard", blankOnlyRec.Body.String())
+	}
+
+	got = listKnownWordsForLang(t, mux, cookies, "FI")
+	if !got["kissa/NOUN"] || !got["koira/NOUN"] || len(got) != 2 {
+		t.Fatalf("FI list after rejected blank-only replace=%v want {kissa/NOUN, koira/NOUN}", got)
+	}
 }
 
 func TestKnownWordsReplacePreservesManualSourceByDefault(t *testing.T) {
