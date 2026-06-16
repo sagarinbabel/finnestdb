@@ -107,23 +107,57 @@ func rateLimitLogKey(key string) string {
 }
 
 func clientIP(r *http.Request) string {
-	if forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); forwarded != "" {
-		if first, _, ok := strings.Cut(forwarded, ","); ok {
-			return strings.TrimSpace(first)
+	remoteHost := requestRemoteHost(r)
+	if isTrustedForwarder(remoteHost) {
+		if forwarded := firstForwardedIP(r.Header.Get("X-Forwarded-For")); forwarded != "" {
+			return forwarded
 		}
-		return forwarded
+		if realIP := validHeaderIP(r.Header.Get("X-Real-IP")); realIP != "" {
+			return realIP
+		}
 	}
-	if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
-		return realIP
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err == nil && host != "" {
-		return host
+	if remoteHost != "" {
+		return remoteHost
 	}
 	if r.RemoteAddr != "" {
 		return r.RemoteAddr
 	}
 	return "unknown"
+}
+
+func requestRemoteHost(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil && host != "" {
+		return host
+	}
+	remote := strings.TrimSpace(r.RemoteAddr)
+	if ip := net.ParseIP(remote); ip != nil {
+		return ip.String()
+	}
+	return remote
+}
+
+func isTrustedForwarder(host string) bool {
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast()
+}
+
+func firstForwardedIP(header string) string {
+	if first, _, ok := strings.Cut(header, ","); ok {
+		return validHeaderIP(first)
+	}
+	return validHeaderIP(header)
+}
+
+func validHeaderIP(header string) string {
+	ip := net.ParseIP(strings.TrimSpace(header))
+	if ip == nil {
+		return ""
+	}
+	return ip.String()
 }
 
 type fixedWindowRateLimiter struct {
