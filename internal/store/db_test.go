@@ -399,6 +399,27 @@ func TestDeleteUserCascadeRemovesPrivateRows(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("CreateParseFeedback: %v", err)
 	}
+	otherParseID, err := db.CreateParseSession(&other.ID, "FI", "custom", "Koira.", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession other: %v", err)
+	}
+	otherFeedbackID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: otherParseID,
+		UserID:         other.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "Koira",
+		OriginalLemma:  "koira",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "koira",
+		ProposedPOS:    "NOUN",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback other: %v", err)
+	}
+	if err := db.ReviewParseFeedback(otherFeedbackID, user.ID, "rejected", "not a correction"); err != nil {
+		t.Fatalf("ReviewParseFeedback other: %v", err)
+	}
 
 	if err := db.DeleteUserCascade(user.ID); err != nil {
 		t.Fatalf("DeleteUserCascade: %v", err)
@@ -430,6 +451,9 @@ func TestDeleteUserCascadeRemovesPrivateRows(t *testing.T) {
 	}
 	if got := countRows(t, db, `SELECT COUNT(*) FROM decks WHERE id = ? AND user_id = ?`, publicDeckID, other.ID); got != 1 {
 		t.Fatalf("other user's public deck rows=%d want 1", got)
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM parse_feedback WHERE id = ? AND user_id = ? AND reviewed_by_user_id IS NULL`, otherFeedbackID, other.ID); got != 1 {
+		t.Fatalf("other user's reviewed feedback rows=%d want 1 with reviewer anonymized", got)
 	}
 }
 
