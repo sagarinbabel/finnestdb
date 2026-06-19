@@ -433,6 +433,53 @@ func TestDeleteUserCascadeRemovesPrivateRows(t *testing.T) {
 	}
 }
 
+func TestDeleteUserCascadePreservesFeedbackReviewedByDeletedUser(t *testing.T) {
+	db := newTestDB(t)
+	reviewer := createTestUser(t, db, "delete-reviewer@example.com")
+	owner := createTestUser(t, db, "feedback-owner@example.com")
+
+	parseID, err := db.CreateParseSession(&owner.ID, "FI", "custom", "Koira.", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	feedbackID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         owner.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "Koira",
+		OriginalLemma:  "koira",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "koira",
+		ProposedPOS:    "NOUN",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback: %v", err)
+	}
+	if err := db.ReviewParseFeedback(feedbackID, reviewer.ID, "rejected", "not enough detail"); err != nil {
+		t.Fatalf("ReviewParseFeedback: %v", err)
+	}
+
+	if err := db.DeleteUserCascade(reviewer.ID); err != nil {
+		t.Fatalf("DeleteUserCascade: %v", err)
+	}
+
+	var reviewedBy sql.NullInt64
+	var status, reviewNote string
+	if err := db.db.QueryRow(
+		`SELECT reviewed_by_user_id, status, review_note FROM parse_feedback WHERE id = ?`,
+		feedbackID,
+	).Scan(&reviewedBy, &status, &reviewNote); err != nil {
+		t.Fatalf("lookup preserved feedback: %v", err)
+	}
+	if reviewedBy.Valid {
+		t.Fatalf("reviewed_by_user_id=%d want NULL after reviewer deletion", reviewedBy.Int64)
+	}
+	if status != "rejected" || reviewNote != "not enough detail" {
+		t.Fatalf("review metadata got status=%q note=%q, want rejected/not enough detail", status, reviewNote)
+	}
+}
+
 func TestParseSessionHistoryListAndDelete(t *testing.T) {
 	db := newTestDB(t)
 	user := createTestUser(t, db, "parse-history@example.com")
