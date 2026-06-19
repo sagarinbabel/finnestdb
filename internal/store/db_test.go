@@ -595,6 +595,10 @@ func TestAcceptedParseFeedbackWritesCustomOverrideAndChangesLookup(t *testing.T)
 	if after.Lemma != "newlemma" || after.POS != "VERB" {
 		t.Fatalf("after acceptance got %s/%s, want newlemma/VERB", after.Lemma, after.POS)
 	}
+	expanded := db.BatchLookupAllForms([]string{"loopword"}, "FI", "custom")["loopword"]
+	if len(expanded) != 1 || expanded[0].Lemma != "newlemma" || expanded[0].POS != "VERB" {
+		t.Fatalf("expanded candidates after acceptance got %+v, want only newlemma/VERB", expanded)
+	}
 
 	var formSource string
 	var formPriority int
