@@ -159,6 +159,40 @@ func TestHandleParseRateLimitRunsBeforeAnalyze(t *testing.T) {
 	}
 }
 
+func TestHandleParseRateLimitIgnoresSpoofedForwardedFor(t *testing.T) {
+	t.Setenv("FINNESTDB_TRUST_FORWARD_HEADERS", "")
+	api := newTestAPI(t)
+	api.rateLimits.parseIP = newFixedWindowRateLimiter(1, time.Hour)
+	api.rateLimits.parseAccount = newFixedWindowRateLimiter(100, time.Hour)
+	called := false
+	api.analyze = func(_ *store.DB, _, _, _ string) (*parsecore.ParseResult, error) {
+		called = true
+		return nil, fmt.Errorf("analyze should not run")
+	}
+	mux := newTestMux(t, api)
+
+	first := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{`))
+	first.RemoteAddr = "198.51.100.20:1234"
+	first.Header.Set("X-Forwarded-For", "203.0.113.10")
+	firstRec := httptest.NewRecorder()
+	mux.ServeHTTP(firstRec, first)
+	if firstRec.Code != http.StatusBadRequest {
+		t.Fatalf("first status=%d want 400 body=%q", firstRec.Code, firstRec.Body.String())
+	}
+
+	second := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"FI","text":"kissa"}`))
+	second.RemoteAddr = "198.51.100.20:1234"
+	second.Header.Set("X-Forwarded-For", "203.0.113.11")
+	secondRec := httptest.NewRecorder()
+	mux.ServeHTTP(secondRec, second)
+	if secondRec.Code != http.StatusTooManyRequests {
+		t.Fatalf("second status=%d want 429 body=%q", secondRec.Code, secondRec.Body.String())
+	}
+	if called {
+		t.Fatal("analyze was called after parse rate limit was exceeded")
+	}
+}
+
 func TestHandleParseReturnsJSONResponse(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {

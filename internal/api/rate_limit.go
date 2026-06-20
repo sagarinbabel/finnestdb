@@ -107,18 +107,17 @@ func rateLimitLogKey(key string) string {
 }
 
 func clientIP(r *http.Request) string {
-	if forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); forwarded != "" {
-		if first, _, ok := strings.Cut(forwarded, ","); ok {
-			return strings.TrimSpace(first)
+	remoteIP := remoteAddrIP(r.RemoteAddr)
+	if trustForwardHeaders(remoteIP) {
+		if forwarded := rightmostForwardedIP(r.Header.Get("X-Forwarded-For")); forwarded != "" {
+			return forwarded
 		}
-		return forwarded
+		if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
+			return realIP
+		}
 	}
-	if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
-		return realIP
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err == nil && host != "" {
-		return host
+	if remoteIP != "" {
+		return remoteIP
 	}
 	if r.RemoteAddr != "" {
 		return r.RemoteAddr
@@ -126,11 +125,39 @@ func clientIP(r *http.Request) string {
 	return "unknown"
 }
 
+func remoteAddrIP(remoteAddr string) string {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err == nil && host != "" {
+		return host
+	}
+	return strings.TrimSpace(remoteAddr)
+}
+
+func trustForwardHeaders(remoteIP string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("FINNESTDB_TRUST_FORWARD_HEADERS"))) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	ip := net.ParseIP(remoteIP)
+	return ip != nil && (ip.IsLoopback() || ip.IsPrivate())
+}
+
+func rightmostForwardedIP(forwarded string) string {
+	parts := strings.Split(forwarded, ",")
+	for i := len(parts) - 1; i >= 0; i-- {
+		if part := strings.TrimSpace(parts[i]); part != "" {
+			return part
+		}
+	}
+	return ""
+}
+
 type fixedWindowRateLimiter struct {
-	mu      sync.Mutex
-	limit   int
-	window  time.Duration
-	entries map[string]rateLimitEntry
+	mu        sync.Mutex
+	limit     int
+	window    time.Duration
+	lastPrune time.Time
+	entries   map[string]rateLimitEntry
 }
 
 type rateLimitEntry struct {
@@ -153,6 +180,15 @@ func (r *fixedWindowRateLimiter) allow(key string) bool {
 	now := time.Now()
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	if r.lastPrune.IsZero() || now.Sub(r.lastPrune) >= r.window {
+		for key, entry := range r.entries {
+			if !now.Before(entry.windowEnds) {
+				delete(r.entries, key)
+			}
+		}
+		r.lastPrune = now
+	}
 
 	entry := r.entries[key]
 	if entry.windowEnds.IsZero() || !now.Before(entry.windowEnds) {
