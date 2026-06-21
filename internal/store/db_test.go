@@ -580,6 +580,77 @@ func TestAcceptedParseFeedbackWritesCustomOverrideAndChangesLookup(t *testing.T)
 	}
 }
 
+func TestAcceptedParseFeedbackReplacesPriorCustomOverrideForSurface(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "feedback-replace-user@example.com")
+	admin := createTestUser(t, db, "feedback-replace-admin@example.com")
+
+	if _, err := db.db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority)
+		 VALUES ('loopword', 'dictlemma', 'NOUN', 'FI', 'kaikki', 10)`,
+	); err != nil {
+		t.Fatalf("seed dict form: %v", err)
+	}
+
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "loopword", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	firstID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "Loopword",
+		OriginalLemma:  "dictlemma",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "aaalemma",
+		ProposedPOS:    "NOUN",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback first: %v", err)
+	}
+	if err := db.ReviewParseFeedback(firstID, admin.ID, "accepted", "first"); err != nil {
+		t.Fatalf("ReviewParseFeedback first: %v", err)
+	}
+	secondID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "Loopword",
+		OriginalLemma:  "aaalemma",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "zzlemma",
+		ProposedPOS:    "VERB",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback second: %v", err)
+	}
+	if err := db.ReviewParseFeedback(secondID, admin.ID, "accepted", "replace"); err != nil {
+		t.Fatalf("ReviewParseFeedback second: %v", err)
+	}
+
+	got := db.BatchLookupForms([]string{"loopword"}, "FI", "custom")["loopword"]
+	if got.Lemma != "zzlemma" || got.POS != "VERB" {
+		t.Fatalf("lookup got %s/%s, want latest accepted zzlemma/VERB", got.Lemma, got.POS)
+	}
+	all := db.BatchLookupAllForms([]string{"loopword"}, "FI", "custom")["loopword"]
+	if len(all) != 1 || all[0].Lemma != "zzlemma" || all[0].POS != "VERB" {
+		t.Fatalf("all-form lookup got %+v, want only latest accepted zzlemma/VERB", all)
+	}
+
+	if got := countRows(t, db, `SELECT COUNT(*) FROM forms WHERE form = 'loopword' AND lang = 'FI' AND source = ?`, SourceCustomOverrides); got != 1 {
+		t.Fatalf("custom override rows=%d want 1", got)
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM forms WHERE form = 'loopword' AND lang = 'FI' AND source = ? AND parse_feedback_id = ?`, SourceCustomOverrides, secondID); got != 1 {
+		t.Fatalf("latest custom override rows=%d want 1", got)
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM forms WHERE form = 'loopword' AND lang = 'FI' AND lemma = 'dictlemma' AND source = 'kaikki'`); got != 1 {
+		t.Fatalf("lower-priority dictionary rows=%d want preserved", got)
+	}
+}
+
 func TestDeleteUserParseSessionsBulk(t *testing.T) {
 	db := newTestDB(t)
 	user := createTestUser(t, db, "parse-history-bulk@example.com")

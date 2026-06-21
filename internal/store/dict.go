@@ -72,7 +72,7 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 	// Step 1 query fetches all candidates with source metadata so the picker
 	// can rank them. Steps 2–4 remain single-row lookups because their
 	// fallback paths commit to one resolution by construction.
-	stmtFormsAll, err := d.db.Prepare(`SELECT lemma, pos, source, source_priority, COALESCE(feats, '') FROM forms WHERE form = ? AND lang = ?`)
+	stmtFormsAll, err := d.db.Prepare(`SELECT lemma, pos, source, source_priority, COALESCE(feats, ''), COALESCE(parse_feedback_id, 0) FROM forms WHERE form = ? AND lang = ?`)
 	if err != nil {
 		return result
 	}
@@ -267,11 +267,12 @@ func strictCaseMatchScore(surface, lemma string) int {
 // for rows imported from sources without per-form morphology (e.g.
 // kaikki.org). Populated for ET via Ekilex morph_codes (PR Plan-C/4).
 type formCandidate struct {
-	Lemma          string
-	POS            string
-	Source         string
-	SourcePriority int
-	Feats          string
+	Lemma           string
+	POS             string
+	Source          string
+	SourcePriority  int
+	Feats           string
+	ParseFeedbackID int64
 }
 
 type resolutionCandidate struct {
@@ -298,7 +299,7 @@ func lookupFormCandidates(stmt *sql.Stmt, lowerSurface, lang string) ([]formCand
 	var candidates []formCandidate
 	for rows.Next() {
 		var c formCandidate
-		if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority, &c.Feats); err != nil {
+		if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority, &c.Feats, &c.ParseFeedbackID); err != nil {
 			return nil, false
 		}
 		if isBadDictCandidate(lang, lowerSurface, c.Lemma, c.POS) {
@@ -1038,6 +1039,9 @@ func pickBestFormCandidate(surface string, candidates []formCandidate) formCandi
 		if ci.Source != cj.Source {
 			return ci.Source < cj.Source
 		}
+		if ci.ParseFeedbackID != cj.ParseFeedbackID {
+			return ci.ParseFeedbackID > cj.ParseFeedbackID
+		}
 		if ci.Lemma != cj.Lemma {
 			return ci.Lemma < cj.Lemma
 		}
@@ -1326,7 +1330,7 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 		return result
 	}
 
-	stmt, err := d.db.Prepare(`SELECT lemma, pos FROM forms WHERE form = ? AND lang = ?`)
+	stmt, err := d.db.Prepare(`SELECT lemma, pos, source, source_priority, COALESCE(parse_feedback_id, 0) FROM forms WHERE form = ? AND lang = ?`)
 	if err != nil {
 		return result
 	}
@@ -1345,28 +1349,66 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 		if err != nil {
 			continue
 		}
-		var candidates []FormResolution
+		type allFormCandidate struct {
+			res             FormResolution
+			source          string
+			sourcePriority  int
+			parseFeedbackID int64
+		}
+		var candidates []allFormCandidate
 		for rows.Next() {
-			var lemma, pos string
-			if err := rows.Scan(&lemma, &pos); err != nil {
+			var c allFormCandidate
+			if err := rows.Scan(&c.res.Lemma, &c.res.POS, &c.source, &c.sourcePriority, &c.parseFeedbackID); err != nil {
 				rows.Close()
 				candidates = nil
 				break
 			}
-			if isBadDictCandidate(lang, lower, lemma, pos) {
+			if isBadDictCandidate(lang, lower, c.res.Lemma, c.res.POS) {
 				continue
 			}
-			if !candidateCaseCompatible(form, lemma) {
+			if !candidateCaseCompatible(form, c.res.Lemma) {
 				continue
 			}
-			candidates = append(candidates, FormResolution{Lemma: lemma, POS: pos, Source: "dict"})
+			c.res.Source = "dict"
+			candidates = append(candidates, c)
 		}
 		rows.Close()
-		if lang == "FI" {
-			candidates = correctFICandidates(d, form, lower, candidates)
+		var newestCustomFeedbackID int64
+		hasCustomOverride := false
+		for _, c := range candidates {
+			if c.source != SourceCustomOverrides {
+				continue
+			}
+			hasCustomOverride = true
+			if c.parseFeedbackID > newestCustomFeedbackID {
+				newestCustomFeedbackID = c.parseFeedbackID
+			}
 		}
-		if len(candidates) > 0 {
-			result[form] = candidates
+		if hasCustomOverride {
+			filtered := candidates[:0]
+			for _, c := range candidates {
+				if c.source != SourceCustomOverrides {
+					continue
+				}
+				if newestCustomFeedbackID > 0 && c.parseFeedbackID != newestCustomFeedbackID {
+					continue
+				}
+				filtered = append(filtered, c)
+			}
+			candidates = filtered
+		}
+		if len(candidates) == 0 {
+			continue
+		}
+		resolutions := make([]FormResolution, 0, len(candidates))
+		for _, c := range candidates {
+			resolutions = append(resolutions, c.res)
+		}
+		if lang == "FI" && !hasCustomOverride {
+			resolutions = correctFICandidates(d, form, lower, resolutions)
+		}
+		if len(resolutions) > 0 {
+			result[form] = resolutions
 		}
 	}
 	return result
