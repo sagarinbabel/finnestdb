@@ -301,7 +301,7 @@ func lookupFormCandidates(stmt *sql.Stmt, lowerSurface, lang string) ([]formCand
 		if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority, &c.Feats); err != nil {
 			return nil, false
 		}
-		if isBadDictCandidate(lang, lowerSurface, c.Lemma, c.POS) {
+		if !isCustomOverrideFormCandidate(c) && isBadDictCandidate(lang, lowerSurface, c.Lemma, c.POS) {
 			continue
 		}
 		candidates = append(candidates, c)
@@ -318,7 +318,7 @@ func filterCaseCompatibleCandidates(surface string, candidates []formCandidate) 
 	}
 	out := candidates[:0]
 	for _, c := range candidates {
-		if candidateCaseCompatible(surface, c.Lemma) {
+		if isCustomOverrideFormCandidate(c) || candidateCaseCompatible(surface, c.Lemma) {
 			out = append(out, c)
 		}
 	}
@@ -462,7 +462,11 @@ func formResolutionFromCandidate(surface string, c formCandidate) FormResolution
 	// consistent regardless of which source supplied the lemma.
 	feats := sanitizeDictFeats(surface, c)
 	feats = udfeats.NormalizeMaInfinitive(surface, c.POS, feats)
-	res := FormResolution{Lemma: c.Lemma, POS: c.POS, Feats: feats, Source: "dict"}
+	source := "dict"
+	if isCustomOverrideFormCandidate(c) && c.Source != "" {
+		source = c.Source
+	}
+	res := FormResolution{Lemma: c.Lemma, POS: c.POS, Feats: feats, Source: source}
 	// Project Case= from Feats to GrammarLabel for back-compat with the
 	// case-only metric. New code should consume Feats directly; the
 	// projection lets the existing eval keep working unchanged.
@@ -616,6 +620,9 @@ func pickBestResolutionCandidate(surface, lang string, candidates []resolutionCa
 	maxNounCitationPriority := maxNonVerbCitationPriority(surface, lang, scored)
 	sort.SliceStable(scored, func(i, j int) bool {
 		ci, cj := scored[i], scored[j]
+		if ciCustom, cjCustom := isCustomOverrideResolutionCandidate(ci), isCustomOverrideResolutionCandidate(cj); ciCustom != cjCustom {
+			return ciCustom
+		}
 		ciCase, ciPOS := caseMatchScore(surface, ci.res.Lemma), posSanityScore(surface, ci.res.POS)
 		cjCase, cjPOS := caseMatchScore(surface, cj.res.Lemma), posSanityScore(surface, cj.res.POS)
 		if ciCase != cjCase {
@@ -1024,6 +1031,9 @@ func pickBestFormCandidate(surface string, candidates []formCandidate) formCandi
 	copy(scored, candidates)
 	sort.SliceStable(scored, func(i, j int) bool {
 		ci, cj := scored[i], scored[j]
+		if ciCustom, cjCustom := isCustomOverrideFormCandidate(ci), isCustomOverrideFormCandidate(cj); ciCustom != cjCustom {
+			return ciCustom
+		}
 		ciCase, ciPOS := caseMatchScore(surface, ci.Lemma), posSanityScore(surface, ci.POS)
 		cjCase, cjPOS := caseMatchScore(surface, cj.Lemma), posSanityScore(surface, cj.POS)
 		if ciCase != cjCase {
@@ -1044,6 +1054,27 @@ func pickBestFormCandidate(surface string, candidates []formCandidate) formCandi
 		return ci.POS < cj.POS
 	})
 	return scored[0]
+}
+
+func isCustomOverrideFormCandidate(c formCandidate) bool {
+	return sourceHasCustomOverride(c.Source) || c.SourcePriority >= CustomOverridesSourcePriority
+}
+
+func isCustomOverrideResolutionCandidate(c resolutionCandidate) bool {
+	source := c.origSource
+	if source == "" {
+		source = c.res.Source
+	}
+	return sourceHasCustomOverride(source) || c.sourcePriority >= CustomOverridesSourcePriority
+}
+
+func sourceHasCustomOverride(source string) bool {
+	for _, part := range strings.Split(source, "+") {
+		if part == SourceCustomOverrides {
+			return true
+		}
+	}
+	return false
 }
 
 // caseMatchScore returns 1 when the surface and lemma share an uppercase /
@@ -1326,7 +1357,7 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 		return result
 	}
 
-	stmt, err := d.db.Prepare(`SELECT lemma, pos FROM forms WHERE form = ? AND lang = ?`)
+	stmt, err := d.db.Prepare(`SELECT lemma, pos, source, source_priority FROM forms WHERE form = ? AND lang = ?`)
 	if err != nil {
 		return result
 	}
@@ -1345,24 +1376,40 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 		if err != nil {
 			continue
 		}
+		var raw []formCandidate
+		hasCustomOverride := false
 		var candidates []FormResolution
 		for rows.Next() {
-			var lemma, pos string
-			if err := rows.Scan(&lemma, &pos); err != nil {
+			var c formCandidate
+			if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority); err != nil {
 				rows.Close()
 				candidates = nil
+				raw = nil
 				break
 			}
-			if isBadDictCandidate(lang, lower, lemma, pos) {
+			if !isCustomOverrideFormCandidate(c) && isBadDictCandidate(lang, lower, c.Lemma, c.POS) {
 				continue
 			}
-			if !candidateCaseCompatible(form, lemma) {
+			if !isCustomOverrideFormCandidate(c) && !candidateCaseCompatible(form, c.Lemma) {
 				continue
 			}
-			candidates = append(candidates, FormResolution{Lemma: lemma, POS: pos, Source: "dict"})
+			if isCustomOverrideFormCandidate(c) {
+				hasCustomOverride = true
+			}
+			raw = append(raw, c)
 		}
 		rows.Close()
-		if lang == "FI" {
+		for _, c := range raw {
+			if hasCustomOverride && !isCustomOverrideFormCandidate(c) {
+				continue
+			}
+			source := "dict"
+			if isCustomOverrideFormCandidate(c) && c.Source != "" {
+				source = c.Source
+			}
+			candidates = append(candidates, FormResolution{Lemma: c.Lemma, POS: c.POS, Source: source})
+		}
+		if lang == "FI" && !hasCustomOverride {
 			candidates = correctFICandidates(d, form, lower, candidates)
 		}
 		if len(candidates) > 0 {

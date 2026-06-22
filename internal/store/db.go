@@ -2919,6 +2919,13 @@ func writeAcceptedParseFeedbackOverride(tx *sql.Tx, feedback ParseFeedback) erro
 		return err
 	}
 	if _, err := tx.Exec(
+		`DELETE FROM forms
+		 WHERE form = ? AND lang = ? AND source = ?`,
+		form, lang, SourceCustomOverrides,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(
 		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, parse_feedback_id)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET

@@ -580,6 +580,76 @@ func TestAcceptedParseFeedbackWritesCustomOverrideAndChangesLookup(t *testing.T)
 	}
 }
 
+func TestAcceptedParseFeedbackOverrideWinsHeuristicsAndReplacesPrior(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "feedback-override-replace-user@example.com")
+	admin := createTestUser(t, db, "feedback-override-replace-admin@example.com")
+
+	if _, err := db.db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority)
+		 VALUES ('turussa', 'turku', 'NOUN', 'FI', 'kaikki', 10)`,
+	); err != nil {
+		t.Fatalf("seed competing form: %v", err)
+	}
+
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "turussa", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	accept := func(proposedLemma string) int64 {
+		t.Helper()
+		feedbackID, err := db.CreateParseFeedback(ParseFeedback{
+			ParseSessionID: parseID,
+			UserID:         user.ID,
+			Lang:           "FI",
+			Parser:         "custom",
+			Surface:        "turussa",
+			OriginalLemma:  "turku",
+			OriginalPOS:    "NOUN",
+			ProposedLemma:  proposedLemma,
+			ProposedPOS:    "PROPN",
+		})
+		if err != nil {
+			t.Fatalf("CreateParseFeedback %s: %v", proposedLemma, err)
+		}
+		if err := db.ReviewParseFeedback(feedbackID, admin.ID, "accepted", "override"); err != nil {
+			t.Fatalf("ReviewParseFeedback %s: %v", proposedLemma, err)
+		}
+		return feedbackID
+	}
+
+	accept("Alpha")
+	first := db.BatchLookupForms([]string{"turussa"}, "FI", "custom")["turussa"]
+	if first.Lemma != "Alpha" || first.POS != "PROPN" {
+		t.Fatalf("first accepted lookup got %s/%s, want Alpha/PROPN", first.Lemma, first.POS)
+	}
+
+	secondFeedbackID := accept("Zulu")
+	after := db.BatchLookupForms([]string{"turussa"}, "FI", "custom")["turussa"]
+	if after.Lemma != "Zulu" || after.POS != "PROPN" {
+		t.Fatalf("second accepted lookup got %s/%s, want Zulu/PROPN", after.Lemma, after.POS)
+	}
+
+	all := db.BatchLookupAllForms([]string{"turussa"}, "FI", "custom")["turussa"]
+	if len(all) != 1 || all[0].Lemma != "Zulu" || all[0].POS != "PROPN" {
+		t.Fatalf("BatchLookupAllForms got %+v, want only Zulu/PROPN", all)
+	}
+
+	var customRows int
+	var storedFeedbackID int64
+	if err := db.db.QueryRow(
+		`SELECT COUNT(*), COALESCE(MAX(parse_feedback_id), 0)
+		 FROM forms
+		 WHERE form = 'turussa' AND lang = 'FI' AND source = ?`,
+		SourceCustomOverrides,
+	).Scan(&customRows, &storedFeedbackID); err != nil {
+		t.Fatalf("count custom override rows: %v", err)
+	}
+	if customRows != 1 || storedFeedbackID != secondFeedbackID {
+		t.Fatalf("custom rows=%d feedbackID=%d, want 1/%d", customRows, storedFeedbackID, secondFeedbackID)
+	}
+}
+
 func TestDeleteUserParseSessionsBulk(t *testing.T) {
 	db := newTestDB(t)
 	user := createTestUser(t, db, "parse-history-bulk@example.com")
