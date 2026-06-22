@@ -1817,6 +1817,12 @@ function loadAnkiPrefs(lang) {
         return empty;
     }
 }
+function ankiReplaceConfirmMessage(langName, preserveManualOnReplace) {
+    if (preserveManualOnReplace) {
+        return `This will sync Anki-imported ${langName} known-words to the selected decks. Words you added through the textbox, files, Inspect, or Review will be kept.`;
+    }
+    return `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`;
+}
 function saveAnkiPrefs(lang, prefs) {
     try {
         localStorage.setItem(ankiPrefsKey(lang), JSON.stringify(prefs));
@@ -1978,7 +1984,7 @@ async function runAnkiSyncFlow() {
         // stays focused on the confirm action.
         const dialog = await showConfirmWithStatus({
             title: `Replace ${langName} vocabulary?`,
-            message: `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
+            message: ankiReplaceConfirmMessage(langName, prefs.preserveManualOnReplace),
             confirmLabel: 'Sync and replace',
             danger: true,
             loadingText: 'Checking Anki…',
@@ -3042,7 +3048,7 @@ async function runAnkiImport() {
         if (!prefs.replaceConfirmSkip) {
             const result = await showConfirmWithRemember({
                 title: `Replace ${langName} vocabulary?`,
-                message: `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
+                message: ankiReplaceConfirmMessage(langName, ankiImport.preserveManualOnReplace),
                 confirmLabel: 'Sync and replace',
                 danger: true,
                 rememberLabel: "Don't show this again",
@@ -5548,6 +5554,7 @@ window.__finestTest = {
     loadAnkiPrefs,
     saveAnkiPrefs,
     ankiPrefsKey,
+    ankiReplaceConfirmMessage,
     cleanAnkiSurfaceForm,
 };
 // ── Init ───────────────────────────────────────────────────────────────────

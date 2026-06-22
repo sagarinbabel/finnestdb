@@ -412,6 +412,25 @@ test.describe('pure helpers', () => {
       preserveManualOnReplace: false,
     });
   });
+
+  test('Anki replace confirmation copy matches preserve-manual mode', async ({ page }) => {
+    await mockMe(page, 'user');
+    await page.goto('/');
+    const messages = await page.evaluate(() => {
+      const w = window as unknown as { __finestTest: {
+        ankiReplaceConfirmMessage: (langName: string, preserveManualOnReplace: boolean) => string;
+      } };
+      return {
+        safe:        w.__finestTest.ankiReplaceConfirmMessage('Estonian', true),
+        destructive: w.__finestTest.ankiReplaceConfirmMessage('Estonian', false),
+      };
+    });
+
+    expect(messages.safe).toContain('Words you added through the textbox, files, Inspect, or Review will be kept.');
+    expect(messages.safe).not.toContain('will be removed');
+    expect(messages.destructive).toContain('Lemmas not in this selection');
+    expect(messages.destructive).toContain('will be removed');
+  });
 });
 
 // ── 2. Vocab page baseline ─────────────────────────────────────────────────
