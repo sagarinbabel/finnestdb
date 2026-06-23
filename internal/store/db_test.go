@@ -548,6 +548,10 @@ func TestAcceptedParseFeedbackWritesCustomOverrideAndChangesLookup(t *testing.T)
 	if after.Lemma != "newlemma" || after.POS != "VERB" {
 		t.Fatalf("after acceptance got %s/%s, want newlemma/VERB", after.Lemma, after.POS)
 	}
+	allAfter := db.BatchLookupAllForms([]string{"loopword"}, "FI", "custom")["loopword"]
+	if len(allAfter) != 1 || allAfter[0].Lemma != "newlemma" || allAfter[0].POS != "VERB" {
+		t.Fatalf("all forms after acceptance got %+v, want only newlemma/VERB", allAfter)
+	}
 
 	var formSource string
 	var formPriority int
@@ -577,6 +581,69 @@ func TestAcceptedParseFeedbackWritesCustomOverrideAndChangesLookup(t *testing.T)
 	if lemmaSource != SourceCustomOverrides || lemmaPriority != CustomOverridesSourcePriority || lemmaFeedbackID != feedbackID {
 		t.Fatalf("lemma provenance got %q/%d/%d, want %q/%d/%d",
 			lemmaSource, lemmaPriority, lemmaFeedbackID, SourceCustomOverrides, CustomOverridesSourcePriority, feedbackID)
+	}
+}
+
+func TestAcceptedParseFeedbackReplacesPriorCustomOverrideForSurface(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "feedback-replace-user@example.com")
+	admin := createTestUser(t, db, "feedback-replace-admin@example.com")
+
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "loopword", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	firstID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "Loopword",
+		OriginalLemma:  "wrongone",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "firstlemma",
+		ProposedPOS:    "NOUN",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback first: %v", err)
+	}
+	if err := db.ReviewParseFeedback(firstID, admin.ID, "accepted", "first pass"); err != nil {
+		t.Fatalf("ReviewParseFeedback first: %v", err)
+	}
+	secondID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "loopword",
+		OriginalLemma:  "firstlemma",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "secondlemma",
+		ProposedPOS:    "VERB",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback second: %v", err)
+	}
+	if err := db.ReviewParseFeedback(secondID, admin.ID, "accepted", "replace"); err != nil {
+		t.Fatalf("ReviewParseFeedback second: %v", err)
+	}
+
+	allAfter := db.BatchLookupAllForms([]string{"loopword"}, "FI", "custom")["loopword"]
+	if len(allAfter) != 1 || allAfter[0].Lemma != "secondlemma" || allAfter[0].POS != "VERB" {
+		t.Fatalf("all forms after replacement got %+v, want only secondlemma/VERB", allAfter)
+	}
+
+	var customFormRows int
+	if err := db.db.QueryRow(
+		`SELECT COUNT(*)
+		 FROM forms
+		 WHERE form = 'loopword' AND lang = 'FI' AND source = ?`,
+		SourceCustomOverrides,
+	).Scan(&customFormRows); err != nil {
+		t.Fatalf("count custom override forms: %v", err)
+	}
+	if customFormRows != 1 {
+		t.Fatalf("custom override form rows=%d, want 1", customFormRows)
 	}
 }
 

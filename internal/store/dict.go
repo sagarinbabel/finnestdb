@@ -1326,7 +1326,7 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 		return result
 	}
 
-	stmt, err := d.db.Prepare(`SELECT lemma, pos FROM forms WHERE form = ? AND lang = ?`)
+	stmt, err := d.db.Prepare(`SELECT lemma, pos, source, source_priority, COALESCE(feats, '') FROM forms WHERE form = ? AND lang = ?`)
 	if err != nil {
 		return result
 	}
@@ -1341,27 +1341,14 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 			}
 		}
 
-		rows, err := stmt.Query(lower, lang)
-		if err != nil {
-			continue
-		}
 		var candidates []FormResolution
-		for rows.Next() {
-			var lemma, pos string
-			if err := rows.Scan(&lemma, &pos); err != nil {
-				rows.Close()
-				candidates = nil
-				break
+		if dictCandidates, ok := lookupFormCandidates(stmt, lower, lang); ok {
+			dictCandidates = filterCaseCompatibleCandidates(form, dictCandidates)
+			dictCandidates = preferCustomOverrideCandidates(dictCandidates)
+			for _, c := range dictCandidates {
+				candidates = append(candidates, formResolutionFromCandidate(form, c))
 			}
-			if isBadDictCandidate(lang, lower, lemma, pos) {
-				continue
-			}
-			if !candidateCaseCompatible(form, lemma) {
-				continue
-			}
-			candidates = append(candidates, FormResolution{Lemma: lemma, POS: pos, Source: "dict"})
 		}
-		rows.Close()
 		if lang == "FI" {
 			candidates = correctFICandidates(d, form, lower, candidates)
 		}
@@ -1370,6 +1357,29 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 		}
 	}
 	return result
+}
+
+func preferCustomOverrideCandidates(candidates []formCandidate) []formCandidate {
+	if len(candidates) == 0 {
+		return candidates
+	}
+	hasCustomOverride := false
+	for _, c := range candidates {
+		if c.Source == SourceCustomOverrides && c.SourcePriority >= CustomOverridesSourcePriority {
+			hasCustomOverride = true
+			break
+		}
+	}
+	if !hasCustomOverride {
+		return candidates
+	}
+	out := candidates[:0]
+	for _, c := range candidates {
+		if c.Source == SourceCustomOverrides && c.SourcePriority >= CustomOverridesSourcePriority {
+			out = append(out, c)
+		}
+	}
+	return out
 }
 
 // correctFICandidates is the BatchLookupAllForms-side analogue of the
