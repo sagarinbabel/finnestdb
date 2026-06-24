@@ -107,14 +107,13 @@ func rateLimitLogKey(key string) string {
 }
 
 func clientIP(r *http.Request) string {
-	if forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); forwarded != "" {
-		if first, _, ok := strings.Cut(forwarded, ","); ok {
-			return strings.TrimSpace(first)
+	if shouldTrustForwardHeaders(r) {
+		if forwarded := forwardedIP(r.Header.Get("X-Forwarded-For")); forwarded != "" {
+			return forwarded
 		}
-		return forwarded
-	}
-	if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
-		return realIP
+		if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
+			return realIP
+		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err == nil && host != "" {
@@ -124,6 +123,37 @@ func clientIP(r *http.Request) string {
 		return r.RemoteAddr
 	}
 	return "unknown"
+}
+
+func shouldTrustForwardHeaders(r *http.Request) bool {
+	if trustForwardHeadersEnabled() {
+		return true
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	ip := net.ParseIP(strings.TrimSpace(host))
+	return ip != nil && (ip.IsLoopback() || ip.IsPrivate())
+}
+
+func trustForwardHeadersEnabled() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("FINNESTDB_TRUST_FORWARD_HEADERS"))) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
+func forwardedIP(header string) string {
+	parts := strings.Split(header, ",")
+	for i := len(parts) - 1; i >= 0; i-- {
+		if part := strings.TrimSpace(parts[i]); part != "" {
+			return part
+		}
+	}
+	return ""
 }
 
 type fixedWindowRateLimiter struct {

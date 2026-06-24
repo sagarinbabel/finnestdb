@@ -1366,6 +1366,48 @@ func TestHandleLoginVerifiesPassword(t *testing.T) {
 	}
 }
 
+func TestAuthRoutesRejectForeignOrigin(t *testing.T) {
+	t.Run("register", func(t *testing.T) {
+		api := newTestAPI(t)
+		mux := newTestMux(t, api)
+
+		body := fmt.Sprintf(`{"email":"csrf-register@example.com","password":%q}`, testPassword)
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
+		req.Header.Set("Origin", "https://evil.example")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status=%d want 403 body=%q", rec.Code, rec.Body.String())
+		}
+		if cookies := rec.Result().Cookies(); len(cookies) != 0 {
+			t.Fatalf("foreign-origin register set cookies: %+v", cookies)
+		}
+		if _, err := api.store.GetUserByEmail("csrf-register@example.com"); err != sql.ErrNoRows {
+			t.Fatalf("foreign-origin register persisted user, err=%v", err)
+		}
+	})
+
+	t.Run("login", func(t *testing.T) {
+		api := newTestAPI(t)
+		mux := newTestMux(t, api)
+		loginAndReturnCookies(t, mux, "csrf-login@example.com")
+
+		body := fmt.Sprintf(`{"email":"csrf-login@example.com","password":%q}`, testPassword)
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+		req.Header.Set("Origin", "https://evil.example")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status=%d want 403 body=%q", rec.Code, rec.Body.String())
+		}
+		if cookies := rec.Result().Cookies(); len(cookies) != 0 {
+			t.Fatalf("foreign-origin login set cookies: %+v", cookies)
+		}
+	})
+}
+
 func TestHandleLoginRejectsUnknownEmail(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)
@@ -1443,6 +1485,30 @@ func TestHandleLoginRateLimit(t *testing.T) {
 	}
 
 	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	rec = httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("second status=%d want 429 body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleLoginRateLimitIgnoresUntrustedForwardedFor(t *testing.T) {
+	api := newTestAPI(t)
+	api.rateLimits.loginIP = newFixedWindowRateLimiter(1, time.Hour)
+	api.rateLimits.loginEmail = newFixedWindowRateLimiter(100, time.Hour)
+	mux := newTestMux(t, api)
+
+	body := fmt.Sprintf(`{"email":"ghost@example.com","password":%q}`, testPassword)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	req.Header.Set("X-Forwarded-For", "203.0.113.10")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("first status=%d want 401 body=%q", rec.Code, rec.Body.String())
+	}
+
+	req = httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	req.Header.Set("X-Forwarded-For", "203.0.113.11")
 	rec = httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusTooManyRequests {
