@@ -989,9 +989,15 @@ func (d *DB) DeleteUserCascade(userID int64) error {
 	if _, err := tx.Exec(`
 		DELETE FROM parse_feedback
 		 WHERE user_id = ?
-		    OR reviewed_by_user_id = ?
 		    OR parse_session_id IN (SELECT id FROM parse_sessions WHERE user_id = ?)`,
-		userID, userID, userID); err != nil {
+		userID, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`
+		UPDATE parse_feedback
+		   SET reviewed_by_user_id = NULL
+		 WHERE reviewed_by_user_id = ?`,
+		userID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`

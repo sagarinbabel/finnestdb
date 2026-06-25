@@ -399,6 +399,27 @@ func TestDeleteUserCascadeRemovesPrivateRows(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("CreateParseFeedback: %v", err)
 	}
+	otherParseID, err := db.CreateParseSession(&other.ID, "FI", "custom", "Koira.", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession other: %v", err)
+	}
+	otherFeedbackID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: otherParseID,
+		UserID:         other.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "Koira",
+		OriginalLemma:  "koira",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "koira",
+		ProposedPOS:    "NOUN",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback other: %v", err)
+	}
+	if err := db.ReviewParseFeedback(otherFeedbackID, user.ID, "rejected", "reviewed by deleted user"); err != nil {
+		t.Fatalf("ReviewParseFeedback other: %v", err)
+	}
 
 	if err := db.DeleteUserCascade(user.ID); err != nil {
 		t.Fatalf("DeleteUserCascade: %v", err)
@@ -430,6 +451,22 @@ func TestDeleteUserCascadeRemovesPrivateRows(t *testing.T) {
 	}
 	if got := countRows(t, db, `SELECT COUNT(*) FROM decks WHERE id = ? AND user_id = ?`, publicDeckID, other.ID); got != 1 {
 		t.Fatalf("other user's public deck rows=%d want 1", got)
+	}
+	var reviewedBy sql.NullInt64
+	var status string
+	if err := db.db.QueryRow(
+		`SELECT reviewed_by_user_id, status
+		 FROM parse_feedback
+		 WHERE id = ?`,
+		otherFeedbackID,
+	).Scan(&reviewedBy, &status); err != nil {
+		t.Fatalf("other user's reviewed feedback was deleted: %v", err)
+	}
+	if reviewedBy.Valid {
+		t.Fatalf("other user's feedback reviewed_by_user_id=%d, want NULL", reviewedBy.Int64)
+	}
+	if status != "rejected" {
+		t.Fatalf("other user's feedback status=%q want rejected", status)
 	}
 }
 
