@@ -1373,8 +1373,8 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 
 		var dictCandidates []formCandidate
 		hasCustomOverride := false
-		if dictCandidates, ok := lookupFormCandidates(stmt, lower, lang); ok {
-			dictCandidates = filterCaseCompatibleCandidates(form, dictCandidates)
+		if candidates, ok := lookupFormCandidates(stmt, lower, lang); ok {
+			dictCandidates = filterCaseCompatibleCandidates(form, candidates)
 			if customCandidates, ok := customOverrideCandidates(dictCandidates); ok {
 				dictCandidates = customCandidates
 				hasCustomOverride = true
