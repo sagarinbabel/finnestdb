@@ -96,16 +96,28 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		// and proper nouns resolve correctly.
 		lower := strings.ToLower(form)
 
+		dictCandidates, hasDictCandidates := lookupFormCandidates(stmtFormsAll, lower, lang)
+		if hasDictCandidates {
+			dictCandidates = filterCaseCompatibleCandidates(form, dictCandidates)
+			hasDictCandidates = len(dictCandidates) > 0
+		}
+		if parserMode == "custom" && hasDictCandidates {
+			if customCandidates, ok := customOverrideCandidates(dictCandidates); ok {
+				result[form] = formResolutionFromCandidate(form, pickBestFormCandidate(form, customCandidates))
+				continue
+			}
+		}
+
 		// Step 0: Lexical-overlay short-circuit. lexadverbs catalogues
 		// surfaces where every other resolution path (dict + FST) has
 		// a known wrong answer the maintainer has already curated
-		// against. The overlay wins outright: skip the dict + FST
-		// merge for these surfaces. Gated to custom mode because the
-		// overlay is part of the "custom enhancements" suite; basic
-		// mode stays dict-only to keep overlay baselines stable. The
-		// direct dictionary path below still applies source-integrity
-		// filters such as exact special-capitalization matching in both
-		// modes.
+		// against. Accepted feedback overrides sit above the static
+		// overlay; when no override exists, the overlay wins outright and
+		// skips the dict + FST merge. Gated to custom mode because the
+		// overlay is part of the "custom enhancements" suite; basic mode
+		// stays dict-only to keep overlay baselines stable. The direct
+		// dictionary path below still applies source-integrity filters such
+		// as exact special-capitalization matching in both modes.
 		if parserMode == "custom" {
 			if res, ok := lookupLexOverlay(lang, form); ok {
 				result[form] = res
@@ -117,25 +129,22 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		// surface form can have multiple (lemma, pos) candidates; rank them
 		// against the original-case surface so PROPN homonyms don't beat
 		// common-noun lemmas on lowercase surfaces.
-		if dictCandidates, ok := lookupFormCandidates(stmtFormsAll, lower, lang); ok {
-			dictCandidates = filterCaseCompatibleCandidates(form, dictCandidates)
-			if len(dictCandidates) > 0 {
-				best := formResolutionFromCandidate(form, pickBestFormCandidate(form, dictCandidates))
-				if parserMode == "custom" {
-					var analyses []lemmatizer.Analysis
-					if lang == "FI" || lang == "ET" {
-						if lem := d.fstLemmatizer(); lem != nil {
-							analyses = lem.Lemmatize(lang, lower)
-						}
-					}
-					best = mergeAndRankDictFSTCandidates(form, lang, dictCandidates, analyses)
-					if strings.HasPrefix(best.Source, "dict") && best.GrammarLabel == "" && best.Feats == "" {
-						best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
+		if hasDictCandidates {
+			best := formResolutionFromCandidate(form, pickBestFormCandidate(form, dictCandidates))
+			if parserMode == "custom" {
+				var analyses []lemmatizer.Analysis
+				if lang == "FI" || lang == "ET" {
+					if lem := d.fstLemmatizer(); lem != nil {
+						analyses = lem.Lemmatize(lang, lower)
 					}
 				}
-				result[form] = best
-				continue
+				best = mergeAndRankDictFSTCandidates(form, lang, dictCandidates, analyses)
+				if strings.HasPrefix(best.Source, "dict") && best.GrammarLabel == "" && best.Feats == "" {
+					best = attachCaseLabelIfStemMatches(stmtLemmas, best, lower, lang)
+				}
 			}
+			result[form] = best
+			continue
 		}
 
 		// Steps 2-4 only run in "custom" parser mode.
@@ -301,7 +310,7 @@ func lookupFormCandidates(stmt *sql.Stmt, lowerSurface, lang string) ([]formCand
 		if err := rows.Scan(&c.Lemma, &c.POS, &c.Source, &c.SourcePriority, &c.Feats); err != nil {
 			return nil, false
 		}
-		if isBadDictCandidate(lang, lowerSurface, c.Lemma, c.POS) {
+		if !isCustomOverrideCandidate(c) && isBadDictCandidate(lang, lowerSurface, c.Lemma, c.POS) {
 			continue
 		}
 		candidates = append(candidates, c)
@@ -323,6 +332,33 @@ func filterCaseCompatibleCandidates(surface string, candidates []formCandidate) 
 		}
 	}
 	return out
+}
+
+func customOverrideCandidates(candidates []formCandidate) ([]formCandidate, bool) {
+	if len(candidates) == 0 {
+		return candidates, false
+	}
+	hasCustomOverride := false
+	for _, c := range candidates {
+		if isCustomOverrideCandidate(c) {
+			hasCustomOverride = true
+			break
+		}
+	}
+	if !hasCustomOverride {
+		return candidates, false
+	}
+	out := candidates[:0]
+	for _, c := range candidates {
+		if isCustomOverrideCandidate(c) {
+			out = append(out, c)
+		}
+	}
+	return out, true
+}
+
+func isCustomOverrideCandidate(c formCandidate) bool {
+	return c.Source == SourceCustomOverrides && c.SourcePriority >= CustomOverridesSourcePriority
 }
 
 func candidateCaseCompatible(surface, lemma string) bool {
@@ -1326,7 +1362,7 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 		return result
 	}
 
-	stmt, err := d.db.Prepare(`SELECT lemma, pos FROM forms WHERE form = ? AND lang = ?`)
+	stmt, err := d.db.Prepare(`SELECT lemma, pos, source, source_priority, COALESCE(feats, '') FROM forms WHERE form = ? AND lang = ?`)
 	if err != nil {
 		return result
 	}
@@ -1334,34 +1370,26 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 
 	for _, form := range forms {
 		lower := strings.ToLower(form)
-		if parserMode == "custom" {
+
+		var dictCandidates []formCandidate
+		hasCustomOverride := false
+		if dictCandidates, ok := lookupFormCandidates(stmt, lower, lang); ok {
+			dictCandidates = filterCaseCompatibleCandidates(form, dictCandidates)
+			if customCandidates, ok := customOverrideCandidates(dictCandidates); ok {
+				dictCandidates = customCandidates
+				hasCustomOverride = true
+			}
+		}
+		if !hasCustomOverride && parserMode == "custom" {
 			if res, ok := lookupLexOverlay(lang, form); ok {
 				result[form] = []FormResolution{res}
 				continue
 			}
 		}
-
-		rows, err := stmt.Query(lower, lang)
-		if err != nil {
-			continue
-		}
 		var candidates []FormResolution
-		for rows.Next() {
-			var lemma, pos string
-			if err := rows.Scan(&lemma, &pos); err != nil {
-				rows.Close()
-				candidates = nil
-				break
-			}
-			if isBadDictCandidate(lang, lower, lemma, pos) {
-				continue
-			}
-			if !candidateCaseCompatible(form, lemma) {
-				continue
-			}
-			candidates = append(candidates, FormResolution{Lemma: lemma, POS: pos, Source: "dict"})
+		for _, c := range dictCandidates {
+			candidates = append(candidates, formResolutionFromCandidate(form, c))
 		}
-		rows.Close()
 		if lang == "FI" {
 			candidates = correctFICandidates(d, form, lower, candidates)
 		}
