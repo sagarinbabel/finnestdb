@@ -987,11 +987,19 @@ func (d *DB) DeleteUserCascade(userID int64) error {
 	defer tx.Rollback()
 
 	if _, err := tx.Exec(`
+		UPDATE parse_feedback
+		   SET reviewed_by_user_id = NULL
+		 WHERE reviewed_by_user_id = ?
+		   AND user_id <> ?
+		   AND parse_session_id NOT IN (SELECT id FROM parse_sessions WHERE user_id = ?)`,
+		userID, userID, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`
 		DELETE FROM parse_feedback
 		 WHERE user_id = ?
-		    OR reviewed_by_user_id = ?
 		    OR parse_session_id IN (SELECT id FROM parse_sessions WHERE user_id = ?)`,
-		userID, userID, userID); err != nil {
+		userID, userID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`
@@ -1981,7 +1989,7 @@ func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string, scope 
 	// Guard against a destructive wipe: if the caller submitted words but none
 	// resolved, the diff below would delete every current row. Refuse before
 	// opening the write transaction. An explicit empty list still clears.
-	if len(normalized) > 0 && len(target) == 0 {
+	if len(words) > 0 && len(target) == 0 {
 		return nil, nil, unresolved, ErrKnownWordsReplaceNoResolvedWords
 	}
 
@@ -2501,7 +2509,7 @@ func (d *DB) RecordReviewAnswer(userID, cardID int64, rating string) error {
 		return sql.ErrNoRows
 	}
 
-	nextDue, updated := nextScheduleForRating(schedule, rating)
+	nextDue, updated := nextAlphaStepScheduleForRating(schedule, rating)
 	payload, err := json.Marshal(updated)
 	if err != nil {
 		return err
@@ -2919,6 +2927,13 @@ func writeAcceptedParseFeedbackOverride(tx *sql.Tx, feedback ParseFeedback) erro
 		return err
 	}
 	if _, err := tx.Exec(
+		`DELETE FROM forms
+		 WHERE form = ? AND lang = ? AND source = ? AND source_priority = ?`,
+		form, lang, SourceCustomOverrides, CustomOverridesSourcePriority,
+	); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(
 		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, parse_feedback_id)
 		 VALUES (?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET
@@ -3142,7 +3157,11 @@ func (d *DB) userNewCardsPerDay(userID int64) (int, error) {
 	return newPerDay, nil
 }
 
-func nextScheduleForRating(schedule ReviewSchedule, rating string) (time.Time, ReviewSchedule) {
+// nextAlphaStepScheduleForRating is the public-alpha review scheduler. It uses
+// fixed steps and intentionally does not implement FSRS; the existing
+// card_state.fsrs_json column stores this small JSON state until the FSRS
+// migration replaces it.
+func nextAlphaStepScheduleForRating(schedule ReviewSchedule, rating string) (time.Time, ReviewSchedule) {
 	now := time.Now().UTC()
 	if schedule.Step < 0 {
 		schedule.Step = 0
