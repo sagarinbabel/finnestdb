@@ -4668,6 +4668,62 @@ func TestHandleParseSessionsShowsPurgedSourceText(t *testing.T) {
 	}
 }
 
+func TestAdminAcceptRejectedByGoldGuardReturns409(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "gold-guard-admin@example.com")
+
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	userCookies := loginAndReturnCookies(t, mux, "gold-guard-user@example.com")
+	adminCookies := loginAndReturnCookies(t, mux, "gold-guard-admin@example.com")
+
+	// Gold knows "voi" as voida/VERB twice; the proposal below contradicts it.
+	if err := api.store.ReplaceGoldSurfaces("FI", []store.GoldSurface{
+		{Surface: "voi", Lemma: "voida", POS: "VERB", CaseCount: 2},
+	}); err != nil {
+		t.Fatalf("ReplaceGoldSurfaces: %v", err)
+	}
+
+	feedbackReq := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(`{
+		"lang": "FI",
+		"parser": "custom",
+		"source_text": "voi",
+		"total_tokens": 1,
+		"unique_lemma_count": 1,
+		"surface": "voi",
+		"original_lemma": "voida",
+		"original_pos": "VERB",
+		"proposed_lemma": "voi",
+		"proposed_pos": "NOUN"
+	}`))
+	for _, cookie := range userCookies {
+		feedbackReq.AddCookie(cookie)
+	}
+	feedbackRec := httptest.NewRecorder()
+	mux.ServeHTTP(feedbackRec, feedbackReq)
+	if feedbackRec.Code != http.StatusOK {
+		t.Fatalf("feedback status=%d body=%q", feedbackRec.Code, feedbackRec.Body.String())
+	}
+	var feedbackResp ParseFeedbackResponse
+	if err := json.NewDecoder(bytes.NewReader(feedbackRec.Body.Bytes())).Decode(&feedbackResp); err != nil {
+		t.Fatalf("decode feedback response: %v", err)
+	}
+
+	reviewReq := httptest.NewRequest(http.MethodPatch,
+		fmt.Sprintf("/api/admin/parse-feedback?id=%d", feedbackResp.FeedbackID),
+		strings.NewReader(`{"status":"accepted","review_note":"trying anyway"}`))
+	for _, cookie := range adminCookies {
+		reviewReq.AddCookie(cookie)
+	}
+	reviewRec := httptest.NewRecorder()
+	mux.ServeHTTP(reviewRec, reviewReq)
+	if reviewRec.Code != http.StatusConflict {
+		t.Fatalf("accept status=%d want 409 body=%q", reviewRec.Code, reviewRec.Body.String())
+	}
+	if !strings.Contains(reviewRec.Body.String(), "gold") {
+		t.Fatalf("409 body=%q should explain the gold conflict", reviewRec.Body.String())
+	}
+}
+
 func TestParseFeedbackSubmissionAndAdminReview(t *testing.T) {
 	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
 

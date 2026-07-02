@@ -31,7 +31,26 @@ const DefaultParseSourceRetentionDays = 30
 const (
 	SourceCustomOverrides         = "custom_overrides"
 	CustomOverridesSourcePriority = 1000
+
+	// GoldPromotionThreshold is how many distinct users must independently
+	// submit (and have accepted) the same correction before it becomes a
+	// gold-case candidate. One user's typo must not become a permanent
+	// eval case; three independent accepted reports is strong signal.
+	GoldPromotionThreshold = 3
+
+	// goldConflictMinCases is how many gold token occurrences must back a
+	// surface before a disagreeing override is refused. A single gold
+	// occurrence can itself be context-specific; two or more independent
+	// occurrences that all disagree with the proposal mean the override
+	// would regress the frozen eval.
+	goldConflictMinCases = 2
 )
+
+// ErrOverrideConflictsWithGold is returned when accepting a parse-feedback
+// correction would contradict the frozen gold evaluation sets (correction-loop
+// Phase 4). The acceptance is rolled back entirely; the admin sees the
+// conflict and can fix the gold set first if the gold itself is wrong.
+var ErrOverrideConflictsWithGold = errors.New("accepted correction contradicts the frozen gold sets; refusing to apply the override")
 
 // fstLemmatizer returns the (lazy-loaded) FST lemmatizer, or nil if
 // loading failed (e.g. no tables under localdata/lemmatizer-fi-et/tables/
@@ -314,6 +333,36 @@ func (d *DB) initSchema() error {
 		last_answer_at DATETIME,
 		introduced_at DATETIME,
 		FOREIGN KEY(card_id) REFERENCES cards(id)
+	);
+
+	-- Correction-loop Phase 4 guard data: every (surface, lemma, pos) analysis
+	-- that appears in the frozen gold evaluation sets, with how many gold
+	-- token occurrences back it. Populated by cmd/importgoldsurfaces from
+	-- testdata/parser-eval/*/gold; empty table = guard is a no-op.
+	CREATE TABLE IF NOT EXISTS gold_surfaces (
+		lang TEXT NOT NULL,
+		surface TEXT NOT NULL,
+		lemma TEXT NOT NULL,
+		pos TEXT NOT NULL,
+		case_count INTEGER NOT NULL DEFAULT 1,
+		PRIMARY KEY(lang, surface, lemma, pos)
+	);
+
+	-- Correction-loop Phase 3 queue: corrections independently submitted and
+	-- accepted for enough distinct users get promoted here as gold-case
+	-- candidates. cmd/exportgoldcandidates renders pending rows for manual
+	-- review before they enter the committed gold sets.
+	CREATE TABLE IF NOT EXISTS gold_candidates (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		lang TEXT NOT NULL,
+		surface TEXT NOT NULL,
+		lemma TEXT NOT NULL,
+		pos TEXT NOT NULL,
+		feats TEXT NOT NULL DEFAULT '',
+		supporter_count INTEGER NOT NULL,
+		status TEXT NOT NULL DEFAULT 'pending',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(lang, surface, lemma, pos)
 	);
 
 	-- One row per answered review, appended by RecordReviewAnswer. card_state
@@ -3090,12 +3139,16 @@ func (d *DB) ReviewParseFeedback(feedbackID, reviewerUserID int64, status, revie
 	defer tx.Rollback()
 
 	var feedback ParseFeedback
+	var proposedGrammarLabel sql.NullString
 	err = tx.QueryRow(
-		`SELECT id, lang, surface, proposed_lemma, proposed_pos
+		`SELECT id, lang, surface, proposed_lemma, proposed_pos, proposed_grammar_label
 		 FROM parse_feedback
 		 WHERE id = ?`,
 		feedbackID,
-	).Scan(&feedback.ID, &feedback.Lang, &feedback.Surface, &feedback.ProposedLemma, &feedback.ProposedPOS)
+	).Scan(&feedback.ID, &feedback.Lang, &feedback.Surface, &feedback.ProposedLemma, &feedback.ProposedPOS, &proposedGrammarLabel)
+	if proposedGrammarLabel.Valid {
+		feedback.ProposedGrammarLabel = proposedGrammarLabel.String
+	}
 	if err == sql.ErrNoRows {
 		return sql.ErrNoRows
 	}
@@ -3135,6 +3188,22 @@ func writeAcceptedParseFeedbackOverride(tx *sql.Tx, feedback ParseFeedback) erro
 	if lemma == "" || pos == "" || lang == "" || form == "" {
 		return fmt.Errorf("accepted parse feedback %d is missing override fields", feedback.ID)
 	}
+
+	// Phase 4: eval-gated safety check. Refuse the override when the frozen
+	// gold sets know this surface and unanimously disagree with the proposal
+	// across enough occurrences — applying it would regress the eval. The
+	// whole acceptance rolls back, so the feedback stays reviewable.
+	if err := checkOverrideAgainstGold(tx, lang, form, lemma, pos); err != nil {
+		return err
+	}
+
+	// Phase 2: accepted grammar-label corrections ride the same override
+	// row as FEATS. The corrected feats live ONLY on the custom_overrides
+	// row — upstream imported rows stay pristine so a dictionary re-import
+	// never silently reverts or duplicates a correction (deliberate
+	// deviation from the TODO sketch of editing the upstream row in place).
+	feats := featsFromCaseLabel(strings.ToLower(strings.TrimSpace(feedback.ProposedGrammarLabel)))
+
 	if _, err := tx.Exec(
 		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority, parse_feedback_id)
 		 VALUES (?, ?, NULL, ?, ?, ?, ?)
@@ -3155,18 +3224,162 @@ func writeAcceptedParseFeedbackOverride(tx *sql.Tx, feedback ParseFeedback) erro
 		return err
 	}
 	if _, err := tx.Exec(
-		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, parse_feedback_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, parse_feedback_id, feats)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET
 			source = excluded.source,
 			source_priority = excluded.source_priority,
-			parse_feedback_id = excluded.parse_feedback_id
+			parse_feedback_id = excluded.parse_feedback_id,
+			feats = excluded.feats
 		 WHERE forms.source_priority <= excluded.source_priority`,
-		form, lemma, pos, lang, SourceCustomOverrides, CustomOverridesSourcePriority, feedback.ID,
+		form, lemma, pos, lang, SourceCustomOverrides, CustomOverridesSourcePriority, feedback.ID, feats,
 	); err != nil {
 		return err
 	}
+
+	// Phase 3: promote to a gold-case candidate once enough distinct users
+	// have independently submitted (and had accepted) the same correction.
+	return maybePromoteGoldCandidate(tx, lang, form, lemma, pos, feats)
+}
+
+// checkOverrideAgainstGold implements the correction-loop Phase 4 guard.
+// Empty gold_surfaces (importer never run) means no check — the guard cannot
+// invent gold knowledge it doesn't have.
+func checkOverrideAgainstGold(tx *sql.Tx, lang, form, lemma, pos string) error {
+	var total, matching int
+	if err := tx.QueryRow(
+		`SELECT COALESCE(SUM(case_count), 0),
+		        COALESCE(SUM(CASE WHEN lemma = ? AND pos = ? THEN case_count ELSE 0 END), 0)
+		   FROM gold_surfaces
+		  WHERE lang = ? AND surface = ?`,
+		lemma, pos, lang, form,
+	).Scan(&total, &matching); err != nil {
+		return err
+	}
+	if total >= goldConflictMinCases && matching == 0 {
+		return fmt.Errorf("%w: %d gold occurrence(s) of %q analyze it differently than %s/%s",
+			ErrOverrideConflictsWithGold, total, form, lemma, pos)
+	}
 	return nil
+}
+
+// maybePromoteGoldCandidate upserts a pending gold-case candidate when the
+// same (surface → lemma/pos) correction has been accepted for at least
+// GoldPromotionThreshold distinct submitting users. Counting runs inside the
+// acceptance transaction, so the row being accepted is included.
+func maybePromoteGoldCandidate(tx *sql.Tx, lang, form, lemma, pos, feats string) error {
+	var supporters int
+	if err := tx.QueryRow(
+		`SELECT COUNT(DISTINCT user_id)
+		   FROM parse_feedback
+		  WHERE lang = ? AND lower(surface) = ? AND proposed_lemma = ? AND proposed_pos = ?
+		    AND status = 'accepted'`,
+		lang, form, lemma, pos,
+	).Scan(&supporters); err != nil {
+		return err
+	}
+	if supporters < GoldPromotionThreshold {
+		return nil
+	}
+	_, err := tx.Exec(
+		`INSERT INTO gold_candidates (lang, surface, lemma, pos, feats, supporter_count)
+		 VALUES (?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(lang, surface, lemma, pos) DO UPDATE SET
+			supporter_count = excluded.supporter_count`,
+		lang, form, lemma, pos, feats, supporters,
+	)
+	return err
+}
+
+// ReplaceGoldSurfaces atomically replaces the Phase-4 guard data for a
+// language with the given aggregated gold analyses. Used by
+// cmd/importgoldsurfaces.
+func (d *DB) ReplaceGoldSurfaces(lang string, rows []GoldSurface) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM gold_surfaces WHERE lang = ?`, lang); err != nil {
+		return err
+	}
+	stmt, err := tx.Prepare(`INSERT INTO gold_surfaces (lang, surface, lemma, pos, case_count) VALUES (?, ?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, row := range rows {
+		if _, err := stmt.Exec(lang, strings.ToLower(row.Surface), row.Lemma, row.POS, row.CaseCount); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// GoldSurface is one aggregated gold analysis for the Phase-4 guard.
+type GoldSurface struct {
+	Surface   string
+	Lemma     string
+	POS       string
+	CaseCount int
+}
+
+// GoldCandidate is one pending Phase-3 gold-case promotion.
+type GoldCandidate struct {
+	ID             int64
+	Lang           string
+	Surface        string
+	Lemma          string
+	POS            string
+	Feats          string
+	SupporterCount int
+	Status         string
+}
+
+// ListGoldCandidates returns promotion candidates with the given status
+// (all statuses when empty), newest first.
+func (d *DB) ListGoldCandidates(status string) ([]GoldCandidate, error) {
+	query := `SELECT id, lang, surface, lemma, pos, feats, supporter_count, status
+	            FROM gold_candidates`
+	args := []any{}
+	if status != "" {
+		query += ` WHERE status = ?`
+		args = append(args, status)
+	}
+	query += ` ORDER BY id DESC`
+	rows, err := d.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []GoldCandidate{}
+	for rows.Next() {
+		var c GoldCandidate
+		if err := rows.Scan(&c.ID, &c.Lang, &c.Surface, &c.Lemma, &c.POS, &c.Feats, &c.SupporterCount, &c.Status); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// MarkGoldCandidatesExported flips pending candidates to exported so the next
+// export run only shows new arrivals.
+func (d *DB) MarkGoldCandidatesExported(ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, id := range ids {
+		if _, err := tx.Exec(`UPDATE gold_candidates SET status = 'exported' WHERE id = ? AND status = 'pending'`, id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (d *DB) Close() error {

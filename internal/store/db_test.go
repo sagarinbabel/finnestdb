@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -786,6 +787,198 @@ func TestAcceptedParseFeedbackReplacesPreviousSurfaceOverride(t *testing.T) {
 	if overrideCount != 1 || feedbackID != secondFeedbackID {
 		t.Fatalf("override rows got count=%d feedback_id=%d, want count=1 feedback_id=%d",
 			overrideCount, feedbackID, secondFeedbackID)
+	}
+}
+
+func TestAcceptedGrammarCorrectionCarriesFeats(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "feats-correction-user@example.com")
+	admin := createTestUser(t, db, "feats-correction-admin@example.com")
+
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "talossa", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	feedbackID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID:       parseID,
+		UserID:               user.ID,
+		Lang:                 "FI",
+		Parser:               "custom",
+		Surface:              "Talossa",
+		OriginalLemma:        "talo",
+		OriginalPOS:          "NOUN",
+		OriginalGrammarLabel: "elative",
+		ProposedLemma:        "talo",
+		ProposedPOS:          "NOUN",
+		ProposedGrammarLabel: "inessive",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback: %v", err)
+	}
+	if err := db.ReviewParseFeedback(feedbackID, admin.ID, "accepted", "case fix"); err != nil {
+		t.Fatalf("ReviewParseFeedback: %v", err)
+	}
+
+	var feats string
+	if err := db.db.QueryRow(
+		`SELECT COALESCE(feats, '') FROM forms
+		 WHERE form = 'talossa' AND lang = 'FI' AND source = ? AND source_priority = ?`,
+		SourceCustomOverrides, CustomOverridesSourcePriority,
+	).Scan(&feats); err != nil {
+		t.Fatalf("read override feats: %v", err)
+	}
+	if feats != "Case=Ine" {
+		t.Fatalf("override feats=%q want Case=Ine — grammar corrections must reach FEATS, not just the label", feats)
+	}
+}
+
+func TestGoldConflictBlocksAcceptance(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "gold-guard-user@example.com")
+	admin := createTestUser(t, db, "gold-guard-admin@example.com")
+
+	// The frozen gold sets analyze "voi" twice as voida/VERB.
+	if err := db.ReplaceGoldSurfaces("FI", []GoldSurface{
+		{Surface: "voi", Lemma: "voida", POS: "VERB", CaseCount: 2},
+	}); err != nil {
+		t.Fatalf("ReplaceGoldSurfaces: %v", err)
+	}
+
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "voi", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	newFeedback := func(lemma, pos string) int64 {
+		t.Helper()
+		id, err := db.CreateParseFeedback(ParseFeedback{
+			ParseSessionID: parseID,
+			UserID:         user.ID,
+			Lang:           "FI",
+			Parser:         "custom",
+			Surface:        "voi",
+			OriginalLemma:  "voida",
+			OriginalPOS:    "VERB",
+			ProposedLemma:  lemma,
+			ProposedPOS:    pos,
+		})
+		if err != nil {
+			t.Fatalf("CreateParseFeedback: %v", err)
+		}
+		return id
+	}
+
+	// Contradicting the gold analysis is refused and rolls the whole
+	// acceptance back: status stays reviewable, no override row appears.
+	conflictID := newFeedback("voi", "NOUN")
+	err = db.ReviewParseFeedback(conflictID, admin.ID, "accepted", "butter!")
+	if !errors.Is(err, ErrOverrideConflictsWithGold) {
+		t.Fatalf("accept err=%v want ErrOverrideConflictsWithGold", err)
+	}
+	var status string
+	if err := db.db.QueryRow(`SELECT status FROM parse_feedback WHERE id = ?`, conflictID).Scan(&status); err != nil {
+		t.Fatalf("read status: %v", err)
+	}
+	if status != "submitted" {
+		t.Fatalf("status=%q want submitted — a refused acceptance must roll back entirely", status)
+	}
+	var overrides int
+	if err := db.db.QueryRow(
+		`SELECT COUNT(*) FROM forms WHERE form = 'voi' AND lang = 'FI' AND source = ?`,
+		SourceCustomOverrides,
+	).Scan(&overrides); err != nil {
+		t.Fatalf("count overrides: %v", err)
+	}
+	if overrides != 0 {
+		t.Fatalf("override rows=%d want 0 after refused acceptance", overrides)
+	}
+
+	// Rejecting the same feedback is fine — the guard only gates acceptance.
+	if err := db.ReviewParseFeedback(conflictID, admin.ID, "rejected", "gold disagrees"); err != nil {
+		t.Fatalf("reject after conflict: %v", err)
+	}
+
+	// A proposal that AGREES with gold sails through.
+	agreeID := newFeedback("voida", "VERB")
+	if err := db.ReviewParseFeedback(agreeID, admin.ID, "accepted", "matches gold"); err != nil {
+		t.Fatalf("accept agreeing proposal: %v", err)
+	}
+
+	// A single gold occurrence is below the conflict threshold: one gold
+	// case can itself be context-specific, so it must not hard-block.
+	if err := db.ReplaceGoldSurfaces("FI", []GoldSurface{
+		{Surface: "kuusi", Lemma: "kuusi", POS: "NUM", CaseCount: 1},
+	}); err != nil {
+		t.Fatalf("ReplaceGoldSurfaces kuusi: %v", err)
+	}
+	weakID := newFeedback("kuusi", "NOUN")
+	if err := db.ReviewParseFeedback(weakID, admin.ID, "accepted", "spruce"); err != nil {
+		t.Fatalf("accept against single gold case: %v", err)
+	}
+}
+
+func TestGoldCandidatePromotionNeedsThreeUsers(t *testing.T) {
+	db := newTestDB(t)
+	admin := createTestUser(t, db, "promotion-admin@example.com")
+
+	acceptCorrectionFrom := func(email string) {
+		t.Helper()
+		submitter := createTestUser(t, db, email)
+		parseID, err := db.CreateParseSession(&submitter.ID, "FI", "custom", "loopword", 1, 1)
+		if err != nil {
+			t.Fatalf("CreateParseSession: %v", err)
+		}
+		feedbackID, err := db.CreateParseFeedback(ParseFeedback{
+			ParseSessionID:       parseID,
+			UserID:               submitter.ID,
+			Lang:                 "FI",
+			Parser:               "custom",
+			Surface:              "Loopword",
+			OriginalLemma:        "wrong",
+			OriginalPOS:          "NOUN",
+			ProposedLemma:        "oikea",
+			ProposedPOS:          "NOUN",
+			ProposedGrammarLabel: "inessive",
+		})
+		if err != nil {
+			t.Fatalf("CreateParseFeedback: %v", err)
+		}
+		if err := db.ReviewParseFeedback(feedbackID, admin.ID, "accepted", "confirmed"); err != nil {
+			t.Fatalf("ReviewParseFeedback: %v", err)
+		}
+	}
+
+	acceptCorrectionFrom("promoter-1@example.com")
+	acceptCorrectionFrom("promoter-2@example.com")
+	candidates, err := db.ListGoldCandidates("pending")
+	if err != nil {
+		t.Fatalf("ListGoldCandidates: %v", err)
+	}
+	if len(candidates) != 0 {
+		t.Fatalf("candidates=%+v want none below the 3-user threshold", candidates)
+	}
+
+	acceptCorrectionFrom("promoter-3@example.com")
+	candidates, err = db.ListGoldCandidates("pending")
+	if err != nil {
+		t.Fatalf("ListGoldCandidates after third: %v", err)
+	}
+	if len(candidates) != 1 {
+		t.Fatalf("candidates=%+v want exactly one after threshold", candidates)
+	}
+	c := candidates[0]
+	if c.Surface != "loopword" || c.Lemma != "oikea" || c.POS != "NOUN" || c.SupporterCount != 3 || c.Feats != "Case=Ine" {
+		t.Fatalf("candidate=%+v want loopword→oikea/NOUN supporters=3 feats=Case=Ine", c)
+	}
+
+	if err := db.MarkGoldCandidatesExported([]int64{c.ID}); err != nil {
+		t.Fatalf("MarkGoldCandidatesExported: %v", err)
+	}
+	pending, err := db.ListGoldCandidates("pending")
+	if err != nil {
+		t.Fatalf("ListGoldCandidates after export: %v", err)
+	}
+	if len(pending) != 0 {
+		t.Fatalf("pending=%+v want none after export", pending)
 	}
 }
 

@@ -137,16 +137,16 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 
 ### Self-improving feedback loop
 
-Accepted lemma/POS parse-feedback corrections now write `custom_overrides`
-lexical rows after admin approval. Grammar/FEATS corrections, gold promotion,
-and eval-gated safety checks still need follow-up. See
+Phases 1–4 are live as of 2026-07-02: accepted corrections write authoritative
+`custom_overrides` rows (with FEATS), contradicting the frozen gold sets blocks
+acceptance, and repeat corrections auto-queue as gold candidates. See
 [`docs/FEATURES.md` "User correction loop"](docs/FEATURES.md).
 
 - [x] **Phase 1 — apply accepted lemma/POS corrections** as a `custom_overrides` lexical row. On admin acceptance, write `forms`/`lemmas` rows with `source='custom_overrides'`, `source_priority=1000`, proposed `lemma`/`pos`, and a back-pointer to `parse_feedback.id`.
-- [ ] **Phase 2 — apply accepted grammar-label corrections** to `forms.feats` for the specific surface form. Smaller blast radius. Few-day task.
-- [ ] **Phase 3 — auto-promote a corrected `(surface, lemma, pos)` tuple to a gold-eval case** when N independent users submit the same correction. Threshold and review workflow TBD.
-- [ ] **Phase 4 — eval-backed safety check before applying.** Run candidate `custom_overrides` row against frozen gold sets; reject on regression of ≥N cases. Reuse the existing parser-eval/baseline discipline, but do not revive or expand `cmd/autoresearch` for alpha. If it adds >100ms to admin-accept latency, push to background job.
-- [ ] **Phase 5 (research, not engineering)** — automatic re-ranking of source priorities when a single source consistently produces accepted corrections in one direction. Out of scope for alpha.
+- [x] **Phase 2 — apply accepted grammar-label corrections to FEATS** — shipped 2026-07-02. The proposed grammar label maps through `udfeats` (`featsFromCaseLabel`) onto the override row's `forms.feats`. Deliberate deviation from the original sketch: corrected FEATS live only on the `custom_overrides` row, never edited into upstream imported rows, so a dictionary re-import can't silently revert or duplicate a correction.
+- [x] **Phase 3 — auto-promote to gold candidates** — shipped 2026-07-02. When `store.GoldPromotionThreshold` (3) distinct users have the same correction accepted, it upserts into `gold_candidates`; `make export-gold-candidates` prints pending rows as gold-token JSON for **manual** review into `testdata/parser-eval/*/gold` (auto-committing eval cases would let the system write its own exam).
+- [x] **Phase 4 — eval-backed safety check before applying** — shipped 2026-07-02. `make import-gold-surfaces` loads the frozen gold analyses into `gold_surfaces`; acceptance is refused (HTTP 409, full rollback) when ≥2 gold occurrences of the surface unanimously disagree with the proposal. Runs in-transaction in <1ms, so no background job needed. An empty `gold_surfaces` table degrades to no-op — run the importer after clone and after gold changes.
+- [ ] **Phase 5 (research, not engineering)** — automatic re-ranking of source priorities when a single source consistently produces accepted corrections in one direction. **Stays parked deliberately**: it needs months of accepted-correction volume to have any signal, and per the original scoping it is out of scope for alpha; revisit after Phase 4 has real production data.
 
 Phase 1 is gated on FEATS threading (already shipped via [PR #130](https://github.com/sagarinbabel/finnestdb/pull/130)) so corrections can update FEATS, not just GrammarLabel.
 

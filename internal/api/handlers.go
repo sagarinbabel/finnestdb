@@ -2639,6 +2639,13 @@ func (a *API) handleAdminParseFeedback(w http.ResponseWriter, r *http.Request, a
 				http.Error(w, "Parse feedback not found", http.StatusNotFound)
 				return
 			}
+			// Phase-4 eval gate: the override would contradict the frozen
+			// gold sets. Nothing was applied; surface the reason so the
+			// admin can fix the gold set first if the gold itself is wrong.
+			if errors.Is(err, store.ErrOverrideConflictsWithGold) {
+				http.Error(w, err.Error(), http.StatusConflict)
+				return
+			}
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
