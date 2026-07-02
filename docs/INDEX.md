@@ -207,6 +207,10 @@ descriptions when two docs sound similar.
   for trying the parser interactively.
 - [`docs/GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) — security and
   hardening posture required before exposing the alpha publicly.
+- [`docs/DEPLOYMENT.md`](DEPLOYMENT.md) — production runbook: TLS +
+  reverse proxy, systemd units, scheduled backups and retention purge,
+  monitoring/alerting baseline, update and restore procedures. Config
+  files live in [`deploy/`](../deploy/).
 - [`docs/LEARNINGS.md`](LEARNINGS.md) — parser-eval learnings as
   patterns we want to repeat (or avoid).
 

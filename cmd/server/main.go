@@ -19,7 +19,14 @@ func main() {
 	if envPort := strings.TrimSpace(os.Getenv("PORT")); envPort != "" {
 		defaultPort = envPort
 	}
+	defaultAddr := ""
+	if envAddr := strings.TrimSpace(os.Getenv("FINNESTDB_LISTEN_ADDR")); envAddr != "" {
+		defaultAddr = envAddr
+	}
 	port := flag.String("port", defaultPort, "Port to listen on")
+	// Behind a reverse proxy the app should bind loopback only, so nothing can
+	// reach it without passing the proxy's TLS and edge limits.
+	listenAddr := flag.String("addr", defaultAddr, "Full listen address (e.g. 127.0.0.1:8080); overrides -port")
 	dbPath := flag.String("db", "finnestdb.db", "Path to SQLite database")
 	flag.Parse()
 
@@ -81,7 +88,15 @@ func main() {
 
 	// Start server
 	addr := fmt.Sprintf(":%s", *port)
-	log.Printf("Starting server on http://localhost%s", addr)
+	displayHost := "localhost" + addr
+	if *listenAddr != "" {
+		addr = *listenAddr
+		displayHost = addr
+		if strings.HasPrefix(addr, ":") {
+			displayHost = "localhost" + addr
+		}
+	}
+	log.Printf("Starting server on http://%s", displayHost)
 	log.Printf("Database: %s", *dbPath)
 	server := &http.Server{
 		Addr:              addr,
