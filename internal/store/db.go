@@ -316,6 +316,22 @@ func (d *DB) initSchema() error {
 		FOREIGN KEY(card_id) REFERENCES cards(id)
 	);
 
+	-- One row per answered review, appended by RecordReviewAnswer. card_state
+	-- keeps only the latest answer; this log is what daily-activity stats on
+	-- the progress dashboard aggregate over. Rows accumulate from the moment
+	-- this table ships — there is no way to backfill history that was never
+	-- recorded.
+	CREATE TABLE IF NOT EXISTS review_log (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		card_id INTEGER NOT NULL,
+		lang TEXT NOT NULL DEFAULT '',
+		rating TEXT NOT NULL,
+		reviewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY(user_id) REFERENCES users(id),
+		FOREIGN KEY(card_id) REFERENCES cards(id)
+	);
+
 	CREATE TABLE IF NOT EXISTS user_known_lemmas (
 		user_id INTEGER NOT NULL,
 		lang TEXT NOT NULL DEFAULT '',
@@ -461,6 +477,9 @@ func (d *DB) initSchema() error {
 	// takes ~50s to load. Sentence_id + token_ix are included so the LIMIT 1
 	// after ORDER BY uses the index for both the lookup and the ordering.
 	if _, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_occurrence_deck_lemma_pos ON occurrence(deck_id, lemma, pos, sentence_id, token_ix)`); err != nil {
+		return err
+	}
+	if _, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_review_log_user_time ON review_log(user_id, reviewed_at)`); err != nil {
 		return err
 	}
 	if err := EnsureDictMetadataSchema(d.db); err != nil {
@@ -2665,7 +2684,75 @@ func (d *DB) RecordReviewAnswer(userID, cardID int64, rating string) error {
 	); err != nil {
 		return err
 	}
+	if _, err := tx.Exec(
+		`INSERT INTO review_log (user_id, card_id, lang, rating) VALUES (?, ?, ?, ?)`,
+		userID, cardID, card.Lang, rating,
+	); err != nil {
+		return err
+	}
 	return tx.Commit()
+}
+
+// ReviewActivityDay is one day of answered reviews (UTC dates, YYYY-MM-DD).
+type ReviewActivityDay struct {
+	Day   string
+	Count int
+}
+
+// ReviewActivity returns per-day answered-review counts for the trailing
+// `days` window (today included), oldest first, with zero-count days filled
+// in so the dashboard chart has a fixed-width axis. Dates are UTC — the log
+// writes CURRENT_TIMESTAMP and per-user timezones are not tracked in alpha.
+func (d *DB) ReviewActivity(userID int64, days int) ([]ReviewActivityDay, error) {
+	if days <= 0 {
+		return nil, nil
+	}
+	end := time.Now().UTC()
+	start := end.AddDate(0, 0, -(days - 1))
+	rows, err := d.db.Query(
+		`SELECT date(reviewed_at), COUNT(*)
+		   FROM review_log
+		  WHERE user_id = ? AND date(reviewed_at) >= date(?)
+		  GROUP BY date(reviewed_at)`,
+		userID, start.Format("2006-01-02"),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	counts := make(map[string]int, days)
+	for rows.Next() {
+		var day string
+		var count int
+		if err := rows.Scan(&day, &count); err != nil {
+			return nil, err
+		}
+		counts[day] = count
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]ReviewActivityDay, 0, days)
+	for i := 0; i < days; i++ {
+		day := start.AddDate(0, 0, i).Format("2006-01-02")
+		out = append(out, ReviewActivityDay{Day: day, Count: counts[day]})
+	}
+	return out, nil
+}
+
+// CardsInReview counts the user's cards that have entered the review
+// rotation (introduced or answered at least once).
+func (d *DB) CardsInReview(userID int64) (int, error) {
+	var count int
+	err := d.db.QueryRow(
+		`SELECT COUNT(*)
+		   FROM cards c
+		   JOIN card_state cs ON cs.card_id = c.id
+		  WHERE c.user_id = ?
+		    AND (cs.introduced_at IS NOT NULL OR cs.last_answer_at IS NOT NULL)`,
+		userID,
+	).Scan(&count)
+	return count, err
 }
 
 func (d *DB) MarkCardKnown(userID, cardID int64) error {

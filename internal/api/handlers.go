@@ -58,7 +58,18 @@ type DashboardData struct {
 	KnownCount       int           `json:"known_count"`
 	DueCount         int           `json:"due_count"`
 	NewCapacityToday int           `json:"new_capacity_today"`
-	Decks            []DeckSummary `json:"decks"`
+	CardsInReview    int           `json:"cards_in_review"`
+	ReviewsToday     int           `json:"reviews_today"`
+	// ReviewActivity is the trailing 14 days of answered reviews (UTC),
+	// oldest first, zero-filled. Populated from review_log, which only
+	// accumulates from the moment it shipped.
+	ReviewActivity []ReviewActivityDay `json:"review_activity"`
+	Decks          []DeckSummary       `json:"decks"`
+}
+
+type ReviewActivityDay struct {
+	Day   string `json:"day"`
+	Count int    `json:"count"`
 }
 
 type SessionUser struct {
@@ -719,6 +730,25 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cardsInReview, err := a.store.CardsInReview(auth.UserID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	activity, err := a.store.ReviewActivity(auth.UserID, 14)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	activityDays := make([]ReviewActivityDay, 0, len(activity))
+	reviewsToday := 0
+	for i, day := range activity {
+		activityDays = append(activityDays, ReviewActivityDay{Day: day.Day, Count: day.Count})
+		if i == len(activity)-1 {
+			reviewsToday = day.Count
+		}
+	}
+
 	writeJSON(w, http.StatusOK, MeResponse{
 		Authenticated: true,
 		User:          sessionUserFromAuth(auth),
@@ -726,6 +756,9 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 			KnownCount:       knownCount,
 			DueCount:         dueCount,
 			NewCapacityToday: newCount,
+			CardsInReview:    cardsInReview,
+			ReviewsToday:     reviewsToday,
+			ReviewActivity:   activityDays,
 			Decks:            deckSummaries,
 		},
 		Languages: &UserLanguages{
