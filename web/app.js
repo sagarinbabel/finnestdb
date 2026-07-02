@@ -1148,7 +1148,7 @@ function renderDashboard() {
     if (decks.length === 0) {
         const langLabel = languageName(state.activeLanguage);
         const hint = allDecks.length === 0
-            ? `No decks yet — paste some text under <a href="#/inspect">Parse</a> to get started.`
+            ? `No decks yet — paste some text under <a href="#/inspect">Parse</a>, or add a <a href="#/decks/official">Top 1000 starter deck</a>.`
             : `No ${escapeHtml(langLabel)} decks yet. Switch the language in the top bar to see your other decks, or <a href="#/inspect">parse a ${escapeHtml(langLabel)} text</a>.`;
         decksList.innerHTML = `<p class="empty-state">${hint}</p>`;
         return;
