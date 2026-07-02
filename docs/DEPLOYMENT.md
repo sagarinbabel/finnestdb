@@ -190,7 +190,13 @@ tracked separately in TODO.md "Observability" and are not launch-gating.
 ```bash
 cd /opt/finnestdb/src && git pull
 make parser && go build -o /opt/finnestdb/bin/server ./cmd/server
-rsync -a --delete web/ /opt/finnestdb/web/
+# The app serves EVERYTHING under its web root. Exclude dev artifacts —
+# node_modules is bloat, and Playwright test-results/ contains traces and
+# screenshots that must never be publicly served.
+rsync -a --delete \
+  --exclude node_modules --exclude test-results --exclude tests \
+  --exclude playwright.config.ts --exclude '*.ts' --exclude tsconfig.json \
+  web/ /opt/finnestdb/web/
 /opt/finnestdb/scripts/backup-db.sh /opt/finnestdb/finnestdb.db /opt/finnestdb/backups  # pre-deploy snapshot
 systemctl restart finnestdb
 curl -fsS https://<domain>/api/health
