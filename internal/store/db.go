@@ -946,6 +946,21 @@ func (d *DB) RevokeSessionByTokenHash(tokenHash string) error {
 	return err
 }
 
+// RevokeAllSessionsForUser marks every active session for the user as
+// revoked. Used by the operator password-reset path so a reset also logs the
+// account out everywhere. Returns the number of sessions revoked. Idempotent.
+func (d *DB) RevokeAllSessionsForUser(userID int64) (int64, error) {
+	res, err := d.db.Exec(
+		`UPDATE user_sessions SET revoked_at = CURRENT_TIMESTAMP
+		 WHERE user_id = ? AND revoked_at IS NULL`,
+		userID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 // ListUsers returns every user, ordered by id. Used by the admin user
 // management page.
 func (d *DB) ListUsers() ([]User, error) {
