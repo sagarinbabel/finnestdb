@@ -1156,6 +1156,72 @@ body {
     font-size: 0.85rem;
 }
 
+/* Deck comprehension projection (deck detail only) */
+.deck-comprehension {
+    margin-top: 0.6rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+}
+
+.deck-comprehension-headline {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.deck-comprehension-headline strong {
+    color: var(--text-primary);
+    font-size: 1.05rem;
+}
+
+.deck-comprehension-detail {
+    margin-left: 0.4rem;
+    font-size: 0.8rem;
+}
+
+.deck-unlocks {
+    margin-top: 0.45rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.deck-unlocks summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.deck-unlock-list {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.3rem 1rem;
+}
+
+.deck-unlock-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+
+.deck-unlock-lemma {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.deck-unlock-pos {
+    font-size: 0.72rem;
+    text-transform: lowercase;
+}
+
+.deck-unlock-gain {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+}
+
 /* Visual frame stacking a fixed header table on top and a scrolling body
    table below. Splitting <thead> into its own table is the only way to
    guarantee the header NEVER scrolls — `position: sticky` on table cells

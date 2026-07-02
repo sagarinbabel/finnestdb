@@ -3292,6 +3292,98 @@ func TestExpandTokenLemmasDropsPunctAndEmptyLemmaTokens(t *testing.T) {
 	}
 }
 
+func TestDeckComprehensionEndpoint(t *testing.T) {
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "Kissa juoksee.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+						{Form: "juoksee", Lemma: "juosta", POS: "VERB"},
+					},
+				},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "deck-coverage@example.com")
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Coverage","lang":"FI","text":"Kissa juoksee."}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create status=%d body=%q", createRec.Code, createRec.Body.String())
+	}
+	var created CreateDeckResponse
+	if err := json.NewDecoder(bytes.NewReader(createRec.Body.Bytes())).Decode(&created); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+
+	markReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"known"}`))
+	for _, cookie := range cookies {
+		markReq.AddCookie(cookie)
+	}
+	markRec := httptest.NewRecorder()
+	mux.ServeHTTP(markRec, markReq)
+	if markRec.Code != http.StatusOK {
+		t.Fatalf("mark known status=%d body=%q", markRec.Code, markRec.Body.String())
+	}
+
+	compURL := fmt.Sprintf("/api/decks/%d/comprehension", created.DeckID)
+	compReq := httptest.NewRequest(http.MethodGet, compURL, nil)
+	for _, cookie := range cookies {
+		compReq.AddCookie(cookie)
+	}
+	compRec := httptest.NewRecorder()
+	mux.ServeHTTP(compRec, compReq)
+	if compRec.Code != http.StatusOK {
+		t.Fatalf("comprehension status=%d body=%q", compRec.Code, compRec.Body.String())
+	}
+	var comp DeckComprehensionResponse
+	if err := json.NewDecoder(bytes.NewReader(compRec.Body.Bytes())).Decode(&comp); err != nil {
+		t.Fatalf("decode comprehension: %v", err)
+	}
+	if comp.TotalTokens != 2 || comp.KnownTokens != 1 || comp.CoveragePct != 50 {
+		t.Fatalf("comprehension=%+v want 2 tokens, 1 known, 50%%", comp)
+	}
+	if len(comp.TopUnlocks) != 1 || comp.TopUnlocks[0].Lemma != "juosta" || comp.TopUnlocks[0].GainPct != 50 {
+		t.Fatalf("top_unlocks=%+v want juosta at 50%% gain", comp.TopUnlocks)
+	}
+
+	// The deck list carries the same headline number.
+	listReq := httptest.NewRequest(http.MethodGet, "/api/decks", nil)
+	for _, cookie := range cookies {
+		listReq.AddCookie(cookie)
+	}
+	listRec := httptest.NewRecorder()
+	mux.ServeHTTP(listRec, listReq)
+	var listResp DeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(listRec.Body.Bytes())).Decode(&listResp); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+	if len(listResp.Decks) != 1 || listResp.Decks[0].ComprehensionPct == nil || *listResp.Decks[0].ComprehensionPct != 50 {
+		t.Fatalf("deck list=%+v want comprehension_pct=50", listResp.Decks)
+	}
+
+	// Another user cannot see a private deck's coverage.
+	otherCookies := loginAndReturnCookies(t, mux, "deck-coverage-other@example.com")
+	foreignReq := httptest.NewRequest(http.MethodGet, compURL, nil)
+	for _, cookie := range otherCookies {
+		foreignReq.AddCookie(cookie)
+	}
+	foreignRec := httptest.NewRecorder()
+	mux.ServeHTTP(foreignRec, foreignReq)
+	if foreignRec.Code != http.StatusNotFound {
+		t.Fatalf("foreign comprehension status=%d want 404", foreignRec.Code)
+	}
+}
+
 func TestDeckListRenameAndDeleteFlow(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -108,6 +109,26 @@ type DeckSummary struct {
 	IsPublic   bool   `json:"is_public"`
 	IsOwner    bool   `json:"is_owner,omitempty"`
 	Subscribed bool   `json:"subscribed,omitempty"`
+	// Token-weighted coverage of the deck by the user's known/ignored
+	// lemmas, 0–100 with one decimal. Null when the deck has no tokens.
+	ComprehensionPct *float64 `json:"comprehension_pct,omitempty"`
+}
+
+// DeckComprehensionResponse is the payload of GET /api/decks/{id}/comprehension.
+type DeckComprehensionResponse struct {
+	CoveragePct float64            `json:"coverage_pct"`
+	TotalTokens int                `json:"total_tokens"`
+	KnownTokens int                `json:"known_tokens"`
+	TopUnlocks  []DeckUnlockEntry  `json:"top_unlocks"`
+}
+
+// DeckUnlockEntry is one "learn this next" candidate: an uncovered lemma
+// ranked by the share of the deck's token mass it would unlock.
+type DeckUnlockEntry struct {
+	Lemma      string  `json:"lemma"`
+	POS        string  `json:"pos"`
+	TokenCount int     `json:"token_count"`
+	GainPct    float64 `json:"gain_pct"`
 }
 
 type CreateDeckRequest struct {
@@ -646,14 +667,15 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 	deckSummaries := make([]DeckSummary, len(decks))
 	for i, deck := range decks {
 		deckSummaries[i] = DeckSummary{
-			ID:         deck.ID,
-			Title:      deck.Title,
-			Lang:       deck.Lang,
-			Known:      deck.Known,
-			Unique:     deck.Unique,
-			Due:        deck.Due,
-			IsPublic:   deck.IsPublic,
-			Subscribed: deck.Subscribed,
+			ID:               deck.ID,
+			Title:            deck.Title,
+			Lang:             deck.Lang,
+			Known:            deck.Known,
+			Unique:           deck.Unique,
+			Due:              deck.Due,
+			IsPublic:         deck.IsPublic,
+			Subscribed:       deck.Subscribed,
+			ComprehensionPct: coveragePct(deck.CoveredTokens, deck.TotalTokens),
 		}
 	}
 
@@ -840,17 +862,29 @@ func (a *API) handleDecksList(w http.ResponseWriter, auth *AuthContext) {
 	resp := DeckListResponse{Decks: make([]DeckSummary, 0, len(decks))}
 	for _, deck := range decks {
 		resp.Decks = append(resp.Decks, DeckSummary{
-			ID:         deck.ID,
-			Title:      deck.Title,
-			Lang:       deck.Lang,
-			Known:      deck.Known,
-			Unique:     deck.Unique,
-			Due:        deck.Due,
-			IsPublic:   deck.IsPublic,
-			Subscribed: deck.Subscribed,
+			ID:               deck.ID,
+			Title:            deck.Title,
+			Lang:             deck.Lang,
+			Known:            deck.Known,
+			Unique:           deck.Unique,
+			Due:              deck.Due,
+			IsPublic:         deck.IsPublic,
+			Subscribed:       deck.Subscribed,
+			ComprehensionPct: coveragePct(deck.CoveredTokens, deck.TotalTokens),
 		})
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// coveragePct converts a covered/total token count into a display percentage
+// rounded to one decimal, or nil for empty decks so the UI can render a dash
+// instead of a misleading 0%.
+func coveragePct(covered, total int) *float64 {
+	if total <= 0 {
+		return nil
+	}
+	pct := math.Round(float64(covered)/float64(total)*1000) / 10
+	return &pct
 }
 
 // HandlePublicDecks lists every official deck the user does not already own.
@@ -1446,6 +1480,10 @@ func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
 		a.handleDeckSubscribe(w, r, auth, deckID)
 		return
 	}
+	if suffix == "/comprehension" {
+		a.handleDeckComprehension(w, r, auth, deckID)
+		return
+	}
 	if suffix != "" {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
@@ -1625,6 +1663,46 @@ func (a *API) handleGetDeck(w http.ResponseWriter, auth *AuthContext, deckID int
 // (lemma, pos) the user has not already marked known/ignored. DELETE removes
 // the subscription but leaves seeded cards in place — matching how deleting
 // an owned deck preserves global learning state.
+// handleDeckComprehension serves GET /api/decks/{id}/comprehension: the
+// user's token-weighted coverage of the deck plus the top-10 uncovered
+// lemmas ranked by marginal comprehension gain ("learn these next").
+func (a *API) handleDeckComprehension(w http.ResponseWriter, r *http.Request, auth *AuthContext, deckID int64) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	stats, err := a.store.DeckComprehension(auth.UserID, deckID, 10)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Deck not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	resp := DeckComprehensionResponse{
+		TotalTokens: stats.TotalTokens,
+		KnownTokens: stats.CoveredTokens,
+		TopUnlocks:  make([]DeckUnlockEntry, 0, len(stats.TopUnlocks)),
+	}
+	if pct := coveragePct(stats.CoveredTokens, stats.TotalTokens); pct != nil {
+		resp.CoveragePct = *pct
+	}
+	for _, unlock := range stats.TopUnlocks {
+		entry := DeckUnlockEntry{
+			Lemma:      unlock.Lemma,
+			POS:        unlock.POS,
+			TokenCount: unlock.TokenCount,
+		}
+		if pct := coveragePct(unlock.TokenCount, stats.TotalTokens); pct != nil {
+			entry.GainPct = *pct
+		}
+		resp.TopUnlocks = append(resp.TopUnlocks, entry)
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
 func (a *API) handleDeckSubscribe(w http.ResponseWriter, r *http.Request, auth *AuthContext, deckID int64) {
 	switch r.Method {
 	case http.MethodPost:

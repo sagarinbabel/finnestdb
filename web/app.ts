@@ -108,6 +108,14 @@ interface DeckSummary {
     is_public:   boolean;
     is_owner?:   boolean;
     subscribed?: boolean;
+    comprehension_pct?: number | null;
+}
+
+interface DeckComprehension {
+    coverage_pct: number;
+    total_tokens: number;
+    known_tokens: number;
+    top_unlocks:  { lemma: string; pos: string; token_count: number; gain_pct: number }[];
 }
 
 interface LanguageStats {
@@ -1725,10 +1733,13 @@ function renderMyDecksTab(): void {
         } else {
             actions.push(`<button type="button" class="btn btn-link btn-sm" data-unsubscribe-deck="${deck.id}">Remove</button>`);
         }
+        const comprehensionPart = typeof deck.comprehension_pct === 'number'
+            ? ` · ${deck.comprehension_pct}% comprehension`
+            : '';
         return `<article class="deck-list-item">
             <div>
                 <h2><a href="#/decks/${deck.id}" class="deck-list-title">${escapeHtml(deck.title)}</a> ${badges.join(' ')}</h2>
-                <p class="deck-list-meta">${langName} · ${deck.known}/${deck.unique} known (${knownPct}%) · ${deck.due} due</p>
+                <p class="deck-list-meta">${langName} · ${deck.known}/${deck.unique} known (${knownPct}%) · ${deck.due} due${comprehensionPart}</p>
             </div>
             <div class="deck-list-actions">
                 ${actions.join('')}
@@ -4828,6 +4839,14 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
         }
     }
 
+    // Deck comprehension is fetched separately by loadDeckDetail; hide the
+    // stale panel whenever new results render (parse results, other decks).
+    const comprehensionPanel = document.getElementById('deck-comprehension');
+    if (comprehensionPanel) {
+        comprehensionPanel.classList.add('hidden');
+        comprehensionPanel.innerHTML = '';
+    }
+
     const coverageFill  = document.getElementById('coverage-fill')!;
     const coverageValue = document.getElementById('coverage-value')!;
     coverageFill.style.width = `${coverage.score}%`;
@@ -4986,9 +5005,50 @@ async function loadDeckDetail(deckID: number): Promise<void> {
             words:             data.words,
         };
         showResults(parseResponse, data.title, (data.parser as ParserMode) || 'custom', 'deck');
+        void loadDeckComprehension(deckID);
     } catch (err: any) {
         showToast(err.message || 'Failed to load deck.', 'error');
         navigate('/decks');
+    }
+}
+
+// Fetches and renders the token-weighted comprehension projection on the deck
+// detail view: headline percentage plus a "learn these next" list showing the
+// before → after coverage if the user learns the top unlock candidates.
+// Non-fatal on any failure — the deck page works without the projection.
+async function loadDeckComprehension(deckID: number): Promise<void> {
+    const panel = document.getElementById('deck-comprehension');
+    if (!panel) return;
+    try {
+        const resp = await fetch(`/api/decks/${deckID}/comprehension`, { credentials: 'same-origin' });
+        if (!resp.ok) return;
+        const data: DeckComprehension = await resp.json();
+        if (state.currentDeckID !== deckID || !data.total_tokens) return;
+
+        const unlocks = data.top_unlocks || [];
+        const projected = Math.min(100,
+            Math.round((data.coverage_pct + unlocks.reduce((sum, u) => sum + u.gain_pct, 0)) * 10) / 10);
+        const unlockItems = unlocks.map(u => `
+            <li class="deck-unlock-item">
+                <span class="deck-unlock-lemma">${escapeHtml(u.lemma)}</span>
+                <span class="deck-unlock-pos">${escapeHtml(u.pos)}</span>
+                <span class="deck-unlock-gain">+${u.gain_pct}%</span>
+            </li>`).join('');
+        const projection = unlocks.length > 0
+            ? `<details class="deck-unlocks">
+                <summary>Learn these ${unlocks.length} words to reach ~${projected}% comprehension</summary>
+                <ul class="deck-unlock-list">${unlockItems}</ul>
+            </details>`
+            : '';
+        panel.innerHTML = `
+            <p class="deck-comprehension-headline">
+                Predicted comprehension <strong>${data.coverage_pct}%</strong>
+                <span class="deck-comprehension-detail">${data.known_tokens.toLocaleString()} of ${data.total_tokens.toLocaleString()} words in running text</span>
+            </p>
+            ${projection}`;
+        panel.classList.remove('hidden');
+    } catch {
+        // Non-fatal: leave the panel hidden.
     }
 }
 

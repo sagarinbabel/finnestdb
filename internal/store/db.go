@@ -84,6 +84,27 @@ type DeckStats struct {
 	Unique     int
 	Due        int
 	Subscribed bool
+	// Token-weighted coverage: distinct content-token positions in the deck,
+	// and how many of those are covered by the user's known/ignored lemmas.
+	TotalTokens   int
+	CoveredTokens int
+}
+
+// DeckComprehensionStats is the token-mass coverage summary for one deck as
+// seen by one user.
+type DeckComprehensionStats struct {
+	Lang          string
+	TotalTokens   int
+	CoveredTokens int
+	TopUnlocks    []LemmaTokenCount
+}
+
+// LemmaTokenCount ranks a candidate lemma by how many token positions it
+// accounts for.
+type LemmaTokenCount struct {
+	Lemma      string
+	POS        string
+	TokenCount int
 }
 
 type Sentence struct {
@@ -1151,7 +1172,13 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 		             AND (cs.next_due IS NULL OR cs.next_due <= CURRENT_TIMESTAMP)
 		            THEN o.lemma || char(31) || o.pos
 		            ELSE NULL
-		        END) AS due_count
+		        END) AS due_count,
+		        COUNT(DISTINCT o.sentence_id || char(31) || o.token_ix) AS total_token_count,
+		        COUNT(DISTINCT CASE
+		            WHEN uk.lemma IS NOT NULL OR ui.lemma IS NOT NULL
+		            THEN o.sentence_id || char(31) || o.token_ix
+		            ELSE NULL
+		        END) AS covered_token_count
 		   FROM decks d
 		   LEFT JOIN occurrence o
 		          ON o.deck_id = d.id
@@ -1206,12 +1233,97 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 			&item.Unique,
 			&item.Known,
 			&item.Due,
+			&item.TotalTokens,
+			&item.CoveredTokens,
 		); err != nil {
 			return nil, err
 		}
 		stats = append(stats, item)
 	}
 	return stats, rows.Err()
+}
+
+// DeckComprehension computes token-weighted coverage for a deck the user can
+// access (owner, public, or subscribed): the share of content-token positions
+// covered by the user's known lemmas, plus the top-N uncovered (lemma, pos)
+// pairs ranked by how many token positions learning each would unlock.
+//
+// Token identity is (sentence_id, token_ix): multi-lemma homonym expansion
+// stores one occurrence row per candidate, and a position counts as covered
+// when ANY of its candidates is known. Ignored lemmas count as covered —
+// "ignore" means "don't make me study this" (typically proper names), and
+// coverage is a reading-comprehension proxy, not a study queue. Coverage is
+// lemma-level; form-level display is a possible later toggle.
+//
+// Returns sql.ErrNoRows when the deck does not exist or the user cannot see
+// it, matching GetDeckDetails.
+func (d *DB) DeckComprehension(userID, deckID int64, topN int) (*DeckComprehensionStats, error) {
+	var stats DeckComprehensionStats
+	err := d.db.QueryRow(
+		`SELECT lang FROM decks
+		  WHERE id = ?
+		    AND (user_id = ?
+		         OR is_public = 1
+		         OR EXISTS (SELECT 1 FROM user_deck_subscriptions s
+		                     WHERE s.user_id = ? AND s.deck_id = decks.id))`,
+		deckID, userID, userID,
+	).Scan(&stats.Lang)
+	if err != nil {
+		return nil, err
+	}
+
+	const coveredFlags = `
+		SELECT o.sentence_id, o.token_ix,
+		       MAX(CASE WHEN uk.lemma IS NOT NULL OR ui.lemma IS NOT NULL
+		           THEN 1 ELSE 0 END) AS covered
+		  FROM occurrence o
+		  LEFT JOIN user_known_lemmas uk
+		         ON uk.user_id = ?1 AND uk.lang = ?2
+		        AND uk.lemma = o.lemma AND uk.pos = o.pos
+		  LEFT JOIN user_ignored_lemmas ui
+		         ON ui.user_id = ?1 AND ui.lang = ?2
+		        AND ui.lemma = o.lemma AND ui.pos = o.pos
+		 WHERE o.deck_id = ?3
+		 GROUP BY o.sentence_id, o.token_ix`
+
+	if err := d.db.QueryRow(
+		`WITH flags AS (`+coveredFlags+`)
+		 SELECT COUNT(*), COALESCE(SUM(covered), 0) FROM flags`,
+		userID, stats.Lang, deckID,
+	).Scan(&stats.TotalTokens, &stats.CoveredTokens); err != nil {
+		return nil, err
+	}
+
+	if topN <= 0 || stats.TotalTokens == stats.CoveredTokens {
+		return &stats, nil
+	}
+
+	rows, err := d.db.Query(
+		`WITH flags AS (`+coveredFlags+`)
+		 SELECT o.lemma, o.pos, COUNT(*) AS cnt
+		   FROM occurrence o
+		   JOIN flags f
+		     ON f.sentence_id = o.sentence_id
+		    AND f.token_ix = o.token_ix
+		    AND f.covered = 0
+		  WHERE o.deck_id = ?3
+		  GROUP BY o.lemma, o.pos
+		  ORDER BY cnt DESC, o.lemma ASC, o.pos ASC
+		  LIMIT ?4`,
+		userID, stats.Lang, deckID, topN,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var item LemmaTokenCount
+		if err := rows.Scan(&item.Lemma, &item.POS, &item.TokenCount); err != nil {
+			return nil, err
+		}
+		stats.TopUnlocks = append(stats.TopUnlocks, item)
+	}
+	return &stats, rows.Err()
 }
 
 func createDeck(q sqlReadWriter, userID int64, title, lang string, isPublic bool) (int64, error) {
