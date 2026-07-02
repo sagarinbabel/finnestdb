@@ -12,10 +12,13 @@ human-facing contract.
 
 "Suggest fix" is **parser feedback**, not an immediate "fix my deck"
 action. Submissions are queued for admin review and inform future
-dictionary/enrichment/parser improvements. Accepted lemma/POS fixes are
-applied only after admin approval, as `custom_overrides` lexical rows.
-Grammar/FEATS writeback and eval-gated promotion are tracked in
-[`TODO.md`](../TODO.md) "Close the self-improving feedback loop".
+dictionary/enrichment/parser improvements. Accepted lemma/POS *and
+grammar-label* fixes are applied only after admin approval, as
+`custom_overrides` lexical rows (grammar labels become UD FEATS on the
+override). Grammar/FEATS writeback, eval-gated acceptance, and gold-candidate
+promotion shipped 2026-07-02; see [`TODO.md`](../TODO.md) "Close the
+self-improving feedback loop" (Phases 1–4 live; Phase 5 source re-ranking
+parked).
 
 Accepted feedback should be classified with
 [`CORRECTION_TAXONOMY.md`](CORRECTION_TAXONOMY.md) before writeback. Not every
@@ -83,9 +86,27 @@ by `status` and language; admins can change `status` per submission.
 When an admin marks feedback `accepted`, proposed lemma/POS corrections write
 `forms` and `lemmas` rows with `source='custom_overrides'`,
 `source_priority=1000`, and `parse_feedback_id` back-pointers. Later parses
-rank those rows above lower-priority dictionary sources. See
-[`TODO.md`](../TODO.md) "Close the self-improving feedback loop" for the
-remaining FEATS update and eval-gated promotion phases.
+rank those rows above lower-priority dictionary sources. Accepted grammar-label
+corrections also map through `udfeats` (`featsFromCaseLabel`) onto the override
+row's `forms.feats`, so corrected FEATS live only on the `custom_overrides` row
+and a dictionary re-import can't silently revert or duplicate them.
+
+Two safety rails close the loop (shipped 2026-07-02):
+
+- **Eval-gated acceptance.** `make import-gold-surfaces` loads the frozen gold
+  analyses into `gold_surfaces`; acceptance is refused (HTTP 409, full
+  rollback) when ≥2 gold occurrences of the surface unanimously contradict the
+  proposal. Runs in-transaction; an empty `gold_surfaces` table degrades to a
+  no-op.
+- **Gold-candidate promotion.** When 3 distinct users
+  (`store.GoldPromotionThreshold`) have the same correction accepted, it
+  upserts into `gold_candidates`; `make export-gold-candidates` prints pending
+  rows as gold-token JSON for **manual** promotion into
+  `testdata/parser-eval/*/gold` (auto-committing eval cases would let the
+  system write its own exam).
+
+Automatic source-priority re-ranking (Phase 5) stays parked deliberately; see
+[`TODO.md`](../TODO.md) "Close the self-improving feedback loop".
 
 Before accepting, admins should choose one primary correction type:
 
@@ -117,6 +138,7 @@ must not share overlay rows, morphology assumptions, or gold fixtures.
 - [`docs/DECISIONS.md`](DECISIONS.md) Decision 4 — why parse feedback
   requires login.
 - [`TODO.md`](../TODO.md) "Close the self-improving feedback loop" —
-  the 5-phase plan to wire accepted corrections into lexical updates.
+  the 5-phase plan to wire accepted corrections into lexical updates
+  (Phases 1–4 live as of 2026-07-02; Phase 5 source re-ranking parked).
 - [`docs/FEATURES.md`](FEATURES.md) "User correction loop" — how the
   feature is positioned to users.
