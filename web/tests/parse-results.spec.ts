@@ -388,8 +388,9 @@ test('user can save inspected results as a deck and review the first due card', 
     card_id: '42',
     mode: 'sentence',
     deck_counts: [['My test deck', '1']],
-    front: { type: 'sentence', text: 'Kissa juoksee.' },
+    front: { type: 'sentence', text: 'Kissa juoksee.', highlight: 'kissa' },
     back: {
+      surface: 'kissa',
       lemma: 'kissa',
       meaning: 'cat',
       grammar: '',
@@ -463,7 +464,8 @@ test('user can save inspected results as a deck and review the first due card', 
   await page.getByRole('button', { name: 'Review' }).click();
   await expect(page.locator('#review-page')).toHaveClass(/active/);
   await expect(page.locator('#review-card')).not.toHaveClass(/hidden/);
-  await expect(page.locator('#review-card-lemma')).toContainText('kissa');
+  // Surface form is the card's primary identity; it always shows.
+  await expect(page.locator('#review-card-surface')).toContainText('kissa');
 
   await page.getByRole('button', { name: 'Good' }).click();
   await expect(page.locator('#review-empty')).not.toHaveClass(/hidden/);

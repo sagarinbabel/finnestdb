@@ -10,6 +10,40 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Surface-form review-card identity + narrow FSRS behind a flag
+
+Implements the review-readiness launch gate (Decision 23). Review cards move
+from `(user_id, lang, lemma, pos)` to `(user_id, lang, surface_norm, lemma,
+pos)`: the normalized surface form the learner encountered joins the key, with
+`(lemma, pos)` kept as the sense discriminator so homographs are distinct sense
+cards and are not collapsed (MWE cards carry `surface_norm = ''`). Migration
+(`ensureSurfaceScopedCardsTable`) rebuilds `cards`/`card_state` via the
+established table-rebuild pattern, backfilling `surface_norm` from each card's
+most-frequent occurrence surface (falling back to the lemma) and carrying card
+ids forward so scheduler state is preserved; card count is asserted unchanged.
+Card creation on deck save/subscribe seeds one card per `(surface, lemma, pos)`;
+the review payload gains the surface (primary identity) and a homograph note.
+Quarantine `(lemma,pos)` issues still suppress all surface cards of a sense, and
+surface-only issues now also suppress cards by `surface_norm`.
+
+Adds narrow FSRS (`go-fsrs/v3`, default parameters) behind
+`FINNESTDB_FSRS_ENABLED` (default OFF). The step scheduler stays the shipped
+fallback. FSRS and legacy state coexist in `card_state.fsrs_json` via a version
+discriminator; migration is lazy on first rating (NULL → new card; legacy
+step+interval → conservative Review-state seed), and a flag rollback keeps
+FSRS-touched cards answerable through the step scheduler without losing
+progress.
+
+- Modified: [`srs-deck-spec.md`](srs-deck-spec.md) — card identity + narrow FSRS
+  marked implemented (flag off by default); documents the `fsrs_json` versioning
+  and lazy-migration derivation; Open decisions sense-key resolution recorded.
+- Modified: [`DEPLOYMENT.md`](DEPLOYMENT.md) — `FINNESTDB_FSRS_ENABLED` env var +
+  "FSRS scheduler rollout" (staging-first with seeded histories, then flip).
+- Modified: [`CONTEXT.md`](CONTEXT.md) — **Card** term updated to the implemented
+  surface-form key.
+- Related: [`DECISIONS.md`](DECISIONS.md) Decision 23 (surface-first learner
+  model + narrow FSRS).
+
 ## 2026-07-04 — Correction issues + admin-only quarantine (Phase 1c)
 
 Ships the global correction-issue ledger and admin-only faulty-content

@@ -187,7 +187,11 @@ scope, not accidental creep. See Decisions 23-29.
       Finnish-first ambiguity eval slice before simplifying ambiguity UI.
 - [ ] **Review readiness**: migrate card identity before FSRS; then ship narrow
       Go FSRS with default parameters, current Again/Hard/Good/Easy UI, feature
-      flag, migration/fallback, and regression tests.
+      flag, migration/fallback, and regression tests. _(2026-07-04: implemented —
+      surface-form card identity + narrow FSRS behind `FINNESTDB_FSRS_ENABLED`
+      (default off), with lazy migration/fallback and regression tests. Remaining:
+      flip the flag after staging validation with seeded histories — see
+      "Migrate alpha review identity and scheduler" and DEPLOYMENT.md.)_
 - [x] **Parser feedback alpha gate**: flag-only feedback, minimal
       `correction_issues` grouping, admin-only global quarantine, and quiet
       learner-facing suppression. `parse_feedback` stays raw intake; no broad
@@ -338,12 +342,18 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
   alpha migration.
   - [x] Alpha card identity decision: public alpha review cards are
         surface-form-in-context cards, not long-lived lemma/POS cards.
-  - [ ] Migrate card/deck/known/ignored review identity from lemma-backed cards
+  - [x] Migrate card/deck/known/ignored review identity from lemma-backed cards
         toward surface-form cards before attaching real FSRS state. Keep
-        lemma/POS/dictionary entries as derived support.
-  - [ ] For identical-looking surfaces with multiple supported meanings, create
+        lemma/POS/dictionary entries as derived support. _(2026-07-04: cards keyed
+        `(user, lang, surface_norm, lemma, pos)`; `ensureSurfaceScopedCardsTable`
+        migration preserves scheduler state; known/ignored/quarantine still key on
+        `(lemma, pos)` sense scope, surface-only quarantine also matches
+        `surface_norm`.)_
+  - [x] For identical-looking surfaces with multiple supported meanings, create
         sense-aware surface cards and include a context sentence plus an explicit
-        homograph note on the card, for example noun vs verb form.
+        homograph note on the card, for example noun vs verb form. _(2026-07-04:
+        homographs produce separate `(surface_norm, lemma, pos)` cards;
+        `GetNextReviewCard` emits a homograph note; API/web render it.)_
   - [ ] Resolve ambiguous context-free known-word imports lazily with contextual
         meaning checks. The "Study this meaning" action must indicate that it
         creates/keeps a review card now or creates one when the deck is saved,
@@ -361,26 +371,35 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
         lemma/POS plus `flag_only=true`. Current code is exact-correction-only:
         the UI/API/schema require proposed lemma/POS, and admin acceptance always
         writes a `custom_overrides` lexical row.
-  - [ ] Add the Go FSRS dependency and a small scheduling adapter around the
+  - [x] Add the Go FSRS dependency and a small scheduling adapter around the
         library. Keep all routing, validation, and deterministic transforms in Go.
-  - [ ] Store enough FSRS state in `card_state` (either explicit columns or a
+        _(2026-07-04: `go-fsrs/v3`; adapter in `internal/store/fsrs.go`.)_
+  - [x] Store enough FSRS state in `card_state` (either explicit columns or a
         versioned `fsrs_json` payload) without losing `next_due`,
-        `last_answer_at`, and `introduced_at`.
-  - [ ] Keep explicit known-word evidence separate from FSRS maturity. A mature
+        `last_answer_at`, and `introduced_at`. _(2026-07-04: versioned
+        `{"v":2,"fsrs":{…}}` payload coexists with legacy step payload; timestamps
+        preserved.)_
+  - [x] Keep explicit known-word evidence separate from FSRS maturity. A mature
         card may influence derived comprehension estimates, but must not
-        silently write known-surface state.
-  - [ ] Implement `FSRSScheduleForRating(card, rating, now) (next time.Time, newState CardState)`
+        silently write known-surface state. _(2026-07-04: FSRS state is confined to
+        `card_state`; known/ignored evidence is untouched by scheduling.)_
+  - [x] Implement `FSRSScheduleForRating(card, rating, now) (next time.Time, newState CardState)`
         behind a feature flag. Keep `nextAlphaStepScheduleForRating` as fallback while the
-        migration is in flight.
-  - [ ] Migration plan for existing `card_state` rows: `NULL` state becomes a new
+        migration is in flight. _(2026-07-04: `FSRSScheduleForRating` behind
+        `FINNESTDB_FSRS_ENABLED`, default off; step scheduler untouched.)_
+  - [x] Migration plan for existing `card_state` rows: `NULL` state becomes a new
         FSRS card; legacy `Step`/`Streak` JSON is converted heuristically from
         `last_answer_at`, `next_due`, and review count if available. Do not
-        pretend the old step state can reconstruct true FSRS memory.
-  - [ ] Tests: deterministic schedule tests with fixed `now`, due-queue ordering,
+        pretend the old step state can reconstruct true FSRS memory. _(2026-07-04:
+        lazy migration-on-first-rating; interval-derived Review seed, no bulk
+        rewrite.)_
+  - [x] Tests: deterministic schedule tests with fixed `now`, due-queue ordering,
         daily-new-card limit, Again/Hard/Good/Easy API responses, legacy-state
-        migration, and rollback/fallback behavior.
+        migration, and rollback/fallback behavior. _(2026-07-04: `fsrs_test.go` +
+        `surface_cards_test.go`; existing due-queue/new-limit tests still green.)_
   - [ ] Cutover: flip flag on staging DB, validate with seeded review histories,
-        then production before public alpha.
+        then production before public alpha. _(2026-07-04: still pending — flag ships
+        OFF; see DEPLOYMENT.md "FSRS scheduler rollout".)_
   - [x] Honest naming shipped 2026-07-02: the runtime step scheduler is now
         `nextAlphaStepScheduleForRating`, no longer presented as FSRS-shaped.
 
@@ -762,7 +781,13 @@ review) remain open. The full plan is preserved here for traceability
 and is not actively re-litigated. See "What's not in main yet" above
 for up-to-date open work.**
 
-5. **Migrate alpha review identity and scheduler before public alpha** _(added 2026-05-07; narrowed 2026-07-03)_
+5. **Migrate alpha review identity and scheduler before public alpha** _(added 2026-05-07; narrowed 2026-07-03; implemented behind a default-off flag 2026-07-04)_
+
+   > **Pointer (2026-07-04):** Surface-form card identity and narrow FSRS are
+   > implemented — see the live "Migrate alpha review identity and scheduler
+   > before public alpha" item under "What's not in main yet" for the ticked
+   > subtasks. FSRS ships behind `FINNESTDB_FSRS_ENABLED` (default off); the only
+   > remaining step is the staged flag cutover.
 
    `internal/store/db.go::nextAlphaStepScheduleForRating` is a hand-rolled step scheduler with hardcoded day arrays `{1,3,7,14,30,60}` (good) / `{3,7,14,30,60,90}` (easy). `again` is 10 minutes; `hard` is 8 hours. This is **not** FSRS; `docs/srs-deck-spec.md §13–24` already recommends [`go-fsrs`](https://github.com/open-spaced-repetition/go-fsrs); Decision 23 (2026-07-03) moved narrow FSRS onto the public-alpha launch path.
 
