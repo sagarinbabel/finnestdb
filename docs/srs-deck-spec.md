@@ -339,6 +339,19 @@ Formula:
 
 This is the better proxy for "how much of this content can I understand?"
 
+> **Implementation notes (2026-07-02, shipped as `GET /api/decks/{id}/comprehension`
+> and `comprehension_pct` on the deck list):**
+>
+> - **Ignored lemmas count as covered.** "Ignore" means "don't make me study
+>   this" (typically proper names); coverage is a reading-comprehension proxy,
+>   not a study queue, and a name the user chose to skip should not depress
+>   their percentage.
+> - **Token identity is a position, not a row.** Multi-lemma homonym expansion
+>   stores one occurrence row per candidate; a token position counts as covered
+>   when ANY of its candidates is known.
+> - **Coverage is lemma-level** for v1; form-level display is a possible later
+>   toggle.
+
 ### 3. Comprehension prediction (before/after)
 
 Beyond showing current coverage, the UI should project how coverage changes

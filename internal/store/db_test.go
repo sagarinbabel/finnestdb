@@ -946,6 +946,104 @@ func seedBadEkilexSeeGloss(t *testing.T, db *DB) {
 	})
 }
 
+func TestDeckComprehension(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "comprehension@example.com")
+	other := createTestUser(t, db, "comprehension-other@example.com")
+
+	// Three sentences, seven token positions. S1 token 1 is a multi-lemma
+	// homonym (two occurrence rows for one position).
+	deckID, err := db.CreateDeckWithSentences(user.ID, "Coverage deck", "FI", []DeckSentenceInput{
+		{
+			Text: "Kissa juo.",
+			Tokens: []DeckTokenInput{
+				{TokenIx: 0, Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+				{TokenIx: 1, Form: "juo", Lemma: "juoda", POS: "VERB"},
+				{TokenIx: 1, Form: "juo", Lemma: "juo", POS: "NOUN"},
+			},
+		},
+		{
+			Text: "Kissa näkee Pekan.",
+			Tokens: []DeckTokenInput{
+				{TokenIx: 0, Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+				{TokenIx: 1, Form: "näkee", Lemma: "nähdä", POS: "VERB"},
+				{TokenIx: 2, Form: "Pekan", Lemma: "Pekka", POS: "PROPN"},
+			},
+		},
+		{
+			Text: "Näen sinut.",
+			Tokens: []DeckTokenInput{
+				{TokenIx: 0, Form: "Näen", Lemma: "nähdä", POS: "VERB"},
+				{TokenIx: 1, Form: "sinut", Lemma: "sinä", POS: "PRON"},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDeckWithSentences: %v", err)
+	}
+
+	// Baseline: nothing known — zero coverage, unlocks ranked by token mass.
+	stats, err := db.DeckComprehension(user.ID, deckID, 10)
+	if err != nil {
+		t.Fatalf("DeckComprehension baseline: %v", err)
+	}
+	if stats.TotalTokens != 7 || stats.CoveredTokens != 0 {
+		t.Fatalf("baseline total=%d covered=%d want 7/0", stats.TotalTokens, stats.CoveredTokens)
+	}
+	if len(stats.TopUnlocks) == 0 || stats.TopUnlocks[0].Lemma != "kissa" && stats.TopUnlocks[0].Lemma != "nähdä" {
+		t.Fatalf("baseline top unlock=%+v want kissa or nähdä (2 tokens each)", stats.TopUnlocks)
+	}
+
+	// kissa known covers two positions; juoda known covers the homonym
+	// position via the ANY-candidate rule even though juo/NOUN is unknown;
+	// ignored Pekka counts as covered (reading proxy, not study queue).
+	if err := db.MarkLemmaKnown(user.ID, "FI", "kissa", "NOUN"); err != nil {
+		t.Fatalf("MarkLemmaKnown kissa: %v", err)
+	}
+	if err := db.MarkLemmaKnown(user.ID, "FI", "juoda", "VERB"); err != nil {
+		t.Fatalf("MarkLemmaKnown juoda: %v", err)
+	}
+	if err := db.MarkLemmaIgnored(user.ID, "FI", "Pekka", "PROPN"); err != nil {
+		t.Fatalf("MarkLemmaIgnored Pekka: %v", err)
+	}
+
+	stats, err = db.DeckComprehension(user.ID, deckID, 10)
+	if err != nil {
+		t.Fatalf("DeckComprehension: %v", err)
+	}
+	if stats.TotalTokens != 7 || stats.CoveredTokens != 4 {
+		t.Fatalf("total=%d covered=%d want 7/4", stats.TotalTokens, stats.CoveredTokens)
+	}
+	if len(stats.TopUnlocks) != 2 {
+		t.Fatalf("unlocks=%+v want 2 entries (nähdä, sinä)", stats.TopUnlocks)
+	}
+	if stats.TopUnlocks[0].Lemma != "nähdä" || stats.TopUnlocks[0].TokenCount != 2 {
+		t.Fatalf("top unlock=%+v want nähdä with 2 tokens", stats.TopUnlocks[0])
+	}
+	// juo/NOUN still appears as an unlock candidate only through positions
+	// that remain uncovered — its only position is covered by juoda, so it
+	// must NOT be listed.
+	for _, unlock := range stats.TopUnlocks {
+		if unlock.Lemma == "juo" {
+			t.Fatalf("juo/NOUN listed as unlock (%+v) but its only position is covered", stats.TopUnlocks)
+		}
+	}
+
+	// The deck stats listing must agree with the dedicated endpoint.
+	deckStats, err := db.GetUserDeckStats(user.ID)
+	if err != nil {
+		t.Fatalf("GetUserDeckStats: %v", err)
+	}
+	if len(deckStats) != 1 || deckStats[0].TotalTokens != 7 || deckStats[0].CoveredTokens != 4 {
+		t.Fatalf("deck list coverage=%+v want total=7 covered=4", deckStats)
+	}
+
+	// Foreign private deck: invisible.
+	if _, err := db.DeckComprehension(other.ID, deckID, 10); err != sql.ErrNoRows {
+		t.Fatalf("foreign private deck err=%v want sql.ErrNoRows", err)
+	}
+}
+
 func createSingleTokenDeck(t *testing.T, db *DB, userID int64, lang, text, form, lemma, pos string) int64 {
 	t.Helper()
 	deckID, err := db.CreateDeckWithSentences(userID, "Test deck", lang, []DeckSentenceInput{
