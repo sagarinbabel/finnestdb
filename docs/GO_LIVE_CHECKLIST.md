@@ -49,8 +49,11 @@ First-experience quality check:
   alpha flows to exist. It may fail initially; public alpha still requires the
   final pack to pass or have all findings classified under this rubric.
 - Provide one top-level automated command, `make first-experience-rc`, that runs
-  the parser fixture checks and Playwright RC specs, then prints the manual
-  walkthrough path/instructions.
+  the parser fixture checks and Playwright RC specs, then points at the manual
+  walkthrough instructions in this section. The walkthrough instructions live
+  here (Q60): do not create a separate walkthrough/MANUAL doc, and keep
+  `testdata/first-experience-rc/manifest.json` data/fixtures-only, not another
+  planning document.
 - Run the pack in two parts: automated parser/browser checks for deterministic
   behavior, plus a short manual product walkthrough for judgment calls such as
   trustworthiness, clarity, and first-screen credibility.

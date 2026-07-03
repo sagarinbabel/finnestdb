@@ -25,7 +25,7 @@ re-ask settled questions.
 - At archive time, keep this file as an audit trail and point readers to
   `DECISIONS.md`, `CONTEXT.md`, and `TODO.md` for current direction.
 
-## Current Handoff Snapshot After Q48
+## Current Handoff Snapshot After Q59
 
 Current implementation agents should start from:
 
@@ -161,6 +161,7 @@ Stable product decisions from this grill:
 | 57 | Should the RC pack have one shared manifest used by automated tests and the manual walkthrough? | Yes. | Use one canonical manifest at `testdata/first-experience-rc/manifest.json`. Parser checks, `web/tests` Playwright specs, and the manual product walkthrough should consume the same cases and fixtures to avoid drifting definitions of the first-experience test. | Captured in `TODO.md`, `docs/GO_LIVE_CHECKLIST.md`, `CONTEXT.md`, and `docs/DECISIONS.md`. |
 | 58 | Should building the RC pack be the first implementation task before other alpha feature work, or happen after missing alpha flows are built? | Start it first and let it fail initially. | Create the manifest and a small skeleton runner early, then add or unskip cases as features land. This gives future agents a concrete launch bar instead of waiting until the end to define what "ready" means. | Captured in `TODO.md`, `docs/GO_LIVE_CHECKLIST.md`, `CONTEXT.md`, and `docs/DECISIONS.md`. |
 | 59 | Should the RC pack automated portion have a single top-level command? | Yes. | Add `make first-experience-rc` as the obvious launch-gate entry point. It should run parser fixture checks and Playwright RC specs, then print the manual walkthrough path/instructions because the final product judgment still needs a human. User also clarified that the exact product capitalization is **FinnEst**. | Captured in `TODO.md`, `docs/GO_LIVE_CHECKLIST.md`, `CONTEXT.md`, current product-facing docs, and `docs/DECISIONS.md`. |
+| 60 | Where should the manual RC walkthrough instructions live: a new MANUAL.md or an existing doc? | No new doc. Manual walkthrough instructions live in `docs/GO_LIVE_CHECKLIST.md` under the first-experience quality section; `testdata/first-experience-rc/manifest.json` stays data/fixtures-only. | Consistent with Decision 24: no new planning docs unless an existing source-of-truth section provably cannot carry the information cleanly. Durable doc model: `TODO.md` execution/ledger/handoff, `CONTEXT.md` vocabulary, `docs/DECISIONS.md` rationale, `docs/GO_LIVE_CHECKLIST.md` rubric + RC scoring + walkthrough, `docs/USER_FLOWS.md` journeys, `docs/grill-sessions/` audit trail only. | Session closed at Q60 (recommendation accepted 2026-07-04); remaining work is implementation, not further grilling. |
 
 ## Post-Session Resolution Notes (2026-07-04)
 
@@ -184,5 +185,5 @@ Stable product decisions from this grill:
 
 The initial product/readiness grill was first estimated at 30-40 questions. As
 of Q59, the major product posture, launch bar, and handoff-document decisions
-are settled. Remaining questions should be limited to final handoff validation
-or concrete implementation sequencing.
+are settled. The session closed at Q60 (2026-07-04): remaining open items are
+implementation sequencing, which belongs in `TODO.md`, not further grilling.

@@ -251,8 +251,9 @@ must remain deterministic and human-approved.
 ## Admin triage
 
 The shared queue is at `/api/admin/parse-feedback` (admin-only). Filters by
-status, issue status, and language; admins can change status per submission or
-issue.
+status and language; admins can change status per submission. Issue-aware
+filters and per-issue status changes arrive with the planned
+`correction_issues` work (Phase 1c).
 
 When an admin marks feedback `accepted`, proposed lemma/POS corrections write
 `forms` and `lemmas` rows with `source='custom_overrides'`,

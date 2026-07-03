@@ -28,7 +28,7 @@ capitalized `Norjan` as the genitive of `Norja`.
 
 ## 2026-05-15 — Source-agnostic correction taxonomy
 
-Documents how learner-reported card and parser fixes should land in FinnEst
+Documents how learner-reported card and parser fixes should land in FinEstDB
 without tying the workflow to any one source corpus or Anki. The new taxonomy
 keeps Finnish and Estonian correction content separate while sharing the same
 admin workflow, target model, and overlay categories.

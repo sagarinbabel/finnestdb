@@ -59,6 +59,13 @@ trails. Stable grill decisions should already be promoted into this TODO,
 Consolidated from the 2026-07-03 product-readiness grill. Use this section as
 the implementation-start checklist, then follow the detailed tasks below.
 
+Note: this launch bar was intentionally expanded on 2026-07-03. The 2026-07-02
+launch stack (PRs #240-#249) treated hardening + ops + deferrals as the
+remaining launch work; the product-readiness grill then added the gates below
+(surface-first card identity, narrow FSRS, embedded catalog, flag-only
+feedback + quarantine, RC pack, load test, FI/ET parity audit) as deliberate
+scope, not accidental creep. See Decisions 23-29.
+
 - [ ] **Anonymous parser demo**: unsigned visitors can paste text, parse it,
       get a parsed word list, and explore the list. Keep it stateless,
       ephemeral, rate-limited, capped below signed-in text size, and
@@ -121,8 +128,9 @@ the implementation-start checklist, then follow the detailed tasks below.
       validates this after launch, but it is not a public-alpha blocker if
       server logs and manual feedback review are available. Expose the automated
       portion through one top-level command, `make first-experience-rc`, which
-      runs parser fixture checks and Playwright RC specs, then prints the manual
-      walkthrough path/instructions.
+      runs parser fixture checks and Playwright RC specs, then points at the
+      manual walkthrough instructions in `docs/GO_LIVE_CHECKLIST.md` (they live
+      there, not in a new doc; the manifest stays data-only — Q60).
 - [ ] **Documentation consolidation pass**: avoid adding new docs for execution
       ledgers. Keep launch issues in this TODO, keep the quality rubric in
       `docs/GO_LIVE_CHECKLIST.md`, and audit overlapping docs for merge,

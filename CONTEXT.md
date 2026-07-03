@@ -52,8 +52,9 @@ manual product walkthrough so all three validate the same texts, journeys, and
 expected outcomes. Create the manifest and a small skeleton runner first, even
 if it fails initially, then make it pass as alpha flows land. The automated
 portion should be exposed through `make first-experience-rc`, which runs parser
-fixture checks and Playwright RC specs, then prints the manual walkthrough
-path/instructions.
+fixture checks and Playwright RC specs, then points at the manual walkthrough
+instructions in `docs/GO_LIVE_CHECKLIST.md`. The manifest is data/fixtures
+only; walkthrough instructions are not a separate planning document.
 _Avoid_: separate manual checklist, duplicated Playwright-only fixtures
 
 **Week-One Telemetry**:
