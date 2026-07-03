@@ -96,6 +96,21 @@ scope, not accidental creep. See Decisions 23-29.
       copy, test, and production-artifact metrics under each step. Fix
       alpha-blocking gaps; document true language-specific differences without
       making either language feel secondary.
+
+      **Audit run 2026-07-04**: journey-first pass against the production-size
+      local DB (26.8M FI / 6.3M ET forms) plus a live server on `:8083`.
+      Verdict: **conditional pass**. Anonymous parse, signed-in Inspect parse,
+      deck save/detail/review, known-word import, and parser-feedback
+      submission all showed full FI/ET parity with concrete evidence (100%
+      resolution and gloss attachment both languages). One alpha-blocking
+      finding: official "Top 1000" starter decks do not exist in the DB for
+      either language despite a TODO.md entry claiming this shipped and was
+      verified end-to-end (see ledger row PARITY-1 above). Several
+      differences (FI/ET `translations`/`definitions` table population, UD
+      gold-set breadth) were traced to documented, licensed, non-learner-
+      visible causes and classified language-specific. Full detail, evidence,
+      and cleanup appendix in
+      [`docs/launch-readiness/2026-07-04-fi-et-parity-audit.md`](docs/launch-readiness/2026-07-04-fi-et-parity-audit.md).
 - [ ] **Alpha go/no-go rubric**: launch when core journeys work end-to-end and
       every known rough edge is classified as non-dangerous under
       `docs/GO_LIVE_CHECKLIST.md` "Alpha Go/No-Go Rubric". Any issue touching
@@ -131,6 +146,18 @@ scope, not accidental creep. See Decisions 23-29.
       runs parser fixture checks and Playwright RC specs, then points at the
       manual walkthrough instructions in `docs/GO_LIVE_CHECKLIST.md` (they live
       there, not in a new doc; the manifest stays data-only — Q60).
+      - [x] Skeleton shipped 2026-07-04: `testdata/first-experience-rc/manifest.json`
+            (18 cases, FI+ET per journey), `cmd/firstexperiencerc` (Go runner),
+            and `web/tests/first-experience-rc.spec.ts` (Playwright spec) exist;
+            `make first-experience-rc` runs green end to end.
+      - [x] Automated now: `embedded-text`, `own-text-inspect`, and
+            `ambiguity-homograph` (FI `kuusi`/`tuli`/`voi` + one ET case) via
+            the Go parser runner; `deck-save` + `first-review` (FI+ET) and
+            `parser-feedback` (FI only) via Playwright.
+      - [ ] Pending journeys still needing real coverage: `anonymous-demo`
+            (FI+ET — no anonymous parser demo surface yet), `known-word-import`
+            (FI+ET — needs an RC-fixture-driven Playwright case), and
+            `parser-feedback` for ET (FI-only correction-submit coverage today).
 - [ ] **Documentation consolidation pass**: avoid adding new docs for execution
       ledgers. Keep launch issues in this TODO, keep the quality rubric in
       `docs/GO_LIVE_CHECKLIST.md`, and audit overlapping docs for merge,
@@ -187,6 +214,7 @@ Classify each issue with the rubric in
 | ID | Classification | Area | Affected journey/lang | Issue | Evidence | Owner | Exit / revisit condition |
 |---|---|---|---|---|---|---|---|
 | _TBD_ | _blocker / non-dangerous rough edge / post-alpha_ | _auth / parser / review / docs / ops / UX_ | _FI / ET / both_ | _Concise issue_ | _Test, audit note, screenshot, metric, or user report_ | _TBD_ | _Fix, workaround, or revisit trigger_ |
+| PARITY-1 | blocker | ops / decks | both | Official "Top 1000" starter decks (`cmd/seedcolddeck`) do not exist in the DB for either language (`decks` has zero `is_public=1` rows), contradicting the `[x]` "shipped, verified end-to-end" claim at the "Cold-start Top 1000 CTA" entry below. Blocks the equal-status cold-start journey for both languages. | [`docs/launch-readiness/2026-07-04-fi-et-parity-audit.md`](docs/launch-readiness/2026-07-04-fi-et-parity-audit.md) journey 11 and ledger summary | _TBD_ | Run `cmd/seedcolddeck` for FI and ET against the launch DB per `docs/DEPLOYMENT.md`, confirm `decks.is_public=1` rows exist for both languages, then correct or re-confirm the TODO.md "verified end-to-end" claim. |
 
 ## Post-launch roadmap checkpoints
 
