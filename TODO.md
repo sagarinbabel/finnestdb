@@ -123,7 +123,7 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 
 - [ ] **External vocabulary import (Anki, CSV)**. Design `POST /api/import/known-words` accepting list of known lemma+POS pairs; support Anki deck export (`.apkg` or exported `.txt`); support plain CSV/TSV. Map imported surface forms to known lemmas via existing dictionary lookup + fallback chain.
 
-- [ ] **Progress dashboard**. Fill the existing dashboard tab with: total known lemmas, cards in review, comprehension trend per deck, daily review count, cumulative comprehension chart over time.
+- [x] **Progress dashboard** — shipped 2026-07-02. Dashboard now shows total known lemmas, due count, cards in review (`store.CardsInReview`), reviews today, a 14-day review-activity bar chart, and per-deck comprehension on the recent-decks cards. Backed by a new `review_log` table appended in `RecordReviewAnswer`'s transaction (accumulates from ship date — pre-existing history was never recorded and cannot be backfilled). Remaining follow-up: a *cumulative comprehension over time* chart needs periodic coverage snapshots that don't exist yet; revisit once `review_log` has a few weeks of data to make the panel worth the storage.
 
 - [ ] **Native iOS app for FinnEstDB (post-go-live)**. After the responsive
   web alpha is shipped and stable, create a native iOS app for FinnEstDB.

@@ -264,6 +264,83 @@ func TestGetNextReviewCardRespectsDailyNewCardLimit(t *testing.T) {
 	}
 }
 
+func TestReviewLogAndActivity(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "review-log@example.com")
+	other := createTestUser(t, db, "review-log-other@example.com")
+
+	cardID, err := db.EnsureCard(user.ID, "FI", "kissa", "NOUN")
+	if err != nil {
+		t.Fatalf("EnsureCard: %v", err)
+	}
+
+	// Fresh account: no cards in rotation, no activity days with counts.
+	inReview, err := db.CardsInReview(user.ID)
+	if err != nil {
+		t.Fatalf("CardsInReview: %v", err)
+	}
+	if inReview != 0 {
+		t.Fatalf("cards in review=%d want 0 before any answer", inReview)
+	}
+
+	for _, rating := range []string{"good", "again"} {
+		if err := db.RecordReviewAnswer(user.ID, cardID, rating); err != nil {
+			t.Fatalf("RecordReviewAnswer(%s): %v", rating, err)
+		}
+	}
+
+	var logged int
+	if err := db.db.QueryRow(
+		`SELECT COUNT(*) FROM review_log WHERE user_id = ? AND card_id = ?`,
+		user.ID, cardID,
+	).Scan(&logged); err != nil {
+		t.Fatalf("count review_log: %v", err)
+	}
+	if logged != 2 {
+		t.Fatalf("review_log rows=%d want 2 (one per answer)", logged)
+	}
+
+	inReview, err = db.CardsInReview(user.ID)
+	if err != nil {
+		t.Fatalf("CardsInReview after answers: %v", err)
+	}
+	if inReview != 1 {
+		t.Fatalf("cards in review=%d want 1", inReview)
+	}
+
+	// Activity window: zero-filled, oldest first, today's count last.
+	activity, err := db.ReviewActivity(user.ID, 14)
+	if err != nil {
+		t.Fatalf("ReviewActivity: %v", err)
+	}
+	if len(activity) != 14 {
+		t.Fatalf("activity days=%d want 14 (zero-filled window)", len(activity))
+	}
+	today := time.Now().UTC().Format("2006-01-02")
+	last := activity[len(activity)-1]
+	if last.Day != today || last.Count != 2 {
+		t.Fatalf("today=%+v want {%s 2}", last, today)
+	}
+	total := 0
+	for _, day := range activity {
+		total += day.Count
+	}
+	if total != 2 {
+		t.Fatalf("total activity=%d want 2 — another user's or day's rows leaked in", total)
+	}
+
+	// Isolation: the other user sees nothing.
+	otherActivity, err := db.ReviewActivity(other.ID, 14)
+	if err != nil {
+		t.Fatalf("ReviewActivity other: %v", err)
+	}
+	for _, day := range otherActivity {
+		if day.Count != 0 {
+			t.Fatalf("other user's activity=%+v want all zeros", otherActivity)
+		}
+	}
+}
+
 func TestManualKnownActionsUpgradeAnkiSource(t *testing.T) {
 	db := newTestDB(t)
 	user := createTestUser(t, db, "source-upgrade@example.com")

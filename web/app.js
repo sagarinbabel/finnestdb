@@ -1137,6 +1137,9 @@ function renderDashboard() {
     setStat('stat-known', state.dashboard?.known_count);
     setStat('stat-due', state.dashboard?.due_count);
     setStat('stat-new-capacity', state.dashboard?.new_capacity_today);
+    setStat('stat-cards-in-review', state.dashboard?.cards_in_review);
+    setStat('stat-reviews-today', state.dashboard?.reviews_today);
+    renderReviewActivityChart(state.dashboard?.review_activity || []);
     const decksList = document.getElementById('dashboard-decks-list');
     if (!decksList)
         return;
@@ -1153,11 +1156,41 @@ function renderDashboard() {
     decksList.innerHTML = decks.map(d => {
         const langName = d.lang === 'FI' ? 'Finnish' : d.lang === 'ET' ? 'Estonian' : escapeHtml(d.lang);
         const knownPct = d.unique > 0 ? Math.round((d.known / d.unique) * 100) : 0;
+        const comprehensionPart = typeof d.comprehension_pct === 'number'
+            ? ` · ${d.comprehension_pct}% comprehension`
+            : '';
         return `<a href="#/decks" class="deck-card">
             <h4>${escapeHtml(d.title)}</h4>
-            <p class="deck-meta">${langName} · ${d.known}/${d.unique} known (${knownPct}%) · ${d.due} due</p>
+            <p class="deck-meta">${langName} · ${d.known}/${d.unique} known (${knownPct}%) · ${d.due} due${comprehensionPart}</p>
         </a>`;
     }).join('');
+}
+// Renders the trailing-14-day review activity as plain CSS bars. Hidden until
+// the user has answered at least one review in the window — an all-zero chart
+// on a fresh account reads as "something is broken", not "get started".
+function renderReviewActivityChart(days) {
+    const section = document.getElementById('dashboard-activity');
+    const chart = document.getElementById('dashboard-activity-chart');
+    if (!section || !chart)
+        return;
+    const max = days.reduce((m, d) => Math.max(m, d.count), 0);
+    if (max === 0) {
+        section.classList.add('hidden');
+        chart.innerHTML = '';
+        return;
+    }
+    chart.innerHTML = days.map(d => {
+        const heightPct = Math.max(4, Math.round((d.count / max) * 100));
+        const date = new Date(`${d.day}T00:00:00Z`);
+        const label = Number.isNaN(date.getTime())
+            ? d.day
+            : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+        return `<div class="activity-bar-slot" data-tooltip="${escapeHtml(label)}: ${d.count}">
+            <div class="activity-bar" style="height: ${heightPct}%"></div>
+            <span class="activity-count">${d.count > 0 ? d.count : ''}</span>
+        </div>`;
+    }).join('');
+    section.classList.remove('hidden');
 }
 async function refreshDashboardData(options = {}) {
     await fetchMe();
