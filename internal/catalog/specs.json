@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "specs": [
+    {
+      "id": "fi-kesaaamu-poem",
+      "language": "fi",
+      "title": "Kesäaamu",
+      "author": "Niilo Mantere (Juhani Merenheimo)",
+      "genre": "poem",
+      "source_url": "https://www.gutenberg.org/ebooks/78097",
+      "corpus_source": "project-gutenberg",
+      "license": "Public domain (Project Gutenberg; published 1891, author d. 1922)",
+      "attribution": "From \"Kevättuulahduksia: Runokokoelma\" by Niilo Mantere, 1891. Digitized by Project Gutenberg (eBook #78097).",
+      "fixture": "fi-kesaaamu-poem.txt",
+      "import_date": "2026-07-04"
+    },
+    {
+      "id": "fi-hiiri-pekka-story",
+      "language": "fi",
+      "title": "Hiiri-Pekka",
+      "author": "Pentti Haanpää",
+      "genre": "story",
+      "source_url": "https://www.gutenberg.org/ebooks/78018",
+      "corpus_source": "project-gutenberg",
+      "license": "Public domain (Project Gutenberg; author d. 1955, life+70 expired)",
+      "attribution": "Short story from \"Karavaani ja muita juttuja\" by Pentti Haanpää, 1930. Digitized by Project Gutenberg (eBook #78018).",
+      "fixture": "fi-hiiri-pekka-story.txt",
+      "import_date": "2026-07-04"
+    },
+    {
+      "id": "fi-sauna-article",
+      "language": "fi",
+      "title": "Sauna suomalaisessa elämässä",
+      "author": "FinnEst",
+      "genre": "article",
+      "source_url": "",
+      "corpus_source": "finnest-original",
+      "license": "CC0 1.0 (FinnEst original, dedicated to the public domain)",
+      "attribution": "Original informational text written for the FinnEst embedded catalog.",
+      "fixture": "fi-sauna-article.txt",
+      "import_date": "2026-07-04"
+    },
+    {
+      "id": "et-tallinn-vanalinn-article",
+      "language": "et",
+      "title": "Tallinna vanalinn",
+      "author": "FinnEst",
+      "genre": "article",
+      "source_url": "",
+      "corpus_source": "finnest-original",
+      "license": "CC0 1.0 (FinnEst original, dedicated to the public domain)",
+      "attribution": "Original informational text written for the FinnEst embedded catalog.",
+      "fixture": "et-tallinn-vanalinn-article.txt",
+      "import_date": "2026-07-04"
+    },
+    {
+      "id": "et-minu-paev-article",
+      "language": "et",
+      "title": "Minu päev",
+      "author": "FinnEst",
+      "genre": "article",
+      "source_url": "",
+      "corpus_source": "finnest-original",
+      "license": "CC0 1.0 (FinnEst original, dedicated to the public domain)",
+      "attribution": "Original beginner text written for the FinnEst embedded catalog.",
+      "fixture": "et-minu-paev-article.txt",
+      "import_date": "2026-07-04"
+    },
+    {
+      "id": "et-vana-kalur-story",
+      "language": "et",
+      "title": "Vana kalur",
+      "author": "FinnEst",
+      "genre": "story",
+      "source_url": "",
+      "corpus_source": "finnest-original",
+      "license": "CC0 1.0 (FinnEst original, dedicated to the public domain)",
+      "attribution": "Original short story written for the FinnEst embedded catalog.",
+      "fixture": "et-vana-kalur-story.txt",
+      "import_date": "2026-07-04"
+    }
+  ]
+}

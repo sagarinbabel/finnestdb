@@ -44,6 +44,66 @@ progress.
 - Related: [`DECISIONS.md`](DECISIONS.md) Decision 23 (surface-first learner
   model + narrow FSRS).
 
+## 2026-07-04 — Embedded text catalog mechanism shipped
+
+Shipped the curated Embedded Text catalog mechanism for signed-in cold start
+(TODO.md gate "Curated embedded text catalog"; USER_FLOWS.md §4; DECISIONS 23
+cold-start portion, 27). New `internal/catalog` package embeds checked-in
+metadata (`catalog.json`) plus one plain-text fixture per text via `go:embed`,
+so production carries no corpus-pipeline dependency. `cmd/gencatalog`
+regenerates the catalog deterministically: each text is parsed through the real
+custom-mode pipeline, text-level difficulty metrics are computed, and an
+Easy/Medium/Hard bucket is assigned by documented thresholds
+(`docs/GO_LIVE_CHECKLIST.md` "Embedded catalog difficulty model"). Each entry
+carries a precomputed `(lemma, pos)` list so per-learner known-token coverage
+(Personalized Text Fit) is a cheap set intersection at request time. New
+signed-in endpoints `GET /api/catalog` (metadata + coverage) and
+`GET /api/catalog/{id}/text` (lazy full text) back dashboard and Inspect
+cold-start empty states. Initial coverage is honest, not the full 36-text
+matrix: 3 FI texts (Gutenberg public-domain poem + short story, one original
+CC0 article; medium/hard) and 3 ET texts (original CC0; easy/medium) —
+Estonian Gutenberg material was effectively unavailable, so ET ships original
+CC0 texts. Every entry ships `difficulty_review: "pending"`; the full matrix
+and human sanity-check remain open and the gate stays unchecked. See
+`docs/USER_FLOWS.md` §4, `CONTEXT.md` "Embedded Catalog", `TODO.md`.
+## 2026-07-04 — Parser backpressure and launch load test
+
+Implements the parser concurrency/backpressure and load-test bullets of the
+"1,000-concurrent-user launch target" gate. A new counting semaphore in
+`internal/api` (`parser_limiter.go`) bounds concurrent calls into the parser
+(`/api/parse` and deck-save), independent of the existing per-IP/per-account
+rate limiters. Anonymous parse requests draw from a smaller sub-pool (half
+the total slots) before the shared pool, so anonymous load sheds first under
+saturation and cannot starve signed-in deck/review traffic. A request that
+cannot get a slot within the queue timeout returns 503 with `Retry-After`;
+the existing 429 rate-limit path now also carries `Retry-After`. New
+`cmd/loadtest` is a dependency-free Go client that models the GO_LIVE traffic
+mix (anonymous parse / signed-in parse / review-deck reads) and reports
+per-endpoint latency percentiles, throughput, and 429/503/error counts.
+Staged local runs (50/200/500/1000 concurrent virtual users, laptop against
+the production-size local DB) confirm the shedding mechanism and that
+deck/review reads stay unaffected under full saturation; production-host
+re-validation remains before the launch gate can close.
+
+- Added: `internal/api/parser_limiter.go` — the semaphore, wired into
+  `HandleParse` and `handleCreateDeck`.
+- Added: `internal/api/parser_limiter_test.go` — saturation/shedding/timeout/
+  non-parse-bypass unit and handler-level tests.
+- Modified: `internal/api/rate_limit.go` — `allowLimiter`'s 429 now sets
+  `Retry-After: 60`.
+- Added: `cmd/loadtest` — the load-test tool.
+- Added: [`launch-readiness/2026-07-04-load-test.md`](launch-readiness/2026-07-04-load-test.md)
+  — method, hardware caveat, stage results, shedding evidence, anonymous-cap
+  recheck, recommended production env values, and the production-host re-run
+  instruction.
+- Modified: [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) "Capacity and
+  Graceful Degradation" — shipped items checked off with evidence links;
+  production-host re-run and monitoring wiring left open.
+- Modified: [`DEPLOYMENT.md`](DEPLOYMENT.md) — `FINNESTDB_PARSER_MAX_CONCURRENCY`
+  and `FINNESTDB_PARSER_QUEUE_TIMEOUT_MS` added to the environment-variable
+  table; load-test usage and a parser-saturation monitoring note added.
+- Modified: [`../TODO.md`](../TODO.md) — both 1,000-concurrent-user bullets
+  get progress notes; neither is ticked (production-host run remains).
 ## 2026-07-04 — Correction issues + admin-only quarantine (Phase 1c)
 
 Ships the global correction-issue ledger and admin-only faulty-content

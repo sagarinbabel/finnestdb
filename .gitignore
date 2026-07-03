@@ -98,6 +98,11 @@ localdata/
 # case a stale workflow still writes to them. New code MUST write to
 # localdata/ instead — there is no second data root.
 data/
+# Exception: the Embedded Text catalog embeds checked-in metadata + fixtures
+# from internal/catalog/data/ via go:embed. This is tracked package data, not a
+# runtime artifact, so it must survive the broad data/ rule above.
+!internal/catalog/data/
+!internal/catalog/data/**
 
 # Claude Code
 .claude/
