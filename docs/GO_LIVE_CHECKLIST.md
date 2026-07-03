@@ -27,9 +27,44 @@ Required before go-live:
 - Keep regression tests proving non-admin users cannot access admin APIs or
   admin routes.
 - Keep strict Origin/Referer checks on cookie-authenticated state-changing
-  routes.
+  routes, including `POST /api/auth/login` and `POST /api/auth/register`.
+- Pre-register every `FINNESTDB_ADMIN_EMAILS` address before opening public
+  registration (see "Account recovery and admin provisioning" below).
 - Decide whether production should use first-party password auth long term or
   add an identity-provider option.
+
+### Account recovery and admin provisioning (alpha)
+
+There is no self-service password reset or email verification in the alpha.
+Two operational consequences:
+
+1. **Password resets are operator-run.** When a user asks for a reset (over a
+   channel where you can plausibly confirm they own the account), run:
+
+   ```bash
+   go run ./cmd/resetpassword -db finnestdb.db -email user@example.com
+   ```
+
+   The tool generates and prints a fresh password, updates the Argon2id hash,
+   and revokes the account's active sessions. Deliver the password over a
+   trusted channel and ask the user to change it after signing in. Use
+   `-password '...'` to set a specific value and `-keep-sessions` to skip the
+   session revocation.
+
+2. **Admin emails must be claimed before launch.** `FINNESTDB_ADMIN_EMAILS`
+   grants admin to whoever registers a listed email *first*, and emails are
+   not verified — an attacker who registers an unclaimed admin address gets
+   admin. Before opening registration to the public, pre-register every
+   listed address:
+
+   ```bash
+   FINNESTDB_ADMIN_EMAILS="admin@example.com" \
+     go run ./cmd/resetpassword -db finnestdb.db -email admin@example.com -create
+   ```
+
+   `-create` inserts the account (admin when the email is listed in
+   `FINNESTDB_ADMIN_EMAILS` at creation time; add `-admin` to grant it
+   explicitly) and prints the generated password.
 
 ## Abuse Controls
 

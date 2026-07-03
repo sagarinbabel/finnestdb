@@ -358,6 +358,44 @@ func TestUpdateDeckTitleAndPublicRollsBackOnTitleFailure(t *testing.T) {
 	}
 }
 
+func TestRevokeAllSessionsForUser(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "revoke-all@example.com")
+	other := createTestUser(t, db, "revoke-all-other@example.com")
+
+	for _, hash := range []string{"revoke-all-hash-1", "revoke-all-hash-2"} {
+		if err := db.CreateSession(user.ID, hash, time.Now().Add(time.Hour)); err != nil {
+			t.Fatalf("CreateSession %s: %v", hash, err)
+		}
+	}
+	if err := db.CreateSession(other.ID, "revoke-all-other-hash", time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("CreateSession other: %v", err)
+	}
+
+	n, err := db.RevokeAllSessionsForUser(user.ID)
+	if err != nil {
+		t.Fatalf("RevokeAllSessionsForUser: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("revoked=%d want 2", n)
+	}
+
+	// Revoked sessions must no longer authenticate; the other user's
+	// session must be untouched.
+	for _, hash := range []string{"revoke-all-hash-1", "revoke-all-hash-2"} {
+		if u, err := db.GetUserBySessionTokenHash(hash, 0); err != nil {
+			t.Fatalf("GetUserBySessionTokenHash %s: %v", hash, err)
+		} else if u != nil {
+			t.Fatalf("session %s still authenticates after revoke-all", hash)
+		}
+	}
+	if u, err := db.GetUserBySessionTokenHash("revoke-all-other-hash", 0); err != nil {
+		t.Fatalf("GetUserBySessionTokenHash other: %v", err)
+	} else if u == nil || u.ID != other.ID {
+		t.Fatal("other user's session was revoked by another user's reset")
+	}
+}
+
 func TestDeleteUserCascadeRemovesPrivateRows(t *testing.T) {
 	db := newTestDB(t)
 	user := createTestUser(t, db, "delete-me@example.com")
