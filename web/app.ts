@@ -346,6 +346,34 @@ type LemmaStateStatus = 'known' | 'ignored';
 interface SortState { key: SortKey; dir: 'asc' | 'desc'; }
 interface DisplayWordEntry extends WordEntry { originalIndex: number; }
 
+// Curated Embedded Text catalog (cold-start empty states). Metadata only; the
+// full text is lazy-loaded from /api/catalog/{id}/text when a text is picked.
+interface CatalogCoverage {
+    known_pct:    number;
+    known_lemmas: number;
+    total_lemmas: number;
+}
+interface CatalogEntry {
+    id:                string;
+    language:          string;   // "fi" | "et"
+    title:             string;
+    author?:           string;
+    genre:             string;   // story | article | poem
+    difficulty:        string;   // easy | medium | hard
+    difficulty_review: string;   // "pending" until human-checked
+    source_url?:       string;
+    corpus_source:     string;
+    license:           string;
+    attribution?:      string;
+    text_length:       number;
+    word_count:        number;
+    coverage?:         CatalogCoverage;
+}
+interface CatalogResponse {
+    entries:         CatalogEntry[];
+    has_known_words: Record<string, boolean>;
+}
+
 // ── App-wide state ─────────────────────────────────────────────────────────
 
 type DecksTab = 'mine' | 'official';
@@ -406,6 +434,9 @@ const state = {
     // Sidebar selection: -1 = whole book, 0..N-1 = chapter, null = no EPUB
     // context (sidebar hidden).
     activeChapterIdx:   null as number | null,
+    // Curated Embedded Text catalog, hydrated lazily from /api/catalog the
+    // first time a cold-start empty state renders. null = not yet loaded.
+    catalog:            null as CatalogResponse | null,
 };
 
 // EPUB held in app state between upload and parse press. The full text is the
@@ -1337,6 +1368,7 @@ function renderRoute(): void {
 
     // Per-page hooks
     if (route === '/dashboard') renderDashboard();
+    if (route === '/inspect') renderInspectColdStart();
     if (route === '/history') {
         renderHistoryPage();
         void loadParseSessions();
@@ -1544,6 +1576,12 @@ function renderDashboard(): void {
 
     renderReviewActivityChart(state.dashboard?.review_activity || []);
 
+    // Cold start: learners with no decks at all get the embedded-text catalog
+    // (USER_FLOWS §4). Returning learners with decks don't need it on the
+    // dashboard — Inspect still offers it.
+    const noDecks = (state.dashboard?.decks || []).length === 0;
+    renderCatalogSection('dashboard-cold-start', 'dashboard-catalog', noDecks);
+
     const decksList = document.getElementById('dashboard-decks-list');
     if (!decksList) return;
 
@@ -1569,6 +1607,150 @@ function renderDashboard(): void {
             <p class="deck-meta">${langName} · ${d.known}/${d.unique} known (${knownPct}%) · ${d.due} due${comprehensionPart}</p>
         </a>`;
     }).join('');
+}
+
+// ── Embedded Text catalog (cold start) ─────────────────────────────────────
+
+const GENRE_LABEL: Record<string, string> = {
+    story: 'Story', article: 'Article', poem: 'Poem',
+};
+const DIFFICULTY_LABEL: Record<string, string> = {
+    easy: 'Easy', medium: 'Medium', hard: 'Hard',
+};
+
+// renderCatalogSection toggles a cold-start section on/off and paints the
+// catalog grid inside it. It lazy-loads /api/catalog on first show. Both the
+// dashboard and Inspect empty states call this with their own container ids.
+function renderCatalogSection(sectionId: string, gridId: string, show: boolean): void {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    section.classList.toggle('hidden', !show);
+    if (!show) return;
+
+    const grid = document.getElementById(gridId);
+    if (grid && !state.catalog) {
+        grid.innerHTML = '<p class="empty-state">Loading texts…</p>';
+    }
+    void loadCatalog().then(() => paintCatalogGrid(gridId));
+}
+
+// loadCatalog fetches the metadata + per-learner coverage once and caches it.
+// Concurrent callers share one in-flight fetch (tracked in catalogPromise) so
+// a second render doesn't resolve early and paint before the data arrives.
+let catalogPromise: Promise<void> | null = null;
+async function loadCatalog(): Promise<void> {
+    if (state.catalog) return;
+    if (catalogPromise) return catalogPromise;
+    catalogPromise = (async () => {
+        try {
+            const resp = await fetch('/api/catalog', { credentials: 'same-origin' });
+            if (!resp.ok) return;
+            state.catalog = await resp.json() as CatalogResponse;
+        } catch {
+            // Leave state.catalog null; paintCatalogGrid renders an error line.
+        } finally {
+            // Allow a retry on the next render if the fetch failed.
+            if (!state.catalog) catalogPromise = null;
+        }
+    })();
+    return catalogPromise;
+}
+
+function paintCatalogGrid(gridId: string): void {
+    const grid = document.getElementById(gridId);
+    if (!grid) return;
+    if (!state.catalog) {
+        grid.innerHTML = '<p class="empty-state">Couldn\'t load the text catalog. <a href="#/inspect">Paste your own text</a> instead.</p>';
+        return;
+    }
+
+    // Show texts for the active language first; if none, fall back to all.
+    const active = state.activeLanguage.toLowerCase();
+    let entries = state.catalog.entries.filter(e => e.language === active);
+    if (entries.length === 0) entries = state.catalog.entries;
+    if (entries.length === 0) {
+        grid.innerHTML = '<p class="empty-state">No curated texts yet.</p>';
+        return;
+    }
+
+    const hasKnown = !!state.catalog.has_known_words[state.activeLanguage];
+    grid.innerHTML = entries.map(e => renderCatalogCard(e, hasKnown)).join('');
+
+    grid.querySelectorAll<HTMLButtonElement>('[data-catalog-id]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            void pickCatalogText(btn.dataset.catalogId || '');
+        });
+    });
+}
+
+function renderCatalogCard(e: CatalogEntry, hasKnownForLang: boolean): string {
+    const genre = GENRE_LABEL[e.genre] || escapeHtml(e.genre);
+    const difficulty = DIFFICULTY_LABEL[e.difficulty] || escapeHtml(e.difficulty);
+    const author = e.author ? ` · ${escapeHtml(e.author)}` : '';
+    // Personalized Text Fit overlay when we have coverage; otherwise prompt
+    // import (only meaningful if the learner truly has no known words).
+    let fit: string;
+    if (e.coverage) {
+        fit = `<span class="catalog-fit">≈${e.coverage.known_pct}% words you know</span>`;
+    } else if (!hasKnownForLang) {
+        fit = `<a class="catalog-fit catalog-fit-prompt" href="#/vocab">Import known words for a fit estimate</a>`;
+    } else {
+        fit = '';
+    }
+    return `<div class="catalog-card">
+        <div class="catalog-card-head">
+            <span class="catalog-tag catalog-tag-genre">${genre}</span>
+            <span class="catalog-tag catalog-tag-difficulty catalog-diff-${escapeHtml(e.difficulty)}">${difficulty}</span>
+        </div>
+        <h4 class="catalog-title">${escapeHtml(e.title)}</h4>
+        <p class="catalog-meta">${escapeHtml(String(e.word_count))} words${author}</p>
+        ${fit}
+        <button type="button" class="btn btn-primary btn-sm catalog-load" data-catalog-id="${escapeHtml(e.id)}">Read this text</button>
+    </div>`;
+}
+
+// pickCatalogText lazy-loads the full text, drops it into the Inspect textarea
+// (switching the active language to the text's language), and navigates to
+// Inspect so the normal parse → deck flow takes over.
+async function pickCatalogText(id: string): Promise<void> {
+    if (!id) return;
+    const meta = state.catalog?.entries.find(e => e.id === id);
+    try {
+        const resp = await fetch(`/api/catalog/${encodeURIComponent(id)}/text`, { credentials: 'same-origin' });
+        if (!resp.ok) {
+            showToast('Could not load that text. Please try another.', 'error');
+            return;
+        }
+        const data = await resp.json() as { language: string; text: string };
+        const lang = (data.language || meta?.language || 'fi').toUpperCase();
+        if (lang !== state.activeLanguage && state.learningLanguages.includes(lang)) {
+            await setActiveLanguage(lang);
+        }
+        navigate('/inspect');
+        // Populate after navigation so the inspect page exists in the DOM.
+        const ta = document.getElementById('inspect-text') as HTMLTextAreaElement | null;
+        if (ta) {
+            const els = getInspectEls();
+            if (els) clearLoadedEpub(els, true);
+            ta.value = data.text;
+            ta.dispatchEvent(new Event('input', { bubbles: true }));
+            ta.focus();
+        }
+        showToast(`Loaded "${meta ? meta.title : 'text'}". Press Parse to begin.`, 'success');
+    } catch {
+        showToast('Could not load that text. Please try another.', 'error');
+    }
+}
+
+// renderInspectColdStart shows the catalog picker on the Inspect page while
+// the textarea is empty (an empty-state cold-start affordance). Once the
+// learner has pasted or loaded text, it hides so it doesn't crowd the parse
+// action. Called on entering /inspect; the textarea's input handler hides it
+// as soon as content appears.
+function renderInspectColdStart(): void {
+    const ta = document.getElementById('inspect-text') as HTMLTextAreaElement | null;
+    const empty = !ta || ta.value.trim() === '';
+    renderCatalogSection('inspect-catalog-section', 'inspect-catalog', empty);
 }
 
 // Renders the trailing-14-day review activity as plain CSS bars. Hidden until
@@ -4545,6 +4727,9 @@ function initInspectForm(): void {
     els.text.addEventListener('input', () => {
         updateCharCount(els);
         updateLangWarning(els, true);
+        // Hide the cold-start catalog once the learner has text to parse.
+        const section = document.getElementById('inspect-catalog-section');
+        if (section) section.classList.toggle('hidden', els.text.value.trim() !== '');
     });
 
     els.text.addEventListener('paste', () => {

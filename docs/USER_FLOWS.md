@@ -308,6 +308,18 @@ direction is to preserve known surface forms as first-class evidence.
 └────────────────────────────────────────────────────────────────┘
 ```
 
+The curated-embedded-text path shipped its mechanism 2026-07-04: the dashboard
+cold-start section (shown when the learner has no decks) and the Inspect empty
+state render a catalog picker backed by `GET /api/catalog`. Picking a text
+lazy-loads its full content (`GET /api/catalog/{id}/text`) into the Inspect
+textarea, then the normal parse→deck flow takes over. Each card shows genre,
+Global Difficulty, length, and — when the learner has known-word data —
+"≈N% words you know" (Personalized Text Fit); with no known words it prompts
+import. Initial coverage is honest (3 FI + 3 ET, ≥2 genres and ≥2 buckets each),
+not the full 36-text matrix, and difficulty labels are computed but not yet
+human-sanity-checked (`difficulty_review: "pending"`). See `TODO.md` "Curated
+embedded text catalog" and `CONTEXT.md` "Embedded Catalog".
+
 The "top 1000 words" CTA shipped 2026-07-02 as a link to the official
 "Top 1000" starter deck (see `TODO.md` "Cold-start Top 1000 CTA"). The
 2026-07-03 grill (Q15/Q16) layered follow-up product direction on top: present
@@ -598,7 +610,15 @@ The dictation noted the "no decks yet, no parses yet" gap. Three
 ways out, in increasing engineering cost:
 
 1. **Own-text and embedded-catalog buttons** in the signed-in dashboard empty
-   state and Inspect empty state (cheapest, ship now). The learner can
+   state and Inspect empty state (cheapest, ship now).
+   Current state (2026-07-04): shipped as the mechanism — the dashboard
+   cold-start section and Inspect empty state render an embedded-catalog picker
+   (`GET /api/catalog`); picking a text lazy-loads it (`GET /api/catalog/{id}/text`)
+   into the Inspect textarea. Metadata, computed difficulty, precomputed lemma
+   lists, and per-learner coverage are all live; the full 36-text matrix and the
+   human difficulty sanity-check are the remaining open work. The rest of this
+   item is the still-open target design.
+   The learner can
    paste/upload their own text, or choose curated FI/ET texts from the
    redistributable subset of the corpus. Prefer complete texts rather than
    arbitrary snippets: poems, short stories, articles, chapters, or other

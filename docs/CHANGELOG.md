@@ -10,6 +10,28 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Embedded text catalog mechanism shipped
+
+Shipped the curated Embedded Text catalog mechanism for signed-in cold start
+(TODO.md gate "Curated embedded text catalog"; USER_FLOWS.md §4; DECISIONS 23
+cold-start portion, 27). New `internal/catalog` package embeds checked-in
+metadata (`catalog.json`) plus one plain-text fixture per text via `go:embed`,
+so production carries no corpus-pipeline dependency. `cmd/gencatalog`
+regenerates the catalog deterministically: each text is parsed through the real
+custom-mode pipeline, text-level difficulty metrics are computed, and an
+Easy/Medium/Hard bucket is assigned by documented thresholds
+(`docs/GO_LIVE_CHECKLIST.md` "Embedded catalog difficulty model"). Each entry
+carries a precomputed `(lemma, pos)` list so per-learner known-token coverage
+(Personalized Text Fit) is a cheap set intersection at request time. New
+signed-in endpoints `GET /api/catalog` (metadata + coverage) and
+`GET /api/catalog/{id}/text` (lazy full text) back dashboard and Inspect
+cold-start empty states. Initial coverage is honest, not the full 36-text
+matrix: 3 FI texts (Gutenberg public-domain poem + short story, one original
+CC0 article; medium/hard) and 3 ET texts (original CC0; easy/medium) —
+Estonian Gutenberg material was effectively unavailable, so ET ships original
+CC0 texts. Every entry ships `difficulty_review: "pending"`; the full matrix
+and human sanity-check remain open and the gate stays unchecked. See
+`docs/USER_FLOWS.md` §4, `CONTEXT.md` "Embedded Catalog", `TODO.md`.
 ## 2026-07-04 — Parser backpressure and launch load test
 
 Implements the parser concurrency/backpressure and load-test bullets of the

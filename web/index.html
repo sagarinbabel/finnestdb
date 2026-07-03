@@ -286,6 +286,13 @@
                 </a>
             </section>
 
+            <section class="dashboard-cold-start hidden" id="dashboard-cold-start">
+                <h2>Start reading</h2>
+                <p class="cold-start-lede">No text handy? Pick a curated Finnish or Estonian text and jump straight into parsing it.</p>
+                <div id="dashboard-catalog" class="catalog-grid" aria-live="polite"></div>
+                <p class="cold-start-alt">Or <a href="#/inspect">paste your own text</a>, <a href="#/vocab">import words you already know</a>, or add a <a href="#/decks/official">Top 1000 starter deck</a>.</p>
+            </section>
+
             <section class="dashboard-decks">
                 <h2>Recent decks</h2>
                 <div id="dashboard-decks-list" class="dashboard-decks-list">
@@ -319,6 +326,12 @@
             <section class="inspect-header">
                 <h1>Parse a text</h1>
                 <p class="inspect-lede" id="inspect-lede">Paste Finnish text. We'll show unique lemmas, forms, definitions, examples, token counts, and row-level known/ignore actions.</p>
+            </section>
+
+            <section class="inspect-catalog hidden" id="inspect-catalog-section">
+                <h2>Don't have text handy?</h2>
+                <p class="cold-start-lede">Load a curated text below, then parse it like any other.</p>
+                <div id="inspect-catalog" class="catalog-grid" aria-live="polite"></div>
             </section>
 
             <form id="inspect-form" class="inspect-form">

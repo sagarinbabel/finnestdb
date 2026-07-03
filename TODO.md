@@ -199,6 +199,17 @@ scope, not accidental creep. See Decisions 23-29.
       text fixtures from redistributable FI/ET sources; target matrix is
       stories/articles/poems x Easy/Medium/Hard x two texts per bucket per
       language, with computed difficulty and human sanity-check.
+      Progress (2026-07-04): mechanism shipped — `internal/catalog` (`go:embed`
+      metadata + fixtures), `cmd/gencatalog` (deterministic difficulty from a
+      real custom-mode parse; thresholds in `docs/GO_LIVE_CHECKLIST.md`
+      "Embedded catalog difficulty model"), `GET /api/catalog` (+ per-learner
+      coverage) / `GET /api/catalog/{id}/text`, and dashboard/Inspect cold-start
+      pickers. Initial honest coverage: 3 FI (Gutenberg public-domain poem +
+      short story, 1 original CC0 article) and 3 ET (original CC0; ET Gutenberg
+      was effectively unavailable) spanning ≥2 genres and ≥2 difficulty buckets
+      each. Still open before the gate closes: the full 36-text matrix and the
+      human sanity-check (Sagar FI, Estonian reviewer ET) — every entry ships
+      `difficulty_review: "pending"`. Gate stays unchecked.
 - [ ] **Surface-first learner model**: preserve submitted known surface forms,
       migrate alpha review identity to surface-form-in-context cards, and keep
       lemma/POS/dictionary entries as derived support.
@@ -1040,7 +1051,20 @@ New work surfaced by the review (not yet broken into sequenced PRs):
   [`docs/launch-readiness/2026-07-04-load-test.md`](docs/launch-readiness/2026-07-04-load-test.md)
   — semaphore, anonymous-sheds-first, `cmd/loadtest`, and local laptop
   evidence shipped; production-host re-run and monitoring wiring remain.
-- [ ] **Curated embedded catalog for signed-in cold start.** Dashboard and
+- [ ] **Curated embedded catalog for signed-in cold start.**
+      Current state (2026-07-04): the mechanism is built and shipped — embedded
+      metadata + lazy full text (`internal/catalog`, `go:embed`), a
+      deterministic generator (`cmd/gencatalog`), signed-in `GET /api/catalog`
+      (with per-learner known-token coverage) and `GET /api/catalog/{id}/text`,
+      and dashboard + Inspect cold-start pickers that load a chosen text into
+      the Inspect textarea for the normal parse→deck flow. Initial texts are
+      honest, not the full matrix: 3 FI + 3 ET across ≥2 genres and ≥2 difficulty
+      buckets each, all license-clean (FI: Project Gutenberg public domain +
+      original CC0; ET: original CC0 because ET Gutenberg was effectively
+      unavailable). Remaining: the full 36-text matrix and human difficulty
+      sanity-check (`difficulty_review` is `"pending"` on every entry). The rest
+      of this item is the still-open target.
+      Dashboard and
       Inspect empty states should offer both "paste/upload your own text" and
       FI/ET texts from the redistributable subset of the corpus. Start with a
       hand-curated catalog generated from local corpus tooling: FI and ET;
