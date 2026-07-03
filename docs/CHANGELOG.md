@@ -44,6 +44,26 @@ across separate case lists.
 - This is a skeleton per Q58/Q60: it is expected to gain automated coverage
   (not fixture text) as the pending journeys land, not to be treated as the
   final pass/fail launch gate yet.
+## 2026-07-04 — FI/ET equal-status parity audit
+
+Journey-first audit of the public-alpha "Equal-Status Alpha Gate" from
+[`CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md#equal-status-alpha-gate),
+run against a live server and the production-size local DB.
+
+- Added: [`launch-readiness/2026-07-04-fi-et-parity-audit.md`](launch-readiness/2026-07-04-fi-et-parity-audit.md)
+  — per-journey FI/ET evidence table (anonymous parse, signed-in Inspect,
+  deck save/detail/review, known-word import, parser feedback, admin queue,
+  data readiness, eval baselines, tests, embedded catalog, starter decks),
+  classified alpha-blocking / language-specific / post-alpha, plus a cleanup
+  appendix of every row the audit wrote to the shared DB.
+- Modified: [`../TODO.md`](../TODO.md) — added ledger row `PARITY-1` (official
+  "Top 1000" starter decks absent from the DB for both languages despite a
+  prior "shipped, verified end-to-end" claim) and appended an audit-run note
+  under the "FI/ET equal-status parity audit" gate bullet.
+- Verdict: conditional pass. All exercised learner journeys showed full
+  FI/ET parity; the one alpha-blocking finding is a runbook-execution gap
+  (starter decks never seeded in this DB), not a code or design asymmetry
+  between the two languages.
 
 ## 2026-05-15 — FI manual-card trap promotions
 

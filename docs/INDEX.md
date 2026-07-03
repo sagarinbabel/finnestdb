@@ -36,6 +36,7 @@ doc in 30 seconds; use ["By purpose"](#by-purpose) below for the longer
 descriptions when two docs sound similar.
 
 - **Entry point:** [`../README.md`](../README.md) (what the project is, how to run, project structure, doc index)
+- **Collaborator quickstart:** [`docs/FOR_MICHAEL.md`](FOR_MICHAEL.md) — local run/test path + question→doc routing table for Michael and his agents
 - **Setup verifier:** [`make doctor`](../cmd/doctor/main.go) plus [`docs/LOCAL_TOOLING.md`](LOCAL_TOOLING.md) — local tool/artifact inventory, canonical paths, and fallback lookup rules
 - **System architecture:** [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (current), [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) (lexical-layer detail), [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) (offline corpus pipeline)
 - **Product vision/framing:** [`docs/FEATURES.md`](FEATURES.md) (current learner-facing product framing), [`docs/USER_FLOWS.md`](USER_FLOWS.md) (screen-level journeys)
@@ -73,6 +74,7 @@ Use this table when deciding where a product or roadmap update belongs.
 | Doc | Role | Update when |
 |---|---|---|
 | [`../README.md`](../README.md) | Entry point and high-level project map | Setup, project structure, or top-level doc navigation changes |
+| [`docs/FOR_MICHAEL.md`](FOR_MICHAEL.md) | Collaborator quickstart and question-routing table | Local run/test path changes or a routing entry goes stale |
 | [`docs/INDEX.md`](INDEX.md) | Canonical documentation map and doc-role table | A document is added, retired, renamed, or changes purpose |
 | [`../CONTEXT.md`](../CONTEXT.md) | Shared product vocabulary and mental model | Durable terminology or modeling assumptions change |
 | [`docs/DECISIONS.md`](DECISIONS.md) | Stable decisions and rationale | A decision is settled and should outlive a working session |

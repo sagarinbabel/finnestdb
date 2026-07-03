@@ -655,6 +655,10 @@ launch issue ledger, go/no-go rubric, decisions, and implementation specs.
 in this repo, organized by purpose. Read this first if you're not sure
 where to look.
 
+**Collaborator quickstart:** [`docs/FOR_MICHAEL.md`](docs/FOR_MICHAEL.md) —
+run/test the app locally plus a question→doc routing table for humans and
+their agents.
+
 Architecture and ops:
 - [Architecture](ARCHITECTURE.md) and [docs/SYSTEM_VERSIONING.md](docs/SYSTEM_VERSIONING.md)
 - [docs/ARTIFACT_POLICY.md](docs/ARTIFACT_POLICY.md) — what's allowed in git, what lives under `localdata/`
