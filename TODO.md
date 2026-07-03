@@ -96,6 +96,27 @@ scope, not accidental creep. See Decisions 23-29.
       horizontal scale path for adding servers. Tune the anonymous text-size cap
       through this load test; do not launch with anonymous using the same
       1,500,000-character ceiling as signed-in parsing.
+
+      **Progress 2026-07-04**: parser concurrency semaphore
+      (`FINNESTDB_PARSER_MAX_CONCURRENCY` / `FINNESTDB_PARSER_QUEUE_TIMEOUT_MS`,
+      `internal/api/parser_limiter.go`) and `cmd/loadtest` shipped. Anonymous
+      parse draws from a smaller sub-pool so it sheds first under saturation;
+      429 (rate limit) and 503 (parser saturation) both carry `Retry-After`.
+      Local laptop runs at 50/200/500/1000 concurrent virtual users plus a
+      dedicated anonymous-heavy mixed stage confirm: anonymous parse sheds at
+      a meaningfully higher rate than signed-in parse (e.g. 50.2% vs. 12.7% in
+      the anon-heavy stage), and deck/review reads never errored or exceeded
+      ~700ms p95 even at full 1000-VU saturation. Anonymous 20,000-char cap
+      re-checked against this load, not changed — no evidence justified
+      lowering it (see report for the `custom`-parser-mode caveat). Full
+      method, numbers, and hardware caveat:
+      [`docs/launch-readiness/2026-07-04-load-test.md`](docs/launch-readiness/2026-07-04-load-test.md).
+      **Remaining, gate stays open**: this was a laptop run against a local DB,
+      not the production host. Re-run `cmd/loadtest` against the real
+      production host at 1,000 concurrent users, confirm the concurrency
+      default suits its actual core count, and wire parser
+      latency/error/rejection counts into production monitoring before
+      checking this off.
 - [ ] **FI/ET equal-status parity audit**: Finnish and Estonian launch with equal
       product status. Before public alpha, run this journey-first: compare the
       same FI and ET learner/admin paths, then attach data, parser-quality,
@@ -199,16 +220,17 @@ scope, not accidental creep. See Decisions 23-29.
 - [ ] **Review readiness**: migrate card identity before FSRS; then ship narrow
       Go FSRS with default parameters, current Again/Hard/Good/Easy UI, feature
       flag, migration/fallback, and regression tests.
-- [ ] **Parser feedback alpha gate**: add flag-only feedback, minimal
+- [x] **Parser feedback alpha gate**: flag-only feedback, minimal
       `correction_issues` grouping, admin-only global quarantine, and quiet
-      learner-facing suppression before public alpha. Keep `parse_feedback` as
-      raw intake; do not build a broad in-app fix editor or separate Issues page.
-      Progress: flag-only feedback shipped 2026-07-04 (Phase 1b); remaining are
-      `correction_issues` grouping + admin-only quarantine + learner suppression
-      (Phase 1c).
-- [ ] **Quarantine behavior**: globally quarantined content disappears from
-      learner queues and current stats; history/audit data remains. Restored
-      items keep scheduler state when learning target identity is unchanged.
+      learner-facing suppression. `parse_feedback` stays raw intake; no broad
+      in-app fix editor or separate Issues page. Flag-only feedback shipped
+      2026-07-04 (Phase 1b); `correction_issues` grouping + admin-only
+      quarantine + learner suppression shipped 2026-07-04 (Phase 1c).
+- [x] **Quarantine behavior**: globally quarantined content disappears from
+      learner review/new-card queues, deck word/due/new-card counts, and
+      comprehension coverage/unlocks; `review_log` history/audit data remains.
+      Restored items keep their existing `card_state` scheduler state.
+      Shipped 2026-07-04 (Phase 1c).
 - [ ] **Known-word import polish**: document existing AnkiConnect and
       CSV/TSV/first-column import behavior; `.apkg` upload remains future work.
 - [ ] **Production safety**: keep parse source retention/deletion, account
@@ -444,7 +466,7 @@ acceptance, and repeat corrections auto-queue as gold candidates. See
 - [x] **Phase 3 — auto-promote to gold candidates** — shipped 2026-07-02. When `store.GoldPromotionThreshold` (3) distinct users have the same correction accepted, it upserts into `gold_candidates`; `make export-gold-candidates` prints pending rows as gold-token JSON for **manual** review into `testdata/parser-eval/*/gold` (auto-committing eval cases would let the system write its own exam).
 - [x] **Phase 4 — eval-backed safety check before applying** — shipped 2026-07-02. `make import-gold-surfaces` loads the frozen gold analyses into `gold_surfaces`; acceptance is refused (HTTP 409, full rollback) when ≥2 gold occurrences of the surface unanimously disagree with the proposal. Runs in-transaction in <1ms, so no background job needed. An empty `gold_surfaces` table degrades to no-op — run the importer after clone and after gold changes.
 - [x] **Phase 1b — flag-only parser feedback** (public-alpha gate). Nullable proposed lemma/POS plus `flag_only=true`; no lexical writeback until an admin supplies/accepts a concrete correction. Detailed tasks in "Close the self-improving feedback loop" below. — shipped 2026-07-04: `parse_feedback.flag_only` column (idempotent ALTER; proposed columns kept `NOT NULL` and stored empty for flag-only rows), two-path correction modal, admin `flag_only` filter + convert-then-accept path.
-- [ ] **Phase 1c — correction issues + admin-only quarantine** (public-alpha gate). Minimal `correction_issues` grouping, quiet learner-facing suppression, stats exclusion, restore-preserves-scheduler-state. Detailed tasks below.
+- [x] **Phase 1c — correction issues + admin-only quarantine** (public-alpha gate) — shipped 2026-07-04. `correction_issues` table + `parse_feedback.correction_issue_id`; feedback submission groups into an issue by the `(lang, parser, norm_surface, lemma, pos)` fingerprint, recomputes report/distinct-reporter counts, and reopens fixed issues on new reports. Admin **Quarantine now** (required class + reason) suppresses matching content globally from review/new-card queues, deck word/due/new-card counts, and `DeckComprehension` coverage/unlocks; restore is a status flip that preserves `card_state`. `threshold_candidate` badge at ≥3 distinct reporters never auto-quarantines. Combined admin queue gains the issue ledger; no separate Issues page.
 - [ ] **Phase 5 (research, not engineering)** — automatic re-ranking of source priorities when a single source consistently produces accepted corrections in one direction. **Stays parked deliberately**: it needs months of accepted-correction volume to have any signal, and per the original scoping it is out of scope for alpha; revisit after Phase 4 has real production data.
 
 Phase 1 is gated on FEATS threading (already shipped via [PR #130](https://github.com/sagarinbabel/finnestdb/pull/130)) so corrections can update FEATS, not just GrammarLabel.
@@ -628,8 +650,15 @@ something for the next learner — and didn't.
       correction that flows through the existing eval-gated writeback.
       Flag-only acceptance alone writes nothing to `custom_overrides`,
       `gold_candidates`, or the gold guard.
-- [ ] **Phase 1c — quarantine or replace existing faulty study content
-      (public-alpha gate).**
+- [x] **Phase 1c — quarantine or replace existing faulty study content
+      (public-alpha gate).** — shipped 2026-07-04. Built as admin-only global
+      quarantine of scoped `correction_issues` (no overlay/replace layer yet;
+      that stays future overlay work). Grouping keys on
+      `(lang, parser, norm_surface, lemma, pos)`; quarantine matches by
+      `(lang, lemma, pos)` when present else `(lang, normalized surface)` and
+      suppresses review/new-card queues, deck word/due/new-card counts, and
+      `DeckComprehension`. Restore preserves `card_state`. `threshold_candidate`
+      badge only, never auto-quarantine. Original spec below.
       Accepted feedback should be able to stop a known-bad card/occurrence from
       appearing in review/new-card queues for all matching learners, or render
       an accepted overlay for the cue/sentence/explanation/sense. Do not delete
@@ -1016,6 +1045,12 @@ New work surfaced by the review (not yet broken into sequenced PRs):
   parser concurrency/backpressure controls, overload behavior, and monitoring.
   Graceful degradation should throttle anonymous/oversized parses first and
   keep the signed-in review/deck loop alive as long as possible.
+
+  **Progress 2026-07-04**: see the matching entry under "1,000-concurrent-user
+  launch target" above and
+  [`docs/launch-readiness/2026-07-04-load-test.md`](docs/launch-readiness/2026-07-04-load-test.md)
+  — semaphore, anonymous-sheds-first, `cmd/loadtest`, and local laptop
+  evidence shipped; production-host re-run and monitoring wiring remain.
 - [ ] **Curated embedded catalog for signed-in cold start.**
       Current state (2026-07-04): the mechanism is built and shipped — embedded
       metadata + lazy full text (`internal/catalog`, `go:embed`), a

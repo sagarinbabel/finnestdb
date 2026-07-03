@@ -91,7 +91,9 @@ make import-gold-surfaces   # gold_surfaces table backs the Phase-4 accept guard
 | `FINNESTDB_LISTEN_ADDR` | `127.0.0.1:8080` | Loopback bind behind the proxy |
 | `FINNESTDB_TRUST_FORWARD_HEADERS` | `1` | See "Rate limiting behind a proxy" |
 | `FINNESTDB_ADMIN_EMAILS` | comma-separated | Admin bootstrap — **pre-register every address** |
-| `FINNESTDB_ANON_MAX_CHARS` | `20000` (default) | Text-size cap for unauthenticated `/api/parse`; enforced before parser work. Signed-in cap stays 1,500,000. Tune with the load test. |
+| `FINNESTDB_ANON_MAX_CHARS` | `20000` (default) | Text-size cap for unauthenticated `/api/parse`; enforced before parser work. Signed-in cap stays 1,500,000. Local load test (2026-07-04) found no reason to lower this — see [`launch-readiness/2026-07-04-load-test.md`](launch-readiness/2026-07-04-load-test.md). |
+| `FINNESTDB_PARSER_MAX_CONCURRENCY` | `max(2, NumCPU-1)` (default) | Caps concurrent calls into the parser (`/api/parse` and deck-save). Leave unset unless the production host's core count and co-located services justify a different number — see the load-test report. |
+| `FINNESTDB_PARSER_QUEUE_TIMEOUT_MS` | `2000` (default) | How long a parse request waits for a free parser slot before returning 503 + `Retry-After`. |
 | `FINNESTDB_PRODUCTION_MIN_FORMS_FI/ET` | unset | Only when the artifact policy changes |
 | `FINNESTDB_ALLOW_DEGRADED_DB` | unset | Emergency-only guard override |
 
@@ -170,6 +172,23 @@ JSON body, 1.5M-char textarea) the worst case stays far below the server's
 ~10 s, revisit the deferred background-job design in `TODO.md` before raising
 any input caps.
 
+### Concurrency load test
+
+`cmd/loadtest` models concurrent anonymous-parse / signed-in-parse /
+review-deck-read traffic and reports per-endpoint latency percentiles plus
+429/503 counts. Local (laptop) results and the recommended
+`FINNESTDB_PARSER_MAX_CONCURRENCY` / `FINNESTDB_PARSER_QUEUE_TIMEOUT_MS`
+values are in
+[`launch-readiness/2026-07-04-load-test.md`](launch-readiness/2026-07-04-load-test.md).
+**That report must be re-run against the production host** before the
+1,000-concurrent-user go-live gate can close — laptop numbers only prove the
+shedding mechanism works, not the production host's actual capacity. Example:
+
+```bash
+go build -o bin/loadtest ./cmd/loadtest
+./bin/loadtest -url https://<domain> -concurrency 200 -duration 30s -out /tmp/loadtest-200.json
+```
+
 ## Monitoring and alerting (alpha baseline)
 
 - **Uptime**: point an external monitor (UptimeRobot, Gatus, healthchecks.io)
@@ -182,6 +201,13 @@ any input caps.
 - **Timer health**: `systemctl list-timers finnestdb-*` in the same cron;
   alert if a timer's last run failed (`systemctl is-failed finnestdb-backup`).
 - **Disk**: alert at 80% — the DB, WAL, and backups all grow.
+- **Parser saturation**: 503 responses from `/api/parse` (or deck-save) mean
+  the parser concurrency semaphore is shedding load; both 429 (rate limit)
+  and 503 (parser saturation) responses carry `Retry-After` and are logged.
+  Grep app logs for these and alert on a sustained rate — an occasional 503
+  under a burst is the semaphore working as designed, but a sustained rate
+  means `FINNESTDB_PARSER_MAX_CONCURRENCY` may need raising (if the host has
+  spare CPU) or the host needs more capacity.
 
 Parser-health dashboards (cache hit rates, unknown-lemma counters) are
 tracked separately in TODO.md "Observability" and are not launch-gating.

@@ -165,19 +165,19 @@ An accepted admin correction that changes the smallest learner-facing layer that
 _Avoid_: rewriting learner history, one giant manual note
 
 **Correction Issue**:
-A global, admin-triaged problem record created from one or more learner feedback reports. It has a scope, status, reporters, timestamps, quarantine/fix actions, and regression/reopen history. It answers "is this the same problem we already fixed, or a new uncovered case?"
+A global, admin-triaged problem record created from one or more learner feedback reports. Shipped 2026-07-04 (Phase 1c) as the `correction_issues` table with a `(lang, parser, norm_surface, lemma, pos)` scope fingerprint, `status` (`open`/`quarantined`/`fixed`/`reopened`), report/distinct-reporter counts, first/last-reported timestamps, quarantine/fix metadata, `reopened_count`, and an alpha class. Feedback submission groups a report into a found-or-created issue and links it via `parse_feedback.correction_issue_id`. It answers "is this the same problem we already fixed, or a new uncovered case?"
 _Avoid_: isolated per-user complaint
 
 **Faulty Content Quarantine**:
-An admin-approved suppression state for a known-bad deck occurrence, review card, sentence, cue, or explanation. Quarantined content should stop appearing in review/new-card queues until fixed or replaced, while past learner actions and scheduler history remain auditable.
+An admin-approved suppression state for a known-bad deck occurrence or review card. Shipped 2026-07-04 (Phase 1c): quarantining a **Correction Issue** removes matching content from review/new-card queues, deck word/due/new-card counts, and comprehension coverage/unlocks for every matching learner, while `review_log` history and `card_state` scheduler state stay untouched. Restore is a status flip that returns the same content to circulation with scheduler state intact. Overlay/replacement fixes remain future work.
 _Avoid_: deleting history, silently retconning reviews
 
 **Trusted Quarantine Threshold**:
-A future deterministic rule that could promote a global **Correction Issue** from reported to quarantined without manual review, usually based on multiple distinct authenticated reports against the same scoped issue. For alpha, collect threshold evidence but do not auto-quarantine.
+A future deterministic rule that could promote a global **Correction Issue** from reported to quarantined without manual review, usually based on multiple distinct authenticated reports against the same scoped issue. For alpha, the system collects the evidence — a `threshold_candidate` flag appears at ≥3 distinct reporters — but never auto-quarantines.
 _Avoid_: one-click mob voting
 
 **Emergency Quarantine**:
-An admin action that immediately suppresses a scoped **Correction Issue** for all matching learners, with a required reason and append-only event. Use when leaving the content live is worse than temporary over-suppression.
+The admin **Quarantine now** action that immediately suppresses a scoped **Correction Issue** for all matching learners. Shipped 2026-07-04 (Phase 1c): it requires a prior alpha class and a non-empty reason. Use when leaving the content live is worse than temporary over-suppression.
 _Avoid_: silent delete
 
 **Learning History**:

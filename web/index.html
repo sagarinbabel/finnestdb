@@ -633,6 +633,27 @@
                 <p>No parser feedback matches this filter.</p>
             </section>
             <section id="admin-feedback-list" class="admin-feedback-list" aria-live="polite"></section>
+
+            <section class="admin-feedback-header admin-issues-header">
+                <div>
+                    <h1>Correction issues</h1>
+                    <p class="placeholder-lede">Reports are grouped into global issues. Classify an issue, then quarantine it to remove matching study content for everyone, or restore a fixed one.</p>
+                </div>
+                <div class="admin-feedback-filter">
+                    <label for="admin-issues-status">Status</label>
+                    <select id="admin-issues-status">
+                        <option value="">All</option>
+                        <option value="open">Open</option>
+                        <option value="reopened">Reopened</option>
+                        <option value="quarantined">Quarantined</option>
+                        <option value="fixed">Fixed</option>
+                    </select>
+                </div>
+            </section>
+            <section id="admin-issues-empty" class="placeholder-card hidden">
+                <p>No correction issues match this filter.</p>
+            </section>
+            <section id="admin-issues-list" class="admin-feedback-list" aria-live="polite"></section>
         </main>
     </div>
 

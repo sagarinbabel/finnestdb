@@ -32,6 +32,75 @@ Estonian Gutenberg material was effectively unavailable, so ET ships original
 CC0 texts. Every entry ships `difficulty_review: "pending"`; the full matrix
 and human sanity-check remain open and the gate stays unchecked. See
 `docs/USER_FLOWS.md` §4, `CONTEXT.md` "Embedded Catalog", `TODO.md`.
+## 2026-07-04 — Parser backpressure and launch load test
+
+Implements the parser concurrency/backpressure and load-test bullets of the
+"1,000-concurrent-user launch target" gate. A new counting semaphore in
+`internal/api` (`parser_limiter.go`) bounds concurrent calls into the parser
+(`/api/parse` and deck-save), independent of the existing per-IP/per-account
+rate limiters. Anonymous parse requests draw from a smaller sub-pool (half
+the total slots) before the shared pool, so anonymous load sheds first under
+saturation and cannot starve signed-in deck/review traffic. A request that
+cannot get a slot within the queue timeout returns 503 with `Retry-After`;
+the existing 429 rate-limit path now also carries `Retry-After`. New
+`cmd/loadtest` is a dependency-free Go client that models the GO_LIVE traffic
+mix (anonymous parse / signed-in parse / review-deck reads) and reports
+per-endpoint latency percentiles, throughput, and 429/503/error counts.
+Staged local runs (50/200/500/1000 concurrent virtual users, laptop against
+the production-size local DB) confirm the shedding mechanism and that
+deck/review reads stay unaffected under full saturation; production-host
+re-validation remains before the launch gate can close.
+
+- Added: `internal/api/parser_limiter.go` — the semaphore, wired into
+  `HandleParse` and `handleCreateDeck`.
+- Added: `internal/api/parser_limiter_test.go` — saturation/shedding/timeout/
+  non-parse-bypass unit and handler-level tests.
+- Modified: `internal/api/rate_limit.go` — `allowLimiter`'s 429 now sets
+  `Retry-After: 60`.
+- Added: `cmd/loadtest` — the load-test tool.
+- Added: [`launch-readiness/2026-07-04-load-test.md`](launch-readiness/2026-07-04-load-test.md)
+  — method, hardware caveat, stage results, shedding evidence, anonymous-cap
+  recheck, recommended production env values, and the production-host re-run
+  instruction.
+- Modified: [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) "Capacity and
+  Graceful Degradation" — shipped items checked off with evidence links;
+  production-host re-run and monitoring wiring left open.
+- Modified: [`DEPLOYMENT.md`](DEPLOYMENT.md) — `FINNESTDB_PARSER_MAX_CONCURRENCY`
+  and `FINNESTDB_PARSER_QUEUE_TIMEOUT_MS` added to the environment-variable
+  table; load-test usage and a parser-saturation monitoring note added.
+- Modified: [`../TODO.md`](../TODO.md) — both 1,000-concurrent-user bullets
+  get progress notes; neither is ticked (production-host run remains).
+## 2026-07-04 — Correction issues + admin-only quarantine (Phase 1c)
+
+Ships the global correction-issue ledger and admin-only faulty-content
+quarantine (public-alpha gate). New `correction_issues` table plus
+`parse_feedback.correction_issue_id` (both via idempotent CREATE/ALTER,
+Decision 12). Feedback submission groups each report into a found-or-created
+issue by a `(lang, parser, norm_surface, lemma, pos)` scope fingerprint and
+recomputes report/distinct-reporter counts; a report against a `fixed` issue
+reopens it. Admins classify an issue (one of `parser_issue`, `bad_card_content`,
+`source_extraction_issue`, `not_sure`), then **Quarantine now** (required
+reason) suppresses matching content globally — review and new-card queues, deck
+word/due/new-card counts, and `DeckComprehension` coverage/unlocks all exclude
+it — while `review_log` history stays untouched. Restore is a status flip that
+returns content with `card_state` intact. A `threshold_candidate` badge appears
+at ≥3 distinct reporters but never auto-quarantines. One combined admin queue;
+no separate Issues page.
+
+- Modified: [`PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md) — "Global
+  correction issue ledger", "Report-to-quarantine workflow", "Alpha admin
+  classification", "Admin triage", the intro paragraph, and the current-vs-target
+  table row moved from target-tense to shipped.
+- Modified: [`FEATURES.md`](FEATURES.md) "What We Store During Alpha" —
+  quarantine bullet notes restore preserves scheduler state.
+- Modified: [`../TODO.md`](../TODO.md) — Phase 1c ticked; "Parser feedback alpha
+  gate" and "Quarantine behavior" public-alpha bullets ticked with shipped notes.
+- Modified: [`../CONTEXT.md`](../CONTEXT.md) — Correction Issue, Faulty Content
+  Quarantine, Trusted Quarantine Threshold, and Emergency Quarantine updated to
+  shipped phrasing.
+- Modified: [`srs-deck-spec.md`](srs-deck-spec.md) — coverage/quarantine and
+  restore paragraphs moved to shipped tense.
+- Cross-reference: [`DECISIONS.md`](DECISIONS.md) Decision 25.
 
 ## 2026-07-04 — Anonymous parser demo shipped
 

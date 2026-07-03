@@ -45,6 +45,10 @@ type API struct {
 	// anonMaxChars caps unauthenticated /api/parse text length. Signed-in
 	// parsing is unaffected and still bounded by parsecore.MaxTextChars.
 	anonMaxChars int
+	// parserLimiter bounds concurrent calls into the parser (analyze /
+	// analyzeChapters), independent of rateLimits which bounds request rate.
+	// See parser_limiter.go.
+	parserLimiter *parserLimiter
 }
 
 func NewAPI(store *store.DB) *API {
@@ -54,6 +58,7 @@ func NewAPI(store *store.DB) *API {
 		analyzeChapters: parsecore.AnalyzeChapters,
 		rateLimits:      newRateLimitSetFromEnv(),
 		anonMaxChars:    envInt("FINNESTDB_ANON_MAX_CHARS", defaultAnonMaxChars),
+		parserLimiter:   newParserLimiterFromEnv(),
 	}
 }
 
@@ -1455,6 +1460,15 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 		return
 	}
 
+	// Deck creation always runs signed-in (requireAuth on this route), so it
+	// draws from the full parser pool rather than the smaller anonymous share.
+	release, ok := a.parserLimiter.acquire(r.Context(), false)
+	if !ok {
+		writeServiceUnavailable(w, "Parser is at capacity. Please retry shortly.")
+		return
+	}
+	defer release()
+
 	parsed, err := a.analyze(a.store, req.Lang, req.Text, "custom")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -2357,6 +2371,13 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	release, ok := a.parserLimiter.acquire(r.Context(), auth == nil)
+	if !ok {
+		writeServiceUnavailable(w, "Parser is at capacity. Please retry shortly.")
+		return
+	}
+	defer release()
+
 	var parsed *parsecore.ParseResult
 	var parseErr error
 	if hasChapters {
@@ -2741,6 +2762,142 @@ func (a *API) handleAdminParseFeedback(w http.ResponseWriter, r *http.Request, a
 	}
 }
 
+// CorrectionIssueListResponse is the admin correction-issue ledger payload. It
+// is served alongside the parse-feedback queue in the same combined admin UI
+// (no separate Issues page for alpha).
+type CorrectionIssueListResponse struct {
+	Issues []store.CorrectionIssue `json:"issues"`
+}
+
+// CorrectionIssueActionRequest is the PATCH body for an admin issue action.
+// Action is one of: "triage", "quarantine", "restore".
+type CorrectionIssueActionRequest struct {
+	Action string `json:"action"`
+	// AlphaClass is required for "triage"; carried through so a single call can
+	// triage-then-quarantine when the UI submits both.
+	AlphaClass string `json:"alpha_class"`
+	AdminNote  string `json:"admin_note"`
+	// Reason is required for "quarantine".
+	Reason string `json:"reason"`
+	// FixNote is optional for "restore".
+	FixNote string `json:"fix_note"`
+}
+
+func (a *API) HandleAdminCorrectionIssues(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet, http.MethodPatch:
+		a.requireAdmin(a.handleAdminCorrectionIssues).ServeHTTP(w, r)
+		return
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+}
+
+func (a *API) handleAdminCorrectionIssues(w http.ResponseWriter, r *http.Request, auth *AuthContext) {
+	switch r.Method {
+	case http.MethodGet:
+		status := strings.TrimSpace(r.URL.Query().Get("status"))
+		if !isValidCorrectionIssueStatus(status, true) {
+			http.Error(w, "Status must be open, quarantined, fixed, or reopened", http.StatusBadRequest)
+			return
+		}
+		lang := strings.TrimSpace(r.URL.Query().Get("lang"))
+		if lang != "" && lang != "FI" && lang != "ET" {
+			http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
+			return
+		}
+		issues, err := a.store.ListCorrectionIssues(store.CorrectionIssueFilter{Status: status, Lang: lang})
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, CorrectionIssueListResponse{Issues: issues})
+	case http.MethodPatch:
+		issueIDStr := strings.TrimSpace(r.URL.Query().Get("id"))
+		issueID, err := strconv.ParseInt(issueIDStr, 10, 64)
+		if err != nil || issueID <= 0 {
+			http.Error(w, "Issue ID must be a positive integer", http.StatusBadRequest)
+			return
+		}
+		var req CorrectionIssueActionRequest
+		if !decodeJSONRequest(w, r, &req) {
+			return
+		}
+		switch strings.TrimSpace(req.Action) {
+		case "triage":
+			if !store.IsValidAlphaClass(strings.TrimSpace(req.AlphaClass)) {
+				http.Error(w, "alpha_class must be parser_issue, bad_card_content, source_extraction_issue, or not_sure", http.StatusBadRequest)
+				return
+			}
+			if err := a.store.TriageCorrectionIssue(issueID, req.AlphaClass, req.AdminNote); err != nil {
+				a.writeCorrectionIssueError(w, err)
+				return
+			}
+		case "quarantine":
+			// The UI requires a class before enabling this action; enforce it
+			// server-side too. Triage-in-the-same-call is supported so an admin
+			// can classify and quarantine atomically.
+			if strings.TrimSpace(req.AlphaClass) != "" {
+				if !store.IsValidAlphaClass(strings.TrimSpace(req.AlphaClass)) {
+					http.Error(w, "alpha_class must be parser_issue, bad_card_content, source_extraction_issue, or not_sure", http.StatusBadRequest)
+					return
+				}
+				if err := a.store.TriageCorrectionIssue(issueID, req.AlphaClass, req.AdminNote); err != nil {
+					a.writeCorrectionIssueError(w, err)
+					return
+				}
+			}
+			if strings.TrimSpace(req.Reason) == "" {
+				http.Error(w, "A reason is required to quarantine", http.StatusBadRequest)
+				return
+			}
+			if err := a.store.QuarantineCorrectionIssue(issueID, auth.UserID, req.Reason); err != nil {
+				a.writeCorrectionIssueError(w, err)
+				return
+			}
+		case "restore":
+			if err := a.store.RestoreCorrectionIssue(issueID, auth.UserID, req.FixNote); err != nil {
+				a.writeCorrectionIssueError(w, err)
+				return
+			}
+		default:
+			http.Error(w, "Action must be triage, quarantine, or restore", http.StatusBadRequest)
+			return
+		}
+		issue, err := a.store.GetCorrectionIssue(issueID)
+		if err != nil {
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, issue)
+	}
+}
+
+func (a *API) writeCorrectionIssueError(w http.ResponseWriter, err error) {
+	switch {
+	case err == sql.ErrNoRows:
+		http.Error(w, "Correction issue not found", http.StatusNotFound)
+	case errors.Is(err, store.ErrIssueNeedsClass):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	case errors.Is(err, store.ErrQuarantineReasonRequired):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	default:
+		http.Error(w, "Database error", http.StatusInternalServerError)
+	}
+}
+
+func isValidCorrectionIssueStatus(status string, allowEmpty bool) bool {
+	switch status {
+	case "":
+		return allowEmpty
+	case store.IssueStatusOpen, store.IssueStatusQuarantined, store.IssueStatusFixed, store.IssueStatusReopened:
+		return true
+	default:
+		return false
+	}
+}
+
 type AdminUser struct {
 	ID      int64  `json:"id"`
 	Email   string `json:"email"`
@@ -2873,6 +3030,7 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/parse/sessions/", a.HandleParseSessionByID)
 	mux.HandleFunc("/api/parse/feedback", a.HandleParseFeedback)
 	mux.HandleFunc("/api/admin/parse-feedback", a.HandleAdminParseFeedback)
+	mux.HandleFunc("/api/admin/correction-issues", a.HandleAdminCorrectionIssues)
 	mux.HandleFunc("/api/admin/users", a.HandleAdminUsers)
 
 	// Decks. net/http's ServeMux uses longest-prefix matching, not
