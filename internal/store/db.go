@@ -2976,6 +2976,15 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64, lang string) (*Revie
 }
 
 func (d *DB) RecordReviewAnswer(userID, cardID int64, rating string) error {
+	return d.recordReviewAnswerAt(userID, cardID, rating, time.Now().UTC(), FSRSEnabled())
+}
+
+// recordReviewAnswerAt is RecordReviewAnswer with an injectable clock and flag,
+// so scheduling can be tested deterministically. When fsrsEnabled is false it
+// routes through the step scheduler (byte-identical to the shipped behavior at
+// a given now, including on cards previously touched by FSRS — the rollback
+// path). When true it routes through FSRS with lazy state derivation.
+func (d *DB) recordReviewAnswerAt(userID, cardID int64, rating string, now time.Time, fsrsEnabled bool) error {
 	tx, err := d.db.Begin()
 	if err != nil {
 		return err
@@ -2990,10 +2999,38 @@ func (d *DB) RecordReviewAnswer(userID, cardID int64, rating string) error {
 		return sql.ErrNoRows
 	}
 
-	nextDue, updated := nextAlphaStepScheduleForRating(schedule, rating)
-	payload, err := json.Marshal(updated)
-	if err != nil {
+	// The full stored state (raw payload + timestamps) is needed so the FSRS
+	// path can lazily derive a starter card, and the step rollback path can
+	// approximate a step from an FSRS interval.
+	var rawFSRS sql.NullString
+	var nextDueStored, lastAnswerStored sql.NullString
+	if err := tx.QueryRow(
+		`SELECT fsrs_json, next_due, last_answer_at FROM card_state WHERE card_id = ?`,
+		cardID,
+	).Scan(&rawFSRS, &nextDueStored, &lastAnswerStored); err != nil {
 		return err
+	}
+	nextDuePtr := parseSQLiteTimePtr(nextDueStored)
+	lastAnswerPtr := parseSQLiteTimePtr(lastAnswerStored)
+
+	var nextDue time.Time
+	var payload string
+	if fsrsEnabled {
+		var derr error
+		nextDue, payload, derr = FSRSScheduleForRating(
+			rawFSRS.String, schedule, nextDuePtr, lastAnswerPtr, rating, now,
+		)
+		if derr != nil {
+			return derr
+		}
+	} else {
+		var updated ReviewSchedule
+		nextDue, updated = stepScheduleFromStoredState(rawFSRS.String, schedule, nextDuePtr, rating, now)
+		p, merr := json.Marshal(updated)
+		if merr != nil {
+			return merr
+		}
+		payload = string(p)
 	}
 
 	if _, err := tx.Exec(
@@ -3001,24 +3038,47 @@ func (d *DB) RecordReviewAnswer(userID, cardID int64, rating string) error {
 		    SET fsrs_json = ?,
 		        next_due = ?,
 		        introduced_at = CASE
-		            WHEN introduced_at IS NULL AND last_answer_at IS NULL THEN CURRENT_TIMESTAMP
+		            WHEN introduced_at IS NULL AND last_answer_at IS NULL THEN ?
 		            ELSE introduced_at
 		        END,
-		        last_answer_at = CURRENT_TIMESTAMP
+		        last_answer_at = ?
 		  WHERE card_id = ?`,
-		string(payload),
+		payload,
 		sqliteTime(nextDue),
+		sqliteTime(now),
+		sqliteTime(now),
 		cardID,
 	); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(
-		`INSERT INTO review_log (user_id, card_id, lang, rating) VALUES (?, ?, ?, ?)`,
-		userID, cardID, card.Lang, rating,
+		`INSERT INTO review_log (user_id, card_id, lang, rating, reviewed_at) VALUES (?, ?, ?, ?, ?)`,
+		userID, cardID, card.Lang, rating, sqliteTime(now),
 	); err != nil {
 		return err
 	}
 	return tx.Commit()
+}
+
+// parseSQLiteTimePtr parses a stored SQLite datetime string into a *time.Time,
+// returning nil for NULL/empty/unparseable values. Both the "2006-01-02
+// 15:04:05" form written by sqliteTime and the RFC3339 form the driver may
+// return are accepted.
+func parseSQLiteTimePtr(v sql.NullString) *time.Time {
+	if !v.Valid {
+		return nil
+	}
+	s := strings.TrimSpace(v.String)
+	if s == "" {
+		return nil
+	}
+	for _, layout := range []string{"2006-01-02 15:04:05", time.RFC3339, "2006-01-02T15:04:05Z"} {
+		if t, err := time.Parse(layout, s); err == nil {
+			u := t.UTC()
+			return &u
+		}
+	}
+	return nil
 }
 
 // ReviewActivityDay is one day of answered reviews (UTC dates, YYYY-MM-DD).
@@ -3990,7 +4050,14 @@ func (d *DB) userNewCardsPerDay(userID int64) (int, error) {
 // card_state.fsrs_json column stores this small JSON state until the FSRS
 // migration replaces it.
 func nextAlphaStepScheduleForRating(schedule ReviewSchedule, rating string) (time.Time, ReviewSchedule) {
-	now := time.Now().UTC()
+	return nextAlphaStepScheduleForRatingAt(schedule, rating, time.Now().UTC())
+}
+
+// nextAlphaStepScheduleForRatingAt is nextAlphaStepScheduleForRating with an
+// injectable clock, so the FSRS rollback path and tests can schedule against a
+// fixed now. Behavior is byte-identical to the original for a given now.
+func nextAlphaStepScheduleForRatingAt(schedule ReviewSchedule, rating string, now time.Time) (time.Time, ReviewSchedule) {
+	now = now.UTC()
 	if schedule.Step < 0 {
 		schedule.Step = 0
 	}
