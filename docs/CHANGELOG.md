@@ -10,6 +10,40 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — First-experience RC pack skeleton
+
+Ships the checked-in, repeatable release-candidate pack described in
+`GO_LIVE_CHECKLIST.md` "First-experience quality check" and `CONTEXT.md`
+"Release-Candidate Pack Manifest": one canonical manifest plus a Go runner
+and a Playwright spec that both consume it, so the launch gate cannot drift
+across separate case lists.
+
+- Added: `testdata/first-experience-rc/manifest.json` — 18 cases covering
+  all 8 first-experience journeys (anonymous-demo, embedded-text,
+  own-text-inspect, deck-save, first-review, known-word-import,
+  ambiguity-homograph, parser-feedback) with explicit FI and ET cases for
+  every journey, plus short self-written fixture `.txt` files in the same
+  directory, including the `kuusi`/`tuli`/`voi` homograph fixtures from
+  `PARSER_EVAL_METHODOLOGY.md` "Ambiguity and meaning-check calibration".
+- Added: `cmd/firstexperiencerc` — loads the manifest and runs every
+  `automation:"parser"` case through the real custom-mode parser pipeline
+  (`internal/parsecore`), printing PASS/FAIL/SKIP-pending/MANUAL and a
+  summary; exits nonzero only on an automated FAIL.
+- Added: `web/tests/first-experience-rc.spec.ts` — generates one Playwright
+  test per `automation:"playwright"` manifest case (with `test.skip` stubs
+  for everything else), reusing the existing Inspect/save-deck/review and
+  parser-feedback correction-submit patterns from `parse-results.spec.ts`.
+- Added: `make first-experience-rc` — runs the Go runner, then the RC
+  Playwright spec, then points at the manual walkthrough instructions in
+  `GO_LIVE_CHECKLIST.md` (no separate walkthrough doc).
+- Modified: `GO_LIVE_CHECKLIST.md` and `TODO.md` — record which journeys are
+  automated today (embedded-text, own-text-inspect, ambiguity-homograph via
+  the Go runner; deck-save, first-review, and FI parser-feedback via
+  Playwright) versus still pending (anonymous-demo FI+ET, known-word-import
+  FI+ET, parser-feedback ET).
+- This is a skeleton per Q58/Q60: it is expected to gain automated coverage
+  (not fixture text) as the pending journeys land, not to be treated as the
+  final pass/fail launch gate yet.
 ## 2026-07-04 — FI/ET equal-status parity audit
 
 Journey-first audit of the public-alpha "Equal-Status Alpha Gate" from
