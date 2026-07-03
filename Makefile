@@ -4,6 +4,7 @@
         fetch-ekilex-refresh fetch-ekilex-sample fetch-ekilex \
         reduce-ekilex \
         gen-lemmatizer-tables-fi gen-lemmatizer-tables-et gen-lemmatizer-wordlist-fi \
+        gen-catalog gen-catalog-check \
         reimport-dict-fi reimport-dict-et reimport-dict verify-dict db-invariants \
         setup-omorfi setup-estnltk eval eval-watch eval-check compare-parsers compare-parsers-et \
         import-ud-gold import-ud-gold-fi import-ud-gold-et \
@@ -73,6 +74,22 @@ doctor:
 VFST_PATH ?=
 HFSTOL_PATH ?= localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol
 FI_WORDLIST ?= localdata/lemmatizer-fi-et/wordlists/fi.txt
+gen-catalog:
+	@if [ ! -f finnestdb.db ]; then \
+		echo "finnestdb.db is required (run scripts/setup-local.sh first)."; \
+		exit 1; \
+	fi
+	go run ./cmd/gencatalog -specs internal/catalog/specs.json -data internal/catalog/data -db finnestdb.db -freq-dir localdata/frequency -out internal/catalog/data/catalog.json
+
+# Reproducibility guard: fails if the checked-in catalog drifts from a fresh
+# regeneration (ignores only the "generated" date).
+gen-catalog-check:
+	@if [ ! -f finnestdb.db ]; then \
+		echo "finnestdb.db is required (run scripts/setup-local.sh first)."; \
+		exit 1; \
+	fi
+	go run ./cmd/gencatalog -specs internal/catalog/specs.json -data internal/catalog/data -db finnestdb.db -freq-dir localdata/frequency -out internal/catalog/data/catalog.json -check
+
 gen-lemmatizer-wordlist-fi:
 	@if [ ! -f finnestdb.db ]; then \
 		echo "finnestdb.db is required (run scripts/setup-local.sh first)."; \

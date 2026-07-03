@@ -298,6 +298,53 @@ Required before go-live:
   observability, and production artifact readiness. Any asymmetry must be fixed
   or explicitly classified as language-specific/post-alpha before launch.
 
+### Embedded catalog difficulty model
+
+The curated Embedded Text catalog (`internal/catalog/data/catalog.json` +
+per-text fixtures) is regenerated deterministically by `cmd/gencatalog` from
+`internal/catalog/specs.json` (human-authored provenance) plus the checked-in
+fixtures. The checked-in catalog must be exactly what the generator emits.
+
+```
+go run ./cmd/gencatalog \
+    -specs internal/catalog/specs.json \
+    -data internal/catalog/data \
+    -db finnestdb.db \
+    -freq-dir localdata/frequency \
+    -out internal/catalog/data/catalog.json
+# reproducibility guard (CI-friendly; ignores only the "generated" date):
+go run ./cmd/gencatalog -check
+```
+
+Each text is parsed through the real custom-mode pipeline (`internal/parsecore`)
+and difficulty is a composite of normalized, higher-is-harder signals, averaged
+with fixed weights into a score in `[0,1]` (see `internal/catalog/difficulty.go`,
+pinned by `difficulty_test.go`):
+
+- unresolved-token rate (weight 0.22, ceiling 0.40)
+- mean OpenSubtitles frequency rank (weight 0.24, ceiling 8000; redistributed
+  when no baseline is present so a missing frequency list never zeroes
+  difficulty)
+- rare-form rate (weight 0.14, ceiling 0.55)
+- mean sentence length in tokens (weight 0.16, floor 6, ceiling 24)
+- unique-form ratio (weight 0.14, floor 0.45, ceiling 0.85)
+- FEATS variety per token (weight 0.10, ceiling 0.28)
+
+Bucket cut points: `score < 0.34` = Easy, `< 0.58` = Medium, else Hard. Every
+entry ships `difficulty_review: "pending"`; the Global Difficulty label is
+computed only — Sagar sanity-checks Finnish and an Estonian reviewer checks
+Estonian before that field can flip to reviewed. Per-learner Personalized Text
+Fit is a runtime set intersection of each entry's precomputed `(lemma, pos)`
+list against `user_known_lemmas`, computed in `/api/catalog`; it never touches
+the frozen difficulty label.
+
+Required before go-live:
+
+- Human-review the computed difficulty for every shipped FI text (Sagar) and ET
+  text (Estonian reviewer); flip `difficulty_review` off `pending` only after.
+- Keep the catalog reproducible: `cmd/gencatalog -check` must pass in CI so a
+  hand-edited `catalog.json` cannot drift from the generator.
+
 ## Release Verification
 
 Current status: the core checks are repeatable; run them before every public

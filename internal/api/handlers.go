@@ -2883,6 +2883,10 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/decks/public", a.HandlePublicDecks)
 	mux.HandleFunc("/api/decks/", a.HandleDeckByID)
 
+	// Curated Embedded Text catalog (signed-in cold start)
+	mux.HandleFunc("/api/catalog", a.HandleCatalog)
+	mux.HandleFunc("/api/catalog/", a.HandleCatalogText)
+
 	// Import (file upload → plain text)
 	mux.HandleFunc("/api/import/extract", a.HandleImportExtract)
 	mux.HandleFunc("/api/known-words", a.HandleKnownWords)
