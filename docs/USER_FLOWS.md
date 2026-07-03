@@ -75,7 +75,7 @@ flowchart TD
     D -.->|"first time<br/>0 decks"| CS["Cold start"]
     CS -->|"Paste a text"| P
     CS -->|"Import known words"| KW["Known-words<br/>import"]
-    CS -.->|"gated · research"| TOP["Top-1000<br/>seed deck"]
+    CS -->|"official starter deck"| TOP["Top-1000<br/>starter deck"]
     KW --> DL
     TOP --> DD
 
@@ -84,7 +84,7 @@ flowchart TD
     classDef gated fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:5 5,color:#1a1a1a
     classDef hub fill:#dbeafe,stroke:#1e40af,color:#1a1a1a
     class L,AR,SU,SI anon
-    class TOP,EPH gated
+    class EPH gated
     class D,DD hub
 ```
 
@@ -98,15 +98,16 @@ In words:
    deck detail → first review.
 4. **Cold start**: a brand-new account with zero decks lands on the dashboard's
    empty state with three immediate paths: paste/upload a text, choose from the
-   embedded catalog, or import known words. Top-1000 seed decks remain a later
-   research-gated path.
+   embedded catalog, or import known words. A fourth path shipped 2026-07-02:
+   add the "Top 1000" official starter deck (operator-seeded from the
+   OpenSubtitles baseline via `cmd/seedcolddeck`).
 5. **Cross-cutting correction**: from any results row or review card, the `✎ Wrong?` icon opens a modal with two paths (flag-only or propose-fix) — see §10 below.
 6. **Sign-up bridge**: anonymous results can show sign-in/sign-up CTAs for
    saving, decks, review, known-word state, imports, feedback, and history.
    Anonymous parses are ephemeral; nothing durable is stored until sign-up and
    explicit save/import actions.
 
-Yellow nodes are anonymous-only. Dashed-border nodes are not yet built (cold-start top-1000, opt-out ephemeral parse). Blue hub nodes are the highest-traffic surfaces.
+Yellow nodes are anonymous-only. Dashed-border nodes are not yet built (opt-out ephemeral parse; the cold-start top-1000 node shipped 2026-07-02 as an official starter deck). Blue hub nodes are the highest-traffic surfaces.
 
 ## Screen-by-screen
 
@@ -298,10 +299,15 @@ direction is to preserve known surface forms as first-class evidence.
 └────────────────────────────────────────────────────────────────┘
 ```
 
-The "top 1000 words" cold-start CTA is gated on the research project
+The "top 1000 words" CTA shipped 2026-07-02 as a link to the official
+"Top 1000" starter deck (see `TODO.md` "Cold-start Top 1000 CTA"). The
+2026-07-03 grill (Q15/Q16) layered follow-up product direction on top: present
+the ranked catalog as Top 250 (default CTA) / 500 / 1000 milestones, and let
+learners test out with fast individual "I know this" confirmations instead of
+any bulk mark-as-known. The current official deck is lemma-ranked; the
+surface-first migration should eventually re-key it. The research project
 [`experiments/2026-05-07-top-1000-inflected-forms.md`](../experiments/2026-05-07-top-1000-inflected-forms.md)
-shipping. Until then, the empty state should show own-text, embedded-text,
-and known-word import paths.
+remains the future basis for reseeding from user-pasted-text frequency.
 
 ### 5. Parse (signed-in)
 
@@ -614,10 +620,12 @@ ways out, in increasing engineering cost:
    page. After import, summarize ambiguous items plainly: "31 imported forms
    have more than one possible meaning. We'll confirm those when they appear in
    context."
-3. **Top-1000 inflected forms seed deck**. Research project
-   [`experiments/2026-05-07-top-1000-inflected-forms.md`](../experiments/2026-05-07-top-1000-inflected-forms.md).
-   Once shipped, the dashboard empty state's third CTA goes live and
-   becomes the dominant cold-start.
+3. **Top-1000 starter deck**. Shipped 2026-07-02 as an operator-seeded
+   official deck per language (`cmd/seedcolddeck`), linked from the empty
+   states. Follow-up direction from the 2026-07-03 grill: Top 250/500/1000
+   milestone presentation, individual test-out confirmations (no bulk
+   mark-as-known), and an eventual surface-first re-keying; reseed from the
+   inflected-forms research ranking when it ships.
 
 ## Translation of example sentences
 
@@ -707,7 +715,8 @@ yet in the codebase:
 - Parse-history UI with bulk delete for source context retained by saved decks
   and parser feedback.
 - Correction flow: flag-only path; ✎-icon entry point.
-- Cold-start "top 1000" CTA (gated on the research project).
+- Cold-start "top 1000" milestone presentation and individual test-out flow
+  (the official starter deck itself shipped 2026-07-02).
 - Sentence translation (LLM-backed).
 - Comprehension prediction in deck detail (already in `TODO.md`).
 - FSRS migration after public alpha (already in `TODO.md`).

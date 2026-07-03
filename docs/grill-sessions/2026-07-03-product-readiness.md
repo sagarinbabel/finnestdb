@@ -162,6 +162,24 @@ Stable product decisions from this grill:
 | 58 | Should building the RC pack be the first implementation task before other alpha feature work, or happen after missing alpha flows are built? | Start it first and let it fail initially. | Create the manifest and a small skeleton runner early, then add or unskip cases as features land. This gives future agents a concrete launch bar instead of waiting until the end to define what "ready" means. | Captured in `TODO.md`, `docs/GO_LIVE_CHECKLIST.md`, `CONTEXT.md`, and `docs/DECISIONS.md`. |
 | 59 | Should the RC pack automated portion have a single top-level command? | Yes. | Add `make first-experience-rc` as the obvious launch-gate entry point. It should run parser fixture checks and Playwright RC specs, then print the manual walkthrough path/instructions because the final product judgment still needs a human. User also clarified that the exact product capitalization is **FinnEst**. | Captured in `TODO.md`, `docs/GO_LIVE_CHECKLIST.md`, `CONTEXT.md`, current product-facing docs, and `docs/DECISIONS.md`. |
 
+## Post-Session Resolution Notes (2026-07-04)
+
+- **Q15/Q16 vs shipped PR #246.** One day before this session, the launch
+  stack shipped cold start as a single operator-seeded, lemma-ranked "Top
+  1000" official deck per language (PR
+  [#246](https://github.com/sagarinbabel/finnestdb/pull/246), merged
+  2026-07-03). That deck is accepted as the alpha cold-start mechanism. The
+  Q15/Q16 direction — Top 250 default CTA with 500/1000 milestones,
+  individual test-out confirmations, no bulk mark-as-known, surface-first
+  re-keying — is preserved as follow-up work in `TODO.md`
+  ("Cold-start milestones + individual test-out") and `docs/USER_FLOWS.md`
+  §"Deck cold-start", not as a revert of #246.
+- **Q17 vs the 2026-06-20 launch note.** The launch stack documented the
+  step scheduler as the through-alpha plan; Decision 23 (this session)
+  supersedes that and puts narrow FSRS plus surface-card identity on the
+  launch path. The superseded note is preserved in
+  `docs/srs-deck-spec.md`.
+
 ## Anticipated Question Count
 
 The initial product/readiness grill was first estimated at 30-40 questions. As

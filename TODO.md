@@ -980,6 +980,16 @@ New work surfaced by the review (not yet broken into sequenced PRs):
 - [ ] **Correction flow lighter entry point**. Replace the per-row correction button with a hover/focus-revealed `✎ Wrong?` link. Add a "flag-only" radio path so users who notice a wrong parse but don't know the right answer can still submit signal. Backend: `parse_feedback.proposed_lemma`/`proposed_pos` become nullable; add `flag_only` boolean. See `docs/USER_FLOWS.md` §10.
 - [ ] **Sentence translation endpoint**. `POST /api/translate-sentence` backed by Sonnet 4.6 with prompt caching. Persist results in a new `sentence_translations` table only for retained parse/deck content, keyed on source/target language + prompt version + `hash(text)`; ephemeral Inspect parses use no shared persistent cache. Wires into the review-card back and the deck-detail rows. Companion to `docs/ideas.md` "Making it AI native" Phase 1.
 - [x] **Cold-start "Top 1000" CTA** — shipped 2026-07-02 as an *official deck* rather than a per-user route: `cmd/seedcolddeck` builds a "Top 1000 words" official deck per language from the public OpenSubtitles baseline (forms resolved to lemmas via the dictionary, ranked by summed token mass across inflections, proper names filtered; verified end-to-end against the full local DB). Users add it through the existing official-decks surface; the dashboard/decks empty states link there. Operator step documented in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). The original "seed from the user-pasted-text research ranking" idea remains open under Research Goals — when that ranking ships, reseed from it.
+- [ ] **Cold-start milestones + individual test-out (grill Q15/Q16 follow-up).**
+  The shipped Top-1000 official deck is the alpha cold-start mechanism, but the
+  2026-07-03 grill decided the product direction on top of it: present one
+  ranked catalog as Top 250 (default empty-state CTA) / 500 / 1000 milestones;
+  never bulk-mark a tier as known — learners skip, test out with fast
+  individual "I know this" confirmations, or start the milestone; known state
+  records individually confirmed forms. The current deck is lemma-ranked
+  (summed token mass across inflections); re-key it during the surface-first
+  known-word migration. Not a launch blocker by itself, but the test-out flow
+  feeds the surface-first known-evidence model, which is a launch gate.
 - [ ] **First-run register picker**. Once on first sign-in, ask "What kinds of texts do you want to read most? Conversation / News & books / Mixed." Persists to `user_language_settings`. Drives which top-1000 register the cold-start uses, and may later weight new-card ranking.
 - [ ] **Account deletion**. Cascade through parses, decks, known-word lists, sessions. Profile page is otherwise out of scope for the first version, but deletion is privacy-table-stakes.
 - [x] **Privacy chip on the parse form**. Persistent visible signifier under the signed-in parse textarea replaces the doc-only privacy commitment in `FEATURES.md`.
