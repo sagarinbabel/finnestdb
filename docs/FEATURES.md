@@ -196,7 +196,9 @@ Anonymous correction submission is out of scope for alpha.
   retained source context and parser feedback tied to it; saved decks remain.
 - Accepted lemma/POS corrections write `custom_overrides` lexical rows after
   admin approval, so the same surface can change subsequent parser output.
-  Grammar/FEATS corrections and eval-gated promotion remain future work.
+  Accepted grammar labels become UD FEATS on the override row, acceptance is
+  eval-gated against frozen gold analyses, and repeat corrections auto-queue
+  as gold candidates (shipped 2026-07-02).
 - Admin-quarantined faulty study content quietly disappears from learner
   review/new-card queues; active learner-facing counts and comprehension stats
   exclude it, while full report/fix traceability is admin-facing.

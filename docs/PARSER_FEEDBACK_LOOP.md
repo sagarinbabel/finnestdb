@@ -27,10 +27,12 @@ contextual-sense, phrase-boundary, example-quality, or card-presentation fixes.
 Writing each fix to the smallest durable layer keeps pasted text, EPUBs,
 articles, subtitles, Anki imports, and future catalog decks on the same path.
 
-Current implementation is smaller than that target: the queue, status triage,
-and accepted lemma/POS `custom_overrides` writeback exist. Weekly admin reports,
-AI-assisted triage, flag-only feedback, source-agnostic overlay tables, and
-faulty-content quarantine are not built yet.
+Current implementation covers the queue, status triage, accepted lemma/POS
+`custom_overrides` writeback with grammar-label -> UD FEATS on the override
+row, eval-gated acceptance, and gold-candidate promotion (Phases 1-4, shipped
+2026-07-02). Weekly admin reports, AI-assisted triage, flag-only feedback,
+source-agnostic overlay tables, and faulty-content quarantine are not built
+yet.
 
 ## UX recommendations
 
@@ -100,8 +102,8 @@ looks right" without inventing a correction.
 | Feedback type | Exact correction only. The UI and API require proposed lemma and POS. | Two paths: flag-only issue report, or proposed correction with lemma/POS and optional grammar/note. |
 | Schema/API | `parse_feedback.proposed_lemma` and `proposed_pos` are `NOT NULL`; `ParseFeedbackRequest` requires them. | Proposed fields nullable when `flag_only=true`; store model and API response expose the flag. |
 | Admin triage | Admin can list by status and accept/reject/follow up. | Admin can filter flag-only feedback and classify whether an issue is parser identity, meaning cue, context sense, phrase boundary, example quality, or card presentation. |
-| Acceptance behavior | Any accepted feedback writes `custom_overrides` from proposed lemma/POS and changes future lookups. | Only accepted parser-identity corrections with concrete lemma/POS write lexical overrides. Flag-only reports do not write the lexicon until an admin supplies/accepts a concrete correction. |
-| Grammar/FEATS | Proposed grammar label is captured, but accept does not write FEATS. | Phase 2 writes accepted grammar/FEATS corrections safely to the right layer. |
+| Acceptance behavior | Accepted feedback writes `custom_overrides` from proposed lemma/POS and changes future lookups; acceptance is eval-gated against `gold_surfaces` (HTTP 409 on contradiction) and repeat corrections auto-queue as `gold_candidates`. | Only accepted parser-identity corrections with concrete lemma/POS write lexical overrides. Flag-only reports do not write the lexicon until an admin supplies/accepts a concrete correction. |
+| Grammar/FEATS | Accepted grammar labels map through `udfeats` onto the override row's `forms.feats` (shipped 2026-07-02); corrected FEATS live only on the `custom_overrides` row. | Done for parser-identity overrides; richer meaning/card layers go through future overlay work. |
 | Existing learner decks/cards | Feedback does not immediately mutate the current deck/card. It changes future parser output after admin acceptance. There is no shipped quarantine/suppression path for already-created faulty cards. | Preserve learning history, but remove known-faulty content from circulation after admin acceptance: skip/suppress bad occurrences or cards, or render accepted overlays for cue/sentence/explanation/sense. |
 | Source context | Inspect parses are ephemeral, but feedback creates a retained parse session with source text for admin review. | Same, with clear privacy copy and retention/deletion controls. |
 

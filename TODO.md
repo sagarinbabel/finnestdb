@@ -231,9 +231,19 @@ Snapshot of capabilities currently shipped on main, organized by area.
   `.txt` / `.csv` / `.tsv` / `.md` first-column file import, and AnkiConnect
   local-deck import/sync. Anki `.apkg` upload is not implemented.
 - Parse feedback submission + admin triage. Accepted lemma/POS feedback writes
-  `custom_overrides`; grammar/FEATS writeback is still future work.
+  `custom_overrides`; accepted grammar labels become UD FEATS on the override
+  row; acceptance is eval-gated against `gold_surfaces` (HTTP 409 on
+  contradiction) and repeat corrections auto-queue as `gold_candidates`
+  (Phases 1-4, shipped 2026-07-02). Flag-only feedback and quarantine are not
+  built yet.
 - Hand-rolled step scheduler (NOT FSRS — see "What's not in main yet")
 - Hybrid language detection (warn/block on high-confidence conflict; advisory on unknown)
+- Progress dashboard: known count, due count, cards in review, reviews today,
+  14-day activity chart, per-deck comprehension (shipped 2026-07-02)
+- Per-deck comprehension prediction (`GET /api/decks/{id}/comprehension`,
+  `comprehension_pct` on deck list)
+- Cold-start "Top 1000" FI/ET official starter decks (`cmd/seedcolddeck`,
+  operator-seeded at deploy time)
 
 ### Data and infrastructure
 
@@ -245,6 +255,8 @@ Snapshot of capabilities currently shipped on main, organized by area.
 - Release verification targets: `make live-api-smoke` for live API/security
   probes and `make db-invariants` for production-candidate SQLite integrity,
   orphan, overlap, and source-breakdown checks
+- Production deployment runbook ([`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md))
+  and operator password-reset / pre-registration CLI (`cmd/resetpassword`)
 
 ## What's not in main yet
 
@@ -374,6 +386,8 @@ acceptance, and repeat corrections auto-queue as gold candidates. See
 - [x] **Phase 2 — apply accepted grammar-label corrections to FEATS** — shipped 2026-07-02. The proposed grammar label maps through `udfeats` (`featsFromCaseLabel`) onto the override row's `forms.feats`. Deliberate deviation from the original sketch: corrected FEATS live only on the `custom_overrides` row, never edited into upstream imported rows, so a dictionary re-import can't silently revert or duplicate a correction.
 - [x] **Phase 3 — auto-promote to gold candidates** — shipped 2026-07-02. When `store.GoldPromotionThreshold` (3) distinct users have the same correction accepted, it upserts into `gold_candidates`; `make export-gold-candidates` prints pending rows as gold-token JSON for **manual** review into `testdata/parser-eval/*/gold` (auto-committing eval cases would let the system write its own exam).
 - [x] **Phase 4 — eval-backed safety check before applying** — shipped 2026-07-02. `make import-gold-surfaces` loads the frozen gold analyses into `gold_surfaces`; acceptance is refused (HTTP 409, full rollback) when ≥2 gold occurrences of the surface unanimously disagree with the proposal. Runs in-transaction in <1ms, so no background job needed. An empty `gold_surfaces` table degrades to no-op — run the importer after clone and after gold changes.
+- [ ] **Phase 1b — flag-only parser feedback** (public-alpha gate). Nullable proposed lemma/POS plus `flag_only=true`; no lexical writeback until an admin supplies/accepts a concrete correction. Detailed tasks in "Close the self-improving feedback loop" below.
+- [ ] **Phase 1c — correction issues + admin-only quarantine** (public-alpha gate). Minimal `correction_issues` grouping, quiet learner-facing suppression, stats exclusion, restore-preserves-scheduler-state. Detailed tasks below.
 - [ ] **Phase 5 (research, not engineering)** — automatic re-ranking of source priorities when a single source consistently produces accepted corrections in one direction. **Stays parked deliberately**: it needs months of accepted-correction volume to have any signal, and per the original scoping it is out of scope for alpha; revisit after Phase 4 has real production data.
 
 Phase 1 is gated on FEATS threading (already shipped via [PR #130](https://github.com/sagarinbabel/finnestdb/pull/130)) so corrections can update FEATS, not just GrammarLabel.
@@ -523,7 +537,9 @@ and an admin can change its status to `accepted`
 ([internal/store/db.go::ReviewParseFeedback](internal/store/db.go)).
 Accepted lemma/POS corrections now write `custom_overrides` lexical rows
 that can change future parser output. FEATS corrections, gold-case
-promotion, and eval-gated safety checks remain open.
+promotion, and eval-gated safety checks shipped 2026-07-02 — see the
+"Self-improving feedback loop" summary above for the as-built behavior.
+Phases 1b and 1c below are the remaining public-alpha work in this section.
 
 **Why.** The correction-feedback moat is one of the project's core
 differentiators (see
@@ -579,22 +595,25 @@ something for the next learner — and didn't.
       Keep one combined admin feedback/issues queue for alpha with filters such
       as `submitted`, `needs review`, `quarantined`, `fixed`, and `reopened`;
       do not build a separate Issues page unless real volume demands it.
-- [ ] **Phase 2 — apply accepted grammar-label corrections to `forms.feats`**
-      for the specific surface form. Smaller blast radius than full lemma
+- [x] **Phase 2 — apply accepted grammar-label corrections to `forms.feats`**
+      — shipped 2026-07-02, with a deliberate deviation from this sketch:
+      corrected FEATS live only on the `custom_overrides` row, never edited
+      into upstream imported rows. Original sketch: for the specific surface form. Smaller blast radius than full lemma
       rewrites; useful for the 0%-grammar-on-some-datasets gap. As of
       `2026.05.07k` the `forms.feats` column is populated by the import
       pipelines themselves (`cmd/importdict/feats.go::kaikkiTagsToFeats`,
       `cmd/importekilexdetails/feats.go::ekilexMorphToFeats`), so a
       correction PR can update an existing row's FEATS instead of
       writing a parallel `custom_overrides` row in many cases.
-- [ ] **Phase 3 — auto-promote a corrected `(surface, lemma, pos)` tuple
-      to a gold-eval case** when N independent users submit the same
-      correction. Avoids one user's typo becoming a permanent override.
-      Threshold and review workflow TBD.
-- [ ] **Phase 4 — eval-backed safety check before applying.** Run the
-      candidate `custom_overrides` row against the frozen gold sets; reject
-      if it causes a regression on N or more cases. Use the parser-eval
-      baseline discipline directly; `cmd/autoresearch` remains parked.
+- [x] **Phase 3 — auto-promote a corrected `(surface, lemma, pos)` tuple
+      to a gold-eval case** — shipped 2026-07-02 with N=3 distinct users
+      (`store.GoldPromotionThreshold`) and manual promotion via
+      `make export-gold-candidates`. Original sketch: threshold and review
+      workflow TBD.
+- [x] **Phase 4 — eval-backed safety check before applying.** — shipped
+      2026-07-02 as the `gold_surfaces` contradiction check: acceptance is
+      refused (HTTP 409, full rollback) when >=2 gold occurrences unanimously
+      contradict the proposal. `cmd/autoresearch` remains parked.
 - [ ] **Phase 5 (long-tail) — automatic re-ranking of source priorities**
       when a single source consistently produces accepted corrections in
       one direction. Out of scope for alpha; revisit after Phase 4 is
