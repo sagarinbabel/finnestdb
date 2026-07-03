@@ -96,6 +96,35 @@ make import-gold-surfaces   # gold_surfaces table backs the Phase-4 accept guard
 | `FINNESTDB_PARSER_QUEUE_TIMEOUT_MS` | `2000` (default) | How long a parse request waits for a free parser slot before returning 503 + `Retry-After`. |
 | `FINNESTDB_PRODUCTION_MIN_FORMS_FI/ET` | unset | Only when the artifact policy changes |
 | `FINNESTDB_ALLOW_DEGRADED_DB` | unset | Emergency-only guard override |
+| `FINNESTDB_FSRS_ENABLED` | unset (OFF) | Review scheduler selection. Unset/`0` runs the shipped step scheduler; `1`/`true`/`on` switches `POST /api/study/answer` to the FSRS scheduler. **Ship OFF and flip only after staging validation** — see "FSRS scheduler rollout". |
+
+## FSRS scheduler rollout
+
+`FINNESTDB_FSRS_ENABLED` selects the review scheduler at request time. It
+defaults OFF: the deterministic step scheduler
+(`nextAlphaStepScheduleForRating`) remains the shipped runtime path. Turning it
+ON routes new ratings through `go-fsrs/v3` with default parameters.
+
+State from both schedulers coexists in `card_state.fsrs_json` via a version
+discriminator (legacy `{"step","streak"}` vs. `{"v":2,"fsrs":{…}}`), and
+`next_due` / `last_answer_at` / `introduced_at` keep working regardless, so the
+flip is reversible per card. Migration is lazy on first rating — no bulk
+`card_state` rewrite — deriving a conservative FSRS seed from the card's
+existing interval (see [srs-deck-spec.md](srs-deck-spec.md) "Implemented FSRS
+state model").
+
+Recommended rollout:
+
+1. Enable on **staging first** with a database that has **seeded review
+   histories** (cards with real `last_answer_at`/`next_due`, not just fresh
+   NULL state), so the lazy-derivation path is actually exercised.
+2. Answer a mix of new and previously-scheduled cards across all four ratings;
+   confirm due dates advance sensibly and the due queue / daily new-card limit
+   behave unchanged.
+3. Exercise the rollback: turn the flag back OFF and confirm FSRS-touched cards
+   still answer through the step scheduler without error and keep their
+   progress (they do not snap back to step 0).
+4. Only then flip in production. Rollback is flipping the flag OFF again.
 
 ## Rate limiting behind a proxy
 

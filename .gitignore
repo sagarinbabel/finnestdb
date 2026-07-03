@@ -114,3 +114,7 @@ experiments/autoresearch.jsonl
 # Local notes scratch
 .obsidian/
 How the Finnish & Estonian Parsers can learn from each other.md
+
+# machine-local build outputs (worktree symlink targets)
+/parser/target
+/web/node_modules

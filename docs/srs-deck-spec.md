@@ -1,7 +1,20 @@
 # SRS and Deck System Draft
 
-_Current as of 2026-07-03 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
+_Current as of 2026-07-04 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
+> **Implemented (2026-07-04):** Surface-form card identity and narrow FSRS both
+> shipped in code. Review cards are keyed by
+> `(user_id, lang, surface_norm, lemma, pos)` — surface-form-in-context, with
+> `(lemma, pos)` as the sense discriminator (homographs are separate sense
+> cards, not collapsed). Narrow FSRS (`go-fsrs/v3`, default parameters) is wired
+> behind the `FINNESTDB_FSRS_ENABLED` flag, which **defaults OFF**; the step
+> scheduler (`nextAlphaStepScheduleForRating`) remains the shipped runtime path
+> until the flag is flipped as a deploy decision (staging validation first — see
+> [DEPLOYMENT.md](DEPLOYMENT.md)). Deferred items below (parameter optimization,
+> `fsrs-rs`, rescheduling tools, simulation dashboards, mature-card analytics,
+> broad review UX redesign, and the ambiguity-eval-gated meaning-check UI)
+> remain later work.
+>
 > **Note (2026-07-03):** Public alpha should ship real FSRS scheduling, but in a
 > narrow runtime-only scope: default parameters, current Again/Hard/Good/Easy UI,
 > feature flag, conservative migration/fallback, and regression tests. Treat
@@ -13,9 +26,9 @@ _Current as of 2026-07-03 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
 >
 > This supersedes the launch note of 2026-06-20, which planned to ship the
 > fixed-step scheduler (`internal/store/db.go::nextAlphaStepScheduleForRating`)
-> through public alpha and treat FSRS as post-launch. The step scheduler is
-> still what runs today; the 2026-07-03 product-readiness grill (Decision 23)
-> moved narrow FSRS into the public-alpha launch bar.
+> through public alpha and treat FSRS as post-launch. The 2026-07-03
+> product-readiness grill (Decision 23) moved narrow FSRS into the public-alpha
+> launch bar; as of 2026-07-04 it is implemented behind a default-off flag.
 
 ## Recommendation
 
@@ -78,8 +91,41 @@ Why:
 Practical decision:
 
 - Launch runtime scheduler: `internal/store.nextAlphaStepScheduleForRating`
-- Target runtime scheduler: `github.com/open-spaced-repetition/go-fsrs`
+- Target runtime scheduler: `github.com/open-spaced-repetition/go-fsrs/v3`
 - Future offline optimizer: `open-spaced-repetition/fsrs-rs`
+
+### Implemented FSRS state model (2026-07-04)
+
+FSRS lives in `internal/store/fsrs.go` behind `FINNESTDB_FSRS_ENABLED`
+(default OFF). Both schedulers share the existing `card_state.fsrs_json`
+column, distinguished by a version discriminator so a flag flip — or a
+rollback — never corrupts a card:
+
+- **Legacy step payload:** `{"step":N,"streak":M}` (no `v` field), written by
+  `nextAlphaStepScheduleForRating`.
+- **FSRS payload:** `{"v":2,"fsrs":{...go-fsrs Card...}}`, written by
+  `FSRSScheduleForRating`.
+
+`next_due`, `last_answer_at`, and `introduced_at` keep their meaning
+regardless of which scheduler wrote the row, so the due queue, daily new-card
+limit, and dashboard reporting are scheduler-agnostic.
+
+**Lazy migration on first rating** (only when the flag is ON and the card has
+no FSRS payload yet — there is no bulk `card_state` rewrite):
+
+- `NULL`/empty state → a fresh FSRS *new* card; FSRS initializes
+  stability/difficulty from the first rating.
+- Legacy `step`/`streak` with a prior review → a conservative *Review*-state
+  seed. Stability is set to the observed interval (`next_due − last_answer_at`,
+  in days, clamped to ≥ 1), difficulty to the default initial value, and reps
+  to the legacy streak. This uses the only real evidence the step scheduler
+  left behind (the interval) without pretending FSRS-quality history.
+
+**Rollback semantics** (flag turned OFF after FSRS touched a card): the step
+scheduler still answers the card. Because an FSRS payload carries no
+`step`/`streak`, the step path approximates a step from the current interval
+(`next_due − now`) bucketed onto the step ladder, so the card keeps its
+earned progress instead of snapping back to step 0.
 
 ## Product Model
 
@@ -93,14 +139,19 @@ Practical decision:
   - Can be either a shared catalog deck or a private user-owned study deck.
 
 - `card`
-  - A user-level learning item. Public alpha target: keyed to the learner-visible
+  - A user-level learning item keyed to the learner-visible
     surface-form-in-context unit, with resolved sense and lemma/POS/dictionary
     entries linked as derived support.
-  - Current implementation detail: keyed by `(user_id, lang, lemma, pos)`.
+  - Current implementation (2026-07-04): keyed by
+    `(user_id, lang, surface_norm, lemma, pos)` where `surface_norm =
+    lower(trim(surface))`. `(lemma, pos)` is the sense discriminator, so
+    homographs sharing a surface are distinct sense cards and are not collapsed;
+    MWE cards carry `surface_norm = ''` and key on `mwe_id`.
   - Global across all decks in the same language when the same surface-card
     identity appears again.
   - Carries a definition, supporting dictionary evidence, and an example
-    sentence when available.
+    sentence when available. The review payload adds a homograph note when the
+    learner has another card sharing the surface under a different sense.
 
 - `new-card source`
   - The active source for new-card introduction.
@@ -788,9 +839,12 @@ Behavior:
 
 ### Phase 2
 
-- Migrate review card identity to stable surface-form cards
-- Integrate narrow runtime FSRS scheduling for alpha
-- Attach scheduler state to those stable surface-card IDs
+- Migrate review card identity to stable surface-form cards — **done
+  (2026-07-04)**
+- Integrate narrow runtime FSRS scheduling for alpha — **done behind
+  `FINNESTDB_FSRS_ENABLED`, default off (2026-07-04)**
+- Attach scheduler state to those stable surface-card IDs — **done: FSRS state
+  lives in `card_state.fsrs_json` keyed to the surface-card id (2026-07-04)**
 - Support due reviews plus source-scoped new cards
 
 ### Phase 3
@@ -803,13 +857,17 @@ Behavior:
 
 ## Open decisions
 
-- Exact schema shape for sense-aware surface-card keys
+- Exact schema shape for sense-aware surface-card keys — **resolved &
+  implemented (2026-07-04)**
   - Resolved direction: alpha review cards are surface-form-in-context cards
     keyed by normalized surface plus resolved sense when parser/dictionary
     evidence supports distinct meanings. Do not collapse clear homographs into a
     pure surface key, and do not create one permanent card per occurrence.
-    Remaining implementation detail: whether the DB stores the sense key as
-    `(lemma, pos)`, a parser candidate ID, or a future explicit sense table.
+  - Implemented: the DB stores the sense key as `(lemma, pos)`, so the card key
+    is `(user_id, lang, surface_norm, lemma, pos)`. A parser candidate ID or an
+    explicit sense table remains possible future work, but is not needed for the
+    alpha: `(lemma, pos)` distinguishes the homographs the parser/dictionary can
+    already tell apart.
 
 - Whether to support arbitrary user-made bundles later
   - Recommendation: not in MVP; start with canonical parent/child deck hierarchy only.

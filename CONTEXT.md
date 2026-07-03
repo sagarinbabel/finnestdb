@@ -117,7 +117,7 @@ A public deck published by an admin and visible in the official-decks tab.
 _Avoid_: shared catalog deck, public list
 
 **Card**:
-A learner-level review item. Product alpha target: a surface-form-in-context card, where the learner reviews the exact form they encountered or chose and lemma/POS/dictionary evidence is supporting metadata. Current implementation detail: `cards` are still keyed by `(user, language, lemma, POS)`.
+A learner-level review item: a surface-form-in-context card, where the learner reviews the exact form they encountered or chose and lemma/POS/dictionary evidence is supporting metadata. Current implementation (2026-07-04): `cards` are keyed by `(user, language, surface_norm, lemma, POS)` — the normalized surface joins the key, with `(lemma, POS)` as the sense discriminator so homographs are distinct sense cards, not collapsed. FSRS memory (behind `FINNESTDB_FSRS_ENABLED`, default off) attaches to this surface-card id.
 _Avoid_: deck word, flashcard copy
 
 **Surface Form**:

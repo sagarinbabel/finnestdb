@@ -152,7 +152,10 @@ async function runDeckSaveAndFirstReview(page: Page, lang: 'FI' | 'ET'): Promise
   await page.getByRole('button', { name: 'Review' }).click();
   await expect(page.locator('#review-page')).toHaveClass(/active/);
   await expect(page.locator('#review-card')).not.toHaveClass(/hidden/);
-  await expect(page.locator('#review-card-lemma')).toContainText(fixture.lemma);
+  // Surface form is the card's primary identity and always shows. For these
+  // fixtures the encountered surface normalizes to the lemma, so it appears in
+  // the surface line (the lemma line is hidden when surface == lemma).
+  await expect(page.locator('#review-card-surface')).toContainText(fixture.lemma);
 
   await page.getByRole('button', { name: 'Good' }).click();
   await expect(page.locator('#review-empty')).not.toHaveClass(/hidden/);

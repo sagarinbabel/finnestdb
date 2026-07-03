@@ -411,25 +411,33 @@ func errIfNoRows(res sql.Result) error {
 //   - Card scope: an issue with a concrete (lemma, pos) suppresses the review
 //     card and occurrences of that (lang, lemma, pos). This is the parser-
 //     identity scope — the analysis said "kissa/NOUN" and that identity is bad.
+//     Because review cards are now surface-form-in-context, one (lemma, pos)
+//     issue suppresses every surface card sharing that sense.
 //   - Surface scope: an issue with empty lemma/pos (flag-only / surface-only)
-//     suppresses occurrences of that (lang, normalized surface). Cards have no
-//     surface column, so a surface-only issue cannot target a card by itself;
-//     it suppresses the deck occurrences that carry that surface.
+//     suppresses occurrences of that (lang, normalized surface). Review cards
+//     now carry surface_norm, so a surface-only issue also suppresses cards
+//     whose surface matches — regardless of their sense — matching the
+//     occurrence-scope semantics.
 //
 // Only status = 'quarantined' issues suppress. open/fixed/reopened do not.
 
 // suppressedCardPredicate returns a SQL boolean expression (for a WHERE/CASE
 // clause) that is TRUE when the card aliased as cardAlias is suppressed by a
-// quarantined issue. It matches on (lang, lemma, pos) against issues that carry
-// a concrete lemma/pos.
+// quarantined issue. It matches either the (lang, lemma, pos) sense scope for
+// issues carrying a concrete lemma/pos, or the (lang, normalized surface) scope
+// for surface-only issues against the card's surface_norm.
 func suppressedCardPredicate(cardAlias string) string {
 	return `EXISTS (
 		SELECT 1 FROM correction_issues ci
 		 WHERE ci.status = 'quarantined'
-		   AND ci.lemma <> '' AND ci.pos <> ''
 		   AND ci.lang = ` + cardAlias + `.lang
-		   AND ci.lemma = ` + cardAlias + `.lemma
-		   AND ci.pos = ` + cardAlias + `.pos
+		   AND (
+		         (ci.lemma <> '' AND ci.pos <> ''
+		          AND ci.lemma = ` + cardAlias + `.lemma
+		          AND ci.pos = ` + cardAlias + `.pos)
+		      OR (ci.lemma = '' AND ci.pos = ''
+		          AND ci.norm_surface = ` + cardAlias + `.surface_norm)
+		       )
 	)`
 }
 

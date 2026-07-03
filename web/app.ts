@@ -256,9 +256,11 @@ interface ReviewCardResponse {
         highlight?: string;
     };
     back: {
+        surface?: string;
         lemma:   string;
         meaning: string;
         grammar: string;
+        homograph_note?: string;
         examples: Array<{
             text: string;
             source_deck: string;
@@ -5547,10 +5549,12 @@ function renderCurrentReviewCard(): void {
     const deckCountsEl = document.getElementById('review-card-decks');
     const exampleEl = document.getElementById('review-card-example');
     const frontTextEl = document.getElementById('review-card-front-text');
+    const surfaceEl = document.getElementById('review-card-surface');
     const lemmaEl = document.getElementById('review-card-lemma');
+    const homographEl = document.getElementById('review-card-homograph');
     const meaningEl = document.getElementById('review-card-meaning');
     const modeEl = document.getElementById('review-card-mode');
-    if (!cardEl || !emptyEl || !deckCountsEl || !exampleEl || !frontTextEl || !lemmaEl || !meaningEl || !modeEl) return;
+    if (!cardEl || !emptyEl || !deckCountsEl || !exampleEl || !frontTextEl || !surfaceEl || !lemmaEl || !homographEl || !meaningEl || !modeEl) return;
 
     const card = state.currentReviewCard;
     const hasCard = Boolean(card);
@@ -5559,8 +5563,25 @@ function renderCurrentReviewCard(): void {
     if (!card) return;
 
     modeEl.textContent = card.mode === 'sentence' ? 'Sentence card' : 'Word card';
-    frontTextEl.textContent = card.front.text || card.back.lemma;
-    lemmaEl.textContent = card.back.lemma;
+    frontTextEl.textContent = card.front.text || card.back.surface || card.back.lemma;
+    // Surface form is the card's primary identity; lemma/POS are supporting
+    // metadata shown beneath it.
+    const surface = card.back.surface || card.back.lemma;
+    surfaceEl.textContent = surface;
+    if (card.back.lemma && card.back.lemma.toLowerCase() !== surface.toLowerCase()) {
+        lemmaEl.textContent = `lemma: ${card.back.lemma}`;
+        lemmaEl.classList.remove('hidden');
+    } else {
+        lemmaEl.textContent = '';
+        lemmaEl.classList.add('hidden');
+    }
+    if (card.back.homograph_note) {
+        homographEl.textContent = card.back.homograph_note;
+        homographEl.classList.remove('hidden');
+    } else {
+        homographEl.textContent = '';
+        homographEl.classList.add('hidden');
+    }
     meaningEl.textContent = card.back.meaning || 'No gloss yet';
     deckCountsEl.innerHTML = card.deck_counts.map(pair =>
         `<span class="review-deck-pill">${escapeHtml(pair[0])} · ${escapeHtml(pair[1])}</span>`
