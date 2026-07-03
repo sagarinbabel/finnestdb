@@ -45,6 +45,10 @@ type API struct {
 	// anonMaxChars caps unauthenticated /api/parse text length. Signed-in
 	// parsing is unaffected and still bounded by parsecore.MaxTextChars.
 	anonMaxChars int
+	// parserLimiter bounds concurrent calls into the parser (analyze /
+	// analyzeChapters), independent of rateLimits which bounds request rate.
+	// See parser_limiter.go.
+	parserLimiter *parserLimiter
 }
 
 func NewAPI(store *store.DB) *API {
@@ -54,6 +58,7 @@ func NewAPI(store *store.DB) *API {
 		analyzeChapters: parsecore.AnalyzeChapters,
 		rateLimits:      newRateLimitSetFromEnv(),
 		anonMaxChars:    envInt("FINNESTDB_ANON_MAX_CHARS", defaultAnonMaxChars),
+		parserLimiter:   newParserLimiterFromEnv(),
 	}
 }
 
@@ -1455,6 +1460,15 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 		return
 	}
 
+	// Deck creation always runs signed-in (requireAuth on this route), so it
+	// draws from the full parser pool rather than the smaller anonymous share.
+	release, ok := a.parserLimiter.acquire(r.Context(), false)
+	if !ok {
+		writeServiceUnavailable(w, "Parser is at capacity. Please retry shortly.")
+		return
+	}
+	defer release()
+
 	parsed, err := a.analyze(a.store, req.Lang, req.Text, "custom")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -2356,6 +2370,13 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	release, ok := a.parserLimiter.acquire(r.Context(), auth == nil)
+	if !ok {
+		writeServiceUnavailable(w, "Parser is at capacity. Please retry shortly.")
+		return
+	}
+	defer release()
 
 	var parsed *parsecore.ParseResult
 	var parseErr error

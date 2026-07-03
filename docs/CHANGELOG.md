@@ -10,6 +10,44 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Parser backpressure and launch load test
+
+Implements the parser concurrency/backpressure and load-test bullets of the
+"1,000-concurrent-user launch target" gate. A new counting semaphore in
+`internal/api` (`parser_limiter.go`) bounds concurrent calls into the parser
+(`/api/parse` and deck-save), independent of the existing per-IP/per-account
+rate limiters. Anonymous parse requests draw from a smaller sub-pool (half
+the total slots) before the shared pool, so anonymous load sheds first under
+saturation and cannot starve signed-in deck/review traffic. A request that
+cannot get a slot within the queue timeout returns 503 with `Retry-After`;
+the existing 429 rate-limit path now also carries `Retry-After`. New
+`cmd/loadtest` is a dependency-free Go client that models the GO_LIVE traffic
+mix (anonymous parse / signed-in parse / review-deck reads) and reports
+per-endpoint latency percentiles, throughput, and 429/503/error counts.
+Staged local runs (50/200/500/1000 concurrent virtual users, laptop against
+the production-size local DB) confirm the shedding mechanism and that
+deck/review reads stay unaffected under full saturation; production-host
+re-validation remains before the launch gate can close.
+
+- Added: `internal/api/parser_limiter.go` — the semaphore, wired into
+  `HandleParse` and `handleCreateDeck`.
+- Added: `internal/api/parser_limiter_test.go` — saturation/shedding/timeout/
+  non-parse-bypass unit and handler-level tests.
+- Modified: `internal/api/rate_limit.go` — `allowLimiter`'s 429 now sets
+  `Retry-After: 60`.
+- Added: `cmd/loadtest` — the load-test tool.
+- Added: [`launch-readiness/2026-07-04-load-test.md`](launch-readiness/2026-07-04-load-test.md)
+  — method, hardware caveat, stage results, shedding evidence, anonymous-cap
+  recheck, recommended production env values, and the production-host re-run
+  instruction.
+- Modified: [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) "Capacity and
+  Graceful Degradation" — shipped items checked off with evidence links;
+  production-host re-run and monitoring wiring left open.
+- Modified: [`DEPLOYMENT.md`](DEPLOYMENT.md) — `FINNESTDB_PARSER_MAX_CONCURRENCY`
+  and `FINNESTDB_PARSER_QUEUE_TIMEOUT_MS` added to the environment-variable
+  table; load-test usage and a parser-saturation monitoring note added.
+- Modified: [`../TODO.md`](../TODO.md) — both 1,000-concurrent-user bullets
+  get progress notes; neither is ticked (production-host run remains).
 ## 2026-07-04 — Correction issues + admin-only quarantine (Phase 1c)
 
 Ships the global correction-issue ledger and admin-only faulty-content
