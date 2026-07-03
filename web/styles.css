@@ -3288,6 +3288,39 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     color: var(--text-secondary);
     white-space: nowrap;
 }
+.admin-feedback-flag-badge {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    vertical-align: middle;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+.admin-feedback-correction-inputs {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+}
+.admin-feedback-correction-inputs input,
+.admin-feedback-correction-inputs select {
+    padding: 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+.admin-feedback-correction-inputs input {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.admin-feedback-correction-hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
 .admin-feedback-comparison {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3456,6 +3489,26 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     justify-content: flex-end;
     gap: 0.5rem;
     margin-top: 1.25rem;
+}
+.correction-mode {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+}
+.correction-mode legend {
+    padding: 0 0.35rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+.correction-mode-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    cursor: pointer;
+}
+.correction-mode-option input {
+    margin-top: 0.2rem;
 }
 
 /* ── Results "Suggest fix" cell ─────────────────────────────── */

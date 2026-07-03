@@ -10,6 +10,25 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Flag-only parser feedback (Phase 1b)
+
+Documents the public-alpha flag-only feedback path: signed-in learners can
+report "this analysis looks wrong" without proposing a fix. Schema adds
+`parse_feedback.flag_only` via idempotent ALTER (proposed columns kept
+`NOT NULL`, stored empty for flag-only rows). Flag-only acceptance writes no
+lexical override until an admin supplies a concrete lemma/POS, converting it into
+a normal parser-identity correction.
+
+- Modified: [`PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md) — schema field
+  list, the "current implementation" paragraph, and the current-vs-target table
+  (feedback type, schema/API, admin triage, acceptance behavior).
+- Modified: [`FEATURES.md`](FEATURES.md) "What We Store During Alpha" — mentions
+  flag-only reports.
+- Modified: [`TODO.md`](../TODO.md) — Phase 1b ticked with a shipped note; the
+  "Parser feedback alpha gate" bullet gets a progress note.
+- Modified: [`../CONTEXT.md`](../CONTEXT.md) "Flag-Only Parser Feedback" — updated
+  from planned to shipped.
+
 ## 2026-05-15 — FI manual-card trap promotions
 
 Documents the parser-stamp bump for promoting recent manual Finnish card
