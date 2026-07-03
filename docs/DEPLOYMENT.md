@@ -91,6 +91,7 @@ make import-gold-surfaces   # gold_surfaces table backs the Phase-4 accept guard
 | `FINNESTDB_LISTEN_ADDR` | `127.0.0.1:8080` | Loopback bind behind the proxy |
 | `FINNESTDB_TRUST_FORWARD_HEADERS` | `1` | See "Rate limiting behind a proxy" |
 | `FINNESTDB_ADMIN_EMAILS` | comma-separated | Admin bootstrap — **pre-register every address** |
+| `FINNESTDB_ANON_MAX_CHARS` | `20000` (default) | Text-size cap for unauthenticated `/api/parse`; enforced before parser work. Signed-in cap stays 1,500,000. Tune with the load test. |
 | `FINNESTDB_PRODUCTION_MIN_FORMS_FI/ET` | unset | Only when the artifact policy changes |
 | `FINNESTDB_ALLOW_DEGRADED_DB` | unset | Emergency-only guard override |
 

@@ -275,6 +275,135 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 	}
 }
 
+// TestHandleParseAnonymousCapRejectsOversizedTextBeforeAnalyze proves the
+// stricter anonymous text-size cap is enforced before any parser work: an
+// unauthenticated request over the cap gets a 400 naming the limit, and
+// analyze never runs. This is a launch-gate abuse control — if it silently
+// stopped enforcing, anonymous visitors could hammer the parser with
+// signed-in-sized (1.5M) payloads.
+func TestHandleParseAnonymousCapRejectsOversizedTextBeforeAnalyze(t *testing.T) {
+	api := newTestAPI(t)
+	api.anonMaxChars = 10
+	called := false
+	api.analyze = func(_ *store.DB, _, _, _ string) (*parsecore.ParseResult, error) {
+		called = true
+		return nil, fmt.Errorf("analyze should not run for over-cap anonymous parse")
+	}
+	mux := newTestMux(t, api)
+
+	body := `{"lang":"FI","text":"` + strings.Repeat("a", 11) + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+	if called {
+		t.Fatal("analyze ran for an over-cap anonymous parse")
+	}
+	var resp struct {
+		Error        string `json:"error"`
+		AnonMaxChars int    `json:"anon_max_chars"`
+		Chars        int    `json:"chars"`
+	}
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode error body: %v", err)
+	}
+	if resp.AnonMaxChars != 10 {
+		t.Fatalf("anon_max_chars=%d want 10", resp.AnonMaxChars)
+	}
+	if resp.Chars != 11 {
+		t.Fatalf("chars=%d want 11", resp.Chars)
+	}
+	if !strings.Contains(resp.Error, "10 characters") || !strings.Contains(strings.ToLower(resp.Error), "sign up") {
+		t.Fatalf("error=%q want it to name the 10-char limit and suggest signing up", resp.Error)
+	}
+}
+
+// TestHandleParseAnonymousCapAllowsAtLimit confirms a request exactly at the
+// cap is accepted (boundary check — off-by-one here would either over- or
+// under-restrict every anonymous parse).
+func TestHandleParseAnonymousCapAllowsAtLimit(t *testing.T) {
+	api := newTestAPI(t)
+	api.anonMaxChars = 10
+	called := false
+	api.analyze = func(_ *store.DB, lang, _, _ string) (*parsecore.ParseResult, error) {
+		called = true
+		return &parsecore.ParseResult{Lang: lang, Parser: "basic"}, nil
+	}
+	mux := newTestMux(t, api)
+
+	body := `{"lang":"FI","text":"` + strings.Repeat("a", 10) + `"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(body))
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if !called {
+		t.Fatal("analyze should have run for an at-limit anonymous parse")
+	}
+}
+
+// TestHandleParseAnonymousCapDoesNotApplyToSignedIn proves the anonymous cap
+// leaves signed-in parsing at its 1.5M ceiling: a logged-in request far over
+// the tiny anonymous cap still reaches analyze.
+func TestHandleParseAnonymousCapDoesNotApplyToSignedIn(t *testing.T) {
+	api := newTestAPI(t)
+	api.anonMaxChars = 10
+	called := false
+	api.analyze = func(_ *store.DB, lang, _, _ string) (*parsecore.ParseResult, error) {
+		called = true
+		return &parsecore.ParseResult{Lang: lang, Parser: "custom"}, nil
+	}
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "anon-cap-signed-in@example.com")
+
+	body := `{"lang":"FI","text":"` + strings.Repeat("a", 5000) + `","parser":"custom"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(body))
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if !called {
+		t.Fatal("analyze should have run for a signed-in parse over the anonymous cap")
+	}
+}
+
+// TestHandleMeSurfacesAnonMaxChars confirms /api/me carries the cap so the
+// landing parse form can render an accurate char counter for anonymous
+// visitors without a dedicated config endpoint.
+func TestHandleMeSurfacesAnonMaxChars(t *testing.T) {
+	api := newTestAPI(t)
+	api.anonMaxChars = 12345
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/me", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want %d body=%q", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var resp MeResponse
+	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+		t.Fatalf("decode /api/me: %v", err)
+	}
+	if resp.Authenticated {
+		t.Fatal("expected anonymous /api/me response")
+	}
+	if resp.AnonMaxChars != 12345 {
+		t.Fatalf("anon_max_chars=%d want 12345", resp.AnonMaxChars)
+	}
+}
+
 func TestHandleParseChaptersPayloadReturnsPerChapterWordsAndState(t *testing.T) {
 	api := newTestAPI(t)
 	textCalled := 0

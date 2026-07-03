@@ -66,11 +66,18 @@ remaining launch work; the product-readiness grill then added the gates below
 feedback + quarantine, RC pack, load test, FI/ET parity audit) as deliberate
 scope, not accidental creep. See Decisions 23-29.
 
-- [ ] **Anonymous parser demo**: unsigned visitors can paste text, parse it,
-      get a parsed word list, and explore the list. Keep it stateless,
-      ephemeral, rate-limited, capped below signed-in text size, and
-      intentionally narrow; save/deck/review, known/ignored state, imports,
-      parser feedback, history, and account settings require sign-in.
+- [x] **Anonymous parser demo** (shipped 2026-07-04): unsigned visitors can
+      paste text on the landing form, parse it, get a parsed word list, and
+      explore the list (POS filters, sorting, row expansion, definitions/forms/
+      examples, counts). Stateless, ephemeral, rate-limited, and capped below
+      signed-in text size via `FINNESTDB_ANON_MAX_CHARS` (default 20,000, vs the
+      1,500,000 signed-in cap), enforced server-side before parser work and
+      surfaced to the client through `/api/me`. Save/deck/review, known/ignored
+      state, imports, parser feedback, history, and account settings stay
+      sign-in-gated (hidden via `data-role-show`). Anonymous results carry a
+      dismiss-per-session sign-up ribbon (reappears on next parse) and a privacy
+      footer. Remaining: tune the default cap through the 1,000-concurrent load
+      test (see the load-test gate below).
 - [ ] **Signed-in learner alpha loop**: signed-in dashboard/Inspect -> parse real
       text -> save deck/add to deck -> review. Open signup should make this
       loop available immediately after account creation.
@@ -969,10 +976,11 @@ New work surfaced by the review (not yet broken into sequenced PRs):
   and personalized features require sign-in: save/deck/review, known/ignored
   state, imports, parser feedback, history, and account settings. See
   `docs/USER_FLOWS.md` §1.
-- [x] **Anonymous parse has a stricter text-size limit.** Signed-in parsing can
-  keep the current 1,500,000-character cap; anonymous demo parsing should use a
-  lower configurable cap, enforced before expensive parser work, with a clear
-  sign-up prompt for longer texts.
+- [x] **Anonymous parse has a stricter text-size limit.** Signed-in parsing
+  keeps the 1,500,000-character cap; anonymous demo parsing uses a lower
+  configurable cap. Shipped 2026-07-04 as `FINNESTDB_ANON_MAX_CHARS` (default
+  20,000), enforced server-side before expensive parser work, returning a 4xx
+  that names the limit and prompts sign-up for longer texts.
 - [x] **Public alpha language status: Finnish and Estonian are equal.** Do not
   label either language experimental or secondary. If parity gaps exist, track
   them as concrete data/parser/catalog/UX/test gaps and classify them as

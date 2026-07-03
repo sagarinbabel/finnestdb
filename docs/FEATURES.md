@@ -36,8 +36,8 @@ enjoyable instead of a dictionary lookup grind.
 
 ## Anonymous Parser Demo
 
-Unsigned visitors should be able to experience the parser before creating an
-account:
+Shipped 2026-07-04. Unsigned visitors can experience the parser before creating
+an account:
 
 1. paste a Finnish or Estonian text;
 2. parse it;
@@ -48,6 +48,11 @@ That anonymous surface is intentionally narrow and stateless. It proves parser
 quality, but it does not create a learner memory. Saving decks, reviewing,
 importing known words, marking known/ignored state, submitting parser feedback,
 viewing history, and account settings require sign-in.
+
+Anonymous parsing uses a stricter, configurable text-size cap
+(`FINNESTDB_ANON_MAX_CHARS`, default 20,000 characters) enforced server-side
+before any parser work; the signed-in cap stays 1,500,000. Over-cap anonymous
+requests get a 4xx error naming the limit and a sign-up CTA.
 
 ## How You Learn With FinnEst
 

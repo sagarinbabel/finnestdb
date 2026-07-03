@@ -10,6 +10,29 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Anonymous parser demo shipped
+
+The public-alpha anonymous parser demo landed: the landing page now carries a
+paste-first parse form (FI/ET selector, char counter, Parse button) that calls
+`/api/parse` unauthenticated and renders explore-only results (POS filters,
+sorting, row expansion, definitions/forms/examples/counts). Signed-in-only
+actions stay hidden via `data-role-show`; anonymous results carry a
+dismiss-per-session sign-up ribbon and a privacy footer. A new
+`FINNESTDB_ANON_MAX_CHARS` cap (default 20,000) is enforced server-side before
+parser work and surfaced to the client via `/api/me`.
+
+- Modified: [`USER_FLOWS.md`](USER_FLOWS.md) §1/§2 — status flipped to shipped;
+  cap/ribbon/footer behavior documented.
+- Modified: [`FEATURES.md`](FEATURES.md) — Anonymous Parser Demo section shipped
+  phrasing plus the cap details.
+- Modified: [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) "Abuse Controls" —
+  anon-cap bullet marked shipped-with-default.
+- Modified: [`DEPLOYMENT.md`](DEPLOYMENT.md) — `FINNESTDB_ANON_MAX_CHARS` added
+  to the environment-variable table.
+- Modified: [`../TODO.md`](../TODO.md) "Public alpha gates" — Anonymous parser
+  demo gate ticked with a shipped note; remaining work is load-test cap tuning.
+- Modified: [`../CONTEXT.md`](../CONTEXT.md) — Anonymous Parser Demo term updated
+  to shipped phrasing.
 ## 2026-07-04 — Flag-only parser feedback (Phase 1b)
 
 Documents the public-alpha flag-only feedback path: signed-in learners can

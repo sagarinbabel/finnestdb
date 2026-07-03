@@ -113,9 +113,11 @@ Yellow nodes are anonymous-only. Dashed-border nodes are not yet built (opt-out 
 
 ### 1. Landing + inline parse (anonymous)
 
-Status: current alpha target. Anonymous users can paste text, parse it, get a
+Status: shipped 2026-07-04. Anonymous users can paste text, parse it, get a
 word list, and explore rows before signing in. This is a stateless parser demo,
-not the full learning product.
+not the full learning product. The landing page carries the paste form (FI/ET
+selector, char counter against the anonymous cap, Parse button) above the hero
+and value grid; file upload stays a signed-in capability.
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
@@ -159,9 +161,14 @@ not the full learning product.
   high-confidence FI/ET mismatch warns and requires the learner to switch the
   language explicitly before parsing.
 - Anonymous parsing uses a lower configurable text-size limit than signed-in
-  parsing. The signed-in cap remains 1,500,000 characters. If an unsigned
-  visitor exceeds the anonymous demo cap, show a clear limit message and a
-  sign-up CTA for longer-text workflows.
+  parsing. Shipped: `FINNESTDB_ANON_MAX_CHARS` (default 20,000 characters),
+  enforced server-side for unauthenticated `/api/parse` before any parser work
+  and surfaced to the landing char counter via `/api/me` (`anon_max_chars`). The
+  signed-in cap remains 1,500,000 characters. If an unsigned visitor exceeds the
+  anonymous demo cap, the server returns a 4xx JSON error naming the limit and
+  the client shows a clear limit message with a sign-up CTA for longer-text
+  workflows. The default is a starting point to tune with the 1,000-concurrent
+  load test.
 - Anonymous parse runs **ephemerally**: nothing is stored server-side,
   no parse_session row, no IP retained beyond rate-limit window.
 - Empty state below the box invites: _"Don't have text handy? [Try a
@@ -176,9 +183,11 @@ not the full learning product.
 
 ### 2. Inline results (anonymous)
 
-Today's `/results` page already exists (`web/index.html` lines
-492–551). Reuse it for both anonymous and signed-in. The change is the
-**sign-up hook ribbon at the top**:
+Status: shipped 2026-07-04. The `/results` page is now reachable anonymously and
+reuses the same table for anonymous and signed-in visitors. Anonymous results
+show a dismissible **sign-up ribbon at the top** (reappears on the next parse)
+and a privacy footer; the signed-in-only controls (save-as-deck, known/ignore,
+correction entry points, status column) are hidden via `data-role-show`.
 
 ```
 ┌────────────────────────────────────────────────────────────────┐

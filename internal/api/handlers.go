@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"math"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"finnestdb/internal/auth"
 	"finnestdb/internal/glossfallback"
@@ -28,11 +30,21 @@ const (
 	maxJSONBodyBytes  = 4 << 20
 )
 
+// defaultAnonMaxChars is the fallback anonymous /api/parse text-size cap when
+// FINNESTDB_ANON_MAX_CHARS is unset. Anonymous parsing is intentionally capped
+// well below the signed-in ceiling (parsecore.MaxTextChars = 1,500,000) so the
+// demo stays cheap and abuse-resistant; longer texts require sign-in. Tune via
+// the 1,000-concurrent load test (see docs/GO_LIVE_CHECKLIST.md).
+const defaultAnonMaxChars = 20_000
+
 type API struct {
 	store           *store.DB
 	analyze         func(*store.DB, string, string, string) (*parsecore.ParseResult, error)
 	analyzeChapters func(*store.DB, string, []parsecore.ChapterInput, string) (*parsecore.ParseResult, error)
 	rateLimits      *rateLimitSet
+	// anonMaxChars caps unauthenticated /api/parse text length. Signed-in
+	// parsing is unaffected and still bounded by parsecore.MaxTextChars.
+	anonMaxChars int
 }
 
 func NewAPI(store *store.DB) *API {
@@ -41,6 +53,7 @@ func NewAPI(store *store.DB) *API {
 		analyze:         parsecore.Analyze,
 		analyzeChapters: parsecore.AnalyzeChapters,
 		rateLimits:      newRateLimitSetFromEnv(),
+		anonMaxChars:    envInt("FINNESTDB_ANON_MAX_CHARS", defaultAnonMaxChars),
 	}
 }
 
@@ -83,6 +96,10 @@ type MeResponse struct {
 	User          *SessionUser   `json:"user"`
 	Dashboard     *DashboardData `json:"dashboard,omitempty"`
 	Languages     *UserLanguages `json:"languages,omitempty"`
+	// AnonMaxChars is the anonymous /api/parse text-size cap. It is surfaced on
+	// every /api/me response (authenticated or not) so the landing parse form
+	// can render an accurate char counter without a dedicated config endpoint.
+	AnonMaxChars int `json:"anon_max_chars"`
 }
 
 // UserLanguages is the per-user view of language settings sent to the client.
@@ -655,6 +672,7 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, MeResponse{
 			Authenticated: false,
 			User:          nil,
+			AnonMaxChars:  a.anonMaxChars,
 		})
 		return
 	}
@@ -764,6 +782,7 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, MeResponse{
 		Authenticated: true,
 		User:          sessionUserFromAuth(auth),
+		AnonMaxChars:  a.anonMaxChars,
 		Dashboard: &DashboardData{
 			KnownCount:       knownCount,
 			DueCount:         dueCount,
@@ -2317,6 +2336,25 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Provide either text or chapters, not both", http.StatusBadRequest)
 		}
 		return
+	}
+
+	// Enforce the stricter anonymous text-size cap before any expensive parser
+	// work. Signed-in requests skip this and remain bounded only by
+	// parsecore.MaxTextChars (1,500,000). Runes are counted to match the
+	// character semantics parsecore.Analyze validates against.
+	if auth == nil {
+		chars := utf8.RuneCountInString(req.Text)
+		for _, ch := range req.Chapters {
+			chars += utf8.RuneCountInString(ch.Text)
+		}
+		if chars > a.anonMaxChars {
+			writeJSON(w, http.StatusBadRequest, map[string]any{
+				"error":          fmt.Sprintf("Anonymous parsing is limited to %d characters. Sign up to parse longer texts.", a.anonMaxChars),
+				"anon_max_chars": a.anonMaxChars,
+				"chars":          chars,
+			})
+			return
+		}
 	}
 
 	var parsed *parsecore.ParseResult
