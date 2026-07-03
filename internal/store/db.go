@@ -946,6 +946,13 @@ func (d *DB) RevokeSessionByTokenHash(tokenHash string) error {
 	return err
 }
 
+// Healthcheck verifies the database answers a trivial query. Used by the
+// /api/health deployment probe.
+func (d *DB) Healthcheck() error {
+	var one int
+	return d.db.QueryRow(`SELECT 1`).Scan(&one)
+}
+
 // RevokeAllSessionsForUser marks every active session for the user as
 // revoked. Used by the operator password-reset path so a reset also logs the
 // account out everywhere. Returns the number of sessions revoked. Idempotent.

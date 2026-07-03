@@ -5,6 +5,9 @@ Owner: @chickendude
 This list tracks blockers that must be resolved before FinEstDB is exposed to
 real users outside a trusted dev/internal environment.
 
+How to actually stand up the production host (TLS, proxy, systemd, backups,
+purge cron, monitoring) lives in [`DEPLOYMENT.md`](DEPLOYMENT.md).
+
 ## Authentication and Sessions
 
 Current status: real auth is implemented; remaining go-live work is hardening.

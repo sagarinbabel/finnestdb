@@ -1,0 +1,9 @@
+# Nightly online backup of finnestdb.db. Pair with finnestdb-backup.timer.
+[Unit]
+Description=FinEstDB nightly SQLite backup
+
+[Service]
+Type=oneshot
+User=finnestdb
+WorkingDirectory=/opt/finnestdb
+ExecStart=/opt/finnestdb/scripts/backup-db.sh /opt/finnestdb/finnestdb.db /opt/finnestdb/backups

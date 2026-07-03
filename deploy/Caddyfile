@@ -1,0 +1,24 @@
+# Caddy reverse-proxy config for FinEstDB. Caddy provisions and renews TLS
+# automatically for the named domain. Install to /etc/caddy/Caddyfile.
+#
+# Caddy sets X-Forwarded-For on the proxied request; the app trusts it because
+# the hop arrives from loopback (and FINNESTDB_TRUST_FORWARD_HEADERS=1 is set
+# in finnestdb.service), so per-client rate limiting keys on real client IPs.
+finnestdb.example.com {
+	encode gzip
+
+	# Body cap at the edge, matching the app's own request-size limits, so
+	# oversized uploads die before reaching Go.
+	request_body {
+		max_size 20MB
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	reverse_proxy 127.0.0.1:8080
+}

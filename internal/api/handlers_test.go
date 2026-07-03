@@ -2417,6 +2417,28 @@ func TestAuthenticatedMutationAllowsSameOrigin(t *testing.T) {
 	}
 }
 
+func TestHandleHealth(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200 body=%q", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"ok"`) {
+		t.Fatalf("body=%q want status ok", rec.Body.String())
+	}
+
+	post := httptest.NewRequest(http.MethodPost, "/api/health", nil)
+	postRec := httptest.NewRecorder()
+	mux.ServeHTTP(postRec, post)
+	if postRec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("POST status=%d want 405", postRec.Code)
+	}
+}
+
 func TestRegisterRejectsForeignOrigin(t *testing.T) {
 	api := newTestAPI(t)
 	mux := newTestMux(t, api)

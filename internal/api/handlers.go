@@ -2632,7 +2632,26 @@ func decodeJSONRequest(w http.ResponseWriter, r *http.Request, dst any) bool {
 	return true
 }
 
+// HandleHealth is the deployment liveness/readiness probe: 200 with a JSON
+// body when the process is up and the database answers a trivial query, 503
+// otherwise. Unauthenticated by design — it must never expose data beyond
+// up/down, because uptime monitors hit it anonymously.
+func (a *API) HandleHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := a.store.Healthcheck(); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "degraded"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
 func (a *API) SetupRoutes(mux *http.ServeMux) {
+	// Ops
+	mux.HandleFunc("/api/health", a.HandleHealth)
+
 	// Auth routes
 	mux.HandleFunc("/api/auth/register", a.HandleRegister)
 	mux.HandleFunc("/api/auth/login", a.HandleLogin)

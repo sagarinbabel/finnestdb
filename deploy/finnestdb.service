@@ -1,0 +1,36 @@
+# FinEstDB app server. Install to /etc/systemd/system/finnestdb.service,
+# adjust paths/user, then: systemctl daemon-reload && systemctl enable --now finnestdb
+[Unit]
+Description=FinEstDB server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=finnestdb
+WorkingDirectory=/opt/finnestdb
+# Built with `make parser && go build -o bin/server ./cmd/server`.
+# The binary links the Rust tokenizer; keep libparser.so reachable.
+Environment=LD_LIBRARY_PATH=/opt/finnestdb/parser/target/release
+Environment=APP_ENV=production
+# Bind loopback only: Caddy terminates TLS and is the sole public entry.
+Environment=FINNESTDB_LISTEN_ADDR=127.0.0.1:8080
+# Caddy runs on this host, so its loopback hop is already trusted by the
+# rate limiter; set this explicitly anyway so a move to a separate proxy
+# host fails loudly in review rather than silently keying everyone to one IP.
+Environment=FINNESTDB_TRUST_FORWARD_HEADERS=1
+# Comma-separated admin emails. Every address listed here MUST be
+# pre-registered before public launch (see docs/GO_LIVE_CHECKLIST.md).
+Environment=FINNESTDB_ADMIN_EMAILS=
+ExecStart=/opt/finnestdb/bin/server -db /opt/finnestdb/finnestdb.db
+Restart=always
+RestartSec=2
+# The parser and SQLite page cache want headroom; tune to the host.
+MemoryMax=4G
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/finnestdb
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
