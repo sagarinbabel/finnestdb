@@ -31,7 +31,26 @@ const DefaultParseSourceRetentionDays = 30
 const (
 	SourceCustomOverrides         = "custom_overrides"
 	CustomOverridesSourcePriority = 1000
+
+	// GoldPromotionThreshold is how many distinct users must independently
+	// submit (and have accepted) the same correction before it becomes a
+	// gold-case candidate. One user's typo must not become a permanent
+	// eval case; three independent accepted reports is strong signal.
+	GoldPromotionThreshold = 3
+
+	// goldConflictMinCases is how many gold token occurrences must back a
+	// surface before a disagreeing override is refused. A single gold
+	// occurrence can itself be context-specific; two or more independent
+	// occurrences that all disagree with the proposal mean the override
+	// would regress the frozen eval.
+	goldConflictMinCases = 2
 )
+
+// ErrOverrideConflictsWithGold is returned when accepting a parse-feedback
+// correction would contradict the frozen gold evaluation sets (correction-loop
+// Phase 4). The acceptance is rolled back entirely; the admin sees the
+// conflict and can fix the gold set first if the gold itself is wrong.
+var ErrOverrideConflictsWithGold = errors.New("accepted correction contradicts the frozen gold sets; refusing to apply the override")
 
 // fstLemmatizer returns the (lazy-loaded) FST lemmatizer, or nil if
 // loading failed (e.g. no tables under localdata/lemmatizer-fi-et/tables/
@@ -84,6 +103,27 @@ type DeckStats struct {
 	Unique     int
 	Due        int
 	Subscribed bool
+	// Token-weighted coverage: distinct content-token positions in the deck,
+	// and how many of those are covered by the user's known/ignored lemmas.
+	TotalTokens   int
+	CoveredTokens int
+}
+
+// DeckComprehensionStats is the token-mass coverage summary for one deck as
+// seen by one user.
+type DeckComprehensionStats struct {
+	Lang          string
+	TotalTokens   int
+	CoveredTokens int
+	TopUnlocks    []LemmaTokenCount
+}
+
+// LemmaTokenCount ranks a candidate lemma by how many token positions it
+// accounts for.
+type LemmaTokenCount struct {
+	Lemma      string
+	POS        string
+	TokenCount int
 }
 
 type Sentence struct {
@@ -295,6 +335,52 @@ func (d *DB) initSchema() error {
 		FOREIGN KEY(card_id) REFERENCES cards(id)
 	);
 
+	-- Correction-loop Phase 4 guard data: every (surface, lemma, pos) analysis
+	-- that appears in the frozen gold evaluation sets, with how many gold
+	-- token occurrences back it. Populated by cmd/importgoldsurfaces from
+	-- testdata/parser-eval/*/gold; empty table = guard is a no-op.
+	CREATE TABLE IF NOT EXISTS gold_surfaces (
+		lang TEXT NOT NULL,
+		surface TEXT NOT NULL,
+		lemma TEXT NOT NULL,
+		pos TEXT NOT NULL,
+		case_count INTEGER NOT NULL DEFAULT 1,
+		PRIMARY KEY(lang, surface, lemma, pos)
+	);
+
+	-- Correction-loop Phase 3 queue: corrections independently submitted and
+	-- accepted for enough distinct users get promoted here as gold-case
+	-- candidates. cmd/exportgoldcandidates renders pending rows for manual
+	-- review before they enter the committed gold sets.
+	CREATE TABLE IF NOT EXISTS gold_candidates (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		lang TEXT NOT NULL,
+		surface TEXT NOT NULL,
+		lemma TEXT NOT NULL,
+		pos TEXT NOT NULL,
+		feats TEXT NOT NULL DEFAULT '',
+		supporter_count INTEGER NOT NULL,
+		status TEXT NOT NULL DEFAULT 'pending',
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(lang, surface, lemma, pos)
+	);
+
+	-- One row per answered review, appended by RecordReviewAnswer. card_state
+	-- keeps only the latest answer; this log is what daily-activity stats on
+	-- the progress dashboard aggregate over. Rows accumulate from the moment
+	-- this table ships — there is no way to backfill history that was never
+	-- recorded.
+	CREATE TABLE IF NOT EXISTS review_log (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		card_id INTEGER NOT NULL,
+		lang TEXT NOT NULL DEFAULT '',
+		rating TEXT NOT NULL,
+		reviewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY(user_id) REFERENCES users(id),
+		FOREIGN KEY(card_id) REFERENCES cards(id)
+	);
+
 	CREATE TABLE IF NOT EXISTS user_known_lemmas (
 		user_id INTEGER NOT NULL,
 		lang TEXT NOT NULL DEFAULT '',
@@ -440,6 +526,9 @@ func (d *DB) initSchema() error {
 	// takes ~50s to load. Sentence_id + token_ix are included so the LIMIT 1
 	// after ORDER BY uses the index for both the lookup and the ordering.
 	if _, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_occurrence_deck_lemma_pos ON occurrence(deck_id, lemma, pos, sentence_id, token_ix)`); err != nil {
+		return err
+	}
+	if _, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_review_log_user_time ON review_log(user_id, reviewed_at)`); err != nil {
 		return err
 	}
 	if err := EnsureDictMetadataSchema(d.db); err != nil {
@@ -946,6 +1035,28 @@ func (d *DB) RevokeSessionByTokenHash(tokenHash string) error {
 	return err
 }
 
+// Healthcheck verifies the database answers a trivial query. Used by the
+// /api/health deployment probe.
+func (d *DB) Healthcheck() error {
+	var one int
+	return d.db.QueryRow(`SELECT 1`).Scan(&one)
+}
+
+// RevokeAllSessionsForUser marks every active session for the user as
+// revoked. Used by the operator password-reset path so a reset also logs the
+// account out everywhere. Returns the number of sessions revoked. Idempotent.
+func (d *DB) RevokeAllSessionsForUser(userID int64) (int64, error) {
+	res, err := d.db.Exec(
+		`UPDATE user_sessions SET revoked_at = CURRENT_TIMESTAMP
+		 WHERE user_id = ? AND revoked_at IS NULL`,
+		userID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
 // ListUsers returns every user, ordered by id. Used by the admin user
 // management page.
 func (d *DB) ListUsers() ([]User, error) {
@@ -987,11 +1098,19 @@ func (d *DB) DeleteUserCascade(userID int64) error {
 	defer tx.Rollback()
 
 	if _, err := tx.Exec(`
+		UPDATE parse_feedback
+		   SET reviewed_by_user_id = NULL
+		 WHERE reviewed_by_user_id = ?
+		   AND user_id <> ?
+		   AND parse_session_id NOT IN (SELECT id FROM parse_sessions WHERE user_id = ?)`,
+		userID, userID, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`
 		DELETE FROM parse_feedback
 		 WHERE user_id = ?
-		    OR reviewed_by_user_id = ?
 		    OR parse_session_id IN (SELECT id FROM parse_sessions WHERE user_id = ?)`,
-		userID, userID, userID); err != nil {
+		userID, userID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`
@@ -1121,7 +1240,13 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 		             AND (cs.next_due IS NULL OR cs.next_due <= CURRENT_TIMESTAMP)
 		            THEN o.lemma || char(31) || o.pos
 		            ELSE NULL
-		        END) AS due_count
+		        END) AS due_count,
+		        COUNT(DISTINCT o.sentence_id || char(31) || o.token_ix) AS total_token_count,
+		        COUNT(DISTINCT CASE
+		            WHEN uk.lemma IS NOT NULL OR ui.lemma IS NOT NULL
+		            THEN o.sentence_id || char(31) || o.token_ix
+		            ELSE NULL
+		        END) AS covered_token_count
 		   FROM decks d
 		   LEFT JOIN occurrence o
 		          ON o.deck_id = d.id
@@ -1176,12 +1301,97 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 			&item.Unique,
 			&item.Known,
 			&item.Due,
+			&item.TotalTokens,
+			&item.CoveredTokens,
 		); err != nil {
 			return nil, err
 		}
 		stats = append(stats, item)
 	}
 	return stats, rows.Err()
+}
+
+// DeckComprehension computes token-weighted coverage for a deck the user can
+// access (owner, public, or subscribed): the share of content-token positions
+// covered by the user's known lemmas, plus the top-N uncovered (lemma, pos)
+// pairs ranked by how many token positions learning each would unlock.
+//
+// Token identity is (sentence_id, token_ix): multi-lemma homonym expansion
+// stores one occurrence row per candidate, and a position counts as covered
+// when ANY of its candidates is known. Ignored lemmas count as covered —
+// "ignore" means "don't make me study this" (typically proper names), and
+// coverage is a reading-comprehension proxy, not a study queue. Coverage is
+// lemma-level; form-level display is a possible later toggle.
+//
+// Returns sql.ErrNoRows when the deck does not exist or the user cannot see
+// it, matching GetDeckDetails.
+func (d *DB) DeckComprehension(userID, deckID int64, topN int) (*DeckComprehensionStats, error) {
+	var stats DeckComprehensionStats
+	err := d.db.QueryRow(
+		`SELECT lang FROM decks
+		  WHERE id = ?
+		    AND (user_id = ?
+		         OR is_public = 1
+		         OR EXISTS (SELECT 1 FROM user_deck_subscriptions s
+		                     WHERE s.user_id = ? AND s.deck_id = decks.id))`,
+		deckID, userID, userID,
+	).Scan(&stats.Lang)
+	if err != nil {
+		return nil, err
+	}
+
+	const coveredFlags = `
+		SELECT o.sentence_id, o.token_ix,
+		       MAX(CASE WHEN uk.lemma IS NOT NULL OR ui.lemma IS NOT NULL
+		           THEN 1 ELSE 0 END) AS covered
+		  FROM occurrence o
+		  LEFT JOIN user_known_lemmas uk
+		         ON uk.user_id = ?1 AND uk.lang = ?2
+		        AND uk.lemma = o.lemma AND uk.pos = o.pos
+		  LEFT JOIN user_ignored_lemmas ui
+		         ON ui.user_id = ?1 AND ui.lang = ?2
+		        AND ui.lemma = o.lemma AND ui.pos = o.pos
+		 WHERE o.deck_id = ?3
+		 GROUP BY o.sentence_id, o.token_ix`
+
+	if err := d.db.QueryRow(
+		`WITH flags AS (`+coveredFlags+`)
+		 SELECT COUNT(*), COALESCE(SUM(covered), 0) FROM flags`,
+		userID, stats.Lang, deckID,
+	).Scan(&stats.TotalTokens, &stats.CoveredTokens); err != nil {
+		return nil, err
+	}
+
+	if topN <= 0 || stats.TotalTokens == stats.CoveredTokens {
+		return &stats, nil
+	}
+
+	rows, err := d.db.Query(
+		`WITH flags AS (`+coveredFlags+`)
+		 SELECT o.lemma, o.pos, COUNT(*) AS cnt
+		   FROM occurrence o
+		   JOIN flags f
+		     ON f.sentence_id = o.sentence_id
+		    AND f.token_ix = o.token_ix
+		    AND f.covered = 0
+		  WHERE o.deck_id = ?3
+		  GROUP BY o.lemma, o.pos
+		  ORDER BY cnt DESC, o.lemma ASC, o.pos ASC
+		  LIMIT ?4`,
+		userID, stats.Lang, deckID, topN,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var item LemmaTokenCount
+		if err := rows.Scan(&item.Lemma, &item.POS, &item.TokenCount); err != nil {
+			return nil, err
+		}
+		stats.TopUnlocks = append(stats.TopUnlocks, item)
+	}
+	return &stats, rows.Err()
 }
 
 func createDeck(q sqlReadWriter, userID int64, title, lang string, isPublic bool) (int64, error) {
@@ -1981,7 +2191,7 @@ func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string, scope 
 	// Guard against a destructive wipe: if the caller submitted words but none
 	// resolved, the diff below would delete every current row. Refuse before
 	// opening the write transaction. An explicit empty list still clears.
-	if len(normalized) > 0 && len(target) == 0 {
+	if len(words) > 0 && len(target) == 0 {
 		return nil, nil, unresolved, ErrKnownWordsReplaceNoResolvedWords
 	}
 
@@ -2501,7 +2711,7 @@ func (d *DB) RecordReviewAnswer(userID, cardID int64, rating string) error {
 		return sql.ErrNoRows
 	}
 
-	nextDue, updated := nextScheduleForRating(schedule, rating)
+	nextDue, updated := nextAlphaStepScheduleForRating(schedule, rating)
 	payload, err := json.Marshal(updated)
 	if err != nil {
 		return err
@@ -2523,7 +2733,75 @@ func (d *DB) RecordReviewAnswer(userID, cardID int64, rating string) error {
 	); err != nil {
 		return err
 	}
+	if _, err := tx.Exec(
+		`INSERT INTO review_log (user_id, card_id, lang, rating) VALUES (?, ?, ?, ?)`,
+		userID, cardID, card.Lang, rating,
+	); err != nil {
+		return err
+	}
 	return tx.Commit()
+}
+
+// ReviewActivityDay is one day of answered reviews (UTC dates, YYYY-MM-DD).
+type ReviewActivityDay struct {
+	Day   string
+	Count int
+}
+
+// ReviewActivity returns per-day answered-review counts for the trailing
+// `days` window (today included), oldest first, with zero-count days filled
+// in so the dashboard chart has a fixed-width axis. Dates are UTC — the log
+// writes CURRENT_TIMESTAMP and per-user timezones are not tracked in alpha.
+func (d *DB) ReviewActivity(userID int64, days int) ([]ReviewActivityDay, error) {
+	if days <= 0 {
+		return nil, nil
+	}
+	end := time.Now().UTC()
+	start := end.AddDate(0, 0, -(days - 1))
+	rows, err := d.db.Query(
+		`SELECT date(reviewed_at), COUNT(*)
+		   FROM review_log
+		  WHERE user_id = ? AND date(reviewed_at) >= date(?)
+		  GROUP BY date(reviewed_at)`,
+		userID, start.Format("2006-01-02"),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	counts := make(map[string]int, days)
+	for rows.Next() {
+		var day string
+		var count int
+		if err := rows.Scan(&day, &count); err != nil {
+			return nil, err
+		}
+		counts[day] = count
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := make([]ReviewActivityDay, 0, days)
+	for i := 0; i < days; i++ {
+		day := start.AddDate(0, 0, i).Format("2006-01-02")
+		out = append(out, ReviewActivityDay{Day: day, Count: counts[day]})
+	}
+	return out, nil
+}
+
+// CardsInReview counts the user's cards that have entered the review
+// rotation (introduced or answered at least once).
+func (d *DB) CardsInReview(userID int64) (int, error) {
+	var count int
+	err := d.db.QueryRow(
+		`SELECT COUNT(*)
+		   FROM cards c
+		   JOIN card_state cs ON cs.card_id = c.id
+		  WHERE c.user_id = ?
+		    AND (cs.introduced_at IS NOT NULL OR cs.last_answer_at IS NOT NULL)`,
+		userID,
+	).Scan(&count)
+	return count, err
 }
 
 func (d *DB) MarkCardKnown(userID, cardID int64) error {
@@ -2861,12 +3139,16 @@ func (d *DB) ReviewParseFeedback(feedbackID, reviewerUserID int64, status, revie
 	defer tx.Rollback()
 
 	var feedback ParseFeedback
+	var proposedGrammarLabel sql.NullString
 	err = tx.QueryRow(
-		`SELECT id, lang, surface, proposed_lemma, proposed_pos
+		`SELECT id, lang, surface, proposed_lemma, proposed_pos, proposed_grammar_label
 		 FROM parse_feedback
 		 WHERE id = ?`,
 		feedbackID,
-	).Scan(&feedback.ID, &feedback.Lang, &feedback.Surface, &feedback.ProposedLemma, &feedback.ProposedPOS)
+	).Scan(&feedback.ID, &feedback.Lang, &feedback.Surface, &feedback.ProposedLemma, &feedback.ProposedPOS, &proposedGrammarLabel)
+	if proposedGrammarLabel.Valid {
+		feedback.ProposedGrammarLabel = proposedGrammarLabel.String
+	}
 	if err == sql.ErrNoRows {
 		return sql.ErrNoRows
 	}
@@ -2906,6 +3188,22 @@ func writeAcceptedParseFeedbackOverride(tx *sql.Tx, feedback ParseFeedback) erro
 	if lemma == "" || pos == "" || lang == "" || form == "" {
 		return fmt.Errorf("accepted parse feedback %d is missing override fields", feedback.ID)
 	}
+
+	// Phase 4: eval-gated safety check. Refuse the override when the frozen
+	// gold sets know this surface and unanimously disagree with the proposal
+	// across enough occurrences — applying it would regress the eval. The
+	// whole acceptance rolls back, so the feedback stays reviewable.
+	if err := checkOverrideAgainstGold(tx, lang, form, lemma, pos); err != nil {
+		return err
+	}
+
+	// Phase 2: accepted grammar-label corrections ride the same override
+	// row as FEATS. The corrected feats live ONLY on the custom_overrides
+	// row — upstream imported rows stay pristine so a dictionary re-import
+	// never silently reverts or duplicates a correction (deliberate
+	// deviation from the TODO sketch of editing the upstream row in place).
+	feats := featsFromCaseLabel(strings.ToLower(strings.TrimSpace(feedback.ProposedGrammarLabel)))
+
 	if _, err := tx.Exec(
 		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority, parse_feedback_id)
 		 VALUES (?, ?, NULL, ?, ?, ?, ?)
@@ -2919,18 +3217,169 @@ func writeAcceptedParseFeedbackOverride(tx *sql.Tx, feedback ParseFeedback) erro
 		return err
 	}
 	if _, err := tx.Exec(
-		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, parse_feedback_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET
-			source = excluded.source,
-			source_priority = excluded.source_priority,
-			parse_feedback_id = excluded.parse_feedback_id
-		 WHERE forms.source_priority <= excluded.source_priority`,
-		form, lemma, pos, lang, SourceCustomOverrides, CustomOverridesSourcePriority, feedback.ID,
+		`DELETE FROM forms
+		 WHERE form = ? AND lang = ? AND source = ? AND source_priority = ?`,
+		form, lang, SourceCustomOverrides, CustomOverridesSourcePriority,
 	); err != nil {
 		return err
 	}
+	if _, err := tx.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority, parse_feedback_id, feats)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(form, lang, lemma, pos) DO UPDATE SET
+			source = excluded.source,
+			source_priority = excluded.source_priority,
+			parse_feedback_id = excluded.parse_feedback_id,
+			feats = excluded.feats
+		 WHERE forms.source_priority <= excluded.source_priority`,
+		form, lemma, pos, lang, SourceCustomOverrides, CustomOverridesSourcePriority, feedback.ID, feats,
+	); err != nil {
+		return err
+	}
+
+	// Phase 3: promote to a gold-case candidate once enough distinct users
+	// have independently submitted (and had accepted) the same correction.
+	return maybePromoteGoldCandidate(tx, lang, form, lemma, pos, feats)
+}
+
+// checkOverrideAgainstGold implements the correction-loop Phase 4 guard.
+// Empty gold_surfaces (importer never run) means no check — the guard cannot
+// invent gold knowledge it doesn't have.
+func checkOverrideAgainstGold(tx *sql.Tx, lang, form, lemma, pos string) error {
+	var total, matching int
+	if err := tx.QueryRow(
+		`SELECT COALESCE(SUM(case_count), 0),
+		        COALESCE(SUM(CASE WHEN lemma = ? AND pos = ? THEN case_count ELSE 0 END), 0)
+		   FROM gold_surfaces
+		  WHERE lang = ? AND surface = ?`,
+		lemma, pos, lang, form,
+	).Scan(&total, &matching); err != nil {
+		return err
+	}
+	if total >= goldConflictMinCases && matching == 0 {
+		return fmt.Errorf("%w: %d gold occurrence(s) of %q analyze it differently than %s/%s",
+			ErrOverrideConflictsWithGold, total, form, lemma, pos)
+	}
 	return nil
+}
+
+// maybePromoteGoldCandidate upserts a pending gold-case candidate when the
+// same (surface → lemma/pos) correction has been accepted for at least
+// GoldPromotionThreshold distinct submitting users. Counting runs inside the
+// acceptance transaction, so the row being accepted is included.
+func maybePromoteGoldCandidate(tx *sql.Tx, lang, form, lemma, pos, feats string) error {
+	var supporters int
+	if err := tx.QueryRow(
+		`SELECT COUNT(DISTINCT user_id)
+		   FROM parse_feedback
+		  WHERE lang = ? AND lower(surface) = ? AND proposed_lemma = ? AND proposed_pos = ?
+		    AND status = 'accepted'`,
+		lang, form, lemma, pos,
+	).Scan(&supporters); err != nil {
+		return err
+	}
+	if supporters < GoldPromotionThreshold {
+		return nil
+	}
+	_, err := tx.Exec(
+		`INSERT INTO gold_candidates (lang, surface, lemma, pos, feats, supporter_count)
+		 VALUES (?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(lang, surface, lemma, pos) DO UPDATE SET
+			supporter_count = excluded.supporter_count`,
+		lang, form, lemma, pos, feats, supporters,
+	)
+	return err
+}
+
+// ReplaceGoldSurfaces atomically replaces the Phase-4 guard data for a
+// language with the given aggregated gold analyses. Used by
+// cmd/importgoldsurfaces.
+func (d *DB) ReplaceGoldSurfaces(lang string, rows []GoldSurface) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM gold_surfaces WHERE lang = ?`, lang); err != nil {
+		return err
+	}
+	stmt, err := tx.Prepare(`INSERT INTO gold_surfaces (lang, surface, lemma, pos, case_count) VALUES (?, ?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+	for _, row := range rows {
+		if _, err := stmt.Exec(lang, strings.ToLower(row.Surface), row.Lemma, row.POS, row.CaseCount); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
+// GoldSurface is one aggregated gold analysis for the Phase-4 guard.
+type GoldSurface struct {
+	Surface   string
+	Lemma     string
+	POS       string
+	CaseCount int
+}
+
+// GoldCandidate is one pending Phase-3 gold-case promotion.
+type GoldCandidate struct {
+	ID             int64
+	Lang           string
+	Surface        string
+	Lemma          string
+	POS            string
+	Feats          string
+	SupporterCount int
+	Status         string
+}
+
+// ListGoldCandidates returns promotion candidates with the given status
+// (all statuses when empty), newest first.
+func (d *DB) ListGoldCandidates(status string) ([]GoldCandidate, error) {
+	query := `SELECT id, lang, surface, lemma, pos, feats, supporter_count, status
+	            FROM gold_candidates`
+	args := []any{}
+	if status != "" {
+		query += ` WHERE status = ?`
+		args = append(args, status)
+	}
+	query += ` ORDER BY id DESC`
+	rows, err := d.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []GoldCandidate{}
+	for rows.Next() {
+		var c GoldCandidate
+		if err := rows.Scan(&c.ID, &c.Lang, &c.Surface, &c.Lemma, &c.POS, &c.Feats, &c.SupporterCount, &c.Status); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+// MarkGoldCandidatesExported flips pending candidates to exported so the next
+// export run only shows new arrivals.
+func (d *DB) MarkGoldCandidatesExported(ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, id := range ids {
+		if _, err := tx.Exec(`UPDATE gold_candidates SET status = 'exported' WHERE id = ? AND status = 'pending'`, id); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (d *DB) Close() error {
@@ -3142,7 +3591,11 @@ func (d *DB) userNewCardsPerDay(userID int64) (int, error) {
 	return newPerDay, nil
 }
 
-func nextScheduleForRating(schedule ReviewSchedule, rating string) (time.Time, ReviewSchedule) {
+// nextAlphaStepScheduleForRating is the public-alpha review scheduler. It uses
+// fixed steps and intentionally does not implement FSRS; the existing
+// card_state.fsrs_json column stores this small JSON state until the FSRS
+// migration replaces it.
+func nextAlphaStepScheduleForRating(schedule ReviewSchedule, rating string) (time.Time, ReviewSchedule) {
 	now := time.Now().UTC()
 	if schedule.Step < 0 {
 		schedule.Step = 0

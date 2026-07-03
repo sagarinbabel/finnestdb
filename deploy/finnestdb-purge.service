@@ -1,0 +1,11 @@
+# Daily retention purge: clears parse_sessions.source_text older than the
+# 30-day retention window while preserving decks, cards, feedback rows, and
+# admin review state. Pair with finnestdb-purge.timer.
+[Unit]
+Description=FinEstDB parse source-text retention purge
+
+[Service]
+Type=oneshot
+User=finnestdb
+WorkingDirectory=/opt/finnestdb
+ExecStart=/opt/finnestdb/bin/purgeparsecontext -db /opt/finnestdb/finnestdb.db

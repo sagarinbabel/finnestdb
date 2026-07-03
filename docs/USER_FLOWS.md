@@ -50,7 +50,7 @@ flowchart TD
     SP{"Save as…"}
     DL["📚 Decks list<br/>+ known-words panel"]
     DD["Deck detail<br/>+ comprehension projection"]
-    REV["🎯 Review session<br/>FSRS · Again/Hard/Good/Easy"]
+    REV["🎯 Review session<br/>Alpha scheduler · Again/Hard/Good/Easy"]
     REVALL["Review all due<br/>cross-deck"]
 
     D --> P
@@ -710,7 +710,7 @@ yet in the codebase:
 - Cold-start "top 1000" CTA (gated on the research project).
 - Sentence translation (LLM-backed).
 - Comprehension prediction in deck detail (already in `TODO.md`).
-- FSRS migration (already in `TODO.md`).
+- FSRS migration after public alpha (already in `TODO.md`).
 
 Items in the dictation that **already exist** and just need the user
 to find them:

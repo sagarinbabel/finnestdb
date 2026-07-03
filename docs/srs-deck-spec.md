@@ -10,12 +10,23 @@ _Current as of 2026-07-03 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
 >
 > Alpha card identity is also settled: migrate review cards to
 > surface-form-in-context cards before attaching real FSRS memory.
+>
+> This supersedes the launch note of 2026-06-20, which planned to ship the
+> fixed-step scheduler (`internal/store/db.go::nextAlphaStepScheduleForRating`)
+> through public alpha and treat FSRS as post-launch. The step scheduler is
+> still what runs today; the 2026-07-03 product-readiness grill (Decision 23)
+> moved narrow FSRS into the public-alpha launch bar.
 
 ## Recommendation
 
-Use FSRS for scheduling.
+Ship narrow FSRS scheduling for the public alpha, after the surface-card
+identity migration (Decision 23).
 
-Use the FSRS algorithm at the product level, but prefer the official Go implementation for the app runtime and keep `fsrs-rs` as the future optimization path.
+Today the app still runs the deterministic alpha step scheduler
+(`nextAlphaStepScheduleForRating`) with the same Again / Hard / Good / Easy
+rating surface. For the alpha migration, use the FSRS algorithm at the product
+level, prefer the official Go implementation for the app runtime, and keep
+`fsrs-rs` as the future optimization path.
 
 ## Alpha FSRS Scope
 
@@ -66,7 +77,8 @@ Why:
 
 Practical decision:
 
-- Runtime scheduler: `github.com/open-spaced-repetition/go-fsrs`
+- Launch runtime scheduler: `internal/store.nextAlphaStepScheduleForRating`
+- Target runtime scheduler: `github.com/open-spaced-repetition/go-fsrs`
 - Future offline optimizer: `open-spaced-repetition/fsrs-rs`
 
 ## Product Model
@@ -430,6 +442,19 @@ word counts, due counts, new-card counts, token-weighted coverage, unique
 coverage, and next-unlock projections should act as if that content is not
 currently studyable. Historical/admin audit views may still include the
 quarantined rows with their correction issue metadata.
+
+> **Implementation notes (2026-07-02, shipped as `GET /api/decks/{id}/comprehension`
+> and `comprehension_pct` on the deck list):**
+>
+> - **Ignored lemmas count as covered.** "Ignore" means "don't make me study
+>   this" (typically proper names); coverage is a reading-comprehension proxy,
+>   not a study queue, and a name the user chose to skip should not depress
+>   their percentage.
+> - **Token identity is a position, not a row.** Multi-lemma homonym expansion
+>   stores one occurrence row per candidate; a token position counts as covered
+>   when ANY of its candidates is known.
+> - **Coverage is lemma-level** for v1; form-level display is a possible later
+>   toggle.
 
 ### 3. Comprehension prediction (before/after)
 

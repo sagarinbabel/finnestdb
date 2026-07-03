@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -57,7 +58,18 @@ type DashboardData struct {
 	KnownCount       int           `json:"known_count"`
 	DueCount         int           `json:"due_count"`
 	NewCapacityToday int           `json:"new_capacity_today"`
-	Decks            []DeckSummary `json:"decks"`
+	CardsInReview    int           `json:"cards_in_review"`
+	ReviewsToday     int           `json:"reviews_today"`
+	// ReviewActivity is the trailing 14 days of answered reviews (UTC),
+	// oldest first, zero-filled. Populated from review_log, which only
+	// accumulates from the moment it shipped.
+	ReviewActivity []ReviewActivityDay `json:"review_activity"`
+	Decks          []DeckSummary       `json:"decks"`
+}
+
+type ReviewActivityDay struct {
+	Day   string `json:"day"`
+	Count int    `json:"count"`
 }
 
 type SessionUser struct {
@@ -108,6 +120,26 @@ type DeckSummary struct {
 	IsPublic   bool   `json:"is_public"`
 	IsOwner    bool   `json:"is_owner,omitempty"`
 	Subscribed bool   `json:"subscribed,omitempty"`
+	// Token-weighted coverage of the deck by the user's known/ignored
+	// lemmas, 0–100 with one decimal. Null when the deck has no tokens.
+	ComprehensionPct *float64 `json:"comprehension_pct,omitempty"`
+}
+
+// DeckComprehensionResponse is the payload of GET /api/decks/{id}/comprehension.
+type DeckComprehensionResponse struct {
+	CoveragePct float64            `json:"coverage_pct"`
+	TotalTokens int                `json:"total_tokens"`
+	KnownTokens int                `json:"known_tokens"`
+	TopUnlocks  []DeckUnlockEntry  `json:"top_unlocks"`
+}
+
+// DeckUnlockEntry is one "learn this next" candidate: an uncovered lemma
+// ranked by the share of the deck's token mass it would unlock.
+type DeckUnlockEntry struct {
+	Lemma      string  `json:"lemma"`
+	POS        string  `json:"pos"`
+	TokenCount int     `json:"token_count"`
+	GainPct    float64 `json:"gain_pct"`
 }
 
 type CreateDeckRequest struct {
@@ -460,6 +492,11 @@ func (a *API) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	// Login CSRF: a foreign-origin register/login must not be able to issue a
+	// session cookie for an attacker-controlled account in the victim browser.
+	if !allowStateChangingRequest(w, r) {
+		return
+	}
 
 	var req LoginRequest
 	if !decodeJSONRequest(w, r, &req) {
@@ -515,6 +552,9 @@ func (a *API) HandleRegister(w http.ResponseWriter, r *http.Request) {
 func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !allowStateChangingRequest(w, r) {
 		return
 	}
 
@@ -638,14 +678,15 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 	deckSummaries := make([]DeckSummary, len(decks))
 	for i, deck := range decks {
 		deckSummaries[i] = DeckSummary{
-			ID:         deck.ID,
-			Title:      deck.Title,
-			Lang:       deck.Lang,
-			Known:      deck.Known,
-			Unique:     deck.Unique,
-			Due:        deck.Due,
-			IsPublic:   deck.IsPublic,
-			Subscribed: deck.Subscribed,
+			ID:               deck.ID,
+			Title:            deck.Title,
+			Lang:             deck.Lang,
+			Known:            deck.Known,
+			Unique:           deck.Unique,
+			Due:              deck.Due,
+			IsPublic:         deck.IsPublic,
+			Subscribed:       deck.Subscribed,
+			ComprehensionPct: coveragePct(deck.CoveredTokens, deck.TotalTokens),
 		}
 	}
 
@@ -689,6 +730,25 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cardsInReview, err := a.store.CardsInReview(auth.UserID)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	activity, err := a.store.ReviewActivity(auth.UserID, 14)
+	if err != nil {
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	activityDays := make([]ReviewActivityDay, 0, len(activity))
+	reviewsToday := 0
+	for i, day := range activity {
+		activityDays = append(activityDays, ReviewActivityDay{Day: day.Day, Count: day.Count})
+		if i == len(activity)-1 {
+			reviewsToday = day.Count
+		}
+	}
+
 	writeJSON(w, http.StatusOK, MeResponse{
 		Authenticated: true,
 		User:          sessionUserFromAuth(auth),
@@ -696,6 +756,9 @@ func (a *API) HandleMe(w http.ResponseWriter, r *http.Request) {
 			KnownCount:       knownCount,
 			DueCount:         dueCount,
 			NewCapacityToday: newCount,
+			CardsInReview:    cardsInReview,
+			ReviewsToday:     reviewsToday,
+			ReviewActivity:   activityDays,
 			Decks:            deckSummaries,
 		},
 		Languages: &UserLanguages{
@@ -832,17 +895,29 @@ func (a *API) handleDecksList(w http.ResponseWriter, auth *AuthContext) {
 	resp := DeckListResponse{Decks: make([]DeckSummary, 0, len(decks))}
 	for _, deck := range decks {
 		resp.Decks = append(resp.Decks, DeckSummary{
-			ID:         deck.ID,
-			Title:      deck.Title,
-			Lang:       deck.Lang,
-			Known:      deck.Known,
-			Unique:     deck.Unique,
-			Due:        deck.Due,
-			IsPublic:   deck.IsPublic,
-			Subscribed: deck.Subscribed,
+			ID:               deck.ID,
+			Title:            deck.Title,
+			Lang:             deck.Lang,
+			Known:            deck.Known,
+			Unique:           deck.Unique,
+			Due:              deck.Due,
+			IsPublic:         deck.IsPublic,
+			Subscribed:       deck.Subscribed,
+			ComprehensionPct: coveragePct(deck.CoveredTokens, deck.TotalTokens),
 		})
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// coveragePct converts a covered/total token count into a display percentage
+// rounded to one decimal, or nil for empty decks so the UI can render a dash
+// instead of a misleading 0%.
+func coveragePct(covered, total int) *float64 {
+	if total <= 0 {
+		return nil
+	}
+	pct := math.Round(float64(covered)/float64(total)*1000) / 10
+	return &pct
 }
 
 // HandlePublicDecks lists every official deck the user does not already own.
@@ -1438,6 +1513,10 @@ func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
 		a.handleDeckSubscribe(w, r, auth, deckID)
 		return
 	}
+	if suffix == "/comprehension" {
+		a.handleDeckComprehension(w, r, auth, deckID)
+		return
+	}
 	if suffix != "" {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
@@ -1617,6 +1696,46 @@ func (a *API) handleGetDeck(w http.ResponseWriter, auth *AuthContext, deckID int
 // (lemma, pos) the user has not already marked known/ignored. DELETE removes
 // the subscription but leaves seeded cards in place — matching how deleting
 // an owned deck preserves global learning state.
+// handleDeckComprehension serves GET /api/decks/{id}/comprehension: the
+// user's token-weighted coverage of the deck plus the top-10 uncovered
+// lemmas ranked by marginal comprehension gain ("learn these next").
+func (a *API) handleDeckComprehension(w http.ResponseWriter, r *http.Request, auth *AuthContext, deckID int64) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	stats, err := a.store.DeckComprehension(auth.UserID, deckID, 10)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Deck not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+
+	resp := DeckComprehensionResponse{
+		TotalTokens: stats.TotalTokens,
+		KnownTokens: stats.CoveredTokens,
+		TopUnlocks:  make([]DeckUnlockEntry, 0, len(stats.TopUnlocks)),
+	}
+	if pct := coveragePct(stats.CoveredTokens, stats.TotalTokens); pct != nil {
+		resp.CoveragePct = *pct
+	}
+	for _, unlock := range stats.TopUnlocks {
+		entry := DeckUnlockEntry{
+			Lemma:      unlock.Lemma,
+			POS:        unlock.POS,
+			TokenCount: unlock.TokenCount,
+		}
+		if pct := coveragePct(unlock.TokenCount, stats.TotalTokens); pct != nil {
+			entry.GainPct = *pct
+		}
+		resp.TopUnlocks = append(resp.TopUnlocks, entry)
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
 func (a *API) handleDeckSubscribe(w http.ResponseWriter, r *http.Request, auth *AuthContext, deckID int64) {
 	switch r.Method {
 	case http.MethodPost:
@@ -2520,6 +2639,13 @@ func (a *API) handleAdminParseFeedback(w http.ResponseWriter, r *http.Request, a
 				http.Error(w, "Parse feedback not found", http.StatusNotFound)
 				return
 			}
+			// Phase-4 eval gate: the override would contradict the frozen
+			// gold sets. Nothing was applied; surface the reason so the
+			// admin can fix the gold set first if the gold itself is wrong.
+			if errors.Is(err, store.ErrOverrideConflictsWithGold) {
+				http.Error(w, err.Error(), http.StatusConflict)
+				return
+			}
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
@@ -2624,7 +2750,26 @@ func decodeJSONRequest(w http.ResponseWriter, r *http.Request, dst any) bool {
 	return true
 }
 
+// HandleHealth is the deployment liveness/readiness probe: 200 with a JSON
+// body when the process is up and the database answers a trivial query, 503
+// otherwise. Unauthenticated by design — it must never expose data beyond
+// up/down, because uptime monitors hit it anonymously.
+func (a *API) HandleHealth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := a.store.Healthcheck(); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "degraded"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
 func (a *API) SetupRoutes(mux *http.ServeMux) {
+	// Ops
+	mux.HandleFunc("/api/health", a.HandleHealth)
+
 	// Auth routes
 	mux.HandleFunc("/api/auth/register", a.HandleRegister)
 	mux.HandleFunc("/api/auth/login", a.HandleLogin)

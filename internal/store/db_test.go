@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -264,6 +265,83 @@ func TestGetNextReviewCardRespectsDailyNewCardLimit(t *testing.T) {
 	}
 }
 
+func TestReviewLogAndActivity(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "review-log@example.com")
+	other := createTestUser(t, db, "review-log-other@example.com")
+
+	cardID, err := db.EnsureCard(user.ID, "FI", "kissa", "NOUN")
+	if err != nil {
+		t.Fatalf("EnsureCard: %v", err)
+	}
+
+	// Fresh account: no cards in rotation, no activity days with counts.
+	inReview, err := db.CardsInReview(user.ID)
+	if err != nil {
+		t.Fatalf("CardsInReview: %v", err)
+	}
+	if inReview != 0 {
+		t.Fatalf("cards in review=%d want 0 before any answer", inReview)
+	}
+
+	for _, rating := range []string{"good", "again"} {
+		if err := db.RecordReviewAnswer(user.ID, cardID, rating); err != nil {
+			t.Fatalf("RecordReviewAnswer(%s): %v", rating, err)
+		}
+	}
+
+	var logged int
+	if err := db.db.QueryRow(
+		`SELECT COUNT(*) FROM review_log WHERE user_id = ? AND card_id = ?`,
+		user.ID, cardID,
+	).Scan(&logged); err != nil {
+		t.Fatalf("count review_log: %v", err)
+	}
+	if logged != 2 {
+		t.Fatalf("review_log rows=%d want 2 (one per answer)", logged)
+	}
+
+	inReview, err = db.CardsInReview(user.ID)
+	if err != nil {
+		t.Fatalf("CardsInReview after answers: %v", err)
+	}
+	if inReview != 1 {
+		t.Fatalf("cards in review=%d want 1", inReview)
+	}
+
+	// Activity window: zero-filled, oldest first, today's count last.
+	activity, err := db.ReviewActivity(user.ID, 14)
+	if err != nil {
+		t.Fatalf("ReviewActivity: %v", err)
+	}
+	if len(activity) != 14 {
+		t.Fatalf("activity days=%d want 14 (zero-filled window)", len(activity))
+	}
+	today := time.Now().UTC().Format("2006-01-02")
+	last := activity[len(activity)-1]
+	if last.Day != today || last.Count != 2 {
+		t.Fatalf("today=%+v want {%s 2}", last, today)
+	}
+	total := 0
+	for _, day := range activity {
+		total += day.Count
+	}
+	if total != 2 {
+		t.Fatalf("total activity=%d want 2 — another user's or day's rows leaked in", total)
+	}
+
+	// Isolation: the other user sees nothing.
+	otherActivity, err := db.ReviewActivity(other.ID, 14)
+	if err != nil {
+		t.Fatalf("ReviewActivity other: %v", err)
+	}
+	for _, day := range otherActivity {
+		if day.Count != 0 {
+			t.Fatalf("other user's activity=%+v want all zeros", otherActivity)
+		}
+	}
+}
+
 func TestManualKnownActionsUpgradeAnkiSource(t *testing.T) {
 	db := newTestDB(t)
 	user := createTestUser(t, db, "source-upgrade@example.com")
@@ -358,6 +436,44 @@ func TestUpdateDeckTitleAndPublicRollsBackOnTitleFailure(t *testing.T) {
 	}
 }
 
+func TestRevokeAllSessionsForUser(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "revoke-all@example.com")
+	other := createTestUser(t, db, "revoke-all-other@example.com")
+
+	for _, hash := range []string{"revoke-all-hash-1", "revoke-all-hash-2"} {
+		if err := db.CreateSession(user.ID, hash, time.Now().Add(time.Hour)); err != nil {
+			t.Fatalf("CreateSession %s: %v", hash, err)
+		}
+	}
+	if err := db.CreateSession(other.ID, "revoke-all-other-hash", time.Now().Add(time.Hour)); err != nil {
+		t.Fatalf("CreateSession other: %v", err)
+	}
+
+	n, err := db.RevokeAllSessionsForUser(user.ID)
+	if err != nil {
+		t.Fatalf("RevokeAllSessionsForUser: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("revoked=%d want 2", n)
+	}
+
+	// Revoked sessions must no longer authenticate; the other user's
+	// session must be untouched.
+	for _, hash := range []string{"revoke-all-hash-1", "revoke-all-hash-2"} {
+		if u, err := db.GetUserBySessionTokenHash(hash, 0); err != nil {
+			t.Fatalf("GetUserBySessionTokenHash %s: %v", hash, err)
+		} else if u != nil {
+			t.Fatalf("session %s still authenticates after revoke-all", hash)
+		}
+	}
+	if u, err := db.GetUserBySessionTokenHash("revoke-all-other-hash", 0); err != nil {
+		t.Fatalf("GetUserBySessionTokenHash other: %v", err)
+	} else if u == nil || u.ID != other.ID {
+		t.Fatal("other user's session was revoked by another user's reset")
+	}
+}
+
 func TestDeleteUserCascadeRemovesPrivateRows(t *testing.T) {
 	db := newTestDB(t)
 	user := createTestUser(t, db, "delete-me@example.com")
@@ -399,6 +515,27 @@ func TestDeleteUserCascadeRemovesPrivateRows(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("CreateParseFeedback: %v", err)
 	}
+	otherParseID, err := db.CreateParseSession(&other.ID, "FI", "custom", "Koira.", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession other: %v", err)
+	}
+	otherFeedbackID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: otherParseID,
+		UserID:         other.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "Koira",
+		OriginalLemma:  "koira",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "koira",
+		ProposedPOS:    "NOUN",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback other: %v", err)
+	}
+	if err := db.ReviewParseFeedback(otherFeedbackID, user.ID, "rejected", "not a correction"); err != nil {
+		t.Fatalf("ReviewParseFeedback other: %v", err)
+	}
 
 	if err := db.DeleteUserCascade(user.ID); err != nil {
 		t.Fatalf("DeleteUserCascade: %v", err)
@@ -430,6 +567,9 @@ func TestDeleteUserCascadeRemovesPrivateRows(t *testing.T) {
 	}
 	if got := countRows(t, db, `SELECT COUNT(*) FROM decks WHERE id = ? AND user_id = ?`, publicDeckID, other.ID); got != 1 {
 		t.Fatalf("other user's public deck rows=%d want 1", got)
+	}
+	if got := countRows(t, db, `SELECT COUNT(*) FROM parse_feedback WHERE id = ? AND user_id = ? AND reviewed_by_user_id IS NULL`, otherFeedbackID, other.ID); got != 1 {
+		t.Fatalf("other user's reviewed feedback rows=%d want 1 with reviewer anonymized", got)
 	}
 }
 
@@ -548,6 +688,10 @@ func TestAcceptedParseFeedbackWritesCustomOverrideAndChangesLookup(t *testing.T)
 	if after.Lemma != "newlemma" || after.POS != "VERB" {
 		t.Fatalf("after acceptance got %s/%s, want newlemma/VERB", after.Lemma, after.POS)
 	}
+	expanded := db.BatchLookupAllForms([]string{"loopword"}, "FI", "custom")["loopword"]
+	if len(expanded) != 1 || expanded[0].Lemma != "newlemma" || expanded[0].POS != "VERB" {
+		t.Fatalf("expanded candidates after acceptance got %+v, want only newlemma/VERB", expanded)
+	}
 
 	var formSource string
 	var formPriority int
@@ -577,6 +721,264 @@ func TestAcceptedParseFeedbackWritesCustomOverrideAndChangesLookup(t *testing.T)
 	if lemmaSource != SourceCustomOverrides || lemmaPriority != CustomOverridesSourcePriority || lemmaFeedbackID != feedbackID {
 		t.Fatalf("lemma provenance got %q/%d/%d, want %q/%d/%d",
 			lemmaSource, lemmaPriority, lemmaFeedbackID, SourceCustomOverrides, CustomOverridesSourcePriority, feedbackID)
+	}
+}
+
+func TestAcceptedParseFeedbackReplacesPreviousSurfaceOverride(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "feedback-replace-user@example.com")
+	admin := createTestUser(t, db, "feedback-replace-admin@example.com")
+
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "loopword", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	firstFeedbackID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "Loopword",
+		OriginalLemma:  "oldlemma",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "alpha",
+		ProposedPOS:    "NOUN",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback first: %v", err)
+	}
+	if err := db.ReviewParseFeedback(firstFeedbackID, admin.ID, "accepted", "first"); err != nil {
+		t.Fatalf("ReviewParseFeedback first: %v", err)
+	}
+
+	secondFeedbackID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "loopword",
+		OriginalLemma:  "alpha",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "zebra",
+		ProposedPOS:    "VERB",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback second: %v", err)
+	}
+	if err := db.ReviewParseFeedback(secondFeedbackID, admin.ID, "accepted", "second"); err != nil {
+		t.Fatalf("ReviewParseFeedback second: %v", err)
+	}
+
+	after := db.BatchLookupForms([]string{"loopword"}, "FI", "custom")["loopword"]
+	if after.Lemma != "zebra" || after.POS != "VERB" {
+		t.Fatalf("after second acceptance got %s/%s, want zebra/VERB", after.Lemma, after.POS)
+	}
+
+	var overrideCount int
+	var feedbackID int64
+	if err := db.db.QueryRow(
+		`SELECT COUNT(*), COALESCE(MAX(parse_feedback_id), 0)
+		 FROM forms
+		 WHERE form = 'loopword' AND lang = 'FI' AND source = ? AND source_priority = ?`,
+		SourceCustomOverrides, CustomOverridesSourcePriority,
+	).Scan(&overrideCount, &feedbackID); err != nil {
+		t.Fatalf("count override rows: %v", err)
+	}
+	if overrideCount != 1 || feedbackID != secondFeedbackID {
+		t.Fatalf("override rows got count=%d feedback_id=%d, want count=1 feedback_id=%d",
+			overrideCount, feedbackID, secondFeedbackID)
+	}
+}
+
+func TestAcceptedGrammarCorrectionCarriesFeats(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "feats-correction-user@example.com")
+	admin := createTestUser(t, db, "feats-correction-admin@example.com")
+
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "talossa", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	feedbackID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID:       parseID,
+		UserID:               user.ID,
+		Lang:                 "FI",
+		Parser:               "custom",
+		Surface:              "Talossa",
+		OriginalLemma:        "talo",
+		OriginalPOS:          "NOUN",
+		OriginalGrammarLabel: "elative",
+		ProposedLemma:        "talo",
+		ProposedPOS:          "NOUN",
+		ProposedGrammarLabel: "inessive",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback: %v", err)
+	}
+	if err := db.ReviewParseFeedback(feedbackID, admin.ID, "accepted", "case fix"); err != nil {
+		t.Fatalf("ReviewParseFeedback: %v", err)
+	}
+
+	var feats string
+	if err := db.db.QueryRow(
+		`SELECT COALESCE(feats, '') FROM forms
+		 WHERE form = 'talossa' AND lang = 'FI' AND source = ? AND source_priority = ?`,
+		SourceCustomOverrides, CustomOverridesSourcePriority,
+	).Scan(&feats); err != nil {
+		t.Fatalf("read override feats: %v", err)
+	}
+	if feats != "Case=Ine" {
+		t.Fatalf("override feats=%q want Case=Ine — grammar corrections must reach FEATS, not just the label", feats)
+	}
+}
+
+func TestGoldConflictBlocksAcceptance(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "gold-guard-user@example.com")
+	admin := createTestUser(t, db, "gold-guard-admin@example.com")
+
+	// The frozen gold sets analyze "voi" twice as voida/VERB.
+	if err := db.ReplaceGoldSurfaces("FI", []GoldSurface{
+		{Surface: "voi", Lemma: "voida", POS: "VERB", CaseCount: 2},
+	}); err != nil {
+		t.Fatalf("ReplaceGoldSurfaces: %v", err)
+	}
+
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "voi", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	newFeedback := func(lemma, pos string) int64 {
+		t.Helper()
+		id, err := db.CreateParseFeedback(ParseFeedback{
+			ParseSessionID: parseID,
+			UserID:         user.ID,
+			Lang:           "FI",
+			Parser:         "custom",
+			Surface:        "voi",
+			OriginalLemma:  "voida",
+			OriginalPOS:    "VERB",
+			ProposedLemma:  lemma,
+			ProposedPOS:    pos,
+		})
+		if err != nil {
+			t.Fatalf("CreateParseFeedback: %v", err)
+		}
+		return id
+	}
+
+	// Contradicting the gold analysis is refused and rolls the whole
+	// acceptance back: status stays reviewable, no override row appears.
+	conflictID := newFeedback("voi", "NOUN")
+	err = db.ReviewParseFeedback(conflictID, admin.ID, "accepted", "butter!")
+	if !errors.Is(err, ErrOverrideConflictsWithGold) {
+		t.Fatalf("accept err=%v want ErrOverrideConflictsWithGold", err)
+	}
+	var status string
+	if err := db.db.QueryRow(`SELECT status FROM parse_feedback WHERE id = ?`, conflictID).Scan(&status); err != nil {
+		t.Fatalf("read status: %v", err)
+	}
+	if status != "submitted" {
+		t.Fatalf("status=%q want submitted — a refused acceptance must roll back entirely", status)
+	}
+	var overrides int
+	if err := db.db.QueryRow(
+		`SELECT COUNT(*) FROM forms WHERE form = 'voi' AND lang = 'FI' AND source = ?`,
+		SourceCustomOverrides,
+	).Scan(&overrides); err != nil {
+		t.Fatalf("count overrides: %v", err)
+	}
+	if overrides != 0 {
+		t.Fatalf("override rows=%d want 0 after refused acceptance", overrides)
+	}
+
+	// Rejecting the same feedback is fine — the guard only gates acceptance.
+	if err := db.ReviewParseFeedback(conflictID, admin.ID, "rejected", "gold disagrees"); err != nil {
+		t.Fatalf("reject after conflict: %v", err)
+	}
+
+	// A proposal that AGREES with gold sails through.
+	agreeID := newFeedback("voida", "VERB")
+	if err := db.ReviewParseFeedback(agreeID, admin.ID, "accepted", "matches gold"); err != nil {
+		t.Fatalf("accept agreeing proposal: %v", err)
+	}
+
+	// A single gold occurrence is below the conflict threshold: one gold
+	// case can itself be context-specific, so it must not hard-block.
+	if err := db.ReplaceGoldSurfaces("FI", []GoldSurface{
+		{Surface: "kuusi", Lemma: "kuusi", POS: "NUM", CaseCount: 1},
+	}); err != nil {
+		t.Fatalf("ReplaceGoldSurfaces kuusi: %v", err)
+	}
+	weakID := newFeedback("kuusi", "NOUN")
+	if err := db.ReviewParseFeedback(weakID, admin.ID, "accepted", "spruce"); err != nil {
+		t.Fatalf("accept against single gold case: %v", err)
+	}
+}
+
+func TestGoldCandidatePromotionNeedsThreeUsers(t *testing.T) {
+	db := newTestDB(t)
+	admin := createTestUser(t, db, "promotion-admin@example.com")
+
+	acceptCorrectionFrom := func(email string) {
+		t.Helper()
+		submitter := createTestUser(t, db, email)
+		parseID, err := db.CreateParseSession(&submitter.ID, "FI", "custom", "loopword", 1, 1)
+		if err != nil {
+			t.Fatalf("CreateParseSession: %v", err)
+		}
+		feedbackID, err := db.CreateParseFeedback(ParseFeedback{
+			ParseSessionID:       parseID,
+			UserID:               submitter.ID,
+			Lang:                 "FI",
+			Parser:               "custom",
+			Surface:              "Loopword",
+			OriginalLemma:        "wrong",
+			OriginalPOS:          "NOUN",
+			ProposedLemma:        "oikea",
+			ProposedPOS:          "NOUN",
+			ProposedGrammarLabel: "inessive",
+		})
+		if err != nil {
+			t.Fatalf("CreateParseFeedback: %v", err)
+		}
+		if err := db.ReviewParseFeedback(feedbackID, admin.ID, "accepted", "confirmed"); err != nil {
+			t.Fatalf("ReviewParseFeedback: %v", err)
+		}
+	}
+
+	acceptCorrectionFrom("promoter-1@example.com")
+	acceptCorrectionFrom("promoter-2@example.com")
+	candidates, err := db.ListGoldCandidates("pending")
+	if err != nil {
+		t.Fatalf("ListGoldCandidates: %v", err)
+	}
+	if len(candidates) != 0 {
+		t.Fatalf("candidates=%+v want none below the 3-user threshold", candidates)
+	}
+
+	acceptCorrectionFrom("promoter-3@example.com")
+	candidates, err = db.ListGoldCandidates("pending")
+	if err != nil {
+		t.Fatalf("ListGoldCandidates after third: %v", err)
+	}
+	if len(candidates) != 1 {
+		t.Fatalf("candidates=%+v want exactly one after threshold", candidates)
+	}
+	c := candidates[0]
+	if c.Surface != "loopword" || c.Lemma != "oikea" || c.POS != "NOUN" || c.SupporterCount != 3 || c.Feats != "Case=Ine" {
+		t.Fatalf("candidate=%+v want loopword→oikea/NOUN supporters=3 feats=Case=Ine", c)
+	}
+
+	if err := db.MarkGoldCandidatesExported([]int64{c.ID}); err != nil {
+		t.Fatalf("MarkGoldCandidatesExported: %v", err)
+	}
+	pending, err := db.ListGoldCandidates("pending")
+	if err != nil {
+		t.Fatalf("ListGoldCandidates after export: %v", err)
+	}
+	if len(pending) != 0 {
+		t.Fatalf("pending=%+v want none after export", pending)
 	}
 }
 
@@ -812,6 +1214,104 @@ func seedBadEkilexSeeGloss(t *testing.T, db *DB) {
 		{"see", "PRON", "ET", "EN", "here", "ekilex", 0},
 		{"see", "PRON", "ET", "EN", "this", "ekilex", 1},
 	})
+}
+
+func TestDeckComprehension(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "comprehension@example.com")
+	other := createTestUser(t, db, "comprehension-other@example.com")
+
+	// Three sentences, seven token positions. S1 token 1 is a multi-lemma
+	// homonym (two occurrence rows for one position).
+	deckID, err := db.CreateDeckWithSentences(user.ID, "Coverage deck", "FI", []DeckSentenceInput{
+		{
+			Text: "Kissa juo.",
+			Tokens: []DeckTokenInput{
+				{TokenIx: 0, Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+				{TokenIx: 1, Form: "juo", Lemma: "juoda", POS: "VERB"},
+				{TokenIx: 1, Form: "juo", Lemma: "juo", POS: "NOUN"},
+			},
+		},
+		{
+			Text: "Kissa näkee Pekan.",
+			Tokens: []DeckTokenInput{
+				{TokenIx: 0, Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+				{TokenIx: 1, Form: "näkee", Lemma: "nähdä", POS: "VERB"},
+				{TokenIx: 2, Form: "Pekan", Lemma: "Pekka", POS: "PROPN"},
+			},
+		},
+		{
+			Text: "Näen sinut.",
+			Tokens: []DeckTokenInput{
+				{TokenIx: 0, Form: "Näen", Lemma: "nähdä", POS: "VERB"},
+				{TokenIx: 1, Form: "sinut", Lemma: "sinä", POS: "PRON"},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDeckWithSentences: %v", err)
+	}
+
+	// Baseline: nothing known — zero coverage, unlocks ranked by token mass.
+	stats, err := db.DeckComprehension(user.ID, deckID, 10)
+	if err != nil {
+		t.Fatalf("DeckComprehension baseline: %v", err)
+	}
+	if stats.TotalTokens != 7 || stats.CoveredTokens != 0 {
+		t.Fatalf("baseline total=%d covered=%d want 7/0", stats.TotalTokens, stats.CoveredTokens)
+	}
+	if len(stats.TopUnlocks) == 0 || stats.TopUnlocks[0].Lemma != "kissa" && stats.TopUnlocks[0].Lemma != "nähdä" {
+		t.Fatalf("baseline top unlock=%+v want kissa or nähdä (2 tokens each)", stats.TopUnlocks)
+	}
+
+	// kissa known covers two positions; juoda known covers the homonym
+	// position via the ANY-candidate rule even though juo/NOUN is unknown;
+	// ignored Pekka counts as covered (reading proxy, not study queue).
+	if err := db.MarkLemmaKnown(user.ID, "FI", "kissa", "NOUN"); err != nil {
+		t.Fatalf("MarkLemmaKnown kissa: %v", err)
+	}
+	if err := db.MarkLemmaKnown(user.ID, "FI", "juoda", "VERB"); err != nil {
+		t.Fatalf("MarkLemmaKnown juoda: %v", err)
+	}
+	if err := db.MarkLemmaIgnored(user.ID, "FI", "Pekka", "PROPN"); err != nil {
+		t.Fatalf("MarkLemmaIgnored Pekka: %v", err)
+	}
+
+	stats, err = db.DeckComprehension(user.ID, deckID, 10)
+	if err != nil {
+		t.Fatalf("DeckComprehension: %v", err)
+	}
+	if stats.TotalTokens != 7 || stats.CoveredTokens != 4 {
+		t.Fatalf("total=%d covered=%d want 7/4", stats.TotalTokens, stats.CoveredTokens)
+	}
+	if len(stats.TopUnlocks) != 2 {
+		t.Fatalf("unlocks=%+v want 2 entries (nähdä, sinä)", stats.TopUnlocks)
+	}
+	if stats.TopUnlocks[0].Lemma != "nähdä" || stats.TopUnlocks[0].TokenCount != 2 {
+		t.Fatalf("top unlock=%+v want nähdä with 2 tokens", stats.TopUnlocks[0])
+	}
+	// juo/NOUN still appears as an unlock candidate only through positions
+	// that remain uncovered — its only position is covered by juoda, so it
+	// must NOT be listed.
+	for _, unlock := range stats.TopUnlocks {
+		if unlock.Lemma == "juo" {
+			t.Fatalf("juo/NOUN listed as unlock (%+v) but its only position is covered", stats.TopUnlocks)
+		}
+	}
+
+	// The deck stats listing must agree with the dedicated endpoint.
+	deckStats, err := db.GetUserDeckStats(user.ID)
+	if err != nil {
+		t.Fatalf("GetUserDeckStats: %v", err)
+	}
+	if len(deckStats) != 1 || deckStats[0].TotalTokens != 7 || deckStats[0].CoveredTokens != 4 {
+		t.Fatalf("deck list coverage=%+v want total=7 covered=4", deckStats)
+	}
+
+	// Foreign private deck: invisible.
+	if _, err := db.DeckComprehension(other.ID, deckID, 10); err != sql.ErrNoRows {
+		t.Fatalf("foreign private deck err=%v want sql.ErrNoRows", err)
+	}
 }
 
 func createSingleTokenDeck(t *testing.T, db *DB, userID int64, lang, text, form, lemma, pos string) int64 {

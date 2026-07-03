@@ -159,6 +159,40 @@ func TestHandleParseRateLimitRunsBeforeAnalyze(t *testing.T) {
 	}
 }
 
+func TestHandleParseRateLimitIgnoresSpoofedForwardedFor(t *testing.T) {
+	t.Setenv("FINNESTDB_TRUST_FORWARD_HEADERS", "")
+	api := newTestAPI(t)
+	api.rateLimits.parseIP = newFixedWindowRateLimiter(1, time.Hour)
+	api.rateLimits.parseAccount = newFixedWindowRateLimiter(100, time.Hour)
+	called := false
+	api.analyze = func(_ *store.DB, _, _, _ string) (*parsecore.ParseResult, error) {
+		called = true
+		return nil, fmt.Errorf("analyze should not run")
+	}
+	mux := newTestMux(t, api)
+
+	first := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{`))
+	first.RemoteAddr = "198.51.100.20:1234"
+	first.Header.Set("X-Forwarded-For", "203.0.113.10")
+	firstRec := httptest.NewRecorder()
+	mux.ServeHTTP(firstRec, first)
+	if firstRec.Code != http.StatusBadRequest {
+		t.Fatalf("first status=%d want 400 body=%q", firstRec.Code, firstRec.Body.String())
+	}
+
+	second := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"FI","text":"kissa"}`))
+	second.RemoteAddr = "198.51.100.20:1234"
+	second.Header.Set("X-Forwarded-For", "203.0.113.11")
+	secondRec := httptest.NewRecorder()
+	mux.ServeHTTP(secondRec, second)
+	if secondRec.Code != http.StatusTooManyRequests {
+		t.Fatalf("second status=%d want 429 body=%q", secondRec.Code, secondRec.Body.String())
+	}
+	if called {
+		t.Fatal("analyze was called after parse rate limit was exceeded")
+	}
+}
+
 func TestHandleParseReturnsJSONResponse(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
@@ -2125,6 +2159,24 @@ func TestKnownWordsReplaceRejectsAllUnresolvedInput(t *testing.T) {
 	if !got["kissa/NOUN"] || !got["koira/NOUN"] || len(got) != 2 {
 		t.Fatalf("FI list after rejected replace=%v want {kissa/NOUN, koira/NOUN}", got)
 	}
+
+	blankOnly := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["   ","\n\t"]}`))
+	for _, c := range cookies {
+		blankOnly.AddCookie(c)
+	}
+	blankOnlyRec := httptest.NewRecorder()
+	mux.ServeHTTP(blankOnlyRec, blankOnly)
+	if blankOnlyRec.Code != http.StatusBadRequest {
+		t.Fatalf("blank-only replace status=%d want 400 body=%q", blankOnlyRec.Code, blankOnlyRec.Body.String())
+	}
+	if !strings.Contains(blankOnlyRec.Body.String(), store.ErrKnownWordsReplaceNoResolvedWords.Error()) {
+		t.Fatalf("blank-only replace body=%q missing unresolved guard", blankOnlyRec.Body.String())
+	}
+
+	got = listKnownWordsForLang(t, mux, cookies, "FI")
+	if !got["kissa/NOUN"] || !got["koira/NOUN"] || len(got) != 2 {
+		t.Fatalf("FI list after rejected blank-only replace=%v want {kissa/NOUN, koira/NOUN}", got)
+	}
 }
 
 func TestKnownWordsReplacePreservesManualSourceByDefault(t *testing.T) {
@@ -2362,6 +2414,84 @@ func TestAuthenticatedMutationAllowsSameOrigin(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d want 200 body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleHealth(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200 body=%q", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), `"ok"`) {
+		t.Fatalf("body=%q want status ok", rec.Body.String())
+	}
+
+	post := httptest.NewRequest(http.MethodPost, "/api/health", nil)
+	postRec := httptest.NewRecorder()
+	mux.ServeHTTP(postRec, post)
+	if postRec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("POST status=%d want 405", postRec.Code)
+	}
+}
+
+func TestRegisterRejectsForeignOrigin(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	body := fmt.Sprintf(`{"email":"register-csrf@example.com","password":%q}`, testPassword)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
+	req.Header.Set("Origin", "https://evil.example")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want 403 body=%q", rec.Code, rec.Body.String())
+	}
+	if len(rec.Result().Cookies()) != 0 {
+		t.Fatalf("foreign-origin register set cookies: %+v", rec.Result().Cookies())
+	}
+	if user, err := api.store.GetUserByEmail("register-csrf@example.com"); err == nil && user != nil {
+		t.Fatal("foreign-origin register created a user")
+	}
+}
+
+func TestLoginRejectsForeignOrigin(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	loginAndReturnCookies(t, mux, "login-csrf@example.com")
+
+	body := fmt.Sprintf(`{"email":"login-csrf@example.com","password":%q}`, testPassword)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	req.Header.Set("Origin", "https://evil.example")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want 403 body=%q", rec.Code, rec.Body.String())
+	}
+	if len(rec.Result().Cookies()) != 0 {
+		t.Fatalf("foreign-origin login set cookies: %+v", rec.Result().Cookies())
+	}
+}
+
+func TestLoginAllowsSameOrigin(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	loginAndReturnCookies(t, mux, "login-same-origin@example.com")
+
+	body := fmt.Sprintf(`{"email":"login-same-origin@example.com","password":%q}`, testPassword)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	req.Header.Set("Origin", "http://example.com")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200 body=%q", rec.Code, rec.Body.String())
+	}
+	if len(rec.Result().Cookies()) == 0 {
+		t.Fatal("same-origin login did not set a session cookie")
 	}
 }
 
@@ -3159,6 +3289,98 @@ func TestExpandTokenLemmasDropsPunctAndEmptyLemmaTokens(t *testing.T) {
 	}
 	if got := expandTokenLemmas(parsecore.TokenResult{Form: "", Lemma: "", POS: "NOUN"}, nil); len(got) != 0 {
 		t.Errorf("empty form: got %+v, want empty", got)
+	}
+}
+
+func TestDeckComprehensionEndpoint(t *testing.T) {
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: "Kissa juoksee.",
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+						{Form: "juoksee", Lemma: "juosta", POS: "VERB"},
+					},
+				},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "deck-coverage@example.com")
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(`{"title":"Coverage","lang":"FI","text":"Kissa juoksee."}`))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create status=%d body=%q", createRec.Code, createRec.Body.String())
+	}
+	var created CreateDeckResponse
+	if err := json.NewDecoder(bytes.NewReader(createRec.Body.Bytes())).Decode(&created); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+
+	markReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"known"}`))
+	for _, cookie := range cookies {
+		markReq.AddCookie(cookie)
+	}
+	markRec := httptest.NewRecorder()
+	mux.ServeHTTP(markRec, markReq)
+	if markRec.Code != http.StatusOK {
+		t.Fatalf("mark known status=%d body=%q", markRec.Code, markRec.Body.String())
+	}
+
+	compURL := fmt.Sprintf("/api/decks/%d/comprehension", created.DeckID)
+	compReq := httptest.NewRequest(http.MethodGet, compURL, nil)
+	for _, cookie := range cookies {
+		compReq.AddCookie(cookie)
+	}
+	compRec := httptest.NewRecorder()
+	mux.ServeHTTP(compRec, compReq)
+	if compRec.Code != http.StatusOK {
+		t.Fatalf("comprehension status=%d body=%q", compRec.Code, compRec.Body.String())
+	}
+	var comp DeckComprehensionResponse
+	if err := json.NewDecoder(bytes.NewReader(compRec.Body.Bytes())).Decode(&comp); err != nil {
+		t.Fatalf("decode comprehension: %v", err)
+	}
+	if comp.TotalTokens != 2 || comp.KnownTokens != 1 || comp.CoveragePct != 50 {
+		t.Fatalf("comprehension=%+v want 2 tokens, 1 known, 50%%", comp)
+	}
+	if len(comp.TopUnlocks) != 1 || comp.TopUnlocks[0].Lemma != "juosta" || comp.TopUnlocks[0].GainPct != 50 {
+		t.Fatalf("top_unlocks=%+v want juosta at 50%% gain", comp.TopUnlocks)
+	}
+
+	// The deck list carries the same headline number.
+	listReq := httptest.NewRequest(http.MethodGet, "/api/decks", nil)
+	for _, cookie := range cookies {
+		listReq.AddCookie(cookie)
+	}
+	listRec := httptest.NewRecorder()
+	mux.ServeHTTP(listRec, listReq)
+	var listResp DeckListResponse
+	if err := json.NewDecoder(bytes.NewReader(listRec.Body.Bytes())).Decode(&listResp); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+	if len(listResp.Decks) != 1 || listResp.Decks[0].ComprehensionPct == nil || *listResp.Decks[0].ComprehensionPct != 50 {
+		t.Fatalf("deck list=%+v want comprehension_pct=50", listResp.Decks)
+	}
+
+	// Another user cannot see a private deck's coverage.
+	otherCookies := loginAndReturnCookies(t, mux, "deck-coverage-other@example.com")
+	foreignReq := httptest.NewRequest(http.MethodGet, compURL, nil)
+	for _, cookie := range otherCookies {
+		foreignReq.AddCookie(cookie)
+	}
+	foreignRec := httptest.NewRecorder()
+	mux.ServeHTTP(foreignRec, foreignReq)
+	if foreignRec.Code != http.StatusNotFound {
+		t.Fatalf("foreign comprehension status=%d want 404", foreignRec.Code)
 	}
 }
 
@@ -4443,6 +4665,62 @@ func TestHandleParseSessionsShowsPurgedSourceText(t *testing.T) {
 	}
 	if resp.Sessions[0].SourcePreview != "(source text purged)" {
 		t.Fatalf("source preview=%q want purged marker", resp.Sessions[0].SourcePreview)
+	}
+}
+
+func TestAdminAcceptRejectedByGoldGuardReturns409(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "gold-guard-admin@example.com")
+
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	userCookies := loginAndReturnCookies(t, mux, "gold-guard-user@example.com")
+	adminCookies := loginAndReturnCookies(t, mux, "gold-guard-admin@example.com")
+
+	// Gold knows "voi" as voida/VERB twice; the proposal below contradicts it.
+	if err := api.store.ReplaceGoldSurfaces("FI", []store.GoldSurface{
+		{Surface: "voi", Lemma: "voida", POS: "VERB", CaseCount: 2},
+	}); err != nil {
+		t.Fatalf("ReplaceGoldSurfaces: %v", err)
+	}
+
+	feedbackReq := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(`{
+		"lang": "FI",
+		"parser": "custom",
+		"source_text": "voi",
+		"total_tokens": 1,
+		"unique_lemma_count": 1,
+		"surface": "voi",
+		"original_lemma": "voida",
+		"original_pos": "VERB",
+		"proposed_lemma": "voi",
+		"proposed_pos": "NOUN"
+	}`))
+	for _, cookie := range userCookies {
+		feedbackReq.AddCookie(cookie)
+	}
+	feedbackRec := httptest.NewRecorder()
+	mux.ServeHTTP(feedbackRec, feedbackReq)
+	if feedbackRec.Code != http.StatusOK {
+		t.Fatalf("feedback status=%d body=%q", feedbackRec.Code, feedbackRec.Body.String())
+	}
+	var feedbackResp ParseFeedbackResponse
+	if err := json.NewDecoder(bytes.NewReader(feedbackRec.Body.Bytes())).Decode(&feedbackResp); err != nil {
+		t.Fatalf("decode feedback response: %v", err)
+	}
+
+	reviewReq := httptest.NewRequest(http.MethodPatch,
+		fmt.Sprintf("/api/admin/parse-feedback?id=%d", feedbackResp.FeedbackID),
+		strings.NewReader(`{"status":"accepted","review_note":"trying anyway"}`))
+	for _, cookie := range adminCookies {
+		reviewReq.AddCookie(cookie)
+	}
+	reviewRec := httptest.NewRecorder()
+	mux.ServeHTTP(reviewRec, reviewReq)
+	if reviewRec.Code != http.StatusConflict {
+		t.Fatalf("accept status=%d want 409 body=%q", reviewRec.Code, reviewRec.Body.String())
+	}
+	if !strings.Contains(reviewRec.Body.String(), "gold") {
+		t.Fatalf("409 body=%q should explain the gold conflict", reviewRec.Body.String())
 	}
 }
 

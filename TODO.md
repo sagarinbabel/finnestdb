@@ -253,12 +253,8 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 ### Parser quality
 
 - [x] **ET lemmatizer table generator** — shipped in `cmd/genlemmatizertables -lang et -hfstol ...` plus `make gen-lemmatizer-tables-et`. Remaining production work is a real ET wordlist, provenance notes, row counts, and a fresh eval gate before relying on a full ET table in deployment.
-- [x] **Re-freeze baselines once gold sets get a `feats` field** — done 2026-05-07k via PR [#139](https://github.com/sagarinbabel/finnestdb/pull/139). All 6 manual gold sets now carry FEATS (`cmd/enrichgoldfeats`); new baselines committed at `docs/baselines/2026-05-07-feats-rich-*`. At PR #139 time, `custom` FEATS stayed at 0% until DB reimport; the current local DB now has the main FEATS imports populated as noted below. Rebuilt DBs must preserve those imports before new baseline claims.
-- [x] **Populate `forms.feats` for the main FI and ET dictionary sources in
-      the current local DB.** The full local DB now has FEATS on the main FI
-  `kaikki` rows and ET `ekilex` rows; ET `kaikki` supplement rows still do not
-  carry FEATS. Future DB rebuilds must preserve this before parser baseline
-  claims.
+- [x] **Re-freeze baselines once gold sets get a `feats` field** — done 2026-05-07k via PR [#139](https://github.com/sagarinbabel/finnestdb/pull/139). All 6 manual gold sets now carry FEATS (`cmd/enrichgoldfeats`); new baselines committed at `docs/baselines/2026-05-07-feats-rich-*`. The `feats_attributes` table is non-empty for omorfi (FI) and estnltk (ET); for `custom` it stays at 0% until the live SQLite DB is re-imported with the new FEATS-aware `cmd/importdict` (runbook in the methodology doc).
+- [x] **Re-import the live DB to populate `forms.feats`** — done and verified 2026-07-02. The live DB carries FEATS on 26.6M/26.8M FI rows (99.3%) and 6.0M/6.3M ET rows (96%), and live `custom`-mode parses emit full UD FEATS end-to-end (verified: FI "talossa" → `Case=Ine|Number=Sing`, verb morphology on "istuu"; ET "majas" → `Case=Ine|Number=Sing`). The remaining ~1–4% are rows whose upstream source carries no morph tags. Future DB rebuilds must preserve these imports before new parser baseline claims.
 - [ ] **Remove the `attachCaseLabelIfStemMatches` stopgap** in `internal/store/dict.go` once the FST runtime emits FEATS for direct dict hits. PR [#139](https://github.com/sagarinbabel/finnestdb/pull/139) added `featsFromCaseLabel` so the stopgap's output is at least UD-shaped (`Case=Xxx`); the remove condition still requires production FST tables.
 - [ ] **Re-run FI/ET gold baselines** after each fix and keep only justified gains. Use the new eval regressions to prioritize parser fixes. Recursive compounds and consonant gradation are *not* candidates here — they're gated behind the FST migration. See [`docs/DECISIONS.md`](docs/DECISIONS.md) Decision 5.
 - [ ] **Finnish-first ambiguity eval slice**. Add focused contextual
@@ -273,7 +269,7 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 ### Learner experience
 
 - [ ] **Migrate alpha review identity and scheduler before public alpha**.
-  `internal/store/db.go::nextScheduleForRating` is a hand-rolled step scheduler
+  `internal/store/db.go::nextAlphaStepScheduleForRating` is a hand-rolled step scheduler
   with hardcoded day arrays — **not** FSRS. [`docs/srs-deck-spec.md`](docs/srs-deck-spec.md)
   §13–24 already recommends [`go-fsrs`](https://github.com/open-spaced-repetition/go-fsrs).
   Alpha scope means runtime scheduling only: default FSRS parameters, current
@@ -315,7 +311,7 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
         card may influence derived comprehension estimates, but must not
         silently write known-surface state.
   - [ ] Implement `FSRSScheduleForRating(card, rating, now) (next time.Time, newState CardState)`
-        behind a feature flag. Keep `nextScheduleForRating` as fallback while the
+        behind a feature flag. Keep `nextAlphaStepScheduleForRating` as fallback while the
         migration is in flight.
   - [ ] Migration plan for existing `card_state` rows: `NULL` state becomes a new
         FSRS card; legacy `Step`/`Streak` JSON is converted heuristically from
@@ -326,8 +322,10 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
         migration, and rollback/fallback behavior.
   - [ ] Cutover: flip flag on staging DB, validate with seeded review histories,
         then production before public alpha.
+  - [x] Honest naming shipped 2026-07-02: the runtime step scheduler is now
+        `nextAlphaStepScheduleForRating`, no longer presented as FSRS-shaped.
 
-- [ ] **Comprehension prediction per deck**. Show "predicted comprehension %" on deck detail, before/after projection ("if you learn the top N words from this deck, your comprehension goes from X% to Y%"), and compute marginal comprehension gain per word for study ordering. Token-weighted coverage formula already in [`docs/srs-deck-spec.md` §Coverage metrics](docs/srs-deck-spec.md). Backend tasks: `store.DeckLemmaStats(deckID)`, `store.UserKnownLemmaSet(userID, lang)`, `GET /api/decks/:id/comprehension` returning coverage + top_unlocks; extend `GET /api/decks/:id` with headline `comprehension_pct`. Frontend tasks: deck-detail comprehension badge, deck-list column, marginal-gain projection. Detailed sequencing/product-design questions live in `docs/srs-deck-spec.md`.
+- [x] **Comprehension prediction per deck** — shipped 2026-07-02. `store.DeckComprehension` computes token-position coverage in SQL (multi-lemma positions covered when ANY candidate is known; ignored lemmas count as covered — decisions recorded in [`docs/srs-deck-spec.md` §Coverage metrics](docs/srs-deck-spec.md)). `GET /api/decks/:id/comprehension` returns coverage + top-10 unlocks with marginal gain; `comprehension_pct` rides the deck list and `/api/me` dashboard summaries. Frontend: deck-list headline, deck-detail projection panel with before→after expansion. Covered by store, handler, and Playwright tests. Cross-deck study ordering remains open below.
 
 - [ ] **Highest-leverage study ordering across decks**. Extend new-card ranking to consider comprehension gain across all study-list decks, not just `token_count` within a single source; user weighting (high/medium/low) for deck priority. Cross-deck variant of marginal gain.
 
@@ -353,7 +351,7 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
   data-model migration from lemma-only known state toward surface-first known
   vocabulary evidence.
 
-- [ ] **Progress dashboard**. Fill the existing dashboard tab with: total known vocabulary, cards in review, comprehension trend per deck, daily review count, cumulative comprehension chart over time.
+- [x] **Progress dashboard** — shipped 2026-07-02. Dashboard now shows total known lemmas, due count, cards in review (`store.CardsInReview`), reviews today, a 14-day review-activity bar chart, and per-deck comprehension on the recent-decks cards. Backed by a new `review_log` table appended in `RecordReviewAnswer`'s transaction (accumulates from ship date — pre-existing history was never recorded and cannot be backfilled). Remaining follow-up: a *cumulative comprehension over time* chart needs periodic coverage snapshots that don't exist yet; revisit once `review_log` has a few weeks of data to make the panel worth the storage.
 
 - [ ] **Native iOS app for FinnEst (post-go-live)**. After the responsive
   web alpha is shipped and stable, create a native iOS app for FinnEst.
@@ -367,16 +365,16 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 
 ### Self-improving feedback loop
 
-Accepted lemma/POS parse-feedback corrections now write `custom_overrides`
-lexical rows after admin approval. Grammar/FEATS corrections, gold promotion,
-and eval-gated safety checks still need follow-up. See
+Phases 1–4 are live as of 2026-07-02: accepted corrections write authoritative
+`custom_overrides` rows (with FEATS), contradicting the frozen gold sets blocks
+acceptance, and repeat corrections auto-queue as gold candidates. See
 [`docs/FEATURES.md` "User correction loop"](docs/FEATURES.md).
 
 - [x] **Phase 1 — apply accepted lemma/POS corrections** as a `custom_overrides` lexical row. On admin acceptance, write `forms`/`lemmas` rows with `source='custom_overrides'`, `source_priority=1000`, proposed `lemma`/`pos`, and a back-pointer to `parse_feedback.id`.
-- [ ] **Phase 2 — apply accepted grammar-label corrections** to `forms.feats` for the specific surface form. Smaller blast radius. Few-day task.
-- [ ] **Phase 3 — auto-promote a corrected `(surface, lemma, pos)` tuple to a gold-eval case** when N independent users submit the same correction. Threshold and review workflow TBD.
-- [ ] **Phase 4 — eval-backed safety check before applying.** Run candidate `custom_overrides` row against frozen gold sets; reject on regression of ≥N cases. Reuse the existing parser-eval/baseline discipline, but do not revive or expand `cmd/autoresearch` for alpha. If it adds >100ms to admin-accept latency, push to background job.
-- [ ] **Phase 5 (research, not engineering)** — automatic re-ranking of source priorities when a single source consistently produces accepted corrections in one direction. Out of scope for alpha.
+- [x] **Phase 2 — apply accepted grammar-label corrections to FEATS** — shipped 2026-07-02. The proposed grammar label maps through `udfeats` (`featsFromCaseLabel`) onto the override row's `forms.feats`. Deliberate deviation from the original sketch: corrected FEATS live only on the `custom_overrides` row, never edited into upstream imported rows, so a dictionary re-import can't silently revert or duplicate a correction.
+- [x] **Phase 3 — auto-promote to gold candidates** — shipped 2026-07-02. When `store.GoldPromotionThreshold` (3) distinct users have the same correction accepted, it upserts into `gold_candidates`; `make export-gold-candidates` prints pending rows as gold-token JSON for **manual** review into `testdata/parser-eval/*/gold` (auto-committing eval cases would let the system write its own exam).
+- [x] **Phase 4 — eval-backed safety check before applying** — shipped 2026-07-02. `make import-gold-surfaces` loads the frozen gold analyses into `gold_surfaces`; acceptance is refused (HTTP 409, full rollback) when ≥2 gold occurrences of the surface unanimously disagree with the proposal. Runs in-transaction in <1ms, so no background job needed. An empty `gold_surfaces` table degrades to no-op — run the importer after clone and after gold changes.
+- [ ] **Phase 5 (research, not engineering)** — automatic re-ranking of source priorities when a single source consistently produces accepted corrections in one direction. **Stays parked deliberately**: it needs months of accepted-correction volume to have any signal, and per the original scoping it is out of scope for alpha; revisit after Phase 4 has real production data.
 
 Phase 1 is gated on FEATS threading (already shipped via [PR #130](https://github.com/sagarinbabel/finnestdb/pull/130)) so corrections can update FEATS, not just GrammarLabel.
 
@@ -397,10 +395,9 @@ Phase 1 is gated on FEATS threading (already shipped via [PR #130](https://githu
 - [ ] Replace `COUNT(*)` existence checks in known-word and parse-feedback paths with `EXISTS`/short-circuit queries.
 - [ ] Document parse-session storage behavior directly in the parse UI, not only in docs.
 - [x] Add a production startup guard that refuses to serve if `finnestdb.db` is missing, empty, or lacks expected FI/ET dictionary rows unless an explicit dev-only degraded mode is set. Enabled by `APP_ENV=production`; `FINNESTDB_ALLOW_DEGRADED_DB=1` is an explicit development/emergency override.
-- [ ] **Security review and hardening pass**: session bootstrap retirement, role enforcement, CSRF/Origin checks, XSS, request-size caps before JSON decode, HTTP timeouts, rate limiting, data isolation, admin-route leakage, and correction-submission abuse. The 2026-06-03 deterministic tests and smoke probes cover the implemented go-live controls; full Codex Security repository-wide scanning still needs explicit subagent authorization.
+- [x] **Security review and hardening pass** — completed 2026-07-02, report at [`docs/launch-readiness/2026-07-02-security-review.md`](docs/launch-readiness/2026-07-02-security-review.md). Covers the full FIN-27 scope (auth/sessions, roles, CSRF, XSS sink audit, caps, timeouts, rate limits, data isolation, admin leakage, correction abuse); one fix shipped (web-root deploy excludes dev artifacts), three accepted-for-alpha risks recorded (no CSP, register enumeration, stdout password print). If the external "Codex Security" tool run is still wanted on top, that remains a separate authorization.
 - [ ] Either implement real auth/deck/review behavior or narrow the exposed stub endpoints to match current product focus. Remove or isolate non-parser scaffolding that no longer reflects the active roadmap.
-- [ ] **Background job system** for deck creation: design async architecture, implement job queue (in-memory or external), add "processing" state to deck model, webhook/polling status updates.
-- [ ] **Operational constraints for parsing**: define expected latency per 10k tokens, max retries, when to push to background job/queue so `/api/decks` returns quickly with a "processing" state rather than blocking.
+- [x] **Operational constraints for parsing — measured 2026-07-02, background queue deferred.** Live measurement against the production-size DB (26.8M FI forms) with real full-novel EPUB texts: `POST /api/decks` with a 550k-char book (70,234 tokens, 10,360 unique words) completed in 1.6s; the largest local book (809k chars) in 2.0s; `POST /api/parse` on the same inputs 1.3–4.0s (cold cache worst case). That is ~0.2–0.6s per 10k tokens — the 30s `WriteTimeout` has ≥7x headroom even cold at the shipped input caps (4 MiB JSON body, 1.5M-char textarea). **Decision: deck creation stays synchronous.** A job queue + "processing" state + polling would add restart-recovery and UX complexity to shave nothing a user can feel. Revisit only if input caps rise materially or production p95 approaches ~10s (watch `parse_duration_ms` in parse stats). Latency expectations are documented in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ### Sentence-level features
 
@@ -685,7 +682,7 @@ for up-to-date open work.**
 
 5. **Migrate alpha review identity and scheduler before public alpha** _(added 2026-05-07; narrowed 2026-07-03)_
 
-   `internal/store/db.go::nextScheduleForRating` is a hand-rolled step scheduler with hardcoded day arrays `{1,3,7,14,30,60}` (good) / `{3,7,14,30,60,90}` (easy). `again` is 10 minutes; `hard` is 8 hours. This is **not** FSRS; `docs/srs-deck-spec.md §13–24` already recommends [`go-fsrs`](https://github.com/open-spaced-repetition/go-fsrs).
+   `internal/store/db.go::nextAlphaStepScheduleForRating` is a hand-rolled step scheduler with hardcoded day arrays `{1,3,7,14,30,60}` (good) / `{3,7,14,30,60,90}` (easy). `again` is 10 minutes; `hard` is 8 hours. This is **not** FSRS; `docs/srs-deck-spec.md §13–24` already recommends [`go-fsrs`](https://github.com/open-spaced-repetition/go-fsrs); Decision 23 (2026-07-03) moved narrow FSRS onto the public-alpha launch path.
 
    - [ ] Ship the narrow alpha version: Go FSRS runtime scheduling, default parameters, current four-button UI, feature flag, migration/fallback, and regression tests.
    - [ ] Explicitly defer full FSRS ecosystem work: personal parameter optimization, `fsrs-rs`, rescheduling tools, simulation dashboards, mature-card analytics, and broad review UX redesign.
@@ -698,9 +695,10 @@ for up-to-date open work.**
    - [ ] Wire "None of these looks right" to flag-only parser feedback (`flag_only=true`, nullable proposed lemma/POS), not to known/study state. Flag-only reports are triage signal and must not write `custom_overrides` until an admin supplies/accepts a concrete parser-identity correction.
    - [ ] Add the Go FSRS dependency. Plan the schema delta on `card_state` (FSRS needs stability, difficulty, last review, last rating, retrievability — multiple fields the current schema doesn't carry unless encoded in a versioned `fsrs_json`).
    - [ ] Keep explicit known-word evidence separate from FSRS maturity. Mature cards can feed derived retained/learning coverage views, but they must not silently mark surfaces known.
-   - [ ] Implement `FSRSScheduleForRating(card, rating, now) (next time.Time, newState CardState)` behind a feature flag. Keep `nextScheduleForRating` as fallback while the migration is in flight.
+   - [ ] Implement `FSRSScheduleForRating(card, rating, now) (next time.Time, newState CardState)` behind a feature flag. Keep `nextAlphaStepScheduleForRating` as fallback while the migration is in flight.
    - [ ] Migration plan for existing `card_state` rows: convert `NULL` state to a new FSRS card and derive a conservative starter FSRS state from legacy `Step`/`Streak`, `last_answer_at`, and `next_due` where possible. Do not overclaim precision from the old step scheduler.
    - [ ] Cutover: flip the feature flag on a staging DB, validate seeded histories and due queues, then cut over production before public alpha.
+   - [x] Honest naming shipped 2026-07-02: runtime scheduler renamed to `nextAlphaStepScheduleForRating`.
 
 6. **Disambiguation model**
    - [ ] Select UD treebanks (Finnish, Estonian)
@@ -962,7 +960,7 @@ New work surfaced by the review (not yet broken into sequenced PRs):
 - [x] **Parse-history UI**. Logged-in users can list retained parse sessions and delete one or all retained sessions server-side.
 - [ ] **Correction flow lighter entry point**. Replace the per-row correction button with a hover/focus-revealed `✎ Wrong?` link. Add a "flag-only" radio path so users who notice a wrong parse but don't know the right answer can still submit signal. Backend: `parse_feedback.proposed_lemma`/`proposed_pos` become nullable; add `flag_only` boolean. See `docs/USER_FLOWS.md` §10.
 - [ ] **Sentence translation endpoint**. `POST /api/translate-sentence` backed by Sonnet 4.6 with prompt caching. Persist results in a new `sentence_translations` table only for retained parse/deck content, keyed on source/target language + prompt version + `hash(text)`; ephemeral Inspect parses use no shared persistent cache. Wires into the review-card back and the deck-detail rows. Companion to `docs/ideas.md` "Making it AI native" Phase 1.
-- [ ] **Cold-start "Top 1000" CTA**. Dashboard empty state and a `/decks/top-1000-{lang}` route that creates a private deck seeded from the baseline TSV. Gated on the research project shipping.
+- [x] **Cold-start "Top 1000" CTA** — shipped 2026-07-02 as an *official deck* rather than a per-user route: `cmd/seedcolddeck` builds a "Top 1000 words" official deck per language from the public OpenSubtitles baseline (forms resolved to lemmas via the dictionary, ranked by summed token mass across inflections, proper names filtered; verified end-to-end against the full local DB). Users add it through the existing official-decks surface; the dashboard/decks empty states link there. Operator step documented in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md). The original "seed from the user-pasted-text research ranking" idea remains open under Research Goals — when that ranking ships, reseed from it.
 - [ ] **First-run register picker**. Once on first sign-in, ask "What kinds of texts do you want to read most? Conversation / News & books / Mixed." Persists to `user_language_settings`. Drives which top-1000 register the cold-start uses, and may later weight new-card ranking.
 - [ ] **Account deletion**. Cascade through parses, decks, known-word lists, sessions. Profile page is otherwise out of scope for the first version, but deletion is privacy-table-stakes.
 - [x] **Privacy chip on the parse form**. Persistent visible signifier under the signed-in parse textarea replaces the doc-only privacy commitment in `FEATURES.md`.
@@ -972,7 +970,7 @@ Already on this list and just confirmed by the review:
 - Anonymous parser demo is paste-first for alpha. File upload extraction
   (`.txt` / `.md` / `.epub`) remains a signed-in Inspect/workbench capability
   unless a later decision deliberately expands anonymous scope.
-- FSRS migration — the public review surface should not ship the hand-rolled scheduler
+- FSRS migration — the public review surface should not ship the hand-rolled step scheduler; narrow FSRS is now on the launch path (Decision 23). Until it lands, do not market the current scheduler as FSRS.
 - Comprehension prediction per deck — wireframe is in `docs/USER_FLOWS.md` §8
 - Rate limiting and parser backpressure on `/api/parse` — launch-gating now that
   anonymous parsing is a public product surface.

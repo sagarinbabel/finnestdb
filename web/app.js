@@ -1137,6 +1137,9 @@ function renderDashboard() {
     setStat('stat-known', state.dashboard?.known_count);
     setStat('stat-due', state.dashboard?.due_count);
     setStat('stat-new-capacity', state.dashboard?.new_capacity_today);
+    setStat('stat-cards-in-review', state.dashboard?.cards_in_review);
+    setStat('stat-reviews-today', state.dashboard?.reviews_today);
+    renderReviewActivityChart(state.dashboard?.review_activity || []);
     const decksList = document.getElementById('dashboard-decks-list');
     if (!decksList)
         return;
@@ -1145,7 +1148,7 @@ function renderDashboard() {
     if (decks.length === 0) {
         const langLabel = languageName(state.activeLanguage);
         const hint = allDecks.length === 0
-            ? `No decks yet — paste some text under <a href="#/inspect">Parse</a> to get started.`
+            ? `No decks yet — paste some text under <a href="#/inspect">Parse</a>, or add a <a href="#/decks/official">Top 1000 starter deck</a>.`
             : `No ${escapeHtml(langLabel)} decks yet. Switch the language in the top bar to see your other decks, or <a href="#/inspect">parse a ${escapeHtml(langLabel)} text</a>.`;
         decksList.innerHTML = `<p class="empty-state">${hint}</p>`;
         return;
@@ -1153,11 +1156,41 @@ function renderDashboard() {
     decksList.innerHTML = decks.map(d => {
         const langName = d.lang === 'FI' ? 'Finnish' : d.lang === 'ET' ? 'Estonian' : escapeHtml(d.lang);
         const knownPct = d.unique > 0 ? Math.round((d.known / d.unique) * 100) : 0;
+        const comprehensionPart = typeof d.comprehension_pct === 'number'
+            ? ` · ${d.comprehension_pct}% comprehension`
+            : '';
         return `<a href="#/decks" class="deck-card">
             <h4>${escapeHtml(d.title)}</h4>
-            <p class="deck-meta">${langName} · ${d.known}/${d.unique} known (${knownPct}%) · ${d.due} due</p>
+            <p class="deck-meta">${langName} · ${d.known}/${d.unique} known (${knownPct}%) · ${d.due} due${comprehensionPart}</p>
         </a>`;
     }).join('');
+}
+// Renders the trailing-14-day review activity as plain CSS bars. Hidden until
+// the user has answered at least one review in the window — an all-zero chart
+// on a fresh account reads as "something is broken", not "get started".
+function renderReviewActivityChart(days) {
+    const section = document.getElementById('dashboard-activity');
+    const chart = document.getElementById('dashboard-activity-chart');
+    if (!section || !chart)
+        return;
+    const max = days.reduce((m, d) => Math.max(m, d.count), 0);
+    if (max === 0) {
+        section.classList.add('hidden');
+        chart.innerHTML = '';
+        return;
+    }
+    chart.innerHTML = days.map(d => {
+        const heightPct = Math.max(4, Math.round((d.count / max) * 100));
+        const date = new Date(`${d.day}T00:00:00Z`);
+        const label = Number.isNaN(date.getTime())
+            ? d.day
+            : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+        return `<div class="activity-bar-slot" data-tooltip="${escapeHtml(label)}: ${d.count}">
+            <div class="activity-bar" style="height: ${heightPct}%"></div>
+            <span class="activity-count">${d.count > 0 ? d.count : ''}</span>
+        </div>`;
+    }).join('');
+    section.classList.remove('hidden');
 }
 async function refreshDashboardData(options = {}) {
     await fetchMe();
@@ -1392,10 +1425,13 @@ function renderMyDecksTab() {
         else {
             actions.push(`<button type="button" class="btn btn-link btn-sm" data-unsubscribe-deck="${deck.id}">Remove</button>`);
         }
+        const comprehensionPart = typeof deck.comprehension_pct === 'number'
+            ? ` · ${deck.comprehension_pct}% comprehension`
+            : '';
         return `<article class="deck-list-item">
             <div>
                 <h2><a href="#/decks/${deck.id}" class="deck-list-title">${escapeHtml(deck.title)}</a> ${badges.join(' ')}</h2>
-                <p class="deck-list-meta">${langName} · ${deck.known}/${deck.unique} known (${knownPct}%) · ${deck.due} due</p>
+                <p class="deck-list-meta">${langName} · ${deck.known}/${deck.unique} known (${knownPct}%) · ${deck.due} due${comprehensionPart}</p>
             </div>
             <div class="deck-list-actions">
                 ${actions.join('')}
@@ -1953,6 +1989,16 @@ async function openAnkiSyncModal() {
             syncBtn.disabled = false;
     }
 }
+// The replace-mode confirmation must describe what the current
+// preserve-manual setting will actually do: in the default preserve-manual
+// mode, textbox/file words survive the sync, and warning that they'll be
+// removed trains users to distrust (and disable) the safe setting.
+function ankiReplaceConfirmMessage(langName, preserveManual) {
+    if (preserveManual) {
+        return `This will sync your ${langName} Anki-imported known-words to exactly what's in the selected Anki decks. Words you added through the textbox or a file will be kept; Anki-imported words not in this selection will be removed.`;
+    }
+    return `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`;
+}
 async function runAnkiSyncFlow() {
     const prefs = loadAnkiPrefs(state.activeLanguage);
     // Sync needs a prior successful import and at least one saved deck.
@@ -1978,7 +2024,7 @@ async function runAnkiSyncFlow() {
         // stays focused on the confirm action.
         const dialog = await showConfirmWithStatus({
             title: `Replace ${langName} vocabulary?`,
-            message: `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
+            message: ankiReplaceConfirmMessage(langName, ankiImport.preserveManualOnReplace),
             confirmLabel: 'Sync and replace',
             danger: true,
             loadingText: 'Checking Anki…',
@@ -3031,9 +3077,10 @@ async function runAnkiImport() {
         return;
     }
     // Replace-mode confirmation: a destructive operation that deletes lemmas
-    // not in the new selection (including ones added through the textbox or
-    // a file). Skipped on a per-language basis once the user has explicitly
-    // checked "Don't show this again" on the dialog. Also skipped when the
+    // not in the new selection (textbox/file-added lemmas survive when
+    // preserve-manual mode is on, so the copy is keyed to that setting).
+    // Skipped on a per-language basis once the user has explicitly checked
+    // "Don't show this again" on the dialog. Also skipped when the
     // quick-sync flow has already shown its own status-bearing version of
     // the same dialog (replaceConfirmedThisRun).
     if (ankiImport.replaceMode && !ankiImport.replaceConfirmedThisRun) {
@@ -3042,7 +3089,7 @@ async function runAnkiImport() {
         if (!prefs.replaceConfirmSkip) {
             const result = await showConfirmWithRemember({
                 title: `Replace ${langName} vocabulary?`,
-                message: `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
+                message: ankiReplaceConfirmMessage(langName, ankiImport.preserveManualOnReplace),
                 confirmLabel: 'Sync and replace',
                 danger: true,
                 rememberLabel: "Don't show this again",
@@ -4322,6 +4369,13 @@ function showResults(data, textPreview, parserMode, context) {
             createdPill.classList.add('hidden');
         }
     }
+    // Deck comprehension is fetched separately by loadDeckDetail; hide the
+    // stale panel whenever new results render (parse results, other decks).
+    const comprehensionPanel = document.getElementById('deck-comprehension');
+    if (comprehensionPanel) {
+        comprehensionPanel.classList.add('hidden');
+        comprehensionPanel.innerHTML = '';
+    }
     const coverageFill = document.getElementById('coverage-fill');
     const coverageValue = document.getElementById('coverage-value');
     coverageFill.style.width = `${coverage.score}%`;
@@ -4472,10 +4526,52 @@ async function loadDeckDetail(deckID) {
             words: data.words,
         };
         showResults(parseResponse, data.title, data.parser || 'custom', 'deck');
+        void loadDeckComprehension(deckID);
     }
     catch (err) {
         showToast(err.message || 'Failed to load deck.', 'error');
         navigate('/decks');
+    }
+}
+// Fetches and renders the token-weighted comprehension projection on the deck
+// detail view: headline percentage plus a "learn these next" list showing the
+// before → after coverage if the user learns the top unlock candidates.
+// Non-fatal on any failure — the deck page works without the projection.
+async function loadDeckComprehension(deckID) {
+    const panel = document.getElementById('deck-comprehension');
+    if (!panel)
+        return;
+    try {
+        const resp = await fetch(`/api/decks/${deckID}/comprehension`, { credentials: 'same-origin' });
+        if (!resp.ok)
+            return;
+        const data = await resp.json();
+        if (state.currentDeckID !== deckID || !data.total_tokens)
+            return;
+        const unlocks = data.top_unlocks || [];
+        const projected = Math.min(100, Math.round((data.coverage_pct + unlocks.reduce((sum, u) => sum + u.gain_pct, 0)) * 10) / 10);
+        const unlockItems = unlocks.map(u => `
+            <li class="deck-unlock-item">
+                <span class="deck-unlock-lemma">${escapeHtml(u.lemma)}</span>
+                <span class="deck-unlock-pos">${escapeHtml(u.pos)}</span>
+                <span class="deck-unlock-gain">+${u.gain_pct}%</span>
+            </li>`).join('');
+        const projection = unlocks.length > 0
+            ? `<details class="deck-unlocks">
+                <summary>Learn these ${unlocks.length} words to reach ~${projected}% comprehension</summary>
+                <ul class="deck-unlock-list">${unlockItems}</ul>
+            </details>`
+            : '';
+        panel.innerHTML = `
+            <p class="deck-comprehension-headline">
+                Predicted comprehension <strong>${data.coverage_pct}%</strong>
+                <span class="deck-comprehension-detail">${data.known_tokens.toLocaleString()} of ${data.total_tokens.toLocaleString()} words in running text</span>
+            </p>
+            ${projection}`;
+        panel.classList.remove('hidden');
+    }
+    catch {
+        // Non-fatal: leave the panel hidden.
     }
 }
 function formatDeckCreatedAt(iso) {

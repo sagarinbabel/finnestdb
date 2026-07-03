@@ -9,7 +9,8 @@
         import-ud-gold import-ud-gold-fi import-ud-gold-et \
         scrape-gutenberg-fi \
         fetch-frequency-baselines \
-        doctor live-api-smoke purge-parse-context
+        doctor live-api-smoke purge-parse-context \
+        import-gold-surfaces export-gold-candidates
 
 # Default target
 all: build
@@ -313,6 +314,15 @@ RETENTION_DAYS ?= 30
 PURGE_PARSE_CONTEXT_FLAGS ?=
 purge-parse-context:
 	go run ./cmd/purgeparsecontext -db finnestdb.db -older-than-days "$(RETENTION_DAYS)" $(PURGE_PARSE_CONTEXT_FLAGS)
+
+# Correction-loop Phase 4 guard data: load the frozen gold sets so accepting
+# a correction that contradicts them is refused. Re-run after gold changes.
+import-gold-surfaces:
+	go run ./cmd/importgoldsurfaces -db finnestdb.db
+
+# Correction-loop Phase 3 review: print pending gold-case promotions.
+export-gold-candidates:
+	go run ./cmd/exportgoldcandidates -db finnestdb.db
 
 # ── NLP tool setup (unified venv) ─────────────────────────────────────────────
 #

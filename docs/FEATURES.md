@@ -215,9 +215,14 @@ FinnEst is positioned around four technical bets:
   external reference — Omorfi for Finnish, EstNLTK / Vabamorf for
   Estonian — and against frozen gold datasets in `docs/baselines/`.
 - **User correction loop**: real users submit parser corrections from inspect
-  and deck-detail result rows; admins triage them; accepted lemma/POS
-  corrections feed `custom_overrides` lexical rows that can improve future
-  parser output, while accepted-correction metrics guide later quality work.
+  and deck-detail result rows; admins triage them; accepted lemma/POS *and
+  grammar-label* corrections feed authoritative `custom_overrides` lexical
+  rows (grammar labels become UD FEATS on the override) that change future
+  parser output. Two safety rails close the loop (2026-07-02): acceptance is
+  refused when the correction contradicts the frozen gold evaluation sets
+  (`make import-gold-surfaces` loads the guard data), and a correction
+  independently accepted for 3+ distinct users is auto-queued as a gold-case
+  candidate for manual promotion (`make export-gold-candidates`).
 - **Post-live improvement ideas**: once the app is shipped and live, the
   dictionary/lemma layer can absorb new sources of evidence into a
   canonical lexical knowledge graph over time. `AUTORESEARCH.md` is an
