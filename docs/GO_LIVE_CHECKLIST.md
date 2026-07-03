@@ -196,9 +196,12 @@ Required before go-live:
   `POST /api/auth/login`, and `POST /api/auth/register`.
 - Keep request-size enforcement for pasted text and verify it is applied before
   JSON decoding and expensive parser work.
-- Enforce a lower configurable text-size cap for anonymous parsing than for
-  signed-in parsing. The current signed-in cap is 1,500,000 characters; do not
-  expose that full ceiling to unsigned demo traffic.
+- [Shipped 2026-07-04] A lower configurable text-size cap for anonymous parsing
+  than for signed-in parsing: `FINNESTDB_ANON_MAX_CHARS` (default 20,000)
+  enforced server-side for unauthenticated `/api/parse` before parser work,
+  returning a 4xx that names the limit. The signed-in cap stays 1,500,000; the
+  unsigned demo no longer sees that ceiling. Remaining: tune the default via the
+  load test below.
 - Configure HTTP server read/write/header timeouts.
 - Add IP/account-level throttling or deployment-level WAF limits.
 - Log rejected requests at a level useful for abuse monitoring without storing
