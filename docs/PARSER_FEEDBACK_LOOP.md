@@ -30,9 +30,10 @@ articles, subtitles, Anki imports, and future catalog decks on the same path.
 Current implementation covers the queue, status triage, accepted lemma/POS
 `custom_overrides` writeback with grammar-label -> UD FEATS on the override
 row, eval-gated acceptance, gold-candidate promotion (Phases 1-4, shipped
-2026-07-02), and flag-only feedback (Phase 1b, shipped 2026-07-04). Weekly admin
-reports, AI-assisted triage, source-agnostic overlay tables, and faulty-content
-quarantine are not built yet.
+2026-07-02), flag-only feedback (Phase 1b, shipped 2026-07-04), and global
+correction issues with admin-only faulty-content quarantine (Phase 1c, shipped
+2026-07-04). Weekly admin reports, AI-assisted triage, and source-agnostic
+correction-overlay tables are not built yet.
 
 ## UX recommendations
 
@@ -110,7 +111,7 @@ correction; only then does it write a lexical override.
 | Admin triage | Admin can list by status, filter by `flag_only`, and accept/reject/follow up. A flag-only badge marks reports with no proposed fix. Correction-type classification (parser identity, meaning cue, etc.) is still future work. | Admin can filter flag-only feedback and classify whether an issue is parser identity, meaning cue, context sense, phrase boundary, example quality, or card presentation. |
 | Acceptance behavior | Accepted concrete corrections write `custom_overrides` from proposed lemma/POS and change future lookups; acceptance is eval-gated against `gold_surfaces` (HTTP 409 on contradiction) and repeat corrections auto-queue as `gold_candidates`. Accepting a flag-only report writes nothing to the lexicon unless the admin supplies a concrete lemma/POS, which converts it into a normal correction that then flows through the same eval-gated writeback. | Only accepted parser-identity corrections with concrete lemma/POS write lexical overrides. Flag-only reports do not write the lexicon until an admin supplies/accepts a concrete correction. |
 | Grammar/FEATS | Accepted grammar labels map through `udfeats` onto the override row's `forms.feats` (shipped 2026-07-02); corrected FEATS live only on the `custom_overrides` row. | Done for parser-identity overrides; richer meaning/card layers go through future overlay work. |
-| Existing learner decks/cards | Feedback does not immediately mutate the current deck/card. It changes future parser output after admin acceptance. There is no shipped quarantine/suppression path for already-created faulty cards. | Preserve learning history, but remove known-faulty content from circulation after admin acceptance: skip/suppress bad occurrences or cards, or render accepted overlays for cue/sentence/explanation/sense. |
+| Existing learner decks/cards | Feedback does not immediately mutate the current deck/card. It changes future parser output after admin acceptance. Admin-confirmed quarantine (Phase 1c, shipped 2026-07-04) suppresses matching cards/occurrences globally from review, new-card, deck-stats, and comprehension surfaces without touching review history; restore returns them with scheduler state intact. | Preserve learning history, but remove known-faulty content from circulation after admin acceptance: skip/suppress bad occurrences or cards (shipped), or render accepted overlays for cue/sentence/explanation/sense (future). |
 | Source context | Inspect parses are ephemeral, but feedback creates a retained parse session with source text for admin review. | Same, with clear privacy copy and retention/deletion controls. |
 
 ## Existing content and learning history
@@ -136,97 +137,108 @@ queues.
 
 ## Global correction issue ledger
 
-Feedback submissions should attach to a global correction issue, not remain only
-as isolated per-user rows. Keep the alpha schema minimal:
+_Shipped 2026-07-04 (Phase 1c)._ Feedback submissions attach to a global
+correction issue rather than staying isolated per-user rows. The alpha schema is
+deliberately minimal:
 
 - `parse_feedback` remains raw report intake.
-- `correction_issues` owns global admin state, duplicate counts, scope, status,
-  quarantine/fix metadata, and reopened/regression markers.
+- `correction_issues` owns global admin state: scope fingerprint
+  (`lang, parser, norm_surface, lemma, pos`), `status`, `report_count`,
+  `distinct_reporter_count`, first/last-reported timestamps, quarantine/fix
+  metadata, `reopened_count`, alpha class, and admin note.
 - `parse_feedback.correction_issue_id` links each report to its issue.
 
-Do not add separate `quarantine_targets` or rich event tables for alpha unless
-the implementation cannot preserve traceability without them. The issue row plus
-linked report rows should carry the first version of the lifecycle:
+No separate `quarantine_targets` or rich event tables ship for alpha: the
+duplicate/lifecycle evidence lives on the issue row plus its linked
+`parse_feedback` rows. `report_count`/`distinct_reporter_count` are recomputed
+from the linked rows on each submission, so they stay correct without an event
+log. The lifecycle is expressed as the issue's `status`
+(`open` → `quarantined` → `fixed` → `reopened`) plus the derived counts:
 
-- `reported`: first report received, with reporter, time, source context, and
-  original parser/card state.
-- `duplicate_reported`: another learner reports the same scoped issue.
-- `triaged`: admin classifies correction type and scope.
+- first report creates the issue (`open`) with reporter time and scope.
+- a duplicate report against the same scope bumps `report_count` (and
+  `distinct_reporter_count` for a new reporter).
+- an admin classifies the issue with a simple alpha class (triage).
 - `quarantined`: confirmed-bad content is suppressed globally for matching
   learners.
-- `fixed`: overlay, lexical writeback, replacement, or reparse action applied,
-  with fix version and admin.
-- `reopened`: a later report shows the fix missed a scope or regressed.
+- `fixed`: an admin restores/marks the issue fixed.
+- `reopened`: a later report against a `fixed` issue flips it to `reopened` and
+  bumps `reopened_count`, so a regression is distinguishable from a fresh case.
 
-Scope should be explicit: global parser identity, surface+sense, phrase target,
-specific source occurrence class, sentence/cue/explanation, or card presentation.
-Confirmed quarantine/fixes apply to every learner whose content matches the
-scope. Raw unreviewed reports should normally create/update the issue without
-auto-hiding content globally unless an admin or trusted threshold confirms it.
+For alpha the scope is the conservative fingerprint above. Quarantine
+suppression matches on the issue's `(lang, lemma, pos)` when present (the card
+and its occurrences), else on `(lang, normalized surface)` (occurrence match).
+Confirmed quarantine applies to every learner whose content matches the scope.
+Raw unreviewed reports create/update the issue but never auto-hide content;
+suppression requires an admin **Quarantine now** action. Rich correction
+overlays and per-scope event logs remain future work.
 
 ## Report-to-quarantine workflow
 
-The alpha flow should work like this:
+_Shipped 2026-07-04 (Phase 1c); the overlay actions noted in steps 6/8 remain
+future work._ The alpha flow works like this:
 
 1. Learner submits feedback from Inspect, deck detail, or review.
-2. Server computes a conservative scope fingerprint, such as language,
-   correction type if known, normalized surface, lemma/POS if present, parser
-   mode, source occurrence reference, and optional sentence/context hash.
-3. Server finds an open matching `correction_issues` row or creates one.
-4. Feedback row is stored and linked to the issue. The issue gets a `reported`
-   or `duplicate_reported` event with reporter, timestamp, parse/deck context,
-   original analysis, proposed correction if any, and note.
-5. Issue remains visible in admin triage immediately, but content stays live by
+2. Server computes a conservative scope fingerprint:
+   `(lang, parser, normalized surface, proposed lemma, proposed pos)`. Flag-only
+   and surface-only reports leave lemma/pos empty.
+3. Server finds an open matching `correction_issues` row or creates one
+   (`store.groupFeedbackIntoIssue`), in the same transaction as the insert.
+4. The feedback row is stored and linked to the issue via `correction_issue_id`;
+   `report_count`/`distinct_reporter_count` are recomputed from the linked rows.
+5. The issue is visible in admin triage immediately, but content stays live by
    default.
-6. Quarantine can happen by one of two admin paths:
-   - admin accepts **Quarantine now**, with required reason and explicit scope;
-   - admin accepts a correction and chooses a quarantine/overlay action.
-7. Quarantine marks the scoped issue as globally suppressed. Review and new-card
-   queries skip matching content, or render the accepted overlay if one exists.
-8. Fix writes a `fixed` event with fix version, admin, and action taken.
-9. Later reports against the same scope after a fix create `reopened` events, so
-   admins can tell whether the fix regressed or missed part of the scope.
+6. Quarantine happens by the admin **Quarantine now** action, with a required
+   reason and a prior alpha class. (Accepting a correction and choosing a
+   quarantine/overlay action in one step is future overlay work; today an admin
+   quarantines the issue as a separate action.)
+7. Quarantine flips the issue to `quarantined`; the review, new-card,
+   deck-stats, and comprehension queries skip matching content globally.
+8. Restore/mark-fixed flips the issue to `fixed` with an optional fix note and
+   returns the same content to circulation. (Overlay/replacement fixes are
+   future work.)
+9. A later report against a `fixed` scope reopens the issue (`reopened`) and
+   bumps `reopened_count`, so admins can tell a regression from a missed scope.
 
-For alpha, trusted thresholds are traceability-only. The system can compute
-duplicate counts, distinct reporter counts, and `threshold_candidate` badges for
-admins, but it must not auto-quarantine globally. Admin confirmation is the
-default path; emergency quarantine is the fast path.
+For alpha, trusted thresholds are traceability-only. The system computes
+duplicate counts, distinct-reporter counts, and a `threshold_candidate` badge
+(≥3 distinct reporters), but it never auto-quarantines. Admin confirmation is
+the only path to suppression.
 
-Learner-facing quarantine should be quiet. Quarantined items disappear from
-review/new-card queues globally. Deck detail may show neutral copy such as
-"Removed from study after review" only where omitting the row would confuse the
-learner. Full report/fix/quarantine traceability belongs in admin views.
+Learner-facing quarantine is quiet: quarantined items disappear from
+review/new-card queues globally with no scary copy. Full report/fix/quarantine
+traceability lives in the admin views.
 
-Current learner-facing stats should follow the same rule: active deck word
-counts, due counts, new-card counts, comprehension/coverage estimates, and
-next-unlock projections exclude quarantined content. Historical/admin views can
-include quarantined content with issue metadata.
+Current learner-facing stats follow the same rule: deck word counts, due
+counts, new-card counts, and comprehension coverage/unlock projections exclude
+quarantined content. Historical `review_log` rows and past reviews are
+untouched, and admin views can include quarantined content with issue metadata.
 
-Fixing a quarantined issue restores the same study item by default. Create a new
-study item only when the learning target identity changes: wrong lemma/POS,
-wrong sense, homograph split, phrase/MWE replacing a single-token target, or
-invalid target retirement. Past review history remains historical; current
-rendering uses the fixed content.
-
-When the same study item is restored, keep its existing review/FSRS scheduler
-state. Quarantine pauses circulation; it does not reset memory. Reset or
-reintroduce scheduling only when the fix creates a new learning target identity.
+Fixing (restoring) a quarantined issue returns the same study item to
+circulation. Because suppression is a live query filter — no card or scheduler
+rows are deleted at quarantine time — restore is a pure status flip and the
+card's existing `card_state` (due date, history) is preserved. Quarantine pauses
+circulation; it does not reset memory. Creating a new study item for a changed
+learning target identity (wrong lemma/POS, homograph split, phrase replacing a
+single token) remains future overlay work.
 
 ## Alpha admin classification
 
-Alpha admin triage should require one simple category before quarantine/fix:
+_Shipped 2026-07-04 (Phase 1c)._ Admin triage requires one simple category
+before an issue can be quarantined or restored:
 
-- `parser issue` — parser identity or grammar analysis appears wrong.
-- `bad card content` — learner-facing cue, explanation, sense, phrase boundary,
+- `parser_issue` — parser identity or grammar analysis appears wrong.
+- `bad_card_content` — learner-facing cue, explanation, sense, phrase boundary,
   or presentation is wrong or misleading.
-- `source/extraction issue` — source sentence/text extraction is faulty.
-- `not sure` — needs investigation before routing.
+- `source_extraction_issue` — source sentence/text extraction is faulty.
+- `not_sure` — needs investigation before routing.
 
 The full correction taxonomy stays available as optional detail for deeper
-cleanup and reporting. Do not block urgent quarantine on precise taxonomy labels.
+cleanup and reporting. Urgent quarantine is not blocked on precise taxonomy
+labels.
 
-For alpha, the admin UI should not become a broad data editor. It should support
-classification, notes, report grouping, duplicate counts, and **Quarantine now**.
+For alpha, the admin UI is not a broad data editor. It supports classification,
+notes, report grouping, duplicate counts, **Quarantine now**, and restore.
 Parser-identity fixes can continue through the existing accepted lemma/POS
 `custom_overrides` writeback. Meaning/card/source fixes should be handled by
 manual code/data changes or future overlay work until real correction patterns
@@ -257,9 +269,13 @@ must remain deterministic and human-approved.
 ## Admin triage
 
 The shared queue is at `/api/admin/parse-feedback` (admin-only). Filters by
-status and language; admins can change status per submission. Issue-aware
-filters and per-issue status changes arrive with the planned
-`correction_issues` work (Phase 1c).
+status and `flag_only`; admins can change status per submission. The same
+combined admin page also renders the global correction-issue ledger from
+`/api/admin/correction-issues` (admin-only, Phase 1c, shipped 2026-07-04):
+list/filter issues by status, classify them, **Quarantine now** (required
+reason), and restore/mark-fixed. A `threshold_candidate` badge appears at ≥3
+distinct reporters but never auto-quarantines. No separate Issues page ships for
+alpha.
 
 When an admin marks feedback `accepted`, proposed lemma/POS corrections write
 `forms` and `lemmas` rows with `source='custom_overrides'`,

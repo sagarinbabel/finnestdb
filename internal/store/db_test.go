@@ -1603,6 +1603,30 @@ func TestDeckComprehension(t *testing.T) {
 	if _, err := db.DeckComprehension(other.ID, deckID, 10); err != sql.ErrNoRows {
 		t.Fatalf("foreign private deck err=%v want sql.ErrNoRows", err)
 	}
+
+	// Phase 1c behavior change (deliberate): a quarantined (lemma, pos) drops
+	// out of comprehension entirely. "nähdä" occupied two token positions
+	// (S2 t1 and S3 t0); quarantining it removes both from TotalTokens — a
+	// quarantined item is out of circulation, so it is neither covered nor an
+	// unlock, and it no longer inflates the deck's token mass. CoveredTokens
+	// stays 4 (the covered positions did not include nähdä).
+	admin := createTestUser(t, db, "comprehension-admin@example.com")
+	adminReporter := createTestUser(t, db, "comprehension-reporter@example.com")
+	quarantineIssueForSurface(t, db, admin.ID, adminReporter.ID, "FI", "näkee", "nähdä", "VERB", AlphaClassParserIssue)
+
+	stats, err = db.DeckComprehension(user.ID, deckID, 10)
+	if err != nil {
+		t.Fatalf("DeckComprehension after quarantine: %v", err)
+	}
+	if stats.TotalTokens != 5 || stats.CoveredTokens != 4 {
+		t.Fatalf("after quarantine total=%d covered=%d want 5/4 (nähdä's 2 positions removed)",
+			stats.TotalTokens, stats.CoveredTokens)
+	}
+	for _, unlock := range stats.TopUnlocks {
+		if unlock.Lemma == "nähdä" {
+			t.Fatalf("quarantined nähdä still listed as unlock: %+v", stats.TopUnlocks)
+		}
+	}
 }
 
 func createSingleTokenDeck(t *testing.T, db *DB, userID int64, lang, text, form, lemma, pos string) int64 {

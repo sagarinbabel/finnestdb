@@ -10,6 +10,38 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Correction issues + admin-only quarantine (Phase 1c)
+
+Ships the global correction-issue ledger and admin-only faulty-content
+quarantine (public-alpha gate). New `correction_issues` table plus
+`parse_feedback.correction_issue_id` (both via idempotent CREATE/ALTER,
+Decision 12). Feedback submission groups each report into a found-or-created
+issue by a `(lang, parser, norm_surface, lemma, pos)` scope fingerprint and
+recomputes report/distinct-reporter counts; a report against a `fixed` issue
+reopens it. Admins classify an issue (one of `parser_issue`, `bad_card_content`,
+`source_extraction_issue`, `not_sure`), then **Quarantine now** (required
+reason) suppresses matching content globally — review and new-card queues, deck
+word/due/new-card counts, and `DeckComprehension` coverage/unlocks all exclude
+it — while `review_log` history stays untouched. Restore is a status flip that
+returns content with `card_state` intact. A `threshold_candidate` badge appears
+at ≥3 distinct reporters but never auto-quarantines. One combined admin queue;
+no separate Issues page.
+
+- Modified: [`PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md) — "Global
+  correction issue ledger", "Report-to-quarantine workflow", "Alpha admin
+  classification", "Admin triage", the intro paragraph, and the current-vs-target
+  table row moved from target-tense to shipped.
+- Modified: [`FEATURES.md`](FEATURES.md) "What We Store During Alpha" —
+  quarantine bullet notes restore preserves scheduler state.
+- Modified: [`../TODO.md`](../TODO.md) — Phase 1c ticked; "Parser feedback alpha
+  gate" and "Quarantine behavior" public-alpha bullets ticked with shipped notes.
+- Modified: [`../CONTEXT.md`](../CONTEXT.md) — Correction Issue, Faulty Content
+  Quarantine, Trusted Quarantine Threshold, and Emergency Quarantine updated to
+  shipped phrasing.
+- Modified: [`srs-deck-spec.md`](srs-deck-spec.md) — coverage/quarantine and
+  restore paragraphs moved to shipped tense.
+- Cross-reference: [`DECISIONS.md`](DECISIONS.md) Decision 25.
+
 ## 2026-07-04 — Flag-only parser feedback (Phase 1b)
 
 Documents the public-alpha flag-only feedback path: signed-in learners can

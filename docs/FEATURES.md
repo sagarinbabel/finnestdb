@@ -204,7 +204,9 @@ Anonymous correction submission is out of scope for alpha.
   as gold candidates (shipped 2026-07-02).
 - Admin-quarantined faulty study content quietly disappears from learner
   review/new-card queues; active learner-facing counts and comprehension stats
-  exclude it, while full report/fix traceability is admin-facing.
+  exclude it, while full report/fix traceability is admin-facing. Restoring a
+  fixed issue returns the content with its scheduler state intact (shipped
+  2026-07-04, Phase 1c).
 - Account deletion removes the account and retained user data server-side,
   including decks, parse sessions, parser feedback, review cards, sessions,
   and known/ignored word lists.
