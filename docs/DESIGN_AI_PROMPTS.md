@@ -1,6 +1,6 @@
-# Design AI prompts for FinEstDB
+# Design AI prompts for FinnEst
 
-_Created 2026-05-07. Templates for handing FinEstDB screens to design
+_Created 2026-05-07. Templates for handing FinnEst screens to design
 AIs (v0.dev, Lovable, Bolt, Cursor's design canvas, Figma Make, etc.)
 and getting back UI that lands inside our existing CSS, doesn't
 re-invent the type/colour system, and respects our actual user flows._
@@ -34,7 +34,7 @@ prompt.
 ## System block (paste first, every time)
 
 ```
-You are designing screens for FinEstDB (finne.st), a consumer
+You are designing screens for FinnEst (finne.st), a consumer
 language-learning web app for Finnish and Estonian readers. Users
 paste real text — articles, lyrics, book chapters — and the app
 returns dictionary-backed lemmas, definitions, examples, token

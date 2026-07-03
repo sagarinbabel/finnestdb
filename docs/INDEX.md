@@ -1,13 +1,14 @@
 # Documentation Index
 
-_Created 2026-05-07 PM; refreshed 2026-05-12. Single map of every doc in
+_Created 2026-05-07 PM; refreshed 2026-07-03. Single map of every doc in
 this repo, organized by purpose. Designed to be cold-readable: any reader
 (human or LLM) should be able to find the right doc for their question in
 under a minute._
 
-If you're new to the repo, read in this order: [`../README.md`](../README.md) →
-[`../TODO.md`](../TODO.md) → [`../ARCHITECTURE.md`](../ARCHITECTURE.md) →
-this index for everything else.
+If you're new to the repo, start with [`../TODO.md` "LLM handoff read
+order"](../TODO.md#llm-handoff-read-order). For general setup, read
+[`../README.md`](../README.md). For system shape, read
+[`../ARCHITECTURE.md`](../ARCHITECTURE.md).
 
 ## LLM guardrail
 
@@ -15,6 +16,18 @@ this index for everything else.
 post-live ideas. Future agents should ignore autoresearch as current work unless
 the user explicitly asks for it in the current turn. Do not block parser,
 evaluation, or product changes on autoresearch behavior.
+
+## Current handoff
+
+The public-alpha execution handoff lives in [`../TODO.md`](../TODO.md):
+
+- [LLM handoff read order](../TODO.md#llm-handoff-read-order)
+- [Public alpha gates](../TODO.md#public-alpha-gates)
+- [Alpha launch issue ledger](../TODO.md#alpha-launch-issue-ledger)
+
+Use [`docs/GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) for the release
+quality rubric. Use [`docs/DECISIONS.md`](DECISIONS.md) for settled rationale.
+Use [`docs/grill-sessions/`](grill-sessions/) only as an audit trail.
 
 ## Quick reference
 
@@ -25,9 +38,9 @@ descriptions when two docs sound similar.
 - **Entry point:** [`../README.md`](../README.md) (what the project is, how to run, project structure, doc index)
 - **Setup verifier:** [`make doctor`](../cmd/doctor/main.go) plus [`docs/LOCAL_TOOLING.md`](LOCAL_TOOLING.md) — local tool/artifact inventory, canonical paths, and fallback lookup rules
 - **System architecture:** [`../ARCHITECTURE.md`](../ARCHITECTURE.md) (current), [`docs/LEXICAL_PLAN.md`](LEXICAL_PLAN.md) (lexical-layer detail), [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) (offline corpus pipeline)
-- **Product framing:** [`docs/FEATURES.md`](FEATURES.md) (user-facing), [`docs/DESIGN_REVIEW.md`](DESIGN_REVIEW.md) (design folder audit + TODO)
-- **What's done / what's next:** [`../TODO.md`](../TODO.md) (the only doc you need for status)
-- **Why we made choices:** [`docs/DECISIONS.md`](DECISIONS.md) (latest-first, 22 decisions)
+- **Product vision/framing:** [`docs/FEATURES.md`](FEATURES.md) (current learner-facing product framing), [`docs/USER_FLOWS.md`](USER_FLOWS.md) (screen-level journeys)
+- **What's done / what's next:** [`../TODO.md`](../TODO.md) (handoff read order, public-alpha gates, launch issue ledger, status)
+- **Why we made choices:** [`docs/DECISIONS.md`](DECISIONS.md) (latest-first, 29 decisions)
 - **What changed when:** [`docs/CHANGELOG.md`](CHANGELOG.md) (latest-first, cross-linked to DECISIONS)
 - **Measured parser quality:** [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) (chronological log)
 - **ML roadmap:** [`docs/ML_IDEAS.md`](ML_IDEAS.md)
@@ -53,11 +66,30 @@ descriptions when two docs sound similar.
 | How accepted learner corrections should be classified | [`docs/CORRECTION_TAXONOMY.md`](CORRECTION_TAXONOMY.md) |
 | What ML directions fit the project | [`docs/ML_IDEAS.md`](ML_IDEAS.md) |
 
+## Canonical doc roles
+
+Use this table when deciding where a product or roadmap update belongs.
+
+| Doc | Role | Update when |
+|---|---|---|
+| [`../README.md`](../README.md) | Entry point and high-level project map | Setup, project structure, or top-level doc navigation changes |
+| [`docs/INDEX.md`](INDEX.md) | Canonical documentation map and doc-role table | A document is added, retired, renamed, or changes purpose |
+| [`../CONTEXT.md`](../CONTEXT.md) | Shared product vocabulary and mental model | Durable terminology or modeling assumptions change |
+| [`docs/DECISIONS.md`](DECISIONS.md) | Stable decisions and rationale | A decision is settled and should outlive a working session |
+| [`../TODO.md`](../TODO.md) | Active execution roadmap/backlog, including the alpha launch issue ledger | A decision creates, removes, or changes implementation work, or a launch issue needs classification |
+| [`docs/FEATURES.md`](FEATURES.md) | Current learner-facing product vision/framing | Product promise, alpha posture, or learner-facing framing changes |
+| [`docs/USER_FLOWS.md`](USER_FLOWS.md) | Screen-level journeys and behavior | User journeys, screens, or behavior change |
+| [`docs/GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) | Launch-gating operational/security/privacy requirements and go/no-go rubric | A public-hosting requirement, abuse control, retention rule, deployment gate, or release quality bar changes |
+| [`docs/ideas.md`](ideas.md), [`docs/ML_IDEAS.md`](ML_IDEAS.md) | Exploratory/post-alpha roadmap | An idea is worth preserving but is not active implementation work |
+| [`docs/CHANGELOG.md`](CHANGELOG.md) | Shipped changes | A PR or completed change lands and needs historical release context |
+| [`../finnestdb-prd-alpha.md`](../finnestdb-prd-alpha.md) | Historical planning context | Rarely; keep mostly archival and superseded by current docs where they conflict |
+| [`docs/grill-sessions/`](grill-sessions/) | Working Q/A trails | During product-grill sessions; promote stable results to `DECISIONS.md` / `TODO.md` / specs |
+
 ## By purpose
 
 ### Entry point
 
-- [`../README.md`](../README.md) — what FinEstDB is, how to run it, project
+- [`../README.md`](../README.md) — what FinnEst is, how to run it, project
   structure, build instructions, browser regression tests, dictionary import,
   parser evaluation CLI, known limitations, documentation index pointer.
 
@@ -83,7 +115,8 @@ descriptions when two docs sound similar.
 
 ### Product framing (user-facing)
 
-- [`docs/FEATURES.md`](FEATURES.md) — what the product is from a
+- [`docs/FEATURES.md`](FEATURES.md) — current product vision/framing: what the
+  product is from a
   learner's perspective. Inspect → correct → deck → review loop.
   Technology differentiators (fast parser, benchmarked quality, user
   correction loop, inflected-form-aware frequency). Notes about
@@ -96,6 +129,11 @@ descriptions when two docs sound similar.
   ✎ entry point) and the open questions on translation, register
   picker, and cold-start.
 
+- [`../finnestdb-prd-alpha.md`](../finnestdb-prd-alpha.md) — historical
+  product notes and roadmap. Kept for initial product vision and plan evolution;
+  superseded by `FEATURES.md`, `USER_FLOWS.md`, `DECISIONS.md`, and `TODO.md`
+  where they conflict.
+
 - [`docs/DESIGN_REVIEW.md`](DESIGN_REVIEW.md) — audit of the `design/`
   folder: branding, Aalto app system, wireframe clickthrough, view
   components, mobile prototype, and flow diagram. Includes a prioritized
@@ -103,7 +141,7 @@ descriptions when two docs sound similar.
   correction round-trip, and design-system convergence.
 
 - [`docs/DESIGN_AI_PROMPTS.md`](DESIGN_AI_PROMPTS.md) — system prompt
-  + per-screen prompt templates for handing FinEstDB screens to v0,
+  + per-screen prompt templates for handing FinnEst screens to v0,
   Lovable, Bolt, Cursor, or Figma Make without losing the existing
   type/colour system.
 
@@ -113,7 +151,7 @@ descriptions when two docs sound similar.
   main / What's not in main yet / Open PRs / Research Goals / Notes
   & historical**. The first thing to read if you want to do work.
 - [`docs/DECISIONS.md`](DECISIONS.md) — decisions log, latest-first.
-  21 entries with date, context, decision, reasoning, trade-off,
+  29 entries with date, context, decision, reasoning, trade-off,
   how-to-revisit. Cross-linked to CHANGELOG where the same event
   appears in both.
 - [`docs/CHANGELOG.md`](CHANGELOG.md) — documentation changelog,
@@ -259,8 +297,9 @@ For an LLM building a project model from cold:
 3. **History / "what happened?"**: CHANGELOG → DECISIONS (latest-first, cross-linked) → PARSER_EVOLUTION
 4. **Parser quality**: PARSER_EVAL_METHODOLOGY → PARSER_EVOLUTION → docs/baselines/
 5. **Architecture deep-dive**: ARCHITECTURE → LEXICAL_PLAN → ARTIFACT_POLICY → data_enhancement
-6. **Roadmap / future**: TODO Research Goals → ML_IDEAS → ideas
-7. **Product / UX**: FEATURES → PARSER_FEEDBACK_LOOP → srs-deck-spec → DESIGN_REVIEW (open design TODO)
+6. **Active roadmap / backlog**: TODO
+7. **Exploratory roadmap / future**: TODO Research Goals → ML_IDEAS → ideas
+8. **Product / UX**: FEATURES → USER_FLOWS → PARSER_FEEDBACK_LOOP → srs-deck-spec → DESIGN_REVIEW (open design TODO)
 
 Autoresearch exception: even though `docs/AUTORESEARCH.md` exists, it is not
 part of the active roadmap. Treat it as an idea parking lot until the app is

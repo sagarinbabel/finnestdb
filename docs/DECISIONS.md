@@ -23,6 +23,697 @@ choices we did.
 
 ---
 
+## Decision 29: Alpha go/no-go allows non-dangerous rough edges only
+
+**Date:** 2026-07-03
+
+### Context
+
+The product-readiness grill settled that public alpha should not wait for a
+fully polished product, but "rough edges are okay" is too vague to guide launch
+decisions. The team needs a concrete definition of what is launch-blocking,
+what can ship with documentation, and how future agents should know the bar.
+
+### Decision
+
+Public alpha can launch when the core journeys work end-to-end and every known
+rough edge is classified as non-dangerous.
+
+The canonical quality rubric is `docs/GO_LIVE_CHECKLIST.md` under **Alpha
+Go/No-Go Rubric**. The launch issue ledger itself lives inside `TODO.md` under
+**Alpha launch issue ledger**. Do not create a separate launch-issues document
+unless the table becomes too large for `TODO.md` to remain readable.
+
+The first experience should be excellent about 95% of the time before public
+alpha. This is a product-quality bar, not only an uptime target. A first-run
+path should usually feel credible, fast-enough, and trustworthy: no broken flow,
+no misleading state, no obvious high-severity parser/card issue in the learner's
+first screenful, and no latency/error behavior that makes the app feel
+unreliable. Gate launch through a journey-first FI/ET release-candidate pack
+covering anonymous demo, embedded text, own-text Inspect, save deck, first
+review, known-word import, and parser feedback. The release-candidate pack
+should be a checked-in, repeatable artifact with explicit FI/ET cases for
+curated embedded texts, realistic pasted texts, known-word imports,
+ambiguity/homograph handling, parser-feedback flows, deck save, and first
+review. It should have one canonical manifest at
+`testdata/first-experience-rc/manifest.json`; parser checks, `web/tests`
+Playwright specs, and the manual walkthrough should all consume that same
+manifest and fixtures. Build the manifest and a small skeleton runner as the
+first alpha implementation task, before waiting for all missing flows to exist;
+it may fail initially, but it should become the concrete launch bar as features
+land. Expose the automated portion through one top-level command,
+`make first-experience-rc`, which runs parser fixture checks and Playwright RC
+specs, then prints the manual walkthrough path/instructions. Run it in two
+parts: automated parser/browser checks for deterministic
+behavior, plus a short manual product walkthrough for judgment calls about
+trustworthiness, clarity, and first-screen credibility. Grade findings as
+`blocker`, `serious`, or `minor`: blockers and serious trust-breaking findings
+stop launch unless fixed or explicitly reclassified with evidence; minor
+findings can ship only if they satisfy the non-dangerous rough-edge rubric and
+are tracked in the launch issue ledger. After launch, validate the same bar with
+privacy-preserving week-one alpha telemetry when available: journey
+completion/drop-off, parse/deck/review errors, latency, retry/429/503 rates,
+feedback/flag rate, quarantine-triggering reports, and language split. Do not
+retain pasted source text merely to compute these metrics. Telemetry is
+aggregate by default. Per-user event trails are allowed only for signed-in users,
+only for product events needed to debug onboarding failures, and never for
+pasted source text.
+
+Minimal telemetry is not itself a public-alpha blocker. If it is not ready at
+launch, record it in the post-launch roadmap and use server logs plus manual
+feedback/admin review as the week-one fallback until telemetry lands.
+
+A rough edge is **non-dangerous** only if all of these are true:
+
+1. it does not create privacy, security, account, retention, or abuse risk;
+2. it does not lose or corrupt learner data, review state, known-word state,
+   source-retention state, or feedback/quarantine history;
+3. it does not mislead the learner about what is known, saved, retained,
+   deleted, reviewed, quarantined, or parser-confident;
+4. it does not break an agreed core journey for either FI or ET;
+5. it has a clear workaround, retry path, or honest UI explanation; and
+6. it is documented in the launch issue list with owner, severity, affected
+   journey/language, evidence, workaround, and revisit condition.
+
+A **no-go blocker** is any issue that violates one of those conditions. Examples:
+
+- auth/session/admin isolation bug;
+- account deletion or retention behavior that does not match the product copy;
+- source text stored when the UI says it is ephemeral;
+- parser-feedback or quarantine failure that leaves confirmed-bad study content
+  in circulation;
+- deck/review/FSRS state loss or duplicated/incorrect due state;
+- known-word import that silently records the wrong durable knowledge claim;
+- FI/ET asymmetry that makes one language fail the equal-status journey;
+- anonymous parse load that can starve signed-in review/deck usage;
+- outage behavior that times out or corrupts state instead of returning clear
+  retry behavior; or
+- misleading parser-confidence/meaning-check UI.
+
+Acceptable rough edges include cosmetic polish gaps, wording that is clear but
+not elegant, minor extra clicks, limited non-core admin conveniences, incomplete
+post-alpha roadmap features, or isolated parser imperfections that are
+reportable and do not undermine the parser-feedback/quarantine safety path.
+
+### Why
+
+This lets alpha launch to learn from real users without allowing preventable
+trust failures. The bar is not "beautiful"; the bar is "core journeys work,
+truthful state is preserved, and known risk is bounded."
+
+### Trade-off
+
+The rubric creates more release discipline than a casual alpha. That is
+intentional because the app handles user accounts, pasted source text, learning
+history, and parser corrections.
+
+### How to revisit
+
+After the first hosted alpha cohort, revisit the categories using real incident
+data and support feedback. Do not weaken privacy, data-integrity, or FI/ET
+equal-status gates without an explicit decision.
+
+---
+
+## Decision 28: Finnish and Estonian launch with equal product status
+
+**Date:** 2026-07-03
+
+### Context
+
+FinnEst has repeatedly invested in Finnish and Estonian as first-class
+languages: shared parser infrastructure, shared dictionary schema, shared deck
+and review model, external benchmark slots for both languages, corpus/frequency
+work for both languages, and product flows that name both languages together.
+
+The remaining product-readiness question is whether public alpha may present
+one language as the primary language and the other as experimental if parser,
+catalog, corpus, or review quality differs.
+
+### Decision
+
+Public alpha launches Finnish and Estonian with equal product status.
+
+The product should not label one language as experimental, secondary, or
+best-effort. Both languages must meet the same minimum public-alpha journey:
+
+1. anonymous paste -> parse -> word list -> explore;
+2. signed-in Inspect;
+3. curated embedded texts;
+4. deck save/add-to-deck;
+5. review;
+6. known-word import;
+7. parser feedback;
+8. admin triage/quarantine path; and
+9. parser/eval observability.
+
+If one language is weaker in a concrete area, track and fix the concrete
+asymmetry. Do not convert it into a broad product label. For example, it is
+acceptable to say internally "ET needs more curated embedded poems" or "FI
+ambiguity cases are measured first because Sagar can validate Finnish"; it is
+not acceptable to make Estonian feel like an add-on language in the product.
+
+Before public alpha, run a journey-first parity audit. Start by walking the
+same public-alpha learner/admin journeys in FI and ET, then attach metrics and
+artifact checks under each step. Do not start with abstract metric tables that
+can pass while one learner journey still feels weaker.
+
+The audit should compare FI and ET across data, parser quality, corpus/catalog
+readiness, known-word import behavior, deck/review behavior,
+feedback/quarantine, UX copy, tests, and production artifacts. Every found
+asymmetry should be classified as one of:
+
+- **must fix before alpha** because it breaks the equal-status learner journey;
+- **acceptable language-specific difference** because the languages genuinely
+  differ; or
+- **post-alpha improvement** because it does not change public product status.
+
+### Why
+
+Equal status is part of the product identity. FinnEst is not a Finnish app with
+Estonian support bolted on; it is a Finnish-and-Estonian reading product.
+
+### Trade-off
+
+Equal status raises the launch bar. It may force extra ET/FI catalog work,
+evaluation work, or UX cleanup before alpha. That is preferable to shipping a
+product whose positioning contradicts years of first-class dual-language work.
+
+### How to revisit
+
+Only revisit if a concrete blocker makes one language impossible to support in
+the same learner journey. Even then, prefer narrowing a specific feature for
+both languages over demoting one language globally.
+
+---
+
+## Decision 27: Public alpha includes an anonymous parser demo with signed-in durability
+
+**Date:** 2026-07-03
+
+### Context
+
+The product needs to prove that the parser is excellent, not only that the
+signed-in learner loop exists. After Decision 26 settled open signup, the
+follow-up question was how much value an unsigned visitor should receive before
+creating an account, and how aggressively the hosted alpha should be planned
+for load.
+
+### Decision
+
+Public alpha should include an anonymous, stateless parser demo:
+
+1. paste text;
+2. parse text;
+3. get the parsed word list; and
+4. explore the list.
+
+That is the anonymous scope. All durable, personalized, or accountable actions
+require sign-in: saving a deck, reviewing, importing known words, marking
+known/ignored state, parser feedback/corrections, parse history, retained source
+management, and account-level settings.
+
+Anonymous parsing should have a stricter text-size limit than signed-in
+parsing. The current signed-in cap is 1,500,000 characters. The anonymous demo
+cap should be lower, configurable, enforced before expensive parser work, and
+tuned through the 1,000-concurrent-user load test. If an unsigned visitor pastes
+more than the anonymous demo cap, the UI should explain the limit and prompt
+them to sign up for longer-text workflows.
+
+Email verification should not block the first learner loop after signup. A new
+user should be able to parse, save a deck, and start review immediately after
+account creation. Verification can gate higher-risk or higher-trust actions:
+high-volume parsing, repeated feedback submissions, exports if enabled, account
+recovery, and any trust-weighted correction signal.
+
+The initial hosted phase should be planned for roughly 1,000 concurrent users.
+If load exceeds that, the app should degrade gracefully rather than fail
+chaotically: throttle anonymous and oversized parses first, preserve core
+signed-in review/deck actions as long as possible, return clear retry behavior,
+and keep enough monitoring to know whether parser CPU, memory, database writes,
+or feedback volume is the pressure point. The deployment should be easy to scale
+with more servers and funding: keep anonymous parse state ephemeral, avoid
+server-local user session assumptions, make parser concurrency explicit, and
+prefer horizontally repeatable runtime artifacts.
+
+### Why
+
+The anonymous demo is the proof point for the "state-of-the-art parser" claim.
+It lets a learner experience the parser before committing to an account, while
+still keeping every feature that needs memory, accountability, or privacy
+controls behind sign-in.
+
+Planning for 1,000 concurrent users is a realistic alpha target without a
+marketing budget. It also forces the right architecture questions early:
+backpressure, rate limits, graceful overload, and scale-out shape.
+
+### Trade-off
+
+Anonymous parsing increases abuse and load risk compared with a fully
+auth-gated product. The mitigation is a deliberately narrow anonymous surface:
+paste/parse/list/explore only, lower text-size cap than signed-in parsing,
+rate-limited, ephemeral, and first to be throttled under pressure.
+
+### How to revisit
+
+If anonymous parse abuse or infrastructure cost dominates real learner usage,
+reduce anonymous limits, require signup after a small number of parses, or
+temporarily gate the demo behind lightweight friction. Do not remove the
+signed-in learner loop to compensate for anonymous load.
+
+---
+
+## Decision 26: Public alpha account access is open signup
+
+**Date:** 2026-07-03
+
+### Context
+
+After settling that public alpha is signed-in learner alpha rather than an
+anonymous-first browser parser, the remaining access question was whether the
+hosted alpha should be invite-only, waitlist/manual allowlist, or open signup.
+
+Open signup increases operational risk compared with an allowlist: abuse,
+parser load, low-quality feedback, privacy support, account deletion, and admin
+visibility all matter sooner. But the product is meant to be user-facing, and
+the alpha needs to test real self-serve learner journeys rather than only a
+small controlled cohort.
+
+### Decision
+
+Public alpha should allow self-serve open signup.
+
+This does not change the signed-in learner product center: Decks, Review,
+known-word state, and parser feedback remain signed-in product surfaces.
+Decision 27 later adds a narrow anonymous browser parser demo; durable and
+personalized behavior still requires an account.
+
+Because signup is open, the public-alpha launch gates must include production
+safety work that an invite-only alpha might otherwise defer:
+
+- rate limiting and abuse controls around parse, auth, and feedback endpoints;
+- account deletion and retention jobs;
+- admin visibility into feedback/quarantine issues;
+- email/password and OAuth hardening;
+- privacy copy that matches actual parse-source retention behavior; and
+- basic monitoring for parser load and feedback volume.
+
+### Why
+
+Open signup tests whether the product can explain itself and activate a learner
+without manual onboarding. That is the product risk FinnEst needs to retire for
+a real learner-facing alpha.
+
+### Trade-off
+
+Open signup raises support and abuse risk before the funnel is polished. The
+mitigation is to make the safety work launch-gating, not to silently treat the
+alpha as a private test.
+
+### How to revisit
+
+If hosted usage creates uncontrolled cost, abuse, or moderation load before the
+safety gates are complete, temporarily close signup behind a waitlist. That is a
+fallback operational mode, not the target product posture.
+
+---
+
+## Decision 25: Preserve learning history while removing faulty content from circulation
+
+**Date:** 2026-07-03
+
+### Context
+
+The parser-feedback loop now has two related but different responsibilities:
+
+1. improve future parses when admins accept concrete parser-identity fixes; and
+2. protect learners from content already created from faulty analysis.
+
+Current implementation only handles part of the first responsibility. Authenticated
+learners can submit exact corrections, admins can triage them, and accepted
+lemma/POS corrections write `custom_overrides` rows that affect future parser
+lookups. The current schema does not have flag-only feedback, source-agnostic
+correction overlay tables, a weekly Track B admin report/job, AI-assisted
+review tooling, or a way to quarantine/re-render existing faulty deck/card
+content.
+
+### Decision
+
+Do not rewrite learner or learning history. Past review events, ratings, due
+state provenance, and "what the learner was shown at the time" should remain
+auditable.
+
+Do remove known-faulty learner-facing content from circulation after admin
+acceptance. A minimal quarantine path is required before public alpha; rich
+overlays and weekly AI-assisted triage can mature after that. Accepted feedback
+should be able to:
+
+1. write parser-identity fixes for future parser output;
+2. suppress a bad occurrence/card/sentence/cue from review and new-card queues
+   for all learners whose content matches the confirmed issue scope;
+3. replace a faulty cue, sentence, explanation, or contextual sense through a
+   correction overlay; or
+4. mark affected content as needing reparse or manual rebuild.
+
+These actions must not pretend the learner reviewed different content in the
+past. They change what is shown from now on.
+
+Feedback should roll up into global correction issues, not isolated per-user
+complaints. One report creates or appends to an issue with reporter, timestamp,
+source context, affected scope, status, quarantine action, fix action, fix
+version, and reopen/regression events. Once an issue is confirmed, quarantine or
+fixes apply globally to all matching learner content. Raw unreviewed reports
+should normally not suppress content for everyone without admin confirmation or
+a trusted threshold, but they should still be tracked as global evidence.
+
+The default flow is report-first, quarantine-after-confirmation. A report
+creates/updates the global issue immediately and appears in admin triage, but
+content stays live until an admin takes one of these actions:
+
+1. an admin chooses an emergency **Quarantine now** action with reason and
+   explicit scope;
+2. an admin accepts the correction and chooses a quarantine or overlay action.
+
+For alpha, trusted thresholds are traceability-only. The system should collect
+duplicate counts, distinct reporter counts, and threshold-candidate events such
+as "X people reported this same thing," but it must not auto-quarantine globally
+until real feedback quality is observed and the threshold policy is revisited.
+
+For alpha, avoid a full correction platform. Keep `parse_feedback` as raw report
+intake and add the smallest global issue layer needed for grouping and admin
+state: a `correction_issues` table plus a `correction_issue_id` link from
+`parse_feedback`. Defer separate `quarantine_targets` and rich event tables
+unless the implementation needs them to preserve agreed traceability. The
+minimum traceability can live on the issue row plus linked report rows:
+report/duplicate counts, status, scope fingerprint, admin action fields, fix
+version, and reopened/regression marker.
+
+### Reasoning
+
+Learners should not keep studying a card once the team knows it is faulty. But
+mutating historical review records would make scheduler state, audit trails, and
+learner trust worse. The right model is append-only/immutable history plus a
+mutable rendering/circulation layer.
+
+This also keeps parser fixes honest. A global `custom_overrides` row is only
+safe for accepted parser-identity corrections. Meaning cues, contextual senses,
+phrase boundaries, example quality, and card presentation problems belong in
+their own overlay layers.
+
+AI can help admins triage weekly feedback by summarizing context, comparing
+dictionary/analyzer evidence, drafting candidate classifications, and preparing
+proposed fixes. It must not directly author core linguistic truth. Human admins
+accept, reject, or edit the final correction before any overlay, quarantine, or
+lexical writeback is applied.
+
+### Consequences
+
+- Add a minimal faulty-content quarantine/suppression path before public alpha,
+  not merely after launch.
+- Add a correction-issue ledger so repeated reports can be identified as
+  duplicate, fixed, missed-scope, or regression cases.
+- Keep the alpha schema small: `parse_feedback` for raw intake plus a minimal
+  `correction_issues` global state table linked from feedback. Do not introduce
+  separate quarantine-target or rich event tables unless the implementation needs
+  them for traceability.
+- Add an emergency admin quarantine action with required reason, explicit scope,
+  append-only event logging, and a rollback/fix path.
+- Collect threshold evidence for future automation, but keep global quarantine
+  admin-only for public alpha.
+- Add source-agnostic correction overlays as described in
+  [`CORRECTION_TAXONOMY.md`](CORRECTION_TAXONOMY.md).
+- Weekly Track B reporting remains planned, not shipped. The first version can
+  be an admin report/job, not a polished analytics dashboard.
+- AI-assisted admin triage is allowed as draft support only; deterministic code
+  and human approval own routing, writes, and acceptance.
+- Review/deck queries should eventually skip quarantined content or render the
+  accepted overlay, while preserving existing card/review history.
+- Learner-facing quarantine UX should be quiet. Quarantined content disappears
+  from review/new-card queues globally. Admins keep full traceability; learners
+  only see neutral deck-detail copy such as "Removed from study after review" if
+  the absence would otherwise be confusing.
+- Current learner-facing stats should exclude quarantined content: deck word
+  counts, due counts, new-card counts, comprehension estimates, and marginal
+  unlocks should reflect only currently studyable content. Historical/admin
+  views can preserve quarantined content for audit.
+- Quarantined content should be restored after fix by default. Create a new
+  study item only when the learning target identity changes, such as wrong
+  lemma/POS, wrong sense, homograph split, phrase/MWE replacement, or invalid
+  target retirement.
+- Restored content keeps its existing scheduler state when the learning target
+  identity is unchanged. Reset/reintroduce scheduling only when a fix creates a
+  new learning target identity.
+- Admin triage should require a simple alpha classification, not the full
+  correction taxonomy: `parser issue`, `bad card content`,
+  `source/extraction issue`, or `not sure`. Rich taxonomy labels can be optional
+  until the admin workflow has real data.
+- Alpha admin UI should not include a broad in-app fix editor. It should support
+  classification, notes, report grouping, and global quarantine. Parser-identity
+  fixes can use the existing accepted lemma/POS `custom_overrides` path; richer
+  fixes remain manual code/data changes or future overlay work.
+- Alpha should use one combined admin feedback/issues queue, not a separate
+  Issues page. Add issue-aware filters/statuses such as `submitted`,
+  `needs review`, `quarantined`, `fixed`, and `reopened`; split the UI later if
+  volume or workflow complexity requires it.
+
+### Source
+
+See `docs/grill-sessions/2026-07-03-product-readiness.md` questions 26-38 for the
+working discussion.
+
+---
+
+## Decision 24: Promote grill decisions into the durable doc set
+
+**Date:** 2026-07-03
+
+### Context
+
+The product-readiness grill process is useful because it preserves the exact
+question trail and the reasoning behind product decisions. But FinnEst already
+has several durable documentation surfaces with different jobs, now summarized
+in [`docs/INDEX.md` "Canonical doc roles"](INDEX.md#canonical-doc-roles). Future
+agents should not need to mine git history or reconstruct document ownership
+from scattered prose.
+
+Leaving all product direction only in a grill-session transcript would make
+future implementation agents depend on conversational context. Merging
+everything into one giant document would make decisions harder to find and
+maintain.
+
+### Decision
+
+Use this promotion workflow for grill sessions and future product-scope
+expansion sessions:
+
+1. Record question-by-question exploration in the active
+   `docs/grill-sessions/` file.
+2. Promote stable decisions to `docs/DECISIONS.md` after each 10-question batch,
+   or sooner when a decision changes product direction, schema, or launch scope.
+3. Use the canonical role table in `docs/INDEX.md` to decide which other durable
+   docs to update.
+4. Update README links and `docs/INDEX.md` when document roles or navigation
+   change.
+5. Before implementation handoff, consolidate navigation into existing entry
+   points: `TODO.md` for execution and launch issue classification,
+   `docs/INDEX.md` for doc roles, `README.md` for top-level navigation, and
+   `AGENTS.md` for agent instructions. Do not create a new document when an
+   existing source-of-truth section can carry the information clearly.
+6. Keep grill-session docs as archived audit trails. Do not execute directly
+   from them after promotion; use `DECISIONS.md`, `CONTEXT.md`, `TODO.md`, and
+   the relevant specs for current direction.
+
+### Reasoning
+
+This keeps the useful parts of a live product grill without turning a transcript
+into the execution system. The grill doc answers "how did we get here?"
+`DECISIONS.md` answers "what is settled and why?" `TODO.md` answers "what
+should be built?" `CONTEXT.md` answers "what language and mental model should
+agents use?"
+
+The workflow also reduces context loss for future model sessions. Agents can
+start from `AGENTS.md`, read `CONTEXT.md` and the relevant `DECISIONS.md`
+entries, then use `TODO.md` and specs for implementation. The grill session
+remains available when they need the original question trail or exact user
+wording.
+
+### Consequences
+
+- `AGENTS.md` now records this workflow for future agents.
+- The active grill session records this workflow in its protocol.
+- Stable decisions from the 2026-07-03 product-readiness grill are promoted
+  here rather than being left only in the grill table.
+- The current public-alpha handoff starts from `TODO.md` "LLM handoff read
+  order" and avoids adding a separate launch-issues document.
+
+---
+
+## Decision 23: Public alpha learner model is surface-first with guided cold start and narrow FSRS
+
+**Date:** 2026-07-03
+
+### Context
+
+The 2026-07-03 product-readiness grill re-evaluated whether FinnEst is ready as
+a learner-facing product, especially around signed-in onboarding, embedded
+texts, known-word import, starter decks, review cards, and scheduling.
+
+Current implementation reality:
+
+- The browser alpha is signed-in first.
+- Inspect, deck creation, known/ignored state, review, AnkiConnect import, and
+  parse-history UI exist.
+- Known-word imports accept submitted surface strings but persist resolved
+  `(lemma, POS)` rows in `user_known_lemmas`.
+- Review cards and deck creation are currently lemma-backed.
+- Review scheduling is a hand-rolled step scheduler stored through
+  `card_state.fsrs_json`, not real FSRS.
+- Frequency baseline artifacts already support top-N inflected surface-form
+  analysis, but the cold-start starter experience is not built.
+
+### Decision
+
+Use this alpha product direction:
+
+1. **Public alpha centers the signed-in learner loop.** Optimize the durable
+   product for Inspect -> deck -> review -> known/ignored state -> feedback.
+   Decision 27 adds a narrow anonymous parser demo, but durable learning remains
+   signed-in.
+2. **Cold start offers both learner-owned text and curated embedded text.**
+   The embedded catalog should be a small checked-in catalog, generated from
+   local corpus tooling, with lazy-loaded full text fixtures. Target shape:
+   FI/ET x stories/articles/poems x Easy/Medium/Hard x two texts per bucket
+   when fully populated. Prefer redistributable full coherent texts when size
+   and license allow it.
+3. **Difficulty is computed, then human sanity-checked.** Use deterministic
+   parser/corpus features such as length, sentence complexity, frequency
+   profile, dictionary coverage, unresolved rate, ambiguity, FEATS variety, and
+   genre-relative scoring. Finnish gets Sagar review; Estonian gets an Estonian
+   reviewer.
+4. **Known vocabulary is surface-first.** A known surface form is learner
+   evidence. It does not automatically imply the lemma or other inflected forms
+   are known. Lemma/POS analysis is derived support for lookup, grouping,
+   explanation, and implementation transition, not the learner-facing knowledge
+   unit.
+5. **Alpha review cards are surface-form-in-context cards.** Show the
+   lemma/dictionary entry as supporting explanation, not as the primary thing the
+   learner is claiming to know. Migrate this card identity before attaching real
+   FSRS memory. When the same-looking surface has distinct supported meanings,
+   use separate sense-aware cards with sentence context and an explicit homograph
+   note, such as noun versus verb form.
+6. **Common-frequency starter content uses milestones.** Build a ranked
+   top-1000 surface-form artifact per language/register, but expose it as
+   250/500/1000 milestones. Default cold-start CTA is Top 250; 500 and 1000 are
+   expansion milestones.
+7. **Top-N starter decks are personalized, not fixed.** If a learner imports or
+   confirms known words first, the milestone deck should include only the
+   remaining unknown surface forms. Learners may skip the path, test out with
+   fast controls, or start the milestone.
+8. **No silent bulk mark-as-known for top-N.** Known state should record
+   individually confirmed surface forms. A tier can be skipped or tested out,
+   but the app should not mark a whole tier known without per-item confirmation.
+9. **Public alpha should ship real FSRS, narrowly scoped.** Replace the
+   hand-rolled step scheduler before public alpha using Go runtime FSRS with
+   default parameters, the current four-button UI, feature flag, conservative
+   migration/fallback, and regression tests. Defer personal optimization,
+   `fsrs-rs`, rescheduling tools, simulation dashboards, mature-card analytics,
+   and broad review UX redesign.
+10. **Known vocabulary and FSRS maturity are separate.** Known surface state
+    comes from explicit learner evidence: import, manual confirmation, test-out,
+    or marking a card known. FSRS maturity can power due dates and derived
+    retained/learning coverage views, but it must not silently write known-word
+    evidence.
+11. **Ambiguous known-word imports resolve lazily in context.** If an imported
+    surface has multiple supported meanings, do not ask the learner to
+    disambiguate during import. Store surface evidence, then ask a meaning check
+    only when the surface appears in a real sentence. The **Study this meaning**
+    action must state whether it creates/keeps a review card now or creates one
+    when the deck is saved.
+12. **Parse-results meaning checks are non-blocking and pending until save.**
+    In parse results, the learner can resolve an ambiguous imported surface in
+    context, but no review card exists until they save/add the deck. **Study
+    this meaning** must say "Creates a review card when you save." Ignored
+    unresolved meanings stay conservative and remain study candidates.
+13. **Low-confidence parser ambiguity uses multiple-meaning UI, not a false
+    meaning check.** If the parser can list candidates but cannot confidently
+    choose the intended sentence meaning, show **Multiple possible meanings**
+    with per-candidate known/study actions. **None of these looks right** opens
+    parser feedback and should use the planned flag-only feedback path; it is
+    for "the app seems wrong", not "I do not know this word."
+14. **Parser confidence must be measured, Finnish-first.** The parser should use
+    context to choose meanings, and the repo already has FI/ET eval tooling.
+    Before the learner UI collapses ambiguity into one intended meaning, add a
+    focused ambiguity eval slice, starting with Finnish examples such as
+    `kuusi`, `tuli`, and `voi`, then add Estonian parity cases. Parser
+    confidence is contextual sense-selection confidence, not learner knowledge.
+15. **Flag-only parser feedback is required for alpha ambiguity UX.** Current
+    parser feedback is correction-only: learners must provide proposed lemma/POS,
+    and admin acceptance writes `custom_overrides` for future parses. The
+    **None of these looks right** action in low-confidence meaning UI needs a
+    separate `flag_only` path with nullable proposed fields, admin filtering, and
+    no lexical writeback until an admin supplies and accepts a concrete
+    parser-identity correction.
+
+### Reasoning
+
+The product promise is "learn the words you need for the text you want to
+read." For that promise, surface forms matter because they are what the learner
+actually encounters and recognizes. Lemma-backed implementation details are
+still useful, but using the lemma as the primary known state overstates
+knowledge in morphologically rich languages and does not generalize to future
+languages where lemmas may be stems, dictionary conventions, or otherwise poor
+learner-facing units.
+
+The milestone starter path solves a different cold-start problem: a new learner
+may have no text, no Anki deck, and no imported known-word list. Top 250 is small
+enough to be non-threatening, while 500 and 1000 provide meaningful expansion.
+Making the path personalized avoids wasting effort on words the learner already
+confirmed.
+
+Narrow FSRS is the pragmatic launch choice. The app already exposes a review
+surface and the four-button rating model. Shipping public alpha with a
+hard-coded scheduler undermines the learning loop, but full FSRS ecosystem work
+would distract from core launch readiness. Runtime default-parameter FSRS gives
+better scheduling without requiring optimization research or a review-system
+rewrite.
+
+### Consequences
+
+- Future known-word work should preserve submitted surface forms as first-class
+  evidence and treat lemma/POS as derived.
+- Card-identity work should migrate from current lemma-backed cards to
+  surface-form-in-context cards before the FSRS cutover.
+- Homographs should not collapse into one pure-surface card when
+  parser/dictionary evidence supports distinct meanings; the card presentation
+  should teach the contrast explicitly.
+- Top-N artifacts should be built as source-audited, register-aware,
+  surface-form ranked artifacts, then exposed as 250/500/1000 milestones.
+- FSRS implementation should attach scheduler state to stable surface-card IDs,
+  not temporary lemma/POS card IDs.
+- FSRS maturity should remain derived scheduler evidence. It must not silently
+  promote a surface/sense card into explicit known vocabulary.
+- Ambiguous imported surfaces need a lazy meaning-check flow. The UI must make
+  card creation explicit when the learner chooses to study the meaning.
+- Parse results should center the learner journey: meaning checks are inline,
+  optional, and reversible before save; deck save is the durable card-creation
+  moment.
+- Parser confidence must shape the meaning-check UX. Low-confidence ambiguity
+  should not ask the learner to confirm a guessed meaning as if it were known.
+- Confidence thresholds should be backed by focused parser eval, not vibe.
+  Finnish is first-class and should get the first ambiguity slice.
+- Feedback implementation must distinguish "issue report" from "accepted
+  parser-identity correction". Flag-only reports are valuable Track B signal, but
+  they are not lexicon updates by themselves.
+- The active grill session remains the detailed Q/A trail; this decision is the
+  stable summary for future work.
+
+### Source
+
+See `docs/grill-sessions/2026-07-03-product-readiness.md` questions 1-25 for the
+full working discussion.
+
+---
+
 ## Decision 22: Source-backed ET learner corrections stay deterministic
 
 **Date:** 2026-05-12
@@ -129,7 +820,7 @@ cleanup](CHANGELOG.md), [PARSER_EVOLUTION.md §2026-05-12c](PARSER_EVOLUTION.md)
 
 ## Product Vision
 
-FinEstDB is a **JPDB clone for Finnish and Estonian**. The core user flow:
+FinnEst is a **JPDB clone for Finnish and Estonian**. The core user flow:
 
 1. **Paste text** — User submits Finnish (or Estonian) text
 2. **Parse perfectly** — System extracts lemmas, POS, definitions
@@ -1104,7 +1795,7 @@ not intuition.
 ### Future: Automatic Improvement
 
 **Status:** parked post-live idea. This section is historical context and
-should not be treated as active roadmap work before FinEstDB is shipped and
+should not be treated as active roadmap work before FinnEst is shipped and
 live. Do not block parser or product changes on autoresearch behavior unless a
 user explicitly asks for it.
 
@@ -1351,3 +2042,44 @@ _Questions are date-tagged with the date they were first recorded._
 | 2026-05-12 | Decision 20 added: lexical-overlay short-circuit and curated bad-lemma blocklists (PR #183) |
 | 2026-05-12 | Decision 21 added: source priority outranks generic FST support and morphology ties in the merged dict+FST ranker (PR #187) |
 | 2026-05-12 | Decision 22 added: source-backed ET learner corrections stay deterministic and source-audited |
+| 2026-07-03 | Decision 23 added: public alpha learner model is surface-first with guided cold start and narrowly-scoped FSRS |
+| 2026-07-03 | Decision 23 amended: alpha review card identity is surface-form-in-context before FSRS |
+| 2026-07-03 | Decision 23 amended: homographs use sense-aware surface cards with sentence context and explicit contrast notes |
+| 2026-07-03 | Decision 23 amended: explicit known vocabulary and FSRS maturity stay separate |
+| 2026-07-03 | Decision 23 amended: ambiguous known-word imports resolve lazily through contextual meaning checks |
+| 2026-07-03 | Decision 23 amended: parse-results meaning checks are non-blocking and pending until deck save |
+| 2026-07-03 | Decision 23 amended: low-confidence ambiguity uses multiple-meaning UI plus flag-only parser feedback |
+| 2026-07-03 | Decision 23 amended: parser confidence for meaning checks must be calibrated with a Finnish-first ambiguity eval slice |
+| 2026-07-03 | Decision 24 added: product-grill decisions are promoted into `DECISIONS.md`, `CONTEXT.md`, `TODO.md`, and specs according to document role |
+| 2026-07-03 | Decision 24 amended: before implementation handoff, consolidate navigation into TODO/INDEX/README/AGENTS instead of creating new execution docs |
+| 2026-07-03 | Decision 25 added: preserve learning history while removing known-faulty content from circulation |
+| 2026-07-03 | Decision 25 amended: minimal faulty-content quarantine is a public-alpha gate |
+| 2026-07-03 | Decision 25 amended: correction issues are global and need report/fix/regression lifecycle tracking |
+| 2026-07-03 | Decision 25 amended: reports create global issues first; quarantine follows admin action or trusted threshold |
+| 2026-07-03 | Decision 25 amended: alpha quarantine is admin-only; trusted thresholds collect evidence but do not auto-suppress |
+| 2026-07-03 | Decision 25 amended: alpha uses minimal issue schema, not a full correction platform |
+| 2026-07-03 | Decision 25 amended: learner-facing quarantine quietly removes content from study queues |
+| 2026-07-03 | Decision 25 amended: current learner-facing stats exclude quarantined content |
+| 2026-07-03 | Decision 25 amended: quarantined content restores after fix by default unless target identity changes |
+| 2026-07-03 | Decision 25 amended: restored content resumes scheduler state when target identity is unchanged |
+| 2026-07-03 | Decision 25 amended: alpha admin triage uses simple required classification, full taxonomy optional |
+| 2026-07-03 | Decision 25 amended: alpha admin UI supports quarantine/notes, not a broad in-app fix editor |
+| 2026-07-03 | Decision 25 amended: alpha uses one combined admin feedback/issues queue with filters |
+| 2026-07-03 | Decision 26 added: public alpha account access is open signup |
+| 2026-07-03 | Decision 27 added: public alpha includes an anonymous parser demo with signed-in durability and a 1,000-concurrent-user planning target |
+| 2026-07-03 | Decision 27 amended: anonymous parsing uses a stricter configurable text-size limit than signed-in parsing |
+| 2026-07-03 | Decision 28 added: Finnish and Estonian launch with equal product status |
+| 2026-07-03 | Decision 28 amended: FI/ET parity audit is journey-first, with metrics attached under each journey step |
+| 2026-07-03 | Decision 29 added: public alpha go/no-go allows only classified non-dangerous rough edges |
+| 2026-07-03 | Decision 29 amended: launch issue ledger lives in TODO.md, not a new document |
+| 2026-07-03 | Decision 29 amended: first experience should be excellent about 95% of the time before public alpha |
+| 2026-07-03 | Decision 29 amended: first-experience bar is measured by both release-candidate pack and week-one telemetry |
+| 2026-07-03 | Decision 29 amended: week-one telemetry is aggregate by default, with signed-in product-event trails only and no pasted text |
+| 2026-07-03 | Decision 29 amended: minimal telemetry is post-launch roadmap, not a public-alpha blocker if logs plus manual review are available |
+| 2026-07-03 | Decision 29 amended: pre-alpha first-experience RC pack should be a checked-in repeatable FI/ET artifact |
+| 2026-07-03 | Decision 29 amended: first-experience RC pack requires both automated checks and manual product walkthrough |
+| 2026-07-03 | Decision 29 amended: manual RC walkthrough findings are severity-graded rather than binary |
+| 2026-07-03 | Decision 29 amended: RC pack uses one shared manifest consumed by automated and manual checks |
+| 2026-07-03 | Decision 29 amended: RC pack manifest and skeleton runner should be the first alpha implementation task |
+| 2026-07-03 | Decision 29 amended: RC pack automated portion should have one top-level `make first-experience-rc` command |
+| 2026-07-03 | Decision 29 amended: product name capitalization corrected to FinnEst |

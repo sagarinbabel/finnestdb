@@ -1577,7 +1577,7 @@ type Sense struct {
 // monolingual glosses (target_lang='FI') the call signature would
 // gain a target lang parameter; today there's only one shape.
 //
-// Seeded by the yle_subs TODO at yle_subs/TODO.md (FinEstDB lemma-gloss
+// Seeded by the yle_subs TODO at yle_subs/TODO.md (FinnEst lemma-gloss
 // lookup), where the downstream deck builder wants multi-sense data
 // to render context-appropriate front cues for polysemous lemmas
 // (`pää` → "head" generally, "on top of" in `kirjoituspöydän päällä`).

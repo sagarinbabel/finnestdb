@@ -24,6 +24,11 @@ contextual-sense, phrase-boundary, example-quality, or card-presentation fixes.
 Writing each fix to the smallest durable layer keeps pasted text, EPUBs,
 articles, subtitles, Anki imports, and future catalog decks on the same path.
 
+Current implementation is smaller than that target: the queue, status triage,
+and accepted lemma/POS `custom_overrides` writeback exist. Weekly admin reports,
+AI-assisted triage, flag-only feedback, source-agnostic overlay tables, and
+faulty-content quarantine are not built yet.
+
 ## UX recommendations
 
 ### Always attach a parse session
@@ -39,6 +44,10 @@ articles, subtitles, Anki imports, and future catalog decks on the same path.
 - Consider renaming the CTA to "Report parser issue" / "Suggest correction".
 - In the modal, state clearly: feedback is queued for review and **does
   not** immediately change deck contents.
+- From low-confidence meaning checks, label the escape hatch **"None of these
+  looks right"** and route it here. That action means "the app's analysis looks
+  wrong"; it is not a known-word confirmation and not a request to create a
+  study card.
 
 ### Include enough context for triage
 
@@ -75,10 +84,170 @@ Parse-feedback rows live in `parse_feedback` per
 - `status` — `submitted` / `accepted` / `rejected` / `needs_follow_up`
   (admin-managed)
 
+Current implementation requires `proposed_lemma` and `proposed_pos`. The alpha
+meaning-check flow needs the planned flag-only extension: nullable proposed
+fields plus `flag_only=true`, so learners can report "none of these meanings
+looks right" without inventing a correction.
+
+## Current implementation vs alpha target
+
+| Area | Current implementation | Alpha target |
+|------|------------------------|--------------|
+| Learner entry point | Per-row correction button opens a modal. | Hover/focus `Wrong?` entry point from results rows, review cards, and low-confidence meaning UI. |
+| Feedback type | Exact correction only. The UI and API require proposed lemma and POS. | Two paths: flag-only issue report, or proposed correction with lemma/POS and optional grammar/note. |
+| Schema/API | `parse_feedback.proposed_lemma` and `proposed_pos` are `NOT NULL`; `ParseFeedbackRequest` requires them. | Proposed fields nullable when `flag_only=true`; store model and API response expose the flag. |
+| Admin triage | Admin can list by status and accept/reject/follow up. | Admin can filter flag-only feedback and classify whether an issue is parser identity, meaning cue, context sense, phrase boundary, example quality, or card presentation. |
+| Acceptance behavior | Any accepted feedback writes `custom_overrides` from proposed lemma/POS and changes future lookups. | Only accepted parser-identity corrections with concrete lemma/POS write lexical overrides. Flag-only reports do not write the lexicon until an admin supplies/accepts a concrete correction. |
+| Grammar/FEATS | Proposed grammar label is captured, but accept does not write FEATS. | Phase 2 writes accepted grammar/FEATS corrections safely to the right layer. |
+| Existing learner decks/cards | Feedback does not immediately mutate the current deck/card. It changes future parser output after admin acceptance. There is no shipped quarantine/suppression path for already-created faulty cards. | Preserve learning history, but remove known-faulty content from circulation after admin acceptance: skip/suppress bad occurrences or cards, or render accepted overlays for cue/sentence/explanation/sense. |
+| Source context | Inspect parses are ephemeral, but feedback creates a retained parse session with source text for admin review. | Same, with clear privacy copy and retention/deletion controls. |
+
+## Existing content and learning history
+
+"Do not rewrite learner history" means the system should not edit past review
+events or pretend the learner was shown different content. It does **not** mean
+known-bad cards should keep appearing.
+
+Target behavior after admin acceptance:
+
+- Parser-identity fixes update future parser output through lexical overrides
+  when global evidence is safe.
+- Meaning-cue, contextual-sense, phrase-boundary, example-quality, and
+  card-presentation fixes write overlay rows at the smallest durable layer.
+- Bad current content can be quarantined: skipped in review/new-card queues,
+  hidden from learner-facing deck recommendations, or shown with a reviewed
+  replacement.
+- Past review history and scheduler provenance remain auditable.
+
+Minimal quarantine is a public-alpha gate. The rich overlay system can mature
+later, but alpha should not knowingly keep accepted-bad content in learner study
+queues.
+
+## Global correction issue ledger
+
+Feedback submissions should attach to a global correction issue, not remain only
+as isolated per-user rows. Keep the alpha schema minimal:
+
+- `parse_feedback` remains raw report intake.
+- `correction_issues` owns global admin state, duplicate counts, scope, status,
+  quarantine/fix metadata, and reopened/regression markers.
+- `parse_feedback.correction_issue_id` links each report to its issue.
+
+Do not add separate `quarantine_targets` or rich event tables for alpha unless
+the implementation cannot preserve traceability without them. The issue row plus
+linked report rows should carry the first version of the lifecycle:
+
+- `reported`: first report received, with reporter, time, source context, and
+  original parser/card state.
+- `duplicate_reported`: another learner reports the same scoped issue.
+- `triaged`: admin classifies correction type and scope.
+- `quarantined`: confirmed-bad content is suppressed globally for matching
+  learners.
+- `fixed`: overlay, lexical writeback, replacement, or reparse action applied,
+  with fix version and admin.
+- `reopened`: a later report shows the fix missed a scope or regressed.
+
+Scope should be explicit: global parser identity, surface+sense, phrase target,
+specific source occurrence class, sentence/cue/explanation, or card presentation.
+Confirmed quarantine/fixes apply to every learner whose content matches the
+scope. Raw unreviewed reports should normally create/update the issue without
+auto-hiding content globally unless an admin or trusted threshold confirms it.
+
+## Report-to-quarantine workflow
+
+The alpha flow should work like this:
+
+1. Learner submits feedback from Inspect, deck detail, or review.
+2. Server computes a conservative scope fingerprint, such as language,
+   correction type if known, normalized surface, lemma/POS if present, parser
+   mode, source occurrence reference, and optional sentence/context hash.
+3. Server finds an open matching `correction_issues` row or creates one.
+4. Feedback row is stored and linked to the issue. The issue gets a `reported`
+   or `duplicate_reported` event with reporter, timestamp, parse/deck context,
+   original analysis, proposed correction if any, and note.
+5. Issue remains visible in admin triage immediately, but content stays live by
+   default.
+6. Quarantine can happen by one of two admin paths:
+   - admin accepts **Quarantine now**, with required reason and explicit scope;
+   - admin accepts a correction and chooses a quarantine/overlay action.
+7. Quarantine marks the scoped issue as globally suppressed. Review and new-card
+   queries skip matching content, or render the accepted overlay if one exists.
+8. Fix writes a `fixed` event with fix version, admin, and action taken.
+9. Later reports against the same scope after a fix create `reopened` events, so
+   admins can tell whether the fix regressed or missed part of the scope.
+
+For alpha, trusted thresholds are traceability-only. The system can compute
+duplicate counts, distinct reporter counts, and `threshold_candidate` badges for
+admins, but it must not auto-quarantine globally. Admin confirmation is the
+default path; emergency quarantine is the fast path.
+
+Learner-facing quarantine should be quiet. Quarantined items disappear from
+review/new-card queues globally. Deck detail may show neutral copy such as
+"Removed from study after review" only where omitting the row would confuse the
+learner. Full report/fix/quarantine traceability belongs in admin views.
+
+Current learner-facing stats should follow the same rule: active deck word
+counts, due counts, new-card counts, comprehension/coverage estimates, and
+next-unlock projections exclude quarantined content. Historical/admin views can
+include quarantined content with issue metadata.
+
+Fixing a quarantined issue restores the same study item by default. Create a new
+study item only when the learning target identity changes: wrong lemma/POS,
+wrong sense, homograph split, phrase/MWE replacing a single-token target, or
+invalid target retirement. Past review history remains historical; current
+rendering uses the fixed content.
+
+When the same study item is restored, keep its existing review/FSRS scheduler
+state. Quarantine pauses circulation; it does not reset memory. Reset or
+reintroduce scheduling only when the fix creates a new learning target identity.
+
+## Alpha admin classification
+
+Alpha admin triage should require one simple category before quarantine/fix:
+
+- `parser issue` — parser identity or grammar analysis appears wrong.
+- `bad card content` — learner-facing cue, explanation, sense, phrase boundary,
+  or presentation is wrong or misleading.
+- `source/extraction issue` — source sentence/text extraction is faulty.
+- `not sure` — needs investigation before routing.
+
+The full correction taxonomy stays available as optional detail for deeper
+cleanup and reporting. Do not block urgent quarantine on precise taxonomy labels.
+
+For alpha, the admin UI should not become a broad data editor. It should support
+classification, notes, report grouping, duplicate counts, and **Quarantine now**.
+Parser-identity fixes can continue through the existing accepted lemma/POS
+`custom_overrides` writeback. Meaning/card/source fixes should be handled by
+manual code/data changes or future overlay work until real correction patterns
+justify an in-app editor.
+
+Use one combined admin feedback/issues queue for alpha. Do not add a separate
+Issues page yet. The queue should expose issue-aware filters/statuses such as
+`submitted`, `needs review`, `quarantined`, `fixed`, and `reopened`, plus report
+counts and duplicate grouping. Split into a dedicated Issues page later only if
+volume or workflow complexity demands it.
+
+## Weekly admin triage target
+
+The planned weekly run is not implemented today. A realistic first version is:
+
+1. collect submitted and flag-only feedback with parse context;
+2. group by language, parser mode, correction type, surface, and source type;
+3. attach deterministic evidence: current parser result, dictionary candidates,
+   Omorfi/EstNLTK comparison where available, and related prior feedback;
+4. optionally ask an LLM to draft a summary, proposed classification, and
+   questions for the admin;
+5. require a human admin to accept/reject/edit before any writeback,
+   quarantine, overlay, or eval-case promotion.
+
+LLM output can support triage, but core lemma/POS/FEATS truth and write routing
+must remain deterministic and human-approved.
+
 ## Admin triage
 
-The shared queue is at `/api/admin/parse-feedback` (admin-only). Filters
-by `status` and language; admins can change `status` per submission.
+The shared queue is at `/api/admin/parse-feedback` (admin-only). Filters by
+status, issue status, and language; admins can change status per submission or
+issue.
 
 When an admin marks feedback `accepted`, proposed lemma/POS corrections write
 `forms` and `lemmas` rows with `source='custom_overrides'`,

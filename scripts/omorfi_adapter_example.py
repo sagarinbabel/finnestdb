@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Omorfi adapter for FinEstDB.
+Omorfi adapter for FinnEst.
 
 Requires:
 - `omorfi` installed in the interpreter running this script

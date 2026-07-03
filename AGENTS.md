@@ -4,13 +4,35 @@ These instructions are for LLM agents working in this repository.
 
 ## Current Focus
 
-FinEstDB is pre-go-live. Prioritize work that helps ship and operate the
+FinnEst is pre-go-live. Prioritize work that helps ship and operate the
 language-learning app:
 
 - parser accuracy and dictionary-entry attachment
 - learner flows: inspect, decks, review, known words, parser feedback
 - production safety: auth/session hardening, abuse controls, data retention
 - evaluation, baselines, and regression checks for parser changes
+
+## Project Vocabulary
+
+For public-alpha planning or implementation, start with
+[`TODO.md` "LLM handoff read order"](TODO.md#llm-handoff-read-order). It is the
+current execution handoff and points to the alpha gates, launch issue ledger,
+go/no-go rubric, stable decisions, and implementation specs.
+
+Read [`CONTEXT.md`](CONTEXT.md) before product, parser-feedback, deck/review,
+or learner-flow work. Use its terms consistently, especially **Inspect** vs.
+**Parser Workbench**, **Inspect Parse** vs. **Parse Session**, and **Known
+Lemma** vs. surface-form "word".
+
+Stable decisions and their rationale live in
+[`docs/DECISIONS.md`](docs/DECISIONS.md). Product-readiness grill sessions under
+[`docs/grill-sessions/`](docs/grill-sessions/) are working logs: use them to
+recover the question trail, not as the primary implementation backlog.
+
+For documentation ownership and update rules, use
+[`docs/INDEX.md` "Canonical doc roles"](docs/INDEX.md#canonical-doc-roles).
+Decision 24 in [`docs/DECISIONS.md`](docs/DECISIONS.md#decision-24-promote-grill-decisions-into-the-durable-doc-set)
+defines the grill-session promotion workflow.
 
 ## Autoresearch Is Parked
 

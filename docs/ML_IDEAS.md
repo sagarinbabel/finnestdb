@@ -1,4 +1,4 @@
-# ML Ideas — FinEstDB
+# ML Ideas — FinnEst
 
 _Created: 2026-05-07. Status: ideas, not commitments. Refresh after the FST
 lemmatizer migration (PRs #106–#112) lands and the post-FST baseline is

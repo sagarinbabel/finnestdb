@@ -15,7 +15,7 @@ to be revisited.
 ## 2026-05-12 — Downstream Finnish deck overrides mostly transfer to Estonian as trap classes
 
 **Source:** read-only sweep of the downstream Anki deck builder at
-`/Users/sagar/Downloads/projects/yle_subs`, which consumes FinEstDB
+`/Users/sagar/Downloads/projects/yle_subs`, which consumes FinnEst
 `wordlist.tsv` and `sentences_user_friendly.tsv`, plus a local scan of
 `localdata/et-corpus/_derived/wordlist.tsv`.
 

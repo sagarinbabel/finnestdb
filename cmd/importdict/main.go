@@ -214,7 +214,7 @@ func main() {
 	sourceVersion := flag.String("source-version", "", "Source version, dump date, or release identifier for dict_metadata")
 	sourceLicense := flag.String("source-license", "", "License text or SPDX-like label for dict_metadata (required for non-kaikki sources)")
 	sourceAttribution := flag.String("source-attribution", "", "Attribution text to preserve with imported rows (required for non-kaikki sources)")
-	changesNote := flag.String("changes-note", "Normalized to FinEstDB lemma/form/POS schema", "Change notice for dict_metadata")
+	changesNote := flag.String("changes-note", "Normalized to FinnEst lemma/form/POS schema", "Change notice for dict_metadata")
 	ekilexBaseURL := flag.String("ekilex-base-url", "https://ekilex.ee", "Ekilex API base URL")
 	ekilexDatasets := flag.String("ekilex-datasets", "eki", "Comma-delimited Ekilex dataset codes to import")
 	ekilexWords := flag.String("ekilex-words", "", "Comma-delimited word list for a small Ekilex smoke import")

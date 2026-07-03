@@ -21,7 +21,7 @@ The most practical starting options are:
 1. Python package route
    - install the upstream Python package
    - write a thin adapter command that reads text from stdin
-   - emit JSON matching FinEstDB's parser token/sentence shape
+   - emit JSON matching FinnEst's parser token/sentence shape
 
 2. Command-line script route
    - install/build Omorfi from the official repo
@@ -30,7 +30,7 @@ The most practical starting options are:
 
 ## Why An Adapter Is Needed
 
-FinEstDB expects the same shape returned by the Rust FFI parser:
+FinnEst expects the same shape returned by the Rust FFI parser:
 
 ```json
 {
@@ -68,7 +68,7 @@ to produce the same shape.
 Omorfi's own CLI/API formats are not identical to this, so the adapter is the
 normalization layer.
 
-## Current FinEstDB Contract
+## Current FinnEst Contract
 
 The recommended path is `make setup-nlp`, which creates a unified `.venv/`
 at the project root containing both omorfi and estnltk, and downloads the

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EstNLTK/Vabamorf adapter for FinEstDB.
+EstNLTK/Vabamorf adapter for FinnEst.
 
 Requires:
 - `estnltk` installed in the interpreter running this script

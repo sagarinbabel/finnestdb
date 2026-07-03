@@ -1,4 +1,4 @@
-# FinEstDB Implementation Analysis
+# FinnEst Implementation Analysis
 
 > **Historical pre-implementation analysis (March 2026).** This document
 > explores tradeoffs and recommends an architecture (Postgres backend,

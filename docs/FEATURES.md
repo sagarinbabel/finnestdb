@@ -1,20 +1,27 @@
-_Current as of 2026-05-07 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
+_Current as of 2026-07-03 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
-# FinEstDB Features
+# FinnEst Features
 
-FinEstDB is a consumer language-learning product for Finnish and Estonian
+FinnEst is a consumer language-learning product for Finnish and Estonian
 readers. It is not a parser workbench. The workbench still exists, but it
 is an internal admin surface, not the product users see.
 
 This document describes the alpha product from a user perspective.
 
-## What FinEstDB Is
+## Language Status
 
-FinEstDB helps you read real Finnish and Estonian text by letting you
+Finnish and Estonian have equal product status. The alpha should not present
+either language as experimental, secondary, or best-effort. If one language has
+a concrete parser, catalog, corpus, or UX gap, treat it as a specific readiness
+issue to fix or document internally, not as a public demotion of that language.
+
+## What FinnEst Is
+
+FinnEst helps you read real Finnish and Estonian text by letting you
 pre-learn the vocabulary that actually appears in what you want to read.
 
 Instead of grinding generic frequency lists, you paste the text you want
-to read — an article, a chapter, a song — and FinEstDB currently:
+to read — an article, a chapter, a song — and FinnEst currently:
 
 - breaks it into the unique words it contains
 - shows dictionary-backed lemmas, forms, definitions, examples, and token counts
@@ -22,16 +29,33 @@ to read — an article, a chapter, a song — and FinEstDB currently:
 - lets you save the parsed vocabulary as a study deck
 - gives you spaced-repetition review for those words
 - tracks known-word and due-review counts
+- imports known words from paste, simple files, or local Anki via AnkiConnect
 
 The pitch: pre-mine vocabulary before reading, so the reading itself is
 enjoyable instead of a dictionary lookup grind.
 
-## How You Learn With FinEstDB
+## Anonymous Parser Demo
+
+Unsigned visitors should be able to experience the parser before creating an
+account:
+
+1. paste a Finnish or Estonian text;
+2. parse it;
+3. get the parsed word list; and
+4. explore that list.
+
+That anonymous surface is intentionally narrow and stateless. It proves parser
+quality, but it does not create a learner memory. Saving decks, reviewing,
+importing known words, marking known/ignored state, submitting parser feedback,
+viewing history, and account settings require sign-in.
+
+## How You Learn With FinnEst
 
 The signed-in core loop is `paste -> inspect -> correct -> deck -> review`.
 
-1. Sign in, then paste or upload text in Finnish or Estonian. Inspect parses
-   are ephemeral until you save a deck or submit parser feedback; see
+1. Sign up or sign in, then paste or upload Finnish or Estonian text, or start
+   from a curated embedded text. Inspect parses are ephemeral until you save a
+   deck or submit parser feedback; see
    [What We Store During Alpha](#what-we-store-during-alpha).
 2. Inspect the parsed result: every unique word, its lemma, its meaning.
 3. Correct the parser if it gets a word wrong (logged-in users only).
@@ -39,21 +63,27 @@ The signed-in core loop is `paste -> inspect -> correct -> deck -> review`.
 5. Review the deck with spaced repetition.
 6. Return to the source text with the reviewed vocabulary in context.
 
-Cards are global. A word you have learned in one deck stays learned in
-every other deck that contains the same lemma. Deleting a deck does not
-erase what you have learned — it only removes that particular source
-material.
+The embedded-text catalog uses fixed Easy / Medium / Hard labels when the app
+does not know the learner's vocabulary yet. When known-word data exists, the
+catalog should also show personalized fit, such as known-token coverage, so a
+learner can pick a text that is challenging but not opaque.
+
+Cards are global. Today the implementation treats a learned word as the same
+`(lemma, POS)` across decks. The public-alpha target is surface-form-in-context
+review cards: preserve exact known surface forms as first-class learner
+evidence, then use lemma/POS resolution as derived data for coverage and card
+selection. Deleting a deck does not erase what you have learned — it only
+removes that particular source material.
 
 ## Language Selection
 
-FinEstDB uses a hybrid language policy so the common path stays fast without
+FinnEst uses a hybrid language policy so the common path stays fast without
 silently parsing under the wrong language.
 
-- High-confidence pasted or file-loaded text auto-switches to Finnish or
-  Estonian when the detected language differs from the selector.
-- Manually typed text and later selector changes keep the explicit guardrail:
-  if selected and detected languages conflict, parse is blocked until you
-  switch to the detected language.
+- High-confidence pasted or file-loaded text warns and blocks parsing when the
+  detected language differs from the selector.
+- The learner stays in control of the active language and switches explicitly
+  before parsing under the detected language.
 - Unknown-language warnings are advisory. You can still parse text that does
   not contain enough Finnish or Estonian signal.
 
@@ -81,12 +111,14 @@ one dictionary lemma. For example, Estonian **joon** can be the noun "line"
 drink") — morphology alone can't always tell which sense the writer meant.
 
 When the dictionary contains multiple candidates for a surface form,
-FinEstDB creates a card for each candidate sense when you save that parse to
+FinnEst creates a card for each candidate sense when you save that parse to
 a deck, and the deck's word count reflects all candidates. You review them
 independently; if one sense is irrelevant for your text, mark it known or
-ignored. This behavior is dictionary-coverage dependent: if the current
-dictionary only has one candidate for a surface form, only one card is
-created.
+ignored. The review card should show a sentence that clarifies the current
+meaning and point out when the same-looking word also exists as another sense,
+such as a verb form versus a noun. This behavior is dictionary-coverage
+dependent: if the current dictionary only has one candidate for a surface form,
+only one card is created.
 
 If the dictionary has no entry for a word, the parser's single best guess
 is used and only one card is created. The dictionary is only authoritative
@@ -96,24 +128,41 @@ about ambiguity when it actually knows the word.
 
 You can see, across the whole app:
 
-- known lemmas in each language
+- known vocabulary in each language. Current counts are lemma-backed; the target
+  model is surface-first known vocabulary.
 - cards in active learning
 - due review count
 - per-deck known/unique counts
 
-Progress is tracked at the lemma level, not at the deck level, because
-your knowledge of a word is a property of you, not of any single text.
+Today progress is tracked at the lemma level, not at the deck level, because
+your knowledge of a word is a property of you, not of any single text. Public
+alpha should move that learner state to surface-form cards and known surface
+forms, with lemma-level views derived where useful. Review maturity is separate:
+a mature FSRS card may inform retained-coverage estimates, but it should not
+silently become a known-word claim.
+
+When a known-word import contains a same-looking word with multiple supported
+meanings, the app should not ask for abstract disambiguation upfront. It should
+confirm the meaning later in sentence context. If the learner chooses **Study
+this meaning** in parse results, the UI must say that this creates a review card
+when the deck is saved. In saved deck or review contexts, it creates or keeps
+the review card immediately. If the parser cannot confidently choose the
+intended meaning, the UI should show **Multiple possible meanings** with
+per-candidate known/study actions. **None of these looks right** is parser
+feedback for bad analysis, not a study choice.
 
 ## Mobile Direction
 
-FinEstDB is a single responsive web app. Reviews and reading happen on
+FinnEst is a single responsive web app. Reviews and reading happen on
 phones often, so the UI is designed to be usable at 375 px wide. The
 alpha targets web first; native packaging is out of scope.
 
 ## Roles in the Product
 
-- **Anonymous visitor**: can see the landing/product explanation and
-  sign in. Browser Parse, Decks, Review, and corrections require sign-in.
+- **Anonymous visitor**: can paste text, parse it, get a parsed word list, and
+  explore that list. They can create an account or sign in to save anything.
+  Decks, Review, known/ignored state, imports, corrections, history, and account
+  settings require sign-in.
 - **User**: can paste text, see a lightweight parse-inspection view,
   import known words, create and review decks, and submit parser
   corrections.
@@ -128,10 +177,11 @@ Anonymous correction submission is out of scope for alpha.
 
 ## What We Store During Alpha
 
-- In the browser alpha, the signed-in app remains the primary product loop.
-  Direct unauthenticated `POST /api/parse` is intentionally allowed for
-  ephemeral inspect/discovery use, guarded by rate limits, and does not return
-  a stored parse ID.
+- In the browser alpha, open signup is allowed, and the anonymous parser demo is
+  a public product surface. Direct unauthenticated `POST /api/parse` is allowed
+  for ephemeral paste/parse/list/explore use, guarded by rate limits and a
+  stricter text-size cap than signed-in parsing, and does not return a stored
+  parse ID.
 - When you are **signed in**, the text you paste into Inspect is ephemeral by
   default. `/api/parse` returns results without creating a stored parse ID.
 - Source text is stored only when you make the parse durable: saving it as a
@@ -147,6 +197,9 @@ Anonymous correction submission is out of scope for alpha.
 - Accepted lemma/POS corrections write `custom_overrides` lexical rows after
   admin approval, so the same surface can change subsequent parser output.
   Grammar/FEATS corrections and eval-gated promotion remain future work.
+- Admin-quarantined faulty study content quietly disappears from learner
+  review/new-card queues; active learner-facing counts and comprehension stats
+  exclude it, while full report/fix traceability is admin-facing.
 - Account deletion removes the account and retained user data server-side,
   including decks, parse sessions, parser feedback, review cards, sessions,
   and known/ignored word lists.
@@ -154,7 +207,7 @@ Anonymous correction submission is out of scope for alpha.
 
 ## Technology Differentiators
 
-FinEstDB is positioned around four technical bets:
+FinnEst is positioned around four technical bets:
 
 - **Fast parser**: a custom Rust analyzer optimized for the
   paste-to-deck flow, not for academic completeness.
@@ -171,7 +224,7 @@ FinEstDB is positioned around four technical bets:
   idea parking lot, not current product scope.
 - **Inflected-form-aware frequency and comprehension prediction**:
   unlike most public Finnish/Estonian frequency lists (which rank
-  lemmas), FinEstDB measures inflected-form frequency directly,
+  lemmas), FinnEst measures inflected-form frequency directly,
   because that is the unit a learner actually has to recognize when
   reading running text. Our 2026-05-07 baseline measurement found
   that the top-1000 inflected forms cover ~65–73% of subtitle text

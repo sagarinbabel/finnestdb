@@ -1,11 +1,15 @@
-_Current as of 2026-05-07 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
+_Current as of 2026-07-03 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
 # Cross-Language Strategy: Finnish and Estonian
 
-FinEstDB ships Finnish and Estonian as first-class languages from the
-same codebase. The two languages are closely related but not
-interchangeable. This document explains how we let them improve
-together without making the parsers behave like clones of each other.
+FinnEst ships Finnish and Estonian as equal-status, first-class languages from
+the same codebase. The two languages are closely related but not
+interchangeable. This document explains how we let them improve together without
+making the parsers behave like clones of each other.
+
+Public alpha must not present either language as experimental or secondary. If
+one language is weaker in a concrete area, we track the specific asymmetry and
+fix or classify it; we do not turn it into a broad product-status downgrade.
 
 ## The Goal
 
@@ -22,6 +26,36 @@ The Finnish and Estonian parsers should:
 Improvements in one language should make the other language easier to
 improve, but they should never silently change linguistic behavior in
 the other.
+
+## Equal-Status Alpha Gate
+
+Before public alpha, run the parity audit journey-first. Walk the same FI and
+ET learner/admin paths, then attach parser/data/test/artifact metrics under
+each step. The audit should cover:
+
+- anonymous paste -> parse -> list -> explore
+- signed-in Inspect
+- embedded catalog coverage
+- deck save/add-to-deck
+- review
+- known-word import
+- parser feedback
+- admin triage/quarantine
+- parser/eval observability
+- browser/regression tests
+- production dictionary/FST/corpus artifacts
+
+Classify every asymmetry as:
+
+- **alpha-blocking**: breaks the equal-status learner journey and must be fixed;
+- **language-specific**: valid because FI and ET differ linguistically or in
+  licensed source availability; or
+- **post-alpha**: visible internally but not a public product-status gap.
+
+Sequencing can still be pragmatic. For example, a Finnish-first ambiguity eval
+slice is acceptable when Finnish review is immediately available, but it must be
+followed by ET parity cases before product UI decisions imply one language is
+less supported.
 
 ## What Is Shared
 

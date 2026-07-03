@@ -1,6 +1,6 @@
-# Getting Started with FinEstDB
+# Getting Started with FinnEst
 
-This guide will help you set up and run the current role-aware FinEstDB alpha
+This guide will help you set up and run the current role-aware FinnEst alpha
 app locally.
 
 ## Table of Contents
@@ -145,8 +145,8 @@ The server will start on `http://localhost:8080` by default.
 
 Language handling policy:
 
-- high-confidence pasted or file-loaded text auto-switches to the detected language
-- if the selected language still conflicts with detected Finnish or Estonian, parse is blocked until you switch
+- high-confidence pasted or file-loaded text warns and requires an explicit language switch
+- if the selected language conflicts with detected Finnish or Estonian, parse is blocked until you switch
 - unknown-language warnings are advisory and do not block parse
 
 Admins can use **Admin → Workbench** to compare the Basic and Custom parser

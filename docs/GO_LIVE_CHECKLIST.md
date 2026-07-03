@@ -2,8 +2,111 @@
 
 Owner: @chickendude
 
-This list tracks blockers that must be resolved before FinEstDB is exposed to
+This list tracks blockers that must be resolved before FinnEst is exposed to
 real users outside a trusted dev/internal environment.
+
+## Alpha Go/No-Go Rubric
+
+Public alpha can launch when core journeys work end-to-end and every known rough
+edge is classified as non-dangerous.
+
+The first experience should be excellent about 95% of the time. Gate launch
+with release-candidate testing. After launch, validate the same bar with
+privacy-preserving telemetry when available. Telemetry is not a public-alpha
+blocker if server logs plus manual feedback/admin review are available as the
+week-one fallback. This is stricter than "the app technically works": the first
+anonymous or signed-in journey should usually feel credible, fast-enough, and
+trustworthy to a real learner.
+
+Core journeys for the launch decision:
+
+- anonymous FI and ET paste -> parse -> word list -> explore;
+- signed-in FI and ET Inspect -> save/add deck -> review;
+- FI and ET known-word import;
+- FI and ET parser feedback;
+- admin feedback triage/quarantine;
+- account creation, sign-in, sign-out, account deletion, and retention purge;
+- overload behavior for anonymous/signed-in parse traffic; and
+- production artifact readiness for both languages.
+
+First-experience quality check:
+
+- Build a journey-first FI/ET test pack that covers anonymous demo, embedded
+  text, own-text Inspect, save deck, first review, known-word import, and parser
+  feedback. This must be a checked-in, repeatable release-candidate artifact,
+  not an ad hoc manual checklist.
+- Include explicit FI and ET cases for curated embedded texts, realistic pasted
+  texts, known-word import examples, ambiguity/homograph handling,
+  parser-feedback flows, deck save, and first review.
+- Keep one canonical manifest at `testdata/first-experience-rc/manifest.json`.
+  Parser checks, `web/tests` Playwright specs, and the manual walkthrough should
+  consume that same manifest and fixtures so the launch gate cannot drift across
+  three separate definitions.
+- Build the manifest and a small skeleton runner first, before waiting for all
+  alpha flows to exist. It may fail initially; public alpha still requires the
+  final pack to pass or have all findings classified under this rubric.
+- Provide one top-level automated command, `make first-experience-rc`, that runs
+  the parser fixture checks and Playwright RC specs, then prints the manual
+  walkthrough path/instructions.
+- Run the pack in two parts: automated parser/browser checks for deterministic
+  behavior, plus a short manual product walkthrough for judgment calls such as
+  trustworthiness, clarity, and first-screen credibility.
+- Grade every finding as `blocker`, `serious`, or `minor`. A `blocker` breaks a
+  core journey or violates privacy/security/data/review/retention/parity safety.
+  A `serious` finding is a trust-breaking first-experience issue even if the app
+  can technically recover. Blockers and serious findings are no-go until fixed or
+  explicitly reclassified with evidence. A `minor` finding can ship only if it
+  satisfies the non-dangerous rough-edge rubric and is tracked in the launch
+  issue ledger.
+- Count a run as clean only when the flow completes, the UI state is truthful,
+  the first screenful has no obvious high-severity parser/card issue, and
+  latency/error behavior does not make the product feel unreliable.
+- Public alpha should not launch if more than roughly 5% of first-experience
+  runs are broken, misleading, embarrassing, or likely to make a serious learner
+  lose trust.
+- After launch, validate the same standard with week-one telemetry when
+  available: journey
+  completion/drop-off, parse/deck/review errors, latency, retry/429/503 rates,
+  feedback/flag rate, quarantine-triggering reports, and language split. Do not
+  retain pasted source text merely to compute these metrics.
+- Telemetry is aggregate by default. Per-user event trails are allowed only for
+  signed-in users, only for product events needed to debug onboarding failures,
+  and never for pasted source text.
+- If telemetry is not ready at launch, record it as a post-launch roadmap
+  checkpoint and use server logs plus manual feedback/admin review until the
+  minimal telemetry lands.
+
+A rough edge is **non-dangerous** only if all conditions hold:
+
+- It creates no privacy, security, account, retention, or abuse risk.
+- It does not lose or corrupt learner data, review state, known-word state,
+  source-retention state, or feedback/quarantine history.
+- It does not mislead the learner about what is known, saved, retained,
+  deleted, reviewed, quarantined, or parser-confident.
+- It does not break an agreed core journey for either FI or ET.
+- It has a clear workaround, retry path, or honest UI explanation.
+- It is documented in the launch issue list with owner, severity, affected
+  journey/language, evidence, workaround, and revisit condition.
+
+No-go blockers include:
+
+- auth/session/admin isolation bugs;
+- account deletion or retention behavior that does not match product copy;
+- source text stored when the UI says it is ephemeral;
+- parser-feedback or quarantine failure that leaves confirmed-bad study content
+  in circulation;
+- deck/review/FSRS state loss, duplicate state, or incorrect durable due state;
+- known-word import that silently records the wrong durable knowledge claim;
+- FI/ET asymmetry that makes one language fail the equal-status journey;
+- anonymous parse load that can starve signed-in review/deck usage;
+- overload behavior that times out or corrupts state instead of returning clear
+  retry behavior; and
+- misleading parser-confidence or meaning-check UI.
+
+Acceptable rough edges include cosmetic polish gaps, clear-but-plain wording,
+minor extra clicks, limited non-core admin conveniences, incomplete post-alpha
+roadmap features, and isolated parser imperfections that are reportable and do
+not undermine feedback/quarantine safety.
 
 ## Authentication and Sessions
 
@@ -30,6 +133,10 @@ Required before go-live:
   routes.
 - Decide whether production should use first-party password auth long term or
   add an identity-provider option.
+- Do not block first learner value on email verification. New accounts should
+  be able to parse, save a deck, and start review immediately; verification can
+  gate high-volume parsing, repeated feedback, exports if enabled, account
+  recovery, and trust-weighted correction signals.
 
 ## Abuse Controls
 
@@ -48,11 +155,43 @@ Required before go-live:
   `POST /api/auth/login`, and `POST /api/auth/register`.
 - Keep request-size enforcement for pasted text and verify it is applied before
   JSON decoding and expensive parser work.
+- Enforce a lower configurable text-size cap for anonymous parsing than for
+  signed-in parsing. The current signed-in cap is 1,500,000 characters; do not
+  expose that full ceiling to unsigned demo traffic.
 - Configure HTTP server read/write/header timeouts.
 - Add IP/account-level throttling or deployment-level WAF limits.
 - Log rejected requests at a level useful for abuse monitoring without storing
   pasted text unnecessarily.
-- Keep anonymous parse enabled only as an ephemeral, rate-limited endpoint.
+- Keep anonymous parse enabled only for the stateless parser demo:
+  paste/parse/list/explore, with no durable learner state.
+
+## Capacity and Graceful Degradation
+
+Current status: the product target is now explicit; production load testing and
+degradation behavior still need to be proven.
+
+The initial hosted alpha should be planned for roughly 1,000 concurrent users.
+The app is unlikely to exceed that without paid acquisition, but it should
+degrade predictably if usage spikes or parser work saturates the server.
+
+Required before go-live:
+
+- Add a release-candidate load test that models anonymous paste/parse/list
+  exploration plus signed-in parse/deck/review traffic at 1,000 concurrent
+  users.
+- Use that load test to tune the anonymous text-size cap and prove oversized
+  anonymous requests are rejected before expensive parser work.
+- Configure parser concurrency/backpressure so parser CPU or memory saturation
+  cannot starve the whole app.
+- Under pressure, throttle anonymous and oversized parses first; preserve core
+  signed-in deck/review actions as long as possible.
+- Return clear 429/503 retry behavior instead of timeouts or partial HTML/API
+  failures.
+- Monitor parser latency, parser error rate, request rejection counts, DB write
+  latency, memory, CPU, and feedback volume.
+- Document the horizontal scale path: repeatable runtime artifacts per server,
+  no server-local user session assumptions, explicit parser worker limits, and
+  deployment notes for adding more app/parser capacity when funding allows.
 
 ## Runtime Reproducibility and Data Readiness
 
@@ -82,6 +221,11 @@ Required before go-live:
 - Verify public frequency baselines are present in the production artifact, or
   intentionally disable calibration features so they cannot silently run without
   comparison anchors.
+- Verify Finnish and Estonian both meet the equal-status alpha journey:
+  anonymous parse/list/explore, signed-in Inspect, embedded catalog, deck save,
+  review, known-word import, parser feedback, admin triage/quarantine, eval
+  observability, and production artifact readiness. Any asymmetry must be fixed
+  or explicitly classified as language-specific/post-alpha before launch.
 
 ## Release Verification
 

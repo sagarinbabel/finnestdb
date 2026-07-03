@@ -1,7 +1,7 @@
 # Autoresearch — Automated Rule Tuning
 
 > **Status: parked post-live idea.** This document preserves an experiment for
-> after FinEstDB is shipped and live. Do not treat `cmd/autoresearch` as active
+> after FinnEst is shipped and live. Do not treat `cmd/autoresearch` as active
 > roadmap work, do not prioritize fixes here, and do not block unrelated parser
 > or product changes on autoresearch behavior unless a user explicitly asks for
 > autoresearch in the current task.

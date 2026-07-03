@@ -1,4 +1,4 @@
-# FinEstDB E2E + Documentation Behavior Report
+# FinnEst E2E + Documentation Behavior Report
 
 Date: 2026-05-06
 Author: Codex (QA pass requested in chat)

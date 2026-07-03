@@ -1,6 +1,6 @@
 # Documentation Changelog
 
-This file tracks notable changes to FinEstDB planning, architecture, and
+This file tracks notable changes to FinnEst planning, architecture, and
 product documentation. Code changes belong in git history, not here.
 
 Entries are reverse-chronological. Each entry links to the docs it
@@ -28,7 +28,7 @@ capitalized `Norjan` as the genitive of `Norja`.
 
 ## 2026-05-15 — Source-agnostic correction taxonomy
 
-Documents how learner-reported card and parser fixes should land in FinEstDB
+Documents how learner-reported card and parser fixes should land in FinnEst
 without tying the workflow to any one source corpus or Anki. The new taxonomy
 keeps Finnish and Estonian correction content separate while sharing the same
 admin workflow, target model, and overlay categories.

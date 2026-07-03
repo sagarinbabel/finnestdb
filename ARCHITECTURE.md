@@ -1,4 +1,4 @@
-# FinEstDB Architecture
+# FinnEst Architecture
 
 _Current as of 2026-05-09 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
 
@@ -21,10 +21,10 @@ Current product surface on `main`:
 - admin-only parser workbench and feedback routes
 - Inspect page for Finnish or Estonian text
 - parser selection in the admin workbench: `basic` and `custom`
-- file load support for `.txt` / `.md`
-- hybrid language policy: high-confidence paste/file ingest auto-switches the
-  selector, detected FI/ET mismatches block parse until explicit switch, and
-  unknown-language warnings remain advisory
+- file load support for `.txt` / `.md` / `.epub`
+- hybrid language policy: high-confidence paste/file ingest warns and blocks
+  parsing until the learner switches the selector; unknown-language warnings
+  remain advisory
 - results page with sortable output, POS filter chips, coverage gauge, and parse duration
 - structured parse-stage stats returned from `parsecore` and `/api/parse`
 - deck, known-word, review, and parse-feedback APIs
@@ -602,7 +602,7 @@ The intended sequence from the current codebase is:
    and analyzer columns (`omorfi` for FI, `estnltk` for ET)
 3. improve dictionary-entry attachment, especially bulk-scale homonym
    ranking surfaced by the Ekilex import
-4. promote production FI/ET FST table generation with row counts,
+4. keep production FI/ET FST table generation reproducible with row counts,
    provenance notes, and eval gates
 5. use the corpus pipeline to feed learner-facing frequency artifacts,
    sentence banks, and parser-improvement candidates
