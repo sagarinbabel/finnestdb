@@ -93,6 +93,11 @@ func allowLimiter(w http.ResponseWriter, limiter *fixedWindowRateLimiter, route,
 		return true
 	}
 	log.Printf("rate limit rejected: route=%s key=%s", route, rateLimitLogKey(key))
+	// Rate-limit windows are fixed at one minute (see newRateLimitSetFromEnv),
+	// so a minute is the honest worst-case retry signal; the caller may
+	// succeed sooner if their window started partway through, but per-key
+	// window start times are not tracked separately from the reset counter.
+	w.Header().Set("Retry-After", "60")
 	http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 	return false
 }

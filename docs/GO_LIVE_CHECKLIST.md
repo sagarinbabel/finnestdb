@@ -238,28 +238,69 @@ Required before go-live:
 
 ## Capacity and Graceful Degradation
 
-Current status: the product target is now explicit; production load testing and
-degradation behavior still need to be proven.
+Current status: parser concurrency/backpressure, the anonymous-sheds-first
+mechanism, and a release-candidate load-test tool are implemented and
+validated locally (2026-07-04). **Production-host load testing is still
+required before this gate closes** — the local run proves the mechanism, not
+production capacity. See
+[`launch-readiness/2026-07-04-load-test.md`](launch-readiness/2026-07-04-load-test.md)
+for full method, numbers, and the explicit re-run instruction.
 
 The initial hosted alpha should be planned for roughly 1,000 concurrent users.
 The app is unlikely to exceed that without paid acquisition, but it should
 degrade predictably if usage spikes or parser work saturates the server.
 
-Required before go-live:
+Shipped 2026-07-04:
 
-- Add a release-candidate load test that models anonymous paste/parse/list
-  exploration plus signed-in parse/deck/review traffic at 1,000 concurrent
-  users.
-- Use that load test to tune the anonymous text-size cap and prove oversized
-  anonymous requests are rejected before expensive parser work.
-- Configure parser concurrency/backpressure so parser CPU or memory saturation
-  cannot starve the whole app.
-- Under pressure, throttle anonymous and oversized parses first; preserve core
-  signed-in deck/review actions as long as possible.
-- Return clear 429/503 retry behavior instead of timeouts or partial HTML/API
-  failures.
-- Monitor parser latency, parser error rate, request rejection counts, DB write
-  latency, memory, CPU, and feedback volume.
+- [x] **Parser concurrency limiter**: a semaphore in `internal/api`
+  (`parser_limiter.go`) bounds concurrent calls into the parser
+  (`/api/parse` and deck-save), independent of the existing per-IP/per-account
+  rate limiters. `FINNESTDB_PARSER_MAX_CONCURRENCY` (default
+  `max(2, NumCPU-1)`) and `FINNESTDB_PARSER_QUEUE_TIMEOUT_MS` (default
+  `2000`). A request that cannot get a slot in time returns 503 with
+  `Retry-After`, never a hang or a 500.
+- [x] **Anonymous sheds first**: anonymous parse requests draw from a smaller
+  sub-pool (half the total slots, minimum 1) before the shared pool, so
+  anonymous load cannot exhaust every slot before a signed-in request gets a
+  chance. Non-parse endpoints (deck reads, review reads/answers, known-word
+  routes) have no code path through the semaphore at all.
+- [x] **429 vs. 503 both carry Retry-After**: the existing per-IP/per-account
+  rate limiter (429) now sets `Retry-After: 60` (its window); the new parser
+  semaphore (503) sets a short `Retry-After: 2`. Distinct codes, distinct
+  meanings ("you're asking too often" vs. "the server is out of parser
+  capacity right now").
+- [x] **Release-candidate load-test tool**: `cmd/loadtest`, a dependency-free
+  Go client modeling anonymous-parse/signed-in-parse/review-deck-read traffic
+  with configurable concurrency, ratios, ramp-up, and duration. Outputs
+  per-endpoint p50/p95/p99, throughput, and 429/503/error counts, plus a
+  machine-readable JSON summary.
+- [x] **Local evidence**: staged runs at 50/200/500/1000 concurrent virtual
+  users plus a dedicated anonymous-heavy mixed stage, all on a laptop against
+  the production-size local DB. Anonymous parse consistently sheds at a
+  higher rate than signed-in parse under saturation (e.g. 50.2% vs. 12.7% shed
+  in the anon-heavy mixed stage); deck/review reads never errored and stayed
+  under ~700ms p95 in every stage, including full saturation at 1000 VUs.
+  Full numbers in the load-test report linked above.
+- [x] **Anonymous text-size cap re-checked, not changed**: the load test found
+  no evidence to lower `FINNESTDB_ANON_MAX_CHARS` below the shipped default
+  of 20,000 — a near-cap anonymous parse at the `basic` parser mode (the
+  anonymous demo's actual default) is cheap even under concurrent bursts. See
+  the report for the `custom`-mode caveat.
+
+Still required before go-live (not shipped by this work):
+
+- **Re-run the load test against the actual production host** (or a
+  like-for-like staging host) at 1,000 concurrent users. Laptop numbers do
+  not certify production capacity — different core count, disk, network path,
+  and DB cache warmth all change the concurrency at which shedding starts.
+- Confirm `FINNESTDB_PARSER_MAX_CONCURRENCY`'s computed default is sensible
+  for the production host's actual core count and co-located services
+  (proxy, backup jobs), and override explicitly if not.
+- Wire parser latency, parser error rate, request rejection (429/503) counts,
+  DB write latency, memory, CPU, and feedback volume into the production
+  monitoring/alerting setup (`DEPLOYMENT.md` "Monitoring and alerting" has a
+  pointer for 429/503 log-grepping, but a dashboard/alert threshold is not
+  wired up yet).
 - Document the horizontal scale path: repeatable runtime artifacts per server,
   no server-local user session assumptions, explicit parser worker limits, and
   deployment notes for adding more app/parser capacity when funding allows.

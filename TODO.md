@@ -96,6 +96,27 @@ scope, not accidental creep. See Decisions 23-29.
       horizontal scale path for adding servers. Tune the anonymous text-size cap
       through this load test; do not launch with anonymous using the same
       1,500,000-character ceiling as signed-in parsing.
+
+      **Progress 2026-07-04**: parser concurrency semaphore
+      (`FINNESTDB_PARSER_MAX_CONCURRENCY` / `FINNESTDB_PARSER_QUEUE_TIMEOUT_MS`,
+      `internal/api/parser_limiter.go`) and `cmd/loadtest` shipped. Anonymous
+      parse draws from a smaller sub-pool so it sheds first under saturation;
+      429 (rate limit) and 503 (parser saturation) both carry `Retry-After`.
+      Local laptop runs at 50/200/500/1000 concurrent virtual users plus a
+      dedicated anonymous-heavy mixed stage confirm: anonymous parse sheds at
+      a meaningfully higher rate than signed-in parse (e.g. 50.2% vs. 12.7% in
+      the anon-heavy stage), and deck/review reads never errored or exceeded
+      ~700ms p95 even at full 1000-VU saturation. Anonymous 20,000-char cap
+      re-checked against this load, not changed — no evidence justified
+      lowering it (see report for the `custom`-parser-mode caveat). Full
+      method, numbers, and hardware caveat:
+      [`docs/launch-readiness/2026-07-04-load-test.md`](docs/launch-readiness/2026-07-04-load-test.md).
+      **Remaining, gate stays open**: this was a laptop run against a local DB,
+      not the production host. Re-run `cmd/loadtest` against the real
+      production host at 1,000 concurrent users, confirm the concurrency
+      default suits its actual core count, and wire parser
+      latency/error/rejection counts into production monitoring before
+      checking this off.
 - [ ] **FI/ET equal-status parity audit**: Finnish and Estonian launch with equal
       product status. Before public alpha, run this journey-first: compare the
       same FI and ET learner/admin paths, then attach data, parser-quality,
@@ -1005,6 +1026,12 @@ New work surfaced by the review (not yet broken into sequenced PRs):
   parser concurrency/backpressure controls, overload behavior, and monitoring.
   Graceful degradation should throttle anonymous/oversized parses first and
   keep the signed-in review/deck loop alive as long as possible.
+
+  **Progress 2026-07-04**: see the matching entry under "1,000-concurrent-user
+  launch target" above and
+  [`docs/launch-readiness/2026-07-04-load-test.md`](docs/launch-readiness/2026-07-04-load-test.md)
+  — semaphore, anonymous-sheds-first, `cmd/loadtest`, and local laptop
+  evidence shipped; production-host re-run and monitoring wiring remain.
 - [ ] **Curated embedded catalog for signed-in cold start.** Dashboard and
       Inspect empty states should offer both "paste/upload your own text" and
       FI/ET texts from the redistributable subset of the corpus. Start with a
