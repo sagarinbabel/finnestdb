@@ -109,6 +109,8 @@ const state = {
     adminFeedback: [],
     adminFeedbackStatus: 'submitted',
     adminFeedbackFlagOnly: '',
+    adminIssues: [],
+    adminIssuesStatus: '',
     // Active language drives the deck list filter, Inspect/Known-Words defaults,
     // and Review queue. learningLanguages is the user's opt-in set; the nav
     // dropdown only shows entries from this list. Both are hydrated from
@@ -1002,6 +1004,8 @@ function renderRoute() {
     if (route === '/admin/feedback') {
         renderAdminFeedbackPage();
         void loadAdminFeedback();
+        renderAdminIssuesPage();
+        void loadAdminIssues();
     }
     if (route === '/admin/users') {
         void loadAdminUsers();
@@ -5152,6 +5156,159 @@ async function reviewAdminFeedback(feedbackID, status) {
         showToast(err.message || 'Failed to review parser feedback.', 'error');
     }
 }
+// ── Admin correction issues ────────────────────────────────────────────────
+const ISSUE_ALPHA_CLASSES = [
+    ['parser_issue', 'Parser issue'],
+    ['bad_card_content', 'Bad card content'],
+    ['source_extraction_issue', 'Source/extraction issue'],
+    ['not_sure', 'Not sure'],
+];
+function issueStatusLabel(status) {
+    switch (status) {
+        case 'open': return 'Open';
+        case 'quarantined': return 'Quarantined';
+        case 'fixed': return 'Fixed';
+        case 'reopened': return 'Reopened';
+        default: return status || 'All';
+    }
+}
+function issueScopeLabel(issue) {
+    // Card scope shows lemma/pos; surface-only scope shows the normalized
+    // surface. This mirrors how suppression matches (see the Go predicates).
+    if (issue.lemma && issue.pos) {
+        return `${escapeHtml(issue.lemma)} / ${escapeHtml(issue.pos)}`;
+    }
+    return `surface “${escapeHtml(issue.norm_surface)}”`;
+}
+function renderAdminIssuesPage() {
+    const filter = document.getElementById('admin-issues-status');
+    if (filter)
+        filter.value = state.adminIssuesStatus;
+    renderAdminIssuesList();
+}
+function renderAdminIssuesList() {
+    const list = document.getElementById('admin-issues-list');
+    const empty = document.getElementById('admin-issues-empty');
+    if (!list || !empty)
+        return;
+    const issues = state.adminIssues;
+    empty.classList.toggle('hidden', issues.length > 0);
+    list.classList.toggle('hidden', issues.length === 0);
+    if (issues.length === 0) {
+        list.innerHTML = '';
+        return;
+    }
+    list.innerHTML = issues.map(issue => {
+        const thresholdBadge = issue.threshold_candidate
+            ? '<span class="admin-feedback-flag-badge">Threshold candidate</span>'
+            : '';
+        const reopenedBadge = issue.reopened_count > 0
+            ? `<span class="admin-feedback-flag-badge">Reopened ×${issue.reopened_count}</span>`
+            : '';
+        const classSelect = `<select class="admin-issue-class" data-issue-class="${issue.id}">
+                <option value="">Classify…</option>
+                ${ISSUE_ALPHA_CLASSES.map(([v, l]) => `<option value="${v}"${issue.alpha_class === v ? ' selected' : ''}>${l}</option>`).join('')}
+            </select>`;
+        // Quarantine and restore are mutually exclusive by status. Triage is
+        // always allowed; quarantine requires a class (enforced client- and
+        // server-side) and a reason.
+        const isQuarantined = issue.status === 'quarantined';
+        const actions = isQuarantined
+            ? `<button type="button" class="btn btn-primary btn-sm" data-issue-action="restore" data-issue-id="${issue.id}">Restore (mark fixed)</button>`
+            : `<input type="text" class="admin-issue-reason" data-issue-reason="${issue.id}" placeholder="Quarantine reason (required)">
+               <button type="button" class="btn btn-outline btn-sm" data-issue-action="triage" data-issue-id="${issue.id}">Save class</button>
+               <button type="button" class="btn btn-primary btn-sm" data-issue-action="quarantine" data-issue-id="${issue.id}">Quarantine now</button>`;
+        const reason = issue.quarantine_reason
+            ? `<p class="admin-feedback-review-note">Quarantine reason: ${escapeHtml(issue.quarantine_reason)}</p>` : '';
+        const fixNote = issue.fix_note
+            ? `<p class="admin-feedback-review-note">Fix note: ${escapeHtml(issue.fix_note)}</p>` : '';
+        return `<article class="admin-feedback-item" data-issue-id="${issue.id}">
+            <header class="admin-feedback-item-header">
+                <div>
+                    <h2>${issueScopeLabel(issue)}${thresholdBadge}${reopenedBadge}</h2>
+                    <p class="admin-feedback-meta">${escapeHtml(issue.lang)} · ${escapeHtml(issue.parser)} · ${issue.report_count} report${issue.report_count === 1 ? '' : 's'} · ${issue.distinct_reporter_count} distinct reporter${issue.distinct_reporter_count === 1 ? '' : 's'}${issue.last_reported_at ? ' · ' + formatFeedbackDate(issue.last_reported_at) : ''}</p>
+                </div>
+                <span class="admin-feedback-status">${issueStatusLabel(issue.status)}</span>
+            </header>
+            ${reason}
+            ${fixNote}
+            <div class="admin-feedback-actions">
+                ${classSelect}
+                ${actions}
+            </div>
+        </article>`;
+    }).join('');
+}
+async function loadAdminIssues() {
+    if (state.role !== 'admin')
+        return;
+    const params = new URLSearchParams();
+    if (state.adminIssuesStatus)
+        params.set('status', state.adminIssuesStatus);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    try {
+        const resp = await fetch(`/api/admin/correction-issues${query}`, { credentials: 'same-origin' });
+        if (!resp.ok) {
+            throw new Error(await resp.text() || 'Failed to load correction issues');
+        }
+        const data = await resp.json();
+        state.adminIssues = data.issues || [];
+        renderAdminIssuesList();
+    }
+    catch (err) {
+        state.adminIssues = [];
+        renderAdminIssuesList();
+        showToast(err.message || 'Failed to load correction issues.', 'error');
+    }
+}
+async function actOnAdminIssue(issueID, action) {
+    const classSelect = document.querySelector(`[data-issue-class="${issueID}"]`);
+    const reasonInput = document.querySelector(`[data-issue-reason="${issueID}"]`);
+    const alphaClass = classSelect?.value.trim() || '';
+    const body = { action };
+    if (action === 'triage') {
+        if (!alphaClass) {
+            showToast('Pick a classification first.', 'error');
+            return;
+        }
+        body.alpha_class = alphaClass;
+    }
+    if (action === 'quarantine') {
+        if (!alphaClass) {
+            showToast('Classify the issue before quarantining.', 'error');
+            return;
+        }
+        const reason = reasonInput?.value.trim() || '';
+        if (!reason) {
+            showToast('A quarantine reason is required.', 'error');
+            return;
+        }
+        // Send class + reason so the server triages and quarantines atomically.
+        body.alpha_class = alphaClass;
+        body.reason = reason;
+    }
+    try {
+        const resp = await fetch(`/api/admin/correction-issues?id=${encodeURIComponent(String(issueID))}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(body),
+        });
+        if (!resp.ok) {
+            throw new Error(await resp.text() || 'Failed to update correction issue');
+        }
+        const labels = {
+            triage: 'Classification saved.',
+            quarantine: 'Issue quarantined. Matching content is now hidden from study.',
+            restore: 'Issue restored. Matching content is back in circulation.',
+        };
+        showToast(labels[action], 'success');
+        await loadAdminIssues();
+    }
+    catch (err) {
+        showToast(err.message || 'Failed to update correction issue.', 'error');
+    }
+}
 // ── Correction modal ───────────────────────────────────────────────────────
 function openCorrectionModal(row) {
     const modal = document.getElementById('correction-modal');
@@ -5769,6 +5926,20 @@ function initAdminFeedbackPage() {
         const id = Number(target.getAttribute('data-feedback-id') || 0);
         if (action && id > 0)
             void reviewAdminFeedback(id, action);
+    });
+    const issuesFilter = document.getElementById('admin-issues-status');
+    issuesFilter?.addEventListener('change', async () => {
+        state.adminIssuesStatus = issuesFilter.value;
+        await loadAdminIssues();
+    });
+    document.getElementById('admin-issues-list')?.addEventListener('click', (e) => {
+        const target = e.target;
+        if (!target)
+            return;
+        const action = target.getAttribute('data-issue-action');
+        const id = Number(target.getAttribute('data-issue-id') || 0);
+        if (action && id > 0)
+            void actOnAdminIssue(id, action);
     });
 }
 // Portal-style tooltip — pseudo-element ::after tooltips get clipped by

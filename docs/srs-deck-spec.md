@@ -437,11 +437,11 @@ Target surface-first model:
 This is the better proxy for "how much of this content can I understand?"
 
 Current learner-facing coverage and count denominators exclude quarantined
-content. If an admin globally quarantines a faulty occurrence/card/sense, deck
-word counts, due counts, new-card counts, token-weighted coverage, unique
-coverage, and next-unlock projections should act as if that content is not
-currently studyable. Historical/admin audit views may still include the
-quarantined rows with their correction issue metadata.
+content (shipped 2026-07-04, Phase 1c). When an admin globally quarantines a
+faulty occurrence/card via its correction issue, deck word counts, due counts,
+new-card counts, token-weighted coverage, and next-unlock projections act as if
+that content is not currently studyable. Historical/admin audit views may still
+include the quarantined rows with their correction-issue metadata.
 
 > **Implementation notes (2026-07-02, shipped as `GET /api/decks/{id}/comprehension`
 > and `comprehension_pct` on the deck list):**
@@ -555,13 +555,15 @@ supporting metadata, not the alpha card's primary identity. For homographs and
 multi-lemma surfaces, use a separate sense-aware surface card when
 parser/dictionary evidence supports distinct meanings.
 
-When a quarantined card/content issue is fixed, restore the existing review item
-by default and render the corrected content from then on. Create a new card only
-when the learning target identity changes: wrong lemma/POS, wrong sense,
-homograph split, phrase/MWE replacement, or invalid target retirement. Do not
-rewrite past review history to pretend the learner saw the fixed content earlier.
-If the same item is restored, preserve its existing review/FSRS scheduler state
-and due history. Reset/reintroduce scheduling only for a new learning target
+When a quarantined card/content issue is fixed, the shipped alpha behavior
+(2026-07-04, Phase 1c) restores the existing review item and returns it to
+circulation with its existing `card_state` scheduler state and due history
+preserved — restore is a status flip, no scheduler reset. Creating a new card
+for a changed learning target identity (wrong lemma/POS, wrong sense, homograph
+split, phrase/MWE replacement, or invalid target retirement) and rendering
+corrected content remain future overlay work. Past review history is never
+rewritten to pretend the learner saw the fixed content earlier.
+Reset/reintroduce scheduling only for a new learning target
 identity.
 
 Minimum card payload:
