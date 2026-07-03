@@ -157,7 +157,7 @@ A learner-submitted correction or issue report attached to retained source conte
 _Avoid_: study choice, known-word confirmation
 
 **Flag-Only Parser Feedback**:
-A parser-feedback item where the learner says the analysis looks wrong but does not claim to know the correct lemma, POS, grammar, or meaning. This is required for the **None of these looks right** escape hatch in **Multiple Possible Meanings**. It should not write a **Custom Override** unless an admin later supplies and accepts a concrete parser-identity correction.
+A parser-feedback item where the learner says the analysis looks wrong but does not claim to know the correct lemma, POS, grammar, or meaning. Shipped 2026-07-04 (Phase 1b): the correction modal offers a flag-only path (default) alongside "propose a fix", `parse_feedback.flag_only` records it, and the admin queue can filter flag-only reports and show a badge. It does not write a **Custom Override**; an admin can supply a concrete lemma/POS on a flag-only row at accept time, converting it into a normal parser-identity correction that then writes the override. This backs the **None of these looks right** escape hatch in **Multiple Possible Meanings**.
 _Avoid_: fake correction, known-word decision
 
 **Correction Overlay**:

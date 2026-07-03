@@ -815,6 +815,8 @@ test('correction submit posts the PR-53 /api/parse/feedback contract', async ({ 
   await expect(page.locator('#results-page')).toHaveClass(/active/);
 
   await page.locator('.correction-btn').first().click();
+  // Switch to the "propose a fix" path so the proposed fields are sent.
+  await page.locator('#correction-mode-propose').check();
   // Modal pre-fills the proposed_lemma to the original lemma; user can adjust.
   await page.locator('#correction-proposed-lemma').fill('laulaa');
   await page.locator('#correction-proposed-pos').selectOption('VERB');
@@ -832,6 +834,7 @@ test('correction submit posts the PR-53 /api/parse/feedback contract', async ({ 
     original_lemma:         'laulaa',
     original_pos:           'VERB',
     original_grammar_label: 'past 3sg',
+    flag_only:              false,
     proposed_lemma:         'laulaa',
     proposed_pos:           'VERB',
     proposed_grammar_label: 'past 3sg',
@@ -841,6 +844,50 @@ test('correction submit posts the PR-53 /api/parse/feedback contract', async ({ 
   // On success the modal closes and a success toast surfaces.
   await expect(page.locator('.toast.success')).toContainText(/sent/i);
   await expect(page.locator('#correction-modal')).toHaveClass(/hidden/);
+});
+
+test('flag-only path submits without a proposed correction', async ({ page }) => {
+  await mockMe(page, 'user');
+  await mockParseWithId(page, 4242);
+  let captured: any = null;
+  await page.route('**/api/parse/feedback', async (route) => {
+    captured = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ feedback_id: 9, status: 'submitted' }),
+    });
+  });
+
+  await page.goto('/#/inspect');
+  await page.locator('#inspect-text').fill(mixedFinnishText);
+  await page.getByRole('button', { name: 'Parse text' }).click();
+  await expect(page.locator('#results-page')).toHaveClass(/active/);
+
+  await page.locator('.correction-btn').first().click();
+  await expect(page.locator('#correction-modal')).not.toHaveClass(/hidden/);
+
+  // Flag-only is the default path: the proposed-analysis fields are hidden and
+  // the flag-only radio is selected.
+  await expect(page.locator('#correction-mode-flag')).toBeChecked();
+  await expect(page.locator('#correction-proposed-fields')).toBeHidden();
+
+  await page.locator('#correction-submit').click();
+
+  await expect.poll(() => captured).not.toBeNull();
+  expect(captured).toMatchObject({
+    flag_only:      true,
+    surface:        'lauloi',
+    proposed_lemma: '',
+    proposed_pos:   '',
+  });
+  await expect(page.locator('.toast.success')).toContainText(/flagged/i);
+  await expect(page.locator('#correction-modal')).toHaveClass(/hidden/);
+
+  // Switching to the propose path reveals the proposed-analysis fields.
+  await page.locator('.correction-btn').first().click();
+  await page.locator('#correction-mode-propose').check();
+  await expect(page.locator('#correction-proposed-fields')).toBeVisible();
 });
 
 test('correction submit without parse_id sends source text for lazy attribution', async ({ page }) => {
@@ -880,6 +927,7 @@ test('correction submit without parse_id sends source text for lazy attribution'
   await page.locator('.correction-btn').first().click();
   await expect(page.locator('#correction-auth-hint')).toBeHidden();
   await expect(page.locator('#correction-submit')).toBeEnabled();
+  await page.locator('#correction-mode-propose').check();
   await page.locator('#correction-proposed-lemma').fill('laulaa');
   await page.locator('#correction-proposed-pos').selectOption('VERB');
   await page.locator('#correction-submit').click();
@@ -895,6 +943,7 @@ test('correction submit without parse_id sends source text for lazy attribution'
     surface:            'lauloi',
     original_lemma:     'laulaa',
     original_pos:       'VERB',
+    flag_only:          false,
     proposed_lemma:     'laulaa',
     proposed_pos:       'VERB',
   });

@@ -3,6 +3,11 @@
 This guide will help you set up and run the current role-aware FinnEst alpha
 app locally.
 
+If you are Michael (or an agent working for him): the condensed run/test path
+plus a question-routing table lives in [`FOR_MICHAEL.md`](FOR_MICHAEL.md).
+For a fully populated dictionary database on a fresh clone, use
+`make run-local` (bootstrap script) or copy an existing `finnestdb.db`.
+
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
@@ -200,7 +205,9 @@ finnestdb/
 
 **"Database error":**
 - Check file permissions for the database file
-- Try deleting `finnestdb.db` and restarting (will create a new database)
+- On a fresh clone only: deleting `finnestdb.db` and restarting creates a new
+  empty database. Never do this to a populated multi-GB database — that is the
+  real dictionary. Small ~100 KB `finnestdb.db` files are auto-created stubs.
 
 **"Parse error":**
 - Ensure the Rust parser library is built
@@ -227,30 +234,28 @@ finnestdb/
 
 This is an alpha implementation with the following limitations:
 
-- **Auth**: password auth and server-side sessions are implemented, but public
-  go-live still needs the remaining abuse, CSRF/Origin, retention, and
-  operational controls in `docs/GO_LIVE_CHECKLIST.md`
-- **Parser core**: Rust tokenization and heuristic POS guessing, not real morphology
-- **Admin parser modes**: Basic is direct dictionary lookup; Custom adds
-  rule-based enrichment, still not Omorfi/Vabamorf
-- **Retention controls**: Inspect parses are ephemeral until saved as a deck or
-  submitted as parser feedback; deletion controls for stored deck/feedback
-  parse context are not yet exposed
+- **Auth/hardening**: password auth, server-side sessions, CSRF/Origin checks,
+  rate limits, and retention/deletion controls shipped (2026-07-02 launch
+  stack). Remaining launch gates live in `TODO.md` "Public alpha gates" and
+  `docs/GO_LIVE_CHECKLIST.md`.
+- **Parser core**: Rust tokenization plus dictionary/FST-backed lemmatization
+  in `custom` mode; not Omorfi/Vabamorf (those are eval baselines)
+- **Admin parser modes**: Basic is direct dictionary lookup; Custom adds the
+  full enrichment pipeline
+- **Retention**: Inspect parses are ephemeral until saved as a deck or
+  submitted as parser feedback; the History page can delete retained parse
+  sessions, and account deletion cascades server-side
 
 ### Next Steps
 
-Current direction:
-
-1. Complete go-live auth/session hardening and abuse controls
-2. Improve parser quality and observability
-3. Keep parser evaluation repeatable through `make eval`, `make compare-parsers`,
-   and `make eval-check`
-4. Finish known-word management and admin feedback triage UX
+Current direction: start from [`../TODO.md` "LLM handoff read
+order"](../TODO.md#llm-handoff-read-order) — it points at the public-alpha
+gates, launch issue ledger, go/no-go rubric, and implementation specs.
 
 ## Support
 
 For issues or questions, please check:
-- The PRD document: `finnestdb-prd-alpha.md`
+- [`INDEX.md`](INDEX.md) — the documentation map ([`FOR_MICHAEL.md`](FOR_MICHAEL.md) for the question-routing table)
 - Server logs for detailed error messages
 - Browser console for frontend errors
 

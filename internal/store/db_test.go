@@ -174,6 +174,70 @@ func TestEnsureLexicalEnrichmentColumns_BackfillsOldDB(t *testing.T) {
 	}
 }
 
+// TestEnsureParseFeedbackFlagOnlyColumn_BackfillsOldDB constructs a
+// pre-flag-only parse_feedback table (proposed lemma/POS NOT NULL, no
+// flag_only column) and verifies the backfill adds flag_only with a default of
+// 0 without rewriting the table, idempotently.
+func TestEnsureParseFeedbackFlagOnlyColumn_BackfillsOldDB(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "old-feedback.db")
+	raw, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	defer raw.Close()
+
+	if _, err := raw.Exec(`
+		CREATE TABLE parse_feedback (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			parse_session_id INTEGER NOT NULL,
+			user_id INTEGER NOT NULL,
+			lang TEXT NOT NULL,
+			parser TEXT NOT NULL,
+			surface TEXT NOT NULL,
+			occurrence INTEGER NOT NULL DEFAULT 0,
+			original_lemma TEXT,
+			original_pos TEXT,
+			original_grammar_label TEXT,
+			proposed_lemma TEXT NOT NULL,
+			proposed_pos TEXT NOT NULL,
+			proposed_grammar_label TEXT,
+			note TEXT,
+			status TEXT NOT NULL DEFAULT 'submitted'
+		);
+	`); err != nil {
+		t.Fatalf("seed old schema: %v", err)
+	}
+	if _, err := raw.Exec(
+		`INSERT INTO parse_feedback (parse_session_id, user_id, lang, parser, surface, proposed_lemma, proposed_pos)
+		 VALUES (1, 1, 'FI', 'custom', 'koirat', 'koira', 'NOUN')`,
+	); err != nil {
+		t.Fatalf("seed legacy row: %v", err)
+	}
+
+	if columnExists(t, raw, "parse_feedback", "flag_only") {
+		t.Fatal("flag_only unexpectedly present in old-shape seed")
+	}
+	if err := EnsureParseFeedbackFlagOnlyColumn(raw); err != nil {
+		t.Fatalf("EnsureParseFeedbackFlagOnlyColumn: %v", err)
+	}
+	if !columnExists(t, raw, "parse_feedback", "flag_only") {
+		t.Fatal("flag_only not added by backfill")
+	}
+
+	var flagOnly int
+	if err := raw.QueryRow(`SELECT flag_only FROM parse_feedback WHERE id = 1`).Scan(&flagOnly); err != nil {
+		t.Fatalf("read backfilled flag_only: %v", err)
+	}
+	if flagOnly != 0 {
+		t.Fatalf("legacy row flag_only=%d want 0 default", flagOnly)
+	}
+
+	// Idempotent: re-running must not error.
+	if err := EnsureParseFeedbackFlagOnlyColumn(raw); err != nil {
+		t.Errorf("EnsureParseFeedbackFlagOnlyColumn rerun: %v", err)
+	}
+}
+
 func TestEnsureOccurrenceSurfaceColumn_BackfillsOldDB(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "old-occurrence.db")
 	raw, err := sql.Open("sqlite3", dbPath)
@@ -533,7 +597,7 @@ func TestDeleteUserCascadeRemovesPrivateRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateParseFeedback other: %v", err)
 	}
-	if err := db.ReviewParseFeedback(otherFeedbackID, user.ID, "rejected", "not a correction"); err != nil {
+	if err := db.ReviewParseFeedback(otherFeedbackID, user.ID, "rejected", "not a correction", nil); err != nil {
 		t.Fatalf("ReviewParseFeedback other: %v", err)
 	}
 
@@ -680,7 +744,7 @@ func TestAcceptedParseFeedbackWritesCustomOverrideAndChangesLookup(t *testing.T)
 	if err != nil {
 		t.Fatalf("CreateParseFeedback: %v", err)
 	}
-	if err := db.ReviewParseFeedback(feedbackID, admin.ID, "accepted", "promote"); err != nil {
+	if err := db.ReviewParseFeedback(feedbackID, admin.ID, "accepted", "promote", nil); err != nil {
 		t.Fatalf("ReviewParseFeedback: %v", err)
 	}
 
@@ -747,7 +811,7 @@ func TestAcceptedParseFeedbackReplacesPreviousSurfaceOverride(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateParseFeedback first: %v", err)
 	}
-	if err := db.ReviewParseFeedback(firstFeedbackID, admin.ID, "accepted", "first"); err != nil {
+	if err := db.ReviewParseFeedback(firstFeedbackID, admin.ID, "accepted", "first", nil); err != nil {
 		t.Fatalf("ReviewParseFeedback first: %v", err)
 	}
 
@@ -765,7 +829,7 @@ func TestAcceptedParseFeedbackReplacesPreviousSurfaceOverride(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateParseFeedback second: %v", err)
 	}
-	if err := db.ReviewParseFeedback(secondFeedbackID, admin.ID, "accepted", "second"); err != nil {
+	if err := db.ReviewParseFeedback(secondFeedbackID, admin.ID, "accepted", "second", nil); err != nil {
 		t.Fatalf("ReviewParseFeedback second: %v", err)
 	}
 
@@ -815,7 +879,7 @@ func TestAcceptedGrammarCorrectionCarriesFeats(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateParseFeedback: %v", err)
 	}
-	if err := db.ReviewParseFeedback(feedbackID, admin.ID, "accepted", "case fix"); err != nil {
+	if err := db.ReviewParseFeedback(feedbackID, admin.ID, "accepted", "case fix", nil); err != nil {
 		t.Fatalf("ReviewParseFeedback: %v", err)
 	}
 
@@ -870,7 +934,7 @@ func TestGoldConflictBlocksAcceptance(t *testing.T) {
 	// Contradicting the gold analysis is refused and rolls the whole
 	// acceptance back: status stays reviewable, no override row appears.
 	conflictID := newFeedback("voi", "NOUN")
-	err = db.ReviewParseFeedback(conflictID, admin.ID, "accepted", "butter!")
+	err = db.ReviewParseFeedback(conflictID, admin.ID, "accepted", "butter!", nil)
 	if !errors.Is(err, ErrOverrideConflictsWithGold) {
 		t.Fatalf("accept err=%v want ErrOverrideConflictsWithGold", err)
 	}
@@ -893,13 +957,13 @@ func TestGoldConflictBlocksAcceptance(t *testing.T) {
 	}
 
 	// Rejecting the same feedback is fine — the guard only gates acceptance.
-	if err := db.ReviewParseFeedback(conflictID, admin.ID, "rejected", "gold disagrees"); err != nil {
+	if err := db.ReviewParseFeedback(conflictID, admin.ID, "rejected", "gold disagrees", nil); err != nil {
 		t.Fatalf("reject after conflict: %v", err)
 	}
 
 	// A proposal that AGREES with gold sails through.
 	agreeID := newFeedback("voida", "VERB")
-	if err := db.ReviewParseFeedback(agreeID, admin.ID, "accepted", "matches gold"); err != nil {
+	if err := db.ReviewParseFeedback(agreeID, admin.ID, "accepted", "matches gold", nil); err != nil {
 		t.Fatalf("accept agreeing proposal: %v", err)
 	}
 
@@ -911,7 +975,7 @@ func TestGoldConflictBlocksAcceptance(t *testing.T) {
 		t.Fatalf("ReplaceGoldSurfaces kuusi: %v", err)
 	}
 	weakID := newFeedback("kuusi", "NOUN")
-	if err := db.ReviewParseFeedback(weakID, admin.ID, "accepted", "spruce"); err != nil {
+	if err := db.ReviewParseFeedback(weakID, admin.ID, "accepted", "spruce", nil); err != nil {
 		t.Fatalf("accept against single gold case: %v", err)
 	}
 }
@@ -942,7 +1006,7 @@ func TestGoldCandidatePromotionNeedsThreeUsers(t *testing.T) {
 		if err != nil {
 			t.Fatalf("CreateParseFeedback: %v", err)
 		}
-		if err := db.ReviewParseFeedback(feedbackID, admin.ID, "accepted", "confirmed"); err != nil {
+		if err := db.ReviewParseFeedback(feedbackID, admin.ID, "accepted", "confirmed", nil); err != nil {
 			t.Fatalf("ReviewParseFeedback: %v", err)
 		}
 	}
@@ -979,6 +1043,233 @@ func TestGoldCandidatePromotionNeedsThreeUsers(t *testing.T) {
 	}
 	if len(pending) != 0 {
 		t.Fatalf("pending=%+v want none after export", pending)
+	}
+}
+
+func TestFlagOnlyFeedbackInsertListAndFilter(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "flagonly-list-user@example.com")
+
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "koirat", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	flagID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "koirat",
+		OriginalLemma:  "koira",
+		OriginalPOS:    "NOUN",
+		FlagOnly:       true,
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback flag-only: %v", err)
+	}
+	concreteID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "kissat",
+		OriginalLemma:  "kissa",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "kissa",
+		ProposedPOS:    "NOUN",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback concrete: %v", err)
+	}
+
+	// No filter returns both, and the flag round-trips through the store model.
+	all, err := db.ListParseFeedback(ParseFeedbackFilter{})
+	if err != nil {
+		t.Fatalf("ListParseFeedback all: %v", err)
+	}
+	byID := map[int64]ParseFeedback{}
+	for _, f := range all {
+		byID[f.ID] = f
+	}
+	if !byID[flagID].FlagOnly {
+		t.Fatalf("flag-only row %d did not round-trip FlagOnly=true", flagID)
+	}
+	if byID[concreteID].FlagOnly {
+		t.Fatalf("concrete row %d unexpectedly has FlagOnly=true", concreteID)
+	}
+
+	// flag_only=true filter returns only the flag-only row.
+	flagged, err := db.ListParseFeedback(ParseFeedbackFilter{FlagOnly: "true"})
+	if err != nil {
+		t.Fatalf("ListParseFeedback flag_only=true: %v", err)
+	}
+	if len(flagged) != 1 || flagged[0].ID != flagID {
+		t.Fatalf("flag_only=true returned %+v, want only id=%d", flagged, flagID)
+	}
+
+	// flag_only=false filter returns only the concrete correction.
+	concrete, err := db.ListParseFeedback(ParseFeedbackFilter{FlagOnly: "false"})
+	if err != nil {
+		t.Fatalf("ListParseFeedback flag_only=false: %v", err)
+	}
+	if len(concrete) != 1 || concrete[0].ID != concreteID {
+		t.Fatalf("flag_only=false returned %+v, want only id=%d", concrete, concreteID)
+	}
+}
+
+func TestAcceptedFlagOnlyFeedbackWritesNoOverride(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "flagonly-accept-user@example.com")
+	admin := createTestUser(t, db, "flagonly-accept-admin@example.com")
+
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "koirat", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	flagID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "koirat",
+		OriginalLemma:  "koira",
+		OriginalPOS:    "NOUN",
+		FlagOnly:       true,
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback: %v", err)
+	}
+
+	// Accepting a flag-only report records the decision but MUST NOT write a
+	// custom_overrides lexical row — the report carries no parser identity to
+	// commit to the lexicon.
+	if err := db.ReviewParseFeedback(flagID, admin.ID, "accepted", "confirmed wrong", nil); err != nil {
+		t.Fatalf("ReviewParseFeedback flag-only accept: %v", err)
+	}
+	var status string
+	if err := db.db.QueryRow(`SELECT status FROM parse_feedback WHERE id = ?`, flagID).Scan(&status); err != nil {
+		t.Fatalf("read status: %v", err)
+	}
+	if status != "accepted" {
+		t.Fatalf("status=%q want accepted", status)
+	}
+	overrides := countRows(t, db,
+		`SELECT COUNT(*) FROM forms WHERE source = ? AND source_priority = ?`,
+		SourceCustomOverrides, CustomOverridesSourcePriority)
+	if overrides != 0 {
+		t.Fatalf("form override rows=%d want 0 — flag-only acceptance must not touch the lexicon", overrides)
+	}
+	lemmaOverrides := countRows(t, db,
+		`SELECT COUNT(*) FROM lemmas WHERE source = ? AND source_priority = ?`,
+		SourceCustomOverrides, CustomOverridesSourcePriority)
+	if lemmaOverrides != 0 {
+		t.Fatalf("lemma override rows=%d want 0 — flag-only acceptance must not touch the lexicon", lemmaOverrides)
+	}
+	// It must also not leak into the gold-candidate promotion path.
+	candidates, err := db.ListGoldCandidates("")
+	if err != nil {
+		t.Fatalf("ListGoldCandidates: %v", err)
+	}
+	if len(candidates) != 0 {
+		t.Fatalf("gold candidates=%+v want none — flag-only reports must not promote gold cases", candidates)
+	}
+}
+
+func TestFlagOnlyConvertedToCorrectionWritesOverride(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "flagonly-convert-user@example.com")
+	admin := createTestUser(t, db, "flagonly-convert-admin@example.com")
+
+	if _, err := db.db.Exec(
+		`INSERT INTO forms (form, lemma, pos, lang, source, source_priority)
+		 VALUES ('koirat', 'oldkoira', 'NOUN', 'FI', 'kaikki', 10)`,
+	); err != nil {
+		t.Fatalf("seed old form: %v", err)
+	}
+
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "koirat", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	flagID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "koirat",
+		OriginalLemma:  "oldkoira",
+		OriginalPOS:    "NOUN",
+		FlagOnly:       true,
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback: %v", err)
+	}
+
+	// Admin supplies a concrete correction while accepting: the flag-only row
+	// converts into a normal parser-identity correction and writes exactly one
+	// custom_overrides form row.
+	if err := db.ReviewParseFeedback(flagID, admin.ID, "accepted", "the lemma is koira", &ProposedCorrection{
+		Lemma: "koira",
+		POS:   "NOUN",
+	}); err != nil {
+		t.Fatalf("ReviewParseFeedback convert-then-accept: %v", err)
+	}
+
+	// The row is no longer flag-only and carries the supplied correction.
+	var flagOnly int
+	var propLemma, propPOS string
+	if err := db.db.QueryRow(
+		`SELECT flag_only, proposed_lemma, proposed_pos FROM parse_feedback WHERE id = ?`,
+		flagID,
+	).Scan(&flagOnly, &propLemma, &propPOS); err != nil {
+		t.Fatalf("read converted row: %v", err)
+	}
+	if flagOnly != 0 || propLemma != "koira" || propPOS != "NOUN" {
+		t.Fatalf("converted row flag_only=%d lemma=%q pos=%q want 0/koira/NOUN", flagOnly, propLemma, propPOS)
+	}
+
+	overrides := countRows(t, db,
+		`SELECT COUNT(*) FROM forms WHERE form = 'koirat' AND lang = 'FI' AND source = ? AND source_priority = ?`,
+		SourceCustomOverrides, CustomOverridesSourcePriority)
+	if overrides != 1 {
+		t.Fatalf("form override rows=%d want exactly 1 after convert-then-accept", overrides)
+	}
+	after := db.BatchLookupForms([]string{"koirat"}, "FI", "custom")["koirat"]
+	if after.Lemma != "koira" || after.POS != "NOUN" {
+		t.Fatalf("after conversion lookup got %s/%s, want koira/NOUN", after.Lemma, after.POS)
+	}
+}
+
+func TestProposedCorrectionOnNonFlagOnlyRejected(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "flagonly-guard-user@example.com")
+	admin := createTestUser(t, db, "flagonly-guard-admin@example.com")
+
+	parseID, err := db.CreateParseSession(&user.ID, "FI", "custom", "kissat", 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	concreteID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: parseID,
+		UserID:         user.ID,
+		Lang:           "FI",
+		Parser:         "custom",
+		Surface:        "kissat",
+		OriginalLemma:  "kissa",
+		OriginalPOS:    "NOUN",
+		ProposedLemma:  "kissa",
+		ProposedPOS:    "NOUN",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback: %v", err)
+	}
+
+	err = db.ReviewParseFeedback(concreteID, admin.ID, "accepted", "override", &ProposedCorrection{
+		Lemma: "muu",
+		POS:   "VERB",
+	})
+	if !errors.Is(err, ErrCorrectionOnNonFlagOnly) {
+		t.Fatalf("attaching a correction to a concrete row err=%v want ErrCorrectionOnNonFlagOnly", err)
 	}
 }
 

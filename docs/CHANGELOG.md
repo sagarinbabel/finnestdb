@@ -33,6 +33,78 @@ parser work and surfaced to the client via `/api/me`.
   demo gate ticked with a shipped note; remaining work is load-test cap tuning.
 - Modified: [`../CONTEXT.md`](../CONTEXT.md) — Anonymous Parser Demo term updated
   to shipped phrasing.
+## 2026-07-04 — Flag-only parser feedback (Phase 1b)
+
+Documents the public-alpha flag-only feedback path: signed-in learners can
+report "this analysis looks wrong" without proposing a fix. Schema adds
+`parse_feedback.flag_only` via idempotent ALTER (proposed columns kept
+`NOT NULL`, stored empty for flag-only rows). Flag-only acceptance writes no
+lexical override until an admin supplies a concrete lemma/POS, converting it into
+a normal parser-identity correction.
+
+- Modified: [`PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md) — schema field
+  list, the "current implementation" paragraph, and the current-vs-target table
+  (feedback type, schema/API, admin triage, acceptance behavior).
+- Modified: [`FEATURES.md`](FEATURES.md) "What We Store During Alpha" — mentions
+  flag-only reports.
+- Modified: [`TODO.md`](../TODO.md) — Phase 1b ticked with a shipped note; the
+  "Parser feedback alpha gate" bullet gets a progress note.
+- Modified: [`../CONTEXT.md`](../CONTEXT.md) "Flag-Only Parser Feedback" — updated
+  from planned to shipped.
+## 2026-07-04 — First-experience RC pack skeleton
+
+Ships the checked-in, repeatable release-candidate pack described in
+`GO_LIVE_CHECKLIST.md` "First-experience quality check" and `CONTEXT.md`
+"Release-Candidate Pack Manifest": one canonical manifest plus a Go runner
+and a Playwright spec that both consume it, so the launch gate cannot drift
+across separate case lists.
+
+- Added: `testdata/first-experience-rc/manifest.json` — 18 cases covering
+  all 8 first-experience journeys (anonymous-demo, embedded-text,
+  own-text-inspect, deck-save, first-review, known-word-import,
+  ambiguity-homograph, parser-feedback) with explicit FI and ET cases for
+  every journey, plus short self-written fixture `.txt` files in the same
+  directory, including the `kuusi`/`tuli`/`voi` homograph fixtures from
+  `PARSER_EVAL_METHODOLOGY.md` "Ambiguity and meaning-check calibration".
+- Added: `cmd/firstexperiencerc` — loads the manifest and runs every
+  `automation:"parser"` case through the real custom-mode parser pipeline
+  (`internal/parsecore`), printing PASS/FAIL/SKIP-pending/MANUAL and a
+  summary; exits nonzero only on an automated FAIL.
+- Added: `web/tests/first-experience-rc.spec.ts` — generates one Playwright
+  test per `automation:"playwright"` manifest case (with `test.skip` stubs
+  for everything else), reusing the existing Inspect/save-deck/review and
+  parser-feedback correction-submit patterns from `parse-results.spec.ts`.
+- Added: `make first-experience-rc` — runs the Go runner, then the RC
+  Playwright spec, then points at the manual walkthrough instructions in
+  `GO_LIVE_CHECKLIST.md` (no separate walkthrough doc).
+- Modified: `GO_LIVE_CHECKLIST.md` and `TODO.md` — record which journeys are
+  automated today (embedded-text, own-text-inspect, ambiguity-homograph via
+  the Go runner; deck-save, first-review, and FI parser-feedback via
+  Playwright) versus still pending (anonymous-demo FI+ET, known-word-import
+  FI+ET, parser-feedback ET).
+- This is a skeleton per Q58/Q60: it is expected to gain automated coverage
+  (not fixture text) as the pending journeys land, not to be treated as the
+  final pass/fail launch gate yet.
+## 2026-07-04 — FI/ET equal-status parity audit
+
+Journey-first audit of the public-alpha "Equal-Status Alpha Gate" from
+[`CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md#equal-status-alpha-gate),
+run against a live server and the production-size local DB.
+
+- Added: [`launch-readiness/2026-07-04-fi-et-parity-audit.md`](launch-readiness/2026-07-04-fi-et-parity-audit.md)
+  — per-journey FI/ET evidence table (anonymous parse, signed-in Inspect,
+  deck save/detail/review, known-word import, parser feedback, admin queue,
+  data readiness, eval baselines, tests, embedded catalog, starter decks),
+  classified alpha-blocking / language-specific / post-alpha, plus a cleanup
+  appendix of every row the audit wrote to the shared DB.
+- Modified: [`../TODO.md`](../TODO.md) — added ledger row `PARITY-1` (official
+  "Top 1000" starter decks absent from the DB for both languages despite a
+  prior "shipped, verified end-to-end" claim) and appended an audit-run note
+  under the "FI/ET equal-status parity audit" gate bullet.
+- Verdict: conditional pass. All exercised learner journeys showed full
+  FI/ET parity; the one alpha-blocking finding is a runbook-execution gap
+  (starter decks never seeded in this DB), not a code or design asymmetry
+  between the two languages.
 
 ## 2026-05-15 — FI manual-card trap promotions
 

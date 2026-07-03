@@ -5016,6 +5016,217 @@ func TestAdminParseFeedbackRejectsUnknownFeedbackReviewTarget(t *testing.T) {
 	}
 }
 
+func TestParseFeedbackFlagOnlyValidationMatrix(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	userCookies := loginAndReturnCookies(t, mux, "flagonly-user@example.com")
+
+	cases := []struct {
+		name     string
+		body     string
+		wantCode int
+	}{
+		{
+			name:     "flag-only without proposed fields is accepted",
+			body:     `{"lang":"FI","parser":"custom","source_text":"koirat","surface":"koirat","original_lemma":"koira","original_pos":"NOUN","flag_only":true}`,
+			wantCode: http.StatusOK,
+		},
+		{
+			name:     "non-flag without proposed lemma/POS is rejected",
+			body:     `{"lang":"FI","parser":"custom","source_text":"koirat","surface":"koirat"}`,
+			wantCode: http.StatusBadRequest,
+		},
+		{
+			name:     "non-flag with proposed lemma/POS is accepted",
+			body:     `{"lang":"FI","parser":"custom","source_text":"koirat","surface":"koirat","proposed_lemma":"koira","proposed_pos":"NOUN"}`,
+			wantCode: http.StatusOK,
+		},
+		{
+			name:     "missing surface is rejected even when flag-only",
+			body:     `{"lang":"FI","parser":"custom","source_text":"koirat","surface":"  ","flag_only":true}`,
+			wantCode: http.StatusBadRequest,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(tc.body))
+			for _, cookie := range userCookies {
+				req.AddCookie(cookie)
+			}
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, req)
+			if rec.Code != tc.wantCode {
+				t.Fatalf("status=%d want %d body=%q", rec.Code, tc.wantCode, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestFlagOnlyFeedbackListedAndFilteredByAdmin(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	userCookies := loginAndReturnCookies(t, mux, "user@example.com")
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+
+	submit := func(body string) {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(body))
+		for _, cookie := range userCookies {
+			req.AddCookie(cookie)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("submit status=%d body=%q", rec.Code, rec.Body.String())
+		}
+	}
+	submit(`{"lang":"FI","parser":"custom","source_text":"koirat","surface":"koirat","original_lemma":"koira","original_pos":"NOUN","flag_only":true}`)
+	submit(`{"lang":"FI","parser":"custom","source_text":"kissat","surface":"kissat","proposed_lemma":"kissa","proposed_pos":"NOUN"}`)
+
+	list := func(query string) []store.ParseFeedback {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, "/api/admin/parse-feedback"+query, nil)
+		for _, cookie := range adminCookies {
+			req.AddCookie(cookie)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("list%s status=%d body=%q", query, rec.Code, rec.Body.String())
+		}
+		var resp ParseFeedbackListResponse
+		if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
+			t.Fatalf("decode list%s: %v", query, err)
+		}
+		return resp.Feedback
+	}
+
+	if got := list(""); len(got) != 2 {
+		t.Fatalf("unfiltered list=%d want 2", len(got))
+	}
+	flagged := list("?flag_only=true")
+	if len(flagged) != 1 || !flagged[0].FlagOnly {
+		t.Fatalf("flag_only=true list=%+v want exactly one flag-only row", flagged)
+	}
+	concrete := list("?flag_only=false")
+	if len(concrete) != 1 || concrete[0].FlagOnly {
+		t.Fatalf("flag_only=false list=%+v want exactly one concrete row", concrete)
+	}
+
+	// Invalid flag_only value is rejected.
+	badReq := httptest.NewRequest(http.MethodGet, "/api/admin/parse-feedback?flag_only=maybe", nil)
+	for _, cookie := range adminCookies {
+		badReq.AddCookie(cookie)
+	}
+	badRec := httptest.NewRecorder()
+	mux.ServeHTTP(badRec, badReq)
+	if badRec.Code != http.StatusBadRequest {
+		t.Fatalf("flag_only=maybe status=%d want %d", badRec.Code, http.StatusBadRequest)
+	}
+}
+
+func TestAdminAcceptFlagOnlyWithSuppliedCorrection(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	userCookies := loginAndReturnCookies(t, mux, "user@example.com")
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+
+	// Submit a flag-only report.
+	submitReq := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(
+		`{"lang":"FI","parser":"custom","source_text":"koirat","surface":"koirat","original_lemma":"oldkoira","original_pos":"NOUN","flag_only":true}`))
+	for _, cookie := range userCookies {
+		submitReq.AddCookie(cookie)
+	}
+	submitRec := httptest.NewRecorder()
+	mux.ServeHTTP(submitRec, submitReq)
+	if submitRec.Code != http.StatusOK {
+		t.Fatalf("submit status=%d body=%q", submitRec.Code, submitRec.Body.String())
+	}
+	var submitResp ParseFeedbackResponse
+	if err := json.NewDecoder(bytes.NewReader(submitRec.Body.Bytes())).Decode(&submitResp); err != nil {
+		t.Fatalf("decode submit: %v", err)
+	}
+
+	// Accepting a flag-only row with only a status must write no override.
+	acceptURL := fmt.Sprintf("/api/admin/parse-feedback?id=%d", submitResp.FeedbackID)
+	plainReq := httptest.NewRequest(http.MethodPatch, acceptURL, strings.NewReader(`{"status":"accepted","review_note":"confirmed wrong"}`))
+	for _, cookie := range adminCookies {
+		plainReq.AddCookie(cookie)
+	}
+	plainRec := httptest.NewRecorder()
+	mux.ServeHTTP(plainRec, plainReq)
+	if plainRec.Code != http.StatusOK {
+		t.Fatalf("plain accept status=%d body=%q", plainRec.Code, plainRec.Body.String())
+	}
+	if hasCustomOverride(api, "koirat") {
+		t.Fatal("flag-only accept without a correction must not write a custom_overrides row")
+	}
+
+	// Now supply a concrete correction: it converts and writes the override.
+	convertReq := httptest.NewRequest(http.MethodPatch, acceptURL, strings.NewReader(
+		`{"status":"accepted","review_note":"lemma is koira","proposed_lemma":"koira","proposed_pos":"NOUN"}`))
+	for _, cookie := range adminCookies {
+		convertReq.AddCookie(cookie)
+	}
+	convertRec := httptest.NewRecorder()
+	mux.ServeHTTP(convertRec, convertReq)
+	if convertRec.Code != http.StatusOK {
+		t.Fatalf("convert accept status=%d body=%q", convertRec.Code, convertRec.Body.String())
+	}
+	got := api.store.BatchLookupForms([]string{"koirat"}, "FI", "custom")["koirat"]
+	if got.Lemma != "koira" || got.POS != "NOUN" {
+		t.Fatalf("after supplied correction lookup got %s/%s, want koira/NOUN", got.Lemma, got.POS)
+	}
+}
+
+func TestAdminAcceptCorrectionRequiresBothLemmaAndPOS(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	userCookies := loginAndReturnCookies(t, mux, "user@example.com")
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+
+	submitReq := httptest.NewRequest(http.MethodPost, "/api/parse/feedback", strings.NewReader(
+		`{"lang":"FI","parser":"custom","source_text":"koirat","surface":"koirat","flag_only":true}`))
+	for _, cookie := range userCookies {
+		submitReq.AddCookie(cookie)
+	}
+	submitRec := httptest.NewRecorder()
+	mux.ServeHTTP(submitRec, submitReq)
+	if submitRec.Code != http.StatusOK {
+		t.Fatalf("submit status=%d body=%q", submitRec.Code, submitRec.Body.String())
+	}
+	var submitResp ParseFeedbackResponse
+	if err := json.NewDecoder(bytes.NewReader(submitRec.Body.Bytes())).Decode(&submitResp); err != nil {
+		t.Fatalf("decode submit: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPatch,
+		fmt.Sprintf("/api/admin/parse-feedback?id=%d", submitResp.FeedbackID),
+		strings.NewReader(`{"status":"accepted","proposed_lemma":"koira"}`))
+	for _, cookie := range adminCookies {
+		req.AddCookie(cookie)
+	}
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("partial correction status=%d want %d body=%q", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+}
+
+// hasCustomOverride reports whether any candidate for the surface resolves via
+// a custom_overrides row (source string starts with the override source).
+func hasCustomOverride(api *API, surface string) bool {
+	for _, f := range api.store.BatchLookupAllForms([]string{surface}, "FI", "custom")[surface] {
+		if strings.HasPrefix(f.Source, store.SourceCustomOverrides) {
+			return true
+		}
+	}
+	return false
+}
+
 func TestAdminParseFeedbackRejectsInvalidStatus(t *testing.T) {
 	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
 

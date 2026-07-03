@@ -280,6 +280,7 @@ interface ParseFeedbackItem {
     proposed_lemma:           string;
     proposed_pos:             string;
     proposed_grammar_label?:  string;
+    flag_only:                boolean;
     note?:                    string;
     status:                   string;
     review_note?:             string;
@@ -351,6 +352,7 @@ const state = {
     parseSessionsLoaded: false,
     adminFeedback:      [] as ParseFeedbackItem[],
     adminFeedbackStatus: 'submitted',
+    adminFeedbackFlagOnly: '' as '' | 'true' | 'false',
     // Active language drives the deck list filter, Inspect/Known-Words defaults,
     // and Review queue. learningLanguages is the user's opt-in set; the nav
     // dropdown only shows entries from this list. Both are hydrated from
@@ -5544,6 +5546,8 @@ function formatFeedbackDate(value: string): string {
 function renderAdminFeedbackPage(): void {
     const filter = document.getElementById('admin-feedback-status') as HTMLSelectElement | null;
     if (filter) filter.value = state.adminFeedbackStatus;
+    const flagFilter = document.getElementById('admin-feedback-flag-only') as HTMLSelectElement | null;
+    if (flagFilter) flagFilter.value = state.adminFeedbackFlagOnly;
     renderAdminFeedbackList();
 }
 
@@ -5568,10 +5572,33 @@ function renderAdminFeedbackList(): void {
         const proposedGrammar = item.proposed_grammar_label ? ` · ${escapeHtml(item.proposed_grammar_label)}` : '';
         const note = item.note ? `<p class="admin-feedback-note">${escapeHtml(item.note)}</p>` : '';
         const reviewNote = item.review_note ? `<p class="admin-feedback-review-note">${escapeHtml(item.review_note)}</p>` : '';
+        const flagBadge = item.flag_only
+            ? '<span class="admin-feedback-flag-badge">Flag-only</span>'
+            : '';
+        // For a flag-only report the learner didn't propose an analysis. Give
+        // the admin lemma/POS inputs so they can convert it into a concrete
+        // parser-identity correction (path b) before accepting. Leaving them
+        // blank accepts the report without any lexical writeback.
+        const proposedBlock = item.flag_only
+            ? `<div>
+                    <span class="admin-feedback-label">Supply correction (optional)</span>
+                    <div class="admin-feedback-correction-inputs">
+                        <input type="text" class="admin-feedback-correction-lemma" data-correction-lemma="${item.id}" placeholder="Base form" autocomplete="off">
+                        <select class="admin-feedback-correction-pos" data-correction-pos="${item.id}">
+                            <option value="">POS…</option>
+                            ${adminPosOptions()}
+                        </select>
+                    </div>
+                    <p class="admin-feedback-correction-hint">Leave blank to accept the flag without changing the parser.</p>
+                </div>`
+            : `<div>
+                    <span class="admin-feedback-label">Proposed</span>
+                    <p>${escapeHtml(proposed)}${proposedGrammar}</p>
+                </div>`;
         return `<article class="admin-feedback-item" data-feedback-id="${item.id}">
             <header class="admin-feedback-item-header">
                 <div>
-                    <h2>${escapeHtml(item.surface)}</h2>
+                    <h2>${escapeHtml(item.surface)}${flagBadge}</h2>
                     <p class="admin-feedback-meta">${escapeHtml(item.lang)} · ${escapeHtml(item.parser)} · session #${item.parse_session_id} · user #${item.user_id} · ${formatFeedbackDate(item.created_at)}</p>
                 </div>
                 <span class="admin-feedback-status">${feedbackStatusLabel(item.status)}</span>
@@ -5581,10 +5608,7 @@ function renderAdminFeedbackList(): void {
                     <span class="admin-feedback-label">Original</span>
                     <p>${escapeHtml(original)}${originalGrammar}</p>
                 </div>
-                <div>
-                    <span class="admin-feedback-label">Proposed</span>
-                    <p>${escapeHtml(proposed)}${proposedGrammar}</p>
-                </div>
+                ${proposedBlock}
             </div>
             ${note}
             ${reviewNote}
@@ -5598,11 +5622,27 @@ function renderAdminFeedbackList(): void {
     }).join('');
 }
 
+// adminPosOptions returns the POS <option> list shared by the admin
+// flag-only correction inputs. Mirrors the correction modal's POS choices.
+function adminPosOptions(): string {
+    const opts: Array<[string, string]> = [
+        ['NOUN', 'Noun'], ['VERB', 'Verb'], ['ADJ', 'Adjective'], ['ADV', 'Adverb'],
+        ['PROPN', 'Proper noun'], ['PRON', 'Pronoun'], ['DET', 'Determiner'],
+        ['ADP', 'Adposition'], ['NUM', 'Number'], ['CCONJ', 'Conjunction (coordinating)'],
+        ['SCONJ', 'Conjunction (subordinating)'], ['PART', 'Particle'],
+        ['INTJ', 'Interjection'], ['AUX', 'Auxiliary'], ['X', 'Other'],
+    ];
+    return opts.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+}
+
 async function loadAdminFeedback(): Promise<void> {
     if (state.role !== 'admin') return;
-    const statusParam = state.adminFeedbackStatus ? `?status=${encodeURIComponent(state.adminFeedbackStatus)}` : '';
+    const params = new URLSearchParams();
+    if (state.adminFeedbackStatus) params.set('status', state.adminFeedbackStatus);
+    if (state.adminFeedbackFlagOnly) params.set('flag_only', state.adminFeedbackFlagOnly);
+    const query = params.toString() ? `?${params.toString()}` : '';
     try {
-        const resp = await fetch(`/api/admin/parse-feedback${statusParam}`, { credentials: 'same-origin' });
+        const resp = await fetch(`/api/admin/parse-feedback${query}`, { credentials: 'same-origin' });
         if (!resp.ok) {
             throw new Error(await resp.text() || 'Failed to load parser feedback');
         }
@@ -5619,12 +5659,31 @@ async function loadAdminFeedback(): Promise<void> {
 async function reviewAdminFeedback(feedbackID: number, status: 'accepted' | 'rejected' | 'needs_follow_up'): Promise<void> {
     const noteInput = document.querySelector<HTMLInputElement>(`[data-review-note="${feedbackID}"]`);
     const reviewNote = noteInput?.value.trim() || '';
+
+    // On a flag-only row the admin may supply a concrete correction (path b),
+    // converting it to a normal parser-identity fix. Only send it when both
+    // lemma and POS are filled and the row is being accepted.
+    const lemmaInput = document.querySelector<HTMLInputElement>(`[data-correction-lemma="${feedbackID}"]`);
+    const posInput   = document.querySelector<HTMLSelectElement>(`[data-correction-pos="${feedbackID}"]`);
+    const body: Record<string, unknown> = { status, review_note: reviewNote };
+    if (status === 'accepted' && lemmaInput && posInput) {
+        const lemma = lemmaInput.value.trim();
+        const pos   = posInput.value.trim();
+        if (lemma || pos) {
+            if (!lemma || !pos) {
+                showToast('Supply both base form and part of speech, or leave both blank.', 'error');
+                return;
+            }
+            body.proposed_lemma = lemma;
+            body.proposed_pos   = pos;
+        }
+    }
     try {
         const resp = await fetch(`/api/admin/parse-feedback?id=${encodeURIComponent(String(feedbackID))}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            body: JSON.stringify({ status, review_note: reviewNote }),
+            body: JSON.stringify(body),
         });
         if (!resp.ok) {
             throw new Error(await resp.text() || 'Failed to review parser feedback');
@@ -5658,6 +5717,12 @@ function openCorrectionModal(row: CorrectionRowContext): void {
     proposedGramEl.value  = row.original_grammar_label;
     noteEl.value = '';
 
+    // Two-path modal (USER_FLOWS §10): default to flag-only so a learner who
+    // just knows something's wrong can report it in one click.
+    const flagRadio = document.getElementById('correction-mode-flag') as HTMLInputElement | null;
+    if (flagRadio) flagRadio.checked = true;
+    syncCorrectionMode();
+
     // Backend requires authentication. Anonymous parses can't submit
     // corrections — the feedback endpoint creates the parse_session
     // lazily but it still has to belong to a user. Surface that
@@ -5674,10 +5739,32 @@ function closeCorrectionModal(): void {
     document.getElementById('correction-modal')?.classList.add('hidden');
 }
 
+// isFlagOnlyMode reports whether the "I don't know the right answer" radio is
+// selected. Flag-only reports omit the proposed lemma/POS.
+function isFlagOnlyMode(): boolean {
+    const propose = document.getElementById('correction-mode-propose') as HTMLInputElement | null;
+    return !(propose && propose.checked);
+}
+
+// syncCorrectionMode shows or hides the proposed-analysis fields to match the
+// selected path and updates the submit button label.
+function syncCorrectionMode(): void {
+    const flagOnly   = isFlagOnlyMode();
+    const fields     = document.getElementById('correction-proposed-fields');
+    const submitBtn  = document.getElementById('correction-submit') as HTMLButtonElement | null;
+    fields?.classList.toggle('hidden', flagOnly);
+    if (submitBtn && !submitBtn.disabled) {
+        submitBtn.textContent = flagOnly ? 'Flag as wrong' : 'Send correction';
+    }
+}
+
 function initCorrectionModal(): void {
     document.getElementById('correction-modal-close')   ?.addEventListener('click', closeCorrectionModal);
     document.getElementById('correction-modal-backdrop')?.addEventListener('click', closeCorrectionModal);
     document.getElementById('correction-cancel')        ?.addEventListener('click', closeCorrectionModal);
+    document.querySelectorAll<HTMLInputElement>('input[name="correction_mode"]').forEach(radio => {
+        radio.addEventListener('change', syncCorrectionMode);
+    });
 
     const form = document.getElementById('correction-form') as HTMLFormElement | null;
     form?.addEventListener('submit', async (e) => {
@@ -5694,11 +5781,12 @@ function initCorrectionModal(): void {
                 return;
             }
 
+            const flagOnly      = isFlagOnlyMode();
             const proposedLemma = (document.getElementById('correction-proposed-lemma')   as HTMLInputElement).value.trim();
             const proposedPos   = (document.getElementById('correction-proposed-pos')     as HTMLSelectElement).value;
             const proposedGram  = (document.getElementById('correction-proposed-grammar') as HTMLInputElement).value.trim();
             const note          = (document.getElementById('correction-note')             as HTMLTextAreaElement).value.trim();
-            if (!proposedLemma || !proposedPos) {
+            if (!flagOnly && (!proposedLemma || !proposedPos)) {
                 showToast('Please fill in both base form and part of speech.', 'error');
                 return;
             }
@@ -5706,6 +5794,7 @@ function initCorrectionModal(): void {
             // Two attribution paths: deck-detail feedback has a persisted
             // parse_session (results.parse_id); Inspect-view feedback ships
             // the source text inline and the server creates a session lazily.
+            // Flag-only reports omit the proposed analysis entirely.
             const body: Record<string, unknown> = {
                 lang:                   results.lang,
                 parser:                 state.currentParserMode,
@@ -5714,9 +5803,10 @@ function initCorrectionModal(): void {
                 original_lemma:         row.lemma,
                 original_pos:           row.pos,
                 original_grammar_label: row.original_grammar_label,
-                proposed_lemma:         proposedLemma,
-                proposed_pos:           proposedPos,
-                proposed_grammar_label: proposedGram,
+                flag_only:              flagOnly,
+                proposed_lemma:         flagOnly ? '' : proposedLemma,
+                proposed_pos:           flagOnly ? '' : proposedPos,
+                proposed_grammar_label: flagOnly ? '' : proposedGram,
                 note,
             };
             if (typeof results.parse_id === 'number') {
@@ -5734,7 +5824,7 @@ function initCorrectionModal(): void {
                 body: JSON.stringify(body),
             });
             if (resp.ok) {
-                showToast('Thanks — correction sent.', 'success');
+                showToast(flagOnly ? 'Thanks — flagged for review.' : 'Thanks — correction sent.', 'success');
                 closeCorrectionModal();
             } else {
                 showToast("Couldn't send correction — please try again later.", 'error');
@@ -6194,6 +6284,12 @@ function initAdminFeedbackPage(): void {
     const filter = document.getElementById('admin-feedback-status') as HTMLSelectElement | null;
     filter?.addEventListener('change', async () => {
         state.adminFeedbackStatus = filter.value;
+        await loadAdminFeedback();
+    });
+
+    const flagFilter = document.getElementById('admin-feedback-flag-only') as HTMLSelectElement | null;
+    flagFilter?.addEventListener('change', async () => {
+        state.adminFeedbackFlagOnly = flagFilter.value as '' | 'true' | 'false';
         await loadAdminFeedback();
     });
 

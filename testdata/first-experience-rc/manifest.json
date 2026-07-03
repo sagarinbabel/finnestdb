@@ -1,0 +1,237 @@
+{
+  "cases": [
+    {
+      "id": "fi-anonymous-demo",
+      "language": "fi",
+      "journey": "anonymous-demo",
+      "automation": "pending",
+      "fixture": "fi-embedded-text.txt",
+      "expect": {
+        "notes": "Anonymous paste -> parse -> word list -> explore has no dedicated Playwright coverage yet; needs a stateless-demo spec once the anonymous parser demo surface lands."
+      },
+      "notes": "Anonymous Parser Demo per CONTEXT.md: unsigned paste/parse/explore, stateless and ephemeral, stricter text-size cap than signed-in parsing."
+    },
+    {
+      "id": "et-anonymous-demo",
+      "language": "et",
+      "journey": "anonymous-demo",
+      "automation": "pending",
+      "fixture": "et-embedded-text.txt",
+      "expect": {
+        "notes": "Same as fi-anonymous-demo; ET parity case for the unsigned demo surface."
+      },
+      "notes": "ET parity for the anonymous demo journey."
+    },
+    {
+      "id": "fi-embedded-text",
+      "language": "fi",
+      "journey": "embedded-text",
+      "automation": "parser",
+      "fixture": "fi-embedded-text.txt",
+      "expect": {
+        "min_token_count": 30,
+        "lemma_pos": [
+          { "lemma": "kissa", "pos": "NOUN" },
+          { "lemma": "juoda", "pos": "VERB" },
+          { "lemma": "aurinko", "pos": "NOUN" }
+        ]
+      },
+      "notes": "Stand-in for a curated Embedded Text catalog entry (CONTEXT.md 'Embedded Text'/'Embedded Catalog' are not built yet). Self-written short FI text; verified against the real custom parser 2026-07-04."
+    },
+    {
+      "id": "et-embedded-text",
+      "language": "et",
+      "journey": "embedded-text",
+      "automation": "parser",
+      "fixture": "et-embedded-text.txt",
+      "expect": {
+        "min_token_count": 30,
+        "lemma_pos": [
+          { "lemma": "kass", "pos": "NOUN" },
+          { "lemma": "ja", "pos": "CCONJ" }
+        ]
+      },
+      "notes": "ET parity for fi-embedded-text. Verified against the real custom parser 2026-07-04; TOTAL TOKENS=35."
+    },
+    {
+      "id": "fi-own-text-inspect",
+      "language": "fi",
+      "journey": "own-text-inspect",
+      "automation": "parser",
+      "fixture": "fi-own-text.txt",
+      "expect": {
+        "min_token_count": 18,
+        "lemma_pos": [
+          { "lemma": "kauppa", "pos": "NOUN" },
+          { "lemma": "leipä", "pos": "NOUN" }
+        ]
+      },
+      "notes": "Realistic learner-pasted text (a short daily-life paragraph), distinct from the curated embedded text. Verified against the real custom parser 2026-07-04; TOTAL TOKENS=23."
+    },
+    {
+      "id": "et-own-text-inspect",
+      "language": "et",
+      "journey": "own-text-inspect",
+      "automation": "parser",
+      "fixture": "et-own-text.txt",
+      "expect": {
+        "min_token_count": 18,
+        "lemma_pos": [
+          { "lemma": "pood", "pos": "NOUN" },
+          { "lemma": "leib", "pos": "NOUN" }
+        ]
+      },
+      "notes": "ET parity for fi-own-text-inspect. Verified against the real custom parser 2026-07-04; TOTAL TOKENS=23."
+    },
+    {
+      "id": "fi-deck-save",
+      "language": "fi",
+      "journey": "deck-save",
+      "automation": "playwright",
+      "fixture": "fi-own-text.txt",
+      "expect": {
+        "notes": "Own-text Inspect -> Save as deck -> deck appears in Decks list, using mocked /api/parse, /api/decks, /api/review/next per parse-results.spec.ts conventions."
+      },
+      "notes": "Shipped today: Inspect save-as-deck flow. Covered by web/tests/first-experience-rc.spec.ts 'fi journey: own-text inspect -> save deck -> first review'."
+    },
+    {
+      "id": "et-deck-save",
+      "language": "et",
+      "journey": "deck-save",
+      "automation": "playwright",
+      "fixture": "et-own-text.txt",
+      "expect": {
+        "notes": "ET parity for fi-deck-save: Inspect save-as-deck flow with an Estonian sentence and lemma."
+      },
+      "notes": "Covered by web/tests/first-experience-rc.spec.ts 'et journey: own-text inspect -> save deck -> first review'."
+    },
+    {
+      "id": "fi-first-review",
+      "language": "fi",
+      "journey": "first-review",
+      "automation": "playwright",
+      "fixture": "fi-own-text.txt",
+      "expect": {
+        "notes": "After deck-save, the first due review card renders and answering it empties the review queue. Same test as fi-deck-save covers both steps of the journey."
+      },
+      "notes": "Shipped today: first review after saving a deck. Covered by the same Playwright test as fi-deck-save (deck-save and first-review are two steps of one journey in the current UI)."
+    },
+    {
+      "id": "et-first-review",
+      "language": "et",
+      "journey": "first-review",
+      "automation": "playwright",
+      "fixture": "et-own-text.txt",
+      "expect": {
+        "notes": "ET parity for fi-first-review."
+      },
+      "notes": "Covered by the same Playwright test as et-deck-save."
+    },
+    {
+      "id": "fi-known-word-import",
+      "language": "fi",
+      "journey": "known-word-import",
+      "automation": "pending",
+      "fixture": "fi-known-word-import.txt",
+      "expect": {
+        "notes": "Import a short comma-separated FI word list on /#/vocab and confirm each lemma resolves to the right (lemma, POS): kissa/NOUN, koira/NOUN, talo/NOUN, kirja/NOUN, syödä/VERB."
+      },
+      "notes": "web/tests/parse-results.spec.ts has a known-words import test with mocked responses, but no RC case wires the manifest's fixture words through it yet. Needs a dedicated first-experience-rc Playwright case."
+    },
+    {
+      "id": "et-known-word-import",
+      "language": "et",
+      "journey": "known-word-import",
+      "automation": "pending",
+      "fixture": "et-known-word-import.txt",
+      "expect": {
+        "notes": "ET parity: kass/NOUN, koer/NOUN, maja/NOUN, raamat/NOUN, sööma/VERB."
+      },
+      "notes": "ET parity for fi-known-word-import; also pending."
+    },
+    {
+      "id": "fi-ambiguity-homograph",
+      "language": "fi",
+      "journey": "ambiguity-homograph",
+      "automation": "parser",
+      "fixture": "fi-ambiguity-kuusi.txt",
+      "expect": {
+        "min_token_count": 10,
+        "lemma_pos": [
+          { "lemma": "kuusi", "pos": "NUM" }
+        ],
+        "notes": "Known parser limitation, asserted rather than hidden: 'kuusi' the spruce (NOUN) and 'kuusi' the number six (NUM) both surface as the bare form 'kuusi' and the parser currently collapses both occurrences into a single (kuusi, NUM) word-list entry (count=2) instead of splitting NOUN vs NUM senses. See docs/PARSER_EVAL_METHODOLOGY.md 'Ambiguity and meaning-check calibration'."
+      },
+      "notes": "Homograph case from docs/PARSER_EVAL_METHODOLOGY.md: kuusi NUM 'six' vs NOUN 'spruce'. Verified against the real custom parser 2026-07-04 — confirms the parser does not yet disambiguate; the UI should show 'Multiple possible meanings' rather than a confident Meaning Check for this pair."
+    },
+    {
+      "id": "fi-ambiguity-tuli",
+      "language": "fi",
+      "journey": "ambiguity-homograph",
+      "automation": "parser",
+      "fixture": "fi-ambiguity-tuli.txt",
+      "expect": {
+        "min_token_count": 10,
+        "lemma_pos": [
+          { "lemma": "tulla", "pos": "VERB" }
+        ],
+        "notes": "Known parser limitation, asserted rather than hidden: 'tuli' NOUN 'fire' and 'tuli' VERB 'came' (from tulla) both surface as the bare form 'tuli', and the parser currently lemmatizes both occurrences to (tulla, VERB) (count=2) instead of splitting a NOUN 'fire' sense out."
+      },
+      "notes": "Homograph case from docs/PARSER_EVAL_METHODOLOGY.md: tuli VERB 'came' vs NOUN 'fire'. Verified against the real custom parser 2026-07-04 — confirms the NOUN 'fire' sense is not resolved separately."
+    },
+    {
+      "id": "fi-ambiguity-voi",
+      "language": "fi",
+      "journey": "ambiguity-homograph",
+      "automation": "parser",
+      "fixture": "fi-ambiguity-voi.txt",
+      "expect": {
+        "min_token_count": 10,
+        "lemma_pos": [
+          { "lemma": "voi", "pos": "NOUN" }
+        ],
+        "notes": "Known parser limitation: 'voi' VERB 'can/may' and 'voi' NOUN 'butter' both surface as forms of 'voi'/'voita'; the parser currently resolves both occurrences to (voi, NOUN) (count=2) rather than splitting NOUN vs VERB senses."
+      },
+      "notes": "Homograph case from docs/PARSER_EVAL_METHODOLOGY.md: voi VERB 'can/may' vs NOUN 'butter'. Verified against the real custom parser 2026-07-04."
+    },
+    {
+      "id": "et-ambiguity-homograph",
+      "language": "et",
+      "journey": "ambiguity-homograph",
+      "automation": "parser",
+      "fixture": "et-ambiguity-homographs.txt",
+      "expect": {
+        "min_token_count": 35,
+        "lemma_pos": [
+          { "lemma": "tulema", "pos": "VERB" },
+          { "lemma": "kuusk", "pos": "NOUN" },
+          { "lemma": "kuus", "pos": "NOUN" }
+        ],
+        "notes": "ET mirrors the FI 'tuli' collapse: 'tuli' NOUN 'fire' and 'tuli'/'tulla' VERB 'came/come' both surface as forms of 'tuli', and the parser resolves all occurrences to (tulema, VERB) (count=3) rather than splitting out a NOUN 'fire' sense. 'kuusk' (spruce) and 'kuus' (six) are spelled distinctly in Estonian and are NOT a homograph pair here, unlike FI 'kuusi' — included so the case documents that ET does not inherit every FI ambiguity 1:1."
+      },
+      "notes": "PARSER_EVAL_METHODOLOGY.md's kuusi/tuli/voi ambiguity slice is explicitly Finnish-first (see 'Start Finnish-first, then add Estonian parity cases'). This ET case exercises the real custom parser on Estonian sentences covering the same three concepts (spruce/six, fire/came, butter/may) and documents which collapse translates to Estonian (tuli) and which does not (kuusk vs kuus is not a collision in ET orthography). A dedicated ET-native ambiguity slice with its own homograph pairs is still pending; this fixture is a starting point, not a replacement for that work. Verified against the real custom parser 2026-07-04; TOTAL TOKENS=45."
+    },
+    {
+      "id": "fi-parser-feedback",
+      "language": "fi",
+      "journey": "parser-feedback",
+      "automation": "playwright",
+      "fixture": "fi-parser-feedback.txt",
+      "expect": {
+        "notes": "Inspect -> parse -> open 'Suggest fix' on a word -> submit -> success toast, per the existing correction-submit coverage in web/tests/parse-results.spec.ts."
+      },
+      "notes": "web/tests/parse-results.spec.ts already covers the /api/parse/feedback contract end to end with mocked responses (see 'correction submit posts the PR-53 /api/parse/feedback contract'). Covered by web/tests/first-experience-rc.spec.ts 'fi journey: parser feedback correction submit', which drives the same contract against this manifest's fixture text."
+    },
+    {
+      "id": "et-parser-feedback",
+      "language": "et",
+      "journey": "parser-feedback",
+      "automation": "pending",
+      "fixture": "et-parser-feedback.txt",
+      "expect": {
+        "notes": "ET parity for the parser-feedback correction-submit flow; no ET-specific Playwright coverage exists yet."
+      },
+      "notes": "ET parity for fi-parser-feedback; pending an ET-specific Playwright case (existing coverage in parse-results.spec.ts is FI-only)."
+    }
+  ]
+}

@@ -48,6 +48,33 @@ First-experience quality check:
 - Build the manifest and a small skeleton runner first, before waiting for all
   alpha flows to exist. It may fail initially; public alpha still requires the
   final pack to pass or have all findings classified under this rubric.
+- **Skeleton shipped 2026-07-04**: the canonical manifest, Go runner, and
+  Playwright spec now exist and `make first-experience-rc` runs green
+  (automated cases pass; unimplemented journeys are explicit pending skips,
+  not silent gaps).
+  - Manifest: [`testdata/first-experience-rc/manifest.json`](../testdata/first-experience-rc/manifest.json)
+    (18 cases, FI+ET for every journey) plus its fixture `.txt` files in the
+    same directory, including the `kuusi`/`tuli`/`voi` homograph fixtures from
+    "Ambiguity and meaning-check calibration" below.
+  - Go runner: [`cmd/firstexperiencerc`](../cmd/firstexperiencerc) — loads the
+    manifest, runs every `automation:"parser"` case through the real
+    custom-mode parser (`internal/parsecore`, the same path `/api/parse`
+    uses), and prints PASS/FAIL/SKIP-pending/MANUAL plus a summary. Exits
+    nonzero only on an automated FAIL.
+  - Playwright spec: [`web/tests/first-experience-rc.spec.ts`](../web/tests/first-experience-rc.spec.ts)
+    — imports the same manifest JSON and generates one test per
+    `automation:"playwright"` case, `test.skip` for everything else.
+  - Automated today: `embedded-text` (FI+ET), `own-text-inspect` (FI+ET),
+    `ambiguity-homograph` (FI `kuusi`/`tuli`/`voi` + one ET case) via the Go
+    runner; `deck-save` + `first-review` (FI+ET, one Inspect-\>save-\>review
+    Playwright test per language) and `parser-feedback` (FI only) via
+    Playwright.
+  - Still pending (tracked as `automation:"pending"` in the manifest, not
+    silently dropped): `anonymous-demo` (FI+ET — no anonymous parser demo
+    surface exists yet), `known-word-import` (FI+ET — no RC-fixture-driven
+    Playwright case wired up yet), and `parser-feedback` for ET (existing
+    correction-submit coverage is FI-only). See `TODO.md` "First-experience
+    quality bar" for the same list kept current as flows land.
 - Provide one top-level automated command, `make first-experience-rc`, that runs
   the parser fixture checks and Playwright RC specs, then points at the manual
   walkthrough instructions in this section. The walkthrough instructions live

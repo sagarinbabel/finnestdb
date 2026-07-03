@@ -68,11 +68,11 @@ type LoginResponse struct {
 }
 
 type DashboardData struct {
-	KnownCount       int           `json:"known_count"`
-	DueCount         int           `json:"due_count"`
-	NewCapacityToday int           `json:"new_capacity_today"`
-	CardsInReview    int           `json:"cards_in_review"`
-	ReviewsToday     int           `json:"reviews_today"`
+	KnownCount       int `json:"known_count"`
+	DueCount         int `json:"due_count"`
+	NewCapacityToday int `json:"new_capacity_today"`
+	CardsInReview    int `json:"cards_in_review"`
+	ReviewsToday     int `json:"reviews_today"`
 	// ReviewActivity is the trailing 14 days of answered reviews (UTC),
 	// oldest first, zero-filled. Populated from review_log, which only
 	// accumulates from the moment it shipped.
@@ -144,10 +144,10 @@ type DeckSummary struct {
 
 // DeckComprehensionResponse is the payload of GET /api/decks/{id}/comprehension.
 type DeckComprehensionResponse struct {
-	CoveragePct float64            `json:"coverage_pct"`
-	TotalTokens int                `json:"total_tokens"`
-	KnownTokens int                `json:"known_tokens"`
-	TopUnlocks  []DeckUnlockEntry  `json:"top_unlocks"`
+	CoveragePct float64           `json:"coverage_pct"`
+	TotalTokens int               `json:"total_tokens"`
+	KnownTokens int               `json:"known_tokens"`
+	TopUnlocks  []DeckUnlockEntry `json:"top_unlocks"`
 }
 
 // DeckUnlockEntry is one "learn this next" candidate: an uncovered lemma
@@ -279,12 +279,24 @@ type ParseFeedbackRequest struct {
 	ProposedLemma        string `json:"proposed_lemma"`
 	ProposedPOS          string `json:"proposed_pos"`
 	ProposedGrammarLabel string `json:"proposed_grammar_label"`
-	Note                 string `json:"note"`
+	// FlagOnly is the "this analysis looks wrong, I don't know the fix"
+	// path. When true, proposed lemma/POS are not required and no lexical
+	// override is written until an admin later supplies a concrete
+	// correction (see the admin review handler).
+	FlagOnly bool   `json:"flag_only"`
+	Note     string `json:"note"`
 }
 
 type ParseFeedbackReviewRequest struct {
 	Status     string `json:"status"`
 	ReviewNote string `json:"review_note"`
+	// ProposedLemma/ProposedPOS/ProposedGrammarLabel let an admin attach a
+	// concrete correction while accepting a flag-only report, converting it
+	// into a normal parser-identity correction (USER_FLOWS §10 path b).
+	// Only valid on flag-only rows; ignored when empty.
+	ProposedLemma        string `json:"proposed_lemma"`
+	ProposedPOS          string `json:"proposed_pos"`
+	ProposedGrammarLabel string `json:"proposed_grammar_label"`
 }
 
 type ParseSessionsResponse struct {
@@ -2556,8 +2568,19 @@ func (a *API) handleParseFeedback(w http.ResponseWriter, r *http.Request, auth *
 		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
 		return
 	}
-	if parser == "" || surface == "" || proposedLemma == "" || proposedPOS == "" {
-		http.Error(w, "Parser, surface, proposed lemma, and proposed POS are required", http.StatusBadRequest)
+	if parser == "" || surface == "" {
+		http.Error(w, "Parser and surface are required", http.StatusBadRequest)
+		return
+	}
+	// Flag-only reports capture "this looks wrong, I don't know the fix" and
+	// deliberately carry no proposed correction. A concrete correction still
+	// requires both proposed lemma and POS.
+	if req.FlagOnly {
+		proposedLemma = ""
+		proposedPOS = ""
+		proposedGrammarLabel = ""
+	} else if proposedLemma == "" || proposedPOS == "" {
+		http.Error(w, "Proposed lemma and proposed POS are required unless flag_only is set", http.StatusBadRequest)
 		return
 	}
 	if req.Occurrence < 0 {
@@ -2619,6 +2642,7 @@ func (a *API) handleParseFeedback(w http.ResponseWriter, r *http.Request, auth *
 		ProposedLemma:        proposedLemma,
 		ProposedPOS:          proposedPOS,
 		ProposedGrammarLabel: proposedGrammarLabel,
+		FlagOnly:             req.FlagOnly,
 		Note:                 note,
 	})
 	if err != nil {
@@ -2651,7 +2675,12 @@ func (a *API) handleAdminParseFeedback(w http.ResponseWriter, r *http.Request, a
 			http.Error(w, "Status must be submitted, accepted, rejected, or needs_follow_up", http.StatusBadRequest)
 			return
 		}
-		feedback, err := a.store.ListParseFeedback(status)
+		flagOnly := strings.TrimSpace(r.URL.Query().Get("flag_only"))
+		if flagOnly != "" && flagOnly != "true" && flagOnly != "false" {
+			http.Error(w, "flag_only must be true or false", http.StatusBadRequest)
+			return
+		}
+		feedback, err := a.store.ListParseFeedback(store.ParseFeedbackFilter{Status: status, FlagOnly: flagOnly})
 		if err != nil {
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
@@ -2672,9 +2701,30 @@ func (a *API) handleAdminParseFeedback(w http.ResponseWriter, r *http.Request, a
 			http.Error(w, "Status must be accepted, rejected, or needs_follow_up", http.StatusBadRequest)
 			return
 		}
-		if err := a.store.ReviewParseFeedback(feedbackID, auth.UserID, req.Status, strings.TrimSpace(req.ReviewNote)); err != nil {
+		// Optional admin-supplied correction (path b): converts a flag-only
+		// report into a concrete parser-identity correction. Both lemma and
+		// POS are required when either is present.
+		var correction *store.ProposedCorrection
+		propLemma := strings.TrimSpace(req.ProposedLemma)
+		propPOS := strings.TrimSpace(req.ProposedPOS)
+		if propLemma != "" || propPOS != "" {
+			if propLemma == "" || propPOS == "" {
+				http.Error(w, "Both proposed lemma and proposed POS are required to attach a correction", http.StatusBadRequest)
+				return
+			}
+			correction = &store.ProposedCorrection{
+				Lemma:        propLemma,
+				POS:          propPOS,
+				GrammarLabel: strings.TrimSpace(req.ProposedGrammarLabel),
+			}
+		}
+		if err := a.store.ReviewParseFeedback(feedbackID, auth.UserID, req.Status, strings.TrimSpace(req.ReviewNote), correction); err != nil {
 			if err == sql.ErrNoRows {
 				http.Error(w, "Parse feedback not found", http.StatusNotFound)
+				return
+			}
+			if errors.Is(err, store.ErrCorrectionOnNonFlagOnly) {
+				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 			// Phase-4 eval gate: the override would contradict the frozen
