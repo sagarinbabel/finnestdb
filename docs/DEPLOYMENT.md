@@ -76,6 +76,13 @@ undersized DB (defaults: 20M FI / 6M ET forms; see
 `FINNESTDB_ALLOW_DEGRADED_DB=1` disables that guard — emergency use only,
 never in a normal deployment.
 
+Also load the correction-loop safety data (and re-run whenever the committed
+gold sets change — add it to the update procedure):
+
+```bash
+make import-gold-surfaces   # gold_surfaces table backs the Phase-4 accept guard
+```
+
 ## Environment variables
 
 | Variable | Production value | Why |

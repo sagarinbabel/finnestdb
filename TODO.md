@@ -91,7 +91,7 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 
 - [x] **ET lemmatizer table generator** — shipped in `cmd/genlemmatizertables -lang et -hfstol ...` plus `make gen-lemmatizer-tables-et`. Remaining production work is a real ET wordlist, provenance notes, row counts, and a fresh eval gate before relying on a full ET table in deployment.
 - [x] **Re-freeze baselines once gold sets get a `feats` field** — done 2026-05-07k via PR [#139](https://github.com/sagarinbabel/finnestdb/pull/139). All 6 manual gold sets now carry FEATS (`cmd/enrichgoldfeats`); new baselines committed at `docs/baselines/2026-05-07-feats-rich-*`. The `feats_attributes` table is non-empty for omorfi (FI) and estnltk (ET); for `custom` it stays at 0% until the live SQLite DB is re-imported with the new FEATS-aware `cmd/importdict` (runbook in the methodology doc).
-- [ ] **Re-import the live DB to populate `forms.feats`** — ship-after-#139. `go run ./cmd/importdict -lang fi -reimport` (or `-backfill-feats` for no downtime) populates ~26.8M FI rows from kaikki Wiktionary tags; `make import-ekilex-details-et` populates the ET rows from morph_codes. Until this runs, `custom` parser FEATS output stays empty even though all the producer code is in place.
+- [x] **Re-import the live DB to populate `forms.feats`** — done and verified 2026-07-02. The live DB carries FEATS on 26.6M/26.8M FI rows (99.3%) and 6.0M/6.3M ET rows (96%), and live `custom`-mode parses emit full UD FEATS end-to-end (verified: FI "talossa" → `Case=Ine|Number=Sing`, verb morphology on "istuu"; ET "majas" → `Case=Ine|Number=Sing`). The remaining ~1–4% are rows whose upstream source carries no morph tags.
 - [ ] **Remove the `attachCaseLabelIfStemMatches` stopgap** in `internal/store/dict.go` once the FST runtime emits FEATS for direct dict hits. PR [#139](https://github.com/sagarinbabel/finnestdb/pull/139) added `featsFromCaseLabel` so the stopgap's output is at least UD-shaped (`Case=Xxx`); the remove condition still requires production FST tables.
 - [ ] **Re-run FI/ET gold baselines** after each fix and keep only justified gains. Use the new eval regressions to prioritize parser fixes. Recursive compounds and consonant gradation are *not* candidates here — they're gated behind the FST migration. See [`docs/DECISIONS.md`](docs/DECISIONS.md) Decision 5.
 - [ ] **Disambiguation model**: select UD treebanks (FI, ET); train initial POS tagging model; establish evaluation metrics and baseline; version model artifacts.
@@ -137,16 +137,16 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 
 ### Self-improving feedback loop
 
-Accepted lemma/POS parse-feedback corrections now write `custom_overrides`
-lexical rows after admin approval. Grammar/FEATS corrections, gold promotion,
-and eval-gated safety checks still need follow-up. See
+Phases 1–4 are live as of 2026-07-02: accepted corrections write authoritative
+`custom_overrides` rows (with FEATS), contradicting the frozen gold sets blocks
+acceptance, and repeat corrections auto-queue as gold candidates. See
 [`docs/FEATURES.md` "User correction loop"](docs/FEATURES.md).
 
 - [x] **Phase 1 — apply accepted lemma/POS corrections** as a `custom_overrides` lexical row. On admin acceptance, write `forms`/`lemmas` rows with `source='custom_overrides'`, `source_priority=1000`, proposed `lemma`/`pos`, and a back-pointer to `parse_feedback.id`.
-- [ ] **Phase 2 — apply accepted grammar-label corrections** to `forms.feats` for the specific surface form. Smaller blast radius. Few-day task.
-- [ ] **Phase 3 — auto-promote a corrected `(surface, lemma, pos)` tuple to a gold-eval case** when N independent users submit the same correction. Threshold and review workflow TBD.
-- [ ] **Phase 4 — eval-backed safety check before applying.** Run candidate `custom_overrides` row against frozen gold sets; reject on regression of ≥N cases. Reuse the existing parser-eval/baseline discipline, but do not revive or expand `cmd/autoresearch` for alpha. If it adds >100ms to admin-accept latency, push to background job.
-- [ ] **Phase 5 (research, not engineering)** — automatic re-ranking of source priorities when a single source consistently produces accepted corrections in one direction. Out of scope for alpha.
+- [x] **Phase 2 — apply accepted grammar-label corrections to FEATS** — shipped 2026-07-02. The proposed grammar label maps through `udfeats` (`featsFromCaseLabel`) onto the override row's `forms.feats`. Deliberate deviation from the original sketch: corrected FEATS live only on the `custom_overrides` row, never edited into upstream imported rows, so a dictionary re-import can't silently revert or duplicate a correction.
+- [x] **Phase 3 — auto-promote to gold candidates** — shipped 2026-07-02. When `store.GoldPromotionThreshold` (3) distinct users have the same correction accepted, it upserts into `gold_candidates`; `make export-gold-candidates` prints pending rows as gold-token JSON for **manual** review into `testdata/parser-eval/*/gold` (auto-committing eval cases would let the system write its own exam).
+- [x] **Phase 4 — eval-backed safety check before applying** — shipped 2026-07-02. `make import-gold-surfaces` loads the frozen gold analyses into `gold_surfaces`; acceptance is refused (HTTP 409, full rollback) when ≥2 gold occurrences of the surface unanimously disagree with the proposal. Runs in-transaction in <1ms, so no background job needed. An empty `gold_surfaces` table degrades to no-op — run the importer after clone and after gold changes.
+- [ ] **Phase 5 (research, not engineering)** — automatic re-ranking of source priorities when a single source consistently produces accepted corrections in one direction. **Stays parked deliberately**: it needs months of accepted-correction volume to have any signal, and per the original scoping it is out of scope for alpha; revisit after Phase 4 has real production data.
 
 Phase 1 is gated on FEATS threading (already shipped via [PR #130](https://github.com/sagarinbabel/finnestdb/pull/130)) so corrections can update FEATS, not just GrammarLabel.
 
