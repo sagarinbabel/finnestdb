@@ -10,6 +10,20 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Overnight launch-gate run (PRs #250–#259)
+
+Ten PRs merged in one overnight run, closing or advancing most public-alpha
+gates: grill-docs promotion, FOR_MICHAEL guide, FI/ET parity audit, flag-only
+feedback, RC pack skeleton, anonymous parser demo, correction issues +
+quarantine, parser backpressure + load test, embedded catalog, and the
+surface-card identity migration with narrow FSRS behind a flag.
+
+- Added: [`launch-readiness/2026-07-04-overnight-report.md`](launch-readiness/2026-07-04-overnight-report.md)
+  — the consolidated report and go-live handoff (gate status, human actions).
+- Modified: `TODO.md` "Public alpha gates" — twelve gates ticked with evidence
+  pointers; open gates annotated with shipped-tonight progress and exact
+  remaining steps.
+
 ## 2026-07-04 — Surface-form review-card identity + narrow FSRS behind a flag
 
 Implements the review-readiness launch gate (Decision 23). Review cards move

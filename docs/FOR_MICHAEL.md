@@ -102,10 +102,10 @@ full learner product plus the Admin menu.
 
 ## Current snapshot (as of 2026-07-04)
 
-The 2026-07-02 launch stack (PRs #240–#249) and the 2026-07-03
-product-readiness grill promotion (PR #250) are merged. The public-alpha
-launch bar was deliberately expanded on 2026-07-03 — see `TODO.md` "Public
-alpha gates". Remaining human actions before go-live: the embedded-catalog
-sanity check (Sagar: FI, an Estonian reviewer: ET), a maintainer parser
-baseline re-freeze, and executing `DEPLOYMENT.md` on a real host. Check
-`docs/launch-readiness/` for the newest overnight/verification report.
+The 2026-07-02 launch stack (PRs #240–#249) and the overnight
+2026-07-04 launch-gate run (PRs #250–#259) are merged: anonymous parser demo,
+flag-only feedback, correction issues + quarantine, embedded catalog, parser
+backpressure, RC pack, and surface-card identity + narrow FSRS (flag off).
+Start from
+[`launch-readiness/2026-07-04-overnight-report.md`](launch-readiness/2026-07-04-overnight-report.md)
+— it lists exactly what's done and the human actions left before go-live.

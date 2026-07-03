@@ -78,14 +78,14 @@ scope, not accidental creep. See Decisions 23-29.
       dismiss-per-session sign-up ribbon (reappears on next parse) and a privacy
       footer. Remaining: tune the default cap through the 1,000-concurrent load
       test (see the load-test gate below).
-- [ ] **Signed-in learner alpha loop**: signed-in dashboard/Inspect -> parse real
+- [x] **Signed-in learner alpha loop** (verified in the 2026-07-04 parity audit): signed-in dashboard/Inspect -> parse real
       text -> save deck/add to deck -> review. Open signup should make this
       loop available immediately after account creation.
-- [ ] **Open signup access posture**: public alpha allows self-serve account
+- [x] **Open signup access posture** (shipped; hardening landed in the 2026-07-02 launch stack): public alpha allows self-serve account
       creation, not invite-only or waitlist-first access. Treat abuse controls,
       rate limits, account deletion, retention, admin visibility, auth
       hardening, and basic monitoring as launch gates because signup is open.
-- [ ] **Email verification posture**: do not block first value on verification.
+- [x] **Email verification posture** (current behavior matches: no verification gate on first value): do not block first value on verification.
       After signup, allow parse -> save deck -> first review immediately; gate
       high-volume parsing, repeated feedback, exports if enabled, account
       recovery, and trust-weighted signals on verified email.
@@ -117,7 +117,7 @@ scope, not accidental creep. See Decisions 23-29.
       default suits its actual core count, and wire parser
       latency/error/rejection counts into production monitoring before
       checking this off.
-- [ ] **FI/ET equal-status parity audit**: Finnish and Estonian launch with equal
+- [x] **FI/ET equal-status parity audit** (run 2026-07-04, conditional pass — see docs/launch-readiness/2026-07-04-fi-et-parity-audit.md; sole alpha-blocker PARITY-1 is the deploy-time starter-deck seeding, tracked in the ledger): Finnish and Estonian launch with equal
       product status. Before public alpha, run this journey-first: compare the
       same FI and ET learner/admin paths, then attach data, parser-quality,
       embedded-catalog, known-word import, deck/review, feedback/quarantine, UX
@@ -139,7 +139,7 @@ scope, not accidental creep. See Decisions 23-29.
       visible causes and classified language-specific. Full detail, evidence,
       and cleanup appendix in
       [`docs/launch-readiness/2026-07-04-fi-et-parity-audit.md`](docs/launch-readiness/2026-07-04-fi-et-parity-audit.md).
-- [ ] **Alpha go/no-go rubric**: launch when core journeys work end-to-end and
+- [x] **Alpha go/no-go rubric** (defined in docs/GO_LIVE_CHECKLIST.md; applying it at launch remains the final human step): launch when core journeys work end-to-end and
       every known rough edge is classified as non-dangerous under
       `docs/GO_LIVE_CHECKLIST.md` "Alpha Go/No-Go Rubric". Any issue touching
       privacy/security, retention, account deletion, data integrity, review
@@ -186,16 +186,16 @@ scope, not accidental creep. See Decisions 23-29.
             (FI+ET — no anonymous parser demo surface yet), `known-word-import`
             (FI+ET — needs an RC-fixture-driven Playwright case), and
             `parser-feedback` for ET (FI-only correction-submit coverage today).
-- [ ] **Documentation consolidation pass**: avoid adding new docs for execution
+- [x] **Documentation consolidation pass** (done 2026-07-03/04: handoff read order, canonical doc roles, FOR_MICHAEL guide): avoid adding new docs for execution
       ledgers. Keep launch issues in this TODO, keep the quality rubric in
       `docs/GO_LIVE_CHECKLIST.md`, and audit overlapping docs for merge,
       archival, or clearer source-of-truth pointers before public alpha.
-- [ ] **Brand normalization pass**: user-facing product name is **FinnEst**.
+- [x] **Brand normalization pass** (done 2026-07-03 in PR #250; historical dated entries keep FinEstDB): user-facing product name is **FinnEst**.
       Replace `FinEstDB` / `Finnest` / `FinnestDB` in current product docs and UI copy where
       it means the product. Do not rename the local folder, `finnestdb.db`,
       module paths, historical file names, or GitHub URLs without an explicit
       engineering rename plan.
-- [ ] **Curated embedded text catalog**: checked-in metadata and lazy-loaded full
+- [ ] **Curated embedded text catalog** (mechanism + 6 initial license-clean texts shipped 2026-07-04 in PR #258; remaining: full 36-text matrix and the human difficulty sanity-check — every entry is difficulty_review=pending): checked-in metadata and lazy-loaded full
       text fixtures from redistributable FI/ET sources; target matrix is
       stories/articles/poems x Easy/Medium/Hard x two texts per bucket per
       language, with computed difficulty and human sanity-check.
@@ -210,14 +210,14 @@ scope, not accidental creep. See Decisions 23-29.
       each. Still open before the gate closes: the full 36-text matrix and the
       human sanity-check (Sagar FI, Estonian reviewer ET) — every entry ships
       `difficulty_review: "pending"`. Gate stays unchecked.
-- [ ] **Surface-first learner model**: preserve submitted known surface forms,
+- [ ] **Surface-first learner model** (card identity migrated to surface-form cards 2026-07-04 in PR #259; the surface-first known-vocabulary table remains open): preserve submitted known surface forms,
       migrate alpha review identity to surface-form-in-context cards, and keep
       lemma/POS/dictionary entries as derived support.
 - [ ] **Ambiguous meaning flow**: context-free imports resolve lazily in real
       sentences; parse-result checks are non-blocking until deck save; low or
       unmeasured parser confidence shows **Multiple possible meanings**. Add the
       Finnish-first ambiguity eval slice before simplifying ambiguity UI.
-- [ ] **Review readiness**: migrate card identity before FSRS; then ship narrow
+- [ ] **Review readiness** (implemented 2026-07-04 in PR #259: surface-card identity + narrow FSRS behind FINNESTDB_FSRS_ENABLED, default off; remaining: staging validation with seeded histories, then the flag flip — see docs/DEPLOYMENT.md "FSRS scheduler rollout"): migrate card identity before FSRS; then ship narrow
       Go FSRS with default parameters, current Again/Hard/Good/Easy UI, feature
       flag, migration/fallback, and regression tests. _(2026-07-04: implemented —
       surface-form card identity + narrow FSRS behind `FINNESTDB_FSRS_ENABLED`
@@ -235,9 +235,9 @@ scope, not accidental creep. See Decisions 23-29.
       comprehension coverage/unlocks; `review_log` history/audit data remains.
       Restored items keep their existing `card_state` scheduler state.
       Shipped 2026-07-04 (Phase 1c).
-- [ ] **Known-word import polish**: document existing AnkiConnect and
+- [x] **Known-word import polish** (documented in TODO item 12 + FOR_MICHAEL; .apkg upload remains tracked future work): document existing AnkiConnect and
       CSV/TSV/first-column import behavior; `.apkg` upload remains future work.
-- [ ] **Production safety**: keep parse source retention/deletion, account
+- [x] **Production safety** (shipped in the 2026-07-02 launch stack: retention/deletion, account deletion, abuse controls, admin gating, FIN-27 security review): keep parse source retention/deletion, account
       deletion, abuse controls, admin gating, and security review on the launch
       path.
 
