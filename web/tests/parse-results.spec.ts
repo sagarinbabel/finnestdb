@@ -709,13 +709,18 @@ test('inspect does not auto-switch the site language on file load — it warns i
   expect(patchCalls).toEqual([]);
 });
 
-// ── Results route is auth-only and signout clears prior parse state ────────
+// ── Anonymous results demo + signout clears prior parse state ──────────────
 
-test('anonymous user trying /#/results is redirected to sign-in', async ({ page }) => {
+// The anonymous parser demo makes /results reachable without sign-in (it renders
+// the demo parse), but an anonymous visitor hitting /#/results with no cached
+// parse has nothing to show — the guard sends them to the landing parse form,
+// NOT to sign-in, since anonymous parsing is a first-class public surface.
+test('anonymous user hitting /#/results with no parse lands on the landing form', async ({ page }) => {
   await mockMe(page, 'anon');
   await page.goto('/#/results');
 
-  await expect(page.locator('#signin-page')).toHaveClass(/active/);
+  await expect(page.locator('#landing-page')).toHaveClass(/active/);
+  await expect(page.locator('#landing-form')).toBeVisible();
   await expect(page.locator('#results-page')).not.toHaveClass(/active/);
 });
 
@@ -752,14 +757,18 @@ test('signing out clears prior parse results from memory and route', async ({ pa
   await expect(page.locator('#results-page')).toHaveClass(/active/);
   await expect(page.locator('.correction-btn').first()).toBeVisible();
 
-  // Sign out via the desktop nav (anonymous user must not be able to reach #/results).
+  // Sign out via the desktop nav. Signout clears the cached parse (sessionStorage
+  // + in-memory state) so the prior signed-in results can't leak to the now-anon
+  // session.
   await page.locator('#nav-signout').click();
   await expect(page.locator('#landing-page')).toHaveClass(/active/);
 
-  // Try to navigate back to the cached results route — guard must redirect to sign-in
-  // and the prior table must not be on screen.
+  // Navigating back to the cached results route: with the parse cleared, the
+  // anonymous visitor has nothing to restore, so the guard sends them to the
+  // landing form — and the prior signed-in table (with correction buttons) is
+  // gone.
   await page.goto('/#/results');
-  await expect(page.locator('#signin-page')).toHaveClass(/active/);
+  await expect(page.locator('#landing-page')).toHaveClass(/active/);
   await expect(page.locator('#results-page')).not.toHaveClass(/active/);
   await expect(page.locator('.correction-btn')).toHaveCount(0);
 });

@@ -100,13 +100,39 @@
             <section class="hero-section">
                 <h1 class="hero-title">Learn Finnish &amp; Estonian by reading what you love.</h1>
                 <p class="hero-subtitle">
-                    Paste any text. We turn it into dictionary-backed lemmas,
-                    definitions, examples, and review cards you can study next.
+                    Paste any text. We'll show you every word, what it means,
+                    and how often it appears — no account needed to try it.
                 </p>
-                <div class="hero-cta">
-                    <a href="#/signin" class="btn btn-primary btn-lg">Get started</a>
-                    <a href="#/about" class="btn btn-outline btn-lg">How it works</a>
-                </div>
+
+                <form id="landing-form" class="landing-parse-form">
+                    <div class="form-group landing-lang-group">
+                        <span class="form-group-label" id="landing-lang-label">Language</span>
+                        <div class="btn-radio" id="landing-lang" role="radiogroup" aria-labelledby="landing-lang-label" data-value="FI">
+                            <button type="button" class="btn-radio-option is-active" role="radio" data-value="FI" aria-checked="true">Finnish (FI)</button>
+                            <button type="button" class="btn-radio-option" role="radio" data-value="ET" aria-checked="false">Estonian (ET)</button>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="landing-text">Text <span id="landing-char-count" class="char-count">0 / 20,000</span></label>
+                        <textarea
+                            id="landing-text"
+                            name="text"
+                            rows="7"
+                            placeholder="Paste a paragraph, an article, lyrics — anything in Finnish or Estonian."
+                            required
+                        ></textarea>
+                        <p class="landing-upload-hint">File upload is available after sign-in.</p>
+                    </div>
+
+                    <div id="landing-lang-warning" class="lang-warning hidden" role="status" aria-live="polite"></div>
+                    <button type="button" id="landing-lang-switch" class="lang-switch-btn hidden"></button>
+
+                    <div class="landing-form-actions">
+                        <button type="submit" class="btn btn-primary btn-lg" id="landing-submit">Parse text ►</button>
+                        <a href="#/signin" class="btn btn-link">or sign in to save your work</a>
+                    </div>
+                </form>
             </section>
 
             <section class="value-grid">
@@ -657,6 +683,16 @@
             <div class="results-split">
             <aside class="results-chapter-nav hidden" id="results-chapter-nav" aria-label="Filter results by chapter"></aside>
             <div class="results-body">
+            <div id="anon-signup-ribbon" class="anon-signup-ribbon hidden" data-role-show="anon" role="region" aria-label="Save these words">
+                <div class="anon-ribbon-text">
+                    <strong>Save these words → Create account</strong>
+                    <span>Turn this list into a review deck — we'll teach you the words you don't know in 5 min/day.</span>
+                </div>
+                <div class="anon-ribbon-actions">
+                    <a href="#/signin" class="btn btn-primary btn-sm">Create account</a>
+                    <button type="button" id="anon-ribbon-dismiss" class="btn btn-link btn-sm">Later</button>
+                </div>
+            </div>
             <section class="results-summary">
                 <div id="results-meta" class="results-meta">
                     <span id="results-parser" class="results-pill"></span>
@@ -720,6 +756,10 @@
                     </table>
                 </div>
             </section>
+
+            <p id="anon-privacy-footer" class="anon-privacy-footer hidden" data-role-show="anon">
+                This parse wasn't saved. <a href="#/signin">Create an account</a> to save it as a deck or use learner features.
+            </p>
             </div>
             </div>
         </main>

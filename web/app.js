@@ -2,6 +2,11 @@
 // FinnEst — frontend with three role-aware surfaces:
 //   anonymous landing/about/signin, authenticated user product, admin workbench.
 const MAX_CHARS = 1500000;
+// Client-side fallback for the anonymous /api/parse text-size cap. The server
+// is authoritative (FINNESTDB_ANON_MAX_CHARS, default 20,000) and surfaces the
+// live value on /api/me → state.anonMaxChars; this default only applies if that
+// response is missing the field (e.g. a stale server).
+const DEFAULT_ANON_MAX_CHARS = 20000;
 const POS_LABELS = {
     NOUN: 'Noun',
     VERB: 'Verb',
@@ -113,6 +118,13 @@ const state = {
     learningLanguages: ['FI', 'ET'],
     activeLanguage: 'FI',
     languageStats: {},
+    // Anonymous /api/parse text-size cap, hydrated from /api/me. Drives the
+    // landing char counter and client-side pre-submit guard.
+    anonMaxChars: DEFAULT_ANON_MAX_CHARS,
+    // Sign-up ribbon on anonymous results is dismissible per session, but
+    // reappears on the next parse (USER_FLOWS §2). Tracked in memory (reset on
+    // reload) rather than sessionStorage so "next parse" always re-shows it.
+    anonRibbonDismissed: false,
     knownWords: [],
     // resultsEpub: the EPUB whose parse is currently displayed on the
     // results page (drives the chapter sidebar + cache). Each form's
@@ -445,6 +457,13 @@ function applyMeResponse(data) {
     state.dashboard = data.dashboard || null;
     state.decks = data.dashboard?.decks || [];
     state.role = computeRole(state.user);
+    if (typeof data.anon_max_chars === 'number' && data.anon_max_chars > 0) {
+        state.anonMaxChars = data.anon_max_chars;
+    }
+    // Keep the landing char counter accurate once the real cap arrives.
+    const landingEls = getLandingEls();
+    if (landingEls)
+        updateCharCount(landingEls);
     if (data.languages) {
         applyLanguagesResponse(data.languages);
     }
@@ -910,8 +929,11 @@ function isRouteAllowed(route) {
             return { allowed: false, redirect: '/signin' };
         return { allowed: false, redirect: '/dashboard' };
     }
-    // Authenticated-only routes
-    const userOnly = ['/dashboard', '/inspect', '/history', '/decks', '/decks/official', '/languages', '/vocab', '/review', '/results'];
+    // Authenticated-only routes. /results is intentionally NOT here: anonymous
+    // visitors reach it via the landing demo parse. Its signed-in-only chrome
+    // (save-as-deck, known/ignore, feedback) is gated by data-role-show, and
+    // deck detail (/decks/:id) below still requires sign-in.
+    const userOnly = ['/dashboard', '/inspect', '/history', '/decks', '/decks/official', '/languages', '/vocab', '/review'];
     const isDeckDetail = DECK_DETAIL_RE.test(route);
     if (userOnly.includes(route) || isDeckDetail) {
         if (role === 'anon')
@@ -994,7 +1016,9 @@ function renderRoute() {
         // them back to /inspect rather than leaving the shell empty.
         void (async () => {
             if (!await restoreLastParse()) {
-                window.location.hash = '#/inspect';
+                // Anonymous visitors can't reach /inspect (sign-in gated); send
+                // them back to the landing parse form instead.
+                window.location.hash = state.role === 'anon' ? '#/' : '#/inspect';
             }
         })();
     }
@@ -3442,6 +3466,11 @@ function bindBtnRadio(rootId) {
         },
     };
 }
+// The active text-size cap for a form: the anonymous demo cap for the landing
+// form, the full signed-in ceiling everywhere else.
+function formMaxChars(els) {
+    return els.anonCapped ? state.anonMaxChars : MAX_CHARS;
+}
 // Inspect's "language" is the site-wide active language — there's no
 // per-form radio anymore. We expose it as a read-only BtnRadioLike so the
 // shared parse runner / warning code can stay generic across inspect and the
@@ -3463,6 +3492,60 @@ function getInspectEls() {
     if (!text || !file || !cc || !warn || !swBtn || !dz || !pill || !chap)
         return null;
     return { lang: inspectLangBinding, text, file, charCount: cc, warning: warn, switchBtn: swBtn, dropzone: dz, loadedPill: pill, chapterList: chap, loadedEpub: null };
+}
+// The anonymous landing demo is paste-only (no file upload, no EPUB) — file
+// upload is a signed-in Inspect capability (USER_FLOWS §1). The shared
+// ParseFormElements interface still wants dropzone/file/pill/chapter nodes, so
+// we hand it detached stubs the landing path never wires or shows.
+let landingStubNodes = null;
+function landingStubs() {
+    if (!landingStubNodes) {
+        landingStubNodes = {
+            file: document.createElement('input'),
+            dropzone: document.createElement('div'),
+            pill: document.createElement('div'),
+            chap: document.createElement('div'),
+        };
+    }
+    return landingStubNodes;
+}
+function getLandingEls() {
+    const lang = bindBtnRadio('landing-lang');
+    const text = document.getElementById('landing-text');
+    const cc = document.getElementById('landing-char-count');
+    const warn = document.getElementById('landing-lang-warning');
+    const swBtn = document.getElementById('landing-lang-switch');
+    if (!lang || !text || !cc || !warn || !swBtn)
+        return null;
+    const stubs = landingStubs();
+    return {
+        lang, text, file: stubs.file, charCount: cc, warning: warn, switchBtn: swBtn,
+        dropzone: stubs.dropzone, loadedPill: stubs.pill, chapterList: stubs.chap,
+        loadedEpub: null, anonCapped: true, submitBtnId: 'landing-submit',
+    };
+}
+function initLandingForm() {
+    const els = getLandingEls();
+    if (!els)
+        return;
+    updateCharCount(els);
+    els.text.addEventListener('input', () => {
+        updateCharCount(els);
+        updateLangWarning(els, true);
+    });
+    els.lang.addEventListener('change', () => updateLangWarning(els, true));
+    els.switchBtn.addEventListener('click', () => {
+        const ws = getLangWarningState(effectiveSourceText(els), els.lang.value);
+        if (ws.canSwitch) {
+            els.lang.value = ws.detected;
+            updateLangWarning(els, true);
+        }
+    });
+    const form = document.getElementById('landing-form');
+    form?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await runParse(els, 'custom', 'landing', 'landing-submit');
+    });
 }
 // Re-run the language-warning gate when the site active language changes.
 // Used by setActiveLanguage so an already-pasted text immediately re-evaluates
@@ -3503,9 +3586,10 @@ function updateCharCount(els) {
     const count = els.loadedEpub
         ? els.loadedEpub.totalChars
         : els.text.value.length;
-    els.charCount.textContent = `${count.toLocaleString()} / ${MAX_CHARS.toLocaleString()}`;
-    els.charCount.classList.toggle('char-count-warn', count > MAX_CHARS * 0.9);
-    els.charCount.classList.toggle('char-count-over', count >= MAX_CHARS);
+    const cap = formMaxChars(els);
+    els.charCount.textContent = `${count.toLocaleString()} / ${cap.toLocaleString()}`;
+    els.charCount.classList.toggle('char-count-warn', count > cap * 0.9);
+    els.charCount.classList.toggle('char-count-over', count > cap);
 }
 // Text the parser will actually see — the held EPUB when one is loaded, else
 // whatever's in the textarea. Used for lang detection and submit gating.
@@ -3520,7 +3604,7 @@ function updateLangWarning(els, gateInspectButton) {
         els.warning.classList.add('hidden');
         els.switchBtn.classList.add('hidden');
         if (gateInspectButton)
-            gateSubmit('inspect-submit', false);
+            gateSubmit(els.submitBtnId || 'inspect-submit', false);
         else
             setParseButtonsDisabled(false);
         return;
@@ -3542,7 +3626,7 @@ function updateLangWarning(els, gateInspectButton) {
         els.switchBtn.classList.add('hidden');
     }
     if (gateInspectButton)
-        gateSubmit('inspect-submit', ws.blocksParse);
+        gateSubmit(els.submitBtnId || 'inspect-submit', ws.blocksParse);
     else
         setParseButtonsDisabled(ws.blocksParse);
 }
@@ -4023,12 +4107,22 @@ async function runParse(els, parserMode, context, activeBtnId) {
     const ws = getLangWarningState(text, lang);
     if (!text)
         return;
-    if (text.length > MAX_CHARS) {
-        showToast(`Text must be ${MAX_CHARS.toLocaleString()} characters or fewer.`, 'error');
+    const cap = formMaxChars(els);
+    if (text.length > cap) {
+        if (els.anonCapped) {
+            showToast(`Anonymous parsing is limited to ${cap.toLocaleString()} characters. Sign up to parse longer texts.`, 'error');
+        }
+        else {
+            showToast(`Text must be ${cap.toLocaleString()} characters or fewer.`, 'error');
+        }
         return;
     }
     if (ws.blocksParse)
         return;
+    // A fresh anonymous parse re-shows the sign-up ribbon even if the visitor
+    // dismissed it on the previous results view (USER_FLOWS §2).
+    if (context === 'landing')
+        state.anonRibbonDismissed = false;
     const activeBtn = document.getElementById(activeBtnId);
     const origLabel = activeBtn?.textContent || '';
     // Disable all parse buttons in the current form
@@ -4059,7 +4153,16 @@ async function runParse(els, parserMode, context, activeBtnId) {
             body: JSON.stringify(body),
         });
         if (!resp.ok) {
-            const msg = await resp.text();
+            // The anonymous over-cap path returns a JSON body with an `error`
+            // field; older/plain errors return text. Prefer the JSON message.
+            const raw = await resp.text();
+            let msg = raw;
+            try {
+                const parsed = JSON.parse(raw);
+                if (parsed && typeof parsed.error === 'string')
+                    msg = parsed.error;
+            }
+            catch { /* not JSON — use raw text */ }
             throw new Error(msg || resp.statusText);
         }
         const data = await resp.json();
@@ -4355,7 +4458,7 @@ function showResults(data, textPreview, parserMode, context) {
     if (context === 'deck') {
         parserPill.textContent = 'Saved deck';
     }
-    else if (context === 'inspect' && state.role !== 'admin') {
+    else if ((context === 'inspect' || context === 'landing') && state.role !== 'admin') {
         parserPill.textContent = 'Your text';
     }
     else {
@@ -4406,6 +4509,7 @@ function showResults(data, textPreview, parserMode, context) {
     renderResultsTable(data);
     renderResultsSaveState();
     renderChapterNav();
+    renderAnonResultsChrome();
     // Re-apply role visibility so admin-only pills/cells show correctly.
     applyRoleVisibility();
     if (context !== 'deck') {
@@ -4415,6 +4519,26 @@ function showResults(data, textPreview, parserMode, context) {
         persistLastParse(data, preview, parserMode, context);
         navigate('/results');
     }
+}
+// Show/hide the anonymous-only sign-up ribbon and privacy footer on the results
+// page. The ribbon is dismissible per session but reappears on the next parse
+// (USER_FLOWS §2) — startLandingParse resets state.anonRibbonDismissed. The
+// footer always shows for anonymous visitors. Both are additionally gated by
+// data-role-show="anon", so a signed-in user never sees them.
+function renderAnonResultsChrome() {
+    const isAnon = state.role === 'anon';
+    const ribbon = document.getElementById('anon-signup-ribbon');
+    const footer = document.getElementById('anon-privacy-footer');
+    if (ribbon)
+        ribbon.classList.toggle('hidden', !isAnon || state.anonRibbonDismissed);
+    if (footer)
+        footer.classList.toggle('hidden', !isAnon);
+}
+function initAnonResultsChrome() {
+    document.getElementById('anon-ribbon-dismiss')?.addEventListener('click', () => {
+        state.anonRibbonDismissed = true;
+        document.getElementById('anon-signup-ribbon')?.classList.add('hidden');
+    });
 }
 const LAST_PARSE_KEY = 'finnestdb:lastParse:v1';
 function persistLastParse(data, textPreview, parserMode, context) {
@@ -5915,8 +6039,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
     initMobileNav();
     initSigninForm();
+    initLandingForm();
     initInspectForm();
     initWorkbenchForm();
+    initAnonResultsChrome();
     preventStrayFileDrops();
     initCorrectionModal();
     initDecksPage();
@@ -5936,6 +6062,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('results-back')?.addEventListener('click', () => {
         if (state.currentContext === 'deck') {
             navigate('/decks');
+            return;
+        }
+        if (state.currentContext === 'landing') {
+            navigate('/');
             return;
         }
         navigate(state.currentContext === 'workbench' ? '/admin/workbench' : '/inspect');

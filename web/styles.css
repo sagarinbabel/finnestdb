@@ -2194,6 +2194,75 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     flex-wrap: wrap;
 }
 
+/* Anonymous landing parse form — the public demo. Sits under the hero copy,
+   above the value grid. Left-aligned inside a centered card so the textarea
+   and controls read like a form rather than centered marketing text. */
+.landing-parse-form {
+    max-width: 40rem;
+    margin: 2rem auto 0;
+    text-align: left;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+.landing-lang-group {
+    margin-bottom: 1rem;
+}
+.landing-parse-form textarea {
+    width: 100%;
+    resize: vertical;
+}
+.landing-upload-hint {
+    margin: 0.4rem 0 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+.landing-form-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+/* Anonymous-only results chrome: sign-up ribbon + privacy footer. */
+.anon-signup-ribbon {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    background: var(--card-bg);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1.25rem;
+}
+.anon-ribbon-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.anon-ribbon-text strong {
+    color: var(--text-primary);
+}
+.anon-ribbon-text span {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+.anon-ribbon-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+.anon-privacy-footer {
+    margin: 1.25rem 0 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
 .value-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
