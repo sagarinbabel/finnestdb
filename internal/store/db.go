@@ -468,10 +468,56 @@ func (d *DB) initSchema() error {
 		reviewed_by_user_id INTEGER,
 		reviewed_at DATETIME,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		-- Phase 1c: the global correction issue this report was grouped into.
+		correction_issue_id INTEGER,
+		FOREIGN KEY(correction_issue_id) REFERENCES correction_issues(id),
 		FOREIGN KEY(parse_session_id) REFERENCES parse_sessions(id),
 		FOREIGN KEY(user_id) REFERENCES users(id),
 		FOREIGN KEY(reviewed_by_user_id) REFERENCES users(id)
 	);
+
+	-- Phase 1c: global correction-issue ledger. Each learner feedback report is
+	-- grouped into one issue by a conservative scope fingerprint so admins can
+	-- see duplicates and act once for every matching learner. Per DECISIONS.md
+	-- Decision 25 the alpha schema stays minimal: one issue row (this table)
+	-- plus parse_feedback.correction_issue_id. No separate quarantine_target or
+	-- event tables — duplicate/lifecycle evidence lives on the issue row and its
+	-- linked parse_feedback rows.
+	--
+	-- Scope fingerprint = (lang, parser, norm_surface, lemma, pos). lemma/pos are
+	-- stored as '' when the report carried no proposed identity (flag-only or a
+	-- report with only a surface); the empty string keeps the UNIQUE index total.
+	CREATE TABLE IF NOT EXISTS correction_issues (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		lang TEXT NOT NULL,
+		parser TEXT NOT NULL DEFAULT '',
+		norm_surface TEXT NOT NULL,
+		lemma TEXT NOT NULL DEFAULT '',
+		pos TEXT NOT NULL DEFAULT '',
+		-- open | quarantined | fixed | reopened
+		status TEXT NOT NULL DEFAULT 'open',
+		-- alpha triage class, NULL until an admin triages:
+		-- parser_issue | bad_card_content | source_extraction_issue | not_sure
+		alpha_class TEXT,
+		report_count INTEGER NOT NULL DEFAULT 0,
+		distinct_reporter_count INTEGER NOT NULL DEFAULT 0,
+		first_reported_at DATETIME,
+		last_reported_at DATETIME,
+		quarantined_at DATETIME,
+		quarantined_by INTEGER,
+		quarantine_reason TEXT,
+		fixed_at DATETIME,
+		fixed_by INTEGER,
+		fix_note TEXT,
+		reopened_count INTEGER NOT NULL DEFAULT 0,
+		admin_note TEXT,
+		FOREIGN KEY(quarantined_by) REFERENCES users(id),
+		FOREIGN KEY(fixed_by) REFERENCES users(id)
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_correction_issues_scope
+		ON correction_issues(lang, parser, norm_surface, lemma, pos);
+	CREATE INDEX IF NOT EXISTS idx_correction_issues_status
+		ON correction_issues(status);
 	`
 
 	_, err := d.db.Exec(schema)
@@ -549,6 +595,9 @@ func (d *DB) initSchema() error {
 	if err := EnsureParseFeedbackFlagOnlyColumn(d.db); err != nil {
 		return err
 	}
+	if err := EnsureCorrectionIssueSchema(d.db); err != nil {
+		return err
+	}
 	if err := EnsureLexicalEnrichmentColumns(d.db); err != nil {
 		return err
 	}
@@ -596,6 +645,53 @@ func EnsureCorrectionBackpointerColumns(db *sql.DB) error {
 // validation only when flag_only = 0.
 func EnsureParseFeedbackFlagOnlyColumn(db *sql.DB) error {
 	if _, err := db.Exec(`ALTER TABLE parse_feedback ADD COLUMN flag_only INTEGER NOT NULL DEFAULT 0`); err != nil {
+		if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
+			return err
+		}
+	}
+	return nil
+}
+
+// EnsureCorrectionIssueSchema creates the Phase 1c correction-issue ledger and
+// backfills the parse_feedback.correction_issue_id link on older DB files.
+// Fresh DBs already include both in initSchema; older DB files need the
+// idempotent CREATE + ALTER (Decision 12). This is called after
+// EnsureParseFeedbackFlagOnlyColumn so the parse_feedback table already exists.
+func EnsureCorrectionIssueSchema(db *sql.DB) error {
+	if _, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS correction_issues (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			lang TEXT NOT NULL,
+			parser TEXT NOT NULL DEFAULT '',
+			norm_surface TEXT NOT NULL,
+			lemma TEXT NOT NULL DEFAULT '',
+			pos TEXT NOT NULL DEFAULT '',
+			status TEXT NOT NULL DEFAULT 'open',
+			alpha_class TEXT,
+			report_count INTEGER NOT NULL DEFAULT 0,
+			distinct_reporter_count INTEGER NOT NULL DEFAULT 0,
+			first_reported_at DATETIME,
+			last_reported_at DATETIME,
+			quarantined_at DATETIME,
+			quarantined_by INTEGER,
+			quarantine_reason TEXT,
+			fixed_at DATETIME,
+			fixed_by INTEGER,
+			fix_note TEXT,
+			reopened_count INTEGER NOT NULL DEFAULT 0,
+			admin_note TEXT
+		)`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_correction_issues_scope
+		ON correction_issues(lang, parser, norm_surface, lemma, pos)`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`CREATE INDEX IF NOT EXISTS idx_correction_issues_status
+		ON correction_issues(status)`); err != nil {
+		return err
+	}
+	if _, err := db.Exec(`ALTER TABLE parse_feedback ADD COLUMN correction_issue_id INTEGER`); err != nil {
 		if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
 			return err
 		}
@@ -1275,6 +1371,10 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 		   FROM decks d
 		   LEFT JOIN occurrence o
 		          ON o.deck_id = d.id
+		         -- Phase 1c: quarantined occurrences drop out of every learner-
+		         -- facing count. Keeping the filter on the LEFT JOIN preserves
+		         -- decks whose every occurrence is suppressed (they show 0).
+		         AND NOT `+suppressedOccurrencePredicate("o", "d.lang")+`
 		   LEFT JOIN user_known_lemmas uk
 		          ON uk.user_id = ?
 		         AND uk.lang = d.lang
@@ -1365,7 +1465,11 @@ func (d *DB) DeckComprehension(userID, deckID int64, topN int) (*DeckComprehensi
 		return nil, err
 	}
 
-	const coveredFlags = `
+	// Phase 1c: quarantined occurrences are excluded from coverage and from the
+	// unlock ranking. A token position that only had suppressed candidates drops
+	// out of TotalTokens entirely — comprehension is a live view of study-able
+	// content, and quarantine removes content from circulation globally.
+	coveredFlags := `
 		SELECT o.sentence_id, o.token_ix,
 		       MAX(CASE WHEN uk.lemma IS NOT NULL OR ui.lemma IS NOT NULL
 		           THEN 1 ELSE 0 END) AS covered
@@ -1377,6 +1481,7 @@ func (d *DB) DeckComprehension(userID, deckID int64, topN int) (*DeckComprehensi
 		         ON ui.user_id = ?1 AND ui.lang = ?2
 		        AND ui.lemma = o.lemma AND ui.pos = o.pos
 		 WHERE o.deck_id = ?3
+		   AND NOT ` + suppressedOccurrencePredicate("o", "?2") + `
 		 GROUP BY o.sentence_id, o.token_ix`
 
 	if err := d.db.QueryRow(
@@ -1400,6 +1505,7 @@ func (d *DB) DeckComprehension(userID, deckID int64, topN int) (*DeckComprehensi
 		    AND f.token_ix = o.token_ix
 		    AND f.covered = 0
 		  WHERE o.deck_id = ?3
+		    AND NOT `+suppressedOccurrencePredicate("o", "?2")+`
 		  GROUP BY o.lemma, o.pos
 		  ORDER BY cnt DESC, o.lemma ASC, o.pos ASC
 		  LIMIT ?4`,
@@ -2545,6 +2651,7 @@ func (d *DB) CountDueCards(userID int64) (int, error) {
 		        SELECT 1 FROM user_ignored_lemmas ui
 		         WHERE ui.user_id = c.user_id AND ui.lang = c.lang AND ui.lemma = c.lemma AND ui.pos = c.pos
 		    )
+		    AND NOT `+suppressedCardPredicate("c")+`
 		    AND (cs.next_due IS NULL OR cs.next_due <= CURRENT_TIMESTAMP)`,
 		userID,
 	).Scan(&count)
@@ -2567,7 +2674,8 @@ func (d *DB) CountNewCards(userID int64) (int, error) {
 		    AND NOT EXISTS (
 		        SELECT 1 FROM user_ignored_lemmas ui
 		         WHERE ui.user_id = c.user_id AND ui.lang = c.lang AND ui.lemma = c.lemma AND ui.pos = c.pos
-		    )`,
+		    )
+		    AND NOT `+suppressedCardPredicate("c"),
 		userID,
 	).Scan(&count)
 	if err != nil {
@@ -2651,6 +2759,7 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64, lang string) (*Revie
 	                 SELECT 1 FROM user_ignored_lemmas ui
 	                  WHERE ui.user_id = c.user_id AND ui.lang = c.lang AND ui.lemma = c.lemma AND ui.pos = c.pos
 	             )
+	             AND NOT ` + suppressedCardPredicate("c") + `
 	             AND (cs.next_due IS NULL OR cs.next_due <= CURRENT_TIMESTAMP)` + newCardFilter + deckFilter + langFilter + `
 	        ORDER BY CASE WHEN cs.last_answer_at IS NULL THEN 0 ELSE 1 END,
 	                 COALESCE(cs.next_due, '1970-01-01 00:00:00') ASC,
@@ -3070,8 +3179,21 @@ func (d *DB) DeleteUserParseSessions(userID int64) (int64, error) {
 	return rowsAffected, nil
 }
 
+// CreateParseFeedback stores a raw report and groups it into a global
+// correction issue (Phase 1c). Grouping runs in the same transaction as the
+// insert: the feedback row is linked to a found-or-created issue by the
+// conservative scope fingerprint, and the issue's report/distinct-reporter
+// counts are recomputed. A report against a previously-fixed issue reopens it.
+// This wraps AROUND the existing intake — the parse_feedback columns and the
+// accepted-correction writeback (ReviewParseFeedback) are unchanged.
 func (d *DB) CreateParseFeedback(feedback ParseFeedback) (int64, error) {
-	result, err := d.db.Exec(
+	tx, err := d.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	result, err := tx.Exec(
 		`INSERT INTO parse_feedback (
 			parse_session_id, user_id, lang, parser, surface, occurrence,
 			original_lemma, original_pos, original_grammar_label,
@@ -3095,7 +3217,32 @@ func (d *DB) CreateParseFeedback(feedback ParseFeedback) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return result.LastInsertId()
+	feedbackID, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+
+	issueID, err := groupFeedbackIntoIssue(
+		tx, feedback.Lang, feedback.Parser, feedback.Surface,
+		feedback.ProposedLemma, feedback.ProposedPOS, time.Now(),
+	)
+	if err != nil {
+		return 0, err
+	}
+	if _, err := tx.Exec(
+		`UPDATE parse_feedback SET correction_issue_id = ? WHERE id = ?`,
+		issueID, feedbackID,
+	); err != nil {
+		return 0, err
+	}
+	if err := recountIssue(tx, issueID); err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return feedbackID, nil
 }
 
 // ParseFeedbackFilter narrows the admin feedback list. Empty Status means

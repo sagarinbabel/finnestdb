@@ -5342,3 +5342,164 @@ func requestWithCookies(req *http.Request, cookies []*http.Cookie) *http.Request
 	}
 	return req
 }
+
+// seedIssueViaFeedback creates a report through the store so a correction issue
+// exists to act on in admin tests. Returns (issueID).
+func seedIssueViaFeedback(t *testing.T, api *API, userID int64, lang, surface, lemma, pos string) int64 {
+	t.Helper()
+	sessionID, err := api.store.CreateParseSession(&userID, lang, "custom", "ctx "+surface, 1, 1)
+	if err != nil {
+		t.Fatalf("CreateParseSession: %v", err)
+	}
+	fbID, err := api.store.CreateParseFeedback(store.ParseFeedback{
+		ParseSessionID: sessionID,
+		UserID:         userID,
+		Lang:           lang,
+		Parser:         "custom",
+		Surface:        surface,
+		ProposedLemma:  lemma,
+		ProposedPOS:    pos,
+		FlagOnly:       lemma == "" && pos == "",
+	})
+	if err != nil {
+		t.Fatalf("CreateParseFeedback: %v", err)
+	}
+	issueID, ok, err := api.store.CorrectionIssueIDForFeedback(fbID)
+	if err != nil || !ok {
+		t.Fatalf("CorrectionIssueIDForFeedback ok=%v err=%v", ok, err)
+	}
+	return issueID
+}
+
+func TestAdminCorrectionIssuesRejectsNonAdmin(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	userCookies := loginAndReturnCookies(t, mux, "user@example.com")
+
+	for _, method := range []string{http.MethodGet, http.MethodPatch} {
+		req := httptest.NewRequest(method, "/api/admin/correction-issues?id=1", strings.NewReader(`{"action":"restore"}`))
+		req = requestWithCookies(req, userCookies)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("%s status=%d want %d body=%q", method, rec.Code, http.StatusForbidden, rec.Body.String())
+		}
+	}
+}
+
+func TestAdminCorrectionIssuesQuarantineRequiresReason(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+	reporter := createTestUserForAPI(t, api, "reporter@example.com")
+
+	issueID := seedIssueViaFeedback(t, api, reporter.ID, "FI", "koira", "koira", "NOUN")
+
+	// Triage first so class is not the blocker.
+	patchIssue(t, mux, adminCookies, issueID, `{"action":"triage","alpha_class":"parser_issue"}`, http.StatusOK)
+	// Quarantine with empty reason -> 400.
+	patchIssue(t, mux, adminCookies, issueID, `{"action":"quarantine","reason":"   "}`, http.StatusBadRequest)
+}
+
+func TestAdminCorrectionIssuesQuarantineNeedsClass(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+	reporter := createTestUserForAPI(t, api, "reporter@example.com")
+
+	issueID := seedIssueViaFeedback(t, api, reporter.ID, "FI", "koira", "koira", "NOUN")
+
+	// Quarantine with a reason but no class -> 400 (ErrIssueNeedsClass).
+	patchIssue(t, mux, adminCookies, issueID, `{"action":"quarantine","reason":"bad"}`, http.StatusBadRequest)
+}
+
+// TestAdminCorrectionIssuesQuarantineFlow drives the full alpha admin flow over
+// HTTP: list issues, triage-then-quarantine, and confirm the learner's review
+// queue stops serving the quarantined card.
+func TestAdminCorrectionIssuesQuarantineFlow(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+
+	// A learner with a single-word deck so the only review card is the one we
+	// quarantine (the parser lowercases the lemma and, without dict/FST tables
+	// in tests, assigns NOUN).
+	learnerCookies := loginAndReturnCookies(t, mux, "learner@example.com")
+	createDeckAndReturnID(t, mux, learnerCookies, "Animals", "Koira.")
+	learner := createTestUserForAPI(t, api, "learner@example.com")
+
+	// Before quarantine the learner is served a review card.
+	if code := reviewNextStatus(t, mux, learnerCookies); code != http.StatusOK {
+		t.Fatalf("review/next before quarantine status=%d want 200", code)
+	}
+
+	issueID := seedIssueViaFeedback(t, api, learner.ID, "FI", "koira", "koira", "NOUN")
+
+	// List issues (GET) — the issue is present and untriaged.
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/correction-issues", nil)
+	req = requestWithCookies(req, adminCookies)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list issues status=%d body=%q", rec.Code, rec.Body.String())
+	}
+	var list CorrectionIssueListResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+		t.Fatalf("decode issue list: %v", err)
+	}
+	if len(list.Issues) != 1 || list.Issues[0].ID != issueID {
+		t.Fatalf("issue list=%+v want single issue id=%d", list.Issues, issueID)
+	}
+
+	// Classify then quarantine in one call (UI submits both).
+	patchIssue(t, mux, adminCookies, issueID,
+		`{"action":"quarantine","alpha_class":"parser_issue","reason":"parser identity is wrong"}`,
+		http.StatusOK)
+
+	// The learner's review queue no longer serves the card (204 No Content).
+	if code := reviewNextStatus(t, mux, learnerCookies); code != http.StatusNoContent {
+		t.Fatalf("review/next after quarantine status=%d want 204", code)
+	}
+
+	// Restore puts it back.
+	patchIssue(t, mux, adminCookies, issueID, `{"action":"restore","fix_note":"fixed"}`, http.StatusOK)
+	if code := reviewNextStatus(t, mux, learnerCookies); code != http.StatusOK {
+		t.Fatalf("review/next after restore status=%d want 200", code)
+	}
+}
+
+func patchIssue(t *testing.T, mux *http.ServeMux, cookies []*http.Cookie, issueID int64, body string, wantStatus int) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPatch,
+		fmt.Sprintf("/api/admin/correction-issues?id=%d", issueID), strings.NewReader(body))
+	req = requestWithCookies(req, cookies)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != wantStatus {
+		t.Fatalf("patch %q status=%d want %d body=%q", body, rec.Code, wantStatus, rec.Body.String())
+	}
+}
+
+func reviewNextStatus(t *testing.T, mux *http.ServeMux, cookies []*http.Cookie) int {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, "/api/review/next", nil)
+	req = requestWithCookies(req, cookies)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	return rec.Code
+}
+
+// createTestUserForAPI returns the user row for an email that has already been
+// registered through the auth flow (loginAndReturnCookies), so store-level test
+// seeding can reference its id.
+func createTestUserForAPI(t *testing.T, api *API, email string) *store.User {
+	t.Helper()
+	user, err := api.store.GetOrCreateUser(email)
+	if err != nil {
+		t.Fatalf("GetOrCreateUser: %v", err)
+	}
+	return user
+}
