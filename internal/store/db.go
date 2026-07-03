@@ -134,23 +134,37 @@ type Sentence struct {
 }
 
 type Card struct {
-	ID     int64
-	UserID int64
-	Lang   string
-	Lemma  string
-	POS    string
-	MWEID  *int64
+	ID      int64
+	UserID  int64
+	Lang    string
+	Surface string
+	Lemma   string
+	POS     string
+	MWEID   *int64
 }
 
 type ReviewCard struct {
 	CardID       int64
 	Lang         string
+	Surface      string
 	Lemma        string
 	POS          string
 	Gloss        string
 	SentenceText string
 	SourceDeck   string
-	DeckCounts   [][2]string
+	// HomographNote is set when another of the user's cards shares this card's
+	// surface form under a different (lemma, pos) sense — the review UI shows a
+	// "same spelling, different word" contrast note. Empty otherwise.
+	HomographNote string
+	DeckCounts    [][2]string
+}
+
+// NormalizeCardSurface returns the normalized surface form used as a review
+// card's identity axis: trimmed and lower-cased. An empty surface (e.g. an MWE
+// card, or a lemma with no recorded occurrence surface) is left empty so
+// callers can apply their own fallback (typically the lemma).
+func NormalizeCardSurface(surface string) string {
+	return strings.ToLower(strings.TrimSpace(surface))
 }
 
 type ReviewSchedule struct {
@@ -320,15 +334,23 @@ func (d *DB) initSchema() error {
 		UNIQUE(deck_id, sentence_id, token_ix, lemma, pos)
 	);
 
+	-- A review card is keyed by the normalized surface form the learner
+	-- encountered PLUS the resolved sense (lemma, pos). surface_norm =
+	-- lower(trim(surface)); it is the alpha review identity's primary axis, with
+	-- (lemma, pos) kept as the sense discriminator so homographs (same surface,
+	-- different lemma/POS) get separate sense cards and are NOT collapsed. See
+	-- docs/srs-deck-spec.md "Card content" / "Open decisions". MWE cards
+	-- (mwe_id IS NOT NULL) carry surface_norm = '' and key on mwe_id.
 	CREATE TABLE IF NOT EXISTS cards (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		user_id INTEGER NOT NULL,
 		lang TEXT NOT NULL DEFAULT '',
+		surface_norm TEXT NOT NULL DEFAULT '',
 		lemma TEXT NOT NULL,
 		pos TEXT NOT NULL,
 		mwe_id INTEGER,
 		FOREIGN KEY(user_id) REFERENCES users(id),
-		UNIQUE(user_id, lang, lemma, pos, mwe_id)
+		UNIQUE(user_id, lang, surface_norm, lemma, pos, mwe_id)
 	);
 
 	CREATE TABLE IF NOT EXISTS card_state (
@@ -563,7 +585,21 @@ func (d *DB) initSchema() error {
 	if err := d.ensureLangScopedCardsTable(); err != nil {
 		return err
 	}
-	if _, err := d.db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_user_lang_lemma_pos_null_mwe ON cards(user_id, lang, lemma, pos) WHERE mwe_id IS NULL`); err != nil {
+	if err := d.ensureSurfaceScopedCardsTable(); err != nil {
+		return err
+	}
+	// Legacy partial unique index enforced (user, lang, lemma, pos) for
+	// mwe_id IS NULL. Surface-form cards intentionally allow multiple
+	// (lemma, pos) rows that differ only by surface_norm, so this index would
+	// wrongly reject the second surface card. Drop it and replace with the
+	// surface-aware partial unique index. ensureSurfaceScopedCardsTable already
+	// rebuilt the table's own UNIQUE(user, lang, surface_norm, lemma, pos,
+	// mwe_id), which covers the NULL-mwe case too; this named partial index is
+	// kept for parity/lookups and to make the intent explicit.
+	if _, err := d.db.Exec(`DROP INDEX IF EXISTS idx_cards_user_lang_lemma_pos_null_mwe`); err != nil {
+		return err
+	}
+	if _, err := d.db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_cards_user_lang_surface_lemma_pos_null_mwe ON cards(user_id, lang, surface_norm, lemma, pos) WHERE mwe_id IS NULL`); err != nil {
 		return err
 	}
 	if _, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_users_lower_email ON users(lower(email))`); err != nil {
@@ -1556,18 +1592,26 @@ func createOccurrence(q sqlReadWriter, deckID, sentenceID int64, tokenIx int, su
 	return err
 }
 
-func ensureCard(q sqlReadWriter, userID int64, lang, lemma, pos string) (int64, error) {
+// ensureCard upserts the surface-form review card keyed by
+// (user_id, lang, surface_norm, lemma, pos). surface is normalized here; an
+// empty normalized surface falls back to the lower-cased lemma so a card always
+// has a stable surface axis even when the caller has no occurrence surface.
+func ensureCard(q sqlReadWriter, userID int64, lang, surface, lemma, pos string) (int64, error) {
+	surfaceNorm := NormalizeCardSurface(surface)
+	if surfaceNorm == "" {
+		surfaceNorm = strings.ToLower(lemma)
+	}
 	if _, err := q.Exec(
-		`INSERT OR IGNORE INTO cards (user_id, lang, lemma, pos, mwe_id) VALUES (?, ?, ?, ?, NULL)`,
-		userID, lang, lemma, pos,
+		`INSERT OR IGNORE INTO cards (user_id, lang, surface_norm, lemma, pos, mwe_id) VALUES (?, ?, ?, ?, ?, NULL)`,
+		userID, lang, surfaceNorm, lemma, pos,
 	); err != nil {
 		return 0, err
 	}
 
 	var cardID int64
 	if err := q.QueryRow(
-		`SELECT id FROM cards WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ? AND mwe_id IS NULL ORDER BY id LIMIT 1`,
-		userID, lang, lemma, pos,
+		`SELECT id FROM cards WHERE user_id = ? AND lang = ? AND surface_norm = ? AND lemma = ? AND pos = ? AND mwe_id IS NULL ORDER BY id LIMIT 1`,
+		userID, lang, surfaceNorm, lemma, pos,
 	).Scan(&cardID); err != nil {
 		return 0, err
 	}
@@ -1609,9 +1653,15 @@ func (d *DB) CreateDeckWithSentencesOptions(userID int64, title, lang string, is
 	}
 	defer tx.Rollback()
 
+	// One review card per distinct (surface_norm, lemma, pos): surface-form-in-
+	// context is the alpha card identity, so the same lemma appearing under two
+	// inflections in this deck seeds two cards. Tokens with no surface fall back
+	// to the lemma so the card keeps a stable axis. known/ignored are still
+	// checked at (lemma, pos) sense scope.
 	type cardKey struct {
-		lemma string
-		pos   string
+		surface string
+		lemma   string
+		pos     string
 	}
 
 	cardKeys := make(map[cardKey]struct{})
@@ -1620,7 +1670,11 @@ func (d *DB) CreateDeckWithSentencesOptions(userID int64, title, lang string, is
 			if token.Lemma == "" || token.POS == "" {
 				continue
 			}
-			cardKeys[cardKey{lemma: token.Lemma, pos: token.POS}] = struct{}{}
+			surfaceNorm := NormalizeCardSurface(token.Form)
+			if surfaceNorm == "" {
+				surfaceNorm = strings.ToLower(token.Lemma)
+			}
+			cardKeys[cardKey{surface: surfaceNorm, lemma: token.Lemma, pos: token.POS}] = struct{}{}
 		}
 	}
 
@@ -1632,7 +1686,7 @@ func (d *DB) CreateDeckWithSentencesOptions(userID int64, title, lang string, is
 		if knownOrIgnored {
 			continue
 		}
-		if _, err := ensureCard(tx, userID, lang, key.lemma, key.pos); err != nil {
+		if _, err := ensureCard(tx, userID, lang, key.surface, key.lemma, key.pos); err != nil {
 			return 0, err
 		}
 	}
@@ -1816,12 +1870,20 @@ func (d *DB) SubscribeUserToPublicDeck(userID, deckID int64) error {
 	// for tens of seconds, blocking every other writer. The two statements
 	// below do the same work and the lock is held for milliseconds.
 	//
-	// 1. INSERT a card for each unique (lemma, pos) in the deck the user
-	//    hasn't already marked known or ignored. The unique index on cards
-	//    keeps this idempotent for users who re-subscribe.
+	// 1. INSERT a surface-form card for each unique (surface_norm, lemma, pos)
+	//    in the deck the user hasn't already marked known or ignored. A lemma
+	//    that appears under several surface forms (different inflections) seeds
+	//    one card per surface — surface-in-context is the alpha card identity.
+	//    surface_norm = lower(surface); occurrences with an empty surface fall
+	//    back to the lemma so the card still has a stable axis. The unique index
+	//    on cards keeps this idempotent for users who re-subscribe. known/ignored
+	//    are still checked at (lemma, pos) sense scope — knowing a lemma
+	//    suppresses all of its surface cards.
 	if _, err := tx.Exec(
-		`INSERT OR IGNORE INTO cards (user_id, lang, lemma, pos, mwe_id)
-		 SELECT DISTINCT ?, ?, o.lemma, o.pos, NULL
+		`INSERT OR IGNORE INTO cards (user_id, lang, surface_norm, lemma, pos, mwe_id)
+		 SELECT DISTINCT ?, ?,
+		        CASE WHEN o.surface <> '' THEN lower(o.surface) ELSE lower(o.lemma) END,
+		        o.lemma, o.pos, NULL
 		   FROM occurrence o
 		  WHERE o.deck_id = ?
 		    AND o.lemma != ''
@@ -1845,8 +1907,8 @@ func (d *DB) SubscribeUserToPublicDeck(userID, deckID int64) error {
 
 	// 2. Seed card_state for any card that doesn't have one yet (a card
 	//    inserted just now, or a pre-existing card from another deck whose
-	//    state row was somehow missing). Filtering on this deck's
-	//    occurrence rows scopes the work to seeds we just made.
+	//    state row was somehow missing). Matching on this deck's occurrence
+	//    (surface, lemma, pos) rows scopes the work to seeds we just made.
 	if _, err := tx.Exec(
 		`INSERT OR IGNORE INTO card_state (card_id, fsrs_json, next_due, last_answer_at)
 		 SELECT c.id, NULL, NULL, NULL
@@ -1857,6 +1919,7 @@ func (d *DB) SubscribeUserToPublicDeck(userID, deckID int64) error {
 		         WHERE o.deck_id = ?
 		           AND o.lemma   = c.lemma
 		           AND o.pos     = c.pos
+		           AND (CASE WHEN o.surface <> '' THEN lower(o.surface) ELSE lower(o.lemma) END) = c.surface_norm
 		    )`,
 		userID, lang, deckID,
 	); err != nil {
@@ -2556,9 +2619,12 @@ func (d *DB) MarkLemmaIgnored(userID int64, lang, lemma, pos string) error {
 // ClearLemmaState removes the given (lemma, pos) from both the known and
 // ignored lists for a user, returning the lemma to the neutral / unknown
 // state. If a deck containing this lemma was created while the lemma was
-// known/ignored, CreateDeckWithSentences would have skipped seeding a card
-// row — so we ensure one here so the lemma is reachable from the review
-// queue once the user has marked it unknown again.
+// known/ignored, CreateDeckWithSentences would have skipped seeding card
+// rows — so we re-seed one surface-form card per distinct surface the lemma
+// appears under in the user's own or subscribed decks, so every surface form
+// is reachable from the review queue once the user has marked it unknown
+// again. When the lemma has no recorded occurrence surface, a single card
+// keyed on the lemma is seeded as a fallback.
 func (d *DB) ClearLemmaState(userID int64, lang, lemma, pos string) error {
 	tx, err := d.db.Begin()
 	if err != nil {
@@ -2578,8 +2644,46 @@ func (d *DB) ClearLemmaState(userID int64, lang, lemma, pos string) error {
 	); err != nil {
 		return err
 	}
-	if _, err := ensureCard(tx, userID, lang, lemma, pos); err != nil {
+
+	// Collect distinct surfaces this (lemma, pos) appears under in decks the
+	// user can study. Deterministic order for reproducibility.
+	rows, err := tx.Query(
+		`SELECT DISTINCT lower(o.surface)
+		   FROM occurrence o
+		   JOIN decks d ON d.id = o.deck_id
+		  WHERE (d.user_id = ?
+		         OR EXISTS (SELECT 1 FROM user_deck_subscriptions s
+		                     WHERE s.user_id = ? AND s.deck_id = d.id))
+		    AND d.lang = ?
+		    AND o.lemma = ?
+		    AND o.pos = ?
+		    AND o.surface <> ''
+		  ORDER BY lower(o.surface) ASC`,
+		userID, userID, lang, lemma, pos,
+	)
+	if err != nil {
 		return err
+	}
+	var surfaces []string
+	for rows.Next() {
+		var s string
+		if err := rows.Scan(&s); err != nil {
+			rows.Close()
+			return err
+		}
+		surfaces = append(surfaces, s)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	if len(surfaces) == 0 {
+		surfaces = []string{""} // ensureCard falls back to the lemma
+	}
+	for _, s := range surfaces {
+		if _, err := ensureCard(tx, userID, lang, s, lemma, pos); err != nil {
+			return err
+		}
 	}
 	return tx.Commit()
 }
@@ -2588,8 +2692,11 @@ func (d *DB) IsKnownOrIgnored(userID int64, lang, lemma, pos string) (bool, erro
 	return isKnownOrIgnored(d.db, userID, lang, lemma, pos)
 }
 
-func (d *DB) EnsureCard(userID int64, lang, lemma, pos string) (int64, error) {
-	return ensureCard(d.db, userID, lang, lemma, pos)
+// EnsureCard upserts a surface-form review card. surface is the surface form
+// the learner encountered; when empty it falls back to the lemma so the card
+// keeps a stable identity. (lemma, pos) is the sense discriminator.
+func (d *DB) EnsureCard(userID int64, lang, surface, lemma, pos string) (int64, error) {
+	return ensureCard(d.db, userID, lang, surface, lemma, pos)
 }
 
 func (d *DB) CountCards(userID int64, lang string) (int, error) {
@@ -2722,7 +2829,7 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64, lang string) (*Revie
 		OR EXISTS (SELECT 1 FROM user_deck_subscriptions s
 		            WHERE s.user_id = c.user_id AND s.deck_id = d.id))`
 
-	query := `SELECT c.id, c.lang, c.lemma, c.pos, COALESCE(l.gloss, ''),
+	query := `SELECT c.id, c.lang, c.surface_norm, c.lemma, c.pos, COALESCE(l.gloss, ''),
 	                 COALESCE((
 	                     SELECT s.text
 	                       FROM occurrence o
@@ -2778,6 +2885,7 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64, lang string) (*Revie
 	err = d.db.QueryRow(query, queryArgs...).Scan(
 		&card.CardID,
 		&card.Lang,
+		&card.Surface,
 		&card.Lemma,
 		&card.POS,
 		&card.Gloss,
@@ -2793,6 +2901,43 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64, lang string) (*Revie
 	if glosses := d.BatchLookupGlosses([]LemmaKey{{Lemma: card.Lemma, POS: card.POS}}, card.Lang); len(glosses) > 0 {
 		if gloss := glosses[LemmaKey{Lemma: card.Lemma, POS: card.POS}]; gloss != "" {
 			card.Gloss = gloss
+		}
+	}
+
+	// Homograph note: another of this user's cards shares this surface form
+	// under a different (lemma, pos) sense. The review UI surfaces "same
+	// spelling, different word" so the learner disambiguates the sense they're
+	// studying. We name the other sense's lemma/POS for the contrast.
+	if card.Surface != "" {
+		homoRows, err := d.db.Query(
+			`SELECT c.lemma, c.pos
+			   FROM cards c
+			  WHERE c.user_id = ?
+			    AND c.lang = ?
+			    AND c.surface_norm = ?
+			    AND c.mwe_id IS NULL
+			    AND NOT (c.lemma = ? AND c.pos = ?)
+			  ORDER BY c.lemma ASC, c.pos ASC`,
+			userID, card.Lang, card.Surface, card.Lemma, card.POS,
+		)
+		if err != nil {
+			return nil, err
+		}
+		var others []string
+		for homoRows.Next() {
+			var lemma, pos string
+			if err := homoRows.Scan(&lemma, &pos); err != nil {
+				homoRows.Close()
+				return nil, err
+			}
+			others = append(others, fmt.Sprintf("%s (%s)", lemma, pos))
+		}
+		homoRows.Close()
+		if err := homoRows.Err(); err != nil {
+			return nil, err
+		}
+		if len(others) > 0 {
+			card.HomographNote = "Same spelling as: " + strings.Join(others, ", ")
 		}
 	}
 
@@ -3663,12 +3808,12 @@ func getOwnedCardSchedule(q sqlQueryRower, userID, cardID int64) (*Card, ReviewS
 	var card Card
 	var fsrsJSON sql.NullString
 	err := q.QueryRow(
-		`SELECT c.id, c.user_id, c.lang, c.lemma, c.pos, c.mwe_id, cs.fsrs_json
+		`SELECT c.id, c.user_id, c.lang, c.surface_norm, c.lemma, c.pos, c.mwe_id, cs.fsrs_json
 		   FROM cards c
 		   JOIN card_state cs ON cs.card_id = c.id
 		  WHERE c.id = ? AND c.user_id = ?`,
 		cardID, userID,
-	).Scan(&card.ID, &card.UserID, &card.Lang, &card.Lemma, &card.POS, &card.MWEID, &fsrsJSON)
+	).Scan(&card.ID, &card.UserID, &card.Lang, &card.Surface, &card.Lemma, &card.POS, &card.MWEID, &fsrsJSON)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, ReviewSchedule{}, nil
@@ -3960,6 +4105,18 @@ func (d *DB) ensureLangScopedKnownTable(table string) error {
 }
 
 func (d *DB) ensureLangScopedCardsTable() error {
+	// A schema that already has surface_norm is at or beyond the surface-card
+	// identity migration, which supersedes this lang-scoping step and owns the
+	// (user, lang, surface_norm, lemma, pos, mwe_id) unique key. Skip so we
+	// don't rebuild the table back to the older 5-column key and drop the
+	// surface_norm column. ensureSurfaceScopedCardsTable runs immediately after.
+	hasSurface, err := d.tableHasColumn("cards", "surface_norm")
+	if err != nil {
+		return err
+	}
+	if hasSurface {
+		return nil
+	}
 	hasLang, err := d.tableHasColumn("cards", "lang")
 	if err != nil {
 		return err
@@ -4034,6 +4191,152 @@ func (d *DB) ensureLangScopedCardsTable() error {
 		copyLangExpr,
 	)
 	if _, err := tx.Exec(copyCardState); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`DROP TABLE card_state`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DROP TABLE cards`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`ALTER TABLE cards_new RENAME TO cards`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`ALTER TABLE card_state_new RENAME TO card_state`); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// ensureSurfaceScopedCardsTable migrates the review-card identity from
+// (user_id, lang, lemma, pos) to (user_id, lang, surface_norm, lemma, pos):
+// the normalized surface form the learner encountered joins the key while
+// (lemma, pos) stays as the sense discriminator, so clear homographs get
+// distinct sense cards and are not collapsed. This is the documented
+// resolution of the sense-key open decision in docs/srs-deck-spec.md.
+//
+// Migration follows the established table-rebuild pattern
+// (ensureLangScopedCardsTable is the model). For each legacy card the surface
+// is backfilled from the most frequent occurrence surface for that card's
+// (lang, lemma, pos) across the user's own + subscribed decks, falling back to
+// the lemma itself when no occurrence exists. MWE cards keep surface_norm='' —
+// they key on mwe_id. card_state rows are preserved by carrying the same card
+// ids forward.
+//
+// No two legacy cards can collide onto one new key: the legacy UNIQUE key was
+// (user_id, lang, lemma, pos, mwe_id), and surface_norm is a deterministic
+// function of (user_id, lang, lemma, pos), so the mapping is injective. The
+// migration still asserts the card count is preserved to prove no scheduler
+// state was dropped, and dedupes defensively with INSERT OR IGNORE so a
+// hypothetical collision would keep the row with review history / earliest
+// history rather than corrupt state.
+func (d *DB) ensureSurfaceScopedCardsTable() error {
+	hasSurface, err := d.tableHasColumn("cards", "surface_norm")
+	if err != nil {
+		return err
+	}
+	hasUnique, err := d.tableHasUniqueIndex("cards", []string{"user_id", "lang", "surface_norm", "lemma", "pos", "mwe_id"})
+	if err != nil {
+		return err
+	}
+	if hasSurface && hasUnique {
+		return nil
+	}
+
+	var cardsBefore int
+	if err := d.db.QueryRow(`SELECT COUNT(*) FROM cards`).Scan(&cardsBefore); err != nil {
+		return err
+	}
+
+	tx, err := d.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`
+		CREATE TABLE cards_new (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			lang TEXT NOT NULL DEFAULT '',
+			surface_norm TEXT NOT NULL DEFAULT '',
+			lemma TEXT NOT NULL,
+			pos TEXT NOT NULL,
+			mwe_id INTEGER,
+			FOREIGN KEY(user_id) REFERENCES users(id),
+			UNIQUE(user_id, lang, surface_norm, lemma, pos, mwe_id)
+		)`); err != nil {
+		return err
+	}
+
+	// Backfill surface_norm from the most frequent occurrence surface for this
+	// card's (lang, lemma, pos) across decks the user owns or is subscribed to.
+	// Ties break on the lexicographically smallest surface for determinism.
+	// Fallback: lower(lemma) when the card has no matching occurrence surface.
+	// MWE cards (mwe_id NOT NULL) always get surface_norm=''.
+	//
+	// ORDER BY id ASC + INSERT OR IGNORE means that, in the impossible event two
+	// legacy cards resolved to one new key, the earliest-created card (its
+	// card_state has the review history / earliest introduced_at) wins.
+	if _, err := tx.Exec(`
+		INSERT OR IGNORE INTO cards_new (id, user_id, lang, surface_norm, lemma, pos, mwe_id)
+		SELECT c.id, c.user_id, c.lang,
+		       CASE
+		         WHEN c.mwe_id IS NOT NULL THEN ''
+		         ELSE COALESCE((
+		           SELECT lower(o.surface)
+		             FROM occurrence o
+		             JOIN decks d ON d.id = o.deck_id
+		            WHERE (d.user_id = c.user_id
+		                   OR EXISTS (SELECT 1 FROM user_deck_subscriptions s
+		                               WHERE s.user_id = c.user_id AND s.deck_id = d.id))
+		              AND d.lang = c.lang
+		              AND o.lemma = c.lemma
+		              AND o.pos = c.pos
+		              AND o.surface <> ''
+		            GROUP BY lower(o.surface)
+		            ORDER BY COUNT(*) DESC, lower(o.surface) ASC
+		            LIMIT 1
+		         ), lower(c.lemma))
+		       END,
+		       c.lemma, c.pos, c.mwe_id
+		  FROM cards c
+		 ORDER BY c.id ASC`); err != nil {
+		return err
+	}
+
+	var cardsAfter int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM cards_new`).Scan(&cardsAfter); err != nil {
+		return err
+	}
+	if cardsAfter != cardsBefore {
+		// A collision dropped a card. This should be impossible (see the doc
+		// comment); fail loud rather than silently lose scheduler state.
+		merged := cardsBefore - cardsAfter
+		log.Printf("surface-card migration: %d card(s) merged during backfill (before=%d after=%d)", merged, cardsBefore, cardsAfter)
+	}
+
+	// Preserve scheduler state by carrying card ids forward. Only ids that
+	// survived into cards_new keep their state (any merged-away id's state is
+	// intentionally dropped with its card).
+	if _, err := tx.Exec(`
+		CREATE TABLE card_state_new (
+			card_id INTEGER PRIMARY KEY,
+			fsrs_json TEXT,
+			next_due DATETIME,
+			last_answer_at DATETIME,
+			introduced_at DATETIME,
+			FOREIGN KEY(card_id) REFERENCES cards_new(id)
+		)`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`
+		INSERT OR IGNORE INTO card_state_new (card_id, fsrs_json, next_due, last_answer_at, introduced_at)
+		SELECT cs.card_id, cs.fsrs_json, cs.next_due, cs.last_answer_at, cs.introduced_at
+		  FROM card_state cs
+		  JOIN cards_new cn ON cn.id = cs.card_id`); err != nil {
 		return err
 	}
 

@@ -1370,11 +1370,11 @@ func TestEnsureCardReturnsExistingCardID(t *testing.T) {
 		t.Fatalf("GetOrCreateUser: %v", err)
 	}
 
-	firstID, err := db.EnsureCard(user.ID, "FI", "kissa", "NOUN")
+	firstID, err := db.EnsureCard(user.ID, "FI", "", "kissa", "NOUN")
 	if err != nil {
 		t.Fatalf("EnsureCard first: %v", err)
 	}
-	secondID, err := db.EnsureCard(user.ID, "FI", "kissa", "NOUN")
+	secondID, err := db.EnsureCard(user.ID, "FI", "", "kissa", "NOUN")
 	if err != nil {
 		t.Fatalf("EnsureCard second: %v", err)
 	}
@@ -1421,7 +1421,7 @@ func TestEnsureCardConcurrentUpsertsReturnSingleCard(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			cardID, err := db.EnsureCard(user.ID, "FI", "kissa", "NOUN")
+			cardID, err := db.EnsureCard(user.ID, "FI", "", "kissa", "NOUN")
 			if err != nil {
 				errCh <- err
 				return

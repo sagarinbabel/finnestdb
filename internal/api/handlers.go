@@ -331,10 +331,16 @@ type CardFront struct {
 }
 
 type CardBack struct {
-	Lemma    string        `json:"lemma"`
-	Meaning  string        `json:"meaning"`
-	Grammar  string        `json:"grammar"`
-	Examples []CardExample `json:"examples"`
+	// Surface is the surface form the card represents — the primary review
+	// identity. Lemma/POS/meaning are supporting sense metadata.
+	Surface string `json:"surface,omitempty"`
+	Lemma   string `json:"lemma"`
+	Meaning string `json:"meaning"`
+	Grammar string `json:"grammar"`
+	// HomographNote is a "same spelling, different word" contrast line when the
+	// learner has another card sharing this surface under a different sense.
+	HomographNote string        `json:"homograph_note,omitempty"`
+	Examples      []CardExample `json:"examples"`
 }
 
 type CardExample struct {
@@ -2133,7 +2139,13 @@ func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	frontText := card.Lemma
+	// Surface form is the card's primary identity. Front shows the sentence
+	// context when available (with the surface as the highlight), otherwise the
+	// surface itself; the lemma is a last-resort fallback.
+	frontText := card.Surface
+	if frontText == "" {
+		frontText = card.Lemma
+	}
 	if card.SentenceText != "" {
 		frontText = card.SentenceText
 	}
@@ -2143,14 +2155,17 @@ func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
 		Mode:       "sentence",
 		DeckCounts: deckCounts,
 		Front: CardFront{
-			Type: "sentence",
-			Text: frontText,
+			Type:      "sentence",
+			Text:      frontText,
+			Highlight: card.Surface,
 		},
 		Back: CardBack{
-			Lemma:    card.Lemma,
-			Meaning:  card.Gloss,
-			Grammar:  "",
-			Examples: examples,
+			Surface:       card.Surface,
+			Lemma:         card.Lemma,
+			Meaning:       card.Gloss,
+			Grammar:       "",
+			HomographNote: card.HomographNote,
+			Examples:      examples,
 		},
 	})
 }

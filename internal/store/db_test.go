@@ -293,10 +293,10 @@ func TestGetNextReviewCardRespectsDailyNewCardLimit(t *testing.T) {
 		t.Fatalf("update user settings: %v", err)
 	}
 
-	if _, err := db.EnsureCard(user.ID, "FI", "kissa", "NOUN"); err != nil {
+	if _, err := db.EnsureCard(user.ID, "FI", "", "kissa", "NOUN"); err != nil {
 		t.Fatalf("EnsureCard(kissa): %v", err)
 	}
-	if _, err := db.EnsureCard(user.ID, "FI", "koira", "NOUN"); err != nil {
+	if _, err := db.EnsureCard(user.ID, "FI", "", "koira", "NOUN"); err != nil {
 		t.Fatalf("EnsureCard(koira): %v", err)
 	}
 
@@ -334,7 +334,7 @@ func TestReviewLogAndActivity(t *testing.T) {
 	user := createTestUser(t, db, "review-log@example.com")
 	other := createTestUser(t, db, "review-log-other@example.com")
 
-	cardID, err := db.EnsureCard(user.ID, "FI", "kissa", "NOUN")
+	cardID, err := db.EnsureCard(user.ID, "FI", "", "kissa", "NOUN")
 	if err != nil {
 		t.Fatalf("EnsureCard: %v", err)
 	}
@@ -431,7 +431,7 @@ func TestManualKnownActionsUpgradeAnkiSource(t *testing.T) {
 	if err := db.MarkLemmaKnown(user.ID, "FI", "koira", "NOUN"); err != nil {
 		t.Fatalf("MarkLemmaKnown: %v", err)
 	}
-	cardID, err := db.EnsureCard(user.ID, "FI", "juosta", "VERB")
+	cardID, err := db.EnsureCard(user.ID, "FI", "", "juosta", "VERB")
 	if err != nil {
 		t.Fatalf("EnsureCard: %v", err)
 	}
@@ -554,7 +554,7 @@ func TestDeleteUserCascadeRemovesPrivateRows(t *testing.T) {
 	if err := db.MarkLemmaKnown(user.ID, "FI", "hauki", "NOUN"); err != nil {
 		t.Fatalf("MarkLemmaKnown: %v", err)
 	}
-	if cardID, err := db.EnsureCard(user.ID, "FI", "ahven", "NOUN"); err != nil {
+	if cardID, err := db.EnsureCard(user.ID, "FI", "", "ahven", "NOUN"); err != nil {
 		t.Fatalf("EnsureCard: %v", err)
 	} else if err := db.MarkCardIgnored(user.ID, cardID); err != nil {
 		t.Fatalf("MarkCardIgnored: %v", err)
