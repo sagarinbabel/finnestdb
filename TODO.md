@@ -131,6 +131,18 @@ scope, not accidental creep. See Decisions 23-29.
       runs parser fixture checks and Playwright RC specs, then points at the
       manual walkthrough instructions in `docs/GO_LIVE_CHECKLIST.md` (they live
       there, not in a new doc; the manifest stays data-only — Q60).
+      - [x] Skeleton shipped 2026-07-04: `testdata/first-experience-rc/manifest.json`
+            (18 cases, FI+ET per journey), `cmd/firstexperiencerc` (Go runner),
+            and `web/tests/first-experience-rc.spec.ts` (Playwright spec) exist;
+            `make first-experience-rc` runs green end to end.
+      - [x] Automated now: `embedded-text`, `own-text-inspect`, and
+            `ambiguity-homograph` (FI `kuusi`/`tuli`/`voi` + one ET case) via
+            the Go parser runner; `deck-save` + `first-review` (FI+ET) and
+            `parser-feedback` (FI only) via Playwright.
+      - [ ] Pending journeys still needing real coverage: `anonymous-demo`
+            (FI+ET — no anonymous parser demo surface yet), `known-word-import`
+            (FI+ET — needs an RC-fixture-driven Playwright case), and
+            `parser-feedback` for ET (FI-only correction-submit coverage today).
 - [ ] **Documentation consolidation pass**: avoid adding new docs for execution
       ledgers. Keep launch issues in this TODO, keep the quality rubric in
       `docs/GO_LIVE_CHECKLIST.md`, and audit overlapping docs for merge,

@@ -10,7 +10,8 @@
         scrape-gutenberg-fi \
         fetch-frequency-baselines \
         doctor live-api-smoke purge-parse-context \
-        import-gold-surfaces export-gold-candidates
+        import-gold-surfaces export-gold-candidates \
+        first-experience-rc
 
 # Default target
 all: build
@@ -382,6 +383,25 @@ compare-parsers: parser
 
 compare-parsers-et: parser
 	@bash scripts/parser-comparison-et.sh
+
+# ── First-experience release-candidate pack ──────────────────────────────────
+#
+# Runs the automated half of the first-experience RC pack described in
+# docs/GO_LIVE_CHECKLIST.md "First-experience quality check": the Go runner
+# (parser fixture checks) followed by the RC Playwright spec (browser
+# checks). Both consume the single canonical manifest at
+# testdata/first-experience-rc/manifest.json. Finishes by pointing at the
+# manual walkthrough instructions, which live in that checklist section, not
+# in a separate doc.
+#
+# Nonzero exit only if an automated case fails; pending/manual cases don't
+# fail the run (see cmd/firstexperiencerc).
+first-experience-rc: parser
+	@export LD_LIBRARY_PATH="$$(pwd)/parser/target/release:$${LD_LIBRARY_PATH:-}"; \
+	go run ./cmd/firstexperiencerc
+	@export LD_LIBRARY_PATH="$$(pwd)/parser/target/release:$${LD_LIBRARY_PATH:-}"; \
+	cd web && npx playwright test tests/first-experience-rc.spec.ts
+	@echo "Manual walkthrough: see docs/GO_LIVE_CHECKLIST.md 'First-experience quality check' — instructions live there (no separate doc)."
 
 # ── Manual gold UD FEATS enrichment ──────────────────────────────────────────
 #
