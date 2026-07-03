@@ -460,6 +460,11 @@ func (a *API) HandleRegister(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	// Login CSRF: a foreign-origin register/login must not be able to issue a
+	// session cookie for an attacker-controlled account in the victim browser.
+	if !allowStateChangingRequest(w, r) {
+		return
+	}
 
 	var req LoginRequest
 	if !decodeJSONRequest(w, r, &req) {
@@ -515,6 +520,9 @@ func (a *API) HandleRegister(w http.ResponseWriter, r *http.Request) {
 func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !allowStateChangingRequest(w, r) {
 		return
 	}
 

@@ -2,17 +2,19 @@
 
 _Current as of 2026-04-29 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
-> **Note (2026-04-29):** The consumer-alpha plan in
-> [`../TODO.md`](../TODO.md) ships a thinner alpha scheduler than the full
-> FSRS design described here, with global cards and intentionally minimal
-> backside content. Treat this document as the target spec; the alpha
-> implementation will deviate where called out in PR 6.
+> **Launch note (2026-06-20):** The current public-alpha runtime intentionally
+> ships a fixed-step scheduler in `internal/store/db.go`
+> (`nextAlphaStepScheduleForRating`), not FSRS. Treat the FSRS sections below as
+> the post-launch target design until `go-fsrs` is integrated and migrated.
 
 ## Recommendation
 
-Use FSRS for scheduling.
+Target FSRS for scheduling after the public alpha.
 
-Use the FSRS algorithm at the product level, but prefer the official Go implementation for the app runtime and keep `fsrs-rs` as the future optimization path.
+For launch, the app uses a deterministic alpha step scheduler with the same
+Again / Hard / Good / Easy rating surface. When the scheduler is upgraded, use
+the FSRS algorithm at the product level, prefer the official Go implementation
+for the app runtime, and keep `fsrs-rs` as the future optimization path.
 
 Why:
 
@@ -23,7 +25,8 @@ Why:
 
 Practical decision:
 
-- Runtime scheduler: `github.com/open-spaced-repetition/go-fsrs`
+- Launch runtime scheduler: `internal/store.nextAlphaStepScheduleForRating`
+- Target runtime scheduler: `github.com/open-spaced-repetition/go-fsrs`
 - Future offline optimizer: `open-spaced-repetition/fsrs-rs`
 
 ## Product Model

@@ -1305,7 +1305,9 @@ func uniqueNonEmptyStrings(values []string) []string {
 // applied so raw expansion cannot revive known dictionary artifacts. Otherwise
 // this does not run the possessive / compound / case-suffix fallback chain,
 // because those heuristics are designed to commit to a single resolution and
-// aren't authoritative for ambiguity.
+// aren't authoritative for ambiguity. Accepted parser-feedback overrides also
+// suppress lower-priority dictionary rows in custom mode so corrected surfaces
+// do not keep offering the stale candidate the reviewer overrode.
 //
 // For Finnish, candidates also pass through the same MA-infinitive and
 // A-infinitive-long bias filters BatchLookupForms applies: dict rows that
@@ -1326,7 +1328,7 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 		return result
 	}
 
-	stmt, err := d.db.Prepare(`SELECT lemma, pos FROM forms WHERE form = ? AND lang = ?`)
+	stmt, err := d.db.Prepare(`SELECT lemma, pos, source, source_priority FROM forms WHERE form = ? AND lang = ?`)
 	if err != nil {
 		return result
 	}
@@ -1346,12 +1348,20 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 			continue
 		}
 		var candidates []FormResolution
+		var customOverrideCandidates []FormResolution
 		for rows.Next() {
-			var lemma, pos string
-			if err := rows.Scan(&lemma, &pos); err != nil {
+			var lemma, pos, source string
+			var sourcePriority int
+			if err := rows.Scan(&lemma, &pos, &source, &sourcePriority); err != nil {
 				rows.Close()
 				candidates = nil
+				customOverrideCandidates = nil
 				break
+			}
+			candidate := FormResolution{Lemma: lemma, POS: pos, Source: "dict"}
+			if parserMode == "custom" && source == SourceCustomOverrides && sourcePriority >= CustomOverridesSourcePriority {
+				customOverrideCandidates = append(customOverrideCandidates, candidate)
+				continue
 			}
 			if isBadDictCandidate(lang, lower, lemma, pos) {
 				continue
@@ -1359,10 +1369,12 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 			if !candidateCaseCompatible(form, lemma) {
 				continue
 			}
-			candidates = append(candidates, FormResolution{Lemma: lemma, POS: pos, Source: "dict"})
+			candidates = append(candidates, candidate)
 		}
 		rows.Close()
-		if lang == "FI" {
+		if len(customOverrideCandidates) > 0 {
+			candidates = customOverrideCandidates
+		} else if lang == "FI" {
 			candidates = correctFICandidates(d, form, lower, candidates)
 		}
 		if len(candidates) > 0 {

@@ -99,12 +99,12 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 
 ### Learner experience
 
-- [ ] **Migrate alpha scheduler to real FSRS**. `internal/store/db.go::nextScheduleForRating` is a hand-rolled step scheduler with hardcoded day arrays — **not** FSRS. [`docs/srs-deck-spec.md`](docs/srs-deck-spec.md) §13–24 already recommends [`go-fsrs`](https://github.com/open-spaced-repetition/go-fsrs).
+- [ ] **Migrate alpha scheduler to real FSRS**. `internal/store/db.go::nextAlphaStepScheduleForRating` is a hand-rolled step scheduler with hardcoded day arrays — **not** FSRS. The launch contract now documents this honestly; [`docs/srs-deck-spec.md`](docs/srs-deck-spec.md) keeps [`go-fsrs`](https://github.com/open-spaced-repetition/go-fsrs) as the post-launch target.
   - [ ] Add `go-fsrs` dependency. Plan schema delta on `card_state` (FSRS needs stability, difficulty, last review, last rating, retrievability).
-  - [ ] Implement `FSRSScheduleForRating(card, rating, now) (next time.Time, newState CardState)` behind a feature flag. Keep `nextScheduleForRating` as fallback while migration is in flight.
+  - [ ] Implement `FSRSScheduleForRating(card, rating, now) (next time.Time, newState CardState)` behind a feature flag. Keep `nextAlphaStepScheduleForRating` as fallback while migration is in flight.
   - [ ] Migration plan for existing `card_state` rows: derive starter FSRS state from `Step`/`Streak` heuristically; document in `docs/srs-deck-spec.md`.
   - [ ] Cutover: flip flag on staging DB, validate against small cohort, then production.
-  - [ ] Fallback if we *don't* go to FSRS for alpha: rename `nextScheduleForRating` honestly (e.g. `alphaStepSchedule`) and update the spec to say "alpha intentionally ships a step scheduler; FSRS migration is post-alpha." 10-line PR.
+  - [x] Fallback if we *don't* go to FSRS for alpha: rename the runtime scheduler honestly and update the spec to say "alpha intentionally ships a step scheduler; FSRS migration is post-alpha."
 
 - [ ] **Comprehension prediction per deck**. Show "predicted comprehension %" on deck detail, before/after projection ("if you learn the top N words from this deck, your comprehension goes from X% to Y%"), and compute marginal comprehension gain per word for study ordering. Token-weighted coverage formula already in [`docs/srs-deck-spec.md` §Coverage metrics](docs/srs-deck-spec.md). Backend tasks: `store.DeckLemmaStats(deckID)`, `store.UserKnownLemmaSet(userID, lang)`, `GET /api/decks/:id/comprehension` returning coverage + top_unlocks; extend `GET /api/decks/:id` with headline `comprehension_pct`. Frontend tasks: deck-detail comprehension badge, deck-list column, marginal-gain projection. Detailed sequencing/product-design questions live in `docs/srs-deck-spec.md`.
 
@@ -416,13 +416,13 @@ for up-to-date open work.**
 
 5. **Migrate alpha scheduler to real FSRS** _(added 2026-05-07)_
 
-   `internal/store/db.go::nextScheduleForRating` is a hand-rolled step scheduler with hardcoded day arrays `{1,3,7,14,30,60}` (good) / `{3,7,14,30,60,90}` (easy). `again` is 10 minutes; `hard` is 8 hours. This is **not** FSRS; `docs/srs-deck-spec.md §13–24` already recommends [`go-fsrs`](https://github.com/open-spaced-repetition/go-fsrs).
+   `internal/store/db.go::nextAlphaStepScheduleForRating` is a hand-rolled step scheduler with hardcoded day arrays `{1,3,7,14,30,60}` (good) / `{3,7,14,30,60,90}` (easy). `again` is 10 minutes; `hard` is 8 hours. This is **not** FSRS; `docs/srs-deck-spec.md §13–24` already recommends [`go-fsrs`](https://github.com/open-spaced-repetition/go-fsrs) as the post-launch target.
 
    - [ ] Add the `go-fsrs` dependency. Plan the schema delta on `card_state` (FSRS needs stability, difficulty, last review, last rating, retrievability — multiple fields the current schema doesn't carry).
-   - [ ] Implement `FSRSScheduleForRating(card, rating, now) (next time.Time, newState CardState)` behind a feature flag. Keep `nextScheduleForRating` as fallback while the migration is in flight.
+   - [ ] Implement `FSRSScheduleForRating(card, rating, now) (next time.Time, newState CardState)` behind a feature flag. Keep `nextAlphaStepScheduleForRating` as fallback while the migration is in flight.
    - [ ] Migration plan for existing `card_state` rows: derive starter FSRS state from `Step`/`Streak` heuristically; document it in `docs/srs-deck-spec.md`.
    - [ ] Cutover: flip the feature flag on a staging DB, validate against a small user cohort, then cutover production.
-   - [ ] If we *don't* go to FSRS for alpha, **rename `nextScheduleForRating` honestly** (e.g. `alphaStepSchedule`) and update the spec to say "alpha intentionally ships a step scheduler; FSRS migration is post-alpha." Either ship FSRS or stop calling the alpha scheduler "FSRS-shaped." Honest naming is a 10-line PR.
+   - [x] If we *don't* go to FSRS for alpha, **rename the runtime scheduler honestly** and update the spec to say "alpha intentionally ships a step scheduler; FSRS migration is post-alpha." Either ship FSRS or stop calling the alpha scheduler "FSRS-shaped."
 
 6. **Disambiguation model**
    - [ ] Select UD treebanks (Finnish, Estonian)
@@ -639,7 +639,7 @@ New work surfaced by the review (not yet broken into sequenced PRs):
 Already on this list and just confirmed by the review:
 
 - Anonymous parse should reuse the existing `.txt` / `.md` / `.epub` extraction path; signed-in Inspect/workbench upload support is already in main via `POST /api/import/extract`
-- FSRS migration — the public review surface should not ship the hand-rolled scheduler
+- FSRS migration — public alpha ships the documented fixed-step scheduler; do not market it as FSRS until `go-fsrs` lands
 - Comprehension prediction per deck — wireframe is in `docs/USER_FLOWS.md` §8
 - Rate limiting on `/api/parse` — gated on the anonymous-parse path
 - Highest-leverage study ordering across decks — recommended UX gate is "user has 2+ decks", not always-on

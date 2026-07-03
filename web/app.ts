@@ -2400,6 +2400,17 @@ async function openAnkiSyncModal(): Promise<void> {
     }
 }
 
+// The replace-mode confirmation must describe what the current
+// preserve-manual setting will actually do: in the default preserve-manual
+// mode, textbox/file words survive the sync, and warning that they'll be
+// removed trains users to distrust (and disable) the safe setting.
+function ankiReplaceConfirmMessage(langName: string, preserveManual: boolean): string {
+    if (preserveManual) {
+        return `This will sync your ${langName} Anki-imported known-words to exactly what's in the selected Anki decks. Words you added through the textbox or a file will be kept; Anki-imported words not in this selection will be removed.`;
+    }
+    return `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`;
+}
+
 async function runAnkiSyncFlow(): Promise<void> {
     const prefs = loadAnkiPrefs(state.activeLanguage);
     // Sync needs a prior successful import and at least one saved deck.
@@ -2429,7 +2440,7 @@ async function runAnkiSyncFlow(): Promise<void> {
         // stays focused on the confirm action.
         const dialog = await showConfirmWithStatus<SyncDiscoveryResultOrFailure>({
             title:         `Replace ${langName} vocabulary?`,
-            message:       `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
+            message:       ankiReplaceConfirmMessage(langName, ankiImport.preserveManualOnReplace),
             confirmLabel:  'Sync and replace',
             danger:        true,
             loadingText:   'Checking Anki…',
@@ -3472,9 +3483,10 @@ async function runAnkiImport(): Promise<void> {
     }
 
     // Replace-mode confirmation: a destructive operation that deletes lemmas
-    // not in the new selection (including ones added through the textbox or
-    // a file). Skipped on a per-language basis once the user has explicitly
-    // checked "Don't show this again" on the dialog. Also skipped when the
+    // not in the new selection (textbox/file-added lemmas survive when
+    // preserve-manual mode is on, so the copy is keyed to that setting).
+    // Skipped on a per-language basis once the user has explicitly checked
+    // "Don't show this again" on the dialog. Also skipped when the
     // quick-sync flow has already shown its own status-bearing version of
     // the same dialog (replaceConfirmedThisRun).
     if (ankiImport.replaceMode && !ankiImport.replaceConfirmedThisRun) {
@@ -3483,7 +3495,7 @@ async function runAnkiImport(): Promise<void> {
         if (!prefs.replaceConfirmSkip) {
             const result = await showConfirmWithRemember({
                 title:         `Replace ${langName} vocabulary?`,
-                message:       `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`,
+                message:       ankiReplaceConfirmMessage(langName, ankiImport.preserveManualOnReplace),
                 confirmLabel:  'Sync and replace',
                 danger:        true,
                 rememberLabel: "Don't show this again",

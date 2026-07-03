@@ -159,6 +159,40 @@ func TestHandleParseRateLimitRunsBeforeAnalyze(t *testing.T) {
 	}
 }
 
+func TestHandleParseRateLimitIgnoresSpoofedForwardedFor(t *testing.T) {
+	t.Setenv("FINNESTDB_TRUST_FORWARD_HEADERS", "")
+	api := newTestAPI(t)
+	api.rateLimits.parseIP = newFixedWindowRateLimiter(1, time.Hour)
+	api.rateLimits.parseAccount = newFixedWindowRateLimiter(100, time.Hour)
+	called := false
+	api.analyze = func(_ *store.DB, _, _, _ string) (*parsecore.ParseResult, error) {
+		called = true
+		return nil, fmt.Errorf("analyze should not run")
+	}
+	mux := newTestMux(t, api)
+
+	first := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{`))
+	first.RemoteAddr = "198.51.100.20:1234"
+	first.Header.Set("X-Forwarded-For", "203.0.113.10")
+	firstRec := httptest.NewRecorder()
+	mux.ServeHTTP(firstRec, first)
+	if firstRec.Code != http.StatusBadRequest {
+		t.Fatalf("first status=%d want 400 body=%q", firstRec.Code, firstRec.Body.String())
+	}
+
+	second := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"FI","text":"kissa"}`))
+	second.RemoteAddr = "198.51.100.20:1234"
+	second.Header.Set("X-Forwarded-For", "203.0.113.11")
+	secondRec := httptest.NewRecorder()
+	mux.ServeHTTP(secondRec, second)
+	if secondRec.Code != http.StatusTooManyRequests {
+		t.Fatalf("second status=%d want 429 body=%q", secondRec.Code, secondRec.Body.String())
+	}
+	if called {
+		t.Fatal("analyze was called after parse rate limit was exceeded")
+	}
+}
+
 func TestHandleParseReturnsJSONResponse(t *testing.T) {
 	api := newTestAPI(t)
 	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
@@ -2125,6 +2159,24 @@ func TestKnownWordsReplaceRejectsAllUnresolvedInput(t *testing.T) {
 	if !got["kissa/NOUN"] || !got["koira/NOUN"] || len(got) != 2 {
 		t.Fatalf("FI list after rejected replace=%v want {kissa/NOUN, koira/NOUN}", got)
 	}
+
+	blankOnly := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(`{"lang":"FI","words":["   ","\n\t"]}`))
+	for _, c := range cookies {
+		blankOnly.AddCookie(c)
+	}
+	blankOnlyRec := httptest.NewRecorder()
+	mux.ServeHTTP(blankOnlyRec, blankOnly)
+	if blankOnlyRec.Code != http.StatusBadRequest {
+		t.Fatalf("blank-only replace status=%d want 400 body=%q", blankOnlyRec.Code, blankOnlyRec.Body.String())
+	}
+	if !strings.Contains(blankOnlyRec.Body.String(), store.ErrKnownWordsReplaceNoResolvedWords.Error()) {
+		t.Fatalf("blank-only replace body=%q missing unresolved guard", blankOnlyRec.Body.String())
+	}
+
+	got = listKnownWordsForLang(t, mux, cookies, "FI")
+	if !got["kissa/NOUN"] || !got["koira/NOUN"] || len(got) != 2 {
+		t.Fatalf("FI list after rejected blank-only replace=%v want {kissa/NOUN, koira/NOUN}", got)
+	}
 }
 
 func TestKnownWordsReplacePreservesManualSourceByDefault(t *testing.T) {
@@ -2362,6 +2414,62 @@ func TestAuthenticatedMutationAllowsSameOrigin(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d want 200 body=%q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestRegisterRejectsForeignOrigin(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+
+	body := fmt.Sprintf(`{"email":"register-csrf@example.com","password":%q}`, testPassword)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(body))
+	req.Header.Set("Origin", "https://evil.example")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want 403 body=%q", rec.Code, rec.Body.String())
+	}
+	if len(rec.Result().Cookies()) != 0 {
+		t.Fatalf("foreign-origin register set cookies: %+v", rec.Result().Cookies())
+	}
+	if user, err := api.store.GetUserByEmail("register-csrf@example.com"); err == nil && user != nil {
+		t.Fatal("foreign-origin register created a user")
+	}
+}
+
+func TestLoginRejectsForeignOrigin(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	loginAndReturnCookies(t, mux, "login-csrf@example.com")
+
+	body := fmt.Sprintf(`{"email":"login-csrf@example.com","password":%q}`, testPassword)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	req.Header.Set("Origin", "https://evil.example")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d want 403 body=%q", rec.Code, rec.Body.String())
+	}
+	if len(rec.Result().Cookies()) != 0 {
+		t.Fatalf("foreign-origin login set cookies: %+v", rec.Result().Cookies())
+	}
+}
+
+func TestLoginAllowsSameOrigin(t *testing.T) {
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	loginAndReturnCookies(t, mux, "login-same-origin@example.com")
+
+	body := fmt.Sprintf(`{"email":"login-same-origin@example.com","password":%q}`, testPassword)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(body))
+	req.Header.Set("Origin", "http://example.com")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d want 200 body=%q", rec.Code, rec.Body.String())
+	}
+	if len(rec.Result().Cookies()) == 0 {
+		t.Fatal("same-origin login did not set a session cookie")
 	}
 }
 

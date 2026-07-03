@@ -38,7 +38,7 @@ flowchart TD
     SP{"Save as…"}
     DL["📚 Decks list<br/>+ known-words panel"]
     DD["Deck detail<br/>+ comprehension projection"]
-    REV["🎯 Review session<br/>FSRS · Again/Hard/Good/Easy"]
+    REV["🎯 Review session<br/>Alpha scheduler · Again/Hard/Good/Easy"]
     REVALL["Review all due<br/>cross-deck"]
 
     D --> P
@@ -377,10 +377,10 @@ calling out for the consumer alpha:
 1. The deck filter at the top should be **"All decks · FI"** /
    **"All decks · ET"** by default for users with multi-language decks,
    not "All decks" mixed — switching language mid-stream is jarring.
-2. The four FSRS buttons stay (`Again / Hard / Good / Easy`), but the
-   alpha hand-rolled scheduler in `internal/store/db.go` should be
-   replaced with `go-fsrs` per
-   [`TODO.md`](../TODO.md) before this surface goes public.
+2. The four rating buttons stay (`Again / Hard / Good / Easy`). For public
+   alpha, they are backed by the documented fixed-step scheduler in
+   `internal/store/db.go`; migration to `go-fsrs` remains a post-launch
+   scheduler upgrade tracked in [`TODO.md`](../TODO.md).
 3. Every card surface gets the **inline correction affordance** (see
    §10 below) — corrections shouldn't require leaving the review flow.
 
@@ -595,7 +595,7 @@ yet in the codebase:
 - Cold-start "top 1000" CTA (gated on the research project).
 - Sentence translation (LLM-backed).
 - Comprehension prediction in deck detail (already in `TODO.md`).
-- FSRS migration (already in `TODO.md`).
+- FSRS migration after public alpha (already in `TODO.md`).
 
 Items in the dictation that **already exist** and just need the user
 to find them:
