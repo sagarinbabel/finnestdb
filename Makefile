@@ -146,7 +146,7 @@ import-dict-et-ekilex:
 		-source-url "https://ekilex.ee" \
 		-source-license "CC BY 4.0" \
 		-source-attribution "Eesti Keele Instituut; EKI sõnastiku- ja terminibaasisüsteem Ekilex; Sõnaveeb" \
-		-changes-note "Normalized to FinEstDB lemma/form/POS schema; monolingual definitions and translations flattened into gloss text" \
+		-changes-note "Normalized to FinnEst lemma/form/POS schema; monolingual definitions and translations flattened into gloss text" \
 		-ekilex-limit $(EKILEX_LIMIT) \
 		-ekilex-timeout $(EKILEX_TIMEOUT) \
 		-ekilex-retries $(EKILEX_RETRIES) \

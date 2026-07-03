@@ -107,7 +107,7 @@ test('about page explains the product', async ({ page }) => {
   await page.goto('/#/about');
 
   await expect(page.locator('#about-page')).toHaveClass(/active/);
-  await expect(page.locator('.about-hero h1')).toContainText('How FinEstDB works');
+  await expect(page.locator('.about-hero h1')).toContainText('How FinnEst works');
   await expect(page.locator('.about-steps')).toContainText('Paste a text');
   await expect(page.locator('.about-steps')).toContainText('Parse the words');
 });

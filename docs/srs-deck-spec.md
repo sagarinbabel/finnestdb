@@ -1,20 +1,72 @@
 # SRS and Deck System Draft
 
-_Current as of 2026-04-29 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
+_Current as of 2026-07-03 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
-> **Launch note (2026-06-20):** The current public-alpha runtime intentionally
-> ships a fixed-step scheduler in `internal/store/db.go`
-> (`nextAlphaStepScheduleForRating`), not FSRS. Treat the FSRS sections below as
-> the post-launch target design until `go-fsrs` is integrated and migrated.
+> **Note (2026-07-03):** Public alpha should ship real FSRS scheduling, but in a
+> narrow runtime-only scope: default parameters, current Again/Hard/Good/Easy UI,
+> feature flag, conservative migration/fallback, and regression tests. Treat
+> parameter optimization, `fsrs-rs`, rescheduling tools, simulation dashboards,
+> mature-card analytics, and broad review UX redesign as later work.
+>
+> Alpha card identity is also settled: migrate review cards to
+> surface-form-in-context cards before attaching real FSRS memory.
+>
+> This supersedes the launch note of 2026-06-20, which planned to ship the
+> fixed-step scheduler (`internal/store/db.go::nextAlphaStepScheduleForRating`)
+> through public alpha and treat FSRS as post-launch. The step scheduler is
+> still what runs today; the 2026-07-03 product-readiness grill (Decision 23)
+> moved narrow FSRS into the public-alpha launch bar.
 
 ## Recommendation
 
-Target FSRS for scheduling after the public alpha.
+Ship narrow FSRS scheduling for the public alpha, after the surface-card
+identity migration (Decision 23).
 
-For launch, the app uses a deterministic alpha step scheduler with the same
-Again / Hard / Good / Easy rating surface. When the scheduler is upgraded, use
-the FSRS algorithm at the product level, prefer the official Go implementation
-for the app runtime, and keep `fsrs-rs` as the future optimization path.
+Today the app still runs the deterministic alpha step scheduler
+(`nextAlphaStepScheduleForRating`) with the same Again / Hard / Good / Easy
+rating surface. For the alpha migration, use the FSRS algorithm at the product
+level, prefer the official Go implementation for the app runtime, and keep
+`fsrs-rs` as the future optimization path.
+
+## Alpha FSRS Scope
+
+After the surface-card identity migration, the alpha scheduler migration should
+replace the hand-rolled step scheduler with real FSRS without turning "FSRS" into
+a broad review-system rewrite.
+
+Ship for alpha:
+
+- Go runtime scheduling with default FSRS parameters.
+- Current four-button rating UI: Again, Hard, Good, Easy.
+- `next_due`, `last_answer_at`, and `introduced_at` preserved for queueing and
+  reporting.
+- Versioned FSRS state in `card_state` (explicit columns or `fsrs_json`).
+- Feature flag with fallback to the current step scheduler until cutover.
+- Conservative migration for existing rows: `NULL` state becomes a new FSRS
+  card; legacy `Step`/`Streak` JSON is converted from the best available
+  `last_answer_at` / `next_due` evidence without pretending precision.
+- Tests for deterministic scheduling, due queue order, daily new-card limits,
+  API rating behavior, and legacy migration.
+
+Defer until after alpha:
+
+- Personal FSRS parameter optimization.
+- `fsrs-rs` in the production request path.
+- Rescheduling tools and simulation dashboards.
+- Derived retained/learning coverage views based on FSRS memory state.
+- Full review UX redesign.
+
+Why narrow scope:
+
+- The current Review product already exists and should not keep a misleading
+  step scheduler into public alpha.
+- Default-parameter FSRS improves scheduling quality without blocking launch on
+  optimization research.
+- The known-vocabulary/card identity model is moving surface-first. FSRS memory
+  should attach to those stable surface-form card IDs, not to temporary
+  lemma/POS review identity.
+- Existing alpha users can be migrated conservatively; there is no need to
+  derive perfect FSRS memory from old hardcoded intervals.
 
 Why:
 
@@ -41,10 +93,14 @@ Practical decision:
   - Can be either a shared catalog deck or a private user-owned study deck.
 
 - `card`
-  - A user-level learning item keyed by `(user_id, lang, lemma, pos)`.
-  - Global across all decks in the same language.
-  - A lemma should not create duplicate cards just because it appears in multiple decks.
-  - Carries a definition for study and an example sentence when available.
+  - A user-level learning item. Public alpha target: keyed to the learner-visible
+    surface-form-in-context unit, with resolved sense and lemma/POS/dictionary
+    entries linked as derived support.
+  - Current implementation detail: keyed by `(user_id, lang, lemma, pos)`.
+  - Global across all decks in the same language when the same surface-card
+    identity appears again.
+  - Carries a definition, supporting dictionary evidence, and an example
+    sentence when available.
 
 - `new-card source`
   - The active source for new-card introduction.
@@ -93,7 +149,14 @@ Keep `content selection` separate from `card identity`.
 
 ## Proposed schema direction
 
-The current schema already has good primitives for deck-backed parsed content, cards, card state, and known lemmas. The main missing pieces are deck hierarchy support, aggregated lemma frequency tables, and richer card content fields.
+The current schema already has good primitives for deck-backed parsed content,
+cards, card state, and lemma-backed known state. As of the 2026-07-03 product
+readiness pass, the product direction for known vocabulary is **surface-first**:
+store the exact forms a learner says they know, then resolve lemma/POS as
+derived evidence for coverage, filtering, and cards. The main missing pieces are
+deck hierarchy support, aggregated frequency tables, richer card content fields,
+surface-form card identity, and a known-word model that preserves submitted
+surface forms.
 
 ### Keep
 
@@ -102,7 +165,8 @@ The current schema already has good primitives for deck-backed parsed content, c
 - `occurrence`
 - `cards`
 - `card_state`
-- `user_known_lemmas`
+- `user_known_lemmas` as the current implementation-backed table during the
+  transition
 - `user_ignored_lemmas`
 
 ### Extend
@@ -118,8 +182,17 @@ The current schema already has good primitives for deck-backed parsed content, c
   - add `source_deck_id` nullable
     - points back to the shared catalog deck a private study deck was created from
 
+- known-word state
+  - add a surface-first known-vocabulary table, for example
+    `user_known_forms(user_id, lang, form, source, confidence, created_at)`
+  - store resolved `(lemma, pos)` links as derived rows or cache columns, not as
+    the only source of truth
+  - keep `user_known_lemmas` until deck filtering and coverage have migrated
+
 - `cards`
   - add `lang`
+  - migrate primary review identity from lemma/POS to a stable
+    surface-form-in-context card identity before FSRS cutover
   - add `definition_text`
   - add `definition_source`
   - add `shared_example_sentence_id`
@@ -268,21 +341,33 @@ If this becomes too slow later, add a materialized `deck_aggregate_lemma_stats` 
 
 ## Learning state model
 
-We need three different states, not one:
+We need four different states, not one:
 
 - `known`
-  - The user already knows the lemma.
-  - Comes from manual marking, import, or a mature-card rule.
+  - The user already knows the relevant vocabulary unit. Product direction is
+    surface-first; current implementation may still derive this from
+    lemma-backed state.
+  - Comes from explicit learner evidence: manual marking, import, test-out, or
+    marking a review card known. FSRS maturity must not silently write known
+    state.
+  - For ambiguous context-free imports, the surface can be known while the
+    specific surface+sense remains unconfirmed until a contextual meaning check.
 
 - `studying`
-  - The lemma has a card and is in FSRS, but is not yet considered known.
+  - The vocabulary unit has a card and is in FSRS, but is not yet considered
+    known.
+
+- `review_maturity`
+  - A derived scheduler state from review history, such as learning, retained,
+    or mature. This may inform due dates and optional comprehension estimates,
+    but it is not the same as explicit known vocabulary.
 
 - `ignored`
-  - The user does not want this lemma in study.
+  - The user does not want this vocabulary unit in study.
 
 ### Recommendation
 
-Do not treat "has a card" as "knows the word."
+Do not treat "has a card" or "has a mature FSRS state" as "knows the word."
 
 That would overstate comprehension badly, especially for high-frequency words introduced recently.
 
@@ -291,7 +376,7 @@ That would overstate comprehension badly, especially for high-frequency words in
 When the user studies a selected deck, new cards should come from:
 
 `eligible lemmas in source`
-minus `known lemmas`
+minus `known vocabulary coverage`
 minus `ignored lemmas`
 minus `existing cards`
 
@@ -321,13 +406,19 @@ That is more precise because the selected deck only scopes which new cards can b
 
 There should be two primary coverage numbers for each deck.
 
-### 1. Lemma coverage
+### 1. Unique vocabulary coverage
 
-How many unique lemmas in the source the user knows.
+How many unique vocabulary units in the source the user knows.
 
 Formula:
 
+Current implementation:
+
 `known_unique_lemmas / total_unique_lemmas`
+
+Target surface-first model:
+
+`known_unique_surface_occurrences / total_unique_surface_occurrences`
 
 ### 2. Token-weighted coverage
 
@@ -335,9 +426,22 @@ How much of the source the user knows when repeated words count more.
 
 Formula:
 
+Current implementation:
+
 `sum(token_count for known lemmas) / sum(token_count for all lemmas)`
 
+Target surface-first model:
+
+`sum(token_count for known surface forms) / sum(token_count for all surface forms)`
+
 This is the better proxy for "how much of this content can I understand?"
+
+Current learner-facing coverage and count denominators exclude quarantined
+content. If an admin globally quarantines a faulty occurrence/card/sense, deck
+word counts, due counts, new-card counts, token-weighted coverage, unique
+coverage, and next-unlock projections should act as if that content is not
+currently studyable. Historical/admin audit views may still include the
+quarantined rows with their correction issue metadata.
 
 > **Implementation notes (2026-07-02, shipped as `GET /api/decks/{id}/comprehension`
 > and `comprehension_pct` on the deck list):**
@@ -386,17 +490,23 @@ text across everything I'm studying?"
 
 This needs a rule. Recommended MVP rule:
 
-- `known` if the lemma is in `user_known_lemmas`
-- or the card has graduated beyond a maturity threshold
+- current implementation: `known` if the lemma is in `user_known_lemmas`
+- target model: `known` if the learner has explicitly known surface-form
+  evidence for this occurrence, or if derived lemma coverage is intentionally
+  accepted for the language/feature class
+- FSRS maturity is a separate derived state. It can support additional
+  `retained coverage` or `learning coverage` views, but it must not silently
+  convert into known-word evidence.
 
-Recommended maturity threshold for MVP:
+Recommended retained-coverage threshold for MVP:
 
 - interval at least 21 days
 
 Alternative later:
 
-- use FSRS memory state directly, such as a minimum stability threshold
-- or expose multiple views: `learning coverage` vs `known coverage`
+- use FSRS memory state directly, such as a minimum stability threshold, for a
+  derived retained-coverage view
+- expose multiple views: `explicit known coverage` vs `retained coverage`
 
 ## Review session structure
 
@@ -438,10 +548,26 @@ Use the standard four-button FSRS scale:
 
 ## Card content
 
-A lemma card should be global, but it should still carry study content on the card itself and show deck-specific context when available.
+A surface-form card should be global for the learner when the same review unit
+appears across decks, but it should still carry study content on the card itself
+and show deck-specific context when available. Lemma/POS/dictionary entry data is
+supporting metadata, not the alpha card's primary identity. For homographs and
+multi-lemma surfaces, use a separate sense-aware surface card when
+parser/dictionary evidence supports distinct meanings.
+
+When a quarantined card/content issue is fixed, restore the existing review item
+by default and render the corrected content from then on. Create a new card only
+when the learning target identity changes: wrong lemma/POS, wrong sense,
+homograph split, phrase/MWE replacement, or invalid target retirement. Do not
+rewrite past review history to pretend the learner saw the fixed content earlier.
+If the same item is restored, preserve its existing review/FSRS scheduler state
+and due history. Reset/reintroduce scheduling only for a new learning target
+identity.
 
 Minimum card payload:
 
+- surface form
+- resolved sense key when needed for homographs
 - lemma
 - part of speech
 - definition text
@@ -456,17 +582,24 @@ Definition and example behavior:
   - if `custom_example_text` exists, show the custom example and its custom translation if present
   - otherwise load `shared_example_sentence_id`
   - otherwise show no saved example
-- If the active new-card source contains a better example for the same lemma, the session payload can override the saved example for display without changing the card's saved default state.
+- If the active new-card source contains a better example for the same
+  surface-card identity, the session payload can override the saved example for
+  display without changing the card's saved default state.
+- If the same-looking surface has another supported meaning, the card should say
+  so directly and point to the distinction, such as noun versus verb form.
 - Parsed deck sentences should not automatically become part of a shared example corpus.
 
 Recommended review payload:
 
+- surface form
+- resolved sense or disambiguation label when needed
 - lemma
 - part of speech
 - definition text
 - one example sentence from the active new-card source if available, otherwise the card's saved example
+- homograph note when another supported card has the same surface
 - source label (`Book 1`, `Episode 3`, etc.)
-- optional alternate example from another deck where the lemma appears
+- optional alternate example from another deck where the surface-card appears
 
 ## Example sentence policy
 
@@ -492,16 +625,74 @@ words will see 0% comprehension until those words are marked known.
 
 ### Recommended import sources
 
-- **Anki export**: extract front-field text from an exported deck, run each
-  entry through `BatchLookupForms` to resolve to (lemma, pos), insert matches
-  into `user_known_lemmas`
-- **CSV/TSV**: accept a simple `lemma,pos,lang` format for users with custom
-  word lists
+- **AnkiConnect**: already implemented in the web app. Pull selected decks from
+  a local running Anki desktop collection, extract chosen fields, clean common
+  textbook notation, and submit surface strings through `/api/known-words`.
+- **Anki `.apkg` upload**: future offline path. Extract front-field text and
+  send it through the same known-word import pipeline.
+- **CSV/TSV/text file**: already implemented as one word per line or first-column
+  import for `.txt`, `.csv`, `.tsv`, and `.md`. Add clearer learner guidance;
+  decide separately whether first-column parsing is enough or whether quoted CSV
+  needs a real parser.
 - **Bulk mark from parse results**: let the user select words from a parse
   result and mark them as known in bulk (this is already somewhat possible
   via the UI but should be a first-class flow)
 
+### Ambiguous imported known words
+
+Do not ask learners to resolve every ambiguous imported surface during import.
+That would turn onboarding into a disambiguation task.
+
+Import behavior:
+
+- Store the submitted surface as known evidence.
+- If the surface has one supported sense, it can resolve directly to that
+  surface+sense for filtering and comprehension.
+- If the surface has multiple supported senses, mark the sense as needing lazy
+  confirmation.
+
+Meaning-check behavior:
+
+- Trigger only when the ambiguous surface appears in a useful sentence context,
+  such as parse results, deck creation, review, or test-out.
+- Parse results should carry enough ambiguity metadata for this flow:
+  candidate meanings, selected candidate when available, and parser confidence.
+  Parser confidence means measured contextual sense-selection confidence, not
+  learner knowledge.
+- Confidence thresholds must be calibrated against eval slices before they
+  simplify the learner UI. Start Finnish-first with contextual homographs such
+  as `kuusi` (six/spruce), `tuli` (came/fire), and `voi` (can/butter), then add
+  Estonian parity cases.
+- High-confidence branch:
+  - Show the sentence, the intended meaning, and the same-looking alternative
+    meaning.
+  - Primary action: `I know this meaning` records the surface+sense as known and
+    skips the review card for that sense.
+  - Secondary action: `Study this meaning` must include helper copy that matches
+    the current context.
+    - In parse results before a deck exists: `Creates a review card when you save`.
+      It marks this surface+sense for study in the pending save/add-to-deck
+      payload; no card exists if the learner never saves the parse.
+    - In a saved deck, test-out, or review: `Creates/keeps a review card`. It
+      creates or keeps the review card for that surface+sense.
+- Low-confidence branch:
+  - Do not ask `Do you know this meaning?` as if the parser knows the intended
+    sense.
+  - Show `Multiple possible meanings` with the candidate meanings.
+  - Each candidate has `I know this meaning` and `Study this meaning` actions
+    with the same context-aware helper text as above.
+  - Add `None of these looks right` as parser feedback. This is not a study
+    choice; it reports that the app's analysis/candidate list is wrong.
+- `Not sure` should behave conservatively like study: keep/create the review
+  card.
+
 ### Import endpoint
+
+Current endpoint:
+
+`POST /api/known-words`
+
+Earlier draft endpoint:
 
 `POST /api/import/known-words`
 
@@ -511,9 +702,18 @@ a JSON array of `{form}` entries.
 Behavior:
 
 - Resolve each form against the dictionary using the existing fallback chain
-- Insert resolved (lemma, pos) pairs into `user_known_lemmas`
-- Return a summary: `{imported, skipped_unknown, skipped_duplicate}`
-- Do not create cards for imported known words (they are already known)
+- Current code inserts resolved `(lemma, pos)` pairs into `user_known_lemmas`.
+- Target behavior should persist the submitted surface forms first, then store
+  resolved `(lemma, pos)` evidence as derived/cached data.
+- Return a summary such as
+  `{imported_surfaces, confirmed_single_sense, needs_sense_confirmation, skipped_unknown, skipped_duplicate}`.
+- Do not create cards during import for ambiguous known surfaces. In parse
+  results, `Study this meaning` only marks the pending deck-save payload. Create
+  or keep a card when the learner saves/adds the deck, or immediately in an
+  already-saved deck/review/test-out context.
+- `None of these looks right` should use parser feedback. Current code requires
+  proposed lemma/POS; the alpha target needs the planned flag-only feedback
+  shape with nullable proposed fields and `flag_only=true`.
 
 ## Suggested API shape
 
@@ -523,6 +723,7 @@ Behavior:
   - top-level search and filter endpoint
 - `GET /api/decks/:id/stats`
   - must enforce private-deck ownership before returning data
+  - learner-facing stats exclude globally quarantined content
 - `GET /api/decks/:id/children`
   - must enforce private-deck ownership before returning data
 
@@ -585,20 +786,28 @@ Behavior:
 
 ### Phase 2
 
-- Integrate runtime FSRS scheduling
-- Create global cards by lemma
+- Migrate review card identity to stable surface-form cards
+- Integrate narrow runtime FSRS scheduling for alpha
+- Attach scheduler state to those stable surface-card IDs
 - Support due reviews plus source-scoped new cards
 
 ### Phase 3
 
-- Add mature-card coverage rules
+- Add derived retained/learning coverage views from FSRS maturity
+- Keep retained/learning coverage as derived views, not writeback into
+  known-word state
 - Add richer progress dashboards
 - Evaluate whether offline FSRS parameter optimization is worth the added complexity
 
 ## Open decisions
 
-- Whether cards should be keyed by `(lemma, pos)` or just `lemma`
-  - Recommendation: keep `(lemma, pos)` to avoid noun/verb collisions.
+- Exact schema shape for sense-aware surface-card keys
+  - Resolved direction: alpha review cards are surface-form-in-context cards
+    keyed by normalized surface plus resolved sense when parser/dictionary
+    evidence supports distinct meanings. Do not collapse clear homographs into a
+    pure surface key, and do not create one permanent card per occurrence.
+    Remaining implementation detail: whether the DB stores the sense key as
+    `(lemma, pos)`, a parser candidate ID, or a future explicit sense table.
 
 - Whether to support arbitrary user-made bundles later
   - Recommendation: not in MVP; start with canonical parent/child deck hierarchy only.
@@ -611,4 +820,8 @@ Behavior:
 
 ## Current recommendation in one sentence
 
-Use FSRS, but do not wire `fsrs-rs` directly into the production request path yet; keep scheduling in Go, make cards global per lemma, use a recursive deck hierarchy as the source of new-card selection, store a definition and example sentence on cards when available, and compute comprehension with both unique-lemma and token-weighted coverage.
+Use FSRS for alpha, but narrowly: keep scheduling in Go with default parameters
+and a migration/fallback path, do not wire `fsrs-rs` directly into production,
+and do not bundle scheduler migration with parameter optimization or a broad
+review redesign. Migrate review card identity to stable surface-form cards first,
+then attach FSRS state to those stable card IDs.

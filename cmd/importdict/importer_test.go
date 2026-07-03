@@ -215,7 +215,7 @@ func TestRecordImportMetadataPreservesAttributionFields(t *testing.T) {
 		SourceVersion: "2026-05-05-export",
 		License:       "CC BY 4.0",
 		Attribution:   "Eesti Keele Instituut / EKI",
-		ChangesNote:   "Normalized to FinEstDB lemma/form/POS schema",
+		ChangesNote:   "Normalized to FinnEst lemma/form/POS schema",
 	}, 42)
 	if err != nil {
 		t.Fatalf("recordImportMetadata: %v", err)

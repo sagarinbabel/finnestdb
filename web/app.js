@@ -1,5 +1,5 @@
 "use strict";
-// FinEstDB — frontend with three role-aware surfaces:
+// FinnEst — frontend with three role-aware surfaces:
 //   anonymous landing/about/signin, authenticated user product, admin workbench.
 const MAX_CHARS = 1500000;
 const POS_LABELS = {

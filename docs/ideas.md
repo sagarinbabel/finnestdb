@@ -1,4 +1,4 @@
-# FinEstDB Development Ideas & Decisions
+# FinnEst Development Ideas & Decisions
 
 ## Parser Strategy
 
@@ -80,17 +80,19 @@ it explicit:
 
 ### EPUB and file upload
 
-Surasura extracts text from EPUBs and Anki decks. Currently FinEstDB only
-accepts pasted text, which creates friction for book learners.
+Surasura extracts text from EPUBs and Anki decks. FinnEst now accepts pasted
+text plus `.txt`, `.md`, and `.epub` uploads for Inspect/workbench, and supports
+known-word import through paste, simple files, and AnkiConnect. Offline Anki
+`.apkg` extraction is still missing.
 
-Adding EPUB support is straightforward:
+EPUB support has shipped. The implementation follows the same shape:
 
 - EPUBs are zip files containing XHTML content documents
 - Extract chapter text, strip HTML, concatenate in spine order
 - Feed into the existing parse pipeline
 
-This should come after the import deck endpoint is working but before the
-learning features are complete.
+The remaining Anki-file equivalent is `.apkg` extraction for known-word import,
+not parse upload.
 
 ### Known-word import from external tools
 
@@ -101,13 +103,19 @@ Without a bootstrap mechanism, a returning learner's comprehension shows as
 0% until they manually mark hundreds of known words. That defeats the purpose
 of the coverage metric.
 
-Recommended import sources for FinEstDB:
+Recommended import sources for FinnEst:
 
-- **Anki export** (.apkg or tab-delimited .txt): extract front fields, run
-  through our dictionary lookup + fallback chain to resolve lemma+POS, and
-  insert into `user_known_lemmas`
-- **CSV/TSV**: simple format for users with custom word lists
+- **AnkiConnect**: already implemented for local running Anki desktop decks.
+- **Anki export** (`.apkg`): future offline path; extract front fields and feed
+  the same known-word pipeline.
+- **CSV/TSV/text files**: already implemented as one word per line or
+  first-column import; add clearer export guidance.
 - **Future**: other SRS tools popular in the Finnish/Estonian learning community
+
+Data-model note: current imports submit surface strings but store resolved
+lemma/POS rows in `user_known_lemmas`. The product target should preserve the
+submitted surface forms as first-class known-word evidence and treat lemma/POS
+as derived data.
 
 ### Progress dashboard
 
@@ -116,14 +124,15 @@ Our frontend already has a dashboard tab placeholder.
 
 Dashboard should show:
 
-- Total known lemmas over time (cumulative chart)
+- Total known vocabulary over time (cumulative chart). Current implementation is
+  lemma-backed; the target model is surface-first.
 - Cards in review vs mature vs new
 - Comprehension trend per deck ("you went from 60% to 78% on this book")
 - Daily review count and streak
 
 ## Making it AI native
 
-Today FinEstDB is not AI-native: parsing is rule-based (`parser/src/lib.rs`,
+Today FinnEst is not AI-native: parsing is rule-based (`parser/src/lib.rs`,
 `internal/parsecore/`), the dictionary is a static kaikki.org import, review
 scheduling is FSRS, and the API is plain CRUD with no generative endpoints,
 streaming, or tool-calling. "AI-native" here means making an LLM a

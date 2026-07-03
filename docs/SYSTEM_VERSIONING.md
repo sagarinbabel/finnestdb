@@ -2,7 +2,7 @@
 
 _Current as of 2026-05-15 - see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
-FinEstDB should version the behavior of major subsystems separately. The parser,
+FinnEst should version the behavior of major subsystems separately. The parser,
 deck review loop, and evaluation baselines change for different reasons and
 should not be forced into one product-wide version number.
 

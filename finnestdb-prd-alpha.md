@@ -1,4 +1,4 @@
-# FinEstDB Product Notes and Roadmap
+# FinnEst Product Notes and Roadmap
 
 ## Purpose of This Document
 
@@ -70,9 +70,11 @@ Browser parser modes remain:
     tables exist
   - enrichment rules for possessives, compounds, and case suffixes
 
-Current text limit:
+Current implementation text limit:
 
-- **300,000 Unicode characters**
+- **1,500,000 Unicode characters**
+
+The older 300,000-character cap is historical.
 
 The product is now a language-learning app with a parser workbench inside it,
 not only a workbench. Parser quality, dictionary-entry attachment, and corpus

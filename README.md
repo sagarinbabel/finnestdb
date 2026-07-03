@@ -1,4 +1,4 @@
-# FinEstDB
+# FinnEst
 
 A role-aware Finnish and Estonian reading app backed by dictionary-based
 lemmatization, parser evaluation, spaced repetition, and an admin-only parser
@@ -240,7 +240,7 @@ The test boots the Go server on `:8081` via [`web/playwright.config.ts`](web/pla
 - deck creation and review flow
 - parser-feedback (correction) submission
 - POS filter behavior
-- hybrid language detection (auto-switch on high-confidence paste, blocking mismatch warning)
+- hybrid language detection (warning/blocking behavior without changing the active language automatically)
 - file upload flow
 - mobile nav behavior at 375 px
 
@@ -519,8 +519,9 @@ The app checks whether pasted or file-loaded text matches the selected language:
 
 - **Estonian detection:** the character `õ` is unique to Estonian — its presence is a strong signal
 - **Finnish detection:** `ä` and `ö` appear in >1.5% of letters in typical Finnish text
-- **Fast path:** high-confidence pasted or file-loaded text auto-switches the selected language
-- **Guardrail:** if the selected language still conflicts with detected Finnish or Estonian, parse is blocked until you switch languages
+- **Detected FI/ET mismatch:** high-confidence pasted or file-loaded text warns
+  and blocks parsing until you switch languages
+- **Guardrail:** the active language does not silently change before parsing
 - If neither signal is found, you'll see an advisory warning (English text, for example, will trigger this)
 
 Unknown-language warnings are advisory only, so you can still parse. Detected Finnish/Estonian mismatch warnings are blocking because parsing under the wrong language produces lower-quality results.
@@ -546,11 +547,11 @@ What still does **not** exist yet in the browser-facing parser flow:
   [`docs/ML_IDEAS.md` §1a](docs/ML_IDEAS.md))
 - MWE detection (schema not yet defined; see [`TODO.md`](TODO.md)
   "Sentence-level features")
-- production FI/ET lemmatizer tables (current `pkg/lemmatizer-fi-et/`
-  ships smoke fixtures only — production tables are generated locally with
-  `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst` and
-  `make gen-lemmatizer-tables-et HFSTOL_PATH=/path/to/analyser-gt-desc.hfstol`;
-  see [`docs/ARTIFACT_POLICY.md`](docs/ARTIFACT_POLICY.md))
+- bundled production FI/ET lemmatizer tables. Full tables are generated local
+  artifacts under `localdata/lemmatizer-fi-et/tables/`; run `make doctor` to
+  confirm what a checkout or deployment can use. The committed
+  `pkg/lemmatizer-fi-et/` fixtures are smoke fixtures only; see
+  [`docs/ARTIFACT_POLICY.md`](docs/ARTIFACT_POLICY.md).
 
 What **does** exist now for parser research:
 - FST candidate scoring in parallel with dict step 1 (post-PR #127)
@@ -571,8 +572,9 @@ Product-surface limitations (alpha):
   hardening pass tracked in
   [`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md). Don't expose
   the alpha to the public internet without it.
-- no signed-in parse-history / delete-my-parse-history UI yet
-- known-word import / manage UI is still maturing
+- known-word import / manage UI is still maturing. Current support includes
+  paste, first-column `.txt` / `.csv` / `.tsv` / `.md` import, and
+  AnkiConnect local-deck import/sync; Anki `.apkg` upload is not implemented.
 - admin parse-feedback triage UI is functional but minimal
 - review scheduling is a hand-rolled step scheduler, **not FSRS** —
   see [`docs/srs-deck-spec.md`](docs/srs-deck-spec.md) and
@@ -645,6 +647,10 @@ finnestdb-prd-alpha.md    Full product requirements document (historical)
 
 ## Documentation
 
+**Current alpha handoff:** start with [`TODO.md` "LLM handoff read
+order"](TODO.md#llm-handoff-read-order). It points to the public-alpha gates,
+launch issue ledger, go/no-go rubric, decisions, and implementation specs.
+
 **Doc index:** [`docs/INDEX.md`](docs/INDEX.md) — single map of every doc
 in this repo, organized by purpose. Read this first if you're not sure
 where to look.
@@ -660,8 +666,10 @@ Architecture and ops:
 - [Implementation Analysis](IMPLEMENTATION_ANALYSIS.md) — historical pre-implementation notes (banner)
 
 Product and strategy:
-- [PRD (Alpha)](finnestdb-prd-alpha.md) · [docs/FEATURES.md](docs/FEATURES.md)
-- [TODO / Findings](TODO.md)
+- [docs/FEATURES.md](docs/FEATURES.md) — current learner-facing product vision/framing
+- [docs/USER_FLOWS.md](docs/USER_FLOWS.md) — screen-level consumer alpha journeys
+- [TODO / Findings](TODO.md) — active execution roadmap/backlog
+- [PRD (Alpha)](finnestdb-prd-alpha.md) — historical planning context
 - [docs/CROSS_LANGUAGE_STRATEGY.md](docs/CROSS_LANGUAGE_STRATEGY.md) — what is shared vs. language-specific
 - [docs/ideas.md](docs/ideas.md) — exploratory roadmap, includes AI-native phasing
 

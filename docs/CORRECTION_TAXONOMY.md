@@ -2,7 +2,7 @@
 
 _Created 2026-05-15._
 
-FinEstDB corrections must work for any source a learner brings into the
+FinnEst corrections must work for any source a learner brings into the
 product: pasted text, EPUBs, articles, subtitle exports, Anki imports, and
 future catalog decks. YLE-derived Anki fixes are useful because they are rich
 examples, but the product model must not encode YLE or Anki as special cases.
@@ -186,11 +186,22 @@ should move toward this occurrence-aware payload.
 ## Promotion Path
 
 1. Learner submits feedback from Inspect, deck detail, or review.
-2. Admin classifies it into exactly one primary correction type.
-3. Acceptance writes the smallest durable overlay row.
-4. Parser identity fixes add FI or ET eval cases when safe.
-5. Meaning/card fixes add render tests so front and back remain consistent.
-6. Weekly Track B reports group accepted corrections by language, source type,
+2. The report creates or attaches to a global correction issue, preserving
+   reporter, timestamp, source context, and duplicate-report history.
+3. Alpha admin triage requires one simple class: `parser issue`,
+   `bad card content`, `source/extraction issue`, or `not sure`, plus explicit
+   scope when quarantine/fix is applied. The detailed taxonomy below can be
+   attached as optional detail.
+4. Acceptance writes the smallest durable overlay row.
+5. If existing learner-facing content is known faulty, quarantine it or render
+   the accepted overlay from now on; do not rewrite past review history.
+6. Fix restores the existing study item by default. Create a new item only when
+   the learning target identity changes.
+7. Fix records include fix version/admin and can be reopened if later feedback
+   shows a missed scope or regression.
+8. Parser identity fixes add FI or ET eval cases when safe.
+9. Meaning/card fixes add render tests so front and back remain consistent.
+10. Weekly Track B reports group accepted corrections by language, source type,
    correction type, and parser mode.
 
 ## Source Metadata

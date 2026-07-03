@@ -3758,7 +3758,7 @@ func (d *DB) ensureLangScopedCardsTable() error {
 		return err
 	}
 	// Preserve existing scheduling state while backfilling FI onto legacy
-	// pre-language cards. Finnestdb was Finnish-only before this migration.
+	// pre-language cards. The app was Finnish-only before this migration.
 	if _, err := tx.Exec(`
 		CREATE TABLE card_state_new (
 			card_id INTEGER PRIMARY KEY,

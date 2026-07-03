@@ -39,6 +39,26 @@ attachment more accurate too.
 The metric table below reflects this: lemma+POS attachment and grammar are
 both reported; "Full" stays as the all-correct ceiling.
 
+### Ambiguity and meaning-check calibration
+
+Product meaning checks need a narrower measurement than headline parser
+accuracy: can the parser choose the intended dictionary entry for an ambiguous
+surface in sentence context?
+
+For alpha, add focused ambiguity slices before using parser confidence to
+simplify the learner UI. Start Finnish-first, then add Estonian parity cases.
+Useful Finnish pairs include:
+
+- `kuusi`: `NUM` "six" vs `NOUN` "spruce"
+- `tuli`: `VERB` "came" vs `NOUN` "fire"
+- `voi`: `VERB` "can/may" vs `NOUN` "butter"
+
+For each case, measure candidate inclusion, selected lemma+POS, FEATS where
+applicable, and the external analyzer comparison (`omorfi` for FI,
+`estnltk` for ET). The UI should show a single **Meaning Check** only for
+ambiguity classes where this slice says the parser chooses the contextual sense
+reliably. Otherwise, show **Multiple possible meanings**.
+
 ## What we measure
 
 Per dataset, per parser, on **non-PUNCT tokens** that the gold answer marks for

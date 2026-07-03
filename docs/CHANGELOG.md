@@ -1,6 +1,6 @@
 # Documentation Changelog
 
-This file tracks notable changes to FinEstDB planning, architecture, and
+This file tracks notable changes to FinnEst planning, architecture, and
 product documentation. Code changes belong in git history, not here.
 
 Entries are reverse-chronological. Each entry links to the docs it
