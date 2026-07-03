@@ -209,25 +209,30 @@ type ParseSessionHistoryItem struct {
 }
 
 type ParseFeedback struct {
-	ID                   int64      `json:"id"`
-	ParseSessionID       int64      `json:"parse_session_id"`
-	UserID               int64      `json:"user_id"`
-	Lang                 string     `json:"lang"`
-	Parser               string     `json:"parser"`
-	Surface              string     `json:"surface"`
-	Occurrence           int        `json:"occurrence"`
-	OriginalLemma        string     `json:"original_lemma"`
-	OriginalPOS          string     `json:"original_pos"`
-	OriginalGrammarLabel string     `json:"original_grammar_label,omitempty"`
-	ProposedLemma        string     `json:"proposed_lemma"`
-	ProposedPOS          string     `json:"proposed_pos"`
-	ProposedGrammarLabel string     `json:"proposed_grammar_label,omitempty"`
-	Note                 string     `json:"note,omitempty"`
-	Status               string     `json:"status"`
-	ReviewNote           string     `json:"review_note,omitempty"`
-	ReviewedByUserID     *int64     `json:"reviewed_by_user_id,omitempty"`
-	ReviewedAt           *time.Time `json:"reviewed_at,omitempty"`
-	CreatedAt            time.Time  `json:"created_at"`
+	ID                   int64  `json:"id"`
+	ParseSessionID       int64  `json:"parse_session_id"`
+	UserID               int64  `json:"user_id"`
+	Lang                 string `json:"lang"`
+	Parser               string `json:"parser"`
+	Surface              string `json:"surface"`
+	Occurrence           int    `json:"occurrence"`
+	OriginalLemma        string `json:"original_lemma"`
+	OriginalPOS          string `json:"original_pos"`
+	OriginalGrammarLabel string `json:"original_grammar_label,omitempty"`
+	ProposedLemma        string `json:"proposed_lemma"`
+	ProposedPOS          string `json:"proposed_pos"`
+	ProposedGrammarLabel string `json:"proposed_grammar_label,omitempty"`
+	// FlagOnly marks "this analysis looks wrong, I don't know the fix"
+	// reports. Flag-only rows carry empty proposed lemma/POS and must not
+	// write a custom_overrides lexical row on acceptance until an admin
+	// supplies a concrete correction (see ReviewParseFeedback).
+	FlagOnly         bool       `json:"flag_only"`
+	Note             string     `json:"note,omitempty"`
+	Status           string     `json:"status"`
+	ReviewNote       string     `json:"review_note,omitempty"`
+	ReviewedByUserID *int64     `json:"reviewed_by_user_id,omitempty"`
+	ReviewedAt       *time.Time `json:"reviewed_at,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
 }
 
 func NewDB(dbPath string) (*DB, error) {
@@ -456,6 +461,7 @@ func (d *DB) initSchema() error {
 		proposed_lemma TEXT NOT NULL,
 		proposed_pos TEXT NOT NULL,
 		proposed_grammar_label TEXT,
+		flag_only INTEGER NOT NULL DEFAULT 0,
 		note TEXT,
 		status TEXT NOT NULL DEFAULT 'submitted',
 		review_note TEXT,
@@ -540,6 +546,9 @@ func (d *DB) initSchema() error {
 	if err := EnsureCorrectionBackpointerColumns(d.db); err != nil {
 		return err
 	}
+	if err := EnsureParseFeedbackFlagOnlyColumn(d.db); err != nil {
+		return err
+	}
 	if err := EnsureLexicalEnrichmentColumns(d.db); err != nil {
 		return err
 	}
@@ -572,6 +581,22 @@ func EnsureCorrectionBackpointerColumns(db *sql.DB) error {
 		"forms":  "parse_feedback_id INTEGER",
 	} {
 		if _, err := db.Exec(`ALTER TABLE ` + table + ` ADD COLUMN ` + column); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			return err
+		}
+	}
+	return nil
+}
+
+// EnsureParseFeedbackFlagOnlyColumn backfills the flag_only column used by
+// flag-only parser feedback ("this analysis looks wrong; I don't know the
+// fix"). Fresh DBs already include the column in CREATE TABLE; older DB files
+// need the idempotent ALTER. proposed_lemma/proposed_pos stay NOT NULL — a
+// SQLite table rebuild just to relax two constraints is disproportionate, so
+// flag-only rows store empty strings and non-emptiness is enforced in
+// validation only when flag_only = 0.
+func EnsureParseFeedbackFlagOnlyColumn(db *sql.DB) error {
+	if _, err := db.Exec(`ALTER TABLE parse_feedback ADD COLUMN flag_only INTEGER NOT NULL DEFAULT 0`); err != nil {
+		if !strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
 			return err
 		}
 	}
@@ -3050,8 +3075,8 @@ func (d *DB) CreateParseFeedback(feedback ParseFeedback) (int64, error) {
 		`INSERT INTO parse_feedback (
 			parse_session_id, user_id, lang, parser, surface, occurrence,
 			original_lemma, original_pos, original_grammar_label,
-			proposed_lemma, proposed_pos, proposed_grammar_label, note, status
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted')`,
+			proposed_lemma, proposed_pos, proposed_grammar_label, flag_only, note, status
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted')`,
 		feedback.ParseSessionID,
 		feedback.UserID,
 		feedback.Lang,
@@ -3064,6 +3089,7 @@ func (d *DB) CreateParseFeedback(feedback ParseFeedback) (int64, error) {
 		feedback.ProposedLemma,
 		feedback.ProposedPOS,
 		feedback.ProposedGrammarLabel,
+		boolToInt(feedback.FlagOnly),
 		feedback.Note,
 	)
 	if err != nil {
@@ -3072,16 +3098,34 @@ func (d *DB) CreateParseFeedback(feedback ParseFeedback) (int64, error) {
 	return result.LastInsertId()
 }
 
-func (d *DB) ListParseFeedback(status string) ([]ParseFeedback, error) {
+// ParseFeedbackFilter narrows the admin feedback list. Empty Status means
+// "any status". FlagOnly restricts to flag-only ("any"), only flag-only
+// ("true"), or only concrete-correction rows ("false").
+type ParseFeedbackFilter struct {
+	Status   string
+	FlagOnly string // "", "true", or "false"
+}
+
+func (d *DB) ListParseFeedback(filter ParseFeedbackFilter) ([]ParseFeedback, error) {
 	query := `SELECT id, parse_session_id, user_id, lang, parser, surface, occurrence,
 		COALESCE(original_lemma, ''), COALESCE(original_pos, ''), COALESCE(original_grammar_label, ''),
-		proposed_lemma, proposed_pos, COALESCE(proposed_grammar_label, ''), COALESCE(note, ''),
+		proposed_lemma, proposed_pos, COALESCE(proposed_grammar_label, ''), flag_only, COALESCE(note, ''),
 		status, COALESCE(review_note, ''), reviewed_by_user_id, reviewed_at, created_at
 		FROM parse_feedback`
+	conds := []string{}
 	args := []any{}
-	if status != "" {
-		query += ` WHERE status = ?`
-		args = append(args, status)
+	if filter.Status != "" {
+		conds = append(conds, `status = ?`)
+		args = append(args, filter.Status)
+	}
+	switch filter.FlagOnly {
+	case "true":
+		conds = append(conds, `flag_only = 1`)
+	case "false":
+		conds = append(conds, `flag_only = 0`)
+	}
+	if len(conds) > 0 {
+		query += ` WHERE ` + strings.Join(conds, ` AND `)
 	}
 	query += ` ORDER BY created_at DESC, id DESC`
 
@@ -3096,6 +3140,7 @@ func (d *DB) ListParseFeedback(status string) ([]ParseFeedback, error) {
 		var item ParseFeedback
 		var reviewedBy sql.NullInt64
 		var reviewedAt sql.NullTime
+		var flagOnly int
 		if err := rows.Scan(
 			&item.ID,
 			&item.ParseSessionID,
@@ -3110,6 +3155,7 @@ func (d *DB) ListParseFeedback(status string) ([]ParseFeedback, error) {
 			&item.ProposedLemma,
 			&item.ProposedPOS,
 			&item.ProposedGrammarLabel,
+			&flagOnly,
 			&item.Note,
 			&item.Status,
 			&item.ReviewNote,
@@ -3119,6 +3165,7 @@ func (d *DB) ListParseFeedback(status string) ([]ParseFeedback, error) {
 		); err != nil {
 			return nil, err
 		}
+		item.FlagOnly = flagOnly != 0
 		if reviewedBy.Valid {
 			item.ReviewedByUserID = &reviewedBy.Int64
 		}
@@ -3131,7 +3178,34 @@ func (d *DB) ListParseFeedback(status string) ([]ParseFeedback, error) {
 	return feedback, rows.Err()
 }
 
-func (d *DB) ReviewParseFeedback(feedbackID, reviewerUserID int64, status, reviewNote string) error {
+// ProposedCorrection is an admin-supplied concrete correction attached to a
+// flag-only feedback row at accept time. Supplying one converts the flag-only
+// report into a normal parser-identity correction that then flows through the
+// eval-gated custom_overrides writeback (USER_FLOWS §10 path b).
+type ProposedCorrection struct {
+	Lemma        string
+	POS          string
+	GrammarLabel string
+}
+
+// ErrCorrectionOnNonFlagOnly is returned when an admin supplies a concrete
+// correction while accepting a row that is already a concrete correction. Such
+// rows carry their own proposed lemma/POS; there is nothing to convert.
+var ErrCorrectionOnNonFlagOnly = errors.New("cannot attach a proposed correction to a non-flag-only feedback row")
+
+// ReviewParseFeedback sets the review status of a feedback row. When status is
+// "accepted":
+//   - a concrete-correction row writes a custom_overrides lexical row (the
+//     existing eval-gated path);
+//   - a flag-only row with no supplied correction records the decision but
+//     performs NO lexical writeback — flag-only reports never touch the
+//     lexicon, gold-candidate, or gold-guard paths on their own;
+//   - a flag-only row with a supplied correction is converted in place (its
+//     proposed fields are filled and flag_only cleared) and then flows through
+//     the same eval-gated writeback as a normal correction.
+//
+// correction may be nil. It is only valid for flag-only rows.
+func (d *DB) ReviewParseFeedback(feedbackID, reviewerUserID int64, status, reviewNote string, correction *ProposedCorrection) error {
 	tx, err := d.db.Begin()
 	if err != nil {
 		return err
@@ -3140,20 +3214,44 @@ func (d *DB) ReviewParseFeedback(feedbackID, reviewerUserID int64, status, revie
 
 	var feedback ParseFeedback
 	var proposedGrammarLabel sql.NullString
+	var flagOnly int
 	err = tx.QueryRow(
-		`SELECT id, lang, surface, proposed_lemma, proposed_pos, proposed_grammar_label
+		`SELECT id, lang, surface, proposed_lemma, proposed_pos, proposed_grammar_label, flag_only
 		 FROM parse_feedback
 		 WHERE id = ?`,
 		feedbackID,
-	).Scan(&feedback.ID, &feedback.Lang, &feedback.Surface, &feedback.ProposedLemma, &feedback.ProposedPOS, &proposedGrammarLabel)
-	if proposedGrammarLabel.Valid {
-		feedback.ProposedGrammarLabel = proposedGrammarLabel.String
-	}
+	).Scan(&feedback.ID, &feedback.Lang, &feedback.Surface, &feedback.ProposedLemma, &feedback.ProposedPOS, &proposedGrammarLabel, &flagOnly)
 	if err == sql.ErrNoRows {
 		return sql.ErrNoRows
 	}
 	if err != nil {
 		return err
+	}
+	if proposedGrammarLabel.Valid {
+		feedback.ProposedGrammarLabel = proposedGrammarLabel.String
+	}
+	feedback.FlagOnly = flagOnly != 0
+
+	// Path b: an admin supplies a concrete correction on a flag-only row.
+	// Persist the proposed fields and clear flag_only so the row converts into
+	// a normal parser-identity correction (and is counted by the Phase-3
+	// gold-candidate query, which matches proposed_lemma/proposed_pos).
+	if correction != nil {
+		if !feedback.FlagOnly {
+			return ErrCorrectionOnNonFlagOnly
+		}
+		feedback.ProposedLemma = strings.TrimSpace(correction.Lemma)
+		feedback.ProposedPOS = strings.TrimSpace(correction.POS)
+		feedback.ProposedGrammarLabel = strings.TrimSpace(correction.GrammarLabel)
+		feedback.FlagOnly = false
+		if _, err := tx.Exec(
+			`UPDATE parse_feedback
+			 SET proposed_lemma = ?, proposed_pos = ?, proposed_grammar_label = ?, flag_only = 0
+			 WHERE id = ?`,
+			feedback.ProposedLemma, feedback.ProposedPOS, feedback.ProposedGrammarLabel, feedbackID,
+		); err != nil {
+			return err
+		}
 	}
 
 	result, err := tx.Exec(
@@ -3172,7 +3270,11 @@ func (d *DB) ReviewParseFeedback(feedbackID, reviewerUserID int64, status, revie
 	if rowsAffected == 0 {
 		return sql.ErrNoRows
 	}
-	if status == "accepted" {
+	// A flag-only row that stays flag-only never writes to the lexicon: an
+	// admin resolving it (accepted / needs_follow_up / rejected) records the
+	// decision but leaves parser output untouched until a concrete correction
+	// is supplied.
+	if status == "accepted" && !feedback.FlagOnly {
 		if err := writeAcceptedParseFeedbackOverride(tx, feedback); err != nil {
 			return err
 		}

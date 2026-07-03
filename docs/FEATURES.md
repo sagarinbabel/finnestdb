@@ -186,7 +186,10 @@ Anonymous correction submission is out of scope for alpha.
   default. `/api/parse` returns results without creating a stored parse ID.
 - Source text is stored only when you make the parse durable: saving it as a
   deck, or submitting parser feedback. Feedback stores the original context so
-  admins can review the correction.
+  admins can review the correction. Feedback comes in two forms: a concrete
+  correction (base form + part of speech), or a **flag-only** report — "this
+  looks wrong, I don't know the fix" — which stores the flagged word and context
+  without a proposed answer (shipped 2026-07-04).
 - Raw retained source text is kept for 30 days, then purged by the
   `make purge-parse-context` retention run. Decks, cards, feedback rows, and
   admin review status remain; the raw pasted text no longer appears in history

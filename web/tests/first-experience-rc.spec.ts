@@ -228,6 +228,7 @@ if (fiParserFeedbackCase.automation === 'playwright') {
 
     await page.locator('.correction-btn').first().click();
     await expect(page.locator('#correction-modal')).not.toHaveClass(/hidden/);
+    await page.locator('#correction-mode-propose').check();
     await page.locator('#correction-proposed-lemma').fill('laulaa');
     await page.locator('#correction-proposed-pos').selectOption('VERB');
     await page.locator('#correction-submit').click();

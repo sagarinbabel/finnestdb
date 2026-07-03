@@ -582,6 +582,12 @@
                         <option value="rejected">Rejected</option>
                         <option value="">All</option>
                     </select>
+                    <label for="admin-feedback-flag-only">Type</label>
+                    <select id="admin-feedback-flag-only">
+                        <option value="">All</option>
+                        <option value="true">Flag-only</option>
+                        <option value="false">Proposed fix</option>
+                    </select>
                 </div>
             </section>
             <section id="admin-feedback-empty" class="placeholder-card hidden">
@@ -703,41 +709,54 @@
         <div class="modal-backdrop" id="correction-modal-backdrop"></div>
         <div class="modal-card" role="document">
             <button type="button" class="modal-close" id="correction-modal-close" aria-label="Close">×</button>
-            <h3 id="correction-modal-title">Suggest a correction</h3>
-            <p class="modal-lede">Tell us the right base form and part of speech for this word — we'll use it to improve the parser.</p>
+            <h3 id="correction-modal-title">Report a problem</h3>
+            <p class="modal-lede">Something look wrong with this word? Flag it, or tell us the right analysis — either way helps us improve the parser.</p>
             <p class="modal-hint hidden" id="correction-auth-hint">Sign in to send corrections — anonymous parses can't be tied back to a parse run.</p>
             <form id="correction-form">
                 <div class="form-group">
                     <label>Current analysis</label>
                     <p class="modal-readonly" id="correction-lemma">—</p>
                 </div>
-                <div class="form-group">
-                    <label for="correction-proposed-lemma">Correct base form</label>
-                    <input type="text" id="correction-proposed-lemma" name="proposed_lemma" required autocomplete="off" />
-                </div>
-                <div class="form-group">
-                    <label for="correction-proposed-pos">Correct part of speech</label>
-                    <select id="correction-proposed-pos" name="proposed_pos" required>
-                        <option value="NOUN">Noun</option>
-                        <option value="VERB">Verb</option>
-                        <option value="ADJ">Adjective</option>
-                        <option value="ADV">Adverb</option>
-                        <option value="PROPN">Proper noun</option>
-                        <option value="PRON">Pronoun</option>
-                        <option value="DET">Determiner</option>
-                        <option value="ADP">Adposition</option>
-                        <option value="NUM">Number</option>
-                        <option value="CCONJ">Conjunction (coordinating)</option>
-                        <option value="SCONJ">Conjunction (subordinating)</option>
-                        <option value="PART">Particle</option>
-                        <option value="INTJ">Interjection</option>
-                        <option value="AUX">Auxiliary</option>
-                        <option value="X">Other</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="correction-proposed-grammar">Grammar label (optional)</label>
-                    <input type="text" id="correction-proposed-grammar" name="proposed_grammar_label" autocomplete="off" placeholder="e.g. partitive sg, past 3sg" />
+                <fieldset class="form-group correction-mode">
+                    <legend>What would you like to do?</legend>
+                    <label class="correction-mode-option">
+                        <input type="radio" name="correction_mode" value="flag" id="correction-mode-flag" checked />
+                        <span>This is wrong — I don't know the right answer</span>
+                    </label>
+                    <label class="correction-mode-option">
+                        <input type="radio" name="correction_mode" value="propose" id="correction-mode-propose" />
+                        <span>This is wrong, and the right answer is…</span>
+                    </label>
+                </fieldset>
+                <div id="correction-proposed-fields">
+                    <div class="form-group">
+                        <label for="correction-proposed-lemma">Correct base form</label>
+                        <input type="text" id="correction-proposed-lemma" name="proposed_lemma" autocomplete="off" />
+                    </div>
+                    <div class="form-group">
+                        <label for="correction-proposed-pos">Correct part of speech</label>
+                        <select id="correction-proposed-pos" name="proposed_pos">
+                            <option value="NOUN">Noun</option>
+                            <option value="VERB">Verb</option>
+                            <option value="ADJ">Adjective</option>
+                            <option value="ADV">Adverb</option>
+                            <option value="PROPN">Proper noun</option>
+                            <option value="PRON">Pronoun</option>
+                            <option value="DET">Determiner</option>
+                            <option value="ADP">Adposition</option>
+                            <option value="NUM">Number</option>
+                            <option value="CCONJ">Conjunction (coordinating)</option>
+                            <option value="SCONJ">Conjunction (subordinating)</option>
+                            <option value="PART">Particle</option>
+                            <option value="INTJ">Interjection</option>
+                            <option value="AUX">Auxiliary</option>
+                            <option value="X">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="correction-proposed-grammar">Grammar label (optional)</label>
+                        <input type="text" id="correction-proposed-grammar" name="proposed_grammar_label" autocomplete="off" placeholder="e.g. partitive sg, past 3sg" />
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="correction-note">Notes (optional)</label>
