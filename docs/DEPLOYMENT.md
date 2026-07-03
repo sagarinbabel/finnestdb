@@ -145,6 +145,23 @@ curl -fsS https://<domain>/api/health
 Keep at least one recent backup off the host (object storage or another
 machine) — a dead disk must not take the only copies with it.
 
+## Latency expectations
+
+Measured 2026-07-02 on a dev laptop against the production-size DB (26.8M FI
+forms), with real full-novel texts:
+
+| Request | Input | Time |
+|---|---|---|
+| `POST /api/decks` | 550k chars / 70,234 tokens | 1.6 s |
+| `POST /api/decks` | 809k chars (largest local book) | 2.0 s |
+| `POST /api/parse` | same inputs | 1.3 s warm – 4.0 s cold |
+
+Rule of thumb: ~0.2–0.6 s per 10k tokens. At the shipped input caps (4 MiB
+JSON body, 1.5M-char textarea) the worst case stays far below the server's
+30 s `WriteTimeout`. If production p95 for full-book requests approaches
+~10 s, revisit the deferred background-job design in `TODO.md` before raising
+any input caps.
+
 ## Monitoring and alerting (alpha baseline)
 
 - **Uptime**: point an external monitor (UptimeRobot, Gatus, healthchecks.io)
