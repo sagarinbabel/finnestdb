@@ -4380,9 +4380,9 @@ func (d *DB) ensureSurfaceScopedCardsTable() error {
 	}
 	if cardsAfter != cardsBefore {
 		// A collision dropped a card. This should be impossible (see the doc
-		// comment); fail loud rather than silently lose scheduler state.
-		merged := cardsBefore - cardsAfter
-		log.Printf("surface-card migration: %d card(s) merged during backfill (before=%d after=%d)", merged, cardsBefore, cardsAfter)
+		// comment); abort so the transaction rolls back rather than silently
+		// losing scheduler state on a real database.
+		return fmt.Errorf("surface-card migration: %d card(s) would be merged during backfill (before=%d after=%d); aborting", cardsBefore-cardsAfter, cardsBefore, cardsAfter)
 	}
 
 	// Preserve scheduler state by carrying card ids forward. Only ids that
