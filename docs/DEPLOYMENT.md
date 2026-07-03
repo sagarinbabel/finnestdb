@@ -193,9 +193,26 @@ Schema migrations run automatically at server startup. Rollback = restore the
 previous binary and, only if the new code migrated the schema, the pre-deploy
 snapshot.
 
+## Seeding the cold-start starter decks
+
+New accounts land on an empty dashboard whose CTA links to the official-decks
+tab. Seed the "Top 1000 words" official decks once per language after the
+admin account exists (requires the frequency baselines from
+`make fetch-frequency-baselines` on the machine running the seed):
+
+```bash
+go run ./cmd/seedcolddeck -db finnestdb.db -lang FI -owner-email <admin>
+go run ./cmd/seedcolddeck -db finnestdb.db -lang ET -owner-email <admin>
+```
+
+Forms are resolved to lemmas through the dictionary and ranked by summed
+token mass across inflections; proper names are filtered. Re-running creates
+a duplicate deck — delete the old one from the admin UI first if reseeding.
+
 ## Pre-launch gate
 
 Before announcing the instance, complete the "Release Verification" section of
 [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) against this host — including
 `make live-api-smoke` pointed at the live server — and pre-register every
-`FINNESTDB_ADMIN_EMAILS` address with `bin/resetpassword -create`.
+`FINNESTDB_ADMIN_EMAILS` address with `bin/resetpassword -create`. Then seed
+the starter decks (above).
