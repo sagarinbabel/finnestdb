@@ -214,9 +214,14 @@ type ParseSession struct {
 }
 
 type ParseSessionHistoryItem struct {
-	ID            int64     `json:"id"`
-	Lang          string    `json:"lang"`
-	Parser        string    `json:"parser"`
+	ID          int64  `json:"id"`
+	Lang        string `json:"lang"`
+	Parser      string `json:"parser"`
+	// Title is a derived-only display title (see DeriveTitle), computed at
+	// read time from the parse session's source text. Parse sessions have no
+	// title column of their own — deriving at render time avoids a schema
+	// change for a value that's fully determined by SourcePreview's raw text.
+	Title         string    `json:"title"`
 	SourcePreview string    `json:"source_preview"`
 	TotalTokens   int       `json:"total_tokens"`
 	UniqueWords   int       `json:"unique_words"`
@@ -3262,6 +3267,14 @@ func (d *DB) ListUserParseSessions(userID int64) ([]ParseSessionHistoryItem, err
 		          WHEN ps.source_text = '' THEN '(source text purged)'
 		          ELSE substr(replace(replace(ps.source_text, char(10), ' '), char(13), ' '), 1, 240)
 		        END,
+		        -- Raw (newline-preserving) head of the source text, just for title
+		        -- derivation: DeriveTitle finds "the first line" itself, so unlike
+		        -- SourcePreview above this must not pre-flatten newlines to spaces.
+		        -- 300 chars is comfortably more than MaxDerivedTitleLen ever needs.
+		        CASE
+		          WHEN ps.source_text = '' THEN ''
+		          ELSE substr(ps.source_text, 1, 300)
+		        END,
 		        ps.total_tokens, ps.unique_words, ps.created_at,
 		        (SELECT COUNT(*) FROM decks d WHERE d.user_id = ? AND d.parse_session_id = ps.id),
 		        (SELECT COUNT(*) FROM parse_feedback pf WHERE pf.user_id = ? AND pf.parse_session_id = ps.id)
@@ -3279,11 +3292,13 @@ func (d *DB) ListUserParseSessions(userID int64) ([]ParseSessionHistoryItem, err
 	sessions := []ParseSessionHistoryItem{}
 	for rows.Next() {
 		var item ParseSessionHistoryItem
+		var titleSource string
 		if err := rows.Scan(
 			&item.ID,
 			&item.Lang,
 			&item.Parser,
 			&item.SourcePreview,
+			&titleSource,
 			&item.TotalTokens,
 			&item.UniqueWords,
 			&item.CreatedAt,
@@ -3291,6 +3306,11 @@ func (d *DB) ListUserParseSessions(userID int64) ([]ParseSessionHistoryItem, err
 			&item.FeedbackCount,
 		); err != nil {
 			return nil, err
+		}
+		if titleSource == "" {
+			item.Title = DefaultTitleForLang(item.Lang)
+		} else {
+			item.Title = DeriveTitle(titleSource, item.Lang)
 		}
 		sessions = append(sessions, item)
 	}
