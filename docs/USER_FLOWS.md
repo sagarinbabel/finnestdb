@@ -124,9 +124,10 @@ and value grid; file upload stays a signed-in capability.
 │  finne.st                                  [Theme] [Sign in]   │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                │
-│      Learn Finnish & Estonian by reading what you love.        │
-│      Paste any text. We'll show you every word, what it        │
-│      means, and how often it appears.                          │
+│      Read what you love in Finnish or Estonian.               │
+│      Learn its words first.                                    │
+│      Paste any text. See every word, what it means, and how    │
+│      often it shows up — so you learn it before you read.      │
 │                                                                │
 │      ┌────────────────────────────────────────────────────┐    │
 │      │ Language: [● Auto-detect  ○ FI  ○ ET]              │    │
@@ -195,9 +196,10 @@ correction entry points, status column) are hidden via `data-role-show`.
 │  Coverage ███████░░░ 71% (estimated, no known-words list yet)  │
 │                                                                │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │ ✨ Want to remember these words?                         │  │
-│  │ Sign up free to turn this list into a review deck —      │  │
-│  │ we'll teach you the words you don't know in 5 min/day.   │  │
+│  │ ✨ Save these words as a study deck                      │  │
+│  │ A free account keeps this list as a review deck, tracks  │  │
+│  │ words you know, shows how much of any text you'll        │  │
+│  │ understand, and lets you upload whole books.             │  │
 │  │                            [ Create account ] [ Later ]  │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                │

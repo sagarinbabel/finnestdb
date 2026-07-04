@@ -10,6 +10,22 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Learner-facing copy sells the pre-learn proposition
+
+Rewrote the persuasion copy across every learner-facing surface (landing hero,
+subtitle, value grid, anonymous results ribbon, About page, landing/About CTAs,
+sign-in lede, and the landing "sign in" link) to lead with the pre-learn
+promise — paste any text, see every word with its meaning and inflected-form
+frequency, and learn it before you read — instead of flat "sign in to save your
+work" framing. Value-grid cards now describe the learner outcome (pre-learn →
+read smoothly → remember in context → know how much you'll understand). The
+comprehension prediction is presented honestly (per-deck "how much of this text
+you already understand"), and the anonymous privacy footer stays byte-identical
+and truthful about ephemerality. No layout or feature changes; grill-settled
+functional strings (meaning-check copy, quarantine copy, privacy footer) are
+unchanged. Updated [`USER_FLOWS.md`](USER_FLOWS.md) §1/§2 mock copy to mirror the
+shipped UI and the Playwright copy assertions that pin these strings. Copy pass
+only — no product behavior changed.
 ## 2026-07-04 — 375px results-table layout repaired
 
 Fixed BROKEN mobile layouts found in a 375x812 audit of every learner surface

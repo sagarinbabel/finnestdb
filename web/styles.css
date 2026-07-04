@@ -2409,6 +2409,12 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     margin-bottom: 1.25rem;
     font-size: 1.5rem;
 }
+.landing-cta-lede {
+    max-width: 46ch;
+    margin: 0 auto 1.5rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+}
 
 /* ── About / how it works ───────────────────────────────────── */
 .about-main {
