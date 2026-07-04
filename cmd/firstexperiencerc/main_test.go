@@ -53,7 +53,12 @@ func TestLoadManifest_Canonical(t *testing.T) {
 			t.Errorf("case %s: language must be fi or et, got %q", c.ID, c.Language)
 		}
 		switch c.Automation {
-		case "parser", "playwright", "manual", "pending":
+		case "parser", "playwright", "manual":
+		case "pending":
+			// The RC pack is complete as of 2026-07-04: the runner fails the
+			// run on any pending case, and this guard fails `go test` too so
+			// an unautomated journey can never re-enter the manifest quietly.
+			t.Errorf("case %s: automation %q — every journey needs parser, playwright, or manual coverage; wire it up instead of marking it pending", c.ID, c.Automation)
 		default:
 			t.Errorf("case %s: unsupported automation %q", c.ID, c.Automation)
 		}

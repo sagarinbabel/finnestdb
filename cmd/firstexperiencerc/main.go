@@ -10,13 +10,15 @@
 // web/tests/first-experience-rc.spec.ts (see `make first-experience-rc`,
 // which runs this binary and then that spec back to back). Cases with
 // automation "manual" point at the manual walkthrough instructions in
-// docs/GO_LIVE_CHECKLIST.md. Cases with automation "pending" mark a journey
-// that does not have automated or manual coverage wired up yet — this is
-// expected for a skeleton pack and is not a run failure.
+// docs/GO_LIVE_CHECKLIST.md.
 //
-// Exit code is nonzero only when an automated ("parser") case fails its
-// expectations or errors while parsing. Pending and manual cases never fail
-// the run; they are reported so the summary states what's still missing.
+// Exit code is nonzero when an automated ("parser") case fails its
+// expectations or errors while parsing, and also when any case carries
+// automation "pending" (or an unknown value). The RC pack is complete as of
+// 2026-07-04 — every journey has parser, playwright, or manual coverage —
+// so a pending case is a regression that would silently un-gate a journey,
+// not an expected skeleton state. Manual cases never fail the run; they are
+// reported so the summary states what still needs a human walkthrough.
 package main
 
 import (
@@ -83,7 +85,7 @@ func main() {
 
 	fixtureDir := filepath.Dir(*manifestPath)
 
-	var failed, passed, skippedPending, manualCount, otherAutomation int
+	var failed, passed, manualCount, otherAutomation int
 	for _, c := range m.Cases {
 		switch c.Automation {
 		case "parser":
@@ -96,12 +98,11 @@ func main() {
 				fmt.Printf("FAIL %s (%s/%s): %s\n", c.ID, c.Language, c.Journey, reason)
 			}
 		case "pending":
-			skippedPending++
-			reason := c.Expect.Notes
-			if reason == "" {
-				reason = "not yet automated"
-			}
-			fmt.Printf("SKIP-pending %s (%s/%s): %s\n", c.ID, c.Language, c.Journey, reason)
+			// The RC pack is complete: an unautomated journey must fail the
+			// run, or a green `make first-experience-rc` could hide it.
+			failed++
+			fmt.Printf("FAIL %s (%s/%s): automation is %q — every journey needs parser, playwright, or manual coverage; wire it up instead of marking it pending\n",
+				c.ID, c.Language, c.Journey, c.Automation)
 		case "manual":
 			manualCount++
 			fmt.Printf("MANUAL %s (%s/%s): see docs/GO_LIVE_CHECKLIST.md 'First-experience quality check'\n", c.ID, c.Language, c.Journey)
@@ -118,8 +119,8 @@ func main() {
 	}
 
 	fmt.Println()
-	fmt.Printf("Summary: %d passed, %d failed, %d pending, %d manual, %d playwright (of %d total)\n",
-		passed, failed, skippedPending, manualCount, otherAutomation, len(m.Cases))
+	fmt.Printf("Summary: %d passed, %d failed, %d manual, %d playwright (of %d total)\n",
+		passed, failed, manualCount, otherAutomation, len(m.Cases))
 
 	if failed > 0 {
 		os.Exit(1)

@@ -180,12 +180,14 @@ scope, not accidental creep. See Decisions 23-29.
             `make first-experience-rc` runs green end to end.
       - [x] Automated now: `embedded-text`, `own-text-inspect`, and
             `ambiguity-homograph` (FI `kuusi`/`tuli`/`voi` + one ET case) via
-            the Go parser runner; `deck-save` + `first-review` (FI+ET) and
-            `parser-feedback` (FI only) via Playwright.
-      - [ ] Pending journeys still needing real coverage: `anonymous-demo`
-            (FI+ET — no anonymous parser demo surface yet), `known-word-import`
-            (FI+ET — needs an RC-fixture-driven Playwright case), and
-            `parser-feedback` for ET (FI-only correction-submit coverage today).
+            the Go parser runner; `anonymous-demo` (FI+ET), `deck-save` +
+            `first-review` (FI+ET), `known-word-import` (FI+ET), and
+            `parser-feedback` (FI+ET) via Playwright.
+      - [x] Pending journeys closed 2026-07-04: `anonymous-demo` (FI+ET),
+            `known-word-import` (FI+ET), and ET `parser-feedback` all gained
+            RC-fixture-driven Playwright coverage. Zero `automation:"pending"`
+            cases remain; `cmd/firstexperiencerc` (and its `go test` guard)
+            now fails the run if a pending case ever reappears.
 - [x] **Documentation consolidation pass** (done 2026-07-03/04: handoff read order, canonical doc roles, FOR_MICHAEL guide): avoid adding new docs for execution
       ledgers. Keep launch issues in this TODO, keep the quality rubric in
       `docs/GO_LIVE_CHECKLIST.md`, and audit overlapping docs for merge,

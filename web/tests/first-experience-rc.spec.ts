@@ -7,10 +7,14 @@
 // gate cannot drift across separate case lists.
 //
 // One test() is generated per manifest case with automation:"playwright".
-// Cases with automation:"pending" (or any other non-playwright value) get a
-// test.skip() stub carrying the manifest's own pending reason, so the full
-// journey x language matrix is visible in `npx playwright test --list`
-// even before every flow is implemented.
+// Non-playwright cases (automation:"parser", exercised by the Go runner) get
+// a test.skip() stub carrying the manifest's own notes, so the full
+// journey x language matrix is visible in `npx playwright test --list`.
+// automation:"pending" no longer exists in the manifest — the Go runner
+// fails the run on any pending case, so an unautomated journey can never
+// hide behind a green `make first-experience-rc`.
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import manifest from '../../testdata/first-experience-rc/manifest.json' with { type: 'json' };
 
@@ -20,7 +24,7 @@ interface RCCase {
   journey: string;
   automation: 'parser' | 'playwright' | 'manual' | 'pending';
   fixture?: string;
-  expect?: { notes?: string };
+  expect?: { notes?: string; lemma_pos?: Array<{ lemma: string; pos: string }> };
   notes?: string;
 }
 
@@ -28,6 +32,16 @@ const cases = manifest.cases as RCCase[];
 
 function pendingReason(c: RCCase): string {
   return c.expect?.notes || c.notes || 'not yet automated';
+}
+
+// Fixture text comes from the same testdata/first-experience-rc/*.txt files
+// the Go runner reads, loaded at spec load time so the fixtures stay
+// single-source (manifest "fixture" field -> file on disk, no inline copies).
+const fixtureDir = join(__dirname, '..', '..', 'testdata', 'first-experience-rc');
+
+function fixtureText(c: RCCase): string {
+  if (!c.fixture) throw new Error(`first-experience-rc case ${c.id} has no fixture path`);
+  return readFileSync(join(fixtureDir, c.fixture), 'utf8').trim();
 }
 
 // ── Shared mocks (mirrors web/tests/parse-results.spec.ts conventions) ─────
@@ -45,6 +59,114 @@ async function mockSignedInUser(page: Page, lang: 'FI' | 'ET'): Promise<void> {
       }),
     });
   });
+}
+
+// ── anonymous-demo: landing paste -> parse -> explore-only results ─────────
+//
+// Mirrors the journey coverage in web/tests/anonymous-parser-demo.spec.ts
+// (anonymous /api/me + /api/parse mocks, explore-only assertions) but drives
+// it with the manifest's embedded-text fixture so the RC pack exercises the
+// same text the Go runner parses. The ET case additionally flips the landing
+// FI/ET selector, since detectLang would otherwise block an Estonian paste
+// on the FI-selected form.
+
+interface AnonDemoWords {
+  words: Array<{ lemma: string; pos: string; forms: string[]; count: number; gloss: string }>;
+}
+
+const anonDemoMockWords: Record<'fi' | 'et', AnonDemoWords> = {
+  fi: {
+    words: [
+      { lemma: 'kissa', pos: 'NOUN', forms: ['Kissa'], count: 2, gloss: 'cat' },
+      { lemma: 'aurinko', pos: 'NOUN', forms: ['Aurinko'], count: 1, gloss: 'sun' },
+    ],
+  },
+  et: {
+    words: [
+      { lemma: 'kass', pos: 'NOUN', forms: ['Kass'], count: 2, gloss: 'cat' },
+      { lemma: 'päike', pos: 'NOUN', forms: ['Päike'], count: 1, gloss: 'sun' },
+    ],
+  },
+};
+
+async function runAnonymousDemo(page: Page, lang: 'fi' | 'et', text: string): Promise<void> {
+  const upper = lang.toUpperCase() as 'FI' | 'ET';
+  const mock = anonDemoMockWords[lang];
+
+  await page.route('**/api/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ authenticated: false, user: null, anon_max_chars: 300000 }),
+    });
+  });
+
+  let parsePayload: any = null;
+  await page.route('**/api/parse', async (route) => {
+    parsePayload = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        lang: upper,
+        parse_id: null, // ephemeral: anonymous parses are never persisted
+        total_tokens: 35,
+        parse_duration_ms: 9,
+        words: mock.words,
+      }),
+    });
+  });
+
+  await page.goto('/');
+  await expect(page.locator('#landing-page')).toHaveClass(/active/);
+  if (upper === 'ET') {
+    await page.locator('#landing-lang button[data-value="ET"]').click();
+  }
+  await page.locator('#landing-text').fill(text);
+  await page.locator('#landing-submit').click();
+
+  // The parse request carries the fixture text and the selected language.
+  await expect.poll(() => parsePayload).not.toBeNull();
+  expect(parsePayload).toMatchObject({ lang: upper, text });
+
+  await expect(page.locator('#results-page')).toHaveClass(/active/);
+  // Non-admin anonymous parser pill is the soft "Your text" label.
+  await expect(page.locator('#results-parser')).toHaveText('Your text');
+  // Signed-in-only save CTA must NOT be visible to an anonymous visitor.
+  await expect(page.locator('.results-deck-cta')).toBeHidden();
+
+  // Explore: the lemma table lives behind the Words tab (Read is default).
+  await page.locator('#results-tab-words').click();
+  await expect(page.locator('#word-table-body tr')).toHaveCount(mock.words.length);
+  for (const w of mock.words) {
+    await expect(page.locator('#word-table-body')).toContainText(w.lemma);
+  }
+  await expect(page.locator('.pos-filter-chip', { hasText: 'Nouns' })).toBeVisible();
+
+  // Signed-in-only controls must NOT be visible to an anonymous visitor.
+  await expect(page.locator('.correction-btn')).toHaveCount(0);
+  await expect(page.locator('.word-pill-known')).toHaveCount(0);
+
+  // Privacy footer present for anonymous results.
+  await expect(page.locator('#anon-privacy-footer')).toBeVisible();
+  await expect(page.locator('#anon-privacy-footer')).toContainText(/wasn't saved/i);
+}
+
+for (const lang of ['fi', 'et'] as const) {
+  const anonCase = cases.find(c => c.journey === 'anonymous-demo' && c.language === lang);
+  if (!anonCase) {
+    throw new Error(`first-experience-rc manifest is missing a ${lang} anonymous-demo case`);
+  }
+  if (anonCase.automation === 'playwright') {
+    test(`${lang} journey: anonymous demo paste -> parse -> explore`, async ({ page }) => {
+      await runAnonymousDemo(page, lang, fixtureText(anonCase));
+    });
+  } else {
+    test.skip(`${lang} journey: anonymous demo paste -> parse -> explore`, () => {
+      // eslint-disable-next-line no-console
+      console.log(pendingReason(anonCase));
+    });
+  }
 }
 
 // ── deck-save / first-review: own-text Inspect -> Save as deck -> Review ───
@@ -180,84 +302,181 @@ for (const lang of ['fi', 'et'] as const) {
   }
 }
 
+// ── known-word-import: paste a word list on /#/vocab -> import ─────────────
+//
+// Mirrors the mocked-route conventions of parse-results.spec.ts "user can
+// import and remove known words", driven by the manifest's known-word-import
+// fixture (the raw comma-separated paste) and its expect.lemma_pos block
+// (the (lemma, POS) each pasted word must resolve to). The POST is asserted
+// to carry exactly the fixture's words, and the refreshed list must render
+// every expected lemma with its POS label.
+
+const POS_LABELS: Record<string, string> = { NOUN: 'Noun', VERB: 'Verb' };
+
+async function runKnownWordImport(page: Page, lang: 'fi' | 'et', c: RCCase): Promise<void> {
+  const upper = lang.toUpperCase() as 'FI' | 'ET';
+  const raw = fixtureText(c);
+  const pastedWords = raw.split(',').map(w => w.trim()).filter(Boolean);
+  const expected = c.expect?.lemma_pos ?? [];
+  if (expected.length === 0) {
+    throw new Error(`first-experience-rc case ${c.id} has no expect.lemma_pos to assert against`);
+  }
+
+  await mockSignedInUser(page, upper);
+
+  let knownWords: Array<{ lemma: string; pos: string; lang: string }> = [];
+  let importPayload: any = null;
+  await page.route('**/api/known-words**', async (route) => {
+    const request = route.request();
+    if (request.method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ known_words: knownWords }),
+      });
+      return;
+    }
+    importPayload = request.postDataJSON();
+    knownWords = expected.map(e => ({ lemma: e.lemma, pos: e.pos, lang: upper }));
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ imported: knownWords, unresolved: [] }),
+    });
+  });
+
+  await page.goto('/#/vocab');
+  await expect(page.locator('#known-words-input')).toBeVisible();
+
+  await page.locator('#known-words-input').fill(raw);
+  await page.getByRole('button', { name: 'Import words' }).click();
+
+  // The import request carries the active language and exactly the fixture's
+  // pasted words (comma-split, in order).
+  await expect.poll(() => importPayload).not.toBeNull();
+  expect(importPayload).toMatchObject({ lang: upper, words: pastedWords });
+
+  // Every pasted word resolved to its expected (lemma, POS) pair.
+  for (const e of expected) {
+    const chip = page.locator('.known-word-chip', { hasText: e.lemma });
+    await expect(chip).toBeVisible();
+    await expect(chip.locator('.known-word-pos')).toHaveText(POS_LABELS[e.pos] ?? e.pos);
+  }
+  await expect(page.locator('#known-words-unresolved')).toBeHidden();
+}
+
+for (const lang of ['fi', 'et'] as const) {
+  const importCase = cases.find(c => c.journey === 'known-word-import' && c.language === lang);
+  if (!importCase) {
+    throw new Error(`first-experience-rc manifest is missing a ${lang} known-word-import case`);
+  }
+  if (importCase.automation === 'playwright') {
+    test(`${lang} journey: known-word import on /#/vocab`, async ({ page }) => {
+      await runKnownWordImport(page, lang, importCase);
+    });
+  } else {
+    test.skip(`${lang} journey: known-word import on /#/vocab`, () => {
+      // eslint-disable-next-line no-console
+      console.log(pendingReason(importCase));
+    });
+  }
+}
+
 // ── parser-feedback: Inspect -> parse -> Suggest fix -> submit ─────────────
 //
 // Reuses the /api/parse/feedback contract already covered in
 // parse-results.spec.ts ("correction submit posts the PR-53
-// /api/parse/feedback contract"), driven against this manifest's FI
-// parser-feedback fixture text so the RC pack and the feature spec assert
-// the same contract instead of duplicating fixtures.
+// /api/parse/feedback contract"), driven against this manifest's
+// parser-feedback fixture text per language so the RC pack and the feature
+// spec assert the same contract instead of duplicating fixtures.
 
-const fiParserFeedbackCase = cases.find(c => c.journey === 'parser-feedback' && c.language === 'fi');
-if (!fiParserFeedbackCase) {
-  throw new Error('first-experience-rc manifest is missing an fi parser-feedback case');
+interface ParserFeedbackFixture {
+  lemma: string;
+  surface: string;
+  grammarLabel: string;
 }
 
-if (fiParserFeedbackCase.automation === 'playwright') {
-  test('fi journey: parser feedback correction submit', async ({ page }) => {
-    await mockSignedInUser(page, 'FI');
-    const feedbackText = 'Lauloi iloisesti pihalla, kun aurinko paistoi ja linnut visersivät puissa.';
+const parserFeedbackFixtures: Record<'fi' | 'et', ParserFeedbackFixture> = {
+  fi: { lemma: 'laulaa', surface: 'Lauloi', grammarLabel: 'past 3sg' },
+  et: { lemma: 'laulma', surface: 'Laulis', grammarLabel: 'past 3sg' },
+};
 
-    await page.route('**/api/parse', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          lang: 'FI',
-          parse_id: 9001,
-          total_tokens: 10,
-          parse_duration_ms: 8,
-          words: [
-            { lemma: 'laulaa', pos: 'VERB', forms: ['Lauloi'], count: 1, grammar_label: 'past 3sg' },
-          ],
-        }),
-      });
+async function runParserFeedbackSubmit(page: Page, lang: 'fi' | 'et', text: string): Promise<void> {
+  const upper = lang.toUpperCase() as 'FI' | 'ET';
+  const fixture = parserFeedbackFixtures[lang];
+  await mockSignedInUser(page, upper);
+
+  await page.route('**/api/parse', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        lang: upper,
+        parse_id: 9001,
+        total_tokens: 10,
+        parse_duration_ms: 8,
+        words: [
+          { lemma: fixture.lemma, pos: 'VERB', forms: [fixture.surface], count: 1, grammar_label: fixture.grammarLabel },
+        ],
+      }),
     });
-
-    let captured: any = null;
-    await page.route('**/api/parse/feedback', async (route) => {
-      captured = route.request().postDataJSON();
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ feedback_id: 99, status: 'submitted' }),
-      });
-    });
-
-    await page.goto('/#/inspect');
-    await page.locator('#inspect-text').fill(feedbackText);
-    await page.getByRole('button', { name: 'Parse text' }).click();
-    await expect(page.locator('#results-page')).toHaveClass(/active/);
-    // The correction entry point lives in the lemma table (Words tab); the
-    // results page now defaults to the Read tab.
-    const wordsTab = page.locator('#results-tab-words');
-    if (await wordsTab.isVisible()) await wordsTab.click();
-
-    await page.locator('.correction-btn').first().click();
-    await expect(page.locator('#correction-modal')).not.toHaveClass(/hidden/);
-    await page.locator('#correction-mode-propose').check();
-    await page.locator('#correction-proposed-lemma').fill('laulaa');
-    await page.locator('#correction-proposed-pos').selectOption('VERB');
-    await page.locator('#correction-submit').click();
-
-    await expect.poll(() => captured).not.toBeNull();
-    expect(captured).toMatchObject({
-      parse_id: 9001,
-      lang: 'FI',
-      surface: 'Lauloi',
-      original_lemma: 'laulaa',
-      original_pos: 'VERB',
-      proposed_lemma: 'laulaa',
-      proposed_pos: 'VERB',
-    });
-    await expect(page.locator('.toast.success')).toContainText(/sent/i);
-    await expect(page.locator('#correction-modal')).toHaveClass(/hidden/);
   });
-} else {
-  test.skip('fi journey: parser feedback correction submit', () => {
-    // eslint-disable-next-line no-console
-    console.log(pendingReason(fiParserFeedbackCase));
+
+  let captured: any = null;
+  await page.route('**/api/parse/feedback', async (route) => {
+    captured = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ feedback_id: 99, status: 'submitted' }),
+    });
   });
+
+  await page.goto('/#/inspect');
+  await page.locator('#inspect-text').fill(text);
+  await page.getByRole('button', { name: 'Parse text' }).click();
+  await expect(page.locator('#results-page')).toHaveClass(/active/);
+  // The correction entry point lives in the lemma table (Words tab); the
+  // results page now defaults to the Read tab.
+  const wordsTab = page.locator('#results-tab-words');
+  if (await wordsTab.isVisible()) await wordsTab.click();
+
+  await page.locator('.correction-btn').first().click();
+  await expect(page.locator('#correction-modal')).not.toHaveClass(/hidden/);
+  await page.locator('#correction-mode-propose').check();
+  await page.locator('#correction-proposed-lemma').fill(fixture.lemma);
+  await page.locator('#correction-proposed-pos').selectOption('VERB');
+  await page.locator('#correction-submit').click();
+
+  await expect.poll(() => captured).not.toBeNull();
+  expect(captured).toMatchObject({
+    parse_id: 9001,
+    lang: upper,
+    surface: fixture.surface,
+    original_lemma: fixture.lemma,
+    original_pos: 'VERB',
+    proposed_lemma: fixture.lemma,
+    proposed_pos: 'VERB',
+  });
+  await expect(page.locator('.toast.success')).toContainText(/sent/i);
+  await expect(page.locator('#correction-modal')).toHaveClass(/hidden/);
+}
+
+for (const lang of ['fi', 'et'] as const) {
+  const feedbackCase = cases.find(c => c.journey === 'parser-feedback' && c.language === lang);
+  if (!feedbackCase) {
+    throw new Error(`first-experience-rc manifest is missing a ${lang} parser-feedback case`);
+  }
+  if (feedbackCase.automation === 'playwright') {
+    test(`${lang} journey: parser feedback correction submit`, async ({ page }) => {
+      await runParserFeedbackSubmit(page, lang, fixtureText(feedbackCase));
+    });
+  } else {
+    test.skip(`${lang} journey: parser feedback correction submit`, () => {
+      // eslint-disable-next-line no-console
+      console.log(pendingReason(feedbackCase));
+    });
+  }
 }
 
 // ── Every other manifest case: explicit pending/manual stub ────────────────
@@ -266,7 +485,13 @@ if (fiParserFeedbackCase.automation === 'playwright') {
 // matrix (per docs/GO_LIVE_CHECKLIST.md) instead of only the cases that
 // happen to be implemented today.
 
-const coveredIds = new Set(['fi-deck-save', 'et-deck-save', 'fi-first-review', 'et-first-review', 'fi-parser-feedback']);
+const coveredIds = new Set([
+  'fi-anonymous-demo', 'et-anonymous-demo',
+  'fi-deck-save', 'et-deck-save',
+  'fi-first-review', 'et-first-review',
+  'fi-known-word-import', 'et-known-word-import',
+  'fi-parser-feedback', 'et-parser-feedback',
+]);
 
 for (const c of cases) {
   if (coveredIds.has(c.id)) continue;

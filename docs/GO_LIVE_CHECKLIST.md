@@ -59,22 +59,26 @@ First-experience quality check:
   - Go runner: [`cmd/firstexperiencerc`](../cmd/firstexperiencerc) — loads the
     manifest, runs every `automation:"parser"` case through the real
     custom-mode parser (`internal/parsecore`, the same path `/api/parse`
-    uses), and prints PASS/FAIL/SKIP-pending/MANUAL plus a summary. Exits
-    nonzero only on an automated FAIL.
+    uses), and prints PASS/FAIL/MANUAL plus a summary. Exits nonzero on an
+    automated FAIL or on any `automation:"pending"` case (see the completion
+    note below).
   - Playwright spec: [`web/tests/first-experience-rc.spec.ts`](../web/tests/first-experience-rc.spec.ts)
     — imports the same manifest JSON and generates one test per
     `automation:"playwright"` case, `test.skip` for everything else.
   - Automated today: `embedded-text` (FI+ET), `own-text-inspect` (FI+ET),
     `ambiguity-homograph` (FI `kuusi`/`tuli`/`voi` + one ET case) via the Go
-    runner; `deck-save` + `first-review` (FI+ET, one Inspect-\>save-\>review
-    Playwright test per language) and `parser-feedback` (FI only) via
-    Playwright.
-  - Still pending (tracked as `automation:"pending"` in the manifest, not
-    silently dropped): `anonymous-demo` (FI+ET — no anonymous parser demo
-    surface exists yet), `known-word-import` (FI+ET — no RC-fixture-driven
-    Playwright case wired up yet), and `parser-feedback` for ET (existing
-    correction-submit coverage is FI-only). See `TODO.md` "First-experience
-    quality bar" for the same list kept current as flows land.
+    runner; `anonymous-demo` (FI+ET, landing paste-\>parse-\>explore),
+    `deck-save` + `first-review` (FI+ET, one Inspect-\>save-\>review
+    Playwright test per language), `known-word-import` (FI+ET on `/#/vocab`,
+    asserting each fixture word's expected lemma/POS), and `parser-feedback`
+    (FI+ET) via Playwright.
+  - Historical note: at skeleton time (2026-07-04) `anonymous-demo` (FI+ET),
+    `known-word-import` (FI+ET), and ET `parser-feedback` were tracked as
+    `automation:"pending"`. All five landed later the same day, so the pack
+    now has **zero pending cases** and pending became a failing state: both
+    `cmd/firstexperiencerc` and its `go test` guard reject any
+    `automation:"pending"` case, so a green `make first-experience-rc` can
+    never again hide an unautomated journey.
 - Provide one top-level automated command, `make first-experience-rc`, that runs
   the parser fixture checks and Playwright RC specs, then points at the manual
   walkthrough instructions in this section. The walkthrough instructions live

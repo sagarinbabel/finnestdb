@@ -424,8 +424,10 @@ compare-ambiguity: parser
 # manual walkthrough instructions, which live in that checklist section, not
 # in a separate doc.
 #
-# Nonzero exit only if an automated case fails; pending/manual cases don't
-# fail the run (see cmd/firstexperiencerc).
+# Nonzero exit if an automated case fails OR any case is still
+# automation:"pending" — the pack is complete, so an unautomated journey is
+# a failure, not a skip. Only manual cases don't fail the run (see
+# cmd/firstexperiencerc).
 first-experience-rc: parser
 	@export LD_LIBRARY_PATH="$$(pwd)/parser/target/release:$${LD_LIBRARY_PATH:-}"; \
 	go run ./cmd/firstexperiencerc

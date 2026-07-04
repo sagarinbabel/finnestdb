@@ -4,23 +4,23 @@
       "id": "fi-anonymous-demo",
       "language": "fi",
       "journey": "anonymous-demo",
-      "automation": "pending",
+      "automation": "playwright",
       "fixture": "fi-embedded-text.txt",
       "expect": {
-        "notes": "Anonymous paste -> parse -> word list -> explore has no dedicated Playwright coverage yet; needs a stateless-demo spec once the anonymous parser demo surface lands."
+        "notes": "Anonymous landing paste of this fixture -> parse -> explore-only results: 'Your text' parser pill, no save CTA / correction buttons / known pills, Words-tab lemma table with POS filter, and the anonymous privacy footer, using mocked /api/me and /api/parse per anonymous-parser-demo.spec.ts conventions."
       },
-      "notes": "Anonymous Parser Demo per CONTEXT.md: unsigned paste/parse/explore, stateless and ephemeral, stricter text-size cap than signed-in parsing."
+      "notes": "Anonymous Parser Demo per CONTEXT.md: unsigned paste/parse/explore, stateless and ephemeral, stricter text-size cap than signed-in parsing. Covered by web/tests/first-experience-rc.spec.ts 'fi journey: anonymous demo paste -> parse -> explore'."
     },
     {
       "id": "et-anonymous-demo",
       "language": "et",
       "journey": "anonymous-demo",
-      "automation": "pending",
+      "automation": "playwright",
       "fixture": "et-embedded-text.txt",
       "expect": {
-        "notes": "Same as fi-anonymous-demo; ET parity case for the unsigned demo surface."
+        "notes": "ET parity for fi-anonymous-demo, additionally flipping the landing FI/ET selector to Estonian first (detectLang would otherwise block an Estonian paste on the FI-selected form)."
       },
-      "notes": "ET parity for the anonymous demo journey."
+      "notes": "ET parity for the anonymous demo journey. Covered by web/tests/first-experience-rc.spec.ts 'et journey: anonymous demo paste -> parse -> explore'."
     },
     {
       "id": "fi-embedded-text",
@@ -131,23 +131,37 @@
       "id": "fi-known-word-import",
       "language": "fi",
       "journey": "known-word-import",
-      "automation": "pending",
+      "automation": "playwright",
       "fixture": "fi-known-word-import.txt",
       "expect": {
-        "notes": "Import a short comma-separated FI word list on /#/vocab and confirm each lemma resolves to the right (lemma, POS): kissa/NOUN, koira/NOUN, talo/NOUN, kirja/NOUN, syödä/VERB."
+        "lemma_pos": [
+          { "lemma": "kissa", "pos": "NOUN" },
+          { "lemma": "koira", "pos": "NOUN" },
+          { "lemma": "talo", "pos": "NOUN" },
+          { "lemma": "kirja", "pos": "NOUN" },
+          { "lemma": "syödä", "pos": "VERB" }
+        ],
+        "notes": "Paste this fixture's comma-separated FI word list on /#/vocab, import it, and confirm the POST carries exactly the fixture's words with lang FI and each word resolves to its lemma_pos pair in the refreshed known-words list, using mocked /api/known-words per parse-results.spec.ts conventions."
       },
-      "notes": "web/tests/parse-results.spec.ts has a known-words import test with mocked responses, but no RC case wires the manifest's fixture words through it yet. Needs a dedicated first-experience-rc Playwright case."
+      "notes": "Covered by web/tests/first-experience-rc.spec.ts 'fi journey: known-word import on /#/vocab', which drives the manifest's fixture words and lemma_pos expectations through the mocked import flow."
     },
     {
       "id": "et-known-word-import",
       "language": "et",
       "journey": "known-word-import",
-      "automation": "pending",
+      "automation": "playwright",
       "fixture": "et-known-word-import.txt",
       "expect": {
-        "notes": "ET parity: kass/NOUN, koer/NOUN, maja/NOUN, raamat/NOUN, sööma/VERB."
+        "lemma_pos": [
+          { "lemma": "kass", "pos": "NOUN" },
+          { "lemma": "koer", "pos": "NOUN" },
+          { "lemma": "maja", "pos": "NOUN" },
+          { "lemma": "raamat", "pos": "NOUN" },
+          { "lemma": "sööma", "pos": "VERB" }
+        ],
+        "notes": "ET parity for fi-known-word-import: import on /#/vocab with active language ET and confirm each fixture word resolves to its lemma_pos pair."
       },
-      "notes": "ET parity for fi-known-word-import; also pending."
+      "notes": "Covered by web/tests/first-experience-rc.spec.ts 'et journey: known-word import on /#/vocab'."
     },
     {
       "id": "fi-ambiguity-homograph",
@@ -226,12 +240,12 @@
       "id": "et-parser-feedback",
       "language": "et",
       "journey": "parser-feedback",
-      "automation": "pending",
+      "automation": "playwright",
       "fixture": "et-parser-feedback.txt",
       "expect": {
-        "notes": "ET parity for the parser-feedback correction-submit flow; no ET-specific Playwright coverage exists yet."
+        "notes": "ET parity for fi-parser-feedback: Inspect -> parse -> open 'Suggest fix' on 'Laulis' -> submit -> success toast, asserting the /api/parse/feedback payload carries lang ET and the laulma/VERB lemma-POS pair."
       },
-      "notes": "ET parity for fi-parser-feedback; pending an ET-specific Playwright case (existing coverage in parse-results.spec.ts is FI-only)."
+      "notes": "ET parity for fi-parser-feedback. Covered by web/tests/first-experience-rc.spec.ts 'et journey: parser feedback correction submit', which drives the same PR-53 /api/parse/feedback contract against this manifest's Estonian fixture text."
     }
   ]
 }
