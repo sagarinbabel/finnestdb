@@ -301,7 +301,7 @@ test('at 375px the popover renders as a bottom sheet with ≥44px tap targets', 
 
 const CATALOG_TEXT = 'Kissa istui ikkunalla ja katseli lintuja pihalla. Aurinko paistoi kirkkaasti.';
 
-test('choosing a catalog text opens Inspect then lands on the Read tab after parse', async ({ page }) => {
+test('choosing a catalog text auto-parses and lands on the Read tab', async ({ page }) => {
   await page.route('**/api/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -348,14 +348,18 @@ test('choosing a catalog text opens Inspect then lands on the Read tab after par
   });
 
   await page.goto('/#/inspect');
+  // Picking the text opens it like a book: it auto-parses (no intermediate Parse
+  // click) and lands straight on the results page's Read tab.
   await page.locator('#inspect-catalog [data-catalog-id="fi-sample-story"]').click();
-  await expect(page.locator('#inspect-text')).toHaveValue(CATALOG_TEXT);
-
-  await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
   // Lands in the reader: Read tab active, the catalog text rendered as the
   // living text (not a cramped box).
+  await expect(page.locator('#results-tab-read')).toHaveAttribute('aria-selected', 'true');
   await expect(page.locator('#read-view')).toBeVisible();
   await expect(page.locator('#read-text')).toContainText('Kissa istui ikkunalla');
   await expect(page.locator('.read-token', { hasText: 'Kissa' })).toBeVisible();
+
+  // The text is still in the Inspect textarea so re-parse / edit stays possible.
+  await page.goto('/#/inspect');
+  await expect(page.locator('#inspect-text')).toHaveValue(CATALOG_TEXT);
 });

@@ -85,7 +85,7 @@ async function mockParse(page: Page): Promise<void> {
   });
 }
 
-test('signed-in cold start: dashboard catalog -> pick text -> textarea populated -> parse', async ({ page }) => {
+test('signed-in cold start: dashboard catalog -> pick text -> auto-parses and opens the Read tab', async ({ page }) => {
   await mockSignedInNoDecks(page);
   await mockCatalog(page);
   await mockParse(page);
@@ -99,19 +99,20 @@ test('signed-in cold start: dashboard catalog -> pick text -> textarea populated
   // With no known words, the card prompts import rather than showing coverage.
   await expect(page.locator('#dashboard-catalog')).toContainText('Import known words');
 
-  // Pick the text: lands on Inspect with the full text loaded.
+  // Pick the text: it opens like a book — parses immediately (no intermediate
+  // Parse click) and lands on the results page's Read tab.
   await page.locator('#dashboard-catalog [data-catalog-id="fi-sample-story"]').click();
 
-  await expect(page.locator('#inspect-page')).toHaveClass(/active/);
-  await expect(page.locator('#inspect-text')).toHaveValue(CATALOG_TEXT);
-
-  // The cold-start catalog on Inspect hides once text is present.
-  await expect(page.locator('#inspect-catalog-section')).toHaveClass(/hidden/);
-
-  // The normal parse flow takes over.
-  await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
   await expect(page.locator('#results-page')).toContainText('kissa');
+  // Read tab is the active view, and the living text is rendered.
+  await expect(page.locator('#results-tab-read')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#read-view')).not.toHaveClass(/hidden/);
+  await expect(page.locator('#read-text')).toContainText('Kissa');
+
+  // The text is still in the Inspect textarea so re-parse / edit stays possible.
+  await page.goto('/#/inspect');
+  await expect(page.locator('#inspect-text')).toHaveValue(CATALOG_TEXT);
 });
 
 test('inspect empty state shows the catalog and hides it after typing', async ({ page }) => {
