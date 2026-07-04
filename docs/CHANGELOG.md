@@ -10,6 +10,26 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Docs: anonymous cap default corrected to 300,000 characters
+
+The runtime default for `FINNESTDB_ANON_MAX_CHARS` was raised from 20,000 to
+300,000 characters (commit 7bff399) shortly after the anonymous demo shipped,
+but the current-state docs kept the launch-era 20,000 value (flagged by the
+2026-07-04 full-app walkthrough audit). Corrected the docs that describe
+current behavior; older entries below record the value that shipped at the
+time and are intentionally unchanged. The load-test progress note in
+`TODO.md` now also records that the 300,000 default has not itself been
+load-tested yet.
+
+- Modified: [`FEATURES.md`](FEATURES.md) — Anonymous Parser Demo cap default.
+- Modified: [`USER_FLOWS.md`](USER_FLOWS.md) — anonymous cap default.
+- Modified: [`CONTEXT.md`](../CONTEXT.md) — Anonymous Parser Demo vocabulary
+  entry.
+- Modified: [`TODO.md`](../TODO.md) — demo/abuse-control bullets and the
+  load-test progress note.
+- Modified: `web/app.ts` — stale fallback-comment default (the code constant
+  was already 300,000).
+
 ## 2026-07-04 — Landing: port the Claude Design "Aalto edition" prototype
 
 Re-skinned the anonymous landing to the Claude Design prototype

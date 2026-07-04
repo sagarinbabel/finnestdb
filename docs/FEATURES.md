@@ -50,7 +50,7 @@ importing known words, marking known/ignored state, submitting parser feedback,
 viewing history, and account settings require sign-in.
 
 Anonymous parsing uses a stricter, configurable text-size cap
-(`FINNESTDB_ANON_MAX_CHARS`, default 20,000 characters) enforced server-side
+(`FINNESTDB_ANON_MAX_CHARS`, default 300,000 characters) enforced server-side
 before any parser work; the signed-in cap stays 1,500,000. Over-cap anonymous
 requests get a 4xx error naming the limit and a sign-up CTA.
 

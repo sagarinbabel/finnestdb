@@ -70,7 +70,7 @@ scope, not accidental creep. See Decisions 23-29.
       paste text on the landing form, parse it, get a parsed word list, and
       explore the list (POS filters, sorting, row expansion, definitions/forms/
       examples, counts). Stateless, ephemeral, rate-limited, and capped below
-      signed-in text size via `FINNESTDB_ANON_MAX_CHARS` (default 20,000, vs the
+      signed-in text size via `FINNESTDB_ANON_MAX_CHARS` (default 300,000, vs the
       1,500,000 signed-in cap), enforced server-side before parser work and
       surfaced to the client through `/api/me`. Save/deck/review, known/ignored
       state, imports, parser feedback, history, and account settings stay
@@ -106,9 +106,12 @@ scope, not accidental creep. See Decisions 23-29.
       dedicated anonymous-heavy mixed stage confirm: anonymous parse sheds at
       a meaningfully higher rate than signed-in parse (e.g. 50.2% vs. 12.7% in
       the anon-heavy stage), and deck/review reads never errored or exceeded
-      ~700ms p95 even at full 1000-VU saturation. Anonymous 20,000-char cap
-      re-checked against this load, not changed — no evidence justified
-      lowering it (see report for the `custom`-parser-mode caveat). Full
+      ~700ms p95 even at full 1000-VU saturation. The anonymous cap was
+      20,000 chars during this run and was re-checked against this load, not
+      changed — no evidence justified lowering it (see report for the
+      `custom`-parser-mode caveat). Note: the default was raised to 300,000
+      later the same day (commit 7bff399); the larger cap has not itself been
+      load-tested and should be covered by the production-host re-run. Full
       method, numbers, and hardware caveat:
       [`docs/launch-readiness/2026-07-04-load-test.md`](docs/launch-readiness/2026-07-04-load-test.md).
       **Remaining, gate stays open**: this was a laptop run against a local DB,
@@ -1158,7 +1161,8 @@ New work surfaced by the review (not yet broken into sequenced PRs):
 - [x] **Anonymous parse has a stricter text-size limit.** Signed-in parsing
   keeps the 1,500,000-character cap; anonymous demo parsing uses a lower
   configurable cap. Shipped 2026-07-04 as `FINNESTDB_ANON_MAX_CHARS` (default
-  20,000), enforced server-side before expensive parser work, returning a 4xx
+  20,000 at ship, raised to 300,000 the same day), enforced server-side before
+  expensive parser work, returning a 4xx
   that names the limit and prompts sign-up for longer texts.
 - [x] **Public alpha language status: Finnish and Estonian are equal.** Do not
   label either language experimental or secondary. If parity gaps exist, track
