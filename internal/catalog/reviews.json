@@ -12,6 +12,12 @@
       "date": "2026-07-04",
       "difficulty": "medium-hard",
       "note": "Clearly more than medium, but not fully hard. Model score 0.459 (medium) undershoots by one band; literary 1930s vocabulary outweighs the short sentences."
+    },
+    "fi-sauna-article": {
+      "reviewer": "sagar",
+      "date": "2026-07-04",
+      "difficulty": "easy-medium",
+      "note": "Easy-medium. Model score put it in the medium-hard band — the second consecutive two-band overrate on an everyday-topic article (the replaced machine-written sauna text was misjudged identically): familiar concrete topics read easier than the lexical/structural signals suggest."
     }
   }
 }

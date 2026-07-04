@@ -393,11 +393,13 @@ the learner-facing `difficulty`, and the model's verdict is always preserved in
 `difficulty_computed` for calibration. Sagar reviews Finnish; an Estonian
 reviewer covers Estonian.
 
-Calibration so far (n=3 FI, 2026-07-04): the model over-rated the everyday-topic
-sauna article by two bands (0.540 → human easy-medium) — familiar-topic
-simplicity is invisible to the lexical/structural signals — and was one band
-off in each direction on the other two. Revisit weights once ~10 reviewed texts
-exist. Per-learner Personalized Text
+Calibration so far (n=4 FI, 2026-07-04): the model over-rated BOTH sauna
+articles (the retired machine-written one and its Wikipedia replacement) by two
+bands each (model medium-hard → human easy-medium) — familiar-topic simplicity
+is invisible to the lexical/structural signals, and article-genre texts look
+like the likeliest systematic miss. One-band misses in each direction on the
+two literary texts. Revisit weights once ~10 reviewed texts exist; consider a
+genre-aware prior. Per-learner Personalized Text
 Fit is a runtime set intersection of each entry's precomputed `(lemma, pos)`
 list against `user_known_lemmas`, computed in `/api/catalog`; it never touches
 the frozen difficulty label.

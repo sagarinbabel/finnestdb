@@ -10,6 +10,14 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — FI catalog fully human-reviewed; article-genre calibration signal
+
+Sagar reviewed the replacement Wikipedia sauna article: easy-medium, overriding
+the model's medium-hard. All three FI texts now carry approved reviews. Second
+consecutive two-band overrate on an everyday-topic article — recorded in the
+difficulty-model calibration notes (`GO_LIVE_CHECKLIST.md`): familiar concrete
+topics read easier than the lexical/structural signals suggest.
+
 ## 2026-07-04 — Catalog texts moved to real published sources
 
 A naturalness review of the agent-written "sauna" article found it stilted, so
