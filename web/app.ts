@@ -1372,6 +1372,15 @@ async function handleSignout(): Promise<void> {
     } catch {
         // Best-effort — even if the endpoint is missing, clear local state.
     }
+    resetClientSessionState();
+    showToast('Signed out', 'info');
+    navigate('/');
+}
+
+// Clears all signed-in client state and flips the UI back to the anonymous
+// role. Shared by sign-out and account deletion — the server has already
+// invalidated (or deleted) the session by the time this runs.
+function resetClientSessionState(): void {
     state.user = null;
     state.dashboard = null;
     state.decks = [];
@@ -1396,8 +1405,40 @@ async function handleSignout(): Promise<void> {
     try { sessionStorage.removeItem(LAST_PARSE_KEY); } catch {}
     clearResultsDom();
     applyRoleVisibility();
-    showToast('Signed out', 'info');
-    navigate('/');
+}
+
+// Account deletion (Languages page → Account section). DELETE /api/me
+// cascades all user data server-side and clears the session cookie; the
+// confirmation dialog mirrors the vocab delete-all pattern (the strongest
+// destructive-confirm precedent in the app).
+async function handleDeleteAccount(): Promise<void> {
+    const email = state.user?.email;
+    const confirmed = await showConfirm({
+        title:        'Delete your account?',
+        message:      `This permanently deletes ${email ? `the account ${email}` : 'your account'} and everything in it — all decks, review history, parse history, parser feedback, and known and ignored words. This cannot be undone.`,
+        confirmLabel: 'Delete my account',
+        danger:       true,
+    });
+    if (!confirmed) return;
+
+    const button = document.getElementById('account-delete') as HTMLButtonElement | null;
+    if (button) button.disabled = true;
+    try {
+        const resp = await fetch('/api/me', {
+            method: 'DELETE',
+            credentials: 'same-origin',
+        });
+        if (!resp.ok) throw new Error(await resp.text() || 'Failed to delete account');
+        // Server has deleted the user and invalidated the session cookie —
+        // drop all client state and land on the signed-out landing page.
+        resetClientSessionState();
+        showToast('Your account and data have been deleted.', 'info');
+        navigate('/');
+    } catch (err: any) {
+        showToast(err.message || 'Failed to delete account.', 'error');
+    } finally {
+        if (button) button.disabled = false;
+    }
 }
 
 function clearResultsDom(): void {
@@ -8230,6 +8271,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('nav-signout')       ?.addEventListener('click', handleSignout);
     document.getElementById('nav-mobile-signout')?.addEventListener('click', handleSignout);
+    document.getElementById('account-delete')    ?.addEventListener('click', handleDeleteAccount);
 
     document.getElementById('results-back')?.addEventListener('click', () => {
         if (state.currentContext === 'deck') {

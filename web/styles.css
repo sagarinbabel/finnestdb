@@ -3069,6 +3069,17 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     color: var(--text-secondary);
     font-size: 0.88rem;
 }
+.languages-account {
+    margin-top: 2.5rem;
+}
+.account-delete {
+    color: #dc2626;
+    border-color: color-mix(in srgb, #dc2626 45%, transparent);
+}
+.account-delete:hover {
+    background: color-mix(in srgb, #dc2626 8%, transparent);
+    border-color: #dc2626;
+}
 .decks-list {
     display: grid;
     gap: 1rem;
