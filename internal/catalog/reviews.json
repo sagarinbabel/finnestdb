@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "reviews": {
+    "fi-sauna-article": {
+      "reviewer": "sagar",
+      "date": "2026-07-04",
+      "difficulty": "easy-medium",
+      "note": "Falls between easy and medium, more on the easy side. Model score 0.540 (medium-hard band) substantially overrates it: everyday vocabulary and familiar topic are not captured by the lexical/structural signals."
+    },
+    "fi-kesaaamu-poem": {
+      "reviewer": "sagar",
+      "date": "2026-07-04",
+      "difficulty": "medium-hard",
+      "note": "Between medium and hard. Archaic 1891 poetic Finnish, but short and regular. Model score 0.715 (hard) overshoots by one band."
+    },
+    "fi-hiiri-pekka-story": {
+      "reviewer": "sagar",
+      "date": "2026-07-04",
+      "difficulty": "medium-hard",
+      "note": "Clearly more than medium, but not fully hard. Model score 0.459 (medium) undershoots by one band; literary 1930s vocabulary outweighs the short sentences."
+    }
+  }
+}

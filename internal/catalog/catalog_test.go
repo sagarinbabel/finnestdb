@@ -28,8 +28,21 @@ func TestEveryEntryHasReadableFixtureAndProvenance(t *testing.T) {
 		if e.License == "" || e.CorpusSource == "" {
 			t.Errorf("%s: missing license/corpus provenance (license discipline)", e.ID)
 		}
-		if e.DifficultyReview != "pending" {
-			t.Errorf("%s: difficulty_review = %q, want pending (no human sanity-check has happened)", e.ID, e.DifficultyReview)
+		switch e.Language {
+		case "fi":
+			// FI difficulty labels were human-reviewed 2026-07-04 (reviews.json).
+			if e.DifficultyReview != "approved" || e.DifficultyReviewBy == "" || e.DifficultyReviewDate == "" {
+				t.Errorf("%s: FI entries must carry an approved human review, got %q by %q", e.ID, e.DifficultyReview, e.DifficultyReviewBy)
+			}
+			if e.DifficultyComputed == "" {
+				t.Errorf("%s: computed difficulty must be preserved alongside the review", e.ID)
+			}
+		default:
+			// ET is still awaiting its reviewer; no entry may claim a sign-off
+			// it did not get.
+			if e.DifficultyReview != "pending" {
+				t.Errorf("%s: difficulty_review = %q, want pending (ET human sanity-check has not happened)", e.ID, e.DifficultyReview)
+			}
 		}
 		if len(e.Lemmas) == 0 {
 			t.Errorf("%s: precomputed lemma list is empty", e.ID)

@@ -79,7 +79,7 @@ gen-catalog:
 		echo "finnestdb.db is required (run scripts/setup-local.sh first)."; \
 		exit 1; \
 	fi
-	go run ./cmd/gencatalog -specs internal/catalog/specs.json -data internal/catalog/data -db finnestdb.db -freq-dir localdata/frequency -out internal/catalog/data/catalog.json
+	go run ./cmd/gencatalog -specs internal/catalog/specs.json -data internal/catalog/data -db finnestdb.db -freq-dir localdata/frequency -reviews internal/catalog/reviews.json -out internal/catalog/data/catalog.json
 
 # Reproducibility guard: fails if the checked-in catalog drifts from a fresh
 # regeneration (ignores only the "generated" date).
@@ -88,7 +88,7 @@ gen-catalog-check:
 		echo "finnestdb.db is required (run scripts/setup-local.sh first)."; \
 		exit 1; \
 	fi
-	go run ./cmd/gencatalog -specs internal/catalog/specs.json -data internal/catalog/data -db finnestdb.db -freq-dir localdata/frequency -out internal/catalog/data/catalog.json -check
+	go run ./cmd/gencatalog -specs internal/catalog/specs.json -data internal/catalog/data -db finnestdb.db -freq-dir localdata/frequency -reviews internal/catalog/reviews.json -out internal/catalog/data/catalog.json -check
 
 gen-lemmatizer-wordlist-fi:
 	@if [ ! -f finnestdb.db ]; then \

@@ -53,8 +53,15 @@ func TestCatalogListReturnsEmbeddedEntries(t *testing.T) {
 		if e.ID == "" || e.Title == "" || e.License == "" {
 			t.Errorf("entry missing id/title/license: %+v", e)
 		}
-		if e.DifficultyReview != "pending" {
-			t.Errorf("%s: difficulty_review=%q want pending", e.ID, e.DifficultyReview)
+		switch e.Language {
+		case "fi":
+			if e.DifficultyReview != "approved" {
+				t.Errorf("%s: difficulty_review=%q want approved (FI reviewed 2026-07-04)", e.ID, e.DifficultyReview)
+			}
+		default:
+			if e.DifficultyReview != "pending" {
+				t.Errorf("%s: difficulty_review=%q want pending (ET review outstanding)", e.ID, e.DifficultyReview)
+			}
 		}
 		// No known words yet -> no coverage overlay, and no known-word flag.
 		if e.Coverage != nil {

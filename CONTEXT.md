@@ -85,8 +85,13 @@ The checked-in catalog of curated **Embedded Texts**. It should be generated fro
 _Avoid_: broad corpus browser, runtime corpus dependency
 
 **Global Difficulty**:
-The catalog's fixed Easy/Medium/Hard label computed from text-level metrics and human-sanity-checked before launch.
-_Avoid_: manual vibe label
+The catalog's fixed difficulty label computed from text-level metrics and
+human-sanity-checked before launch. Five levels since 2026-07-04: Easy,
+Easy–Medium, Medium, Medium–Hard, Hard (real texts cluster on the coarse
+bucket boundaries). A human review can override the computed label; the
+computed value stays stored for calibration. Coverage planning for the
+catalog matrix still counts the three coarse buckets.
+_Avoid_: manual vibe label, silently discarding the computed value
 
 **Personalized Text Fit**:
 A learner-specific overlay for an **Embedded Text**, computed from the learner's known-word state when available. It answers "how much of this text do you likely already know?" while **Global Difficulty** remains the fallback when no known-word data exists. Current code computes this from lemma-backed state; the product direction is surface-first known vocabulary.

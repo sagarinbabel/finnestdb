@@ -13,10 +13,14 @@ func TestBucketFromScoreCutPoints(t *testing.T) {
 		want  Difficulty
 	}{
 		{0.0, DifficultyEasy},
-		{easyMediumCut - 0.001, DifficultyEasy},
-		{easyMediumCut, DifficultyMedium},
-		{mediumHardCut - 0.001, DifficultyMedium},
-		{mediumHardCut, DifficultyHard},
+		{easyEasyMediumCut - 0.001, DifficultyEasy},
+		{easyEasyMediumCut, DifficultyEasyMedium},
+		{easyMediumMediumCut - 0.001, DifficultyEasyMedium},
+		{easyMediumMediumCut, DifficultyMedium},
+		{mediumMediumHardCut - 0.001, DifficultyMedium},
+		{mediumMediumHardCut, DifficultyMediumHard},
+		{mediumHardHardCut - 0.001, DifficultyMediumHard},
+		{mediumHardHardCut, DifficultyHard},
 		{1.0, DifficultyHard},
 	}
 	for _, c := range cases {

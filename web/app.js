@@ -1209,7 +1209,8 @@ const GENRE_LABEL = {
     story: 'Story', article: 'Article', poem: 'Poem',
 };
 const DIFFICULTY_LABEL = {
-    easy: 'Easy', medium: 'Medium', hard: 'Hard',
+    'easy': 'Easy', 'easy-medium': 'Easy\u2013Medium', 'medium': 'Medium',
+    'medium-hard': 'Medium\u2013Hard', 'hard': 'Hard',
 };
 // renderCatalogSection toggles a cold-start section on/off and paints the
 // catalog grid inside it. It lazy-loads /api/catalog on first show. Both the

@@ -35,9 +35,11 @@ var fixtureFS embed.FS
 type Difficulty string
 
 const (
-	DifficultyEasy   Difficulty = "easy"
-	DifficultyMedium Difficulty = "medium"
-	DifficultyHard   Difficulty = "hard"
+	DifficultyEasy       Difficulty = "easy"
+	DifficultyEasyMedium Difficulty = "easy-medium"
+	DifficultyMedium     Difficulty = "medium"
+	DifficultyMediumHard Difficulty = "medium-hard"
+	DifficultyHard       Difficulty = "hard"
 )
 
 // Genre is the coarse content type used for the alpha catalog matrix.
@@ -112,12 +114,21 @@ type Entry struct {
 	WordCount  int    `json:"word_count"`
 	ImportDate string `json:"import_date"` // YYYY-MM-DD
 
+	// Difficulty is the learner-facing label. It equals DifficultyComputed
+	// unless a human review recorded an override in reviews.json.
 	Difficulty Difficulty `json:"difficulty"`
-	Metrics    Metrics    `json:"metrics"`
-	// DifficultyReview is "pending" until a human sanity-checks the bucket
-	// (Sagar for FI, an Estonian reviewer for ET). Never emit "confirmed"
-	// from the generator.
-	DifficultyReview string `json:"difficulty_review"`
+	// DifficultyComputed is what the deterministic model assigned, kept for
+	// calibration even when a human override wins.
+	DifficultyComputed Difficulty `json:"difficulty_computed"`
+	Metrics            Metrics    `json:"metrics"`
+	// DifficultyReview is "pending" until a human sanity-checks the label
+	// (Sagar for FI, an Estonian reviewer for ET), then "approved". The
+	// generator only emits "approved" when reviews.json carries a review;
+	// it never invents one.
+	DifficultyReview     string `json:"difficulty_review"`
+	DifficultyReviewBy   string `json:"difficulty_review_by,omitempty"`
+	DifficultyReviewDate string `json:"difficulty_review_date,omitempty"` // YYYY-MM-DD
+	DifficultyReviewNote string `json:"difficulty_review_note,omitempty"`
 
 	// Fixture is the embedded plain-text filename under data/ (basename only).
 	Fixture string `json:"fixture"`
@@ -217,7 +228,7 @@ func coverageKey(lemma, pos string) string {
 // then difficulty (easy→hard), then title. Used by the generator and the API
 // so the checked-in catalog and the served list agree.
 func SortEntries(entries []Entry) {
-	rank := map[Difficulty]int{DifficultyEasy: 0, DifficultyMedium: 1, DifficultyHard: 2}
+	rank := map[Difficulty]int{DifficultyEasy: 0, DifficultyEasyMedium: 1, DifficultyMedium: 2, DifficultyMediumHard: 3, DifficultyHard: 4}
 	sort.SliceStable(entries, func(i, j int) bool {
 		a, b := entries[i], entries[j]
 		if a.Language != b.Language {

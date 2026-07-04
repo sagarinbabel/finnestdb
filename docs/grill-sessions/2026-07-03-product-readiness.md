@@ -181,6 +181,14 @@ Stable product decisions from this grill:
   launch path. The superseded note is preserved in
   `docs/srs-deck-spec.md`.
 
+- **Q6/Q8 difficulty labels refined (2026-07-04).** The FI human sanity-check
+  found all three initial texts sitting on Easy/Medium/Hard boundaries, and the
+  model's ordering disagreed with the human ordering on one pair. The label
+  scale is now five-level (easy, easy-medium, medium, medium-hard, hard) with
+  human overrides recorded in `internal/catalog/reviews.json` and the computed
+  label preserved for calibration. The 36-text coverage matrix still counts the
+  three coarse buckets, so this refines presentation without expanding scope.
+
 ## Anticipated Question Count
 
 The initial product/readiness grill was first estimated at 30-40 questions. As

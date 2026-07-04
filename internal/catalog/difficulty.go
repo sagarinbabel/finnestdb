@@ -7,7 +7,8 @@ package catalog
 //
 // Difficulty is a composite of normalized text-level signals, each clamped to
 // [0,1] where higher = harder, then averaged with fixed weights into a Score
-// in [0,1]. The Score is bucketed with two fixed cut points. Every constant
+// in [0,1]. The Score is bucketed with four fixed cut points into five
+// labels (easy, easy-medium, medium, medium-hard, hard). Every constant
 // below is documented in docs/GO_LIVE_CHECKLIST.md ("Embedded catalog
 // difficulty model") and pinned by difficulty_test.go.
 //
@@ -32,9 +33,14 @@ const (
 	rareFormRateCeiling      = 0.55  // 55% rare/absent forms -> max
 	featsPerTokenCeiling     = 0.28  // distinct FEATS strings per token at/above -> 1
 
-	// Bucket cut points on the composite Score in [0,1].
-	easyMediumCut  = 0.34
-	mediumHardCut  = 0.58
+	// Bucket cut points on the composite Score in [0,1]. The boundary bands
+	// (easy-medium, medium-hard) are +/-0.05 around the original two-cut
+	// model's 0.34 and 0.58; the 2026-07-04 FI human review showed real texts
+	// clustering on those boundaries.
+	easyEasyMediumCut   = 0.29
+	easyMediumMediumCut = 0.39
+	mediumMediumHardCut = 0.53
+	mediumHardHardCut   = 0.63
 )
 
 // Signal weights. They sum to 1.0 across the full set; when the frequency
@@ -116,14 +122,18 @@ func ScoreFromMetrics(m Metrics) float64 {
 	return clamp01(weighted / totalWeight)
 }
 
-// BucketFromScore maps a composite score to an Easy/Medium/Hard bucket using
-// the fixed cut points.
+// BucketFromScore maps a composite score to one of the five difficulty
+// labels using the fixed cut points.
 func BucketFromScore(score float64) Difficulty {
 	switch {
-	case score < easyMediumCut:
+	case score < easyEasyMediumCut:
 		return DifficultyEasy
-	case score < mediumHardCut:
+	case score < easyMediumMediumCut:
+		return DifficultyEasyMedium
+	case score < mediumMediumHardCut:
 		return DifficultyMedium
+	case score < mediumHardHardCut:
+		return DifficultyMediumHard
 	default:
 		return DifficultyHard
 	}
