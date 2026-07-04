@@ -94,6 +94,17 @@ EPUB support has shipped. The implementation follows the same shape:
 The remaining Anki-file equivalent is `.apkg` extraction for known-word import,
 not parse upload.
 
+### Author-partnered learnable texts (owner vision, 2026-07-04)
+
+Longer-term catalog direction beyond PD/CC sources: collaborate directly with
+authors who want their work hosted and made learnable — especially easy-Finnish
+(selkokieli) texts. Many are funded through Finnish cultural grants, so authors
+may be open to licensed hosting for learners. This would give the catalog
+modern, purpose-written easy texts that public-domain sources structurally
+cannot provide (PD Finnish/Estonian is pre-1950s by definition). Requires: a
+permission/licensing record per text (the catalog's license/attribution fields
+already carry this), and eventually an author-facing intake path.
+
 ### Known-word import from external tools
 
 Surasura imports known vocabulary from Anki, Migaku, and Jiten.moe so that
