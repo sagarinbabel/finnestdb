@@ -127,6 +127,58 @@ OUTPUT FORMAT:
   selectors you reused.
 ```
 
+## Aalto skin (opt-in second skin)
+
+FinnEst ships **two skins**, selected in the nav theme picker and
+persisted in `localStorage` (`skin` = `ink` | `aalto`, crossed with
+`theme` = `light` | `dark`). Both apply on the root element as
+`data-skin` × `data-theme`.
+
+- **Ink** (default) — the INK/PAPER OKLCH system documented in the
+  System block above (Fraunces + IBM Plex Sans/Mono, vermillion
+  accent). Provenance: `design/` Design v2 direction.
+- **Aalto** — an Alvar-Aalto-inspired second skin. Light mode is
+  **Paimio** (warm birch-cream paper, soft Nordic blue), dark mode is
+  **Sanatorium** (deep blue-black ground, smoked-oak birch). Fonts are
+  Newsreader (display serif, optical sizing, italics) + Inter Tight
+  (UI) + IBM Plex Mono (data). Provenance:
+  [`design/claude-design/finnest-prototype.html`](../design/claude-design/finnest-prototype.html),
+  whose `<style>` header declares the full system. That prototype is
+  the source of truth for the Aalto tokens; copy its oklch values
+  verbatim, don't approximate.
+
+Aalto role-token values (mapped onto the same custom-property names the
+app already uses, so components need no per-skin markup). Format is
+`Paimio (light) / Sanatorium (dark)`:
+
+    --bg-primary       oklch(0.970 0.012 78)  / oklch(0.180 0.025 250)
+    --bg-secondary     oklch(0.945 0.018 80)  / oklch(0.225 0.025 250)
+    --bg-tertiary      oklch(0.895 0.030 78)  / oklch(0.265 0.025 250)
+    --card-bg          oklch(0.945 0.018 80)  / oklch(0.140 0.025 250)
+    --text-primary     oklch(0.200 0.020 250) / oklch(0.96 0.012 80)
+    --text-secondary   oklch(0.50 0.015 250)  / oklch(0.58 0.015 240)
+    --accent           oklch(0.480 0.115 248) / oklch(0.72 0.13 245)   /* Nordic blue */
+    --accent-hover     oklch(0.395 0.125 250) / oklch(0.62 0.13 248)
+    --border           oklch(0.84 0.020 75)   / oklch(0.32 0.022 250)
+    --known            oklch(0.55 0.10 155)   / oklch(0.74 0.11 155)   /* sage */
+    --learning         oklch(0.65 0.10 80)    / oklch(0.78 0.11 80)    /* warm wheat */
+    --new              oklch(0.480 0.115 248) / oklch(0.72 0.13 245)
+    --font-disp        "Newsreader", serif
+    --font-sans        "Inter Tight", system-ui, sans-serif
+    --r-sm/-md/-lg     6 / 12 / 22 px          /* gentler than ink's 4/8 */
+
+The word-status tokens `--known` / `--learning` / `--new` are defined
+under **both** skins (the reading surface consumes them); the ink-skin
+values are chosen from that skin's palette. The prototype's `data-aalto="bold"`
+variant (visible birch panels, vase silhouette, vertical AALTO wordmark)
+is **not** wired into the app — it's a decorative direction to prompt
+from, not shipped chrome.
+
+When prompting a design AI for an Aalto screen, cite
+`finnest-prototype.html` and this token table instead of the Ink System
+block, and keep the same non-negotiables (375 px, CSS-variable colours,
+reuse existing selectors).
+
 ## Per-screen prompts
 
 Each block below is a **delta** to the system block. Paste the system
