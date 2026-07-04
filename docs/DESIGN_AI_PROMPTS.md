@@ -16,7 +16,7 @@ The current design source of truth is:
   same tokens with the **Design v2 OKLCH** values for both default
   and `[data-theme="light"]`. The OKLCH block wins. The token table
   below is the *effective* one — match that, not the early hex.
-- [`mockup.html`](../mockup.html) — older, single-file design mockup
+- [`design/claude-design/finnest-prototype.html (formerly mockup.html, removed 2026-07-04)`](../design/claude-design/finnest-prototype.html (formerly mockup.html, removed 2026-07-04)) — older, single-file design mockup
   kept around for reference but **not** the current visual direction.
 - [`docs/USER_FLOWS.md`](USER_FLOWS.md) — screen-by-screen behaviour
   spec.
