@@ -1709,6 +1709,7 @@ function renderCatalogCard(e: CatalogEntry, hasKnownForLang: boolean): string {
         <p class="catalog-meta">${escapeHtml(String(e.word_count))} words${author}</p>
         ${fit}
         <button type="button" class="btn btn-primary btn-sm catalog-load" data-catalog-id="${escapeHtml(e.id)}">Read this text</button>
+        ${e.attribution ? `<p class="catalog-attribution">${escapeHtml(e.attribution)}</p>` : ''}
     </div>`;
 }
 
