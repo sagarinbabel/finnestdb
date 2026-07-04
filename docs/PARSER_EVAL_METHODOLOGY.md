@@ -43,21 +43,224 @@ both reported; "Full" stays as the all-correct ceiling.
 
 Product meaning checks need a narrower measurement than headline parser
 accuracy: can the parser choose the intended dictionary entry for an ambiguous
-surface in sentence context?
+surface in sentence context? This section is the spec for the **ambiguity eval
+slice** — the measurement foundation the "Ambiguous meaning flow" launch gate
+(see [`TODO.md`](../TODO.md)) is blocked on. It is implementation-ready: an agent
+can start from here cold.
 
-For alpha, add focused ambiguity slices before using parser confidence to
-simplify the learner UI. Start Finnish-first, then add Estonian parity cases.
-Useful Finnish pairs include:
+The `custom` parser today emits exactly **one** `(lemma, POS)` pick per surface
+(`parsecore.TokenResult`) and has **no numeric confidence score**. The product,
+however, wants to branch between a single **Meaning Check** and **Multiple
+possible meanings** (see [`CONTEXT.md`](../CONTEXT.md)). This slice measures
+whether that branch can be made safely, per ambiguity class, from deterministic
+eval — not from an invented confidence number.
 
-- `kuusi`: `NUM` "six" vs `NOUN` "spruce"
-- `tuli`: `VERB` "came" vs `NOUN` "fire"
-- `voi`: `VERB` "can/may" vs `NOUN` "butter"
+#### 1. What is measured
 
-For each case, measure candidate inclusion, selected lemma+POS, FEATS where
-applicable, and the external analyzer comparison (`omorfi` for FI,
-`estnltk` for ET). The UI should show a single **Meaning Check** only for
-ambiguity classes where this slice says the parser chooses the contextual sense
-reliably. Otherwise, show **Multiple possible meanings**.
+On the *target token* of each case (the ambiguous surface, marked `target: true`
+in gold), three metrics:
+
+1. **Candidate inclusion** — is the contextually-correct `(lemma, POS)` present
+   in the candidate set the product can offer for this surface? The candidate
+   set is `store.BatchLookupAllForms(form, lang, "custom")` — the exact
+   dict-candidate list that powers Multi-Lemma Surface expansion
+   (`internal/api/handlers.go::expandTokenLemmas`). If the correct sense is not
+   in this set, the product literally cannot show it, so **Multiple possible
+   meanings** is impossible and even a correct single pick is unverifiable.
+2. **Selection accuracy** — does the parser's single top pick
+   (`parsecore.Analyze(..., "custom")`) match the contextually-correct
+   `(lemma, POS)`? This is the gate metric: the single **Meaning Check** UI is
+   only safe when selection is reliable on the class.
+3. **Calibration (confidence proxy)** — see below. Because there is no numeric
+   confidence, calibration is measured against a *structural proxy* and reported
+   as "when the proxy says high-confidence, how often is selection right?"
+
+FEATS is recorded where applicable (as in the main gold sets) but is not part of
+the gate — the meaning branch is a lemma/POS-sense decision, not a case decision.
+External analyzers (`omorfi` FI, `estnltk` ET) stay available as the reference
+upper bound, exactly as in the headline eval.
+
+#### Confidence proxy (there is no numeric confidence today — stated honestly)
+
+The `custom` ranking (`internal/store/dict.go::pickBestResolutionCandidate` +
+`mergeAndRankDictFSTCandidates`) is a `sort.SliceStable` over **discrete,
+non-numeric** signals: case-match score, POS-sanity score, source priority,
+dict/FST agreement, FST emission order, and a handful of morphology biases. It
+produces an *ordering*, not a probability. So we do **not** claim a confidence
+number. Instead the slice starts with a **structural proxy** built only from
+signals that already exist:
+
+- **`single`** — the candidate set (`BatchLookupAllForms`) has exactly one
+  `(lemma, POS)` for the surface → treated as high-confidence.
+- **`multi`** — two or more distinct `(lemma, POS)` candidates → low-confidence
+  by default; the parser is choosing among genuine homographs.
+- **`dict_fst_agree`** — the winning pick was corroborated by both a dictionary
+  row and an FST analysis (`Source` contains `dict` and an `fst_*` tag) →
+  raises confidence within the `multi` bucket.
+
+The slice reports selection accuracy *stratified by proxy bucket*. That table is
+what tells us whether `single` is actually a trustworthy high-confidence signal
+(it may not be — see the baseline, where FI `single` includes cross-POS
+homographs whose second sense is missing from the dict). If and when a real
+numeric confidence lands, this proxy is replaced and the same slice re-measures
+it; the gate rule (below) is written against *measured* accuracy per class, so it
+survives the proxy swap.
+
+#### 2. Gold slice format
+
+Minimal extension of the committed gold shape
+(`internal/eval/eval.go`: `Dataset` → `DatasetCase` → `ExpectedTokenRef`). One
+sentence = one case with exactly one scored target token; a case-level
+`ambiguity_class` groups sentences of the same homograph, and the target token
+carries an `expected_candidates` sense set. Full field docs and a worked example
+live in [`testdata/parser-eval/fi-ambiguity/README.md`](../testdata/parser-eval/fi-ambiguity/README.md).
+Shape:
+
+```jsonc
+{
+  "name": "fi-ambiguity", "version": "v1", "language": "FI", "slice": "ambiguity",
+  "cases": [{
+    "id": "fi-amb-kuusi-1",
+    "text": "Pihalla kasvaa suuri kuusi.",
+    "ambiguity_class": "kuusi",
+    "tokens": [{
+      "surface": "kuusi", "occurrence": 1, "target": true,
+      "lemma": "kuusi", "pos": "NOUN", "feats": "Case=Nom|Number=Sing",
+      "expected_candidates": [
+        {"lemma": "kuusi", "pos": "NOUN", "gloss_hint": "spruce"},
+        {"lemma": "kuusi", "pos": "NUM",  "gloss_hint": "six"}
+      ]
+    }]
+  }]
+}
+```
+
+The committed slice data is
+[`testdata/parser-eval/fi-ambiguity/fi-ambiguity-v1.json`](../testdata/parser-eval/fi-ambiguity/fi-ambiguity-v1.json)
+(48 FI cases, 21 classes) and
+[`et-ambiguity-v1.json`](../testdata/parser-eval/fi-ambiguity/et-ambiguity-v1.json)
+(13 ET cases, 6 classes). They live under `testdata/parser-eval/`, deliberately
+*not* under `fi/gold` or `et/gold`, so they never inflate the headline
+lemma/POS sweep with a curated, deliberately-hard homograph mix.
+
+#### 3. FI case inventory + current-parser baseline (evidence)
+
+The 48 FI cases cover: cross-POS homographs where the two senses differ in UD POS
+(`kuusi` NOUN/NUM, `tuli` NOUN/VERB, `voi` NOUN/VERB); single-POS homographs
+(`kurkku` cucumber/throat, `vuori` mountain/lining, `selkä` back/open-water);
+noun-vs-verb *form* collisions (`sanoi`/`sanoin`, `palaa`, `tuulet`, `sain`); and
+case-form surfaces the FST handles cleanly as controls (`maassa`, `kylään`,
+`rannalle`, …). Two natural CC0 sentences per sense minimum.
+
+Baseline below is **actual `custom`-mode output** on the production DB + full FST
+tables (`localdata/lemmatizer-fi-et/tables/`, 243 MB FI / 75 MB ET), parser
+version `2026.05.15a`, measured 2026-07-04. "cand set" is the raw
+`BatchLookupAllForms` result; "pick" is the single `Analyze` result. This table
+IS the evidence section — the formal baseline freeze is left to the maintainer
+(see §6).
+
+| class | sel. acc | candidate set the product can offer | failure mode |
+|---|---|---|---|
+| kuusi | 2/4 | `kuusi/NUM` only | **NOUN "spruce" absent from dict forms** — FST knows it, candidate API doesn't merge FST |
+| tuli | 2/4 | `tulla/VERB` only | **NOUN "fire" absent from dict forms** — same gap |
+| voi | 2/4 | `voi/NOUN` only | **VERB "voida" absent from dict forms** — same gap |
+| alusta | 0/2 | `alus/NOUN` only | wrong single reading; neither `alku` (ela) nor `alusta` (chassis) reachable |
+| palaa | 0/2 | `pala/NOUN` only | picks noun `pala` (par) over both verb readings |
+| sanoi | 1/2 | `sanoa/VERB` (lex-overlay) | overlay forces VERB; `sanoin` "with words" (`sana` NOUN instr.) unreachable |
+| tie | 1/2 | `tie` / `tien` | `tien` self-keys as its own lemma (genitive not stemmed) |
+| kurkku, vuori, selka, sain, laulun, tuulet, ilta, kyla, ranta, puku, kayda, maa, alkoi, sade | 2/2 each | correct single reading | control cases pass |
+
+**FI headline: selection accuracy 36/48 = 75.0%; candidate inclusion 35/48 =
+72.9%.**
+
+The dominant FI failure is not bad ranking — it is that **kaikki.org's `forms`
+table stores only one reading per surface for the classic cross-POS homographs**,
+so the second sense never enters `BatchLookupAllForms` at all. The FST *does*
+return both readings (verified: `kuusi` → NOUN+NUM, `tuli` → NOUN+VERB, `voi` →
+NOUN+VERB+INTJ), but the candidate API is dict-only. So for FI, **candidate
+inclusion is the blocker before selection** — the product can't even honestly
+show "Multiple possible meanings" for `kuusi`/`tuli`/`voi` today.
+
+#### 4. Threshold → UI rule
+
+The gate operates **per ambiguity class**, using the slice's per-class numbers:
+
+> An ambiguity class may use the **single Meaning Check** UI only when, on its
+> slice cases: **selection accuracy ≥ 90%** AND **candidate inclusion = 100%**
+> AND **N ≥ 4** target cases (≥ 2 per sense). Otherwise the surface uses
+> **Multiple possible meanings** (list candidates, per-candidate known/study,
+> plus the "None of these looks right" flag-only feedback path).
+
+Rationale for the numbers:
+
+- **selection ≥ 90%** — the single check asserts one meaning as intended; below
+  ~90% the learner is corrected against a wrong sense often enough to erode the
+  First-Experience trust bar. Deliberately strict for alpha; can loosen with a
+  real confidence signal that lets low-confidence *within* a passing class fall
+  through to the multi-UI.
+- **candidate inclusion = 100%** — if the correct sense can be missing from the
+  candidate set (the FI kaikki gap), the multi-UI would omit the right answer,
+  which is worse than asking. A class that can't even enumerate its senses is not
+  eligible for *either* confident UI until the candidate set is fixed.
+- **N ≥ 4, ≥ 2/sense** — two sentences per sense is the floor for the accuracy
+  number to mean anything; a class with one sentence per sense can hit 100% by
+  luck.
+
+Applied to today's baseline: the 14 control classes at 2/2 do **not** yet
+qualify (N < 4 per class) — they need their case count raised before they can be
+promoted, which is exactly the point of the "expand case counts" discipline. The
+cross-POS classes (`kuusi`/`tuli`/`voi`) fail candidate inclusion outright and
+must stay on **Multiple possible meanings** regardless of selection until the
+candidate API merges FST readings. This is the honest launch posture: **no class
+is single-Meaning-Check-eligible on the v1 slice; everything defaults to Multiple
+possible meanings**, and classes graduate as case counts rise and the FI
+candidate gap is closed.
+
+#### 5. ET parity plan (follow-up slice)
+
+ET fails *differently*, which is why parity is mandatory before any product copy
+implies equal support. Real ET homographs (verified against the DB + Ekilex, not
+invented): `tee` road/tea vs `tegema` do, `viis` five(NUM)/melody(NOUN)/`viima`,
+`sai` white-bread(NOUN)/`saama` got, `pea` head(NOUN)/`pidama` must, `kuu`
+moon/month, `palk` salary/log. The committed `et-ambiguity-v1.json` (13 cases, 6
+classes) baseline:
+
+**ET headline: selection accuracy 7/13 = 53.8%; candidate inclusion 13/13 =
+100.0%.**
+
+The inversion is the finding: **Ekilex populates the full candidate set** (ET
+candidate inclusion is perfect — `tee` → both NOUN and `tegema/VERB`; `pea` →
+five candidates), but the parser's single pick prefers the VERB reading on
+cross-POS collisions and mis-selects on `tee`, `viis`, `sai`, `pea`. So ET's
+blocker is **selection ranking**, while FI's blocker is **candidate inclusion**.
+A single language-agnostic threshold would hide this; the per-class rule surfaces
+it. The ET slice is scoped as the follow-up: expand to ~20-30 cases and wire the
+same runner, before ET ambiguity UI ships.
+
+#### 6. Runner integration + baseline discipline
+
+Add a focused `cmd/ambiguityeval` (rather than overloading `cmd/parsertest`): it
+loads a `slice: "ambiguity"` gold file, for each case runs `custom`-mode
+`Analyze` for the pick and `BatchLookupAllForms` for the candidate set, computes
+the three metrics + the proxy-stratified table, and writes a report keyed by
+`ambiguity_class`. Rationale for a separate command: the ambiguity metrics
+(candidate inclusion, per-class stratification) are not token-accuracy metrics
+and would distort the `parsertest` summary schema; keeping them apart also keeps
+the ambiguity slice out of the headline sweep by construction.
+
+Wire it into a `make compare-ambiguity` target (parallel to
+`make compare-parsers`), and freeze its output with the existing
+`scripts/freeze-baseline.sh` naming convention
+(`YYYY-MM-DD<rev>-T<HHMM>Z-<dataset>`, see
+[`baselines/README.md`](baselines/README.md)) so a `2026-07-04a-fi-ambiguity`
+report is append-only and referenceable. The committed baseline file is the
+per-class selection/candidate table plus the proxy-stratified accuracy, so the
+threshold rule can be re-evaluated against any frozen point. Re-freeze on any
+parser-affecting PR, same as the headline baselines.
+
+Until `cmd/ambiguityeval` lands, the evidence table in §3–§5 above is the
+reference baseline (produced by a throwaway harness over these exact gold files,
+parser `2026.05.15a`, 2026-07-04).
 
 ## What we measure
 

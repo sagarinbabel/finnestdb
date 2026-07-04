@@ -10,6 +10,35 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Ambiguity eval slice specced + verified FI/ET gold cases
+
+Wrote the Finnish-first ambiguity eval slice spec (the measurement foundation the
+"Ambiguous meaning flow" gate depends on) as an expansion of
+[`PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) §Ambiguity and
+meaning-check calibration — no new planning doc (Decision 24 / Q60). Covers what
+is measured (candidate inclusion, selection accuracy, calibration), an honest
+confidence *proxy* (there is no numeric confidence today; the `custom` ranking is
+a stable sort over discrete signals), the minimal gold-format extension, the
+per-class threshold→UI rule (single Meaning Check only when selection ≥ 90% AND
+candidate inclusion = 100% AND N ≥ 4), the ET parity plan, and the
+`cmd/ambiguityeval` runner plan.
+
+Committed verified gold data under `testdata/parser-eval/fi-ambiguity/`:
+`fi-ambiguity-v1.json` (48 cases, 21 classes) + `et-ambiguity-v1.json` (13 cases,
+6 classes) + `README.md`. Baseline against the real DB + full FST tables (parser
+`2026.05.15a`): **FI selection 75.0% / candidate inclusion 72.9%; ET selection
+53.8% / candidate inclusion 100%.** Headline finding recorded in
+[`TODO.md`](../TODO.md): FI and ET fail *differently* — FI's blocker is candidate
+inclusion (kaikki `forms` stores one reading per cross-POS homograph, so
+`kuusi`/`tuli`/`voi` second sense is absent from the candidate API though the FST
+knows it), ET's blocker is selection ranking (Ekilex supplies all candidates but
+the pick prefers VERB on cross-POS collisions). No class is single-check-eligible
+on v1, so the honest alpha default is Multiple possible meanings everywhere.
+
+Sequenced implementation tasks (build `cmd/ambiguityeval`, `make
+compare-ambiguity`, close the FI candidate gap, expand + freeze) added under the
+existing ambiguity items in `TODO.md`.
+
 ## 2026-07-04 — FI catalog fully human-reviewed; article-genre calibration signal
 
 Sagar reviewed the replacement Wikipedia sauna article: easy-medium, overriding
