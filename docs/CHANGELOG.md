@@ -10,6 +10,40 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — 375px results-table layout repaired
+
+Fixed BROKEN mobile layouts found in a 375x812 audit of every learner surface
+(landing, results, signup, dashboard, embedded catalog, Inspect, decks,
+review, vocab, history, feedback/ambiguity modals). Scope was limited to
+BROKEN findings only (clipped/unreachable controls); cosmetic-only spacing
+was left alone per [`FEATURES.md`](FEATURES.md) Mobile Direction's usable-at-375px bar.
+
+- **Results table (`web/styles.css` `@media (max-width: 600px)`):** `.col-actions`
+  carried a desktop `min-width: 13rem` (208px) that, combined with the fixed
+  `.col-lemma`/`.col-count` widths, pushed the row past 500px even after
+  `.col-def`/`.col-grammar` were hidden — so the Known/Ignore/Suggest-fix
+  controls (`.word-pill-known`, `.word-icon-ignore`, `.correction-btn`) were
+  scrolled off the right edge by default on every results/deck-detail view.
+  Narrowed `.col-row`/`.col-lemma`/`.col-count`/`.col-actions` at the existing
+  375px breakpoint so all four visible columns fit inside the viewport without
+  requiring horizontal scroll to reach per-word actions; the "Occurrences ↓"
+  header now wraps instead of visually overlapping "Status".
+- **Ambiguity panel (Multiple possible meanings flow, shipped same day):** the
+  panel renders in a `colspan` cell that inherited the table's fixed-column
+  width sum rather than the scroll container's visible width, so at 375px it
+  extended ~140px past the right edge with the "Not sure" action clipped.
+  Clamped `.ambiguity-panel` to `calc(100vw - 3rem)` and bumped
+  `.ambiguity-candidate-actions button` height (22px → 28px) so "I know this
+  meaning" / "Study this meaning" / "Not sure" stay on-screen and easier to tap.
+- **Left cosmetic-only, unfixed:** the embedded-catalog "Read this text" cards
+  (`.catalog-card`) are dense/cramped at 375px (tight tag row, wrapped
+  long titles) but remain readable and tappable — no BROKEN classification.
+  A dedicated reading-surface redesign is tracked separately; this audit's
+  before/after evidence is attached to that follow-up.
+
+No new breakpoints were introduced; both fixes reuse the existing "Mobile
+(375 px) tweaks" `@media (max-width: 600px)` block in `web/styles.css`.
+
 ## 2026-07-04 — Multiple possible meanings flow shipped (Ambiguous meaning flow gate)
 
 Shipped the learner-facing **Multiple Possible Meanings** flow, closing the
