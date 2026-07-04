@@ -135,6 +135,49 @@ func TestSurfaceCardCreationDistinctSurfacesSameLemma(t *testing.T) {
 	}
 }
 
+// TestReviewCardShowsCorpusExampleSentence proves the starter-deck example
+// wiring reaches the review payload: when a card's deck sentence is a real
+// multi-word corpus sentence and the occurrence highlights an inflected form,
+// GetNextReviewCard returns that whole sentence as the card's example (not just
+// the lemma), and the card surface is the inflected form. This is the contract
+// cmd/pickexamples + cmd/seedcolddeck rely on for starter cards to carry
+// example sentences.
+func TestReviewCardShowsCorpusExampleSentence(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "learner@example.com")
+
+	const sentence = "Kissa oli pöydän alla."
+	_, err := db.CreateDeckWithSentences(user.ID, "Top words", "FI", []DeckSentenceInput{
+		{
+			Text: sentence,
+			Tokens: []DeckTokenInput{
+				// Inflected form "oli" of lemma "olla" at its real token index.
+				{TokenIx: 1, Form: "oli", Lemma: "olla", POS: "VERB"},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateDeckWithSentences: %v", err)
+	}
+
+	card, err := db.GetNextReviewCard(user.ID, nil, "FI")
+	if err != nil {
+		t.Fatalf("GetNextReviewCard: %v", err)
+	}
+	if card == nil {
+		t.Fatal("expected a card for the seeded olla example")
+	}
+	if card.SentenceText != sentence {
+		t.Fatalf("SentenceText=%q, want the corpus sentence %q", card.SentenceText, sentence)
+	}
+	if card.Surface != "oli" {
+		t.Fatalf("Surface=%q, want the inflected form \"oli\"", card.Surface)
+	}
+	if card.Lemma != "olla" || card.POS != "VERB" {
+		t.Fatalf("card sense=%s/%s, want olla/VERB", card.Lemma, card.POS)
+	}
+}
+
 // TestReviewCardHomographNote proves GetNextReviewCard surfaces a homograph
 // note naming the other sense when two cards share a surface.
 func TestReviewCardHomographNote(t *testing.T) {

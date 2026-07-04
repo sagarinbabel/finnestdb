@@ -682,6 +682,22 @@ Recommendation:
 - Keep user-deck sentence context separate from the reusable example-sentence corpus.
 - For now, treat `example_sentences` as a corpus-owned dataset only, not a user-contributed table.
 
+> **Implemented (2026-07-04) — starter-deck example sentences.** The cold-start
+> "Top N words" official deck now carries example sentences on its cards. Owner
+> decision (2026-07-04): individual sentences from the project's local licensed
+> corpora are acceptable as **dictionary-style single-sentence usage examples**
+> (never bulk text reproduction). `cmd/pickexamples` selects the best 1–2
+> corpus sentences per starter lemma under deterministic quality heuristics and
+> emits `testdata/starter-examples/{fi,et}-examples-v1.tsv`;
+> `cmd/seedcolddeck -examples <file>` attaches each as the card's deck sentence,
+> with the inflected form stored as the highlighted occurrence. This reaches the
+> review payload through the existing deck-sentence mechanism (the
+> `GetNextReviewCard` occurrence→sentence join), i.e. the same path as
+> `shared_example_sentence_id` in spirit, not the private
+> `custom_example_text` override. See
+> [`testdata/starter-examples/README.md`](../testdata/starter-examples/README.md)
+> for the schema and the licensing boundary.
+
 ## Known-word bootstrap via external import
 
 Coverage metrics and study sequencing are only useful if the user's known-word
