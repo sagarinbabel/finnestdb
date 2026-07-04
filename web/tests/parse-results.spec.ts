@@ -1307,7 +1307,9 @@ test('languages page splits Studying and Other, sorted alphabetically with stats
   await page.goto('/#/languages');
 
   await expect(page.locator('#languages-page')).toHaveClass(/active/);
-  const headings = page.locator('.languages-section-heading');
+  // Scoped to the languages list: the static Account section below the list
+  // reuses the same heading style but is not part of the Studying/Other split.
+  const headings = page.locator('#languages-list .languages-section-heading');
   await expect(headings).toHaveCount(2);
   await expect(headings.nth(0)).toHaveText('Studying');
   await expect(headings.nth(1)).toHaveText('Other languages');

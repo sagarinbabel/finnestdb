@@ -235,9 +235,11 @@ Anonymous correction submission is out of scope for alpha.
   exclude it, while full report/fix traceability is admin-facing. Restoring a
   fixed issue returns the content with its scheduler state intact (shipped
   2026-07-04, Phase 1c).
-- Account deletion removes the account and retained user data server-side,
-  including decks, parse sessions, parser feedback, review cards, sessions,
-  and known/ignored word lists.
+- Account deletion is self-serve: the Languages page has an Account section
+  with a "Delete account" control behind a confirmation dialog. Deletion
+  removes the account and retained user data server-side, including decks,
+  parse sessions, parser feedback, review cards, sessions, and known/ignored
+  word lists.
 - We do not sell, share, or use your pasted text to train external models.
 
 ## Technology Differentiators

@@ -848,8 +848,16 @@ correction signal.
 
 Profile page (out of scope for first version, but flagged): change
 display name, change password (password accounts only), connected
-accounts (link/unlink Google), delete account (cascades to parses,
-decks, known-word lists).
+accounts (link/unlink Google).
+
+Account deletion shipped without a profile page (2026-07-04): the
+Languages page has an Account section with a "Delete account" button.
+It opens a danger-styled confirmation dialog spelling out permanence
+(all decks, review history, parse history, parser feedback, and
+known/ignored words are deleted; cannot be undone). Confirming sends
+`DELETE /api/me`, which cascades user data server-side and invalidates
+the session; the client then clears local state and returns to the
+signed-out landing page.
 
 ## What's new vs. what's already on `main`
 
