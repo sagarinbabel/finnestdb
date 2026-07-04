@@ -96,35 +96,51 @@ make import-gold-surfaces   # gold_surfaces table backs the Phase-4 accept guard
 | `FINNESTDB_PARSER_QUEUE_TIMEOUT_MS` | `2000` (default) | How long a parse request waits for a free parser slot before returning 503 + `Retry-After`. |
 | `FINNESTDB_PRODUCTION_MIN_FORMS_FI/ET` | unset | Only when the artifact policy changes |
 | `FINNESTDB_ALLOW_DEGRADED_DB` | unset | Emergency-only guard override |
-| `FINNESTDB_FSRS_ENABLED` | unset (OFF) | Review scheduler selection. Unset/`0` runs the shipped step scheduler; `1`/`true`/`on` switches `POST /api/study/answer` to the FSRS scheduler. **Ship OFF and flip only after staging validation** — see "FSRS scheduler rollout". |
+| `FINNESTDB_FSRS_ENABLED` | unset (**ON**) | Review scheduler selection (**opt-OUT** since 2026-07-04). Unset/empty runs the **FSRS scheduler** — the shipped default — for `POST /api/study/answer`. Set `0`/`false`/`no`/`off` to fall back to the deterministic step scheduler; that is the **rollback lever**. See "FSRS scheduler rollout". |
 
 ## FSRS scheduler rollout
 
-`FINNESTDB_FSRS_ENABLED` selects the review scheduler at request time. It
-defaults OFF: the deterministic step scheduler
-(`nextAlphaStepScheduleForRating`) remains the shipped runtime path. Turning it
-ON routes new ratings through `go-fsrs/v3` with default parameters.
+`FINNESTDB_FSRS_ENABLED` selects the review scheduler at request time. **FSRS is
+the default** (opt-OUT flag): with the variable unset, ratings route through
+`go-fsrs/v3` with default parameters. This was enabled after the 2026-07-04
+staging validation ([`launch-readiness/2026-07-04-fsrs-validation.md`](launch-readiness/2026-07-04-fsrs-validation.md))
+came back green on seeded histories, migration-at-scale, rollback, and a
+real-DB smoke.
 
 State from both schedulers coexists in `card_state.fsrs_json` via a version
 discriminator (legacy `{"step","streak"}` vs. `{"v":2,"fsrs":{…}}`), and
 `next_due` / `last_answer_at` / `introduced_at` keep working regardless, so the
-flip is reversible per card. Migration is lazy on first rating — no bulk
-`card_state` rewrite — deriving a conservative FSRS seed from the card's
+scheduler choice is reversible per card. Migration is lazy on first rating — no
+bulk `card_state` rewrite — deriving a conservative FSRS seed from the card's
 existing interval (see [srs-deck-spec.md](srs-deck-spec.md) "Implemented FSRS
 state model").
 
-Recommended rollout:
+### Rollback
 
-1. Enable on **staging first** with a database that has **seeded review
-   histories** (cards with real `last_answer_at`/`next_due`, not just fresh
-   NULL state), so the lazy-derivation path is actually exercised.
-2. Answer a mix of new and previously-scheduled cards across all four ratings;
-   confirm due dates advance sensibly and the due queue / daily new-card limit
-   behave unchanged.
-3. Exercise the rollback: turn the flag back OFF and confirm FSRS-touched cards
-   still answer through the step scheduler without error and keep their
-   progress (they do not snap back to step 0).
-4. Only then flip in production. Rollback is flipping the flag OFF again.
+Rollback is a single flag flip, no data migration:
+
+1. Set `FINNESTDB_FSRS_ENABLED=0` (or `false`/`no`/`off`) and restart the
+   service.
+2. Ratings now route through the deterministic step scheduler. FSRS-touched
+   cards keep answering without error: the step path approximates a step from
+   the card's current interval, so a card does **not** snap back to step 0 and
+   lose earned progress. This byte-identical-to-the-step-scheduler guarantee is
+   pinned by `TestRecordReviewAnswerFlagOffByteIdenticalToStepScheduler`.
+3. Flipping the flag back to unset resumes FSRS from the current interval — the
+   round trip is validated end to end by `TestFSRSValidationRollbackDrill`.
+
+### Re-validating before a scheduler change
+
+The staging gate is a suite, not a manual checklist. To re-run it (e.g. after a
+`go-fsrs` bump), on a host with the shared `finnestdb.db` present:
+
+```
+go test ./internal/store/ -run TestFSRSValidation -count=1 -v
+```
+
+It exercises seeded histories across new/learning/mature/legacy/NULL shapes, a
+1k-card lazy-migration scale check, the rollback round trip, and a read-only
+real-DB smoke — all on temp DBs; the shared DB is never written.
 
 ## Rate limiting behind a proxy
 

@@ -122,7 +122,7 @@ A public deck published by an admin and visible in the official-decks tab.
 _Avoid_: shared catalog deck, public list
 
 **Card**:
-A learner-level review item: a surface-form-in-context card, where the learner reviews the exact form they encountered or chose and lemma/POS/dictionary evidence is supporting metadata. Current implementation (2026-07-04): `cards` are keyed by `(user, language, surface_norm, lemma, POS)` — the normalized surface joins the key, with `(lemma, POS)` as the sense discriminator so homographs are distinct sense cards, not collapsed. FSRS memory (behind `FINNESTDB_FSRS_ENABLED`, default off) attaches to this surface-card id.
+A learner-level review item: a surface-form-in-context card, where the learner reviews the exact form they encountered or chose and lemma/POS/dictionary evidence is supporting metadata. Current implementation (2026-07-04): `cards` are keyed by `(user, language, surface_norm, lemma, POS)` — the normalized surface joins the key, with `(lemma, POS)` as the sense discriminator so homographs are distinct sense cards, not collapsed. FSRS memory (the default scheduler as of 2026-07-04; `FINNESTDB_FSRS_ENABLED` is the opt-out rollback lever) attaches to this surface-card id.
 _Avoid_: deck word, flashcard copy
 
 **Surface Form**:
@@ -214,8 +214,12 @@ Live parser quality measured from real learner feedback and accepted-correction 
 _Avoid_: analytics, telemetry
 
 **Alpha Step Scheduler**:
-The current hand-rolled review scheduler behind the Again/Hard/Good/Easy buttons.
-_Avoid_: FSRS
+The hand-rolled fixed-step review scheduler (`nextAlphaStepScheduleForRating`).
+As of 2026-07-04 it is the **rollback fallback**, not the runtime default: FSRS
+(`go-fsrs/v3`) now runs the Again/Hard/Good/Easy buttons by default, and the step
+scheduler is only used when `FINNESTDB_FSRS_ENABLED` is explicitly set off.
+_Avoid_: calling the step scheduler "FSRS", or calling FSRS the "Alpha Step
+Scheduler" — they are distinct schedulers sharing one state column.
 
 ## Relationships
 
@@ -265,7 +269,7 @@ _Avoid_: FSRS
   and future automation, but it does not auto-suppress content yet.
 - **Emergency Quarantine** is deliberately global and immediate, but it must be
   admin-triggered, scoped, reasoned, and logged.
-- The UI has Again/Hard/Good/Easy review buttons, but the current scheduler is the **Alpha Step Scheduler**, not FSRS.
+- The UI has Again/Hard/Good/Easy review buttons, and as of 2026-07-04 the default scheduler behind them is **FSRS** (`go-fsrs/v3`). The **Alpha Step Scheduler** is the opt-out rollback fallback (`FINNESTDB_FSRS_ENABLED=0`), not the runtime default.
 - Public alpha access is **open signup**. Learners can create accounts without
   an invite or waitlist.
 - Anonymous public alpha means **Anonymous Parser Demo**, not full anonymous

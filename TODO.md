@@ -228,13 +228,15 @@ scope, not accidental creep. See Decisions 23-29.
       escape. The single confident **Meaning Check** remains threshold-gated
       future work — no ambiguity class qualifies on the v1 slice
       (PARSER_EVAL_METHODOLOGY.md §4), so it is deliberately not built.)_
-- [ ] **Review readiness** (implemented 2026-07-04 in PR #259: surface-card identity + narrow FSRS behind FINNESTDB_FSRS_ENABLED, default off; remaining: staging validation with seeded histories, then the flag flip — see docs/DEPLOYMENT.md "FSRS scheduler rollout"): migrate card identity before FSRS; then ship narrow
-      Go FSRS with default parameters, current Again/Hard/Good/Easy UI, feature
-      flag, migration/fallback, and regression tests. _(2026-07-04: implemented —
-      surface-form card identity + narrow FSRS behind `FINNESTDB_FSRS_ENABLED`
-      (default off), with lazy migration/fallback and regression tests. Remaining:
-      flip the flag after staging validation with seeded histories — see
-      "Migrate alpha review identity and scheduler" and DEPLOYMENT.md.)_
+- [x] **Review readiness** — surface-card identity + narrow FSRS, FSRS now the
+      default scheduler. Migrated card identity before FSRS; shipped narrow Go
+      FSRS (default parameters, current Again/Hard/Good/Easy UI), the opt-out
+      feature flag, lazy migration/fallback, and regression tests. _(2026-07-04:
+      staging validation green across seeded histories, migration-at-scale,
+      rollback, and a real-DB smoke — see
+      [`docs/launch-readiness/2026-07-04-fsrs-validation.md`](docs/launch-readiness/2026-07-04-fsrs-validation.md).
+      FSRS enabled by default; `FINNESTDB_FSRS_ENABLED=0` is the rollback lever —
+      see DEPLOYMENT.md "FSRS scheduler rollout".)_
 - [x] **Parser feedback alpha gate**: flag-only feedback, minimal
       `correction_issues` grouping, admin-only global quarantine, and quiet
       learner-facing suppression. `parse_feedback` stays raw intake; no broad
@@ -330,7 +332,9 @@ Snapshot of capabilities currently shipped on main, organized by area.
   contradiction) and repeat corrections auto-queue as `gold_candidates`
   (Phases 1-4, shipped 2026-07-02). Flag-only feedback and quarantine are not
   built yet.
-- Hand-rolled step scheduler (NOT FSRS — see "What's not in main yet")
+- FSRS review scheduler (`go-fsrs/v3`, default parameters), the default as of
+  2026-07-04; hand-rolled step scheduler retained as the `FINNESTDB_FSRS_ENABLED=0`
+  rollback fallback
 - Hybrid language detection (warn/block on high-confidence conflict; advisory on unknown)
 - Progress dashboard: known count, due count, cards in review, reviews today,
   14-day activity chart, per-deck comprehension (shipped 2026-07-02)
@@ -531,9 +535,13 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
         daily-new-card limit, Again/Hard/Good/Easy API responses, legacy-state
         migration, and rollback/fallback behavior. _(2026-07-04: `fsrs_test.go` +
         `surface_cards_test.go`; existing due-queue/new-limit tests still green.)_
-  - [ ] Cutover: flip flag on staging DB, validate with seeded review histories,
-        then production before public alpha. _(2026-07-04: still pending — flag ships
-        OFF; see DEPLOYMENT.md "FSRS scheduler rollout".)_
+  - [x] Cutover: flip flag on staging DB, validate with seeded review histories,
+        then production before public alpha. _(2026-07-04: staging validation
+        green — `TestFSRSValidation*` in `internal/store/fsrs_validation_test.go`,
+        report at
+        [`docs/launch-readiness/2026-07-04-fsrs-validation.md`](docs/launch-readiness/2026-07-04-fsrs-validation.md).
+        FSRS is now the default (opt-out flag); `FINNESTDB_FSRS_ENABLED=0` is the
+        rollback lever. See DEPLOYMENT.md "FSRS scheduler rollout".)_
   - [x] Honest naming shipped 2026-07-02: the runtime step scheduler is now
         `nextAlphaStepScheduleForRating`, no longer presented as FSRS-shaped.
 
@@ -1241,7 +1249,7 @@ Already on this list and just confirmed by the review:
 - Anonymous parser demo is paste-first for alpha. File upload extraction
   (`.txt` / `.md` / `.epub`) remains a signed-in Inspect/workbench capability
   unless a later decision deliberately expands anonymous scope.
-- FSRS migration — the public review surface should not ship the hand-rolled step scheduler; narrow FSRS is now on the launch path (Decision 23). Until it lands, do not market the current scheduler as FSRS.
+- FSRS migration — landed and enabled by default 2026-07-04 (Decision 23). The public review surface now runs narrow FSRS (`go-fsrs/v3`); the hand-rolled step scheduler is the opt-out rollback fallback. Marketing the review scheduler as FSRS is now accurate.
 - Comprehension prediction per deck — wireframe is in `docs/USER_FLOWS.md` §8
 - Rate limiting and parser backpressure on `/api/parse` — launch-gating now that
   anonymous parsing is a public product surface.
@@ -1418,10 +1426,11 @@ Companion docs introduced alongside this plan:
 - `DELETE /api/decks/{id}` deletes only the deck content graph
   (`occurrence`, `sentences`, `decks`). Do not delete `cards` or
   `card_state`.
-- Historical note: PR 6 shipped the current alpha step scheduler. Current
-  roadmap supersedes this with surface-card review identity plus narrowly-scoped
-  real FSRS before public alpha; see "Migrate alpha review identity and
-  scheduler before public alpha" above.
+- Historical note: PR 6 shipped the alpha step scheduler. This has been
+  superseded — surface-card review identity plus narrowly-scoped real FSRS landed
+  and became the default scheduler on 2026-07-04; the step scheduler is now the
+  opt-out rollback fallback. See "Migrate alpha review identity and scheduler
+  before public alpha" above.
 - `GET /api/review/next?deck_id=` means due global cards, optionally
   filtered to cards appearing in the selected deck's occurrences.
 - `POST /api/review/answer`, `POST /api/card/known`, `POST /api/card/ignore`.

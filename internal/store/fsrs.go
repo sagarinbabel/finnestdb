@@ -36,15 +36,22 @@ type fsrsPayload struct {
 	FSRS    gofsrs.Card `json:"fsrs"`
 }
 
-// FSRSEnabled reports whether the FSRS scheduler is turned on via the
-// FINNESTDB_FSRS_ENABLED environment flag. Default OFF: the step scheduler
-// remains the shipped behavior until the flag is flipped as a deploy decision.
+// FSRSEnabled reports whether the FSRS scheduler is turned on. Since the
+// 2026-07-04 staging validation (docs/launch-readiness/2026-07-04-fsrs-validation.md)
+// FSRS is the DEFAULT scheduler, so the FINNESTDB_FSRS_ENABLED flag is opt-OUT:
+//
+//   - unset / empty          → ON  (FSRS, the shipped default)
+//   - "0"/"false"/"no"/"off" → OFF (step scheduler; the rollback lever)
+//   - anything else          → ON
+//
+// The step scheduler and its byte-identical rollback path remain intact; setting
+// the flag OFF is the documented one-flip rollback.
 func FSRSEnabled() bool {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv("FINNESTDB_FSRS_ENABLED"))) {
-	case "1", "true", "yes", "on":
-		return true
-	default:
+	case "0", "false", "no", "off":
 		return false
+	default:
+		return true
 	}
 }
 
