@@ -1438,6 +1438,7 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 		         AND c.lang = d.lang
 		         AND c.lemma = o.lemma
 		         AND c.pos = o.pos
+		         AND c.surface_norm = `+occurrenceSurfaceNormExpr("o")+`
 		         AND c.mwe_id IS NULL
 		   LEFT JOIN card_state cs
 		          ON cs.card_id = c.id
@@ -1841,6 +1842,17 @@ func (d *DB) ListPublicDecksForUser(userID int64) ([]PublicDeckSummary, error) {
 	return results, rows.Err()
 }
 
+// occurrenceSurfaceNormExpr returns a SQL expression yielding the normalized
+// surface of the occurrence aliased as occAlias: lower(surface), falling back
+// to lower(lemma) when the occurrence has no recorded surface. This mirrors
+// exactly how cards.surface_norm is seeded below, so it is THE join expression
+// for matching an occurrence to its surface-form card. Joining card to
+// occurrence on (lemma, pos) alone is wrong now that cards are
+// surface-specific: two inflections of one lemma are different cards.
+func occurrenceSurfaceNormExpr(occAlias string) string {
+	return `(CASE WHEN ` + occAlias + `.surface <> '' THEN lower(` + occAlias + `.surface) ELSE lower(` + occAlias + `.lemma) END)`
+}
+
 // SubscribeUserToPublicDeck records that the user has added an official deck
 // to their studying list and seeds cards for each unique (lemma, pos) in the
 // deck, skipping lemmas the user has already marked known or ignored. Idempotent.
@@ -1931,7 +1943,7 @@ func (d *DB) SubscribeUserToPublicDeck(userID, deckID int64) error {
 		         WHERE o.deck_id = ?
 		           AND o.lemma   = c.lemma
 		           AND o.pos     = c.pos
-		           AND (CASE WHEN o.surface <> '' THEN lower(o.surface) ELSE lower(o.lemma) END) = c.surface_norm
+		           AND `+occurrenceSurfaceNormExpr("o")+` = c.surface_norm
 		    )`,
 		userID, lang, deckID,
 	); err != nil {
@@ -2840,6 +2852,7 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64, lang string) (*Revie
 		deckFilter = ` AND EXISTS (
 			SELECT 1 FROM occurrence o
 			WHERE o.deck_id = ? AND o.lemma = c.lemma AND o.pos = c.pos
+			  AND ` + occurrenceSurfaceNormExpr("o") + ` = c.surface_norm
 		)`
 		deckOccurrenceFilter = ` AND o.deck_id = ?`
 	}
@@ -2870,7 +2883,8 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64, lang string) (*Revie
 	                       JOIN decks d ON d.id = o.deck_id
 	                      WHERE ` + studiedDeckClause + `
 	                        AND d.lang = c.lang
-	                        AND o.lemma = c.lemma AND o.pos = c.pos` + deckOccurrenceFilter + `
+	                        AND o.lemma = c.lemma AND o.pos = c.pos
+	                        AND ` + occurrenceSurfaceNormExpr("o") + ` = c.surface_norm` + deckOccurrenceFilter + `
 	                      ORDER BY s.id ASC
 	                      LIMIT 1
 	                 ), ''),
@@ -2881,7 +2895,8 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64, lang string) (*Revie
 	                      WHERE ` + studiedDeckClause + `
 	                        AND d.lang = c.lang
 	                        AND o.lemma = c.lemma
-	                        AND o.pos = c.pos` + deckOccurrenceFilter + `
+	                        AND o.pos = c.pos
+	                        AND ` + occurrenceSurfaceNormExpr("o") + ` = c.surface_norm` + deckOccurrenceFilter + `
 	                      ORDER BY d.created_at DESC, d.id DESC
 	                      LIMIT 1
 	                 ), '')
@@ -2984,9 +2999,10 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64, lang string) (*Revie
 		    AND d.lang = ?
 		    AND o.lemma = ?
 		    AND o.pos = ?
+		    AND `+occurrenceSurfaceNormExpr("o")+` = ?
 		  GROUP BY d.id, d.title
 		  ORDER BY d.created_at DESC, d.id DESC`,
-		userID, userID, card.Lang, card.Lemma, card.POS,
+		userID, userID, card.Lang, card.Lemma, card.POS, card.Surface,
 	)
 	if err != nil {
 		return nil, err

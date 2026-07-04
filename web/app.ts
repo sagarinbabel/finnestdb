@@ -434,7 +434,7 @@ const state = {
     // ambiguityExpanded: surfaces whose meaning-check panel is open.
     ambiguityExpanded:  new Set<string>(),
     // selectedSenses: senses the learner explicitly chose to "Study" (or left
-    // as "Not sure"). Keyed by `${surface} ${lemma} ${pos}`. These are
+    // as "Not sure"). Keyed by `${surface}\x00${lemma}\x00${pos}`. These are
     // threaded into the deck save so an FST-only sense still creates its card.
     selectedSenses:     new Set<string>(),
     // ambiguityKnownPending: per-candidate in-flight guard for "I know this
