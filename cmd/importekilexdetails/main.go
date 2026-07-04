@@ -108,7 +108,7 @@ func main() {
 	source := flag.String("source", "ekilex-reduced", "dict_metadata source identifier")
 	flag.Parse()
 
-	db, err := sql.Open("sqlite3", *dbPath)
+	db, err := sql.Open("sqlite3", *dbPath+"?_busy_timeout=5000")
 	if err != nil {
 		log.Fatalf("open DB: %v", err)
 	}

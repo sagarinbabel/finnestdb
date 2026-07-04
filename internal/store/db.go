@@ -250,7 +250,10 @@ type ParseFeedback struct {
 }
 
 func NewDB(dbPath string) (*DB, error) {
-	db, err := sql.Open("sqlite3", dbPath)
+	// _busy_timeout makes concurrent openers (server + CLI tools + cron jobs
+	// sharing one database file) wait up to 5s for a write lock instead of
+	// failing instantly with "database is locked".
+	db, err := sql.Open("sqlite3", dbPath+"?_busy_timeout=5000")
 	if err != nil {
 		return nil, err
 	}

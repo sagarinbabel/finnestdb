@@ -91,7 +91,7 @@ func checkDictionaryDBReady(dbPath string, reqs []dictionaryRequirement) (*dicti
 		return nil, fmt.Errorf("database %q is empty", dbPath)
 	}
 
-	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro")
+	db, err := sql.Open("sqlite3", "file:"+dbPath+"?mode=ro&_busy_timeout=5000")
 	if err != nil {
 		return nil, fmt.Errorf("open database read-only: %w", err)
 	}
