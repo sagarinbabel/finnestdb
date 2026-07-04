@@ -2667,6 +2667,7 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
 .catalog-diff-medium       { color: #9a6700; border-color: #9a670055; }
 .catalog-diff-medium-hard  { color: #c2410c; border-color: #c2410c55; }
 .catalog-diff-hard         { color: #b3261e; border-color: #b3261e55; }
+.catalog-attribution { margin-top: 0.5rem; font-size: 0.72rem; opacity: 0.65; line-height: 1.35; }
 .catalog-title {
     margin: 0.1rem 0 0;
     font-size: 1rem;
