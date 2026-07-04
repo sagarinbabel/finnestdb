@@ -71,6 +71,24 @@ interface ChapterResponseEntry {
     words:             WordEntry[];
 }
 
+// One supported meaning of an ambiguous surface (Multiple possible meanings).
+// gloss may be empty for FST-only homograph senses; source distinguishes dict
+// from fst candidates.
+interface AmbiguityCandidate {
+    lemma:  string;
+    pos:    string;
+    gloss?: string;
+    source: string;
+}
+
+// A surface with more than one supported meaning, delivered inline with the
+// parse for signed-in learners. Anonymous parses omit this entirely.
+interface AmbiguousSurface {
+    surface:    string;
+    example?:   string;
+    candidates: AmbiguityCandidate[];
+}
+
 interface ParseResponse {
     lang:              string;
     parse_id?:         number;
@@ -81,6 +99,9 @@ interface ParseResponse {
     // import flow). Each entry's words list is independently displayable, so
     // chapter switches don't require a second /api/parse round-trip.
     chapters?:         ChapterResponseEntry[];
+    // Signed-in only. Surfaces with multiple supported meanings, driving the
+    // "Multiple possible meanings" chip + expansion on results rows.
+    ambiguous_surfaces?: AmbiguousSurface[];
 }
 
 interface CorrectionRowContext {
@@ -258,6 +279,8 @@ interface ReviewCardResponse {
     back: {
         surface?: string;
         lemma:   string;
+        pos?:    string;
+        lang?:   string;
         meaning: string;
         grammar: string;
         homograph_note?: string;
@@ -400,6 +423,18 @@ const state = {
     currentPOSFilter:   'all' as POSFilter,
     currentLemmaStates: new Map<string, LemmaStateStatus>(),
     pendingLemmaStates: new Set<string>(),
+    // Multiple-possible-meanings state for the current parse results.
+    // ambiguityBySurface: candidate metadata keyed by surface form.
+    ambiguityBySurface: new Map<string, AmbiguousSurface>(),
+    // ambiguityExpanded: surfaces whose meaning-check panel is open.
+    ambiguityExpanded:  new Set<string>(),
+    // selectedSenses: senses the learner explicitly chose to "Study" (or left
+    // as "Not sure"). Keyed by `${surface} ${lemma} ${pos}`. These are
+    // threaded into the deck save so an FST-only sense still creates its card.
+    selectedSenses:     new Set<string>(),
+    // ambiguityKnownPending: per-candidate in-flight guard for "I know this
+    // meaning" so a double-click can't double-record.
+    ambiguityKnownPending: new Set<string>(),
     currentReviewCard:  null as ReviewCardResponse | null,
     reviewDeckFilter:   '',
     parseSessions:      [] as ParseSessionHistoryItem[],
@@ -5026,6 +5061,90 @@ function updatePOSFilterButtons(): void {
     });
 }
 
+// senseKey identifies a selected study sense within the current parse.
+const SENSE_KEY_SEP = '\x00';
+function senseKey(surface: string, lemma: string, pos: string): string {
+    return [surface, lemma, pos].join(SENSE_KEY_SEP);
+}
+
+// ambiguousSurfacesForRow returns the ambiguous surfaces (with candidates) that
+// this results row's forms touch. A row aggregates by (lemma, pos) but the chip
+// is per surface, so a row can surface more than one ambiguous form.
+function ambiguousSurfacesForRow(w: WordEntry): AmbiguousSurface[] {
+    if (state.ambiguityBySurface.size === 0) return [];
+    const out: AmbiguousSurface[] = [];
+    const seen = new Set<string>();
+    for (const form of w.forms) {
+        if (seen.has(form)) continue;
+        const amb = state.ambiguityBySurface.get(form);
+        if (amb) {
+            seen.add(form);
+            out.push(amb);
+        }
+    }
+    return out;
+}
+
+// renderAmbiguityPanel builds the expanded "Multiple possible meanings" content
+// for one ambiguous surface: the sentence context, the candidate meanings, and
+// per-candidate actions. Copy is verbatim from USER_FLOWS §5 / srs-deck-spec.
+function renderAmbiguityPanel(lang: string, amb: AmbiguousSurface): string {
+    const example = amb.example
+        ? `<p class="ambiguity-example">${highlightFormsInSentence(amb.example, [amb.surface])}</p>`
+        : '';
+    const rows = amb.candidates.map(c => {
+        const key = senseKey(amb.surface, c.lemma, c.pos);
+        const isKnown = currentLemmaState(c.lemma, c.pos) === 'known';
+        const isStudy = state.selectedSenses.has(key);
+        const pending = state.ambiguityKnownPending.has(key);
+        const glossHtml = c.gloss
+            ? escapeHtml(c.gloss)
+            : '<span class="no-gloss">meaning unavailable</span>';
+        const posPill = `<span class="pos-pill" data-pos="${escapeHtml(c.pos)}" data-tooltip="${escapeHtml(posLabel(c.pos))}">${escapeHtml(posAbbrev(c.pos))}</span>`;
+        // "Study this meaning" helper copy is fixed by the grill in parse
+        // results: "Creates a review card when you save."
+        return `<div class="ambiguity-candidate${isKnown ? ' is-known' : ''}"
+                data-surface="${escapeAttr(amb.surface)}"
+                data-lemma="${escapeAttr(c.lemma)}"
+                data-pos="${escapeAttr(c.pos)}">
+            <div class="ambiguity-candidate-head">
+                <span class="ambiguity-candidate-lemma">${escapeHtml(c.lemma)}</span>
+                ${posPill}
+                <span class="ambiguity-candidate-gloss">${glossHtml}</span>
+            </div>
+            <div class="ambiguity-candidate-actions">
+                <button type="button" class="ambiguity-know-btn${isKnown ? ' is-active' : ''}"
+                    data-ambiguity-action="know"
+                    ${pending || isKnown ? 'disabled' : ''}>
+                    ${isKnown ? 'You know this meaning' : 'I know this meaning'}
+                </button>
+                <button type="button" class="ambiguity-study-btn${isStudy ? ' is-active' : ''}"
+                    data-ambiguity-action="study"
+                    ${isKnown ? 'disabled' : ''}
+                    data-tooltip="Creates a review card when you save.">
+                    ${isStudy ? 'Selected to study' : 'Study this meaning'}
+                </button>
+                <button type="button" class="ambiguity-notsure-btn${isStudy ? ' is-active' : ''}"
+                    data-ambiguity-action="notsure"
+                    ${isKnown ? 'disabled' : ''}>
+                    Not sure
+                </button>
+            </div>
+        </div>`;
+    }).join('');
+    return `<div class="ambiguity-panel" data-ambiguity-panel="${escapeAttr(amb.surface)}">
+        <p class="ambiguity-panel-title">Multiple possible meanings for “${escapeHtml(amb.surface)}”</p>
+        ${example}
+        <div class="ambiguity-candidates">${rows}</div>
+        <div class="ambiguity-panel-foot">
+            <span class="ambiguity-study-hint">Creates a review card when you save.</span>
+            <button type="button" class="ambiguity-flag-btn"
+                data-ambiguity-action="flag"
+                data-surface="${escapeAttr(amb.surface)}">None of these looks right</button>
+        </div>
+    </div>`;
+}
+
 function renderResultsTable(data: ParseResponse): void {
     const tbody = document.getElementById('word-table-body');
     const help  = document.getElementById('results-help');
@@ -5112,6 +5231,21 @@ function renderResultsTable(data: ParseResponse): void {
                     aria-label="Suggest fix">${pencilIcon}</button>
                </div></td>`
             : '';
+        // Multiple-possible-meanings chip (signed-in only). One chip per
+        // ambiguous surface this row touches; expanding shows the meaning check.
+        const ambRows = showActions ? ambiguousSurfacesForRow(w) : [];
+        const ambChips = ambRows.map(amb => {
+            const expanded = state.ambiguityExpanded.has(amb.surface);
+            return `<button type="button" class="ambiguity-chip${expanded ? ' is-open' : ''}"
+                data-ambiguity-chip="${escapeAttr(amb.surface)}"
+                aria-expanded="${expanded ? 'true' : 'false'}">
+                ${expanded ? '▾' : '▸'} Multiple possible meanings</button>`;
+        }).join('');
+        const ambPanels = ambRows
+            .filter(amb => state.ambiguityExpanded.has(amb.surface))
+            .map(amb => `<tr class="ambiguity-row"><td class="col-row"></td><td colspan="4">${renderAmbiguityPanel(data.lang, amb)}</td></tr>`)
+            .join('');
+
         return `<tr class="word-row">
             <td class="col-row">${index + 1}</td>
             <td class="col-lemma">
@@ -5120,12 +5254,13 @@ function renderResultsTable(data: ParseResponse): void {
                     <span class="pos-side">${posPill}</span>
                 </div>
                 ${exampleToggle}
+                ${ambChips}
                 ${exampleBlock}
             </td>
             <td class="col-def">${glossHtml}</td>
             <td class="col-count">${w.count}</td>
             ${actionCell}
-        </tr>`;
+        </tr>${ambPanels}`;
     }).join('');
 
     updateSortButtons();
@@ -5176,6 +5311,88 @@ function renderResultsTable(data: ParseResponse): void {
             original_grammar_label: btn.dataset.grammar || '',
         }));
     });
+
+    wireAmbiguityControls(tbody, data);
+}
+
+// wireAmbiguityControls attaches the chip-toggle and per-candidate action
+// handlers for the Multiple-possible-meanings flow. Re-run on every table
+// render because innerHTML replacement drops listeners.
+function wireAmbiguityControls(tbody: HTMLElement, data: ParseResponse): void {
+    tbody.querySelectorAll<HTMLButtonElement>('.ambiguity-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const surface = btn.dataset.ambiguityChip || '';
+            if (!surface) return;
+            if (state.ambiguityExpanded.has(surface)) {
+                state.ambiguityExpanded.delete(surface);
+            } else {
+                state.ambiguityExpanded.add(surface);
+            }
+            renderResultsTable(data);
+        });
+    });
+
+    tbody.querySelectorAll<HTMLButtonElement>('[data-ambiguity-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const action = btn.dataset.ambiguityAction;
+            if (action === 'flag') {
+                const surface = btn.dataset.surface || '';
+                // "None of these looks right" is parser feedback, never a
+                // study/known action. Open the flag-only correction path with
+                // the surface + first-occurrence context prefilled.
+                const amb = state.ambiguityBySurface.get(surface);
+                openCorrectionModal({
+                    lemma:                  amb?.candidates[0]?.lemma || surface,
+                    pos:                    amb?.candidates[0]?.pos || 'X',
+                    surface,
+                    occurrence:             0,
+                    original_grammar_label: '',
+                }, { forceFlagOnly: true });
+                return;
+            }
+            const holder = btn.closest<HTMLElement>('.ambiguity-candidate');
+            if (!holder) return;
+            const surface = holder.dataset.surface || '';
+            const lemma   = holder.dataset.lemma || '';
+            const pos     = holder.dataset.pos || '';
+            if (action === 'know') {
+                void ambiguityMarkKnown(data.lang, surface, lemma, pos);
+            } else if (action === 'study' || action === 'notsure') {
+                // "Not sure" behaves conservatively like study: keep selected.
+                state.selectedSenses.add(senseKey(surface, lemma, pos));
+                renderResultsTable(data);
+            }
+        });
+    });
+}
+
+// ambiguityMarkKnown records a resolved (lemma, pos) as known via the existing
+// lemma-state endpoint (current known model is (lemma, pos)-backed), updates
+// coverage in place, and excludes that sense from the pending deck selection.
+async function ambiguityMarkKnown(lang: string, surface: string, lemma: string, pos: string): Promise<void> {
+    const key = senseKey(surface, lemma, pos);
+    if (state.ambiguityKnownPending.has(key)) return;
+    state.ambiguityKnownPending.add(key);
+    if (state.currentResults) renderResultsTable(state.currentResults);
+    try {
+        const resp = await fetch('/api/lemma-state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ lang, lemma, pos, status: 'known' }),
+        });
+        if (!resp.ok) throw new Error(await resp.text() || 'Failed to update word');
+        state.currentLemmaStates.set(lemmaStateKey(lang, lemma, pos), 'known');
+        // A known sense is no longer a study candidate.
+        state.selectedSenses.delete(key);
+        await refreshDashboardData({ rerenderRoute: false });
+        showToast('Meaning marked known.', 'success');
+    } catch (err: any) {
+        showToast(err.message || 'Failed to update word.', 'error');
+    } finally {
+        state.ambiguityKnownPending.delete(key);
+        if (state.currentResults) renderResultsTable(state.currentResults);
+    }
 }
 
 function showResults(data: ParseResponse, textPreview: string, parserMode: ParserMode, context: ResultsContext): void {
@@ -5247,6 +5464,14 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
         if (word.learning_state) {
             state.currentLemmaStates.set(lemmaStateKey(data.lang, word.lemma, word.pos), word.learning_state);
         }
+    }
+    // Reset and hydrate Multiple-possible-meanings state for this parse.
+    state.ambiguityBySurface.clear();
+    state.ambiguityExpanded.clear();
+    state.selectedSenses.clear();
+    state.ambiguityKnownPending.clear();
+    for (const amb of data.ambiguous_surfaces || []) {
+        state.ambiguityBySurface.set(amb.surface, amb);
     }
     renderResultsTable(data);
     renderResultsSaveState();
@@ -5495,6 +5720,15 @@ async function saveCurrentResultsAsDeck(): Promise<void> {
     const originalLabel = submitBtn.textContent || '';
     submitBtn.textContent = 'Saving…';
     try {
+        // Explicit "Study this meaning" / "Not sure" selections from Multiple
+        // possible meanings. The server injects the FST-only senses that the
+        // dict-only deck expansion would otherwise drop, so an explicitly chosen
+        // homograph sense still gets its review card.
+        const selectedSenses = [...state.selectedSenses].map(k => {
+            const [surface, lemma, pos] = k.split(SENSE_KEY_SEP);
+            return { surface, lemma, pos };
+        });
+
         const resp = await fetch('/api/decks', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -5504,6 +5738,7 @@ async function saveCurrentResultsAsDeck(): Promise<void> {
                 lang: state.currentResults.lang,
                 text: state.currentSourceText,
                 is_public: isPublic,
+                selected_senses: selectedSenses,
             }),
         });
         if (!resp.ok) {
@@ -6095,7 +6330,7 @@ async function actOnAdminIssue(issueID: number, action: 'triage' | 'quarantine' 
 
 // ── Correction modal ───────────────────────────────────────────────────────
 
-function openCorrectionModal(row: CorrectionRowContext): void {
+function openCorrectionModal(row: CorrectionRowContext, opts?: { forceFlagOnly?: boolean }): void {
     const modal           = document.getElementById('correction-modal');
     const lemmaEl         = document.getElementById('correction-lemma');
     const proposedLemmaEl = document.getElementById('correction-proposed-lemma')   as HTMLInputElement    | null;
@@ -6116,9 +6351,16 @@ function openCorrectionModal(row: CorrectionRowContext): void {
     noteEl.value = '';
 
     // Two-path modal (USER_FLOWS §10): default to flag-only so a learner who
-    // just knows something's wrong can report it in one click.
-    const flagRadio = document.getElementById('correction-mode-flag') as HTMLInputElement | null;
+    // just knows something's wrong can report it in one click. The "None of
+    // these looks right" entry point from Multiple possible meanings forces the
+    // flag-only path — it is parser feedback that the candidate list looks
+    // wrong, never a proposed correction.
+    const flagRadio    = document.getElementById('correction-mode-flag')    as HTMLInputElement | null;
+    const proposeRadio = document.getElementById('correction-mode-propose') as HTMLInputElement | null;
     if (flagRadio) flagRadio.checked = true;
+    // When forced (Multiple possible meanings escape hatch), also disable the
+    // propose path so this stays parser feedback only.
+    if (proposeRadio) proposeRadio.disabled = Boolean(opts?.forceFlagOnly);
     syncCorrectionMode();
 
     // Backend requires authentication. Anonymous parses can't submit
@@ -6650,9 +6892,51 @@ function initReviewPage(): void {
     document.getElementById('review-mark-ignored')?.addEventListener('click', () => {
         void mutateReviewCard('/api/card/ignore', 'Word ignored.');
     });
+    document.getElementById('review-flag')?.addEventListener('click', () => {
+        void flagReviewCard();
+    });
     document.getElementById('review-skip')?.addEventListener('click', () => {
         void loadNextReviewCard(true);
     });
+}
+
+// flagReviewCard submits flag-only parser feedback from the review card back —
+// the "None of these looks right" escape (USER_FLOWS §9.4). It is parser
+// feedback ("the analysis looks wrong"), never a study/known action. The
+// feedback endpoint creates a lazy parse_session from the inline source_text
+// (the card's example or surface) so admin triage keeps context.
+async function flagReviewCard(): Promise<void> {
+    const card = state.currentReviewCard;
+    if (!card) return;
+    const surface = card.back.surface || card.back.lemma;
+    const lang = card.back.lang || state.activeLanguage;
+    const context = card.back.examples?.[0]?.text || card.front.text || surface;
+    try {
+        const resp = await fetch('/api/parse/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                lang,
+                parser: 'custom',
+                surface,
+                occurrence: 0,
+                original_lemma: card.back.lemma,
+                original_pos: card.back.pos || '',
+                flag_only: true,
+                source_text: context,
+                total_tokens: 0,
+                unique_lemma_count: 0,
+            }),
+        });
+        if (resp.ok) {
+            showToast('Thanks — flagged for review.', 'success');
+        } else {
+            showToast("Couldn't flag this card — please try again later.", 'error');
+        }
+    } catch {
+        showToast("Couldn't flag this card — check your connection and try again.", 'error');
+    }
 }
 
 function initResultsSaveForm(): void {

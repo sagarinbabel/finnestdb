@@ -213,10 +213,21 @@ scope, not accidental creep. See Decisions 23-29.
 - [ ] **Surface-first learner model** (card identity migrated to surface-form cards 2026-07-04 in PR #259; the surface-first known-vocabulary table remains open): preserve submitted known surface forms,
       migrate alpha review identity to surface-form-in-context cards, and keep
       lemma/POS/dictionary entries as derived support.
-- [ ] **Ambiguous meaning flow**: context-free imports resolve lazily in real
+- [~] **Ambiguous meaning flow**: context-free imports resolve lazily in real
       sentences; parse-result checks are non-blocking until deck save; low or
       unmeasured parser confidence shows **Multiple possible meanings**. Add the
       Finnish-first ambiguity eval slice before simplifying ambiguity UI.
+      _(2026-07-04: **Multiple-possible-meanings shipped as the alpha default.**
+      `/api/parse` enriches signed-in results with `ambiguous_surfaces` (FST-merged
+      candidate set, quarantine-filtered); results rows carry the chip →
+      expand → per-candidate "I know this meaning" / "Study this meaning" /
+      "Not sure" plus the "None of these looks right" flag-only escape; explicit
+      FST-sense study selections create cards on deck save via a narrow bypass of
+      PR #269's dict-only expansion; known-word import reports
+      `needs_sense_confirmation`; review card back carries the same flag-only
+      escape. The single confident **Meaning Check** remains threshold-gated
+      future work — no ambiguity class qualifies on the v1 slice
+      (PARSER_EVAL_METHODOLOGY.md §4), so it is deliberately not built.)_
 - [ ] **Review readiness** (implemented 2026-07-04 in PR #259: surface-card identity + narrow FSRS behind FINNESTDB_FSRS_ENABLED, default off; remaining: staging validation with seeded histories, then the flag flip — see docs/DEPLOYMENT.md "FSRS scheduler rollout"): migrate card identity before FSRS; then ship narrow
       Go FSRS with default parameters, current Again/Hard/Good/Easy UI, feature
       flag, migration/fallback, and regression tests. _(2026-07-04: implemented —
@@ -462,14 +473,18 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
         homograph note on the card, for example noun vs verb form. _(2026-07-04:
         homographs produce separate `(surface_norm, lemma, pos)` cards;
         `GetNextReviewCard` emits a homograph note; API/web render it.)_
-  - [ ] Resolve ambiguous context-free known-word imports lazily with contextual
+  - [x] Resolve ambiguous context-free known-word imports lazily with contextual
         meaning checks. The "Study this meaning" action must indicate that it
         creates/keeps a review card now or creates one when the deck is saved,
-        depending on context.
-  - [ ] In ephemeral parse results, make meaning checks non-blocking and pending:
+        depending on context. _(2026-07-04: imports report
+        `needs_sense_confirmation`; no upfront disambiguation. In parse results
+        the study action says "Creates a review card when you save".)_
+  - [x] In ephemeral parse results, make meaning checks non-blocking and pending:
         "Study this meaning" should mean "creates a review card when you save",
-        not immediate card creation.
-  - [ ] Add parse-result ambiguity metadata for meaning checks: candidate
+        not immediate card creation. _(2026-07-04: the chip is non-blocking;
+        "Study this meaning" only marks `selected_senses` in the pending deck-save
+        payload — no card until save.)_
+  - [x] Add parse-result ambiguity metadata for meaning checks: candidate
         meanings, selected candidate when available, and parser confidence
         calibrated from eval slices. When confidence is low or unmeasured, show
         "Multiple possible meanings" with per-candidate known/study actions
@@ -481,11 +496,15 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
         v1 slice **no class qualifies yet**, so the honest alpha default is
         Multiple possible meanings for every ambiguous surface until the eval
         slice is expanded and the FI candidate-inclusion gap is closed.
-  - [ ] Wire "None of these looks right" to parser feedback, not study state.
+        _(2026-07-04: shipped Multiple possible meanings only; `ambiguous_surfaces`
+        metadata carries candidate meanings + source. No confidence field is
+        emitted and no single-check UI is built — the single confident Meaning
+        Check stays threshold-gated future work.)_
+  - [x] Wire "None of these looks right" to parser feedback, not study state.
         This needs the planned flag-only feedback path: nullable proposed
-        lemma/POS plus `flag_only=true`. Current code is exact-correction-only:
-        the UI/API/schema require proposed lemma/POS, and admin acceptance always
-        writes a `custom_overrides` lexical row.
+        lemma/POS plus `flag_only=true`. _(2026-07-04: the escape opens the
+        correction modal forced to the flag-only path with surface/context
+        prefilled, from both the parse-results panel and the review card back.)_
   - [x] Add the Go FSRS dependency and a small scheduling adapter around the
         library. Keep all routing, validation, and deterministic transforms in Go.
         _(2026-07-04: `go-fsrs/v3`; adapter in `internal/store/fsrs.go`.)_
