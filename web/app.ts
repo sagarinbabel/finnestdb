@@ -514,24 +514,122 @@ const ADV_POS = ['ADV'];
 const OTHER_POS = ['PRON', 'DET', 'ADP', 'NUM', 'CCONJ', 'SCONJ', 'PART', 'INTJ', 'X', 'SYM', 'PUNCT'];
 
 // ── Theme ──────────────────────────────────────────────────────────────────
+//
+// Theming is two-dimensional: a *skin* (`ink` = the default INK/PAPER look,
+// `aalto` = the Alvar-Aalto "Paimio"/"Sanatorium" prototype) crossed with a
+// *mode* (`light`/`dark`). Skin is a `data-skin` attribute; mode is the
+// existing `data-theme` attribute. The Aalto skin is opt-in — the default is
+// exactly what users had before (ink skin + their saved light/dark mode), so
+// the `theme` localStorage key keeps its original meaning and the new `skin`
+// key defaults to `ink`.
 
-function initTheme(): void {
-    const saved = localStorage.getItem('theme') || 'dark';
-    applyTheme(saved);
+type ThemeSkin = 'ink' | 'aalto';
+type ThemeMode = 'light' | 'dark';
+
+const THEME_MODE_KEY = 'theme';
+const THEME_SKIN_KEY = 'skin';
+
+function readThemeSkin(): ThemeSkin {
+    return localStorage.getItem(THEME_SKIN_KEY) === 'aalto' ? 'aalto' : 'ink';
 }
 
-function applyTheme(theme: string): void {
-    document.documentElement.setAttribute('data-theme', theme);
+function readThemeMode(): ThemeMode {
+    // Default stays 'dark' to preserve the pre-picker behaviour.
+    return localStorage.getItem(THEME_MODE_KEY) === 'light' ? 'light' : 'dark';
+}
+
+function initTheme(): void {
+    applyTheme(readThemeSkin(), readThemeMode());
+}
+
+function applyTheme(skin: ThemeSkin, mode: ThemeMode): void {
+    const root = document.documentElement;
+    root.setAttribute('data-skin', skin);
+    root.setAttribute('data-theme', mode);
+    // Trigger icon mirrors the active mode (a sun in dark mode invites switching
+    // to light, and vice versa — matching the prior single-toggle affordance).
     document.querySelectorAll('.theme-icon').forEach(el => {
-        el.textContent = theme === 'light' ? '🌙' : '☀️';
+        el.textContent = mode === 'light' ? '🌙' : '☀️';
+    });
+    updateThemeMenuSelection(skin, mode);
+}
+
+function setTheme(skin: ThemeSkin, mode: ThemeMode): void {
+    localStorage.setItem(THEME_SKIN_KEY, skin);
+    localStorage.setItem(THEME_MODE_KEY, mode);
+    applyTheme(skin, mode);
+}
+
+function updateThemeMenuSelection(skin: ThemeSkin, mode: ThemeMode): void {
+    document.querySelectorAll<HTMLButtonElement>('.theme-option').forEach(btn => {
+        const isActive = btn.dataset.skin === skin && btn.dataset.mode === mode;
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        btn.classList.toggle('selected', isActive);
     });
 }
 
-function toggleTheme(): void {
-    const current = document.documentElement.getAttribute('data-theme') || 'light';
-    const next = current === 'light' ? 'dark' : 'light';
-    localStorage.setItem('theme', next);
-    applyTheme(next);
+function isThemeMenuOpen(): boolean {
+    const menu = document.getElementById('theme-menu');
+    return !!menu && !menu.classList.contains('hidden');
+}
+
+function openThemeMenu(): void {
+    const toggle = document.getElementById('theme-toggle');
+    const menu = document.getElementById('theme-menu');
+    if (!toggle || !menu) return;
+    menu.classList.remove('hidden');
+    toggle.setAttribute('aria-expanded', 'true');
+}
+
+function closeThemeMenu(): void {
+    const toggle = document.getElementById('theme-toggle');
+    const menu = document.getElementById('theme-menu');
+    if (!toggle || !menu) return;
+    menu.classList.add('hidden');
+    toggle.setAttribute('aria-expanded', 'false');
+}
+
+function toggleThemeMenu(): void {
+    if (isThemeMenuOpen()) {
+        closeThemeMenu();
+    } else {
+        openThemeMenu();
+    }
+}
+
+function initThemePicker(): void {
+    const toggle = document.getElementById('theme-toggle');
+    const menu = document.getElementById('theme-menu');
+    if (!toggle || !menu) return;
+
+    toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleThemeMenu();
+    });
+
+    menu.querySelectorAll<HTMLButtonElement>('.theme-option').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const skin = btn.dataset.skin === 'aalto' ? 'aalto' : 'ink';
+            const mode = btn.dataset.mode === 'light' ? 'light' : 'dark';
+            setTheme(skin, mode);
+            closeThemeMenu();
+        });
+    });
+
+    // Dismiss on outside click or Escape, matching the language dropdown.
+    document.addEventListener('click', (e) => {
+        if (!isThemeMenuOpen()) return;
+        const target = e.target as Node;
+        if (!toggle.contains(target) && !menu.contains(target)) {
+            closeThemeMenu();
+        }
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isThemeMenuOpen()) {
+            closeThemeMenu();
+            (toggle as HTMLElement).focus();
+        }
+    });
 }
 
 // ── Toast notifications ────────────────────────────────────────────────────
@@ -7125,7 +7223,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initAdminFeedbackPage();
     initPortalTooltips();
 
-    document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
+    initThemePicker();
 
     document.getElementById('nav-signout')       ?.addEventListener('click', handleSignout);
     document.getElementById('nav-mobile-signout')?.addEventListener('click', handleSignout);
