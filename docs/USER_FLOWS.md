@@ -22,7 +22,8 @@ catalog should ship as fast checked-in metadata plus lazy-loaded text fixtures:
 load the catalog quickly, and load the full text only when the learner chooses
 it.
 
-Domain: **finne.st**.
+Domain: **finne.st** (registered; not serving the app until go-live — do not
+test against it, run a local server instead).
 
 ## Map of the flow
 
