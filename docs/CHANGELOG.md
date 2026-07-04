@@ -10,6 +10,39 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — FSRS enabled by default after staging validation
+
+Made **FSRS the default review scheduler** after the documented staging gate came
+back green. The `FINNESTDB_FSRS_ENABLED` flag flips from opt-IN to **opt-OUT**:
+unset → FSRS on (the shipped default); `0`/`false`/`no`/`off` → the deterministic
+step scheduler, which is now the rollback fallback rather than the runtime
+default.
+
+- **Validation harness:** [`internal/store/fsrs_validation_test.go`](../internal/store/fsrs_validation_test.go)
+  runs the DEPLOYMENT.md "FSRS scheduler rollout" gate as in-suite Go tests on
+  temp DBs (the shared `finnestdb.db` is never written): seeded-history
+  validation across new/learning/mature/legacy/NULL shapes, 1k-card lazy-migration
+  scale check, a rollback round trip, and a read-only real-DB smoke (4031 sampled
+  real cards, 0 corrupt). All green — see the report below.
+- **Report added:** [`launch-readiness/2026-07-04-fsrs-validation.md`](launch-readiness/2026-07-04-fsrs-validation.md)
+  records each drill's result in tables (interval ordering per button, monotonic
+  stability growth, real-DB shape distribution).
+- **Flag semantics:** `store.FSRSEnabled()` is now opt-out; the flag-off
+  byte-identical regression pin
+  (`TestRecordReviewAnswerFlagOffByteIdenticalToStepScheduler`) still guards the
+  rollback path, and a new `TestFSRSEnabledDefaultsOnOptOut` pins the default-on
+  parsing.
+- **Docs modified:** [`DEPLOYMENT.md`](DEPLOYMENT.md) (flag table + rewritten
+  rollout/rollback section), [`srs-deck-spec.md`](srs-deck-spec.md)
+  (current-scheduler statements + Implemented FSRS state model),
+  [`../CONTEXT.md`](../CONTEXT.md) ("Alpha Step Scheduler" is now the fallback),
+  [`../TODO.md`](../TODO.md) ("Review readiness" gate ticked with the report
+  pointer).
+
+Rollback remains a single flag flip (`FINNESTDB_FSRS_ENABLED=0` + restart), no
+data migration; FSRS and step state coexist in `card_state.fsrs_json` via the
+version discriminator, and FSRS-touched cards keep their earned progress on
+rollback.
 ## 2026-07-04 — Starter-deck cards carry curated corpus example sentences
 
 The cold-start "Top N words" official starter deck now attaches a real corpus

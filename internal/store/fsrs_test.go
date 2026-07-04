@@ -2,6 +2,7 @@ package store
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 	"time"
 
@@ -9,6 +10,39 @@ import (
 )
 
 var fsrsNow = time.Date(2026, 7, 4, 12, 0, 0, 0, time.UTC)
+
+// TestFSRSEnabledDefaultsOnOptOut pins the opt-OUT flag semantics adopted after
+// the 2026-07-04 staging validation: FSRS is the default scheduler, and only an
+// explicit off-value in FINNESTDB_FSRS_ENABLED selects the step scheduler
+// (rollback). If someone reverts the default to OFF, this fails.
+func TestFSRSEnabledDefaultsOnOptOut(t *testing.T) {
+	cases := []struct {
+		val  string
+		want bool
+	}{
+		{"", true},         // unset/empty → ON (default)
+		{"   ", true},      // whitespace → ON
+		{"1", true},        // explicit on-ish → ON
+		{"true", true},     // → ON
+		{"on", true},       // → ON
+		{"anything", true}, // unrecognized → ON (opt-out only turns it off)
+		{"0", false},       // rollback lever
+		{"false", false},   // rollback lever
+		{"no", false},      // rollback lever
+		{"off", false},     // rollback lever
+		{"OFF", false},     // case-insensitive
+	}
+	for _, c := range cases {
+		t.Setenv("FINNESTDB_FSRS_ENABLED", c.val)
+		if c.val == "" {
+			// t.Setenv sets it; explicitly unset to test the truly-unset path.
+			os.Unsetenv("FINNESTDB_FSRS_ENABLED")
+		}
+		if got := FSRSEnabled(); got != c.want {
+			t.Fatalf("FSRSEnabled() with %q = %v, want %v", c.val, got, c.want)
+		}
+	}
+}
 
 // TestFSRSScheduleAllRatingsNewCard pins deterministic FSRS scheduling for all
 // four ratings on a brand-new card (NULL state) at a fixed now. It asserts the
@@ -132,10 +166,12 @@ func TestFSRSLazyDerivationNullState(t *testing.T) {
 	}
 }
 
-// TestRecordReviewAnswerFlagOffByteIdenticalToStepScheduler is the regression
-// pin: with the flag OFF, recordReviewAnswerAt writes exactly what the step
-// scheduler produces for the same (schedule, rating, now). If someone reroutes
-// the default path through FSRS, this fails.
+// TestRecordReviewAnswerFlagOffByteIdenticalToStepScheduler is the rollback-path
+// pin. FSRS is now the default (opt-out flag), so this pins the OTHER direction:
+// with the flag explicitly OFF, recordReviewAnswerAt must still write exactly
+// what the step scheduler produces for the same (schedule, rating, now). This is
+// the guarantee that FINNESTDB_FSRS_ENABLED=0 is a real, byte-for-byte rollback
+// lever; if the step path ever drifts from the step scheduler, this fails.
 func TestRecordReviewAnswerFlagOffByteIdenticalToStepScheduler(t *testing.T) {
 	db := newTestDB(t)
 	user := createTestUser(t, db, "step@example.com")

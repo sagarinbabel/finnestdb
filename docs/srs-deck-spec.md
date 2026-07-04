@@ -2,18 +2,21 @@
 
 _Current as of 2026-07-04 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
-> **Implemented (2026-07-04):** Surface-form card identity and narrow FSRS both
-> shipped in code. Review cards are keyed by
-> `(user_id, lang, surface_norm, lemma, pos)` — surface-form-in-context, with
-> `(lemma, pos)` as the sense discriminator (homographs are separate sense
-> cards, not collapsed). Narrow FSRS (`go-fsrs/v3`, default parameters) is wired
-> behind the `FINNESTDB_FSRS_ENABLED` flag, which **defaults OFF**; the step
-> scheduler (`nextAlphaStepScheduleForRating`) remains the shipped runtime path
-> until the flag is flipped as a deploy decision (staging validation first — see
-> [DEPLOYMENT.md](DEPLOYMENT.md)). Deferred items below (parameter optimization,
-> `fsrs-rs`, rescheduling tools, simulation dashboards, mature-card analytics,
-> broad review UX redesign, and the ambiguity-eval-gated meaning-check UI)
-> remain later work.
+> **Enabled by default (2026-07-04):** Surface-form card identity and narrow
+> FSRS are both shipped, and **FSRS is now the default review scheduler.** Review
+> cards are keyed by `(user_id, lang, surface_norm, lemma, pos)` —
+> surface-form-in-context, with `(lemma, pos)` as the sense discriminator
+> (homographs are separate sense cards, not collapsed). Narrow FSRS
+> (`go-fsrs/v3`, default parameters) runs the Again/Hard/Good/Easy review surface
+> at runtime. The `FINNESTDB_FSRS_ENABLED` flag is now **opt-OUT** (unset → FSRS
+> on; `0`/`false`/`no`/`off` → step scheduler), so the step scheduler
+> (`nextAlphaStepScheduleForRating`) is the **rollback fallback**, not the
+> runtime default. The flip followed a green staging validation
+> ([`launch-readiness/2026-07-04-fsrs-validation.md`](launch-readiness/2026-07-04-fsrs-validation.md));
+> see [DEPLOYMENT.md](DEPLOYMENT.md) "FSRS scheduler rollout". Deferred items
+> below (parameter optimization, `fsrs-rs`, rescheduling tools, simulation
+> dashboards, mature-card analytics, broad review UX redesign, and the
+> ambiguity-eval-gated meaning-check UI) remain later work.
 >
 > **Note (2026-07-03):** Public alpha should ship real FSRS scheduling, but in a
 > narrow runtime-only scope: default parameters, current Again/Hard/Good/Easy UI,
@@ -35,11 +38,10 @@ _Current as of 2026-07-04 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
 Ship narrow FSRS scheduling for the public alpha, after the surface-card
 identity migration (Decision 23).
 
-Today the app still runs the deterministic alpha step scheduler
-(`nextAlphaStepScheduleForRating`) with the same Again / Hard / Good / Easy
-rating surface. For the alpha migration, use the FSRS algorithm at the product
-level, prefer the official Go implementation for the app runtime, and keep
-`fsrs-rs` as the future optimization path.
+As of 2026-07-04 the app runs FSRS (`go-fsrs/v3`, default parameters) as the
+default scheduler behind the same Again / Hard / Good / Easy rating surface; the
+deterministic alpha step scheduler (`nextAlphaStepScheduleForRating`) is retained
+as the opt-out rollback fallback. `fsrs-rs` remains the future optimization path.
 
 ## Alpha FSRS Scope
 
@@ -96,10 +98,11 @@ Practical decision:
 
 ### Implemented FSRS state model (2026-07-04)
 
-FSRS lives in `internal/store/fsrs.go` behind `FINNESTDB_FSRS_ENABLED`
-(default OFF). Both schedulers share the existing `card_state.fsrs_json`
-column, distinguished by a version discriminator so a flag flip — or a
-rollback — never corrupts a card:
+FSRS lives in `internal/store/fsrs.go` and is the **default** scheduler as of
+2026-07-04. `FINNESTDB_FSRS_ENABLED` is opt-OUT (unset → FSRS on;
+`0`/`false`/`no`/`off` → step scheduler for rollback). Both schedulers share the
+existing `card_state.fsrs_json` column, distinguished by a version discriminator
+so a flag flip — or a rollback — never corrupts a card:
 
 - **Legacy step payload:** `{"step":N,"streak":M}` (no `v` field), written by
   `nextAlphaStepScheduleForRating`.
@@ -110,8 +113,8 @@ rollback — never corrupts a card:
 regardless of which scheduler wrote the row, so the due queue, daily new-card
 limit, and dashboard reporting are scheduler-agnostic.
 
-**Lazy migration on first rating** (only when the flag is ON and the card has
-no FSRS payload yet — there is no bulk `card_state` rewrite):
+**Lazy migration on first rating** (whenever FSRS is active — the default — and
+the card has no FSRS payload yet; there is no bulk `card_state` rewrite):
 
 - `NULL`/empty state → a fresh FSRS *new* card; FSRS initializes
   stability/difficulty from the first rating.
@@ -878,8 +881,9 @@ Behavior:
 
 - Migrate review card identity to stable surface-form cards — **done
   (2026-07-04)**
-- Integrate narrow runtime FSRS scheduling for alpha — **done behind
-  `FINNESTDB_FSRS_ENABLED`, default off (2026-07-04)**
+- Integrate narrow runtime FSRS scheduling for alpha — **done and enabled by
+  default (2026-07-04); `FINNESTDB_FSRS_ENABLED` is now the opt-out rollback
+  lever**
 - Attach scheduler state to those stable surface-card IDs — **done: FSRS state
   lives in `card_state.fsrs_json` keyed to the surface-card id (2026-07-04)**
 - Support due reviews plus source-scoped new cards
