@@ -10,6 +10,31 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Catalog texts moved to real published sources
+
+A naturalness review of the agent-written "sauna" article found it stilted, so
+the four machine-written catalog texts were replaced with real published,
+redistributable sources. Policy going forward: catalog texts come from real
+published sources (public domain or CC; Gutenberg, Wikisource, Wikipedia);
+agent-authored content is a last resort requiring explicit owner approval.
+
+- Replaced: `fi-sauna-article` (FI Wikipedia "Sauna", CC BY-SA 4.0),
+  `et-tallinn-vanalinn-article` (ET Wikipedia "Tallinna vanalinn", CC BY-SA
+  4.0), and — replacing the two remaining ET originals — `et-mesipuu-poem`
+  ("Ta lendab mesipuu poole", Juhan Liiv, d. 1913, public domain, from
+  Estonian Wikisource) and `et-linnu-keel-story` ("Linnu keel" folk tale from
+  Juhan Kunder's *Eesti muinasjutud* 1885, d. 1888, public domain). The ET set
+  now mirrors FI: one article + one story + one poem.
+- Provenance and share-alike obligations recorded per text in
+  `internal/catalog/specs.json` (source URL, license, attribution).
+- Review pin corrected: `fi-sauna-article`'s review was removed with its text;
+  the two kept FI Gutenberg texts stay approved. The catalog and API tests now
+  derive "approved iff signed off in reviews.json" instead of pinning
+  "FI approved / ET pending", so a pending new FI text no longer breaks them.
+- Updated: [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) sourcing policy,
+  [`../TODO.md`](../TODO.md) catalog gate, [`../CONTEXT.md`](../CONTEXT.md)
+  Embedded Text entry.
+
 ## 2026-07-04 — Five-level catalog difficulty + FI human review recorded
 
 The first human difficulty review (Sagar, FI, 3 texts) found every text on a

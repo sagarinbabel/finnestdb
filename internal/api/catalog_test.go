@@ -4,10 +4,34 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"finnestdb/internal/catalog"
 )
+
+// reviewedCatalogIDs returns the set of catalog entry ids that
+// internal/catalog/reviews.json signs off on. The review pin is derived from
+// the same source the generator uses, so the API-level assertion stays honest
+// as texts are added or replaced without a test edit.
+func reviewedCatalogIDs(t *testing.T) map[string]bool {
+	t.Helper()
+	raw, err := os.ReadFile("../catalog/reviews.json")
+	if err != nil {
+		t.Fatalf("read reviews.json: %v", err)
+	}
+	var f struct {
+		Reviews map[string]json.RawMessage `json:"reviews"`
+	}
+	if err := json.Unmarshal(raw, &f); err != nil {
+		t.Fatalf("parse reviews.json: %v", err)
+	}
+	ids := make(map[string]bool, len(f.Reviews))
+	for id := range f.Reviews {
+		ids[id] = true
+	}
+	return ids
+}
 
 // The catalog endpoints are signed-in only, must serve the embedded metadata,
 // compute personalized coverage from the learner's known lemmas, and 404 on
@@ -49,18 +73,21 @@ func TestCatalogListReturnsEmbeddedEntries(t *testing.T) {
 	if len(resp.Entries) != len(catalog.Entries()) {
 		t.Fatalf("returned %d entries, embedded catalog has %d", len(resp.Entries), len(catalog.Entries()))
 	}
+	reviewed := reviewedCatalogIDs(t)
 	for _, e := range resp.Entries {
 		if e.ID == "" || e.Title == "" || e.License == "" {
 			t.Errorf("entry missing id/title/license: %+v", e)
 		}
-		switch e.Language {
-		case "fi":
+		// An entry is approved iff reviews.json signed it off; everything else
+		// is pending. Derived from the same source the generator uses, so it
+		// stays honest as texts are added or replaced.
+		if reviewed[e.ID] {
 			if e.DifficultyReview != "approved" {
-				t.Errorf("%s: difficulty_review=%q want approved (FI reviewed 2026-07-04)", e.ID, e.DifficultyReview)
+				t.Errorf("%s: difficulty_review=%q want approved (reviews.json signs it off)", e.ID, e.DifficultyReview)
 			}
-		default:
+		} else {
 			if e.DifficultyReview != "pending" {
-				t.Errorf("%s: difficulty_review=%q want pending (ET review outstanding)", e.ID, e.DifficultyReview)
+				t.Errorf("%s: difficulty_review=%q want pending (no reviews.json sign-off)", e.ID, e.DifficultyReview)
 			}
 		}
 		// No known words yet -> no coverage overlay, and no known-word flag.
