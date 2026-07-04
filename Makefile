@@ -7,6 +7,7 @@
         gen-catalog gen-catalog-check \
         reimport-dict-fi reimport-dict-et reimport-dict verify-dict db-invariants \
         setup-omorfi setup-estnltk eval eval-watch eval-check compare-parsers compare-parsers-et \
+        compare-ambiguity \
         import-ud-gold import-ud-gold-fi import-ud-gold-et \
         scrape-gutenberg-fi \
         fetch-frequency-baselines \
@@ -400,6 +401,18 @@ compare-parsers: parser
 
 compare-parsers-et: parser
 	@bash scripts/parser-comparison-et.sh
+
+# ── Ambiguity and meaning-check calibration eval ──────────────────────────────
+#
+# Runs cmd/ambiguityeval over the committed ambiguity gold slice
+# (testdata/parser-eval/*-ambiguity/*.json) against the production DB and
+# reports candidate-inclusion / selection-accuracy / proxy-stratified
+# accuracy per ambiguity_class. See docs/PARSER_EVAL_METHODOLOGY.md
+# §"Ambiguity and meaning-check calibration" for what this measures and the
+# threshold rule it feeds.
+
+compare-ambiguity: parser
+	@bash scripts/compare-ambiguity.sh
 
 # ── First-experience release-candidate pack ──────────────────────────────────
 #

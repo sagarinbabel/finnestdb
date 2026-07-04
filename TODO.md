@@ -373,17 +373,41 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
             even though the FST knows it), ET's blocker is selection ranking
             (Ekilex populates all candidates but the pick prefers VERB on
             cross-POS collisions). (S — done)
-      - [ ] **Build `cmd/ambiguityeval`** (M): load a `slice:"ambiguity"` gold
+      - [x] **Build `cmd/ambiguityeval`** (M): load a `slice:"ambiguity"` gold
             file, per case run `parsecore.Analyze(...,"custom")` for the pick and
             `store.BatchLookupAllForms` for the candidate set, emit
             candidate-inclusion + selection-accuracy + proxy-stratified accuracy
             keyed by `ambiguity_class`. Separate from `cmd/parsertest` so
             ambiguity metrics don't distort the token-accuracy summary schema.
-      - [ ] **Wire `make compare-ambiguity`** (S): parallel to
+            (M — done) Shipped as `cmd/ambiguityeval`. Measured on the production
+            DB: FI selection 34/48 = 70.8%, candidate inclusion 35/48 = 72.9%; ET
+            selection 6/13 = 46.2%, candidate inclusion 13/13 = 100.0%. Candidate
+            inclusion matches the spec's hand-verified baseline exactly on both
+            languages; selection differs by 2 FI cases and 1 ET case because the
+            runner's exact-`Form`-match occurrence lookup (same convention as
+            `internal/eval.findOccurrence`) does not fold case, and 3 of the 61
+            gold cases have a sentence-initial target surface capitalized in the
+            parse output but lowercase in `expected_candidates`/gold `surface`
+            (`fi-amb-sain-2`, `et-amb-pea-2` are pure casing artifacts — the
+            parser's pick is actually correct; `fi-amb-kayda-2` is a genuine miss,
+            confirmed independently: `lääkärikäynti` compound-splits to its own
+            lemma and never appears in `BatchLookupAllForms` at all, so the
+            expected `käydä`/`käynti` senses are unreachable, an instance of the
+            same candidate-set-gap failure mode as `kuusi`/`tuli`/`voi`, not a
+            runner bug). Not fixed here per instructions not to tune the runner
+            to match the spec's ad-hoc numbers.
+      - [x] **Wire `make compare-ambiguity`** (S): parallel to
             `make compare-parsers`; discover `testdata/parser-eval/*-ambiguity/*.json`,
             run FI + ET, write a report; extend `scripts/freeze-baseline.sh` usage
             so a `YYYY-MM-DD<rev>-fi-ambiguity` report is append-only (see
             `docs/baselines/README.md`).
+            (S — done) `scripts/compare-ambiguity.sh` discovers gold files under
+            `testdata/parser-eval/*-ambiguity/*.json`, runs `cmd/ambiguityeval`
+            against `finnestdb.db`, and writes a dated JSON report under
+            `reports/parser-eval/`. The formal `freeze-baseline.sh` naming
+            extension (`YYYY-MM-DD<rev>-fi-ambiguity`) is documented in
+            `docs/baselines/README.md` but the actual freeze stays a maintainer
+            action, as instructed — no frozen baseline is committed by this PR.
       - [ ] **Close the FI candidate-inclusion gap** (M): merge FST-known
             readings into `store.BatchLookupAllForms` (or a candidate-set path the
             product's Multi-Lemma expansion consumes) so `kuusi`/`tuli`/`voi`
