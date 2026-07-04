@@ -324,7 +324,7 @@ verify-dict:
 	fi
 
 db-invariants:
-	@sqlite3 finnestdb.db < scripts/db-invariants.sql
+	@bash scripts/db-invariants.sh finnestdb.db
 
 live-api-smoke:
 	@node scripts/live-api-smoke.mjs

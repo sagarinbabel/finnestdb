@@ -4,8 +4,13 @@ These instructions are for LLM agents working in this repository.
 
 ## Current Focus
 
-FinnEst is pre-go-live. Prioritize work that helps ship and operate the
-language-learning app:
+FinnEst is pre-go-live. There is **no deployed environment**: the registered
+domain `finne.st` does not serve the app yet. All QA, walkthroughs, and flow
+verification run against a local server (see
+[`docs/GO_LIVE_CHECKLIST.md`](docs/GO_LIVE_CHECKLIST.md) and
+`make first-experience-rc`); never test against `finne.st`.
+
+Prioritize work that helps ship and operate the language-learning app:
 
 - parser accuracy and dictionary-entry attachment
 - learner flows: inspect, decks, review, known words, parser feedback

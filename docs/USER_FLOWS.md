@@ -22,7 +22,8 @@ catalog should ship as fast checked-in metadata plus lazy-loaded text fixtures:
 load the catalog quickly, and load the full text only when the learner chooses
 it.
 
-Domain: **finne.st**.
+Domain: **finne.st** (registered; not serving the app until go-live — do not
+test against it, run a local server instead).
 
 ## Map of the flow
 
@@ -192,7 +193,7 @@ the anonymous cap surfaced by `/api/me` `anon_max_chars`, Parse button with a
   high-confidence FI/ET mismatch warns and requires the learner to switch the
   language explicitly before parsing.
 - Anonymous parsing uses a lower configurable text-size limit than signed-in
-  parsing. Shipped: `FINNESTDB_ANON_MAX_CHARS` (default 20,000 characters),
+  parsing. Shipped: `FINNESTDB_ANON_MAX_CHARS` (default 300,000 characters),
   enforced server-side for unauthenticated `/api/parse` before any parser work
   and surfaced to the landing char counter via `/api/me` (`anon_max_chars`). The
   signed-in cap remains 1,500,000 characters. If an unsigned visitor exceeds the

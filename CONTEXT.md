@@ -102,7 +102,7 @@ The unsigned public alpha surface (shipped 2026-07-04): paste text on the
 landing form, parse it, get a parsed word list, and explore the list. It proves
 parser quality before signup, but it is stateless and ephemeral. It uses a
 stricter configurable text-size cap than signed-in parsing
-(`FINNESTDB_ANON_MAX_CHARS`, default 20,000; signed-in stays 1,500,000).
+(`FINNESTDB_ANON_MAX_CHARS`, default 300,000; signed-in stays 1,500,000).
 _Avoid_: anonymous learning, anonymous deck, anonymous feedback
 
 **Inspect Parse**:
