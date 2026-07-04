@@ -10,6 +10,36 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Post-parse coverage reveal (aha moment #1)
+
+Added an **animated coverage reveal** above the Inspect/anonymous results table:
+the first thing a learner feels after a parse. For signed-in learners it counts
+up to "You already know **X%** of this text" and projects "Learn the top **N**
+words → **Y%**"; for anonymous visitors it reframes as "The **N** most frequent
+words in this text carry **Z%** of it" (projection-from-zero, doubling as the
+sign-up hook the existing ribbon follows).
+
+- **Number source:** all figures reuse the saved-deck comprehension token-mass
+  formula (`store.DeckComprehension`) — a token position counts as covered when
+  its (lemma, pos) is **known OR ignored**, weighted by occurrence count. The
+  projection ranks the parse's unknown lemmas by token mass exactly as
+  `DeckComprehension`'s top-unlocks SQL does. Computed client-side from the
+  fields `/api/parse` already returns (`count`, `learning_state`); no new wire
+  fields. Copy is hedged with `≈` when a whole-percent hides a fraction, and
+  carries no exclamation marks.
+- **Motion:** ~1.2s ease-out count-up + two-segment bar fill;
+  `prefers-reduced-motion` collapses to the final state instantly. No animation
+  libraries. Built as a self-contained unit (`renderCoverageReveal` +
+  `.coverage-reveal` CSS block) so the queued reading-surface redesign can
+  re-home it cheaply.
+- **Docs:** [`USER_FLOWS.md` §2](USER_FLOWS.md) documents the reveal as part of
+  the results moment; [`FEATURES.md`](FEATURES.md) "Current Inspect Results"
+  now lists it.
+- **Tests:** `internal/api` guards the parse-response contract the reveal
+  depends on (per-word `count` + known/ignored `learning_state`, ignored counts
+  as covered); `web/tests/coverage-reveal.spec.ts` asserts the signed-in and
+  anonymous reveals render plausible numbers, the count-up settles on the
+  API-derived value, and the reduced-motion path collapses instantly.
 ## 2026-07-04 — Smart display titles for pasted-text parses and decks
 
 Raw pastes used to get a useless deck-name default (`"Finnish: <first 48

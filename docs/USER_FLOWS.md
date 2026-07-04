@@ -227,6 +227,29 @@ correction entry points, status column) are hidden via `data-role-show`.
 - Privacy footer near the table: _"This parse wasn't saved. Create an account
   to save it as a deck or use learner features."_
 
+**Coverage reveal (aha moment #1)** — shipped 2026-07-04. Above the word table,
+a single animated panel opens the results moment. It is the first thing a
+learner feels after a parse:
+
+- Signed-in: a count-up to **"You already know X% of this text"** (X =
+  token-weighted coverage against the learner's known state), then a projection
+  line **"Learn the top N words → Y%"** (N = 10, or 20 when the larger step
+  buys a materially bigger jump). A two-segment bar animates from the known
+  level X up to the projected level Y as a preview.
+- Anonymous: no known state exists, so the honest framing is projection-from-
+  zero — **"The N most frequent words in this text carry Z% of it"**. Same
+  visual, different copy; the existing sign-up ribbon follows it as the hook.
+- Numbers reuse the exact token-mass formula of saved-deck comprehension
+  (`store.DeckComprehension`): a token counts as covered when its (lemma, pos)
+  is **known OR ignored**, weighted by occurrence count. Nothing is fabricated;
+  every figure is derived from the parse the learner just ran.
+- Copy is hedged (`≈`) whenever the whole-percent hides a fraction, per the
+  truthful-UI rule, and carries no exclamation marks.
+- Motion is ~1.2s ease-out (count-up + bar fill); `prefers-reduced-motion`
+  collapses to the final state instantly. Implemented as a self-contained unit
+  (one render function `renderCoverageReveal` + one `.coverage-reveal` CSS
+  block) so the queued reading-surface redesign can re-home it cheaply.
+
 ### 3. Sign-up / sign-in
 
 Currently email+password only (`web/index.html` lines 170–194). The

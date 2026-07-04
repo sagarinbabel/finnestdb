@@ -2098,6 +2098,9 @@ async function markResultLemma(status: LemmaStateUpdate, lemma: string, pos: str
         state.pendingLemmaStates.delete(stateKey);
         if (state.currentResults) {
             renderResultsTable(state.currentResults);
+            // Keep the coverage reveal in step with the new known-state, but
+            // settle instantly rather than re-playing the entrance animation.
+            renderCoverageReveal(state.currentResults, false);
         }
     }
 }
@@ -5078,6 +5081,244 @@ async function runParse(
     }
 }
 
+// ── Post-parse coverage reveal (aha moment #1) ─────────────────────────────
+//
+// The reveal is a self-contained unit: computeCoverageReveal() derives every
+// number from the parse response, renderCoverageReveal() draws + animates it.
+// A queued reading-surface redesign will re-home the panel; keep these two
+// functions and the .coverage-reveal CSS block as one movable component.
+//
+// Number source is the *same formula* the server uses for saved-deck
+// comprehension (store.DeckComprehension): token-weighted coverage over
+// content tokens, where a token counts as covered when its (lemma, pos) is
+// known OR ignored. Here that maps to:
+//
+//   coveredMass = Σ count  over words whose live state is 'known' | 'ignored'
+//   totalMass   = Σ count  over all words
+//   X%          = coveredMass / totalMass
+//
+// Top-unlocks mirror DeckComprehension's ranking: over the *unknown* words
+// (not known/ignored), order by token count desc (ties: lemma, pos), take the
+// top N, and sum their mass. Learning them lifts coverage to
+//   Y% = (coveredMass + unlockMass_N) / totalMass.
+// We compute N = 10 and N = 20 and show whichever adds the more compelling
+// jump — the larger marginal gain, preferring the smaller N on a tie so the
+// ask stays small. All live-state reads go through currentLemmaState so an
+// in-session "mark known" keeps the reveal honest on re-render.
+
+interface CoverageRevealModel {
+    anonymous:    boolean; // no known-state axis; project from frequency
+    totalMass:    number;  // Σ token count over all words
+    coveredMass:  number;  // Σ token count over known/ignored words
+    knownPct:     number;  // rounded X%
+    unlockCount:  number;  // chosen N (0 when nothing left to unlock)
+    unlockMass:   number;  // token mass carried by the top-N unknown words
+    projectedPct: number;  // rounded Y% (or Z% anonymous) after the top-N
+    estimated:    boolean; // true when rounding hides a nonzero remainder
+}
+
+// A single top-unlock candidate as ranked for the projection.
+interface RevealUnlock { lemma: string; pos: string; count: number }
+
+// rankRevealUnlocks orders the unknown words by token mass exactly as
+// DeckComprehension's SQL does (COUNT(*) DESC, lemma ASC, pos ASC), so the
+// projection lines up with what the saved-deck comprehension endpoint would
+// later report for the same words.
+function rankRevealUnlocks(unknown: RevealUnlock[]): RevealUnlock[] {
+    return [...unknown].sort((a, b) => {
+        if (a.count !== b.count) return b.count - a.count;
+        const byLemma = compareStrings(a.lemma, b.lemma);
+        if (byLemma !== 0) return byLemma;
+        return compareStrings(a.pos, b.pos);
+    });
+}
+
+function computeCoverageReveal(data: ParseResponse): CoverageRevealModel {
+    const anonymous = state.role === 'anon';
+    let totalMass = 0;
+    let coveredMass = 0;
+    const unknown: RevealUnlock[] = [];
+    for (const word of data.words) {
+        const count = word.count;
+        if (count <= 0) continue;
+        totalMass += count;
+        // Signed-in: covered = known OR ignored, read through the live map so
+        // in-session changes are reflected. Anonymous has no known state, so
+        // every word is an unlock candidate and coverage starts at zero.
+        const stateNow = anonymous ? undefined : currentLemmaState(word.lemma, word.pos);
+        if (stateNow === 'known' || stateNow === 'ignored') {
+            coveredMass += count;
+        } else {
+            unknown.push({ lemma: word.lemma, pos: word.pos, count });
+        }
+    }
+
+    const knownPct = totalMass === 0 ? 0 : Math.round((coveredMass / totalMass) * 100);
+
+    const ranked = rankRevealUnlocks(unknown);
+    const massForTopN = (n: number): number => {
+        let sum = 0;
+        for (let i = 0; i < n && i < ranked.length; i++) sum += ranked[i].count;
+        return sum;
+    };
+    // Choose the step size. When there are 10 or fewer unknowns, offer exactly
+    // those — a clean "learn these and you're done" ask. When there are more,
+    // the step is 10 or 20 (never an in-between count): prefer the smaller ask
+    // of 10, and only escalate to 20 when the full set of 20 exists AND the
+    // extra 10 words buy a materially larger coverage jump (≥5 more points of
+    // total token mass). This keeps the projection honest and the ask minimal.
+    let unlockCount: number;
+    let unlockMass: number;
+    if (ranked.length <= 10) {
+        unlockCount = ranked.length;
+        unlockMass = massForTopN(ranked.length);
+    } else {
+        const mass10 = massForTopN(10);
+        unlockCount = 10;
+        unlockMass = mass10;
+        if (ranked.length >= 20) {
+            const mass20 = massForTopN(20);
+            const extraPoints = totalMass === 0 ? 0 : ((mass20 - mass10) / totalMass) * 100;
+            if (extraPoints >= 5) {
+                unlockCount = 20;
+                unlockMass = mass20;
+            }
+        }
+    }
+
+    const projectedMass = coveredMass + unlockMass;
+    const projectedPct = totalMass === 0 ? 0 : Math.round((projectedMass / totalMass) * 100);
+
+    // "estimated" flags the copy to hedge (≈/roughly): true whenever the shown
+    // whole-percent hides a fraction, i.e. the ratio isn't exact.
+    const exact = totalMass !== 0
+        && (coveredMass * 100) % totalMass === 0
+        && (projectedMass * 100) % totalMass === 0;
+
+    return {
+        anonymous,
+        totalMass,
+        coveredMass,
+        knownPct,
+        unlockCount,
+        unlockMass,
+        projectedPct,
+        estimated: !exact,
+    };
+}
+
+// renderCoverageReveal fills the #coverage-reveal panel and runs the count-up +
+// bar-fill animation. It is idempotent per parse: showResults clears any prior
+// run before calling it, and the animation cancels its own frame on re-entry.
+let coverageRevealRaf = 0;
+function renderCoverageReveal(data: ParseResponse, animate = true): void {
+    const host = document.getElementById('coverage-reveal');
+    if (!host) return;
+    if (coverageRevealRaf) { cancelAnimationFrame(coverageRevealRaf); coverageRevealRaf = 0; }
+
+    // Deck-detail view has its own comprehension panel; the reveal is for the
+    // fresh-parse moment (inspect / landing). No mass means nothing honest to
+    // show. Hide in both cases.
+    const model = computeCoverageReveal(data);
+    if (state.currentContext === 'deck' || model.totalMass === 0) {
+        host.classList.add('hidden');
+        host.innerHTML = '';
+        return;
+    }
+
+    const approx = model.estimated ? '≈' : '';
+    // knownPct is the bar floor and, for signed-in, the count-up target — the
+    // "you already know X%" number. The gain segment previews the projected
+    // lift to Y%. For anonymous there is no known floor (0), so the count-up
+    // target is the frequency figure Z% itself.
+    const knownPct = model.anonymous ? 0 : model.knownPct;
+    const projectedPct = model.projectedPct;
+    const gainWidth = Math.max(0, projectedPct - knownPct);
+    const figureTarget = model.anonymous ? projectedPct : knownPct;
+
+    let headline: string;
+    let projection: string;
+    if (model.anonymous) {
+        // Projection-from-zero: no known state exists, so the honest reveal is
+        // frequency-based. Doubles as the signup hook (ribbon follows).
+        headline = `The ${model.unlockCount} most frequent words in this text carry `
+            + `<strong class="coverage-reveal-figure" id="coverage-reveal-figure">${approx}${figureTarget}%</strong> of it`;
+        projection = `Learn those first to read most of what is here. `
+            + `An account tracks the words you already know and shows how much of any text you will understand.`;
+    } else {
+        headline = `You already know <strong class="coverage-reveal-figure" id="coverage-reveal-figure">`
+            + `${approx}${figureTarget}%</strong> of this text`;
+        projection = model.unlockCount > 0 && projectedPct > knownPct
+            ? `Learn the top <strong>${model.unlockCount}</strong> words `
+              + `<span aria-hidden="true">→</span> ${approx}${projectedPct}%`
+            : `You know every word here that this parse can attach.`;
+    }
+
+    host.innerHTML = `
+        <div class="coverage-reveal-inner">
+            <p class="coverage-reveal-headline">${headline}</p>
+            <div class="coverage-reveal-bar" role="img"
+                 aria-label="${model.anonymous
+                    ? `Roughly ${projectedPct} percent of tokens are carried by the ${model.unlockCount} most frequent words`
+                    : `You know roughly ${knownPct} percent of this text; learning ${model.unlockCount} more words reaches roughly ${projectedPct} percent`}">
+                <div class="coverage-reveal-known" id="coverage-reveal-known"></div>
+                <div class="coverage-reveal-gain" id="coverage-reveal-gain"></div>
+            </div>
+            <p class="coverage-reveal-projection">${projection}</p>
+        </div>`;
+    host.classList.remove('hidden');
+
+    const figureEl = document.getElementById('coverage-reveal-figure');
+    const knownBar = document.getElementById('coverage-reveal-known');
+    const gainBar  = document.getElementById('coverage-reveal-gain');
+    if (!figureEl || !knownBar || !gainBar) return;
+
+    const setBars = (knownW: number, gainW: number): void => {
+        knownBar.style.width = `${knownW}%`;
+        gainBar.style.width = `${gainW}%`;
+    };
+    const setFigure = (pct: number): void => {
+        figureEl.textContent = `${approx}${pct}%`;
+    };
+
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || !animate) {
+        // Collapse to the final state instantly: reduced-motion users, and
+        // in-session refreshes (a known/ignore toggle updates the numbers
+        // without re-playing the entrance animation).
+        setBars(knownPct, gainWidth);
+        setFigure(figureTarget);
+        return;
+    }
+
+    // Count-up the headline figure to figureTarget while the bar fills from 0 to
+    // its known floor + projected gain, ~1.2s ease-out. The full bar animates
+    // from the known level up to the projected level — the preview of the lift.
+    const durationMs = 1200;
+    setBars(0, 0);
+    setFigure(0);
+    const t0 = performance.now();
+    const easeOut = (t: number): number => 1 - Math.pow(1 - t, 3);
+    const tick = (now: number): void => {
+        const raw = Math.min(1, (now - t0) / durationMs);
+        const e = easeOut(raw);
+        const knownNow = knownPct * e;
+        const gainNow = gainWidth * e;
+        setBars(knownNow, gainNow);
+        // The headline figure counts to figureTarget — the number the user is
+        // meant to feel — settling exactly on the API-derived value.
+        setFigure(Math.round(figureTarget * e));
+        if (raw < 1) {
+            coverageRevealRaf = requestAnimationFrame(tick);
+        } else {
+            setBars(knownPct, gainWidth);
+            setFigure(figureTarget);
+            coverageRevealRaf = 0;
+        }
+    };
+    coverageRevealRaf = requestAnimationFrame(tick);
+}
+
 // ── Results rendering (shared) ─────────────────────────────────────────────
 
 function computeCoverageScore(data: ParseResponse): {
@@ -5497,7 +5738,10 @@ async function ambiguityMarkKnown(lang: string, surface: string, lemma: string, 
         showToast(err.message || 'Failed to update word.', 'error');
     } finally {
         state.ambiguityKnownPending.delete(key);
-        if (state.currentResults) renderResultsTable(state.currentResults);
+        if (state.currentResults) {
+            renderResultsTable(state.currentResults);
+            renderCoverageReveal(state.currentResults, false);
+        }
     }
 }
 
@@ -5580,6 +5824,9 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
         state.ambiguityBySurface.set(amb.surface, amb);
     }
     renderResultsTable(data);
+    // Coverage reveal (aha #1): runs after currentLemmaStates + currentContext
+    // are hydrated above so the numbers match the table's live known-state.
+    renderCoverageReveal(data);
     renderResultsSaveState();
     renderChapterNav();
     renderAnonResultsChrome();
