@@ -42,7 +42,7 @@ func main() {
 		log.Fatal("-file is required")
 	}
 
-	db, err := sql.Open("sqlite3", *dbPath)
+	db, err := sql.Open("sqlite3", *dbPath+"?_busy_timeout=5000")
 	if err != nil {
 		log.Fatalf("open DB: %v", err)
 	}
