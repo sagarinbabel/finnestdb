@@ -356,6 +356,12 @@ CC BY-SA 4.0), `et-mesipuu-poem` ("Ta lendab mesipuu poole", Juhan Liiv, PD),
 and `et-linnu-keel-story` ("Linnu keel", Juhan Kunder, PD). The ET set now
 mirrors FI (one article + one story + one poem).
 
+Owner acknowledgment (Sagar, 2026-07-04): CC BY-SA texts in the catalog are
+accepted — attribution must stay visible wherever the text is shown (rendered
+on catalog cards since PR #264), and those texts plus any modified versions of
+them remain CC BY-SA. Having many such texts is fine; compliance is the
+requirement, not avoidance.
+
 ```
 go run ./cmd/gencatalog \
     -specs internal/catalog/specs.json \
