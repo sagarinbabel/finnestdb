@@ -1509,7 +1509,7 @@ function setSigninMode(mode: SigninMode): void {
     });
     if (mode === 'register') {
         if (heading)  heading.textContent  = 'Create account';
-        if (lede)     lede.textContent     = 'Pick an email and a password (8+ characters).';
+        if (lede)     lede.textContent     = 'An account lets you save decks, upload whole EPUBs and books, track the words you already know, and review with spaced repetition. Pick an email and a password (8+ characters).';
         if (submit)   submit.textContent   = 'Create account';
         if (password) password.autocomplete = 'new-password';
     } else {
