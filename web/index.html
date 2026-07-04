@@ -734,16 +734,11 @@
                 <button id="results-back" class="btn btn-link">← Back</button>
                 <h2 id="results-title">Results</h2>
             </div>
-            <!-- Post-parse coverage reveal (aha moment #1). Self-contained:
-                 one render function (renderCoverageReveal) + one CSS block
-                 (.coverage-reveal). A queued reading-surface redesign will
-                 re-home this; keep it a movable unit. Numbers are filled in
-                 by JS from the parse response — the empty container renders
-                 nothing until then. -->
-            <section id="coverage-reveal" class="coverage-reveal hidden" aria-live="polite"></section>
-            <div class="results-split">
-            <aside class="results-chapter-nav hidden" id="results-chapter-nav" aria-label="Filter results by chapter"></aside>
-            <div class="results-body">
+            <!-- Shared results chrome: sign-up ribbon + summary (parser pill,
+                 compact coverage gauge, stats, save-as-deck CTA). Lives ABOVE
+                 the tabs so save works identically from Read and Words. The
+                 richer animated coverage *reveal* is Read-only (in #read-view);
+                 this compact gauge is the always-present summary. -->
             <div id="anon-signup-ribbon" class="anon-signup-ribbon hidden" data-role-show="anon" role="region" aria-label="Save these words">
                 <div class="anon-ribbon-text">
                     <strong>Save these words as a study deck</strong>
@@ -786,7 +781,30 @@
                     </form>
                 </div>
             </section>
-
+            <!-- Read / Words tab bar. The Read tab (living text) is the default
+                 landing view; Words is the existing lemma table. Hidden entirely
+                 in deck context (no source text to read). Tab choice persists in
+                 localStorage. -->
+            <div id="results-tabs" class="results-tabs hidden" role="tablist" aria-label="Results view">
+                <button type="button" id="results-tab-read" class="results-tab" role="tab"
+                        aria-selected="true" aria-controls="read-view" data-results-tab="read">Read</button>
+                <button type="button" id="results-tab-words" class="results-tab" role="tab"
+                        aria-selected="false" aria-controls="words-view" data-results-tab="words">Words</button>
+            </div>
+            <!-- Read view (the living text). Coverage reveal is re-homed here at
+                 the top; below it the source text renders with tappable, state-
+                 colored word spans. Hidden until a Read-capable parse renders. -->
+            <section id="read-view" class="read-view hidden" role="tabpanel" aria-labelledby="results-tab-read">
+                <!-- Post-parse coverage reveal (aha moment #1). Self-contained:
+                     one render function (renderCoverageReveal) + one CSS block
+                     (.coverage-reveal). Re-homed into the Read view. Numbers are
+                     filled in by JS from the parse response. -->
+                <section id="coverage-reveal" class="coverage-reveal hidden" aria-live="polite"></section>
+                <div id="read-text" class="read-text" aria-label="Source text"></div>
+            </section>
+            <div id="words-view" class="results-split" role="tabpanel" aria-labelledby="results-tab-words">
+            <aside class="results-chapter-nav hidden" id="results-chapter-nav" aria-label="Filter results by chapter"></aside>
+            <div class="results-body">
             <div id="pos-filter-bar" class="pos-filter-bar">
                 <button type="button" class="pos-filter-chip active" data-filter="all">All</button>
                 <button type="button" class="pos-filter-chip" data-filter="NOUN">Nouns</button>
@@ -817,13 +835,24 @@
                     </table>
                 </div>
             </section>
-
+            </div>
+            </div>
+            <!-- Shared anon privacy footer: visible on both Read and Words. -->
             <p id="anon-privacy-footer" class="anon-privacy-footer hidden" data-role-show="anon">
                 This parse wasn't saved. <a href="#/signin">Create an account</a> to save it as a deck or use learner features.
             </p>
-            </div>
-            </div>
         </main>
+    </div>
+
+    <!-- ==================== READING POPOVER ==================== -->
+    <!-- Anchored popover for a tapped word in the Read view. On narrow screens
+         (<=440px) CSS turns this into a bottom sheet. One popover at a time;
+         ESC / tap-outside closes. Content is filled by renderReadPopover(). -->
+    <div id="read-popover-backdrop" class="read-popover-backdrop hidden"></div>
+    <div id="read-popover" class="read-popover hidden" role="dialog" aria-modal="false"
+         aria-label="Word details" tabindex="-1">
+        <button type="button" class="read-popover-close" id="read-popover-close" aria-label="Close">×</button>
+        <div id="read-popover-body" class="read-popover-body"></div>
     </div>
 
     <!-- ==================== CORRECTION MODAL ==================== -->

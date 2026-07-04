@@ -10,6 +10,40 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Reading surface: text-first results with tap-to-mark words
+
+Inverted the `/results` page into a **text-first** experience (aha moment #2,
+"the living text"). The page now opens on a **Read** tab that renders the source
+text with paragraph structure preserved, in reading typography, with every
+parsed word as a tappable span colored by its learner state (`--new` /
+`--learning` / `--known`; ignored words render neutral). A **Words** tab holds
+the existing lemma table with unchanged behavior; the tab choice persists in
+`localStorage` (default Read). See
+[`USER_FLOWS.md` §2](USER_FLOWS.md#2-inline-results-anonymous) and the new
+**Reading Surface** entry in [`CONTEXT.md`](../CONTEXT.md).
+
+- **No new server data:** the Read view tokenizes `state.currentSourceText`
+  client-side and matches each surface back to its `WordEntry` via
+  `WordEntry.forms` (the exact case-preserved surfaces each `(lemma, pos)`
+  resolved from). Homograph surfaces map to more than one row and route to the
+  ambiguity popover. No new `/api/parse` fields.
+- **Tap popover:** anchored on desktop, a scrollable bottom sheet at ≤440px with
+  ≥44px tap targets. Known / Study / Ignore reuse the table's endpoints and the
+  chip's pending-deck `selected_senses` model; an ambiguous surface reuses the
+  **Multiple possible meanings** panel (`renderAmbiguityPanel` +
+  `wireAmbiguityControls`) verbatim, including the "None of these looks right"
+  flag-only escape. One popover at a time; ESC / tap-outside closes.
+- **Shared chrome:** the summary (parser pill, compact coverage gauge, stats,
+  save-as-deck CTA) plus the anonymous sign-up ribbon and privacy footer moved
+  above the tabs, so save works identically from either tab. The animated
+  coverage reveal is re-homed to the top of the Read tab; the compact gauge stays
+  in the shared summary.
+- **Anonymous & decks:** the Read tab renders for anonymous parses in neutral
+  coloring with a gloss-only, sign-in-nudged popover. Saved decks carry no raw
+  source text, so they keep the Words table with the tab bar hidden.
+- Docs touched: [`FEATURES.md`](FEATURES.md) "How You Learn" step 2,
+  [`USER_FLOWS.md`](USER_FLOWS.md) §2, [`CONTEXT.md`](../CONTEXT.md).
+
 ## 2026-07-04 — Post-parse coverage reveal (aha moment #1)
 
 Added an **animated coverage reveal** above the Inspect/anonymous results table:

@@ -153,6 +153,24 @@ _Avoid_: abstract disambiguation quiz
 The measured-ambiguity version of a **Meaning Check**. Use it when the parser can list candidate meanings but does not have a measured basis for safely presenting one contextual meaning as intended. It shows candidate meanings with per-candidate known/study actions and a separate "None of these looks right" parser-feedback action. Shipped 2026-07-04 as the alpha default for every ambiguous surface (no ambiguity class qualifies for the single confident **Meaning Check** on the v1 eval slice, so that variant stays threshold-gated future work): `/api/parse` attaches `ambiguous_surfaces` (FST-merged candidates, quarantine-filtered) for signed-in learners; results rows carry the chip → expansion with per-candidate "I know this meaning" / "Study this meaning" / "Not sure" and the flag-only "None of these looks right" escape. "Study this meaning" only marks the pending deck-save payload; an explicitly chosen FST-only sense still creates its card on save via a narrow bypass of the dict-only deck expansion.
 _Avoid_: pretending the parser knows the intended meaning
 
+**Reading Surface**:
+The text-first results view (shipped 2026-07-04). The `/results` page opens on a
+**Read** tab that renders the learner's **Source Text** with paragraph structure
+preserved and every parsed **Surface Form** as a tappable span colored by its
+learner state (`--new` = no card and not known, `--learning` = selected to study
+this parse, `--known` = known; **Ignored Lemma** surfaces render neutral/
+uncolored). A **Words** tab holds the existing lemma table with unchanged
+behavior; the tab choice is remembered per browser. Tapping a word opens a small
+anchored popover (a bottom sheet at 375px) with gloss + **Known** / **Study** /
+**Ignore**; an ambiguous surface reuses the **Multiple Possible Meanings**
+candidate list and actions rather than a separate flow. "Study" carries the same
+pending-deck-save semantics as the **Meaning Check** chip. Anonymous parses get
+the Read tab in neutral coloring with a gloss-only, sign-in-nudged popover. There
+is no Read tab in the saved-**Deck** context because a deck carries no raw source
+text. The animated coverage reveal is re-homed to the top of the Read tab.
+_Avoid_: calling the Words tab the "reading surface"; treating ignored words as
+colored; a Read tab for saved decks
+
 **Parser Confidence**:
 The system's measured confidence that a surface in a specific sentence maps to one contextual **Dictionary Entry** rather than another. This is about parser disambiguation, not learner knowledge or review maturity. For alpha, calibrate it with deterministic eval slices before using it to simplify learner UI.
 _Avoid_: learner confidence, FSRS confidence

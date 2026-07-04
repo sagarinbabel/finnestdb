@@ -370,6 +370,7 @@ type ParserMode = 'basic' | 'custom';
 // the results page but drives anon-only chrome (sign-up ribbon, privacy footer)
 // and never persists a deck.
 type ResultsContext = 'inspect' | 'workbench' | 'deck' | 'landing';
+type ResultsTab = 'read' | 'words';
 type LemmaStateStatus = 'known' | 'ignored';
 
 interface SortState { key: SortKey; dir: 'asc' | 'desc'; }
@@ -439,6 +440,19 @@ const state = {
     // ambiguityKnownPending: per-candidate in-flight guard for "I know this
     // meaning" so a double-click can't double-record.
     ambiguityKnownPending: new Set<string>(),
+    // ── Reading surface (Read / Words tabs) ──
+    // resultsTab: which results view is showing. Read = the living text,
+    // Words = the existing lemma table. Persisted in localStorage; defaults to
+    // 'read'. In deck context there's no source text, so the Words table shows
+    // regardless of this and the tab bar is hidden.
+    resultsTab: 'read' as ResultsTab,
+    // formIndex: surface form (exact, case-preserved) → the WordEntry rows it
+    // resolves to, for the current parse. A homograph surface maps to >1 row.
+    // Rebuilt in showResults; drives Read-view token coloring + popover content.
+    formIndex: new Map<string, WordEntry[]>(),
+    // readPopoverSurface: the surface currently shown in the reading popover
+    // (empty when closed). One popover at a time.
+    readPopoverSurface: '' as string,
     currentReviewCard:  null as ReviewCardResponse | null,
     reviewDeckFilter:   '',
     parseSessions:      [] as ParseSessionHistoryItem[],
@@ -2096,12 +2110,10 @@ async function markResultLemma(status: LemmaStateUpdate, lemma: string, pos: str
         trigger.disabled = false;
     } finally {
         state.pendingLemmaStates.delete(stateKey);
-        if (state.currentResults) {
-            renderResultsTable(state.currentResults);
-            // Keep the coverage reveal in step with the new known-state, but
-            // settle instantly rather than re-playing the entrance animation.
-            renderCoverageReveal(state.currentResults, false);
-        }
+        // Keep the table, Read view, and coverage reveal in step with the new
+        // known-state, settling instantly rather than replaying the entrance
+        // animation.
+        refreshResultsViews();
     }
 }
 
@@ -5707,7 +5719,15 @@ function wireAmbiguityControls(tbody: HTMLElement, data: ParseResponse): void {
             } else if (action === 'study' || action === 'notsure') {
                 // "Not sure" behaves conservatively like study: keep selected.
                 state.selectedSenses.add(senseKey(surface, lemma, pos));
-                renderResultsTable(data);
+                refreshResultsViews();
+                // Keep an open reading popover (which reuses this panel) in step.
+                if (state.readPopoverSurface === surface) {
+                    const body = document.getElementById('read-popover-body');
+                    if (body) {
+                        body.innerHTML = renderReadPopoverBody(surface, data);
+                        wireReadPopoverControls(body, data);
+                    }
+                }
             }
         });
     });
@@ -5738,11 +5758,422 @@ async function ambiguityMarkKnown(lang: string, surface: string, lemma: string, 
         showToast(err.message || 'Failed to update word.', 'error');
     } finally {
         state.ambiguityKnownPending.delete(key);
-        if (state.currentResults) {
-            renderResultsTable(state.currentResults);
-            renderCoverageReveal(state.currentResults, false);
+        refreshResultsViews();
+        // If the reading popover is open on this surface, re-render its body so
+        // the just-marked sense reflects known state.
+        if (state.readPopoverSurface === surface && state.currentResults) {
+            const body = document.getElementById('read-popover-body');
+            if (body) {
+                body.innerHTML = renderReadPopoverBody(surface, state.currentResults);
+                wireReadPopoverControls(body, state.currentResults);
+            }
         }
     }
+}
+
+// ── Reading surface (Read / Words tabs, the living text) ───────────────────
+//
+// The Read view is the text-first inversion of results: it renders the source
+// text (state.currentSourceText) with paragraph structure preserved, and colors
+// every parsed token by its live learner state. Words is the existing lemma
+// table, untouched. The two tabs share one parse; the Read view derives its
+// per-token state from the same currentLemmaStates / selectedSenses model the
+// table uses, so a known/ignore/study action from either tab (or the popover)
+// updates both through refreshResultsViews().
+//
+// No new server data: WordEntry.forms carries the exact (case-preserved) surface
+// strings each (lemma, pos) resolved from, so we tokenize the source text on the
+// client and match each surface back to its WordEntry(ies). A surface that maps
+// to more than one row is a homograph — routed to the ambiguity popover, which
+// reuses the Multiple-possible-meanings rendering.
+
+const RESULTS_TAB_KEY = 'finnestdb:resultsTab:v1';
+
+function loadResultsTab(): ResultsTab {
+    try {
+        return localStorage.getItem(RESULTS_TAB_KEY) === 'words' ? 'words' : 'read';
+    } catch {
+        return 'read';
+    }
+}
+
+function saveResultsTab(tab: ResultsTab): void {
+    try { localStorage.setItem(RESULTS_TAB_KEY, tab); } catch { /* storage unavailable */ }
+}
+
+// buildFormIndex maps each surface form to the WordEntry rows that list it. A
+// homograph surface (e.g. "kuusi" → NUM + NOUN) maps to more than one entry.
+function buildFormIndex(data: ParseResponse): Map<string, WordEntry[]> {
+    const index = new Map<string, WordEntry[]>();
+    for (const word of data.words) {
+        for (const form of word.forms) {
+            const rows = index.get(form);
+            if (rows) rows.push(word);
+            else index.set(form, [word]);
+        }
+    }
+    return index;
+}
+
+// Token-status classification for the Read view. Returns the CSS state class for
+// a resolved surface. Ignored words render neutral (uncolored) — the least noisy
+// treatment, since an ignored word is a deliberate "don't show me this" signal
+// and coloring it would add visual weight to something the learner suppressed.
+type ReadTokenStatus = 'known' | 'learning' | 'new' | 'neutral' | 'unresolved';
+
+function readTokenStatus(rows: WordEntry[]): ReadTokenStatus {
+    // Aggregate over every row a surface resolves to. Priority for the single
+    // shown color, most-settled first: known > ignored(neutral) > learning >
+    // new. "learning" = the sense is a pending study selection (selectedSenses)
+    // OR already has a study card (currentLemmaState has no 'learning' value in
+    // the (lemma,pos) model, so study intent is carried only by selectedSenses).
+    let sawLearning = false;
+    let sawNew = false;
+    for (const w of rows) {
+        const st = currentLemmaState(w.lemma, w.pos);
+        if (st === 'known') return 'known';
+        if (st === 'ignored') return 'neutral';
+        // Study selection: any selected sense whose (lemma,pos) matches this row.
+        const studied = [...state.selectedSenses].some(k => {
+            const [, lemma, pos] = k.split(SENSE_KEY_SEP);
+            return lemma === w.lemma && pos === w.pos;
+        });
+        if (studied) sawLearning = true;
+        else sawNew = true;
+    }
+    if (sawLearning) return 'learning';
+    if (sawNew) return 'new';
+    return 'neutral';
+}
+
+// TEXT_TOKEN_RE splits source text into word tokens vs. non-word runs while
+// keeping every character (so the rendered text is byte-faithful to the source
+// minus HTML escaping). \p{L}\p{N} word chars plus intra-word marks the parser
+// treats as part of a token (apostrophe, hyphen). Everything else — whitespace,
+// punctuation — is passed through as plain text.
+const TEXT_TOKEN_RE = /[\p{L}\p{N}][\p{L}\p{N}'’\-]*/gu;
+
+// renderReadView renders state.currentSourceText into #read-text with paragraph
+// structure preserved and each parsed surface as a tappable, state-colored span.
+// Anonymous parses get neutral coloring (no learner state exists).
+function renderReadView(data: ParseResponse): void {
+    const host = document.getElementById('read-text');
+    if (!host) return;
+    const source = state.currentSourceText;
+    if (!source.trim()) {
+        host.innerHTML = '<p class="read-empty">The source text isn\'t available for this view.</p>';
+        return;
+    }
+    const anonymous = state.role === 'anon';
+    // Split on blank lines into paragraphs; preserve single newlines as breaks.
+    const paragraphs = source.replace(/\r\n/g, '\n').split(/\n{2,}/);
+    const html = paragraphs.map(para => {
+        if (!para.trim()) return '';
+        // Render each line within a paragraph, joining with <br> so poem/line
+        // structure survives.
+        const lines = para.split('\n').map(line => renderReadLine(line, anonymous)).join('<br>');
+        return `<p class="read-para">${lines}</p>`;
+    }).join('');
+    host.innerHTML = html || '<p class="read-empty">Nothing to show.</p>';
+    wireReadTokens(host, data);
+}
+
+// renderReadLine tokenizes one line, wrapping each recognized surface in a
+// tappable span and passing through everything else as escaped plain text.
+function renderReadLine(line: string, anonymous: boolean): string {
+    let out = '';
+    let last = 0;
+    TEXT_TOKEN_RE.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = TEXT_TOKEN_RE.exec(line)) !== null) {
+        const surface = m[0];
+        const start = m.index;
+        if (start > last) out += escapeHtml(line.slice(last, start));
+        last = start + surface.length;
+        const rows = state.formIndex.get(surface);
+        if (!rows || rows.length === 0) {
+            // Unresolved token (number, unknown word the parser didn't attach):
+            // plain text, not tappable.
+            out += escapeHtml(surface);
+            continue;
+        }
+        const status = anonymous ? 'neutral' : readTokenStatus(rows);
+        const ambiguous = state.ambiguityBySurface.has(surface);
+        const cls = ['read-token', `is-${status}`];
+        if (ambiguous) cls.push('is-ambiguous');
+        out += `<span class="${cls.join(' ')}" role="button" tabindex="0"`
+            + ` data-read-surface="${escapeAttr(surface)}">${escapeHtml(surface)}</span>`;
+    }
+    if (last < line.length) out += escapeHtml(line.slice(last));
+    return out;
+}
+
+// wireReadTokens attaches tap/keyboard handlers to open the word popover. Rerun
+// on every render because innerHTML replacement drops listeners.
+function wireReadTokens(host: HTMLElement, data: ParseResponse): void {
+    host.querySelectorAll<HTMLElement>('.read-token').forEach(span => {
+        const open = (): void => {
+            const surface = span.dataset.readSurface || '';
+            if (surface) openReadPopover(surface, span, data);
+        };
+        span.addEventListener('click', open);
+        span.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+        });
+    });
+}
+
+// ── Reading popover ────────────────────────────────────────────────────────
+
+let readPopoverAnchor: HTMLElement | null = null;
+
+// renderReadPopoverBody builds the popover content for a surface. For an
+// ambiguous surface it reuses renderAmbiguityPanel (the Multiple-possible-
+// meanings rendering); otherwise a compact gloss card with Known / Study /
+// Ignore actions. Anonymous parses get gloss only plus a sign-in nudge.
+function renderReadPopoverBody(surface: string, data: ParseResponse): string {
+    const anonymous = state.role === 'anon';
+    const amb = state.ambiguityBySurface.get(surface);
+    if (amb && !anonymous) {
+        // Reuse the exact ambiguity panel (candidates + per-candidate actions +
+        // "None of these looks right"). Its controls are wired by the shared
+        // wireAmbiguityControls below.
+        return renderAmbiguityPanel(data.lang, amb);
+    }
+    const rows = state.formIndex.get(surface) || [];
+    if (rows.length === 0) {
+        return `<p class="read-pop-lemma">${escapeHtml(surface)}</p>`
+            + `<p class="read-pop-empty">No dictionary entry attached.</p>`;
+    }
+    // Non-ambiguous (or anonymous, where ambiguity actions aren't offered): show
+    // each resolved sense. Almost always one row.
+    const cards = rows.map(w => {
+        const glossHtml = w.gloss ? escapeHtml(w.gloss) : '<span class="no-gloss">Missing</span>';
+        const posPill = `<span class="pos-pill" data-pos="${escapeHtml(w.pos)}" data-tooltip="${escapeHtml(posLabel(w.pos))}">${escapeHtml(posAbbrev(w.pos))}</span>`;
+        const grammar = w.grammar_label ? `<span class="grammar-badge">${escapeHtml(w.grammar_label)}</span>` : '';
+        const head = `<div class="read-pop-head">
+                <span class="read-pop-surface">${escapeHtml(surface)}</span>
+                <span class="read-pop-lemma-line">${escapeHtml(w.lemma)}${grammar} ${posPill}</span>
+            </div>
+            <p class="read-pop-gloss">${glossHtml}</p>`;
+        if (anonymous) return `<div class="read-pop-sense">${head}</div>`;
+
+        const st = currentLemmaState(w.lemma, w.pos);
+        const key = senseKey(surface, w.lemma, w.pos);
+        const isKnown = st === 'known';
+        const isIgnored = st === 'ignored';
+        const isStudy = state.selectedSenses.has(key);
+        const pending = state.pendingLemmaStates.has(lemmaStateKey(data.lang, w.lemma, w.pos));
+        // Actions mirror the table's known/ignore + the chip's study semantics.
+        const actions = `<div class="read-pop-actions"
+                data-surface="${escapeAttr(surface)}"
+                data-lemma="${escapeAttr(w.lemma)}"
+                data-pos="${escapeAttr(w.pos)}">
+            <button type="button" class="read-pop-btn read-pop-known${isKnown ? ' is-active' : ''}"
+                data-read-action="known" ${pending ? 'disabled' : ''}>
+                ${isKnown ? 'Known' : 'Mark known'}
+            </button>
+            <button type="button" class="read-pop-btn read-pop-study${isStudy ? ' is-active' : ''}"
+                data-read-action="study" ${isKnown ? 'disabled' : ''}
+                data-tooltip="Creates a review card when you save.">
+                ${isStudy ? 'Studying' : 'Study'}
+            </button>
+            <button type="button" class="read-pop-btn read-pop-ignore${isIgnored ? ' is-active' : ''}"
+                data-read-action="ignore" ${pending ? 'disabled' : ''}>
+                ${isIgnored ? 'Ignored' : 'Ignore'}
+            </button>
+        </div>
+        <p class="read-pop-hint">Creates a review card when you save.</p>`;
+        return `<div class="read-pop-sense">${head}${actions}</div>`;
+    }).join('');
+    const nudge = anonymous
+        ? `<p class="read-pop-nudge"><a href="#/signin">Create an account</a> to mark words known or add them to study.</p>`
+        : '';
+    return cards + nudge;
+}
+
+// openReadPopover positions the popover under the tapped token (anchored on
+// desktop; CSS turns it into a bottom sheet on narrow screens) and wires its
+// controls. One popover at a time.
+function openReadPopover(surface: string, anchor: HTMLElement, data: ParseResponse): void {
+    const pop = document.getElementById('read-popover');
+    const backdrop = document.getElementById('read-popover-backdrop');
+    const body = document.getElementById('read-popover-body');
+    if (!pop || !backdrop || !body) return;
+
+    state.readPopoverSurface = surface;
+    readPopoverAnchor = anchor;
+    body.innerHTML = renderReadPopoverBody(surface, data);
+    wireReadPopoverControls(body, data);
+
+    backdrop.classList.remove('hidden');
+    pop.classList.remove('hidden');
+    positionReadPopover(pop, anchor);
+    // Focus the popover for keyboard users; ESC closes.
+    pop.focus();
+}
+
+function positionReadPopover(pop: HTMLElement, anchor: HTMLElement): void {
+    // Bottom-sheet mode is driven by CSS (max-width media query); skip absolute
+    // positioning there so the sheet pins to the viewport bottom.
+    const isSheet = window.matchMedia?.('(max-width: 440px)').matches;
+    if (isSheet) {
+        pop.style.top = '';
+        pop.style.left = '';
+        return;
+    }
+    const rect = anchor.getBoundingClientRect();
+    const popRect = pop.getBoundingClientRect();
+    const margin = 8;
+    let top = rect.bottom + window.scrollY + 6;
+    let left = rect.left + window.scrollX;
+    // Keep within the viewport horizontally.
+    const maxLeft = window.scrollX + document.documentElement.clientWidth - popRect.width - margin;
+    if (left > maxLeft) left = Math.max(window.scrollX + margin, maxLeft);
+    // Flip above the token if it would overflow the bottom.
+    const overflowBottom = rect.bottom + popRect.height + 12 > document.documentElement.clientHeight;
+    if (overflowBottom && rect.top - popRect.height - 6 > 0) {
+        top = rect.top + window.scrollY - popRect.height - 6;
+    }
+    pop.style.top = `${Math.round(top)}px`;
+    pop.style.left = `${Math.round(left)}px`;
+}
+
+function closeReadPopover(): void {
+    const pop = document.getElementById('read-popover');
+    const backdrop = document.getElementById('read-popover-backdrop');
+    if (pop) pop.classList.add('hidden');
+    if (backdrop) backdrop.classList.add('hidden');
+    state.readPopoverSurface = '';
+    const anchor = readPopoverAnchor;
+    readPopoverAnchor = null;
+    // Return focus to the token the popover came from (keyboard flow).
+    if (anchor && document.contains(anchor)) anchor.focus();
+}
+
+// wireReadPopoverControls attaches the popover's action handlers. Ambiguous
+// surfaces route through the shared ambiguity controls (same code as the table
+// chip); non-ambiguous senses use the compact known/study/ignore buttons.
+function wireReadPopoverControls(body: HTMLElement, data: ParseResponse): void {
+    if (body.querySelector('.ambiguity-panel')) {
+        wireAmbiguityControls(body, data);
+        return;
+    }
+    body.querySelectorAll<HTMLButtonElement>('[data-read-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const holder = btn.closest<HTMLElement>('.read-pop-actions');
+            if (!holder) return;
+            const action = btn.dataset.readAction;
+            const surface = holder.dataset.surface || '';
+            const lemma = holder.dataset.lemma || '';
+            const pos = holder.dataset.pos || '';
+            if (action === 'study') {
+                // Same pending-deck semantics as the chip's "Study this meaning":
+                // select the sense; it becomes a review card on save.
+                const key = senseKey(surface, lemma, pos);
+                if (state.selectedSenses.has(key)) state.selectedSenses.delete(key);
+                else state.selectedSenses.add(key);
+                refreshResultsViews();
+                // Re-render the popover body in place to reflect the toggle.
+                body.innerHTML = renderReadPopoverBody(surface, data);
+                wireReadPopoverControls(body, data);
+            } else if (action === 'known') {
+                const next: LemmaStateUpdate = currentLemmaState(lemma, pos) === 'known' ? 'neutral' : 'known';
+                void markReadLemma(next, surface, lemma, pos, data);
+            } else if (action === 'ignore') {
+                const next: LemmaStateUpdate = currentLemmaState(lemma, pos) === 'ignored' ? 'neutral' : 'ignored';
+                void markReadLemma(next, surface, lemma, pos, data);
+            }
+        });
+    });
+    // data-tooltip triggers are handled by the global delegated tooltip
+    // listener (initPortalTooltips), so no per-body wiring is needed here.
+}
+
+// markReadLemma is the popover's known/ignore action. It reuses markResultLemma
+// (the table's endpoint call + toast + view refresh), then re-renders the open
+// popover body so its buttons reflect the new state.
+async function markReadLemma(status: LemmaStateUpdate, surface: string, lemma: string, pos: string, data: ParseResponse): Promise<void> {
+    // A dummy trigger button satisfies markResultLemma's disable/enable contract
+    // without coupling to a specific DOM node (the popover re-renders anyway).
+    const trigger = document.createElement('button');
+    await markResultLemma(status, lemma, pos, trigger);
+    // If the popover is still open on this surface, re-render its body.
+    if (state.readPopoverSurface === surface) {
+        const body = document.getElementById('read-popover-body');
+        if (body) {
+            body.innerHTML = renderReadPopoverBody(surface, data);
+            wireReadPopoverControls(body, data);
+        }
+    }
+}
+
+// ── Tab switching + shared refresh ─────────────────────────────────────────
+
+// refreshResultsViews re-renders every results surface that depends on live
+// learner state (table, Read view, coverage reveal) without replaying the
+// coverage entrance animation. Both tabs stay in sync from any action.
+function refreshResultsViews(): void {
+    const data = state.currentResults;
+    if (!data) return;
+    renderResultsTable(data);
+    if (state.currentContext !== 'deck') {
+        renderReadView(data);
+        renderCoverageReveal(data, false);
+    }
+}
+
+// renderResultsTabs shows/hides the tab bar and the two views. The Read view is
+// available only when there's source text to read (never in deck context); when
+// it isn't, the Words table shows alone and the tab bar is hidden.
+function renderResultsTabs(): void {
+    const tabs = document.getElementById('results-tabs');
+    const readView = document.getElementById('read-view');
+    const wordsView = document.getElementById('words-view');
+    const tabRead = document.getElementById('results-tab-read');
+    const tabWords = document.getElementById('results-tab-words');
+    if (!tabs || !readView || !wordsView || !tabRead || !tabWords) return;
+
+    const canRead = state.currentContext !== 'deck' && state.currentSourceText.trim().length > 0;
+    if (!canRead) {
+        // No text to read: Words only, tab bar hidden. Coverage reveal is already
+        // hidden for decks by renderCoverageReveal.
+        tabs.classList.add('hidden');
+        readView.classList.add('hidden');
+        wordsView.classList.remove('hidden');
+        return;
+    }
+    tabs.classList.remove('hidden');
+    const active = state.resultsTab;
+    tabRead.setAttribute('aria-selected', active === 'read' ? 'true' : 'false');
+    tabWords.setAttribute('aria-selected', active === 'words' ? 'true' : 'false');
+    tabRead.classList.toggle('active', active === 'read');
+    tabWords.classList.toggle('active', active === 'words');
+    readView.classList.toggle('hidden', active !== 'read');
+    wordsView.classList.toggle('hidden', active !== 'words');
+}
+
+function switchResultsTab(tab: ResultsTab): void {
+    state.resultsTab = tab;
+    saveResultsTab(tab);
+    renderResultsTabs();
+    // Reposition/close popover if it hung around while hidden.
+    if (tab !== 'read') closeReadPopover();
+}
+
+function initResultsTabs(): void {
+    document.querySelectorAll<HTMLButtonElement>('.results-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.resultsTab as ResultsTab | undefined;
+            if (tab) switchResultsTab(tab);
+        });
+    });
+    // Popover dismissal: backdrop tap, close button, ESC.
+    document.getElementById('read-popover-backdrop')?.addEventListener('click', closeReadPopover);
+    document.getElementById('read-popover-close')?.addEventListener('click', closeReadPopover);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && state.readPopoverSurface) closeReadPopover();
+    });
 }
 
 function showResults(data: ParseResponse, textPreview: string, parserMode: ParserMode, context: ResultsContext): void {
@@ -5823,10 +6254,19 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
     for (const amb of data.ambiguous_surfaces || []) {
         state.ambiguityBySurface.set(amb.surface, amb);
     }
+    // Surface → WordEntry index for the Read view's token coloring + popover.
+    state.formIndex = buildFormIndex(data);
+    // Any open reading popover belongs to the previous parse.
+    closeReadPopover();
+    state.resultsTab = loadResultsTab();
     renderResultsTable(data);
     // Coverage reveal (aha #1): runs after currentLemmaStates + currentContext
     // are hydrated above so the numbers match the table's live known-state.
     renderCoverageReveal(data);
+    // Read view (the living text) + tab bar. Read is the default landing view;
+    // the tab bar hides entirely in deck context (no source text to read).
+    renderReadView(data);
+    renderResultsTabs();
     renderResultsSaveState();
     renderChapterNav();
     renderAnonResultsChrome();
@@ -7571,6 +8011,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initVocabAnkiImport();
     initReviewPage();
     initResultsSaveForm();
+    initResultsTabs();
     initAdminFeedbackPage();
     initPortalTooltips();
 

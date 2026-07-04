@@ -61,6 +61,10 @@ async function parseKuusi(page: Page): Promise<void> {
   await page.locator('#inspect-text').fill(kuusiSentence);
   await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
+  // The ambiguity chip lives in the lemma table (Words tab); the results page
+  // now defaults to the Read tab. Switch to Words for the chip-based specs.
+  const wordsTab = page.locator('#results-tab-words');
+  if (await wordsTab.isVisible()) await wordsTab.click();
 }
 
 test('ambiguous row shows the chip, expands to candidates and sentence context', async ({ page }) => {

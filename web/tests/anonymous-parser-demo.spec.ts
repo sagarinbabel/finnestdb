@@ -60,15 +60,21 @@ test('anonymous paste → parse → explore-only results', async ({ page }) => {
   await page.getByRole('button', { name: 'Parse text' }).click();
 
   await expect(page.locator('#results-page')).toHaveClass(/active/);
+  // Non-admin anonymous parser pill is the soft "Your text" label.
+  await expect(page.locator('#results-parser')).toHaveText('Your text');
+  // Signed-in-only save CTA must NOT be visible to an anonymous visitor
+  // (shared chrome above the tabs, gated by data-role-show).
+  await expect(page.locator('.results-deck-cta')).toBeHidden();
+
+  // The lemma table lives behind the Words tab (Read is default). Switch to it
+  // for the table / filter / sort / column assertions.
+  await page.locator('#results-tab-words').click();
   await expect(page.locator('#word-table-body tr')).toHaveCount(2);
   // Explore controls present: POS filter chips + sortable columns.
   await expect(page.locator('.pos-filter-chip', { hasText: 'Nouns' })).toBeVisible();
   await expect(page.locator('.sort-btn', { hasText: 'Occurrences' })).toBeVisible();
-  // Non-admin anonymous parser pill is the soft "Your text" label.
-  await expect(page.locator('#results-parser')).toHaveText('Your text');
 
   // Signed-in-only controls must NOT be visible to an anonymous visitor.
-  await expect(page.locator('.results-deck-cta')).toBeHidden();
   await expect(page.locator('.correction-btn')).toHaveCount(0);
   await expect(page.locator('.word-pill-known')).toHaveCount(0);
   await expect(page.locator('.word-icon-ignore')).toHaveCount(0);
