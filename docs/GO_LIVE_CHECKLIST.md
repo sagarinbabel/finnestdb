@@ -64,17 +64,27 @@ First-experience quality check:
   - Playwright spec: [`web/tests/first-experience-rc.spec.ts`](../web/tests/first-experience-rc.spec.ts)
     — imports the same manifest JSON and generates one test per
     `automation:"playwright"` case, `test.skip` for everything else.
-  - Automated today: `embedded-text` (FI+ET), `own-text-inspect` (FI+ET),
+  - **Complete 2026-07-04**: every journey in the manifest now runs
+    automated, and `make first-experience-rc` finishes with **zero pending
+    skips**. Automated: `embedded-text` (FI+ET), `own-text-inspect` (FI+ET),
     `ambiguity-homograph` (FI `kuusi`/`tuli`/`voi` + one ET case) via the Go
-    runner; `deck-save` + `first-review` (FI+ET, one Inspect-\>save-\>review
-    Playwright test per language) and `parser-feedback` (FI only) via
+    runner; `anonymous-demo` (FI+ET), `deck-save` + `first-review` (FI+ET,
+    one Inspect-\>save-\>review Playwright test per language),
+    `known-word-import` (FI+ET), and `parser-feedback` (FI+ET) via
     Playwright.
-  - Still pending (tracked as `automation:"pending"` in the manifest, not
-    silently dropped): `anonymous-demo` (FI+ET — no anonymous parser demo
-    surface exists yet), `known-word-import` (FI+ET — no RC-fixture-driven
-    Playwright case wired up yet), and `parser-feedback` for ET (existing
-    correction-submit coverage is FI-only). See `TODO.md` "First-experience
-    quality bar" for the same list kept current as flows land.
+  - Ambiguity-homograph journeys also get a Playwright pass (`fi`/`et
+    journey: ambiguity homograph meanings panel`) checking the "Multiple
+    possible meanings" panel renders >=2 candidates and the flag-only "None
+    of these looks right" escape exists. That pass does not grade candidate
+    selection accuracy — the Go runner's `lemma_pos` assertions and
+    `docs/PARSER_EVAL_METHODOLOGY.md`'s eval slice own that.
+  - No manifest case remains `automation:"pending"`. The full 18-case
+    matrix is either `parser` (Go runner, real custom-mode parse), or
+    `playwright` (browser-driven journey pass, mocked APIs per
+    `web/tests/first-experience-rc.spec.ts` conventions). The manual
+    walkthrough for judgment calls (trustworthiness, clarity, first-screen
+    credibility) and the go/no-go call remain the human step — see
+    `TODO.md` "First-experience quality bar" for that status.
 - Provide one top-level automated command, `make first-experience-rc`, that runs
   the parser fixture checks and Playwright RC specs, then points at the manual
   walkthrough instructions in this section. The walkthrough instructions live
