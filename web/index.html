@@ -6,7 +6,7 @@
     <title>FinnEst — parse Finnish &amp; Estonian</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500;1,6..72,600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=20260501-design-v2">
 </head>
 <body data-auth-state="loading">
@@ -47,9 +47,44 @@
                     </button>
                     <ul id="nav-language-menu" class="nav-lang-menu hidden" role="listbox" aria-labelledby="nav-language-toggle"></ul>
                 </div>
-                <button id="theme-toggle" class="nav-icon-btn" aria-label="Toggle theme">
-                    <span class="theme-icon">🌙</span>
-                </button>
+                <div class="nav-theme-dropdown">
+                    <button type="button" id="theme-toggle" class="nav-icon-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Theme">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+                    <ul id="theme-menu" class="theme-menu hidden" role="listbox" aria-labelledby="theme-toggle">
+                        <li class="theme-menu-heading" role="presentation">Ink</li>
+                        <li role="presentation">
+                            <button type="button" class="theme-option" role="option" data-skin="ink" data-mode="light" aria-selected="false">
+                                <span class="theme-option-swatch" data-swatch="ink-light" aria-hidden="true"></span>
+                                <span class="theme-option-label">Light</span>
+                                <span class="theme-option-check" aria-hidden="true">✓</span>
+                            </button>
+                        </li>
+                        <li role="presentation">
+                            <button type="button" class="theme-option" role="option" data-skin="ink" data-mode="dark" aria-selected="false">
+                                <span class="theme-option-swatch" data-swatch="ink-dark" aria-hidden="true"></span>
+                                <span class="theme-option-label">Dark</span>
+                                <span class="theme-option-check" aria-hidden="true">✓</span>
+                            </button>
+                        </li>
+                        <li class="theme-menu-divider" role="presentation" aria-hidden="true"></li>
+                        <li class="theme-menu-heading" role="presentation">Aalto</li>
+                        <li role="presentation">
+                            <button type="button" class="theme-option" role="option" data-skin="aalto" data-mode="light" aria-selected="false">
+                                <span class="theme-option-swatch" data-swatch="aalto-light" aria-hidden="true"></span>
+                                <span class="theme-option-label">Paimio</span>
+                                <span class="theme-option-check" aria-hidden="true">✓</span>
+                            </button>
+                        </li>
+                        <li role="presentation">
+                            <button type="button" class="theme-option" role="option" data-skin="aalto" data-mode="dark" aria-selected="false">
+                                <span class="theme-option-swatch" data-swatch="aalto-dark" aria-hidden="true"></span>
+                                <span class="theme-option-label">Sanatorium</span>
+                                <span class="theme-option-check" aria-hidden="true">✓</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
                 <a href="#/signin" class="btn btn-primary btn-sm nav-signin" data-role-show="anon">Sign in</a>
                 <div class="nav-user-menu" data-role-show="user admin">
                     <span class="nav-user-email" id="nav-user-email"></span>

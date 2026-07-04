@@ -47,6 +47,25 @@ a curated catalog text, without an LLM call per paste.
 - **Docs modified:** [`USER_FLOWS.md`](USER_FLOWS.md) §5 (Parse, signed-in)
   now points at the shipped History behavior instead of only the proposed
   spec.
+## 2026-07-04 — Aalto skin (Paimio / Sanatorium) as an opt-in second skin
+
+Added a second visual **skin** alongside the default INK/PAPER "Ink" look:
+**Aalto**, an Alvar-Aalto-inspired skin whose light mode is **Paimio** (warm
+birch-cream paper, soft Nordic blue) and dark mode is **Sanatorium** (deep
+blue-black ground). Theming is now two-dimensional — skin (`data-skin`:
+`ink` | `aalto`) crossed with mode (`data-theme`: `light` | `dark`), both on
+the root element. The old single 🌓 toggle is replaced by a nav **theme
+picker** offering Ink · Light / Ink · Dark / Aalto · Paimio / Aalto ·
+Sanatorium, persisted in `localStorage` (`skin` + `theme` keys); the default
+is unchanged (Ink + the user's saved mode), so Aalto is strictly opt-in. Fonts
+Newsreader + Inter Tight were added; under `data-skin="aalto"` the font/colour
+role-tokens switch to the prototype's values (copied verbatim from
+[`design/claude-design/finnest-prototype.html`](../design/claude-design/finnest-prototype.html)).
+Introduced word-status role-tokens `--known` / `--learning` / `--new` under
+both skins for the upcoming reading surface. Documented the token mapping and
+prototype pointer in [`DESIGN_AI_PROMPTS.md`](DESIGN_AI_PROMPTS.md) ("Aalto
+skin"). CSS-first skin, no layout/markup restructuring beyond the picker
+control; both skins verified at 375 px with no horizontal overflow.
 
 ## 2026-07-04 — FSRS enabled by default after staging validation
 
