@@ -40,6 +40,62 @@ sign-up hook the existing ribbon follows).
   as covered); `web/tests/coverage-reveal.spec.ts` asserts the signed-in and
   anonymous reveals render plausible numbers, the count-up settles on the
   API-derived value, and the reduced-motion path collapses instantly.
+## 2026-07-04 — Smart display titles for pasted-text parses and decks
+
+Raw pastes used to get a useless deck-name default (`"Finnish: <first 48
+chars>"`) or a raw 240-char `source_preview` dump in History. Added
+deterministic **title derivation** so a pasted paragraph displays as nicely as
+a curated catalog text, without an LLM call per paste.
+
+- **`store.DeriveTitle(sourceText, lang string) string`**
+  ([`internal/store/titles.go`](../internal/store/titles.go)): first
+  clause/sentence, cleaned of surrounding whitespace/quotes/markdown
+  artifacts, cut at a sentence end (`. ! ?`, URL/abbreviation/decimal periods
+  excluded via a "followed by space or end-of-string" check) or clause
+  boundary (`, ; :`) closest under 60 chars, with an ellipsis only when
+  truncated mid-clause. Degenerate input (one word, a bare URL, digits-only)
+  falls back to the first 2-4 words; empty input falls back to
+  `DefaultTitleForLang` ("Untitled Finnish text" / "Untitled Estonian text").
+  Table-driven tests in
+  [`internal/store/titles_test.go`](../internal/store/titles_test.go) pin the
+  59/60/61-char boundary and Finnish/Estonian diacritics.
+- **Deck save** (`POST /api/decks`): a blank `title` no longer 400s — the
+  server derives one from `text`/`lang` via the same rule, so the API
+  contract stays honest for non-browser callers
+  ([`internal/api/handlers.go`](../internal/api/handlers.go) `handleCreateDeck`).
+  The save modal still prefills the suggestion client-side (a TS port of
+  `DeriveTitle` in [`web/app.ts`](../web/app.ts)) so the learner sees and can
+  edit it before saving — the server-side derivation is the fallback for a
+  cleared/omitted field, not the primary UX path.
+- **Parse-session History**: `parse_sessions` has no title column, so
+  `ListUserParseSessions` derives a `title` field at read time from a
+  newline-preserving head of `source_text`, alongside the existing flattened
+  `source_preview` (kept for other consumers). History rows now show the
+  derived title instead of the raw truncated preview. Parse-session titles
+  are derived-only for alpha — no rename plumbing; deck rename already
+  existed and still works.
+- **Docs modified:** [`USER_FLOWS.md`](USER_FLOWS.md) §5 (Parse, signed-in)
+  now points at the shipped History behavior instead of only the proposed
+  spec.
+## 2026-07-04 — Aalto skin (Paimio / Sanatorium) as an opt-in second skin
+
+Added a second visual **skin** alongside the default INK/PAPER "Ink" look:
+**Aalto**, an Alvar-Aalto-inspired skin whose light mode is **Paimio** (warm
+birch-cream paper, soft Nordic blue) and dark mode is **Sanatorium** (deep
+blue-black ground). Theming is now two-dimensional — skin (`data-skin`:
+`ink` | `aalto`) crossed with mode (`data-theme`: `light` | `dark`), both on
+the root element. The old single 🌓 toggle is replaced by a nav **theme
+picker** offering Ink · Light / Ink · Dark / Aalto · Paimio / Aalto ·
+Sanatorium, persisted in `localStorage` (`skin` + `theme` keys); the default
+is unchanged (Ink + the user's saved mode), so Aalto is strictly opt-in. Fonts
+Newsreader + Inter Tight were added; under `data-skin="aalto"` the font/colour
+role-tokens switch to the prototype's values (copied verbatim from
+[`design/claude-design/finnest-prototype.html`](../design/claude-design/finnest-prototype.html)).
+Introduced word-status role-tokens `--known` / `--learning` / `--new` under
+both skins for the upcoming reading surface. Documented the token mapping and
+prototype pointer in [`DESIGN_AI_PROMPTS.md`](DESIGN_AI_PROMPTS.md) ("Aalto
+skin"). CSS-first skin, no layout/markup restructuring beyond the picker
+control; both skins verified at 375 px with no horizontal overflow.
 
 ## 2026-07-04 — FSRS enabled by default after staging validation
 

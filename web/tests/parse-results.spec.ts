@@ -253,6 +253,7 @@ test('user can review and delete retained parse history', async ({ page }) => {
       id: 11,
       lang: 'FI',
       parser: 'custom',
+      title: 'Kissa juoksee nopeasti.',
       source_preview: 'Kissa juoksee nopeasti.',
       total_tokens: 3,
       unique_words: 3,
@@ -264,6 +265,7 @@ test('user can review and delete retained parse history', async ({ page }) => {
       id: 12,
       lang: 'ET',
       parser: 'custom',
+      title: 'Koer jookseb kiiresti.',
       source_preview: 'Koer jookseb kiiresti.',
       total_tokens: 3,
       unique_words: 3,
@@ -482,6 +484,62 @@ test('user can save inspected results as a deck and review the first due card', 
 
   await page.getByRole('button', { name: 'Good' }).click();
   await expect(page.locator('#review-empty')).not.toHaveClass(/hidden/);
+});
+
+// Smart paste titles (owner ask: "What title do we do if people paste in a
+// random paragraph? We should display it nicely."). The save modal must
+// prefill a derived title from the pasted text's first clause/sentence
+// (store.DeriveTitle / the client-side deriveTitle mirror), not a raw
+// "Finnish: <first 48 chars>" dump — and the learner must still be able to
+// see and accept that suggestion before it becomes the deck's real title.
+test('paste a paragraph, save modal prefills a derived title, deck list shows it', async ({ page }) => {
+  let meDecks: Array<{ id: number; title: string; lang: string; known: number; unique: number; due: number }> = [];
+
+  await page.route('**/api/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        authenticated: true,
+        user: { id: 1, email: 'paste-title@example.com', is_admin: false },
+        dashboard: { known_count: 0, due_count: 0, new_capacity_today: 0, decks: meDecks },
+      }),
+    });
+  });
+
+  let createdTitle = '';
+  await page.route('**/api/decks', async (route) => {
+    if (route.request().method() !== 'POST') {
+      await route.continue();
+      return;
+    }
+    const body = route.request().postDataJSON() as { title: string; lang: string };
+    createdTitle = body.title;
+    meDecks = [{ id: 9, title: createdTitle, lang: 'FI', known: 0, unique: 1, due: 1 }];
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ deck_id: 9 }),
+    });
+  });
+
+  await page.goto('/#/inspect');
+  // A raw multi-sentence paste, the exact scenario the owner asked about:
+  // no title, just a pasted paragraph. The first sentence is short enough
+  // that the derived title should be the full first sentence, unchanged.
+  await page.locator('#inspect-text').fill('Kissa juoksee. Se on nopea ja iloinen eläin.');
+  await page.getByRole('button', { name: 'Parse text' }).click();
+  await expect(page.locator('#results-page')).toHaveClass(/active/);
+
+  await page.getByRole('button', { name: 'Save as deck' }).click();
+  // The suggestion is prefilled BEFORE saving, and is still an editable
+  // input the learner could change — this assertion is the core contract.
+  await expect(page.locator('#results-deck-title')).toHaveValue('Kissa juoksee.');
+
+  await page.locator('#results-save-submit').click();
+  await expect(page.locator('#decks-page')).toHaveClass(/active/);
+  expect(createdTitle).toBe('Kissa juoksee.');
+  await expect(page.locator('#decks-list')).toContainText('Kissa juoksee.');
 });
 
 // Starter decks (e.g. Top-1000 frequency lists) attach no source sentence to

@@ -365,6 +365,16 @@ Same UX as the anonymous landing, **plus**:
   language, parse date, unique-form count, and a `[ ... ]` menu with `Open
   results`, `Save as deck`, `Add to existing deck`, and **`Delete from
   server`** (irreversible, with confirmation).
+  Shipped 2026-07-04 as the current History page: rows show a title derived
+  deterministically from the source text's first clause/sentence
+  (`store.DeriveTitle` — trims markdown/quote artifacts, cuts at a
+  sentence/clause boundary under 60 chars, falls back to first words for
+  degenerate input or a language-named default for empty text). Parse-session
+  titles are **derived-only for alpha**, not independently editable — deck
+  titles are (rename already exists), and a saved deck's title starts from
+  the same derivation when the save modal's title field is left blank. The
+  `[ ... ]` menu (`Open results`, `Add to existing deck`) and inline rename for
+  parse sessions remain future work.
 - A persistent **privacy chip** under the textarea: _"Not saved until
   deck/feedback. [Details]"_ — `Details` opens the parse-history/deletion page
   once that page exists.

@@ -2984,6 +2984,61 @@ func TestCreateDeckSkipsKnownWordsWhenSeedingCards(t *testing.T) {
 	}
 }
 
+// TestCreateDeckDerivesTitleWhenBlank covers the API-contract side of smart
+// paste titles: the save modal prefills a client-side suggestion, but a
+// blank title in the request body (a cleared field, or a scripted caller)
+// must still produce a good deck name rather than a 400 or a useless
+// placeholder. The server falls back to the same deterministic derivation
+// History uses for parse-session display titles (store.DeriveTitle).
+func TestCreateDeckDerivesTitleWhenBlank(t *testing.T) {
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
+		return &parsecore.ParseResult{
+			Lang: lang,
+			Sentences: []parsecore.SentenceResult{
+				{
+					Text: text,
+					Tokens: []parsecore.TokenResult{
+						{Form: "Kissa", Lemma: "kissa", POS: "NOUN"},
+					},
+				},
+			},
+		}, nil
+	}
+
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "blank-title@example.com")
+
+	body := `{"title":"","lang":"FI","text":"Kissa istuu ikkunalla. Se katselee ulos."}`
+	createReq := httptest.NewRequest(http.MethodPost, "/api/decks", strings.NewReader(body))
+	for _, cookie := range cookies {
+		createReq.AddCookie(cookie)
+	}
+	createRec := httptest.NewRecorder()
+	mux.ServeHTTP(createRec, createReq)
+	if createRec.Code != http.StatusOK {
+		t.Fatalf("create deck status=%d want %d body=%q", createRec.Code, http.StatusOK, createRec.Body.String())
+	}
+
+	var createResp CreateDeckResponse
+	if err := json.NewDecoder(bytes.NewReader(createRec.Body.Bytes())).Decode(&createResp); err != nil {
+		t.Fatalf("decode create deck response: %v", err)
+	}
+
+	auth, err := api.getCurrentUser(requestWithCookies(httptest.NewRequest(http.MethodGet, "/api/me", nil), cookies))
+	if err != nil || auth == nil {
+		t.Fatal("expected authenticated user")
+	}
+	details, err := api.store.GetDeckDetails(auth.UserID, createResp.DeckID)
+	if err != nil {
+		t.Fatalf("GetDeckDetails: %v", err)
+	}
+	wantTitle := "Kissa istuu ikkunalla."
+	if details.Title != wantTitle {
+		t.Fatalf("deck title=%q want %q (derived from source text, not a placeholder)", details.Title, wantTitle)
+	}
+}
+
 // TestClearLemmaStateEnsuresCardWhenDeckSkippedSeeding covers both ways a
 // deck-create can skip ensureCard for a lemma — the lemma was already known,
 // or already ignored — and verifies that clearing the state via /api/lemma-state
