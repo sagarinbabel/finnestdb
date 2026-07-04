@@ -533,13 +533,17 @@ const OTHER_POS = ['PRON', 'DET', 'ADP', 'NUM', 'CCONJ', 'SCONJ', 'PART', 'INTJ'
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 //
-// Theming is two-dimensional: a *skin* (`ink` = the default INK/PAPER look,
+// Theming is two-dimensional: a *skin* (`ink` = the original INK/PAPER look,
 // `aalto` = the Alvar-Aalto "Paimio"/"Sanatorium" prototype) crossed with a
 // *mode* (`light`/`dark`). Skin is a `data-skin` attribute; mode is the
-// existing `data-theme` attribute. The Aalto skin is opt-in — the default is
-// exactly what users had before (ink skin + their saved light/dark mode), so
-// the `theme` localStorage key keeps its original meaning and the new `skin`
-// key defaults to `ink`.
+// existing `data-theme` attribute.
+//
+// The Aalto skin is now the *default* face of the product (owner decision:
+// the Claude Design prototype is the product's look). A first-time visitor with
+// no saved choice gets Aalto · Paimio light. Saved choices are always honored —
+// only the fallback default changed. The Ink skin stays fully selectable in the
+// picker. To revert the default to the pre-prototype Ink · dark, change the two
+// fallbacks in readThemeSkin/readThemeMode back to 'ink'/'dark'.
 
 type ThemeSkin = 'ink' | 'aalto';
 type ThemeMode = 'light' | 'dark';
@@ -548,12 +552,17 @@ const THEME_MODE_KEY = 'theme';
 const THEME_SKIN_KEY = 'skin';
 
 function readThemeSkin(): ThemeSkin {
-    return localStorage.getItem(THEME_SKIN_KEY) === 'aalto' ? 'aalto' : 'ink';
+    // Default flips to 'aalto' when nothing is saved; an explicit 'ink' still wins.
+    return localStorage.getItem(THEME_SKIN_KEY) === 'ink' ? 'ink' : 'aalto';
 }
 
 function readThemeMode(): ThemeMode {
-    // Default stays 'dark' to preserve the pre-picker behaviour.
-    return localStorage.getItem(THEME_MODE_KEY) === 'light' ? 'light' : 'dark';
+    const saved = localStorage.getItem(THEME_MODE_KEY);
+    if (saved === 'light') return 'light';
+    if (saved === 'dark') return 'dark';
+    // No saved mode: the Aalto default lands on Paimio light; anyone who saved
+    // a skin but somehow no mode keeps the prior 'dark' fallback.
+    return localStorage.getItem(THEME_SKIN_KEY) ? 'dark' : 'light';
 }
 
 function initTheme(): void {
@@ -4406,6 +4415,49 @@ function initLandingForm(): void {
         e.preventDefault();
         await runParse(els, 'custom', 'landing', 'landing-submit');
     });
+
+    initLandingDemoChips(els);
+}
+
+// Landing "or try →" demo chips. Each chip pulls one curated embedded text from
+// the anonymous /api/demo/text/{id} allowlist, drops it into the paste box, sets
+// the FI/ET selector to the text's language, and scrolls the box into view. It
+// deliberately does NOT auto-parse — the visitor sees the text land in the box
+// (and the char meter tick up) before pressing Parse, matching the prototype.
+function initLandingDemoChips(els: ParseFormElements): void {
+    const chips = document.querySelectorAll<HTMLButtonElement>('.demo-chip[data-demo-id]');
+    chips.forEach(chip => {
+        chip.addEventListener('click', async () => {
+            const id = chip.dataset.demoId;
+            if (!id) return;
+            const origLabel = chip.textContent || '';
+            chip.disabled = true;
+            chip.textContent = 'Loading…';
+            try {
+                const resp = await fetch(`/api/demo/text/${encodeURIComponent(id)}`, { credentials: 'same-origin' });
+                if (!resp.ok) {
+                    showToast('Could not load that sample. Please try another.', 'error');
+                    return;
+                }
+                const data = await resp.json() as { language?: string; text?: string };
+                const lang = (data.language || chip.dataset.demoLang || 'FI').toUpperCase();
+                els.lang.value = lang === 'ET' ? 'ET' : 'FI';
+                els.text.value = data.text || '';
+                // Drive the same input path a paste would, so the char meter,
+                // language-warning gate, and Parse-button enable/disable all
+                // update exactly as if the visitor had pasted the text.
+                els.text.dispatchEvent(new Event('input', { bubbles: true }));
+                const box = document.getElementById('landing-paste-box');
+                (box || els.text).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                els.text.focus();
+            } catch {
+                showToast('Could not load that sample. Please try another.', 'error');
+            } finally {
+                chip.disabled = false;
+                chip.textContent = origLabel;
+            }
+        });
+    });
 }
 
 // Re-run the language-warning gate when the site active language changes.
@@ -6303,6 +6355,7 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
     renderResultsSaveState();
     renderChapterNav();
     renderAnonResultsChrome();
+    renderResultsExport(data, context);
 
     // Re-apply role visibility so admin-only pills/cells show correctly.
     applyRoleVisibility();
@@ -6334,6 +6387,92 @@ function initAnonResultsChrome(): void {
         state.anonRibbonDismissed = true;
         document.getElementById('anon-signup-ribbon')?.classList.add('hidden');
     });
+}
+
+// ── Word-list export (copy + CSV) ──────────────────────────────────────────
+//
+// Available to every role, anonymous included (landing freemium cell ii: "Copy
+// or download — word list as plain text or CSV"). Both formats are generated
+// entirely client-side from the parse response already in memory: no server
+// call, nothing stored, so it works within the anonymous ephemeral guarantee.
+// The export controls hide in deck context (a saved deck has no ephemeral
+// word-list to export) and when there are no words.
+
+// csvCell RFC-4180-quotes one field: wrap in double quotes and double any
+// embedded quotes, so commas, quotes, and newlines survive a spreadsheet import.
+function csvCell(value: string | number): string {
+    return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function exportRows(data: ParseResponse): WordEntry[] {
+    // Occurrence-desc, mirroring the table's default sort, so the exported list
+    // reads in the same order the learner sees.
+    return [...data.words].sort((a, b) => b.count - a.count);
+}
+
+function wordListAsText(data: ParseResponse): string {
+    // Tab-separated lemma / POS / definition — the shape that drops straight
+    // into Anki or a spreadsheet paste.
+    return exportRows(data)
+        .map(w => [w.lemma, posLabel(w.pos), w.gloss || ''].join('\t'))
+        .join('\n');
+}
+
+function wordListAsCSV(data: ParseResponse): string {
+    const rows: string[] = ['lemma,pos,forms,definition,grammar,count'];
+    for (const w of exportRows(data)) {
+        rows.push([
+            csvCell(w.lemma),
+            csvCell(posLabel(w.pos)),
+            csvCell((w.forms || []).join('|')),
+            csvCell(w.gloss || ''),
+            csvCell(w.grammar_label || ''),
+            csvCell(w.count),
+        ].join(','));
+    }
+    return rows.join('\r\n');
+}
+
+// renderResultsExport shows the export controls whenever there's an ephemeral
+// word list (any non-deck parse with words) and hides them otherwise.
+function renderResultsExport(data: ParseResponse | null, context: ResultsContext): void {
+    const wrap = document.getElementById('results-export');
+    if (!wrap) return;
+    const show = !!data && context !== 'deck' && data.words.length > 0;
+    wrap.classList.toggle('hidden', !show);
+}
+
+async function copyWordList(): Promise<void> {
+    const data = state.currentResults;
+    if (!data || data.words.length === 0) return;
+    const text = wordListAsText(data);
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast(`Copied ${data.words.length} words to the clipboard.`, 'success');
+    } catch {
+        showToast('Could not copy to the clipboard.', 'error');
+    }
+}
+
+function downloadWordListCSV(): void {
+    const data = state.currentResults;
+    if (!data || data.words.length === 0) return;
+    const csv = wordListAsCSV(data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `finnest-${(data.lang || 'xx').toLowerCase()}-wordlist.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`Downloaded ${data.words.length} words as CSV.`, 'success');
+}
+
+function initResultsExport(): void {
+    document.getElementById('results-copy-list')?.addEventListener('click', () => void copyWordList());
+    document.getElementById('results-download-csv')?.addEventListener('click', downloadWordListCSV);
 }
 
 interface PersistedParse {
@@ -8058,6 +8197,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initInspectForm();
     initWorkbenchForm();
     initAnonResultsChrome();
+    initResultsExport();
     preventStrayFileDrops();
     initCorrectionModal();
     initDecksPage();

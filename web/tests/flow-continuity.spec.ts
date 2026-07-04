@@ -86,7 +86,7 @@ test('anonymous parse survives sign-in: returns to results on the Read tab with 
   // Anonymous parse: lands on results, and the reveal is projection-from-zero.
   await page.goto('/');
   await page.locator('#landing-text').fill(finnishText);
-  await page.getByRole('button', { name: 'Parse text' }).click();
+  await page.locator('#landing-submit').click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
   await expect(page.locator('#coverage-reveal')).toContainText(/most frequent words in this text carry/i);
 

@@ -46,9 +46,9 @@ test('anonymous landing shows a parse form with the demo cap in the counter', as
   await expect(page.locator('#landing-text')).toBeVisible();
   // Counter reflects the server-surfaced anonymous cap, not the 1.5M signed-in one.
   await expect(page.locator('#landing-char-count')).toContainText('/ 300,000');
-  // The marketing hero + value grid remain below the form.
-  await expect(page.locator('.hero-title')).toContainText(/reading what you love/i);
-  await expect(page.locator('.value-grid')).toBeVisible();
+  // Ported prototype hero + freemium band render around the form.
+  await expect(page.locator('.hero-title')).toContainText(/Lift the words out/i);
+  await expect(page.locator('.freemium-strip')).toBeVisible();
 });
 
 test('anonymous paste → parse → explore-only results', async ({ page }) => {
@@ -57,7 +57,7 @@ test('anonymous paste → parse → explore-only results', async ({ page }) => {
   await page.goto('/');
 
   await page.locator('#landing-text').fill(finnishText);
-  await page.getByRole('button', { name: 'Parse text' }).click();
+  await page.locator('#landing-submit').click();
 
   await expect(page.locator('#results-page')).toHaveClass(/active/);
   // Non-admin anonymous parser pill is the soft "Your text" label.
@@ -91,7 +91,7 @@ test('sign-up ribbon dismisses per session and reappears on the next parse', asy
   await page.goto('/');
 
   await page.locator('#landing-text').fill(finnishText);
-  await page.getByRole('button', { name: 'Parse text' }).click();
+  await page.locator('#landing-submit').click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
 
   const ribbon = page.locator('#anon-signup-ribbon');
@@ -108,7 +108,7 @@ test('sign-up ribbon dismisses per session and reappears on the next parse', asy
   await page.locator('#results-back').click();
   await expect(page.locator('#landing-page')).toHaveClass(/active/);
   await page.locator('#landing-text').fill(finnishText + ' Uusi lause tähän.');
-  await page.getByRole('button', { name: 'Parse text' }).click();
+  await page.locator('#landing-submit').click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
   await expect(ribbon).toBeVisible();
 });
@@ -134,7 +134,7 @@ test('anonymous over-cap parse surfaces the limit message and sign-up CTA', asyn
 
   // A long paste is blocked client-side before the request even leaves.
   await page.locator('#landing-text').fill(finnishText.repeat(6));
-  await page.getByRole('button', { name: 'Parse text' }).click();
+  await page.locator('#landing-submit').click();
   await expect(page.locator('.toast.error')).toContainText(/limited to 30 characters/i);
   await expect(page.locator('.toast.error')).toContainText(/[Ss]ign up/);
   // Still on the landing page — no results rendered.

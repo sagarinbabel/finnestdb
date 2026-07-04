@@ -24,13 +24,29 @@ async function openPicker(page: Page): Promise<void> {
   await expect(page.locator('#theme-menu')).toBeVisible();
 }
 
-test('default is the ink skin with the user\'s saved mode (dark), no data-skin=aalto', async ({ page }) => {
+test('default is the Aalto skin · Paimio light for a first-time visitor (no saved choice)', async ({ page }) => {
   await mockAnonMe(page);
   await page.goto('/');
   const root = page.locator('html');
+  // Owner decision: the Claude Design prototype is the product's default face.
+  // A visitor with no saved skin lands on Aalto · Paimio light. The Ink skin
+  // stays fully selectable in the picker (covered by the tests below).
+  await expect(root).toHaveAttribute('data-skin', 'aalto');
+  await expect(root).toHaveAttribute('data-theme', 'light');
+});
+
+test('a saved Ink · dark choice is still honored (only the fallback default changed)', async ({ page }) => {
+  await mockAnonMe(page);
+  await page.goto('/');
+  // Simulate a returning user who had explicitly chosen Ink · dark.
+  await page.evaluate(() => {
+    localStorage.setItem('skin', 'ink');
+    localStorage.setItem('theme', 'dark');
+  });
+  await page.reload();
+  const root = page.locator('html');
   await expect(root).toHaveAttribute('data-skin', 'ink');
   await expect(root).toHaveAttribute('data-theme', 'dark');
-  // The Aalto skin is opt-in: nothing selects it until the user picks it.
 });
 
 test('picker switches to Aalto · Paimio (skin+mode both apply to the root)', async ({ page }) => {

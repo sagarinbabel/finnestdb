@@ -259,7 +259,7 @@ test('anonymous Read popover shows gloss only with a sign-in nudge, no actions',
   await mockParse(page); // learning_state is ignored for anon (no state axis)
   await page.goto('/');
   await page.locator('#landing-text').fill(readText);
-  await page.getByRole('button', { name: 'Parse text' }).click();
+  await page.locator('#landing-submit').click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
 
   // Neutral coloring — no learner state exists for anonymous parses.
