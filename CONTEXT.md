@@ -77,8 +77,8 @@ Finnish or Estonian text supplied by a learner for parsing, deck creation, or fe
 _Avoid_: corpus, document
 
 **Embedded Text**:
-A curated Finnish or Estonian text offered to signed-in learners who do not yet have their own source text ready. Prefer a complete coherent text from the redistributable subset of the corpus when license and size allow it; the UI may show a preview excerpt, but the product action should load the selected text itself.
-_Avoid_: fixture, seed deck, corpus row
+A curated Finnish or Estonian text offered to signed-in learners who do not yet have their own source text ready. Prefer a complete coherent text from the redistributable subset of the corpus when license and size allow it; the UI may show a preview excerpt, but the product action should load the selected text itself. Texts must come from real published, redistributable sources (public domain or CC; Gutenberg, Wikisource, Wikipedia) — agent-authored text is a last resort requiring explicit owner approval, adopted 2026-07-04 after a machine-written article read as stilted.
+_Avoid_: fixture, seed deck, corpus row, agent-written prose by default
 
 **Embedded Catalog**:
 The checked-in catalog of curated **Embedded Texts**. It should be generated from local corpus tooling, store fast metadata separately from lazy-loaded full text, and cover FI/ET stories, articles, and poems across Easy/Medium/Hard buckets. Mechanism shipped 2026-07-04: `internal/catalog` embeds metadata (`catalog.json`) + one text fixture per entry via `go:embed`; `cmd/gencatalog` regenerates it deterministically (difficulty computed from a real custom-mode parse; the checked-in catalog must equal the generator's output); `GET /api/catalog` serves metadata + per-learner coverage and `GET /api/catalog/{id}/text` lazy-loads full text; both are signed-in. Initial coverage is honest, not the full 36-text matrix, and every entry carries `difficulty_review: "pending"` until human sanity-check.

@@ -346,6 +346,16 @@ per-text fixtures) is regenerated deterministically by `cmd/gencatalog` from
 `internal/catalog/specs.json` (human-authored provenance) plus the checked-in
 fixtures. The checked-in catalog must be exactly what the generator emits.
 
+Sourcing policy: texts come from real published, redistributable sources
+(public domain or CC; Gutenberg, Wikisource, Wikipedia). Agent-authored texts
+are a last resort and require explicit owner approval. On 2026-07-04 the four
+machine-written texts were replaced with real sources after a naturalness
+review of the agent-written sauna article found it stilted: `fi-sauna-article`
+(FI Wikipedia, CC BY-SA 4.0), `et-tallinn-vanalinn-article` (ET Wikipedia,
+CC BY-SA 4.0), `et-mesipuu-poem` ("Ta lendab mesipuu poole", Juhan Liiv, PD),
+and `et-linnu-keel-story` ("Linnu keel", Juhan Kunder, PD). The ET set now
+mirrors FI (one article + one story + one poem).
+
 ```
 go run ./cmd/gencatalog \
     -specs internal/catalog/specs.json \

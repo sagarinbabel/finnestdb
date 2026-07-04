@@ -1,18 +1,11 @@
-Sauna on olennainen osa suomalaista elämää. Monet suomalaiset käyvät saunassa
-ainakin kerran viikossa, ja useissa kodeissa on oma sauna. Sauna ei ole vain
-paikka pestä itsensä, vaan myös paikka rentoutua, hiljentyä ja viettää aikaa
-perheen ja ystävien kanssa.
+Sauna on saunomista ja kylpemistä varten rakennettu tila.
 
-Perinteinen sauna lämmitetään puilla. Kiukaan päälle heitetään vettä, ja siitä
-nousee kuuma höyry, jota kutsutaan löylyksi. Ilman lämpötila voi nousta
-kahdeksaankymmeneen tai jopa sataan asteeseen. Kun keho on tarpeeksi lämmin,
-moni menee ulos vilvoittelemaan tai hyppää järveen tai avantoon.
+Saunan perusidea on pysynyt samanlaisena vuosisatojen ajan. Sauna on lämmitettävä tila, erillinen rakennus tai rakennuksen osa. Sauna lämmitetään kiukaalla, joka on kiviä sisältävä uuni. Saunan ilmasta saadaan kostea heittämällä vettä kiukaan kuumille kiville. Tätä kiukaasta nousevaa kuumaa kosteaa vesihöyryä kutsutaan löylyksi. Saunan lämpöä, kosteutta ja tuuletusta säädetään rakennusteknisillä ratkaisuilla.
 
-Saunalla on Suomessa pitkä historia. Ennen vanhaan saunassa syntyivät lapset ja
-hoidettiin sairaita, koska se oli kodin puhtain paikka. Vielä nykyäänkin
-saunaan mennään usein ilman kiirettä, ja siellä puhutaan hiljaa ja rauhallisesti.
+Suomalaistyyppisiä saunoja on myös muissa maissa kuin Suomessa. Suomalaisen saunan perustana ovat muinaisskandinaavinen ja keskiajalla vallinnut yleiseurooppalainen saunakulttuuri, Itä-Suomen osalta myöhäisempi isovenäläinen saunakulttuuri. Erilaisia saunakulttuureja on syntynyt toisistaan riippumatta eri puolilla maailmaa.
 
-Ulkomaalaiset hämmästyvät joskus, kuinka tärkeä sauna on suomalaisille. Työpaikoilla
-ja mökeillä sauna kuuluu asiaan, ja liikeneuvottelujakin on käyty löylyjen
-lomassa. Suomalaiselle sauna on enemmän kuin huone: se on osa kulttuuria ja
-tapa hidastaa arjen keskellä.
+Saunan on ajateltu tarkoittaneen alun perin lämmitettyä maakuoppaa tai poteroa. Sauna on vanha suomenkielinen sana. Sanalla on vastineita virossa ja muissa itämerensuomalaisissa kielissä. Näissä kielissä sauna ja sen vastineet voivat lisäksi tai yksinomaan tarkoittaa pientä tupaa tai asuinsijaa.
+
+Varhaisimmat suomalaiset saunat olivat pronssikautisia maasaunoja eli kuoppasaunoja. Sauna oli maahan kaivettu kuoppa, jonka pohjalla oli kivikasa. Kun kivet oli kuumennettu, kuoppa peitettiin riukujen varaan asetelluilla taljoilla, tuohella tai turpeella. Kiville valettiin vettä, mistä syntynyt höyry kuumensi majan.
+
+Vanhimmat saunat olivat rakennelmia, joissa oli yksi kuumaksi lämmitettävä tila. Tila lämmitettiin tulisijalla, kiukaalla, jossa liekit lämmittivät tulipesän päälle rakennetun kiviladelman. Savu nousi kiviladelman läpi suoraan saunatilaan, eli kysymyksessä oli savusauna.

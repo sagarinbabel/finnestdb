@@ -1,11 +1,39 @@
 package catalog
 
-import "testing"
+import (
+	"encoding/json"
+	"os"
+	"testing"
+)
 
 // The checked-in catalog is a shipped product artifact, so these tests guard
-// its integrity: every entry must resolve to a readable fixture, carry a
-// pending difficulty review (no entry may claim human sign-off it did not
-// get), and expose non-empty license provenance (license discipline).
+// its integrity: every entry must resolve to a readable fixture, expose
+// non-empty license provenance (license discipline), and carry an approved
+// human review if and only if reviews.json signed it off — no entry may claim
+// a sign-off it did not get, and none may hide one it did.
+
+// reviewedIDs returns the set of entry ids that reviews.json signs off on. The
+// review pin is derived from the same source the generator uses, so it stays
+// honest automatically as texts are added or replaced (a new pending text does
+// not need a test edit).
+func reviewedIDs(t *testing.T) map[string]bool {
+	t.Helper()
+	raw, err := os.ReadFile("reviews.json")
+	if err != nil {
+		t.Fatalf("read reviews.json: %v", err)
+	}
+	var f struct {
+		Reviews map[string]json.RawMessage `json:"reviews"`
+	}
+	if err := json.Unmarshal(raw, &f); err != nil {
+		t.Fatalf("parse reviews.json: %v", err)
+	}
+	ids := make(map[string]bool, len(f.Reviews))
+	for id := range f.Reviews {
+		ids[id] = true
+	}
+	return ids
+}
 
 func TestEmbeddedCatalogLoads(t *testing.T) {
 	c, err := Load()
@@ -18,6 +46,7 @@ func TestEmbeddedCatalogLoads(t *testing.T) {
 }
 
 func TestEveryEntryHasReadableFixtureAndProvenance(t *testing.T) {
+	reviewed := reviewedIDs(t)
 	for _, e := range Entries() {
 		if e.ID == "" || e.Language == "" || e.Title == "" {
 			t.Errorf("entry missing id/language/title: %+v", e)
@@ -28,20 +57,22 @@ func TestEveryEntryHasReadableFixtureAndProvenance(t *testing.T) {
 		if e.License == "" || e.CorpusSource == "" {
 			t.Errorf("%s: missing license/corpus provenance (license discipline)", e.ID)
 		}
-		switch e.Language {
-		case "fi":
-			// FI difficulty labels were human-reviewed 2026-07-04 (reviews.json).
+		// The review pin is honest by construction: an entry is approved (with
+		// reviewer metadata) exactly when reviews.json signed it off, and
+		// pending otherwise. A pending text must never leak reviewer fields.
+		if reviewed[e.ID] {
 			if e.DifficultyReview != "approved" || e.DifficultyReviewBy == "" || e.DifficultyReviewDate == "" {
-				t.Errorf("%s: FI entries must carry an approved human review, got %q by %q", e.ID, e.DifficultyReview, e.DifficultyReviewBy)
+				t.Errorf("%s: reviews.json signs this off, so it must be approved with reviewer metadata, got %q by %q", e.ID, e.DifficultyReview, e.DifficultyReviewBy)
 			}
 			if e.DifficultyComputed == "" {
 				t.Errorf("%s: computed difficulty must be preserved alongside the review", e.ID)
 			}
-		default:
-			// ET is still awaiting its reviewer; no entry may claim a sign-off
-			// it did not get.
+		} else {
 			if e.DifficultyReview != "pending" {
-				t.Errorf("%s: difficulty_review = %q, want pending (ET human sanity-check has not happened)", e.ID, e.DifficultyReview)
+				t.Errorf("%s: difficulty_review = %q, want pending (no reviews.json sign-off)", e.ID, e.DifficultyReview)
+			}
+			if e.DifficultyReviewBy != "" || e.DifficultyReviewDate != "" {
+				t.Errorf("%s: pending entry must not carry reviewer metadata (by=%q date=%q)", e.ID, e.DifficultyReviewBy, e.DifficultyReviewDate)
 			}
 		}
 		if len(e.Lemmas) == 0 {

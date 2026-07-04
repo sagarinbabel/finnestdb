@@ -1,12 +1,6 @@
 {
   "version": 1,
   "reviews": {
-    "fi-sauna-article": {
-      "reviewer": "sagar",
-      "date": "2026-07-04",
-      "difficulty": "easy-medium",
-      "note": "Falls between easy and medium, more on the easy side. Model score 0.540 (medium-hard band) substantially overrates it: everyday vocabulary and familiar topic are not captured by the lexical/structural signals."
-    },
     "fi-kesaaamu-poem": {
       "reviewer": "sagar",
       "date": "2026-07-04",

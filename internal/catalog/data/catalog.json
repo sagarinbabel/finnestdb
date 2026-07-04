@@ -3,417 +3,87 @@
   "generated": "2026-07-04",
   "entries": [
     {
-      "id": "et-minu-paev-article",
-      "language": "et",
-      "title": "Minu päev",
-      "author": "FinnEst",
-      "genre": "article",
-      "corpus_source": "finnest-original",
-      "license": "CC0 1.0 (FinnEst original, dedicated to the public domain)",
-      "attribution": "Original beginner text written for the FinnEst embedded catalog.",
-      "text_length": 669,
-      "word_count": 122,
-      "import_date": "2026-07-04",
-      "difficulty": "easy",
-      "difficulty_computed": "easy",
-      "metrics": {
-        "token_count": 122,
-        "sentence_count": 20,
-        "unique_lemma_count": 69,
-        "unique_form_ratio": 0.6639,
-        "unresolved_rate": 0.0082,
-        "mean_frequency_rank": 1580.0744,
-        "rare_form_rate": 0.082,
-        "feats_variety": 13,
-        "mean_sentence_length": 6.1,
-        "score": 0.1866
-      },
-      "difficulty_review": "pending",
-      "fixture": "et-minu-paev-article.txt",
-      "lemmas": [
-        {
-          "lemma": "Tartu",
-          "pos": "PROPN",
-          "count": 1
-        },
-        {
-          "lemma": "aasta",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "aga",
-          "pos": "CCONJ",
-          "count": 2
-        },
-        {
-          "lemma": "ei",
-          "pos": "ADV",
-          "count": 3
-        },
-        {
-          "lemma": "elama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "eluma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "hea",
-          "pos": "ADJ",
-          "count": 2
-        },
-        {
-          "lemma": "hommik",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "ilus",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "ja",
-          "pos": "CCONJ",
-          "count": 11
-        },
-        {
-          "lemma": "jalgsi",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "jalutama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "joom",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "jooma",
-          "pos": "VERB",
-          "count": 2
-        },
-        {
-          "lemma": "kakskümmend",
-          "pos": "NUM",
-          "count": 1
-        },
-        {
-          "lemma": "kaua",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "kell",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "kesklinn",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "kodu",
-          "pos": "NOUN",
-          "count": 2
-        },
-        {
-          "lemma": "kohtuma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "kohv",
-          "pos": "NOUN",
-          "count": 2
-        },
-        {
-          "lemma": "kuulama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "käima",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "leib",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "lihtne",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "linn",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "lugema",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "lõuna",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "ma",
-          "pos": "PRON",
-          "count": 18
-        },
-        {
-          "lemma": "magama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "mari",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "meeldima",
-          "pos": "VERB",
-          "count": 2
-        },
-        {
-          "lemma": "meie",
-          "pos": "PRON",
-          "count": 1
-        },
-        {
-          "lemma": "minema",
-          "pos": "VERB",
-          "count": 2
-        },
-        {
-          "lemma": "mull",
-          "pos": "NOUN",
-          "count": 2
-        },
-        {
-          "lemma": "muusika",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "müüma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "nimi",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "nädalavahetus",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "olema",
-          "pos": "VERB",
-          "count": 8
-        },
-        {
-          "lemma": "ostma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "park",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "piim",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "pood",
-          "pos": "NOUN",
-          "count": 2
-        },
-        {
-          "lemma": "pärast",
-          "pos": "ADP",
-          "count": 1
-        },
-        {
-          "lemma": "raamat",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "rohkem",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "sai",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "see",
-          "pos": "PRON",
-          "count": 1
-        },
-        {
-          "lemma": "seitse",
-          "pos": "NUM",
-          "count": 1
-        },
-        {
-          "lemma": "siin",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "siis",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "supp",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "suur",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "sõber",
-          "pos": "NOUN",
-          "count": 2
-        },
-        {
-          "lemma": "sööma",
-          "pos": "VERB",
-          "count": 3
-        },
-        {
-          "lemma": "tegema",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "telekas",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "töö",
-          "pos": "NOUN",
-          "count": 5
-        },
-        {
-          "lemma": "töötama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "vaatama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "vahe",
-          "pos": "NOUN",
-          "count": 2
-        },
-        {
-          "lemma": "vajagi",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "vana",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "veed",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "väike",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "ärkama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "õhtu",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "õnnelik",
-          "pos": "ADJ",
-          "count": 1
-        }
-      ]
-    },
-    {
       "id": "et-tallinn-vanalinn-article",
       "language": "et",
       "title": "Tallinna vanalinn",
-      "author": "FinnEst",
+      "author": "Vikipeedia autorid",
       "genre": "article",
-      "corpus_source": "finnest-original",
-      "license": "CC0 1.0 (FinnEst original, dedicated to the public domain)",
-      "attribution": "Original informational text written for the FinnEst embedded catalog.",
-      "text_length": 1006,
-      "word_count": 144,
+      "source_url": "https://et.wikipedia.org/wiki/Tallinna_vanalinn",
+      "corpus_source": "et-wikipedia",
+      "license": "CC BY-SA 4.0 (share-alike; derivatives must carry the same license)",
+      "attribution": "Adapted excerpt from the article \"Tallinna vanalinn\" on Estonian Wikipedia (https://et.wikipedia.org/wiki/Tallinna_vanalinn), by Wikipedia contributors, licensed CC BY-SA 4.0. Lead plus formation-history excerpt; wiki markup, references, and footnote markers removed.",
+      "text_length": 1716,
+      "word_count": 221,
       "import_date": "2026-07-04",
-      "difficulty": "medium-hard",
-      "difficulty_computed": "medium-hard",
+      "difficulty": "hard",
+      "difficulty_computed": "hard",
       "metrics": {
-        "token_count": 144,
-        "sentence_count": 14,
-        "unique_lemma_count": 115,
-        "unique_form_ratio": 0.8542,
-        "unresolved_rate": 0,
-        "mean_frequency_rank": 8094.873,
-        "rare_form_rate": 0.4028,
-        "feats_variety": 23,
-        "mean_sentence_length": 10.2857,
-        "score": 0.5777
+        "token_count": 220,
+        "sentence_count": 11,
+        "unique_lemma_count": 147,
+        "unique_form_ratio": 0.7773,
+        "unresolved_rate": 0.05,
+        "mean_frequency_rank": 9634.4414,
+        "rare_form_rate": 0.5864,
+        "feats_variety": 24,
+        "mean_sentence_length": 20,
+        "score": 0.6855
       },
       "difficulty_review": "pending",
       "fixture": "et-tallinn-vanalinn-article.txt",
       "lemmas": [
+        {
+          "lemma": "10",
+          "pos": "NUM",
+          "count": 1
+        },
+        {
+          "lemma": "11.–15",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "1220",
+          "pos": "NUM",
+          "count": 1
+        },
+        {
+          "lemma": "13",
+          "pos": "NUM",
+          "count": 2
+        },
+        {
+          "lemma": "14",
+          "pos": "NUM",
+          "count": 1
+        },
+        {
+          "lemma": "15",
+          "pos": "NUM",
+          "count": 1
+        },
+        {
+          "lemma": "1997",
+          "pos": "NUM",
+          "count": 1
+        },
         {
           "lemma": "Eesti",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "Kitsa",
+          "lemma": "Euroopa",
+          "pos": "PROPN",
+          "count": 2
+        },
+        {
+          "lemma": "Liivimaa",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "Niguliste",
           "pos": "PROPN",
           "count": 1
         },
@@ -425,12 +95,22 @@
         {
           "lemma": "Tallinn",
           "pos": "PROPN",
-          "count": 2
+          "count": 6
         },
         {
           "lemma": "Toompea",
           "pos": "PROPN",
+          "count": 3
+        },
+        {
+          "lemma": "UNESCO",
+          "pos": "NOUN",
           "count": 1
+        },
+        {
+          "lemma": "aasta",
+          "pos": "NOUN",
+          "count": 2
         },
         {
           "lemma": "aeg",
@@ -438,12 +118,42 @@
           "count": 1
         },
         {
-          "lemma": "aga",
-          "pos": "CCONJ",
+          "lemma": "ait",
+          "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "ast",
+          "lemma": "algus",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "alla",
+          "pos": "ADP",
+          "count": 1
+        },
+        {
+          "lemma": "alles",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "arhitektuur",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "ask",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "asula",
+          "pos": "NOUN",
+          "count": 3
+        },
+        {
+          "lemma": "asum",
           "pos": "NOUN",
           "count": 1
         },
@@ -453,18 +163,73 @@
           "count": 1
         },
         {
-          "lemma": "avama",
-          "pos": "VERB",
+          "lemma": "eelkõige",
+          "pos": "ADV",
           "count": 1
         },
         {
-          "lemma": "avanema",
-          "pos": "VERB",
+          "lemma": "eestlane",
+          "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "eest",
-          "pos": "ADP",
+          "lemma": "ehitamine",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "elumaja",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "endine",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "erilisus",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "esialgne",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "esimene",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "esimene",
+          "pos": "NUM",
+          "count": 2
+        },
+        {
+          "lemma": "esindushoone",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "hakkama",
+          "pos": "VERB",
+          "count": 2
+        },
+        {
+          "lemma": "hansa",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "hansalinn",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "henriku",
+          "pos": "NOUN",
           "count": 1
         },
         {
@@ -473,122 +238,97 @@
           "count": 1
         },
         {
-          "lemma": "hõõgvein",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "igama",
+          "lemma": "hõlmama",
           "pos": "VERB",
           "count": 1
         },
         {
-          "lemma": "ilm",
+          "lemma": "ida",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "ilus",
-          "pos": "ADJ",
+          "lemma": "idakaubandus",
+          "pos": "NOUN",
           "count": 1
         },
         {
           "lemma": "ja",
           "pos": "CCONJ",
-          "count": 9
+          "count": 13
         },
         {
-          "lemma": "jalutama",
+          "lemma": "jooks",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "juhtiv",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "juur",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "jääma",
           "pos": "VERB",
           "count": 1
         },
         {
-          "lemma": "jaoks",
-          "pos": "ADP",
+          "lemma": "kadunud",
+          "pos": "ADJ",
           "count": 1
         },
         {
-          "lemma": "jooma",
+          "lemma": "kaitsepühak",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "kasutama",
           "pos": "VERB",
           "count": 1
         },
         {
-          "lemma": "juba",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "jätma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "jõuluturg",
+          "lemma": "kaupmees",
           "pos": "NOUN",
-          "count": 1
+          "count": 3
         },
         {
-          "lemma": "kaart",
+          "lemma": "kese",
           "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "kaitse",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "kaneel",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "katus",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "kaupmaja",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "keerlema",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "kellama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "kes",
-          "pos": "PRON",
           "count": 1
         },
         {
           "lemma": "keskaegne",
           "pos": "ADJ",
+          "count": 3
+        },
+        {
+          "lemma": "kesklinn",
+          "pos": "NOUN",
           "count": 1
         },
         {
           "lemma": "kirik",
           "pos": "NOUN",
-          "count": 1
+          "count": 3
         },
         {
-          "lemma": "koguma",
-          "pos": "VERB",
-          "count": 1
+          "lemma": "koos",
+          "pos": "NOUN",
+          "count": 2
         },
         {
-          "lemma": "kohv",
+          "lemma": "kroonika",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "kohvik",
+          "lemma": "krunt",
           "pos": "NOUN",
           "count": 1
         },
@@ -598,28 +338,13 @@
           "count": 1
         },
         {
-          "lemma": "kuidas",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "kunagi",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "kuni",
-          "pos": "CCONJ",
-          "count": 1
-        },
-        {
-          "lemma": "kus",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "kuulama",
+          "lemma": "kujunema",
           "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "kunagine",
+          "pos": "ADJ",
           "count": 1
         },
         {
@@ -628,18 +353,13 @@
           "count": 1
         },
         {
-          "lemma": "käima",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
           "lemma": "kõik",
           "pos": "PRON",
-          "count": 1
+          "count": 2
         },
         {
-          "lemma": "kõrge",
-          "pos": "ADJ",
+          "lemma": "kõrgendik",
+          "pos": "NOUN",
           "count": 2
         },
         {
@@ -648,37 +368,77 @@
           "count": 1
         },
         {
-          "lemma": "linn",
-          "pos": "NOUN",
-          "count": 3
-        },
-        {
-          "lemma": "linnamüür",
+          "lemma": "ladu",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "linnasüda",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "lõhn",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "lööma",
+          "lemma": "laienema",
           "pos": "VERB",
           "count": 1
         },
         {
-          "lemma": "maja",
+          "lemma": "liige",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "meri",
+          "lemma": "liit",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "lind",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "linn",
+          "pos": "NOUN",
+          "count": 5
+        },
+        {
+          "lemma": "linnakodanik",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "linnus",
+          "pos": "NOUN",
+          "count": 3
+        },
+        {
+          "lemma": "lyndanise",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "lähikond",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "maailmapärand",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "mainitud",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "meremees",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "mererand",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "miljöö",
           "pos": "NOUN",
           "count": 1
         },
@@ -688,44 +448,69 @@
           "count": 1
         },
         {
-          "lemma": "miski",
+          "lemma": "mis",
           "pos": "PRON",
-          "count": 1
+          "count": 4
         },
         {
-          "lemma": "munakivitee",
+          "lemma": "mõõde",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "mööda",
-          "pos": "ADP",
-          "count": 1
-        },
-        {
-          "lemma": "müür",
+          "lemma": "nikolausele",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "nurk",
+          "lemma": "nimi",
           "pos": "NOUN",
           "count": 1
+        },
+        {
+          "lemma": "nimistu",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "ning",
+          "pos": "CCONJ",
+          "count": 3
         },
         {
           "lemma": "olema",
           "pos": "VERB",
-          "count": 6
+          "count": 8
         },
         {
-          "lemma": "ootama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "osaline",
+          "lemma": "oluline",
           "pos": "ADJ",
           "count": 1
+        },
+        {
+          "lemma": "olulisem",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "omakorda",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "ordulinnus",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "osa",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "paiknema",
+          "pos": "VERB",
+          "count": 2
         },
         {
           "lemma": "palju",
@@ -738,13 +523,23 @@
           "count": 1
         },
         {
-          "lemma": "pea",
+          "lemma": "peaaegu",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "pealinn",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "pildistama",
-          "pos": "VERB",
+          "lemma": "piir",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "piirkond",
+          "pos": "NOUN",
           "count": 1
         },
         {
@@ -754,602 +549,31 @@
         },
         {
           "lemma": "plats",
-          "pos": "NOUN",
-          "count": 2
-        },
-        {
-          "lemma": "pood",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "pärinema",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "raekoda",
-          "pos": "NOUN",
-          "count": 2
-        },
-        {
-          "lemma": "restoran",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "saama",
-          "pos": "VERB",
-          "count": 2
-        },
-        {
-          "lemma": "sajand",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "seal",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "see",
-          "pos": "PRON",
-          "count": 1
-        },
-        {
-          "lemma": "seisma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "siga",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "sina",
-          "pos": "PRON",
-          "count": 1
-        },
-        {
-          "lemma": "sisse",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "suvi",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "säilima",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "sööma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "süda",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "sümbol",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "taga",
-          "pos": "ADP",
-          "count": 1
-        },
-        {
-          "lemma": "tali",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "toit",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "tooma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "torn",
-          "pos": "NOUN",
-          "count": 2
-        },
-        {
-          "lemma": "tulema",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "turist",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "täima",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "tänama",
-          "pos": "VERB",
-          "count": 2
-        },
-        {
-          "lemma": "tänav",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "uus",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "vaade",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "vaatama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "vaenlane",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "vahe",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "valitsushoone",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "vana",
-          "pos": "ADJ",
-          "count": 5
-        },
-        {
-          "lemma": "vanalinn",
-          "pos": "NOUN",
-          "count": 4
-        },
-        {
-          "lemma": "viieteistkümnes",
-          "pos": "NUM",
-          "count": 1
-        },
-        {
-          "lemma": "väike",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "välja",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "värviline",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "õhk",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "üks",
-          "pos": "NUM",
-          "count": 1
-        },
-        {
-          "lemma": "üle",
-          "pos": "ADP",
-          "count": 1
-        },
-        {
-          "lemma": "ülev",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "ümber",
-          "pos": "ADP",
-          "count": 1
-        },
-        {
-          "lemma": "ümbritsema",
-          "pos": "VERB",
-          "count": 1
-        }
-      ]
-    },
-    {
-      "id": "et-vana-kalur-story",
-      "language": "et",
-      "title": "Vana kalur",
-      "author": "FinnEst",
-      "genre": "story",
-      "corpus_source": "finnest-original",
-      "license": "CC0 1.0 (FinnEst original, dedicated to the public domain)",
-      "attribution": "Original short story written for the FinnEst embedded catalog.",
-      "text_length": 976,
-      "word_count": 162,
-      "import_date": "2026-07-04",
-      "difficulty": "easy-medium",
-      "difficulty_computed": "easy-medium",
-      "metrics": {
-        "token_count": 162,
-        "sentence_count": 17,
-        "unique_lemma_count": 110,
-        "unique_form_ratio": 0.7716,
-        "unresolved_rate": 0,
-        "mean_frequency_rank": 4098.5287,
-        "rare_form_rate": 0.216,
-        "feats_variety": 22,
-        "mean_sentence_length": 9.5294,
-        "score": 0.3704
-      },
-      "difficulty_review": "pending",
-      "fixture": "et-vana-kalur-story.txt",
-      "lemmas": [
-        {
-          "lemma": "aeglane",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "aga",
-          "pos": "CCONJ",
-          "count": 1
-        },
-        {
-          "lemma": "algama",
-          "pos": "VERB",
-          "count": 2
-        },
-        {
-          "lemma": "alles",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "ei",
-          "pos": "ADV",
-          "count": 2
-        },
-        {
-          "lemma": "elama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "eluma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "esimene",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "et",
-          "pos": "CCONJ",
-          "count": 2
-        },
-        {
-          "lemma": "hakkama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "hall",
-          "pos": "ADJ",
-          "count": 2
-        },
-        {
-          "lemma": "heitma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "homme",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "hommik",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "hästi",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "hõbedane",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "iga",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "ise",
-          "pos": "PRON",
-          "count": 1
-        },
-        {
-          "lemma": "ja",
-          "pos": "CCONJ",
-          "count": 10
-        },
-        {
-          "lemma": "jagama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "jooks",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "jooma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "juur",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "jälle",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "jääma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "kala",
-          "pos": "NOUN",
-          "count": 3
-        },
-        {
-          "lemma": "kalur",
-          "pos": "NOUN",
-          "count": 4
-        },
-        {
-          "lemma": "kannatlik",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "kauge",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "keegi",
-          "pos": "PRON",
-          "count": 1
-        },
-        {
-          "lemma": "keerlema",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "kodu",
-          "pos": "NOUN",
-          "count": 2
-        },
-        {
-          "lemma": "kordama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "kui",
-          "pos": "ADV",
-          "count": 2
-        },
-        {
-          "lemma": "kuidas",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "kurvastama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "kus",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "kuum",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "käsi",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "laht",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "liigud",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "looma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "läinud",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "lõpp",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "magama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "maja",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "mees",
-          "pos": "NOUN",
-          "count": 2
-        },
-        {
-          "lemma": "meri",
-          "pos": "NOUN",
-          "count": 5
-        },
-        {
-          "lemma": "millal",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "minema",
-          "pos": "VERB",
-          "count": 2
-        },
-        {
-          "lemma": "muutuma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "mööduma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "naaber",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "naeratama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "nagu",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "nii",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "olema",
-          "pos": "VERB",
-          "count": 3
-        },
-        {
-          "lemma": "omama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "ootama",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "osa",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "paat",
-          "pos": "ADJ",
-          "count": 3
-        },
-        {
-          "lemma": "pea",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "peitma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "pilv",
           "pos": "NOUN",
           "count": 1
         },
         {
           "lemma": "pool",
-          "pos": "NUM",
+          "pos": "ADP",
           "count": 1
         },
         {
-          "lemma": "puhastama",
-          "pos": "VERB",
+          "lemma": "praegune",
+          "pos": "ADJ",
+          "count": 2
+        },
+        {
+          "lemma": "pärast",
+          "pos": "ADP",
           "count": 1
         },
         {
-          "lemma": "päev",
+          "lemma": "põhikuju",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "päike",
+          "lemma": "põhjakülg",
           "pos": "NOUN",
           "count": 1
         },
@@ -1359,18 +583,410 @@
           "count": 1
         },
         {
-          "lemma": "pöörduma",
+          "lemma": "põhjapoolsem",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "pühitsema",
           "pos": "VERB",
           "count": 1
         },
         {
-          "lemma": "rabelema",
+          "lemma": "püsima",
           "pos": "VERB",
           "count": 1
         },
         {
-          "lemma": "rahulik",
+          "lemma": "püstitama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "raekoda",
+          "pos": "NOUN",
+          "count": 3
+        },
+        {
+          "lemma": "rajama",
+          "pos": "VERB",
+          "count": 2
+        },
+        {
+          "lemma": "rohkesti",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "saama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "sadam",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "sadamakoht",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "sadamalinn",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "sajand",
+          "pos": "NOUN",
+          "count": 5
+        },
+        {
+          "lemma": "saks",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "sealhulgas",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "see",
+          "pos": "PRON",
+          "count": 3
+        },
+        {
+          "lemma": "seisnema",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "struktuur",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "suunama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "suurem",
           "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "säilima",
+          "pos": "VERB",
+          "count": 3
+        },
+        {
+          "lemma": "teadaolev",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "teine",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "teine",
+          "pos": "NUM",
+          "count": 1
+        },
+        {
+          "lemma": "tekkima",
+          "pos": "VERB",
+          "count": 2
+        },
+        {
+          "lemma": "tervenisti",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "tervik",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "turg",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "turuplats",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "tänapäev",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "tänavavõrk",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "tänini",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "vahe",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "vanalinn",
+          "pos": "NOUN",
+          "count": 4
+        },
+        {
+          "lemma": "vanim",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "välja",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "väärtuslikum",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "üks",
+          "pos": "NUM",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "id": "et-mesipuu-poem",
+      "language": "et",
+      "title": "Ta lendab mesipuu poole",
+      "author": "Juhan Liiv",
+      "genre": "poem",
+      "source_url": "https://et.wikisource.org/wiki/Juhan_Liivi_luuletused/1910/Ta_lendab_mesipuu_poole",
+      "corpus_source": "et-wikisource",
+      "license": "Public domain (author Juhan Liiv d. 1913, life+70 expired)",
+      "attribution": "Poem \"Ta lendab mesipuu poole\" by Juhan Liiv, from \"Juhan Liivi luuletused\" (1910). Transcribed on Estonian Wikisource (Vikitekstid). Public domain: author died 1913.",
+      "text_length": 890,
+      "word_count": 156,
+      "import_date": "2026-07-04",
+      "difficulty": "easy-medium",
+      "difficulty_computed": "easy-medium",
+      "metrics": {
+        "token_count": 152,
+        "sentence_count": 9,
+        "unique_lemma_count": 67,
+        "unique_form_ratio": 0.5461,
+        "unresolved_rate": 0.0132,
+        "mean_frequency_rank": 3256.9524,
+        "rare_form_rate": 0.2697,
+        "feats_variety": 15,
+        "mean_sentence_length": 16.8889,
+        "score": 0.3393
+      },
+      "difficulty_review": "pending",
+      "fixture": "et-mesipuu-poem.txt",
+      "lemmas": [
+        {
+          "lemma": "a'al",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "eest",
+          "pos": "ADP",
+          "count": 1
+        },
+        {
+          "lemma": "ei",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "hing",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "hoog",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "iga",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "ihkama",
+          "pos": "VERB",
+          "count": 3
+        },
+        {
+          "lemma": "isamaa",
+          "pos": "NOUN",
+          "count": 4
+        },
+        {
+          "lemma": "ja",
+          "pos": "CCONJ",
+          "count": 11
+        },
+        {
+          "lemma": "jõudma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "ka",
+          "pos": "ADV",
+          "count": 2
+        },
+        {
+          "lemma": "kahtlus",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "kes",
+          "pos": "PRON",
+          "count": 2
+        },
+        {
+          "lemma": "kesk",
+          "pos": "ADP",
+          "count": 2
+        },
+        {
+          "lemma": "kipp",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "kodu",
+          "pos": "NOUN",
+          "count": 4
+        },
+        {
+          "lemma": "kodumaa",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "kuhu",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "kusi",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "kuu",
+          "pos": "NOUN",
+          "count": 8
+        },
+        {
+          "lemma": "kõuepilv",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "langema",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "leidma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "lendama",
+          "pos": "VERB",
+          "count": 5
+        },
+        {
+          "lemma": "lill",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "ma",
+          "pos": "PRON",
+          "count": 2
+        },
+        {
+          "lemma": "mesipuu",
+          "pos": "NOUN",
+          "count": 3
+        },
+        {
+          "lemma": "mina",
+          "pos": "PRON",
+          "count": 1
+        },
+        {
+          "lemma": "mis",
+          "pos": "PRON",
+          "count": 1
+        },
+        {
+          "lemma": "nii",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "oh",
+          "pos": "INTJ",
+          "count": 2
+        },
+        {
+          "lemma": "olema",
+          "pos": "VERB",
+          "count": 4
+        },
+        {
+          "lemma": "otsima",
+          "pos": "VERB",
+          "count": 3
+        },
+        {
+          "lemma": "pool",
+          "pos": "NUM",
+          "count": 12
+        },
+        {
+          "lemma": "puhuma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "püüdma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "raal",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "rahu",
+          "pos": "ADV",
           "count": 1
         },
         {
@@ -1379,7 +995,814 @@
           "count": 1
         },
         {
-          "lemma": "saama",
+          "lemma": "rusuja",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "rõhuma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "sa",
+          "pos": "PRON",
+          "count": 3
+        },
+        {
+          "lemma": "siiski",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "sina",
+          "pos": "PRON",
+          "count": 12
+        },
+        {
+          "lemma": "surema",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "surmakuul",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "surmatuul",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "säält",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "süda",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "tee",
+          "pos": "NOUN",
+          "count": 4
+        },
+        {
+          "lemma": "tema",
+          "pos": "PRON",
+          "count": 7
+        },
+        {
+          "lemma": "tuhat",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "tuks",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "tund",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "tung",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "tõusma",
+          "pos": "VERB",
+          "count": 3
+        },
+        {
+          "lemma": "vaev",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "vastu",
+          "pos": "ADP",
+          "count": 2
+        },
+        {
+          "lemma": "veel",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "viima",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "viskama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "voog",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "välja",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "väljamaa",
+          "pos": "NOUN",
+          "count": 3
+        },
+        {
+          "lemma": "ärkama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "õhkama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "ülesse",
+          "pos": "ADV",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "et-linnu-keel-story",
+      "language": "et",
+      "title": "Linnu keel",
+      "author": "Juhan Kunder",
+      "genre": "story",
+      "source_url": "https://et.wikisource.org/wiki/Eesti_muinasjutud_(Kunder)/Linnu_keel",
+      "corpus_source": "et-wikisource",
+      "license": "Public domain (collector Juhan Kunder d. 1888, life+70 expired)",
+      "attribution": "Folk tale \"Linnu keel\" from \"Eesti muinasjutud\" (1885), collected and retold by Juhan Kunder. Transcribed on Estonian Wikisource (Vikitekstid). Public domain: collector died 1888. Archaic 1885 orthography preserved.",
+      "text_length": 2339,
+      "word_count": 363,
+      "import_date": "2026-07-04",
+      "difficulty": "medium",
+      "difficulty_computed": "medium",
+      "metrics": {
+        "token_count": 363,
+        "sentence_count": 29,
+        "unique_lemma_count": 193,
+        "unique_form_ratio": 0.6171,
+        "unresolved_rate": 0.1708,
+        "mean_frequency_rank": 4284.4144,
+        "rare_form_rate": 0.4187,
+        "feats_variety": 23,
+        "mean_sentence_length": 12.5172,
+        "score": 0.4681
+      },
+      "difficulty_review": "pending",
+      "fixture": "et-linnu-keel-story.txt",
+      "lemmas": [
+        {
+          "lemma": "Mõega",
+          "pos": "PROPN",
+          "count": 2
+        },
+        {
+          "lemma": "aga",
+          "pos": "CCONJ",
+          "count": 5
+        },
+        {
+          "lemma": "ajasiwad",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "astusiwad",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "eest",
+          "pos": "ADP",
+          "count": 2
+        },
+        {
+          "lemma": "ehk",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "ei",
+          "pos": "ADV",
+          "count": 4
+        },
+        {
+          "lemma": "eks",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "enam",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "enne",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "et",
+          "pos": "CCONJ",
+          "count": 4
+        },
+        {
+          "lemma": "hammustama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "hari",
+          "pos": "NOUN",
+          "count": 3
+        },
+        {
+          "lemma": "harima",
+          "pos": "VERB",
+          "count": 5
+        },
+        {
+          "lemma": "herra",
+          "pos": "NOUN",
+          "count": 13
+        },
+        {
+          "lemma": "herral",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "himustama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "hobu",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "hobune",
+          "pos": "NOUN",
+          "count": 9
+        },
+        {
+          "lemma": "hoidma",
+          "pos": "VERB",
+          "count": 7
+        },
+        {
+          "lemma": "hoop",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "hüppama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "ja",
+          "pos": "CCONJ",
+          "count": 15
+        },
+        {
+          "lemma": "jahuma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "jalutama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "juba",
+          "pos": "ADV",
+          "count": 2
+        },
+        {
+          "lemma": "jumal",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "juur",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "jälle",
+          "pos": "ADV",
+          "count": 4
+        },
+        {
+          "lemma": "järele",
+          "pos": "ADP",
+          "count": 2
+        },
+        {
+          "lemma": "jõuudsiwad",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "ka",
+          "pos": "ADV",
+          "count": 2
+        },
+        {
+          "lemma": "kaasama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "kahima",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "kann",
+          "pos": "NOUN",
+          "count": 4
+        },
+        {
+          "lemma": "katsuma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "kaup",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "kee",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "keegi",
+          "pos": "PRON",
+          "count": 1
+        },
+        {
+          "lemma": "keel",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "keema",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "keetmise",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "kes",
+          "pos": "PRON",
+          "count": 1
+        },
+        {
+          "lemma": "kihtima",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "kiirest",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "kikki",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "kinnas",
+          "pos": "NOUN",
+          "count": 3
+        },
+        {
+          "lemma": "kodu",
+          "pos": "NOUN",
+          "count": 3
+        },
+        {
+          "lemma": "kord",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "kuda",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "kui",
+          "pos": "ADV",
+          "count": 2
+        },
+        {
+          "lemma": "kuningas",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "kunn",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "kutsu",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "kuub",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "kuulaja",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "kuulma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "käsi",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "kõrwu",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "küll",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "külwatud",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "küsima",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "küündla",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "lakkuma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "laskma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "leem",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "lendama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "lind",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "linnukeel",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "lipsti",
+          "pos": "INTJ",
+          "count": 1
+        },
+        {
+          "lemma": "lugu",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "lähemale",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "läksiwad",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "lööm",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "lööma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "maa",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "maha",
+          "pos": "ADV",
+          "count": 8
+        },
+        {
+          "lemma": "maitsma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "millalgi",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "mina",
+          "pos": "PRON",
+          "count": 1
+        },
+        {
+          "lemma": "minema",
+          "pos": "VERB",
+          "count": 4
+        },
+        {
+          "lemma": "miski",
+          "pos": "PRON",
+          "count": 1
+        },
+        {
+          "lemma": "mitte",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "muu",
+          "pos": "INTJ",
+          "count": 1
+        },
+        {
+          "lemma": "mõis",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "mõlemad",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "mõte",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "müts",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "müts",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "nagu",
+          "pos": "ADV",
+          "count": 2
+        },
+        {
+          "lemma": "neljapäew",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "nihutasiwad",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "nii",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "niikaua",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "ning",
+          "pos": "CCONJ",
+          "count": 8
+        },
+        {
+          "lemma": "nägema",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "nägiwad",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "nähtawalle",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "nõid",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "nõuu",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "nüüd",
+          "pos": "ADV",
+          "count": 4
+        },
+        {
+          "lemma": "olema",
+          "pos": "VERB",
+          "count": 9
+        },
+        {
+          "lemma": "oliwad",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "ootasiwad",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "pada",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "pahanema",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "panema",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "peaaegu",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "peale",
+          "pos": "ADP",
+          "count": 1
+        },
+        {
+          "lemma": "peen",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "pidama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "pidiwad",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "pistma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "poiss",
+          "pos": "NOUN",
+          "count": 9
+        },
+        {
+          "lemma": "pool",
+          "pos": "ADP",
+          "count": 1
+        },
+        {
+          "lemma": "puru",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "päewal",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "pärast",
+          "pos": "ADP",
+          "count": 2
+        },
+        {
+          "lemma": "põgenejate",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "põgenema",
+          "pos": "VERB",
+          "count": 2
+        },
+        {
+          "lemma": "põu",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "põuue",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "ratsa",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "roog",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "ruttasiwad",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "rääkima",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "sa",
+          "pos": "PRON",
+          "count": 1
+        },
+        {
+          "lemma": "saatma",
           "pos": "VERB",
           "count": 1
         },
@@ -1389,149 +1812,294 @@
           "count": 1
         },
         {
-          "lemma": "see",
-          "pos": "PRON",
-          "count": 5
+          "lemma": "seal",
+          "pos": "ADV",
+          "count": 2
         },
         {
-          "lemma": "suur",
+          "lemma": "see",
+          "pos": "PRON",
+          "count": 4
+        },
+        {
+          "lemma": "seesama",
+          "pos": "PRON",
+          "count": 1
+        },
+        {
+          "lemma": "selg",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "sellsama",
           "pos": "ADJ",
           "count": 1
         },
         {
-          "lemma": "sõudma",
+          "lemma": "seltsima",
           "pos": "VERB",
           "count": 1
         },
         {
-          "lemma": "sügishommik",
+          "lemma": "siin",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "taevas",
+          "lemma": "siis",
+          "pos": "ADV",
+          "count": 4
+        },
+        {
+          "lemma": "silitama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "silmapilk",
+          "pos": "ADV",
+          "count": 1
+        },
+        {
+          "lemma": "sina",
+          "pos": "PRON",
+          "count": 2
+        },
+        {
+          "lemma": "sirts",
+          "pos": "ADV",
+          "count": 2
+        },
+        {
+          "lemma": "soo",
+          "pos": "INTJ",
+          "count": 1
+        },
+        {
+          "lemma": "soo",
+          "pos": "NOUN",
+          "count": 3
+        },
+        {
+          "lemma": "surema",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "surmama",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "suu",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "teadma",
+          "lemma": "sädemeke",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "sõitja",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "sõitma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "sõitsiwad",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "sööma",
           "pos": "VERB",
           "count": 2
         },
         {
-          "lemma": "tee",
+          "lemma": "ta",
+          "pos": "PRON",
+          "count": 2
+        },
+        {
+          "lemma": "tahtma",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "tall",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "tegema",
-          "pos": "VERB",
+          "lemma": "tark",
+          "pos": "ADJ",
+          "count": 3
+        },
+        {
+          "lemma": "tegemine",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "tegiwad",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "teine",
+          "pos": "NOUN",
           "count": 1
         },
         {
           "lemma": "tema",
           "pos": "PRON",
-          "count": 11
-        },
-        {
-          "lemma": "termos",
-          "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "terve",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "tugev",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "tund",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "tundma",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "tuul",
+          "lemma": "tilk",
           "pos": "NOUN",
           "count": 2
         },
         {
-          "lemma": "tõmbama",
+          "lemma": "tuapoisi",
+          "pos": "NOUN",
+          "count": 4
+        },
+        {
+          "lemma": "tuapoiss",
+          "pos": "NOUN",
+          "count": 4
+        },
+        {
+          "lemma": "tuhandate",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "tulema",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "tuluke",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "tähendama",
+          "pos": "VERB",
+          "count": 2
+        },
+        {
+          "lemma": "täima",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "täitma",
           "pos": "VERB",
           "count": 1
         },
         {
           "lemma": "tõusma",
           "pos": "VERB",
-          "count": 2
-        },
-        {
-          "lemma": "tühi",
-          "pos": "ADJ",
-          "count": 2
-        },
-        {
-          "lemma": "uuesti",
-          "pos": "ADV",
           "count": 1
         },
         {
-          "lemma": "vaatama",
+          "lemma": "tõuusis",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "usinam",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "uss",
+          "pos": "NOUN",
+          "count": 11
+        },
+        {
+          "lemma": "ussa",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "wahutasiwad",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "walge",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "warblane",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "warjul",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "warwul",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "weike",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "wihane",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "wisake",
+          "pos": "NOUN",
+          "count": 3
+        },
+        {
+          "lemma": "wiskas",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "wäljas",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "wõttis",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "ähkima",
           "pos": "VERB",
           "count": 1
-        },
-        {
-          "lemma": "vaiknema",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "vana",
-          "pos": "ADJ",
-          "count": 2
-        },
-        {
-          "lemma": "vastu",
-          "pos": "ADP",
-          "count": 1
-        },
-        {
-          "lemma": "veed",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "vesi",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "väike",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "võrk",
-          "pos": "NOUN",
-          "count": 4
         },
         {
           "lemma": "ära",
           "pos": "ADV",
-          "count": 1
+          "count": 5
         },
         {
           "lemma": "äär",
           "pos": "NOUN",
-          "count": 1
+          "count": 3
         },
         {
           "lemma": "õhtu",
@@ -1539,62 +2107,60 @@
           "count": 1
         },
         {
-          "lemma": "öösel",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "üks",
+          "lemma": "õpetus",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "üle",
-          "pos": "ADP",
+          "lemma": "õppima",
+          "pos": "VERB",
+          "count": 2
+        },
+        {
+          "lemma": "öö",
+          "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "üles",
-          "pos": "ADV",
-          "count": 1
+          "lemma": "üks",
+          "pos": "NUM",
+          "count": 2
         },
         {
-          "lemma": "ümber",
-          "pos": "ADP",
-          "count": 1
+          "lemma": "ütlema",
+          "pos": "VERB",
+          "count": 4
         }
       ]
     },
     {
       "id": "fi-sauna-article",
       "language": "fi",
-      "title": "Sauna suomalaisessa elämässä",
-      "author": "FinnEst",
+      "title": "Sauna",
+      "author": "Wikipedian tekijät",
       "genre": "article",
-      "corpus_source": "finnest-original",
-      "license": "CC0 1.0 (FinnEst original, dedicated to the public domain)",
-      "attribution": "Original informational text written for the FinnEst embedded catalog.",
-      "text_length": 1057,
-      "word_count": 144,
+      "source_url": "https://fi.wikipedia.org/wiki/Sauna",
+      "corpus_source": "fi-wikipedia",
+      "license": "CC BY-SA 4.0 (share-alike; derivatives must carry the same license)",
+      "attribution": "Adapted excerpt from the article \"Sauna\" on Finnish Wikipedia (https://fi.wikipedia.org/wiki/Sauna), by Wikipedia contributors, licensed CC BY-SA 4.0. Lead plus etymology and history excerpts; wiki markup, references, and footnote markers removed.",
+      "text_length": 1690,
+      "word_count": 196,
       "import_date": "2026-07-04",
-      "difficulty": "easy-medium",
+      "difficulty": "medium-hard",
       "difficulty_computed": "medium-hard",
       "metrics": {
-        "token_count": 144,
-        "sentence_count": 13,
-        "unique_lemma_count": 100,
-        "unique_form_ratio": 0.7917,
-        "unresolved_rate": 0,
-        "mean_frequency_rank": 7345.0484,
-        "rare_form_rate": 0.3472,
-        "feats_variety": 27,
-        "mean_sentence_length": 11.0769,
-        "score": 0.5404
+        "token_count": 196,
+        "sentence_count": 21,
+        "unique_lemma_count": 124,
+        "unique_form_ratio": 0.7704,
+        "unresolved_rate": 0.0153,
+        "mean_frequency_rank": 10082.45,
+        "rare_form_rate": 0.6224,
+        "feats_variety": 30,
+        "mean_sentence_length": 9.3333,
+        "score": 0.5848
       },
-      "difficulty_review": "approved",
-      "difficulty_review_by": "sagar",
-      "difficulty_review_date": "2026-07-04",
-      "difficulty_review_note": "Falls between easy and medium, more on the easy side. Model score 0.540 (medium-hard band) substantially overrates it: everyday vocabulary and familiar topic are not captured by the lexical/structural signals.",
+      "difficulty_review": "pending",
       "fixture": "fi-sauna-article.txt",
       "lemmas": [
         {
@@ -1603,87 +2169,47 @@
           "count": 1
         },
         {
-          "lemma": "ainakin",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "arki",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "asia",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "aste",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "avanto",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "ei",
+          "lemma": "ajatella",
           "pos": "VERB",
           "count": 1
         },
         {
-          "lemma": "elämä",
+          "lemma": "alku",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "ennen",
-          "pos": "PREP",
+          "lemma": "aseteltu",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "asuinsija",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "eli",
+          "pos": "CCONJ",
+          "count": 2
+        },
+        {
+          "lemma": "eri",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "erilainen",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "erillinen",
+          "pos": "ADJ",
           "count": 1
         },
         {
           "lemma": "heittää",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "hidastaa",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "hiljaa",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "hiljentyä",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "historia",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "hoitaa",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "huone",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "hypätä",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "hämmästyä",
           "pos": "VERB",
           "count": 1
         },
@@ -1695,96 +2221,91 @@
         {
           "lemma": "ilma",
           "pos": "NOUN",
-          "count": 2
+          "count": 1
         },
         {
-          "lemma": "itse",
-          "pos": "NOUN",
+          "lemma": "isovenäläinen",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "itä-suomen",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "itämerensuomalainen",
+          "pos": "ADJ",
           "count": 1
         },
         {
           "lemma": "ja",
           "pos": "CCONJ",
-          "count": 10
+          "count": 5
         },
         {
           "lemma": "joka",
           "pos": "PRON",
+          "count": 4
+        },
+        {
+          "lemma": "kaivaa",
+          "pos": "VERB",
           "count": 1
         },
         {
-          "lemma": "joku",
-          "pos": "DET",
-          "count": 1
-        },
-        {
-          "lemma": "jopa",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "järvi",
+          "lemma": "keskiaika",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "kahdeksankymmentä",
-          "pos": "NUM",
-          "count": 1
-        },
-        {
-          "lemma": "kanssa",
-          "pos": "POSTP",
-          "count": 1
-        },
-        {
-          "lemma": "keho",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "kerta",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "keski-",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "kiire",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "kiuas",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "koska",
-          "pos": "CCONJ",
-          "count": 1
-        },
-        {
-          "lemma": "koti",
+          "lemma": "kieli",
           "pos": "NOUN",
           "count": 2
         },
         {
-          "lemma": "kuinka",
-          "pos": "ADV",
+          "lemma": "kiuas",
+          "pos": "NOUN",
+          "count": 4
+        },
+        {
+          "lemma": "kivi",
+          "pos": "NOUN",
+          "count": 4
+        },
+        {
+          "lemma": "kivikasa",
+          "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "kulttuuri",
+          "lemma": "kiviladelma",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "kostea",
+          "pos": "ADJ",
+          "count": 2
+        },
+        {
+          "lemma": "kosteus",
           "pos": "NOUN",
           "count": 1
         },
         {
           "lemma": "kun",
           "pos": "CCONJ",
+          "count": 1
+        },
+        {
+          "lemma": "kuoppa",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "kuoppasauna",
+          "pos": "NOUN",
           "count": 1
         },
         {
@@ -1798,68 +2319,103 @@
           "count": 1
         },
         {
-          "lemma": "kuulua",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
           "lemma": "kuuma",
           "pos": "ADJ",
-          "count": 1
+          "count": 3
         },
         {
-          "lemma": "käydä",
+          "lemma": "kuumentaa",
           "pos": "VERB",
           "count": 2
         },
         {
-          "lemma": "lapsi",
+          "lemma": "kylpeminen",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "liikeneuvottelujakki",
+          "lemma": "kysymys",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "loma",
+          "lemma": "liekki",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "lämmin",
-          "pos": "ADJ",
+          "lemma": "lisä",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "lämmitetty",
+          "pos": "VERB",
           "count": 1
         },
         {
           "lemma": "lämmittää",
           "pos": "VERB",
+          "count": 5
+        },
+        {
+          "lemma": "lämpö",
+          "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "lämpötila",
-          "pos": "NOUN",
+          "lemma": "läpi",
+          "pos": "POSTP",
           "count": 1
         },
         {
           "lemma": "löyly",
           "pos": "NOUN",
-          "count": 2
-        },
-        {
-          "lemma": "mennä",
-          "pos": "VERB",
-          "count": 2
-        },
-        {
-          "lemma": "moni",
-          "pos": "DET",
           "count": 1
         },
         {
-          "lemma": "moni",
+          "lemma": "maa",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "maailma",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "maakuoppa",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "maasauna",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "maja",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "mi",
           "pos": "PRON",
+          "count": 1
+        },
+        {
+          "lemma": "muinaisskandinaavinen",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "muu",
+          "pos": "DET",
+          "count": 2
+        },
+        {
+          "lemma": "myöhäinen",
+          "pos": "ADJ",
           "count": 1
         },
         {
@@ -1868,44 +2424,29 @@
           "count": 1
         },
         {
-          "lemma": "mökki",
-          "pos": "NOUN",
+          "lemma": "ne",
+          "pos": "DET",
           "count": 1
         },
         {
-          "lemma": "ne",
-          "pos": "DET",
-          "count": 3
+          "lemma": "nouseva",
+          "pos": "ADJ",
+          "count": 1
         },
         {
           "lemma": "nousta",
           "pos": "VERB",
-          "count": 2
-        },
-        {
-          "lemma": "nykyäänki",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "olennainen",
-          "pos": "ADJ",
           "count": 1
         },
         {
           "lemma": "olla",
           "pos": "VERB",
-          "count": 2
-        },
-        {
-          "lemma": "oma",
-          "pos": "ADJ",
-          "count": 1
+          "count": 8
         },
         {
           "lemma": "on",
           "pos": "VERB",
-          "count": 8
+          "count": 9
         },
         {
           "lemma": "osa",
@@ -1913,48 +2454,53 @@
           "count": 2
         },
         {
-          "lemma": "paikka",
-          "pos": "NOUN",
-          "count": 3
-        },
-        {
-          "lemma": "paljon",
-          "pos": "ADV",
-          "count": 1
-        },
-        {
-          "lemma": "pe",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "perhe",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "perinteinen",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "pitkä",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "puhdas",
-          "pos": "ADJ",
-          "count": 1
-        },
-        {
-          "lemma": "puhua",
+          "lemma": "peittää",
           "pos": "VERB",
           "count": 1
         },
         {
-          "lemma": "puu",
+          "lemma": "perusidea",
           "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "perusta",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "perä",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "pieni",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "pohja",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "potero",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "pronssikautinen",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "puola",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "pysyä",
+          "pos": "VERB",
           "count": 1
         },
         {
@@ -1963,39 +2509,109 @@
           "count": 1
         },
         {
-          "lemma": "rauhallisesti",
-          "pos": "ADV",
+          "lemma": "rakennelma",
+          "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "rentoutua",
+          "lemma": "rakennettu",
           "pos": "VERB",
           "count": 1
         },
         {
-          "lemma": "sairas",
+          "lemma": "rakennus",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "rakennustekninen",
           "pos": "ADJ",
           "count": 1
         },
         {
-          "lemma": "sata",
-          "pos": "NUM",
+          "lemma": "rakentaa",
+          "pos": "VERB",
           "count": 1
+        },
+        {
+          "lemma": "ratkaisu",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "riippua",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "riuku",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "saada",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "samanlainen",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "sana",
+          "pos": "NOUN",
+          "count": 2
         },
         {
           "lemma": "sauna",
           "pos": "NOUN",
-          "count": 11
+          "count": 14
         },
         {
-          "lemma": "se",
-          "pos": "PRON",
+          "lemma": "saunakulttuuri",
+          "pos": "NOUN",
+          "count": 3
+        },
+        {
+          "lemma": "saunatila",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "saunominen",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "savu",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "savusauna",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "sisältää",
+          "pos": "VERB",
           "count": 1
         },
         {
           "lemma": "suomalainen",
           "pos": "ADJ",
-          "count": 4
+          "count": 2
+        },
+        {
+          "lemma": "suomalaistyyppisiä",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "suomenkielinen",
+          "pos": "ADJ",
+          "count": 1
         },
         {
           "lemma": "suomi",
@@ -2003,59 +2619,99 @@
           "count": 1
         },
         {
+          "lemma": "suora",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
           "lemma": "syntyä",
+          "pos": "VERB",
+          "count": 2
+        },
+        {
+          "lemma": "säätää",
           "pos": "VERB",
           "count": 1
         },
         {
           "lemma": "tai",
           "pos": "CCONJ",
-          "count": 3
+          "count": 5
         },
         {
-          "lemma": "tapa",
+          "lemma": "talja",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "tarpeeksi",
-          "pos": "ADV",
+          "lemma": "tarkoittaa",
+          "pos": "VERB",
           "count": 1
         },
         {
-          "lemma": "työpaikka",
+          "lemma": "tarkoittanut",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "tila",
+          "pos": "NOUN",
+          "count": 4
+        },
+        {
+          "lemma": "toinen",
+          "pos": "DET",
+          "count": 1
+        },
+        {
+          "lemma": "tulipesä",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "tärkeä",
-          "pos": "ADJ",
+          "lemma": "tulisija",
+          "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "ulkomaalainen",
-          "pos": "ADJ",
+          "lemma": "tuohi",
+          "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "ulkona",
-          "pos": "ADV",
+          "lemma": "tupa",
+          "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "usea",
-          "pos": "ADJ",
+          "lemma": "turve",
+          "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "usein",
-          "pos": "ADV",
+          "lemma": "tuuletus",
+          "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "vain",
-          "pos": "ADV",
+          "lemma": "tämä",
+          "pos": "DET",
           "count": 2
+        },
+        {
+          "lemma": "uuni",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "valaa",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "vallita",
+          "pos": "VERB",
+          "count": 1
         },
         {
           "lemma": "vanha",
@@ -2063,38 +2719,68 @@
           "count": 1
         },
         {
-          "lemma": "vesi",
+          "lemma": "vanhin",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "vara",
           "pos": "NOUN",
           "count": 1
         },
         {
-          "lemma": "vielä",
+          "lemma": "varhaisin",
+          "pos": "ADJ",
+          "count": 1
+        },
+        {
+          "lemma": "varten",
+          "pos": "POSTP",
+          "count": 1
+        },
+        {
+          "lemma": "vastine",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "vesi",
+          "pos": "NOUN",
+          "count": 2
+        },
+        {
+          "lemma": "vesihöyry",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "viro",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "voida",
+          "pos": "VERB",
+          "count": 1
+        },
+        {
+          "lemma": "vuosisata",
+          "pos": "NOUN",
+          "count": 1
+        },
+        {
+          "lemma": "yksi",
+          "pos": "NUM",
+          "count": 1
+        },
+        {
+          "lemma": "yksinomaan",
           "pos": "ADV",
           "count": 1
         },
         {
-          "lemma": "viettää",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "viikko",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "vilvoitella",
-          "pos": "VERB",
-          "count": 1
-        },
-        {
-          "lemma": "voi",
-          "pos": "NOUN",
-          "count": 1
-        },
-        {
-          "lemma": "ystävä",
-          "pos": "NOUN",
+          "lemma": "yleiseurooppalainen",
+          "pos": "ADJ",
           "count": 1
         }
       ]
