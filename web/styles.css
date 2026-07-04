@@ -2055,7 +2055,8 @@ body {
     transform: translateY(-100%);
 }
 
-.example-text .highlight-form {
+.example-text .highlight-form,
+.review-example .highlight-form {
     background: color-mix(in srgb, var(--accent) 25%, transparent);
     padding: 0.1rem 0.2rem;
     border-radius: 2px;
@@ -3513,6 +3514,12 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     margin: 0;
     font-size: 1.2rem;
 }
+.review-pos {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
 .review-meaning {
     margin: 0;
     color: var(--text-secondary);
@@ -3529,10 +3536,24 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     font-size: 0.82rem;
     color: var(--text-secondary);
 }
+/* The example sentence is the card's richest context: shown first in the
+   back, larger and higher-contrast than the supporting metadata below it.
+   The target occurrence form is bolded via the same .highlight-form token
+   used elsewhere (parse results, deck detail examples). */
 .review-example {
     border-left: 3px solid var(--accent);
     padding-left: 0.85rem;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    line-height: 1.5;
+}
+.review-example-source {
+    display: block;
+    margin-top: 0.35rem;
     color: var(--text-secondary);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 .review-actions,
 .review-secondary-actions {
@@ -4762,6 +4783,14 @@ h2 {
     background: var(--bg-secondary);
     border: 1px solid var(--border);
     color: var(--text-primary);
+}
+
+/* Review column: a centered, comfortably-narrow card reads better than a
+   full-width panel with everything jammed against the left edge. Scoped to
+   .review-main (overrides the shared decks/languages max-width above) and
+   left unset at <=600px, where the page already fills the viewport. */
+.review-main {
+    max-width: 700px;
 }
 
 @media (max-width: 760px) {

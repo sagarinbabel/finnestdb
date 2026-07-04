@@ -6678,10 +6678,11 @@ function renderCurrentReviewCard(): void {
     const frontTextEl = document.getElementById('review-card-front-text');
     const surfaceEl = document.getElementById('review-card-surface');
     const lemmaEl = document.getElementById('review-card-lemma');
+    const posEl = document.getElementById('review-card-pos');
     const homographEl = document.getElementById('review-card-homograph');
     const meaningEl = document.getElementById('review-card-meaning');
     const modeEl = document.getElementById('review-card-mode');
-    if (!cardEl || !emptyEl || !deckCountsEl || !exampleEl || !frontEl || !frontTextEl || !surfaceEl || !lemmaEl || !homographEl || !meaningEl || !modeEl) return;
+    if (!cardEl || !emptyEl || !deckCountsEl || !exampleEl || !frontEl || !frontTextEl || !surfaceEl || !lemmaEl || !posEl || !homographEl || !meaningEl || !modeEl) return;
 
     const card = state.currentReviewCard;
     const hasCard = Boolean(card);
@@ -6721,6 +6722,13 @@ function renderCurrentReviewCard(): void {
         homographEl.classList.add('hidden');
     }
     meaningEl.textContent = card.back.meaning || 'No gloss yet';
+    if (card.back.pos) {
+        posEl.textContent = posLabel(card.back.pos);
+        posEl.classList.remove('hidden');
+    } else {
+        posEl.textContent = '';
+        posEl.classList.add('hidden');
+    }
     deckCountsEl.innerHTML = card.deck_counts.map(pair =>
         `<span class="review-deck-pill">${escapeHtml(pair[0])} · ${escapeHtml(pair[1])}</span>`
     ).join('');
@@ -6728,7 +6736,12 @@ function renderCurrentReviewCard(): void {
     const example = card.back.examples?.[0];
     if (example) {
         exampleEl.classList.remove('hidden');
-        exampleEl.innerHTML = `<strong>${escapeHtml(example.source_deck || 'Example')}</strong><br>${escapeHtml(example.text)}`;
+        const highlightForm = surface || card.front.highlight || '';
+        const sentenceHtml = highlightForm
+            ? highlightFormsInSentence(example.text, [highlightForm])
+            : escapeHtml(example.text);
+        exampleEl.innerHTML = sentenceHtml +
+            (example.source_deck ? `<span class="review-example-source">${escapeHtml(example.source_deck)}</span>` : '');
     } else {
         exampleEl.classList.add('hidden');
         exampleEl.innerHTML = '';

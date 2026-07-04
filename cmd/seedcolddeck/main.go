@@ -22,15 +22,23 @@
 // is omitted — fall back to a one-token sentence whose text is the lemma's
 // most frequent surface form, so deck detail and review cards still render.
 //
+// Re-running this tool for a language creates a second official deck with the
+// same title unless -replace is set, in which case a prior official deck with
+// the same (title, lang) owned by -owner-email is deleted first (the same
+// teardown as deleting it from the admin UI). Without -replace, a same-title
+// deck already existing only logs a loud warning before seeding a duplicate.
+//
 // Usage:
 //
 //	go run ./cmd/seedcolddeck -db finnestdb.db -lang FI -owner-email admin@example.com
 //	go run ./cmd/seedcolddeck -db finnestdb.db -lang ET -owner-email admin@example.com -top 1000
 //	go run ./cmd/seedcolddeck -db finnestdb.db -lang FI -owner-email admin@example.com \
-//	    -examples testdata/starter-examples/fi-examples-v1.tsv
+//	    -examples testdata/starter-examples/fi-examples-v1.tsv -replace
 package main
 
 import (
+	"database/sql"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -50,6 +58,7 @@ func main() {
 	top := flag.Int("top", 1000, "Number of lemmas in the deck")
 	ownerEmail := flag.String("owner-email", "", "Admin account that owns the official deck (required)")
 	title := flag.String("title", "", "Deck title (default: \"Top <N> <language> words\")")
+	replace := flag.Bool("replace", false, "Delete a prior official deck with the same title+lang owned by -owner-email before seeding, instead of creating a duplicate")
 	flag.Parse()
 
 	if *lang != "FI" && *lang != "ET" {
@@ -94,6 +103,10 @@ func main() {
 		log.Fatalf("owner %q is not an admin; official decks are admin-owned", *ownerEmail)
 	}
 
+	if err := handleExistingOfficialDeck(db, owner.ID, *title, *lang, *ownerEmail, *replace); err != nil {
+		log.Fatal(err)
+	}
+
 	entries, skipped, err := starterdeck.TopLemmas(f, db, *lang, *top)
 	if err != nil {
 		log.Fatalf("aggregate frequency list: %v", err)
@@ -127,6 +140,43 @@ func main() {
 	}
 	fmt.Printf("created official deck %q (id %d): %d lemmas, %d list forms skipped as unresolved%s\n",
 		*title, deckID, len(entries), skipped, exampleNote)
+}
+
+// officialDeckStore is the seam handleExistingOfficialDeck needs, satisfied by
+// *store.DB. Narrowed to the two calls involved so tests can exercise the
+// replace/warn branching without a real dictionary.
+type officialDeckStore interface {
+	FindOfficialDeckByTitle(ownerID int64, title, lang string) (int64, error)
+	DeleteDeck(userID, deckID int64) error
+}
+
+// handleExistingOfficialDeck looks for a prior official deck with the same
+// (title, lang) owned by ownerID. With replace set, it deletes that deck (via
+// DeleteDeck, the same occurrence/sentences/subscriptions/deck-row teardown
+// the deck-management UI uses) so the reseed below creates a clean
+// replacement instead of a duplicate. Without replace, a same-title deck only
+// produces a loud warning — the historical behavior — so an operator who
+// forgets the flag is told immediately rather than discovering the duplicate
+// later. ownerEmail is only used for the warning message.
+func handleExistingOfficialDeck(db officialDeckStore, ownerID int64, title, lang, ownerEmail string, replace bool) error {
+	existingDeckID, err := db.FindOfficialDeckByTitle(ownerID, title, lang)
+	switch {
+	case err == nil && replace:
+		if err := db.DeleteDeck(ownerID, existingDeckID); err != nil {
+			return fmt.Errorf("delete prior official deck %q (id %d) for -replace: %w", title, existingDeckID, err)
+		}
+		fmt.Printf("deleted prior official deck %q (id %d) before reseeding (-replace)\n", title, existingDeckID)
+		return nil
+	case err == nil:
+		log.Printf("WARNING: an official deck titled %q already exists for %s (id %d) owned by %s; "+
+			"this run will create a DUPLICATE. Re-run with -replace to delete it first, "+
+			"or delete it by hand.", title, lang, existingDeckID, ownerEmail)
+		return nil
+	case errors.Is(err, sql.ErrNoRows):
+		return nil // No prior deck — normal first run.
+	default:
+		return fmt.Errorf("look up existing official deck %q: %w", title, err)
+	}
 }
 
 // buildDeckSentences turns the ranked lemmas into deck sentences. When a
