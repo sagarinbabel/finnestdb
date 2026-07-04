@@ -358,6 +358,43 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
       `tuli` (came/fire), and `voi` (can/butter), then add ET parity cases.
       Measure candidate inclusion, selected lemma+POS, FEATS where applicable,
       and compare `custom` against Omorfi for FI / EstNLTK for ET.
+      - [x] **Spec + verified gold data** (2026-07-04, `docs/ambiguity-eval-spec`):
+            spec written into `docs/PARSER_EVAL_METHODOLOGY.md` §Ambiguity and
+            meaning-check calibration (metrics, confidence-proxy definition,
+            gold format, threshold→UI rule, ET parity, runner plan). Gold slices
+            committed: `testdata/parser-eval/fi-ambiguity/fi-ambiguity-v1.json`
+            (48 cases, 21 classes) + `et-ambiguity-v1.json` (13 cases, 6 classes)
+            + `README.md`. **Verified baseline (parser 2026.05.15a):** FI
+            selection 36/48 = 75.0%, candidate inclusion 35/48 = 72.9%; ET
+            selection 7/13 = 53.8%, candidate inclusion 13/13 = 100%. Key finding:
+            FI and ET fail differently — FI's blocker is candidate inclusion
+            (kaikki `forms` stores only one reading per cross-POS homograph, so
+            `kuusi`/`tuli`/`voi` second sense is absent from `BatchLookupAllForms`
+            even though the FST knows it), ET's blocker is selection ranking
+            (Ekilex populates all candidates but the pick prefers VERB on
+            cross-POS collisions). (S — done)
+      - [ ] **Build `cmd/ambiguityeval`** (M): load a `slice:"ambiguity"` gold
+            file, per case run `parsecore.Analyze(...,"custom")` for the pick and
+            `store.BatchLookupAllForms` for the candidate set, emit
+            candidate-inclusion + selection-accuracy + proxy-stratified accuracy
+            keyed by `ambiguity_class`. Separate from `cmd/parsertest` so
+            ambiguity metrics don't distort the token-accuracy summary schema.
+      - [ ] **Wire `make compare-ambiguity`** (S): parallel to
+            `make compare-parsers`; discover `testdata/parser-eval/*-ambiguity/*.json`,
+            run FI + ET, write a report; extend `scripts/freeze-baseline.sh` usage
+            so a `YYYY-MM-DD<rev>-fi-ambiguity` report is append-only (see
+            `docs/baselines/README.md`).
+      - [ ] **Close the FI candidate-inclusion gap** (M): merge FST-known
+            readings into `store.BatchLookupAllForms` (or a candidate-set path the
+            product's Multi-Lemma expansion consumes) so `kuusi`/`tuli`/`voi`
+            second sense becomes offerable. Gated behind the eval slice: re-run
+            `make compare-ambiguity` and keep only justified gains. Do NOT extend
+            the frozen suffix tables (DECISIONS.md Decision 5); this is FST-merge
+            + candidate-API work.
+      - [ ] **Expand + freeze** (M): raise per-class case counts to N ≥ 4
+            (≥ 2/sense) so control classes become threshold-eligible; expand ET to
+            ~20-30 cases; freeze the first formal ambiguity baseline and record it
+            in `PARSER_EVOLUTION.md`.
 - [ ] **Disambiguation model**: select UD treebanks (FI, ET); train initial POS tagging model; establish evaluation metrics and baseline; version model artifacts.
 - [ ] **Custom dictionary knowledge graph spike**: separate custom lexicon for FI/ET that accumulates data from multiple upstream dictionaries plus manual edits; provenance tables; compiled read model for hot-path lookups; live-merge admin view; manual injection flows for curated edits, CSV/JSONL imports, precedence rules. Michael owns the full Ekilex `word/details` enrichment scrape (~87+ GB raw JSON, 174k headwords) — resumable batch job with checkpointing by `word_id`, conservative rate limiting, retry/backoff, raw responses in ignored `localdata/`, compact reduced JSONL artifact for review.
 
@@ -398,6 +435,13 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
         calibrated from eval slices. When confidence is low or unmeasured, show
         "Multiple possible meanings" with per-candidate known/study actions
         instead of asking "Do you know this meaning?" for a guessed sense.
+        The single-Meaning-Check vs Multiple-possible-meanings branch must use
+        the per-class threshold rule specced in `docs/PARSER_EVAL_METHODOLOGY.md`
+        §Ambiguity and meaning-check calibration (selection ≥ 90% AND candidate
+        inclusion = 100% AND N ≥ 4 per class → single check; else multi). On the
+        v1 slice **no class qualifies yet**, so the honest alpha default is
+        Multiple possible meanings for every ambiguous surface until the eval
+        slice is expanded and the FI candidate-inclusion gap is closed.
   - [ ] Wire "None of these looks right" to parser feedback, not study state.
         This needs the planned flag-only feedback path: nullable proposed
         lemma/POS plus `flag_only=true`. Current code is exact-correction-only:

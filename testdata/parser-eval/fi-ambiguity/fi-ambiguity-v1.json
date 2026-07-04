@@ -1,0 +1,1166 @@
+{
+  "name": "fi-ambiguity",
+  "version": "v1",
+  "language": "FI",
+  "slice": "ambiguity",
+  "cases": [
+    {
+      "id": "fi-amb-kuusi-1",
+      "text": "Pihalla kasvaa suuri kuusi.",
+      "ambiguity_class": "kuusi",
+      "tokens": [
+        {
+          "surface": "kuusi",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "kuusi",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "kuusi",
+              "pos": "NOUN",
+              "gloss_hint": "spruce"
+            },
+            {
+              "lemma": "kuusi",
+              "pos": "NUM",
+              "gloss_hint": "six"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-kuusi-2",
+      "text": "Metsässä seisoi tumma kuusi.",
+      "ambiguity_class": "kuusi",
+      "tokens": [
+        {
+          "surface": "kuusi",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "kuusi",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "kuusi",
+              "pos": "NOUN",
+              "gloss_hint": "spruce"
+            },
+            {
+              "lemma": "kuusi",
+              "pos": "NUM",
+              "gloss_hint": "six"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-kuusi-3",
+      "text": "Perheessä on kuusi lasta.",
+      "ambiguity_class": "kuusi",
+      "tokens": [
+        {
+          "surface": "kuusi",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "kuusi",
+          "pos": "NUM",
+          "expected_candidates": [
+            {
+              "lemma": "kuusi",
+              "pos": "NOUN",
+              "gloss_hint": "spruce"
+            },
+            {
+              "lemma": "kuusi",
+              "pos": "NUM",
+              "gloss_hint": "six"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-kuusi-4",
+      "text": "Kello on nyt kuusi.",
+      "ambiguity_class": "kuusi",
+      "tokens": [
+        {
+          "surface": "kuusi",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "kuusi",
+          "pos": "NUM",
+          "expected_candidates": [
+            {
+              "lemma": "kuusi",
+              "pos": "NOUN",
+              "gloss_hint": "spruce"
+            },
+            {
+              "lemma": "kuusi",
+              "pos": "NUM",
+              "gloss_hint": "six"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-tuli-1",
+      "text": "Takassa paloi lämmin tuli.",
+      "ambiguity_class": "tuli",
+      "tokens": [
+        {
+          "surface": "tuli",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "tuli",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "tuli",
+              "pos": "NOUN",
+              "gloss_hint": "fire"
+            },
+            {
+              "lemma": "tulla",
+              "pos": "VERB",
+              "gloss_hint": "came"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-tuli-2",
+      "text": "Metsäpalon tuli levisi nopeasti.",
+      "ambiguity_class": "tuli",
+      "tokens": [
+        {
+          "surface": "tuli",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "tuli",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "tuli",
+              "pos": "NOUN",
+              "gloss_hint": "fire"
+            },
+            {
+              "lemma": "tulla",
+              "pos": "VERB",
+              "gloss_hint": "came"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-tuli-3",
+      "text": "Hän tuli kotiin myöhään.",
+      "ambiguity_class": "tuli",
+      "tokens": [
+        {
+          "surface": "tuli",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "tulla",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "tuli",
+              "pos": "NOUN",
+              "gloss_hint": "fire"
+            },
+            {
+              "lemma": "tulla",
+              "pos": "VERB",
+              "gloss_hint": "came"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-tuli-4",
+      "text": "Juna tuli asemalle ajoissa.",
+      "ambiguity_class": "tuli",
+      "tokens": [
+        {
+          "surface": "tuli",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "tulla",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "tuli",
+              "pos": "NOUN",
+              "gloss_hint": "fire"
+            },
+            {
+              "lemma": "tulla",
+              "pos": "VERB",
+              "gloss_hint": "came"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-voi-1",
+      "text": "Leivän päällä on voi.",
+      "ambiguity_class": "voi",
+      "tokens": [
+        {
+          "surface": "voi",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "voi",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "voi",
+              "pos": "NOUN",
+              "gloss_hint": "butter"
+            },
+            {
+              "lemma": "voida",
+              "pos": "VERB",
+              "gloss_hint": "can/may"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-voi-2",
+      "text": "Ostin kaupasta voita ja maitoa.",
+      "ambiguity_class": "voi",
+      "tokens": [
+        {
+          "surface": "voita",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "voi",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "voi",
+              "pos": "NOUN",
+              "gloss_hint": "butter"
+            },
+            {
+              "lemma": "voida",
+              "pos": "VERB",
+              "gloss_hint": "can/may"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-voi-3",
+      "text": "Hän voi tulla huomenna.",
+      "ambiguity_class": "voi",
+      "tokens": [
+        {
+          "surface": "voi",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "voida",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "voi",
+              "pos": "NOUN",
+              "gloss_hint": "butter"
+            },
+            {
+              "lemma": "voida",
+              "pos": "VERB",
+              "gloss_hint": "can/may"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-voi-4",
+      "text": "Tämä voi olla totta.",
+      "ambiguity_class": "voi",
+      "tokens": [
+        {
+          "surface": "voi",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "voida",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "voi",
+              "pos": "NOUN",
+              "gloss_hint": "butter"
+            },
+            {
+              "lemma": "voida",
+              "pos": "VERB",
+              "gloss_hint": "can/may"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-kurkku-1",
+      "text": "Salaatissa on tuore kurkku.",
+      "ambiguity_class": "kurkku",
+      "tokens": [
+        {
+          "surface": "kurkku",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "kurkku",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "kurkku",
+              "pos": "NOUN",
+              "gloss_hint": "cucumber / throat"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-kurkku-2",
+      "text": "Minulla on kipeä kurkku.",
+      "ambiguity_class": "kurkku",
+      "tokens": [
+        {
+          "surface": "kurkku",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "kurkku",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "kurkku",
+              "pos": "NOUN",
+              "gloss_hint": "cucumber / throat"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-selka-1",
+      "text": "Kannoin laukkua selässä.",
+      "ambiguity_class": "selka",
+      "tokens": [
+        {
+          "surface": "selässä",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "selkä",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "selkä",
+              "pos": "NOUN",
+              "gloss_hint": "back / open water"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-selka-2",
+      "text": "Vene keinui aavalla selällä.",
+      "ambiguity_class": "selka",
+      "tokens": [
+        {
+          "surface": "selällä",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "selkä",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "selkä",
+              "pos": "NOUN",
+              "gloss_hint": "back / open water"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-vuori-1",
+      "text": "Korkea vuori näkyi kaukaa.",
+      "ambiguity_class": "vuori",
+      "tokens": [
+        {
+          "surface": "vuori",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "vuori",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "vuori",
+              "pos": "NOUN",
+              "gloss_hint": "mountain / lining"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-vuori-2",
+      "text": "Takin vuori oli silkkiä.",
+      "ambiguity_class": "vuori",
+      "tokens": [
+        {
+          "surface": "vuori",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "vuori",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "vuori",
+              "pos": "NOUN",
+              "gloss_hint": "mountain / lining"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-sain-1",
+      "text": "Minä sain lahjan eilen.",
+      "ambiguity_class": "sain",
+      "tokens": [
+        {
+          "surface": "sain",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "saada",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "saada",
+              "pos": "VERB",
+              "gloss_hint": "received"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-sain-2",
+      "text": "Sain kirjeen postissa.",
+      "ambiguity_class": "sain",
+      "tokens": [
+        {
+          "surface": "sain",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "saada",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "saada",
+              "pos": "VERB",
+              "gloss_hint": "received"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-laulun-1",
+      "text": "Kuulin kauniin laulun radiosta.",
+      "ambiguity_class": "laulun",
+      "tokens": [
+        {
+          "surface": "laulun",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "laulu",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "laulu",
+              "pos": "NOUN",
+              "gloss_hint": "song (gen)"
+            },
+            {
+              "lemma": "laulaa",
+              "pos": "VERB",
+              "gloss_hint": "(3sg past overlap)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-laulun-2",
+      "text": "Opettelin laulun sanat ulkoa.",
+      "ambiguity_class": "laulun",
+      "tokens": [
+        {
+          "surface": "laulun",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "laulu",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "laulu",
+              "pos": "NOUN",
+              "gloss_hint": "song (gen)"
+            },
+            {
+              "lemma": "laulaa",
+              "pos": "VERB",
+              "gloss_hint": "(3sg past overlap)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-tuulet-1",
+      "text": "Syksyllä puhaltavat kylmät tuulet.",
+      "ambiguity_class": "tuulet",
+      "tokens": [
+        {
+          "surface": "tuulet",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "tuuli",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "tuuli",
+              "pos": "NOUN",
+              "gloss_hint": "winds"
+            },
+            {
+              "lemma": "tuulla",
+              "pos": "VERB",
+              "gloss_hint": "(2sg overlap)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-tuulet-2",
+      "text": "Kovat tuulet kaatoivat puita.",
+      "ambiguity_class": "tuulet",
+      "tokens": [
+        {
+          "surface": "tuulet",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "tuuli",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "tuuli",
+              "pos": "NOUN",
+              "gloss_hint": "winds"
+            },
+            {
+              "lemma": "tuulla",
+              "pos": "VERB",
+              "gloss_hint": "(2sg overlap)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-alusta-1",
+      "text": "Aloitin työn alusta uudelleen.",
+      "ambiguity_class": "alusta",
+      "tokens": [
+        {
+          "surface": "alusta",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "alku",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "alku",
+              "pos": "NOUN",
+              "gloss_hint": "beginning (ela)"
+            },
+            {
+              "lemma": "alusta",
+              "pos": "NOUN",
+              "gloss_hint": "chassis"
+            },
+            {
+              "lemma": "alus",
+              "pos": "NOUN",
+              "gloss_hint": "vessel (par)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-alusta-2",
+      "text": "Auton alusta oli ruostunut.",
+      "ambiguity_class": "alusta",
+      "tokens": [
+        {
+          "surface": "alusta",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "alusta",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "alku",
+              "pos": "NOUN",
+              "gloss_hint": "beginning (ela)"
+            },
+            {
+              "lemma": "alusta",
+              "pos": "NOUN",
+              "gloss_hint": "chassis"
+            },
+            {
+              "lemma": "alus",
+              "pos": "NOUN",
+              "gloss_hint": "vessel (par)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-palaa-1",
+      "text": "Takassa palaa tuli.",
+      "ambiguity_class": "palaa",
+      "tokens": [
+        {
+          "surface": "palaa",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "palaa",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "palaa",
+              "pos": "VERB",
+              "gloss_hint": "burns"
+            },
+            {
+              "lemma": "palata",
+              "pos": "VERB",
+              "gloss_hint": "returns"
+            },
+            {
+              "lemma": "pala",
+              "pos": "NOUN",
+              "gloss_hint": "piece (par)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-palaa-2",
+      "text": "Hän palaa kotiin illalla.",
+      "ambiguity_class": "palaa",
+      "tokens": [
+        {
+          "surface": "palaa",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "palata",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "palaa",
+              "pos": "VERB",
+              "gloss_hint": "burns"
+            },
+            {
+              "lemma": "palata",
+              "pos": "VERB",
+              "gloss_hint": "returns"
+            },
+            {
+              "lemma": "pala",
+              "pos": "NOUN",
+              "gloss_hint": "piece (par)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-sanoi-1",
+      "text": "Hän sanoi totuuden ääneen.",
+      "ambiguity_class": "sanoi",
+      "tokens": [
+        {
+          "surface": "sanoi",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "sanoa",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "sanoa",
+              "pos": "VERB",
+              "gloss_hint": "said"
+            },
+            {
+              "lemma": "sana",
+              "pos": "NOUN",
+              "gloss_hint": "word"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-sanoi-2",
+      "text": "Hän sanoi sen selkein sanoin.",
+      "ambiguity_class": "sanoi",
+      "tokens": [
+        {
+          "surface": "sanoin",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "sana",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "sanoa",
+              "pos": "VERB",
+              "gloss_hint": "said"
+            },
+            {
+              "lemma": "sana",
+              "pos": "NOUN",
+              "gloss_hint": "word"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-tie-1",
+      "text": "Pitkä tie vei metsään.",
+      "ambiguity_class": "tie",
+      "tokens": [
+        {
+          "surface": "tie",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "tie",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "tie",
+              "pos": "NOUN",
+              "gloss_hint": "road"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-tie-2",
+      "text": "Kävelin tien reunaa.",
+      "ambiguity_class": "tie",
+      "tokens": [
+        {
+          "surface": "tien",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "tie",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "tie",
+              "pos": "NOUN",
+              "gloss_hint": "road"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-maa-1",
+      "text": "Suomi on kaunis maa.",
+      "ambiguity_class": "maa",
+      "tokens": [
+        {
+          "surface": "maa",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "maa",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "maa",
+              "pos": "NOUN",
+              "gloss_hint": "country / ground"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-maa-2",
+      "text": "Lapset leikkivät maassa.",
+      "ambiguity_class": "maa",
+      "tokens": [
+        {
+          "surface": "maassa",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "maa",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "maa",
+              "pos": "NOUN",
+              "gloss_hint": "country / ground"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-ilta-1",
+      "text": "Vietimme illan yhdessä.",
+      "ambiguity_class": "ilta",
+      "tokens": [
+        {
+          "surface": "illan",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "ilta",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "ilta",
+              "pos": "NOUN",
+              "gloss_hint": "evening"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-ilta-2",
+      "text": "Odotan iltaa innolla.",
+      "ambiguity_class": "ilta",
+      "tokens": [
+        {
+          "surface": "iltaa",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "ilta",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "ilta",
+              "pos": "NOUN",
+              "gloss_hint": "evening"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-kyla-1",
+      "text": "Asun pienessä kylässä.",
+      "ambiguity_class": "kyla",
+      "tokens": [
+        {
+          "surface": "kylässä",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "kylä",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "kylä",
+              "pos": "NOUN",
+              "gloss_hint": "village"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-kyla-2",
+      "text": "Menemme kylään naapuriin.",
+      "ambiguity_class": "kyla",
+      "tokens": [
+        {
+          "surface": "kylään",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "kylä",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "kylä",
+              "pos": "NOUN",
+              "gloss_hint": "village"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-ranta-1",
+      "text": "Istuimme hiekkarannalla.",
+      "ambiguity_class": "ranta",
+      "tokens": [
+        {
+          "surface": "hiekkarannalla",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "hiekkaranta",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "ranta",
+              "pos": "NOUN",
+              "gloss_hint": "shore"
+            },
+            {
+              "lemma": "hiekkaranta",
+              "pos": "NOUN",
+              "gloss_hint": "beach"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-ranta-2",
+      "text": "Kävelimme rannalle katsomaan merta.",
+      "ambiguity_class": "ranta",
+      "tokens": [
+        {
+          "surface": "rannalle",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "ranta",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "ranta",
+              "pos": "NOUN",
+              "gloss_hint": "shore"
+            },
+            {
+              "lemma": "hiekkaranta",
+              "pos": "NOUN",
+              "gloss_hint": "beach"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-puku-1",
+      "text": "Hänellä oli tumma puku.",
+      "ambiguity_class": "puku",
+      "tokens": [
+        {
+          "surface": "puku",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "puku",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "puku",
+              "pos": "NOUN",
+              "gloss_hint": "suit"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-puku-2",
+      "text": "Ostin uutta pukua juhliin.",
+      "ambiguity_class": "puku",
+      "tokens": [
+        {
+          "surface": "pukua",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "puku",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "puku",
+              "pos": "NOUN",
+              "gloss_hint": "suit"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-kayda-1",
+      "text": "Opit kieltä käymällä maassa.",
+      "ambiguity_class": "kayda",
+      "tokens": [
+        {
+          "surface": "käymällä",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "käydä",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "käydä",
+              "pos": "VERB",
+              "gloss_hint": "to visit"
+            },
+            {
+              "lemma": "käynti",
+              "pos": "NOUN",
+              "gloss_hint": "visit (noun)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-kayda-2",
+      "text": "Lääkärikäynti kesti tunnin.",
+      "ambiguity_class": "kayda",
+      "tokens": [
+        {
+          "surface": "lääkärikäynti",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "lääkärikäynti",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "käydä",
+              "pos": "VERB",
+              "gloss_hint": "to visit"
+            },
+            {
+              "lemma": "käynti",
+              "pos": "NOUN",
+              "gloss_hint": "visit (noun)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-alkoi-1",
+      "text": "Elokuva alkoi kello seitsemän.",
+      "ambiguity_class": "alkoi",
+      "tokens": [
+        {
+          "surface": "alkoi",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "alkaa",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "alkaa",
+              "pos": "VERB",
+              "gloss_hint": "began"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-alkoi-2",
+      "text": "Sade alkoi yllättäen.",
+      "ambiguity_class": "alkoi",
+      "tokens": [
+        {
+          "surface": "alkoi",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "alkaa",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "alkaa",
+              "pos": "VERB",
+              "gloss_hint": "began"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-sade-1",
+      "text": "Ulkona satoi kova sade.",
+      "ambiguity_class": "sade",
+      "tokens": [
+        {
+          "surface": "sade",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "sade",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "sade",
+              "pos": "NOUN",
+              "gloss_hint": "rain"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fi-amb-sade-2",
+      "text": "Kävelimme sateessa kotiin.",
+      "ambiguity_class": "sade",
+      "tokens": [
+        {
+          "surface": "sateessa",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "sade",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "sade",
+              "pos": "NOUN",
+              "gloss_hint": "rain"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

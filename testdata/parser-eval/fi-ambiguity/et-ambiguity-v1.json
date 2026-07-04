@@ -1,0 +1,346 @@
+{
+  "name": "et-ambiguity",
+  "version": "v1",
+  "language": "ET",
+  "slice": "ambiguity",
+  "cases": [
+    {
+      "id": "et-amb-tee-1",
+      "text": "Jõin kuuma tee.",
+      "ambiguity_class": "tee",
+      "tokens": [
+        {
+          "surface": "tee",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "tee",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "tee",
+              "pos": "NOUN",
+              "gloss_hint": "tea / road"
+            },
+            {
+              "lemma": "tegema",
+              "pos": "VERB",
+              "gloss_hint": "to do"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "et-amb-tee-2",
+      "text": "Pikk tee viis metsa.",
+      "ambiguity_class": "tee",
+      "tokens": [
+        {
+          "surface": "tee",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "tee",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "tee",
+              "pos": "NOUN",
+              "gloss_hint": "tea / road"
+            },
+            {
+              "lemma": "tegema",
+              "pos": "VERB",
+              "gloss_hint": "to do"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "et-amb-tee-3",
+      "text": "Palun tee see töö ära.",
+      "ambiguity_class": "tee",
+      "tokens": [
+        {
+          "surface": "tee",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "tegema",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "tee",
+              "pos": "NOUN",
+              "gloss_hint": "tea / road"
+            },
+            {
+              "lemma": "tegema",
+              "pos": "VERB",
+              "gloss_hint": "to do"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "et-amb-viis-1",
+      "text": "Klassis on viis last.",
+      "ambiguity_class": "viis",
+      "tokens": [
+        {
+          "surface": "viis",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "viis",
+          "pos": "NUM",
+          "expected_candidates": [
+            {
+              "lemma": "viis",
+              "pos": "NUM",
+              "gloss_hint": "five"
+            },
+            {
+              "lemma": "viis",
+              "pos": "NOUN",
+              "gloss_hint": "melody"
+            },
+            {
+              "lemma": "viima",
+              "pos": "VERB",
+              "gloss_hint": "(overlap)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "et-amb-viis-2",
+      "text": "Laul oli ilus viis.",
+      "ambiguity_class": "viis",
+      "tokens": [
+        {
+          "surface": "viis",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "viis",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "viis",
+              "pos": "NUM",
+              "gloss_hint": "five"
+            },
+            {
+              "lemma": "viis",
+              "pos": "NOUN",
+              "gloss_hint": "melody"
+            },
+            {
+              "lemma": "viima",
+              "pos": "VERB",
+              "gloss_hint": "(overlap)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "et-amb-sai-1",
+      "text": "Ostsin poest värske sai.",
+      "ambiguity_class": "sai",
+      "tokens": [
+        {
+          "surface": "sai",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "sai",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "sai",
+              "pos": "NOUN",
+              "gloss_hint": "white bread"
+            },
+            {
+              "lemma": "saama",
+              "pos": "VERB",
+              "gloss_hint": "got"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "et-amb-sai-2",
+      "text": "Ta sai kirja eile.",
+      "ambiguity_class": "sai",
+      "tokens": [
+        {
+          "surface": "sai",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "saama",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "sai",
+              "pos": "NOUN",
+              "gloss_hint": "white bread"
+            },
+            {
+              "lemma": "saama",
+              "pos": "VERB",
+              "gloss_hint": "got"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "et-amb-pea-1",
+      "text": "Mul valutab pea.",
+      "ambiguity_class": "pea",
+      "tokens": [
+        {
+          "surface": "pea",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "pea",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "pea",
+              "pos": "NOUN",
+              "gloss_hint": "head"
+            },
+            {
+              "lemma": "pidama",
+              "pos": "VERB",
+              "gloss_hint": "must/hold"
+            },
+            {
+              "lemma": "pea",
+              "pos": "ADV",
+              "gloss_hint": "almost"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "et-amb-pea-2",
+      "text": "Pea kinni see lubadus.",
+      "ambiguity_class": "pea",
+      "tokens": [
+        {
+          "surface": "pea",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "pidama",
+          "pos": "VERB",
+          "expected_candidates": [
+            {
+              "lemma": "pea",
+              "pos": "NOUN",
+              "gloss_hint": "head"
+            },
+            {
+              "lemma": "pidama",
+              "pos": "VERB",
+              "gloss_hint": "must/hold"
+            },
+            {
+              "lemma": "pea",
+              "pos": "ADV",
+              "gloss_hint": "almost"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "et-amb-kuu-1",
+      "text": "Taevas paistis kuu.",
+      "ambiguity_class": "kuu",
+      "tokens": [
+        {
+          "surface": "kuu",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "kuu",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "kuu",
+              "pos": "NOUN",
+              "gloss_hint": "moon / month"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "et-amb-kuu-2",
+      "text": "Möödus terve kuu.",
+      "ambiguity_class": "kuu",
+      "tokens": [
+        {
+          "surface": "kuu",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "kuu",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "kuu",
+              "pos": "NOUN",
+              "gloss_hint": "moon / month"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "et-amb-palk-1",
+      "text": "Sain sel kuul hea palk.",
+      "ambiguity_class": "palk",
+      "tokens": [
+        {
+          "surface": "palk",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "palk",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "palk",
+              "pos": "NOUN",
+              "gloss_hint": "salary / log"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "et-amb-palk-2",
+      "text": "Seinas oli jäme palk.",
+      "ambiguity_class": "palk",
+      "tokens": [
+        {
+          "surface": "palk",
+          "occurrence": 1,
+          "target": true,
+          "lemma": "palk",
+          "pos": "NOUN",
+          "expected_candidates": [
+            {
+              "lemma": "palk",
+              "pos": "NOUN",
+              "gloss_hint": "salary / log"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
