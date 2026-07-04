@@ -102,6 +102,19 @@ test('anonymous nav exposes Sign in but not user/admin surfaces', async ({ page 
   await expect(page.locator('.nav-admin').first()).toBeHidden();
 });
 
+test('nav logo renders the FinnEst brand name with correct capitalization', async ({ page }) => {
+  await mockMe(page, 'anon');
+  await page.goto('/');
+
+  // The logo text comes from a ::before pseudo-element in styles.css, so
+  // assert on the rendered accessible text rather than the DOM text content.
+  const logoText = await page.locator('#nav-logo').evaluate((el) => {
+    const before = getComputedStyle(el, '::before').content;
+    return before.replace(/^"|"$/g, '');
+  });
+  expect(logoText).toBe('FinnEst');
+});
+
 test('about page explains the product', async ({ page }) => {
   await mockMe(page, 'anon');
   await page.goto('/#/about');
@@ -469,6 +482,60 @@ test('user can save inspected results as a deck and review the first due card', 
 
   await page.getByRole('button', { name: 'Good' }).click();
   await expect(page.locator('#review-empty')).not.toHaveClass(/hidden/);
+});
+
+// Starter decks (e.g. Top-1000 frequency lists) attach no source sentence to
+// their cards. The API reports mode "word" with empty front text for these;
+// the review page must not show the "Sentence card" chip or an empty
+// front-text line above a surface heading that just repeats it.
+test('review card with no source sentence renders as a plain word card', async ({ page }) => {
+  const wordOnlyCard = {
+    card_id: '99',
+    mode: 'word',
+    deck_counts: [['Top 1000 Finnish words', '1']],
+    front: { type: 'word', text: '', highlight: 'ase' },
+    back: {
+      surface: 'ase',
+      lemma: 'ase',
+      meaning: 'weapon (also figuratively)',
+      grammar: '',
+      examples: [],
+    },
+  };
+
+  await page.route('**/api/me', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        authenticated: true,
+        user: { id: 1, email: 'alice@example.com', is_admin: false },
+        dashboard: { known_count: 0, due_count: 0, new_capacity_today: 1, decks: [] },
+      }),
+    });
+  });
+  await page.route('**/api/review/next**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(wordOnlyCard),
+    });
+  });
+
+  await page.goto('/#/review');
+  await expect(page.locator('#review-page')).toHaveClass(/active/);
+  await expect(page.locator('#review-card')).not.toHaveClass(/hidden/);
+
+  // No "Sentence card" chip and no front-text line for a card with no example.
+  await expect(page.locator('#review-card-front')).toHaveClass(/hidden/);
+  await expect(page.locator('#review-card-mode')).toHaveText('');
+  await expect(page.locator('#review-card-front-text')).toHaveText('');
+
+  // The card still reads cleanly: surface, lemma/gloss, deck tag.
+  await expect(page.locator('#review-card-surface')).toContainText('ase');
+  await expect(page.locator('#review-card-meaning')).toContainText('weapon');
+  await expect(page.locator('#review-card-decks')).toContainText('Top 1000 Finnish words');
+  await expect(page.locator('#review-card-example')).toHaveClass(/hidden/);
 });
 
 test('user can import and remove known words', async ({ page }) => {
