@@ -224,7 +224,7 @@ Required before go-live:
 - Keep request-size enforcement for pasted text and verify it is applied before
   JSON decoding and expensive parser work.
 - [Shipped 2026-07-04] A lower configurable text-size cap for anonymous parsing
-  than for signed-in parsing: `FINNESTDB_ANON_MAX_CHARS` (default 20,000)
+  than for signed-in parsing: `FINNESTDB_ANON_MAX_CHARS` (default 300,000)
   enforced server-side for unauthenticated `/api/parse` before parser work,
   returning a 4xx that names the limit. The signed-in cap stays 1,500,000; the
   unsigned demo no longer sees that ceiling. Remaining: tune the default via the
@@ -283,7 +283,7 @@ Shipped 2026-07-04:
   Full numbers in the load-test report linked above.
 - [x] **Anonymous text-size cap re-checked, not changed**: the load test found
   no evidence to lower `FINNESTDB_ANON_MAX_CHARS` below the shipped default
-  of 20,000 — a near-cap anonymous parse at the `basic` parser mode (the
+  of 300,000 — a near-cap anonymous parse at the `basic` parser mode (the
   anonymous demo's actual default) is cheap even under concurrent bursts. See
   the report for the `custom`-mode caveat.
 
@@ -316,7 +316,7 @@ doctor clearly, and the documented symlink/bootstrap path restores the expected
 FI dict + FST / ET dict + Ekilex + FST quality mode. When `APP_ENV=production`,
 the server checks `finnestdb.db` before opening it for migrations or starting
 the HTTP listener. Missing, empty, stub, or undersized dictionary DBs fail
-startup. The default production minimums are 20,000,000 FI forms and 6,000,000
+startup. The default production minimums are 300,000,000 FI forms and 6,000,000
 ET forms; override only with `FINNESTDB_PRODUCTION_MIN_FORMS_FI` /
 `FINNESTDB_PRODUCTION_MIN_FORMS_ET` when the production artifact policy changes.
 `FINNESTDB_ALLOW_DEGRADED_DB=1` disables the guard and should be treated as a

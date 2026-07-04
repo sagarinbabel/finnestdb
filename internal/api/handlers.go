@@ -35,7 +35,7 @@ const (
 // well below the signed-in ceiling (parsecore.MaxTextChars = 1,500,000) so the
 // demo stays cheap and abuse-resistant; longer texts require sign-in. Tune via
 // the 1,000-concurrent load test (see docs/GO_LIVE_CHECKLIST.md).
-const defaultAnonMaxChars = 20_000
+const defaultAnonMaxChars = 300_000
 
 type API struct {
 	store           *store.DB
