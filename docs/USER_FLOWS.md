@@ -372,6 +372,15 @@ Same table; the deltas are below the table:
   `user_known_lemmas` for the resolved `(lemma, pos)`, then re-renders
   coverage in place. Target behavior should also preserve the exact checked
   surface forms so known-word state is surface-first rather than lemma-only.
+- **Shipped 2026-07-04 (Multiple possible meanings only).** Any parsed surface
+  with more than one supported meaning shows a non-blocking **Multiple possible
+  meanings** chip on its results row; expanding shows the first-occurrence
+  sentence, the candidate meanings, and per-candidate **I know this meaning** /
+  **Study this meaning** / **Not sure** plus a **None of these looks right**
+  flag-only escape. The single confident **Meaning check** variant below is
+  threshold-gated future work — no ambiguity class qualifies on the v1 eval slice
+  (`docs/PARSER_EVAL_METHODOLOGY.md` §4), so it is deliberately not built and no
+  confidence is presented. Signed-in only; the anonymous demo stays read-only.
 - If a parsed word matches an ambiguous imported known surface, the results row
   shows a non-blocking **Meaning check** chip instead of treating the word as
   automatically known.

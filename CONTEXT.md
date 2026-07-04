@@ -150,7 +150,7 @@ A lightweight contextual prompt for an imported **Known Surface Form** that has 
 _Avoid_: abstract disambiguation quiz
 
 **Multiple Possible Meanings**:
-The measured-ambiguity version of a **Meaning Check**. Use it when the parser can list candidate meanings but does not have a measured basis for safely presenting one contextual meaning as intended. It should show candidate meanings with per-candidate known/study actions and a separate "None of these looks right" parser-feedback action.
+The measured-ambiguity version of a **Meaning Check**. Use it when the parser can list candidate meanings but does not have a measured basis for safely presenting one contextual meaning as intended. It shows candidate meanings with per-candidate known/study actions and a separate "None of these looks right" parser-feedback action. Shipped 2026-07-04 as the alpha default for every ambiguous surface (no ambiguity class qualifies for the single confident **Meaning Check** on the v1 eval slice, so that variant stays threshold-gated future work): `/api/parse` attaches `ambiguous_surfaces` (FST-merged candidates, quarantine-filtered) for signed-in learners; results rows carry the chip → expansion with per-candidate "I know this meaning" / "Study this meaning" / "Not sure" and the flag-only "None of these looks right" escape. "Study this meaning" only marks the pending deck-save payload; an explicitly chosen FST-only sense still creates its card on save via a narrow bypass of the dict-only deck expansion.
 _Avoid_: pretending the parser knows the intended meaning
 
 **Parser Confidence**:

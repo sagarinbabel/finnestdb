@@ -10,6 +10,44 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Multiple possible meanings flow shipped (Ambiguous meaning flow gate)
+
+Shipped the learner-facing **Multiple Possible Meanings** flow, closing the
+"Ambiguous meaning flow" public-alpha gate as the alpha default. Per
+[`PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) §4 no ambiguity class
+qualifies for the single confident Meaning Check on the v1 slice, so only the
+Multiple-possible-meanings branch is built — no confidence is presented.
+
+- **Metadata delivery:** `/api/parse` enriches signed-in responses with a
+  top-level `ambiguous_surfaces` list (surface, first-occurrence example,
+  candidate meanings). Chosen inline over a lazy per-row endpoint after measuring
+  a large parse: ~18–20% of unique surfaces are ambiguous and candidate metadata
+  adds ~200 bytes per ambiguous row (~18% payload growth, bounded by ambiguity
+  rate, not token count) — cheaper than a round-trip-per-expansion that would
+  re-resolve the same candidates. New `store.SurfaceCandidates` is the single
+  source of truth (FST-merged inclusion via `MergeFSTReadings`, quarantine-filtered
+  through the new `QuarantinedSenseFilter`, glossed). Anonymous parses are
+  unchanged and carry no ambiguity metadata (stateless demo scope).
+- **Results-row UI (signed-in):** an unobtrusive "Multiple possible meanings"
+  chip expands to the sentence context + candidate meanings with per-candidate
+  **I know this meaning** (records `(lemma,pos)` known, excludes from pending
+  deck), **Study this meaning** ("Creates a review card when you save."), and
+  **Not sure** (conservative = study). **None of these looks right** opens the
+  flag-only correction path with surface/context prefilled — parser feedback,
+  never a study/known action.
+- **Explicit FST-sense deck save:** an explicitly selected FST-only sense creates
+  its card on save via a narrow, validated bypass of PR #269's dict-only deck
+  expansion (`CreateDeckRequest.selected_senses` → `injectSelectedSenses`,
+  validated against the real candidate set).
+- **Known-word import summary:** `POST /api/known-words` returns
+  `needs_sense_confirmation` for the honest lazy-resolution summary line.
+- **Review card back:** the same flag-only "None of these looks right" escape,
+  plus the already-shipped homograph note.
+
+Docs: [`USER_FLOWS.md`](USER_FLOWS.md) §5, [`srs-deck-spec.md`](srs-deck-spec.md)
+ambiguous-imports, [`CONTEXT.md`](../CONTEXT.md) Multiple Possible Meanings,
+[`TODO.md`](../TODO.md) Ambiguous meaning flow gate.
+
 ## 2026-07-04 — FI candidate-inclusion gap closed (FST-merged ambiguity candidate set)
 
 Merged FST-known homograph readings into the ambiguity / meaning-check

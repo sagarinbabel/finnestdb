@@ -459,3 +459,70 @@ func suppressedOccurrencePredicate(occAlias, deckLang string) string {
 		       )
 	)`
 }
+
+// QuarantinedSenseFilter is a deterministic predicate loaded once from all
+// quarantined correction_issues in a language, then reused to drop suppressed
+// candidates from an in-memory list (e.g. the ambiguity candidate set). It is
+// the Go-side analogue of suppressedCardPredicate / suppressedOccurrencePredicate:
+// a quarantined issue with a concrete (lemma, pos) suppresses that sense; a
+// surface-only (flag-only) quarantined issue suppresses every sense of that
+// normalized surface.
+//
+// Reason it is a loaded snapshot rather than per-candidate SQL: the ambiguity
+// path resolves candidates for a batch of surfaces at once and only needs the
+// (usually tiny) set of quarantined issues for the language. One query keeps it
+// off the hot per-surface path.
+type QuarantinedSenseFilter struct {
+	// senseScoped is the set of quarantined (lemma, pos) senses.
+	senseScoped map[LemmaKey]struct{}
+	// surfaceScoped is the set of quarantined normalized surfaces (issues with
+	// empty lemma/pos), which suppress every sense of that surface.
+	surfaceScoped map[string]struct{}
+}
+
+// LoadQuarantinedSenseFilter reads the quarantined correction issues for a
+// language into a reusable filter. The returned filter is always non-nil (an
+// empty filter suppresses nothing), so callers never need a nil check.
+func (d *DB) LoadQuarantinedSenseFilter(lang string) (*QuarantinedSenseFilter, error) {
+	f := &QuarantinedSenseFilter{
+		senseScoped:   map[LemmaKey]struct{}{},
+		surfaceScoped: map[string]struct{}{},
+	}
+	rows, err := d.db.Query(
+		`SELECT norm_surface, lemma, pos FROM correction_issues
+		  WHERE status = ? AND lang = ?`,
+		IssueStatusQuarantined, lang,
+	)
+	if err != nil {
+		return f, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var normSurface, lemma, pos string
+		if err := rows.Scan(&normSurface, &lemma, &pos); err != nil {
+			return f, err
+		}
+		if lemma != "" && pos != "" {
+			f.senseScoped[LemmaKey{Lemma: lemma, POS: pos}] = struct{}{}
+		} else {
+			f.surfaceScoped[normSurface] = struct{}{}
+		}
+	}
+	return f, rows.Err()
+}
+
+// Suppresses reports whether the (surface, lemma, pos) candidate is quarantined
+// under either the sense scope or the surface scope. surface is normalized here
+// with the same rule the issue table stores.
+func (f *QuarantinedSenseFilter) Suppresses(surface, lemma, pos string) bool {
+	if f == nil {
+		return false
+	}
+	if _, ok := f.senseScoped[LemmaKey{Lemma: lemma, POS: pos}]; ok {
+		return true
+	}
+	if _, ok := f.surfaceScoped[normalizeIssueSurface(surface)]; ok {
+		return true
+	}
+	return false
+}

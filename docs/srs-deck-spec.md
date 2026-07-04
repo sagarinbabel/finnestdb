@@ -702,6 +702,15 @@ words will see 0% comprehension until those words are marked known.
 
 ### Ambiguous imported known words
 
+**Shipped 2026-07-04 (Multiple possible meanings branch).** `POST /api/known-words`
+returns `needs_sense_confirmation` — the count of imported surfaces with more
+than one supported meaning — so the import summary can honestly say *"N imported
+forms have more than one possible meaning. We'll confirm those when they appear
+in context."* No upfront disambiguation runs. When such a surface later appears
+in a signed-in parse, `/api/parse` attaches it to `ambiguous_surfaces` and the
+learner resolves it lazily via the Multiple-possible-meanings chip. The
+high-confidence single-check branch below is threshold-gated future work.
+
 Do not ask learners to resolve every ambiguous imported surface during import.
 That would turn onboarding into a disambiguation task.
 
@@ -769,6 +778,9 @@ Behavior:
   resolved `(lemma, pos)` evidence as derived/cached data.
 - Return a summary such as
   `{imported_surfaces, confirmed_single_sense, needs_sense_confirmation, skipped_unknown, skipped_duplicate}`.
+  Shipped 2026-07-04: the response carries `needs_sense_confirmation` (count of
+  imported surfaces with 2+ supported meanings, from the shared candidate API);
+  the remaining fields stay future work.
 - Do not create cards during import for ambiguous known surfaces. In parse
   results, `Study this meaning` only marks the pending deck-save payload. Create
   or keep a card when the learner saves/adds the deck, or immediately in an

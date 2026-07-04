@@ -3079,3 +3079,122 @@ func TestPickBestVFSTAnalysis_TiePreservesFSTOrder(t *testing.T) {
 		t.Errorf("ties should keep FST order: got %q, want %q", got.Lemma, "alku")
 	}
 }
+
+// --- SurfaceCandidates (Multiple possible meanings) tests ---
+
+// TestSurfaceCandidates_ReturnsAmbiguousSurfacesWithGloss proves the ambiguity
+// candidate path returns only surfaces with 2+ supported senses, attaches
+// glosses when the dictionary has them, and marks the source of each candidate.
+// Uses the ET dict-only homograph joon (NOUN "line" vs jooma/VERB) so no FST
+// table is needed.
+func TestSurfaceCandidates_ReturnsAmbiguousSurfacesWithGloss(t *testing.T) {
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"joon", "joon", "NOUN", "ET"},
+		{"joon", "jooma", "VERB", "ET"},
+		{"vesi", "vesi", "NOUN", "ET"}, // single sense — must be excluded
+	})
+	seedLemmas(t, db, [][4]string{
+		{"joon", "NOUN", "line", "ET"},
+		{"jooma", "VERB", "to drink", "ET"},
+		{"vesi", "NOUN", "water", "ET"},
+	})
+
+	got, err := db.SurfaceCandidates([]string{"joon", "vesi", "missing"}, "ET")
+	if err != nil {
+		t.Fatalf("SurfaceCandidates: %v", err)
+	}
+	if _, ok := got["vesi"]; ok {
+		t.Errorf("vesi has one sense — must not be reported ambiguous")
+	}
+	if _, ok := got["missing"]; ok {
+		t.Errorf("missing surface must be absent")
+	}
+	cands, ok := got["joon"]
+	if !ok {
+		t.Fatalf("joon must be reported ambiguous, got %+v", got)
+	}
+	if len(cands) != 2 {
+		t.Fatalf("joon: got %d candidates, want 2: %+v", len(cands), cands)
+	}
+	glossByLemma := map[string]string{}
+	for _, c := range cands {
+		glossByLemma[c.Lemma] = c.Gloss
+		if c.Source == "" {
+			t.Errorf("candidate %+v missing source marker", c)
+		}
+	}
+	if glossByLemma["joon"] != "line" || glossByLemma["jooma"] != "to drink" {
+		t.Errorf("glosses not attached: %+v", glossByLemma)
+	}
+}
+
+// TestSurfaceCandidates_ExcludesQuarantinedSense proves a quarantined sense is
+// dropped from the candidate set, and that dropping it below 2 candidates
+// removes the surface from the ambiguity report entirely (a suppressed reading
+// must never be offered as a meaning).
+func TestSurfaceCandidates_ExcludesQuarantinedSense(t *testing.T) {
+	db := newTestDB(t)
+	admin := createTestUser(t, db, "admin@example.com")
+	reporter := createTestUser(t, db, "reporter@example.com")
+	seedForms(t, db, [][4]string{
+		{"joon", "joon", "NOUN", "ET"},
+		{"joon", "jooma", "VERB", "ET"},
+	})
+	seedLemmas(t, db, [][4]string{
+		{"joon", "NOUN", "line", "ET"},
+		{"jooma", "VERB", "to drink", "ET"},
+	})
+
+	// Baseline: both senses offered.
+	got, err := db.SurfaceCandidates([]string{"joon"}, "ET")
+	if err != nil {
+		t.Fatalf("SurfaceCandidates: %v", err)
+	}
+	if len(got["joon"]) != 2 {
+		t.Fatalf("baseline joon candidates=%d want 2", len(got["joon"]))
+	}
+
+	// Quarantine the NOUN sense; only jooma/VERB survives → no longer ambiguous.
+	quarantineIssueForSurface(t, db, admin.ID, reporter.ID, "ET", "joon", "joon", "NOUN", AlphaClassParserIssue)
+
+	got, err = db.SurfaceCandidates([]string{"joon"}, "ET")
+	if err != nil {
+		t.Fatalf("SurfaceCandidates after quarantine: %v", err)
+	}
+	if _, ok := got["joon"]; ok {
+		t.Fatalf("joon dropped to one sense after quarantine — must not be reported ambiguous, got %+v", got["joon"])
+	}
+}
+
+// TestQuarantinedSenseFilter_SurfaceScopeSuppresses proves a surface-only
+// (flag-only) quarantined issue suppresses every sense of that surface.
+func TestQuarantinedSenseFilter_SurfaceScopeSuppresses(t *testing.T) {
+	db := newTestDB(t)
+	admin := createTestUser(t, db, "admin@example.com")
+	reporter := createTestUser(t, db, "reporter@example.com")
+
+	// Flag-only report (empty lemma/pos) → surface-scoped quarantine.
+	fb := submitFeedback(t, db, reporter.ID, "FI", "kuusi", "", "")
+	issueID := issueForFeedback(t, db, fb)
+	if err := db.TriageCorrectionIssue(issueID, AlphaClassParserIssue, ""); err != nil {
+		t.Fatalf("triage: %v", err)
+	}
+	if err := db.QuarantineCorrectionIssue(issueID, admin.ID, "surface bad"); err != nil {
+		t.Fatalf("quarantine: %v", err)
+	}
+
+	filter, err := db.LoadQuarantinedSenseFilter("FI")
+	if err != nil {
+		t.Fatalf("LoadQuarantinedSenseFilter: %v", err)
+	}
+	if !filter.Suppresses("kuusi", "kuusi", "NUM") {
+		t.Errorf("surface-scoped quarantine must suppress kuusi/NUM")
+	}
+	if !filter.Suppresses("Kuusi", "kuusi", "NOUN") {
+		t.Errorf("surface-scoped quarantine must suppress every sense of kuusi regardless of case")
+	}
+	if filter.Suppresses("koira", "koira", "NOUN") {
+		t.Errorf("unrelated surface must not be suppressed")
+	}
+}

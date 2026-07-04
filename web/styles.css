@@ -1371,6 +1371,120 @@ body {
     display: none;
 }
 
+/* Multiple possible meanings (ambiguity flow) --------------------------- */
+.ambiguity-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    margin-top: 0.25rem;
+    padding: 0.1rem 0.45rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 0.72rem;
+    color: var(--warning);
+    cursor: pointer;
+    user-select: none;
+}
+.ambiguity-chip.is-open {
+    color: var(--text-secondary);
+}
+
+.ambiguity-row > td {
+    padding: 0;
+    background: var(--bg-secondary);
+}
+.ambiguity-panel {
+    padding: 0.75rem 1rem;
+    border-left: 2px solid var(--warning);
+}
+.ambiguity-panel-title {
+    margin: 0 0 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.ambiguity-example {
+    margin: 0 0 0.6rem;
+    font-size: 0.82rem;
+    font-style: italic;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+.ambiguity-candidates {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.ambiguity-candidate {
+    padding: 0.5rem 0.6rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+.ambiguity-candidate.is-known {
+    opacity: 0.7;
+}
+.ambiguity-candidate-head {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+.ambiguity-candidate-lemma {
+    font-weight: 600;
+}
+.ambiguity-candidate-gloss {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+.ambiguity-candidate-actions {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: 0.45rem;
+}
+.ambiguity-candidate-actions button {
+    padding: 0.2rem 0.55rem;
+    font-family: inherit;
+    font-size: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+.ambiguity-candidate-actions button:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+.ambiguity-candidate-actions button.is-active {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.ambiguity-panel-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-top: 0.6rem;
+}
+.ambiguity-study-hint {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+}
+.ambiguity-flag-btn {
+    padding: 0.2rem 0.55rem;
+    font-family: inherit;
+    font-size: 0.72rem;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
 @media (max-width: 600px) {
     .results-meta { gap: 0.4rem; }
     .results-pill { font-size: 0.75rem; }

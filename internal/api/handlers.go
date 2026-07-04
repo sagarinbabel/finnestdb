@@ -169,6 +169,23 @@ type CreateDeckRequest struct {
 	Lang     string `json:"lang"`
 	Text     string `json:"text"`
 	IsPublic bool   `json:"is_public,omitempty"`
+	// SelectedSenses carries meanings the learner explicitly chose to study from
+	// the "Multiple possible meanings" flow. Its only job is the deliberate,
+	// narrow bypass of PR #269's dict-only deck expansion: an FST-only homograph
+	// sense (e.g. kuusi/NOUN spruce) is normally filtered out of automatic deck
+	// expansion, but an explicit learner "Study this meaning" choice overrides
+	// that low-value filter and MUST create the card. Dict senses in this list
+	// are harmless no-ops (already emitted by expandTokenLemmas). Each entry is
+	// validated against the server-side candidate set before injection so a
+	// crafted request can't inject an unsupported (lemma, pos).
+	SelectedSenses []SelectedSense `json:"selected_senses,omitempty"`
+}
+
+// SelectedSense is one explicitly-chosen study meaning for an ambiguous surface.
+type SelectedSense struct {
+	Surface string `json:"surface"`
+	Lemma   string `json:"lemma"`
+	POS     string `json:"pos"`
 }
 
 type CreateDeckResponse struct {
@@ -216,6 +233,13 @@ type KnownWordsRequest struct {
 type KnownWordsResponse struct {
 	Imported   []store.KnownLemma `json:"imported"`
 	Unresolved []string           `json:"unresolved"`
+	// NeedsSenseConfirmation is how many imported surfaces have more than one
+	// possible meaning. Import does NOT disambiguate upfront (srs-deck-spec.md
+	// "Ambiguous imported known words"); the count backs the honest summary line
+	// "N imported forms have more than one possible meaning. We'll confirm those
+	// when they appear in context." Resolution is lazy, via Multiple possible
+	// meanings when the surface later appears in a sentence.
+	NeedsSenseConfirmation int `json:"needs_sense_confirmation"`
 }
 
 // KnownWordsReplaceResponse is returned by PUT /api/known-words. It mirrors
@@ -340,6 +364,11 @@ type CardBack struct {
 	// identity. Lemma/POS/meaning are supporting sense metadata.
 	Surface string `json:"surface,omitempty"`
 	Lemma   string `json:"lemma"`
+	// POS and Lang back the "None of these looks right" flag-only escape from
+	// the card back (USER_FLOWS §9.4): the report attributes the original
+	// identity being flagged and the correct language.
+	POS     string `json:"pos,omitempty"`
+	Lang    string `json:"lang,omitempty"`
 	Meaning string `json:"meaning"`
 	Grammar string `json:"grammar"`
 	// HomographNote is a "same spelling, different word" contrast line when the
@@ -1519,6 +1548,13 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 		sentences = append(sentences, sentence)
 	}
 
+	// Explicit "Study this meaning" selections from the Multiple-possible-meanings
+	// flow: inject the chosen senses that dict-only expansion dropped. This is the
+	// one deliberate bypass of PR #269's low-value filter (see SelectedSense), and
+	// it is narrow — only senses the learner explicitly picked AND that the
+	// server-side ambiguity candidate set actually supports get a card.
+	a.injectSelectedSenses(sentences, req.Lang, req.SelectedSenses)
+
 	deckID, err := a.store.CreateDeckWithSentencesOptions(auth.UserID, strings.TrimSpace(req.Title), req.Lang, req.IsPublic, sentences)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
@@ -1531,6 +1567,93 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 	}
 
 	writeJSON(w, http.StatusOK, CreateDeckResponse{DeckID: deckID})
+}
+
+// injectSelectedSenses mutates sentences in place, adding a DeckTokenInput for
+// each learner-selected sense on every token whose surface matches — but only
+// for senses the server-side ambiguity candidate set actually supports, and only
+// where that (lemma, pos) is not already emitted for the token. This is the
+// deliberate, minimal bypass of the dict-only deck expansion: an FST-only
+// homograph sense the learner explicitly chose to study gets its card; dict
+// senses already emitted are no-ops.
+func (a *API) injectSelectedSenses(sentences []store.DeckSentenceInput, lang string, selected []SelectedSense) {
+	if len(selected) == 0 {
+		return
+	}
+	// Group requested senses by normalized surface and validate against the
+	// real candidate set so a crafted payload can't inject an unsupported
+	// (lemma, pos).
+	surfaces := make([]string, 0, len(selected))
+	for _, s := range selected {
+		if s.Surface != "" {
+			surfaces = append(surfaces, s.Surface)
+		}
+	}
+	candidates, err := a.store.SurfaceCandidates(surfaces, lang)
+	if err != nil {
+		log.Printf("api: injectSelectedSenses SurfaceCandidates(%s): %v", lang, err)
+		return
+	}
+	// validated[surface][lemma\x00pos] = true for supported selections.
+	validated := map[string]map[string]struct{}{}
+	for _, s := range selected {
+		cands, ok := candidates[s.Surface]
+		if !ok {
+			continue
+		}
+		for _, c := range cands {
+			if c.Lemma == s.Lemma && c.POS == s.POS {
+				if validated[s.Surface] == nil {
+					validated[s.Surface] = map[string]struct{}{}
+				}
+				validated[s.Surface][s.Lemma+"\x00"+s.POS] = struct{}{}
+			}
+		}
+	}
+	if len(validated) == 0 {
+		return
+	}
+
+	for si := range sentences {
+		sent := &sentences[si]
+		// Index existing (tokenIx, lemma, pos) so we never double-emit a card.
+		existing := map[string]struct{}{}
+		for _, tok := range sent.Tokens {
+			existing[deckTokenKey(tok.TokenIx, tok.Lemma, tok.POS)] = struct{}{}
+		}
+		// The occurrence tokens carry a Form and a TokenIx; find each token's
+		// surface by TokenIx from the tokens already emitted for it.
+		formByTokenIx := map[int]string{}
+		for _, tok := range sent.Tokens {
+			if tok.Form != "" {
+				formByTokenIx[tok.TokenIx] = tok.Form
+			}
+		}
+		for tokenIx, form := range formByTokenIx {
+			senses, ok := validated[form]
+			if !ok {
+				continue
+			}
+			for key := range senses {
+				parts := strings.SplitN(key, "\x00", 2)
+				lemma, pos := parts[0], parts[1]
+				if _, dup := existing[deckTokenKey(tokenIx, lemma, pos)]; dup {
+					continue
+				}
+				sent.Tokens = append(sent.Tokens, store.DeckTokenInput{
+					TokenIx: tokenIx,
+					Form:    form,
+					Lemma:   lemma,
+					POS:     pos,
+				})
+				existing[deckTokenKey(tokenIx, lemma, pos)] = struct{}{}
+			}
+		}
+	}
+}
+
+func deckTokenKey(tokenIx int, lemma, pos string) string {
+	return fmt.Sprintf("%d\x00%s\x00%s", tokenIx, lemma, pos)
 }
 
 func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
@@ -1914,9 +2037,20 @@ func (a *API) handleKnownWordsImport(w http.ResponseWriter, r *http.Request, aut
 		return
 	}
 
+	// Count ambiguous imports for the summary line. Resolution stays lazy — no
+	// upfront disambiguation flow (srs-deck-spec.md). Errors are non-fatal: the
+	// import already succeeded; a count failure just omits the summary detail.
+	needsConfirm := 0
+	if candidates, cErr := a.store.SurfaceCandidates(req.Words, req.Lang); cErr == nil {
+		needsConfirm = len(candidates)
+	} else {
+		log.Printf("api: known-words ambiguity count SurfaceCandidates(%s): %v", req.Lang, cErr)
+	}
+
 	writeJSON(w, http.StatusOK, KnownWordsResponse{
-		Imported:   imported,
-		Unresolved: unresolved,
+		Imported:               imported,
+		Unresolved:             unresolved,
+		NeedsSenseConfirmation: needsConfirm,
 	})
 }
 
@@ -2176,6 +2310,8 @@ func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
 		Back: CardBack{
 			Surface:       card.Surface,
 			Lemma:         card.Lemma,
+			POS:           card.POS,
+			Lang:          card.Lang,
 			Meaning:       card.Gloss,
 			Grammar:       "",
 			HomographNote: card.HomographNote,
@@ -2328,6 +2464,27 @@ type ParseResponse struct {
 	// the client can swap the displayed words to a chapter's Words without
 	// another /api/parse round-trip.
 	Chapters []ChapterResponse `json:"chapters,omitempty"`
+	// AmbiguousSurfaces carries the "Multiple possible meanings" metadata for
+	// surfaces that resolve to two or more supported senses. Signed-in only:
+	// the actions it unlocks (know/study/flag) all require a learner, and the
+	// anonymous demo stays lean and stateless (FEATURES.md "Anonymous Parser
+	// Demo"). Nil/omitted for anonymous parses.
+	AmbiguousSurfaces []AmbiguousSurface `json:"ambiguous_surfaces,omitempty"`
+}
+
+// AmbiguousSurface is one surface with multiple supported meanings, delivered
+// inline with the parse (measured overhead ~200 bytes per ambiguous row,
+// bounded by the ambiguity rate ~18-20% of unique surfaces — cheaper than a
+// per-row lazy endpoint that would re-resolve the same candidates and add a
+// round-trip per expansion). The chip attaches to any results row whose forms
+// include Surface; expanding it shows Example plus the candidate list. Per
+// PARSER_EVAL_METHODOLOGY.md §4 no ambiguity class yet qualifies for the single
+// confident Meaning Check, so this is the only ambiguity branch shipped: the UI
+// never presents one candidate as "the" intended sense.
+type AmbiguousSurface struct {
+	Surface    string                     `json:"surface"`
+	Example    string                     `json:"example,omitempty"`
+	Candidates []store.AmbiguityCandidate `json:"candidates"`
 }
 
 func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
@@ -2450,22 +2607,83 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	// (handleParseFeedback creates one lazily from inline source_text).
 	// This matches the "return data, persist on save" model so a user who
 	// inspects and walks away leaves nothing in parse_sessions.
+	// Ambiguity metadata for the "Multiple possible meanings" flow is signed-in
+	// only: its actions require a learner and the anonymous demo stays lean and
+	// stateless. Computed after expansion so uniqueForms is already collected.
+	var ambiguousSurfaces []AmbiguousSurface
 	if auth != nil {
 		applyLemmaStatesInPlace(a.store, auth.UserID, parsed.Lang, parsed.Words)
 		for i := range parsed.Chapters {
 			applyLemmaStatesInPlace(a.store, auth.UserID, parsed.Lang, parsed.Chapters[i].Words)
 		}
+		ambiguousSurfaces = a.ambiguousSurfacesFor(uniqueForms, parsed.Lang, parsed.Sentences)
 	}
 
 	writeJSON(w, http.StatusOK, ParseResponse{
 		Lang: parsed.Lang,
 		// ParseID is intentionally nil — /api/parse no longer persists.
-		TotalTokens:     parsed.TotalTokens,
-		ParseDurationMs: float64(parsed.ParseDurationNs) / 1e6,
-		Stats:           parsed.Stats,
-		Words:           parsed.Words,
-		Chapters:        parsed.Chapters,
+		TotalTokens:       parsed.TotalTokens,
+		ParseDurationMs:   float64(parsed.ParseDurationNs) / 1e6,
+		Stats:             parsed.Stats,
+		Words:             parsed.Words,
+		Chapters:          parsed.Chapters,
+		AmbiguousSurfaces: ambiguousSurfaces,
 	})
+}
+
+// ambiguousSurfacesFor resolves the ambiguity candidate set for the parse's
+// unique surfaces and pairs each ambiguous surface with the first sentence it
+// appears in (context for the meaning check). Sorted by surface for a stable
+// wire order. Errors are logged and swallowed — ambiguity metadata is additive;
+// a lookup failure must not drop the parse result the learner just spent compute
+// on (same posture as applyLemmaStatesInPlace).
+func (a *API) ambiguousSurfacesFor(uniqueForms []string, lang string, sentences []parsecore.SentenceResult) []AmbiguousSurface {
+	if len(uniqueForms) == 0 {
+		return nil
+	}
+	candidates, err := a.store.SurfaceCandidates(uniqueForms, lang)
+	if err != nil {
+		log.Printf("api: SurfaceCandidates(%s): %v", lang, err)
+		return nil
+	}
+	if len(candidates) == 0 {
+		return nil
+	}
+	examples := firstExampleBySurface(sentences, candidates)
+	out := make([]AmbiguousSurface, 0, len(candidates))
+	for surface, cands := range candidates {
+		out = append(out, AmbiguousSurface{
+			Surface:    surface,
+			Example:    examples[surface],
+			Candidates: cands,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Surface < out[j].Surface })
+	return out
+}
+
+// firstExampleBySurface finds, for each surface present in want, the text of the
+// first sentence (document order) that contains a token with that surface form.
+func firstExampleBySurface(sentences []parsecore.SentenceResult, want map[string][]store.AmbiguityCandidate) map[string]string {
+	examples := make(map[string]string, len(want))
+	for _, sent := range sentences {
+		for _, tok := range sent.Tokens {
+			if tok.Form == "" {
+				continue
+			}
+			if _, ok := want[tok.Form]; !ok {
+				continue
+			}
+			if _, seen := examples[tok.Form]; seen {
+				continue
+			}
+			examples[tok.Form] = sent.Text
+		}
+		if len(examples) == len(want) {
+			break
+		}
+	}
+	return examples
 }
 
 // chapterSentenceSubset returns the sentences whose ChapterIdx matches idx.

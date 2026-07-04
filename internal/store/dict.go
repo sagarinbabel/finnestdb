@@ -1363,6 +1363,95 @@ func (d *DB) BatchLookupAllFormsWithOptions(forms []string, lang, parserMode str
 	return d.batchLookupAllForms(forms, lang, parserMode, opts)
 }
 
+// AmbiguityCandidate is one supported meaning of an ambiguous surface, ready for
+// the "Multiple possible meanings" learner UI: lemma + POS always, gloss when
+// the dictionary (or the gloss-fallback path) has one, and a source marker.
+// FST-only candidates (kaikki lists one reading per homograph surface; the FST
+// merge supplies the missing sense) carry Source "fst" and may have an empty
+// Gloss — the UI renders them lemma + POS only.
+type AmbiguityCandidate struct {
+	Lemma  string `json:"lemma"`
+	POS    string `json:"pos"`
+	Gloss  string `json:"gloss,omitempty"`
+	Source string `json:"source"`
+}
+
+// SurfaceCandidates resolves each surface to its full supported candidate set
+// for the ambiguity / meaning-check path and keeps only the surfaces that have
+// two or more distinct candidates after quarantine suppression — i.e. the
+// surfaces that qualify for "Multiple possible meanings". It is the single
+// server-side source of truth for that flow, reused by /api/parse enrichment and
+// the known-word import ambiguity count.
+//
+// Candidate inclusion uses BatchLookupAllFormsWithOptions{MergeFSTReadings:true}
+// (FI cross-POS homographs such as kuusi/tuli/voi need the FST merge; ET is
+// already complete via Ekilex — see PARSER_EVAL_METHODOLOGY.md §5). Quarantined
+// senses/surfaces are dropped via the loaded QuarantinedSenseFilter so a
+// suppressed reading is never offered. Glosses come from BatchLookupGlosses;
+// FST-only readings the dictionary can't gloss stay lemma+POS only.
+//
+// This does NOT change deck/import word counts: it is a read-only candidate
+// listing, separate from the dict-only expandTokenLemmas path.
+func (d *DB) SurfaceCandidates(surfaces []string, lang string) (map[string][]AmbiguityCandidate, error) {
+	out := make(map[string][]AmbiguityCandidate)
+	if len(surfaces) == 0 {
+		return out, nil
+	}
+	filter, err := d.LoadQuarantinedSenseFilter(lang)
+	if err != nil {
+		return out, err
+	}
+	resolved := d.BatchLookupAllFormsWithOptions(surfaces, lang, "custom", AllFormsOptions{MergeFSTReadings: true})
+
+	// Collect gloss lookup keys across all surviving candidates in one batch.
+	glossKeys := make([]LemmaKey, 0)
+	seenKey := map[LemmaKey]struct{}{}
+	kept := make(map[string][]FormResolution, len(resolved))
+	for surface, cands := range resolved {
+		survivors := make([]FormResolution, 0, len(cands))
+		seenSense := map[LemmaKey]struct{}{}
+		for _, c := range cands {
+			if c.Lemma == "" || c.POS == "" {
+				continue
+			}
+			if filter.Suppresses(surface, c.Lemma, c.POS) {
+				continue
+			}
+			k := LemmaKey{Lemma: c.Lemma, POS: c.POS}
+			if _, dup := seenSense[k]; dup {
+				continue
+			}
+			seenSense[k] = struct{}{}
+			survivors = append(survivors, c)
+			if _, ok := seenKey[k]; !ok {
+				seenKey[k] = struct{}{}
+				glossKeys = append(glossKeys, k)
+			}
+		}
+		if len(survivors) >= 2 {
+			kept[surface] = survivors
+		}
+	}
+	if len(kept) == 0 {
+		return out, nil
+	}
+	glosses := d.BatchLookupGlosses(glossKeys, lang)
+
+	for surface, survivors := range kept {
+		list := make([]AmbiguityCandidate, 0, len(survivors))
+		for _, c := range survivors {
+			list = append(list, AmbiguityCandidate{
+				Lemma:  c.Lemma,
+				POS:    c.POS,
+				Gloss:  glosses[LemmaKey{Lemma: c.Lemma, POS: c.POS}],
+				Source: c.Source,
+			})
+		}
+		out[surface] = list
+	}
+	return out, nil
+}
+
 func (d *DB) batchLookupAllForms(forms []string, lang, parserMode string, opts AllFormsOptions) map[string][]FormResolution {
 	result := make(map[string][]FormResolution, len(forms))
 	if len(forms) == 0 {
