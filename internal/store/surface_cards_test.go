@@ -422,3 +422,92 @@ func TestSurfaceCardMigrationPreservesStateAndBackfillsSurface(t *testing.T) {
 		t.Fatalf("after re-open card 7 surface_norm=%q want koiran", got)
 	}
 }
+
+// TestDeckFilteredReviewReturnsDeckSurfaceCard proves the deck filter in
+// GetNextReviewCard is surface-scoped. Cards are surface-specific, so when
+// deck A contains "koira" and deck B contains "koiran" (same lemma/POS),
+// reviewing deck B must serve the koiran card with deck B's sentence — not
+// deck A's koira card wearing a deck B example. A (lemma, pos)-only deck
+// membership check passes both cards and, ordered by id, returns the wrong one.
+func TestDeckFilteredReviewReturnsDeckSurfaceCard(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "learner@example.com")
+
+	const sentenceA = "Koira nukkuu."
+	const sentenceB = "Koiran häntä heiluu."
+	deckA := createSingleTokenDeck(t, db, user.ID, "FI", sentenceA, "Koira", "koira", "NOUN")
+	deckB := createSingleTokenDeck(t, db, user.ID, "FI", sentenceB, "Koiran", "koira", "NOUN")
+
+	cardB, err := db.GetNextReviewCard(user.ID, &deckB, "FI")
+	if err != nil {
+		t.Fatalf("GetNextReviewCard(deck B): %v", err)
+	}
+	if cardB == nil {
+		t.Fatal("expected a card when reviewing deck B")
+	}
+	if cardB.Surface != "koiran" {
+		t.Fatalf("deck B review returned surface %q, want the deck's own form \"koiran\"", cardB.Surface)
+	}
+	if cardB.SentenceText != sentenceB {
+		t.Fatalf("deck B review SentenceText=%q, want %q", cardB.SentenceText, sentenceB)
+	}
+
+	cardA, err := db.GetNextReviewCard(user.ID, &deckA, "FI")
+	if err != nil {
+		t.Fatalf("GetNextReviewCard(deck A): %v", err)
+	}
+	if cardA == nil {
+		t.Fatal("expected a card when reviewing deck A")
+	}
+	if cardA.Surface != "koira" {
+		t.Fatalf("deck A review returned surface %q, want \"koira\"", cardA.Surface)
+	}
+	if cardA.SentenceText != sentenceA {
+		t.Fatalf("deck A review SentenceText=%q, want %q", cardA.SentenceText, sentenceA)
+	}
+}
+
+// TestDeckStatsDueCountIsSurfaceScoped proves GetUserDeckStats counts a lemma
+// as due in a deck only when the due card belongs to one of THAT deck's
+// surface forms. A due "koira" card (deck A) must not make deck B — which only
+// contains "koiran" — report a due review the learner cannot actually get.
+func TestDeckStatsDueCountIsSurfaceScoped(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "learner@example.com")
+
+	deckA := createSingleTokenDeck(t, db, user.ID, "FI", "Koira nukkuu.", "Koira", "koira", "NOUN")
+	deckB := createSingleTokenDeck(t, db, user.ID, "FI", "Koiran häntä heiluu.", "Koiran", "koira", "NOUN")
+
+	// Make the koira card (deck A's surface) reviewed and overdue.
+	res, err := db.db.Exec(
+		`UPDATE card_state
+		    SET last_answer_at = CURRENT_TIMESTAMP,
+		        next_due = datetime('now', '-1 hour')
+		  WHERE card_id = (SELECT id FROM cards
+		                    WHERE user_id = ? AND lang = 'FI'
+		                      AND surface_norm = 'koira' AND lemma = 'koira' AND pos = 'NOUN'
+		                      AND mwe_id IS NULL)`,
+		user.ID,
+	)
+	if err != nil {
+		t.Fatalf("mark koira card due: %v", err)
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		t.Fatalf("marked %d card_state rows due, want 1", n)
+	}
+
+	stats, err := db.GetUserDeckStats(user.ID)
+	if err != nil {
+		t.Fatalf("GetUserDeckStats: %v", err)
+	}
+	due := map[int64]int{}
+	for _, s := range stats {
+		due[s.ID] = s.Due
+	}
+	if due[deckA] != 1 {
+		t.Fatalf("deck A due=%d, want 1 (its koira card is overdue)", due[deckA])
+	}
+	if due[deckB] != 0 {
+		t.Fatalf("deck B due=%d, want 0 (the due card is deck A's surface, not koiran)", due[deckB])
+	}
+}
