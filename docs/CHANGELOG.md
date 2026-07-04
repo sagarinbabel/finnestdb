@@ -10,6 +10,40 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Landing: port the Claude Design "Aalto edition" prototype
+
+Re-skinned the anonymous landing to the Claude Design prototype
+(`design/aalto-landing.jsx`) after the owner's verdict that "nothing has been
+carried through from the design prototype." The landing now leads with the serif
+hero **"Paste your _Suomi_ or _Eesti_. Lift the words out."** (italic-blue
+Suomi/Eesti), the owner-override subtitle, a truthful `FREE · NO ACCOUNT · NO
+HISTORY SAVED` eyebrow with a live pulse dot, the birch-lined paste box (`⌘↵`
+hint, char meter against the real anon cap), the "or try →" demo chips, the
+three-cell freemium band, and the Aalto decorations (vertical Alvar-Aalto
+wordmark, a slowly drifting Savoy-vase silhouette that respects
+`prefers-reduced-motion`, colophon with palette swatches). See
+[`USER_FLOWS.md` §1](USER_FLOWS.md#1-landing--inline-parse-anonymous).
+
+- **Aalto is now the default skin.** A first-time visitor with no saved choice
+  lands on `data-skin="aalto"` · Paimio light; the Ink skin stays selectable in
+  the picker and saved choices are honored (only the fallback default flipped —
+  one line in `readThemeSkin`/`readThemeMode` reverts it).
+- **Anonymous demo texts:** new stateless `GET /api/demo/text/{id}` endpoint
+  serves a fixed allowlist of three curated, license-clean embedded fixtures
+  (Sauna / Hiiri-Pekka / Linnu keel) without auth. The full `/api/catalog`
+  surface stays signed-in only; any id outside the allowlist 404s.
+- **Anonymous word-list export:** the results view gains **Copy list** +
+  **Download CSV**, generated client-side from the in-memory parse response, so
+  freemium cell ii ("Copy or download") is truthful while honoring the anonymous
+  ephemeral guarantee. Truth adjustments to prototype copy: cell iii's "Free
+  Google sign-in" → "Free sign-up." (OAuth not shipped yet); the "Ephemeral OFF"
+  toggle was not ported (anon parses are always ephemeral).
+- Tests: updated the landing-copy assertions in `parse-results`,
+  `anonymous-parser-demo`, `coverage-reveal`, `reading-surface`, and
+  `theme-picker`; added `landing-prototype.spec.ts` (exact hero, eyebrow,
+  freemium band, demo-chip loading, anon CSV export, 375 px cleanliness) and Go
+  tests pinning the demo-text allowlist endpoint.
+
 ## 2026-07-04 — Reading surface: text-first results with tap-to-mark words
 
 Inverted the `/results` page into a **text-first** experience (aha moment #2,

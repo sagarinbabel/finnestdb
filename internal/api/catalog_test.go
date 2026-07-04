@@ -227,3 +227,70 @@ func TestCatalogTextUnknownID404(t *testing.T) {
 		}
 	}
 }
+
+// The landing demo-text endpoint is intentionally anonymous but restricted to a
+// fixed allowlist of embedded ids (the three "or try →" chips). These tests
+// encode both product guarantees: allowlisted texts serve without auth, and
+// everything else — including real-but-not-allowlisted catalog ids — 404s, so
+// the endpoint can't be used to enumerate the otherwise-private catalog.
+
+func TestDemoTextServesAllowlistedTextsAnonymously(t *testing.T) {
+	mux := newTestMux(t, newTestAPI(t))
+
+	for id := range demoTextAllowlist {
+		req := httptest.NewRequest(http.MethodGet, "/api/demo/text/"+id, nil)
+		// No cookies — anonymous on purpose.
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("demo %s: status=%d body=%q", id, rec.Code, rec.Body.String())
+		}
+		var resp CatalogTextResponse
+		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("demo %s decode: %v", id, err)
+		}
+		if resp.ID != id || resp.Text == "" || resp.Language == "" {
+			t.Fatalf("demo %s: unexpected payload id=%q lang=%q len=%d", id, resp.ID, resp.Language, len(resp.Text))
+		}
+	}
+}
+
+func TestDemoTextRejectsNonAllowlistedAndUnknownIDs(t *testing.T) {
+	mux := newTestMux(t, newTestAPI(t))
+
+	// A real embedded id that is NOT on the demo allowlist must 404 anonymously
+	// (it stays reachable only through the signed-in /api/catalog surface), so
+	// this endpoint can't leak the private catalog.
+	nonAllowlisted := "fi-kesaaamu-poem"
+	if demoTextAllowlist[nonAllowlisted] {
+		t.Fatalf("test assumes %q is not on the demo allowlist", nonAllowlisted)
+	}
+	if _, ok := catalog.Find(nonAllowlisted); !ok {
+		t.Fatalf("test assumes %q is a real embedded catalog id", nonAllowlisted)
+	}
+
+	for _, path := range []string{
+		"/api/demo/text/" + nonAllowlisted,
+		"/api/demo/text/nope",
+		"/api/demo/text/",
+		"/api/demo/text/fi-sauna-article/extra",
+	} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("%s: status=%d want %d", path, rec.Code, http.StatusNotFound)
+		}
+	}
+}
+
+// The three demo ids must actually exist in the shipped catalog, or the landing
+// chips would 404 in production. Pin them here so a catalog regeneration that
+// drops or renames one of them fails a Go test rather than only breaking the UI.
+func TestDemoAllowlistIDsExistInCatalog(t *testing.T) {
+	for id := range demoTextAllowlist {
+		if _, ok := catalog.Find(id); !ok {
+			t.Errorf("demo allowlist id %q is not in the embedded catalog", id)
+		}
+	}
+}

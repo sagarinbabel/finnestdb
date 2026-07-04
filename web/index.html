@@ -130,74 +130,106 @@
     </div>
 
     <!-- ==================== ANONYMOUS LANDING ==================== -->
+    <!-- Ported from the Claude Design "Aalto edition" prototype
+         (design/aalto-landing.jsx + design/claude-design/finnest-prototype.html).
+         The prototype's [data-aalto="bold"] decorations (vertical wordmark, vase
+         silhouette, birch-lined paste box, blue freemium band) become the
+         landing's default look, keyed off [data-skin="aalto"] in styles.css.
+         The paste form keeps its functional ids (landing-form / landing-text /
+         landing-char-count / landing-lang / landing-lang-warning /
+         landing-lang-switch / landing-submit) so the existing parse wiring is
+         untouched. -->
     <div id="landing-page" class="page" data-role-show="anon loading">
         <main class="landing-main">
-            <section class="hero-section">
-                <h1 class="hero-title">Learn Finnish &amp; Estonian by reading what you love.</h1>
-                <p class="hero-subtitle">
-                    Paste any text. We'll show you every word, what it
-                    means, and how often it appears.
-                </p>
+          <div class="landing-wrap">
+            <!-- Vertical AALTO wordmark — decoration, aalto skin + wide only. -->
+            <div class="aalto-mark" aria-hidden="true">
+                <span class="vlabel">Alvar Aalto · Paimio · 1933</span>
+                <div class="vstrip"></div>
+            </div>
 
-                <form id="landing-form" class="landing-parse-form">
-                    <div class="form-group landing-lang-group">
-                        <span class="form-group-label" id="landing-lang-label">Language</span>
-                        <div class="btn-radio" id="landing-lang" role="radiogroup" aria-labelledby="landing-lang-label" data-value="FI">
-                            <button type="button" class="btn-radio-option is-active" role="radio" data-value="FI" aria-checked="true">Finnish (FI)</button>
-                            <button type="button" class="btn-radio-option" role="radio" data-value="ET" aria-checked="false">Estonian (ET)</button>
+            <!-- Savoy-vase silhouette — decoration, aalto skin + wide only. Given
+                 a slow ambient drift in styles.css (respects reduced-motion). -->
+            <svg class="vase-svg" viewBox="0 0 220 320" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M 30 12 C 50 28, 60 60, 78 90 C 92 116, 56 142, 70 178 C 82 208, 122 198, 138 226 C 152 250, 110 270, 130 296 C 142 312, 180 308, 200 308 L 200 320 L 30 320 Z" fill="currentColor" opacity="0.85"></path>
+                <path d="M 30 12 C 50 28, 60 60, 78 90 C 92 116, 56 142, 70 178 C 82 208, 122 198, 138 226 C 152 250, 110 270, 130 296 C 142 312, 180 308, 200 308" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.4"></path>
+            </svg>
+
+            <div class="hero-eyebrow">
+                <span class="pulse"></span>Free · No account · No history saved
+            </div>
+
+            <h1 class="hero-title hero-h">
+                Paste your <em>Suomi</em> or <em>Eesti</em>.<br />
+                Lift the words out.
+            </h1>
+
+            <p class="hero-subtitle hero-sub">
+                Drop in any Finnish or Estonian text — news, a chapter, a conversation.
+                Learn it in context. Enjoy reading the article smoothly.
+                <span class="hero-sub-quiet">(sign in to export, create, sync and review your flashcards)</span>
+            </p>
+
+            <form id="landing-form" class="landing-parse-form">
+                <div class="paste-box" id="landing-paste-box">
+                    <textarea
+                        id="landing-text"
+                        name="text"
+                        placeholder="Paste your text here…&#10;&#10;Toissapäivänä menin pankkiin. Osoittautui, että se oli kiinni."
+                        required
+                    ></textarea>
+                    <div class="paste-foot">
+                        <!-- Detection badge maps onto the existing FI/ET selector.
+                             The button-radio drives the parse language; the badge
+                             mirrors detection state and never auto-switches. -->
+                        <div class="btn-radio landing-lang" id="landing-lang" role="radiogroup" aria-label="Language" data-value="FI">
+                            <button type="button" class="btn-radio-option is-active" role="radio" data-value="FI" aria-checked="true">Finnish</button>
+                            <button type="button" class="btn-radio-option" role="radio" data-value="ET" aria-checked="false">Estonian</button>
                         </div>
+                        <span class="meter"><span id="landing-char-count" class="char-count">0 / 300,000</span> chars</span>
+                        <div class="paste-foot-spacer"></div>
+                        <button type="submit" class="btn btn-primary btn-lg" id="landing-submit">Parse <span class="kbd">⌘↵</span></button>
                     </div>
-
-                    <div class="form-group">
-                        <label for="landing-text">Text <span id="landing-char-count" class="char-count">0 / 20,000</span></label>
-                        <textarea
-                            id="landing-text"
-                            name="text"
-                            rows="7"
-                            placeholder="Paste a paragraph, an article, lyrics — anything in Finnish or Estonian."
-                            required
-                        ></textarea>
-                        <p class="landing-upload-hint">File upload is available after sign-in.</p>
-                    </div>
-
-                    <div id="landing-lang-warning" class="lang-warning hidden" role="status" aria-live="polite"></div>
-                    <button type="button" id="landing-lang-switch" class="lang-switch-btn hidden"></button>
-
-                    <div class="landing-form-actions">
-                        <button type="submit" class="btn btn-primary btn-lg" id="landing-submit">Parse text ►</button>
-                        <a href="#/signin" class="btn btn-link">or sign in to save decks and upload whole books</a>
-                    </div>
-                </form>
-            </section>
-
-            <section class="value-grid">
-                <div class="value-card">
-                    <div class="value-icon" aria-hidden="true">🔎</div>
-                    <h3>Pre-learn the words that appear</h3>
-                    <p>Paste the article, chapter, or song you want to read. See every word it contains, what it means, and how often it shows up — ranked by the exact forms you'll meet.</p>
                 </div>
-                <div class="value-card">
-                    <div class="value-icon" aria-hidden="true">📖</div>
-                    <h3>Then read it smoothly</h3>
-                    <p>With the vocabulary already in hand, you read your own text instead of stopping to look words up. Real books, news, and lyrics — not generic frequency lists.</p>
-                </div>
-                <div class="value-card">
-                    <div class="value-icon" aria-hidden="true">🎯</div>
-                    <h3>Remember them in context</h3>
-                    <p>Save a text as a study deck and review its words with spaced repetition, using example sentences from the source you actually care about.</p>
-                </div>
-                <div class="value-card">
-                    <div class="value-icon" aria-hidden="true">📈</div>
-                    <h3>Know how much you'll understand</h3>
-                    <p>For any saved text, see roughly what share of its words you already know before you start — and how much learning the next handful adds.</p>
-                </div>
-            </section>
+                <div id="landing-lang-warning" class="lang-warning hidden" role="status" aria-live="polite"></div>
+                <button type="button" id="landing-lang-switch" class="lang-switch-btn hidden"></button>
+            </form>
 
-            <section class="landing-cta-section">
-                <h2>Ready to read something you actually want to read?</h2>
-                <p class="landing-cta-lede">Learn the words first and you read with confidence — and the more you read, the more the words you know come back to you. An account saves your words as study decks, lets you upload whole EPUBs and books, and tracks which words you already know.</p>
-                <a href="#/signin" class="btn btn-primary btn-lg">Create a free account</a>
-            </section>
+            <div class="demo-chips">
+                <span>or try →</span>
+                <button type="button" class="demo-chip" data-demo-id="fi-sauna-article" data-demo-lang="FI">FI · article</button>
+                <button type="button" class="demo-chip" data-demo-id="fi-hiiri-pekka-story" data-demo-lang="FI">FI · story</button>
+                <button type="button" class="demo-chip" data-demo-id="et-linnu-keel-story" data-demo-lang="ET">ET · story</button>
+            </div>
+
+            <div class="freemium-strip value-grid">
+                <div class="freemium-cell">
+                    <div class="freemium-num">i.</div>
+                    <div class="freemium-h">Parse anything, free</div>
+                    <div class="freemium-p">Up to 300k characters per paste. No login. Nothing saved server-side.</div>
+                </div>
+                <div class="freemium-cell">
+                    <div class="freemium-num">ii.</div>
+                    <div class="freemium-h">Copy or download</div>
+                    <div class="freemium-p">Word list as plain text or CSV — drop straight into Anki, a spreadsheet, or your tool of choice.</div>
+                </div>
+                <div class="freemium-cell">
+                    <div class="freemium-num">iii.</div>
+                    <div class="freemium-h">Save decks · sign in</div>
+                    <div class="freemium-p">Persist progress, FSRS review across decks, leverage ranking. Free sign-up.</div>
+                </div>
+            </div>
+
+            <div class="colophon">
+                <span>Suomi · Eesti — humanist, restrained, blue.</span>
+                <span class="swatches" aria-hidden="true">
+                    <span class="sw w" title="paper"></span>
+                    <span class="sw b" title="Nordic blue"></span>
+                    <span class="sw k" title="ink"></span>
+                    <span class="sw r" title="birch"></span>
+                </span>
+            </div>
+          </div>
         </main>
     </div>
 
@@ -764,6 +796,15 @@
                 </div>
                 <p id="results-stats" class="results-stats"></p>
                 <div id="deck-comprehension" class="deck-comprehension hidden"></div>
+                <!-- Word-list export. Available to everyone, including anonymous
+                     visitors (landing freemium cell ii: "Copy or download").
+                     Generated client-side from the parse response already in
+                     memory — no server round-trip, nothing stored. Hidden in
+                     deck context (no ephemeral word list to export). -->
+                <div id="results-export" class="results-export hidden">
+                    <button type="button" id="results-copy-list" class="btn btn-sm">Copy list</button>
+                    <button type="button" id="results-download-csv" class="btn btn-sm">Download CSV</button>
+                </div>
                 <p id="results-help" class="results-help"></p>
                 <div class="results-deck-cta" data-role-show="user admin">
                     <button type="button" id="results-save-toggle" class="btn btn-primary btn-sm">Save as deck</button>

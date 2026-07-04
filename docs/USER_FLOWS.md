@@ -113,11 +113,41 @@ Yellow nodes are anonymous-only. Dashed-border nodes are not yet built (opt-out 
 
 ### 1. Landing + inline parse (anonymous)
 
-Status: shipped 2026-07-04. Anonymous users can paste text, parse it, get a
-word list, and explore rows before signing in. This is a stateless parser demo,
-not the full learning product. The landing page carries the paste form (FI/ET
-selector, char counter against the anonymous cap, Parse button) above the hero
-and value grid; file upload stays a signed-in capability.
+Status: shipped 2026-07-04. Re-skinned 2026-07-04 to the Claude Design "Aalto
+edition" prototype (`design/aalto-landing.jsx`): the landing now leads with the
+serif hero **"Paste your _Suomi_ or _Eesti_. Lift the words out."**, a truthful
+eyebrow (`FREE · NO ACCOUNT · NO HISTORY SAVED` with a live pulse dot), the
+birch-lined paste box, the "or try →" demo chips, a three-cell freemium band
+(i. parse free / ii. copy or download / iii. save decks · sign in), and the
+Aalto decorations (vertical wordmark, drifting Savoy-vase silhouette, colophon).
+The Aalto skin (`data-skin="aalto"`, Paimio light) is now the product's default
+face; the Ink skin stays selectable in the theme picker, and saved user choices
+are always honored (only the fallback default changed — one line in
+`readThemeSkin`/`readThemeMode` reverts it).
+
+Anonymous users can paste text, parse it, get a word list, and explore rows
+before signing in. This is a stateless parser demo, not the full learning
+product. The paste box keeps its function (FI/ET selector, char counter against
+the anonymous cap surfaced by `/api/me` `anon_max_chars`, Parse button with a
+`⌘↵` hint); file upload stays a signed-in capability.
+
+- **Demo chips** ("or try →") load three curated, license-clean embedded texts
+  served anonymously: `FI · article` (Sauna), `FI · story` (Hiiri-Pekka), and
+  `ET · story` (Linnu keel). They come from a fixed allowlist exposed via
+  `GET /api/demo/text/{id}` — a stateless, unauthenticated endpoint restricted
+  to those three ids (the full `/api/catalog` surface stays signed-in only, and
+  any id outside the allowlist 404s, so the private catalog can't be enumerated).
+  Clicking a chip fills the paste box, sets the FI/ET selector to the text's
+  language, and scrolls the box into view; it does not auto-parse.
+- **Word-list export** (freemium cell ii, "Copy or download") is available on
+  the results view to everyone, anonymous included: **Copy list** (tab-separated
+  lemma/POS/definition) and **Download CSV** are generated entirely client-side
+  from the parse response already in memory, so they honor the anonymous
+  ephemeral guarantee — no server round-trip, nothing stored. Everything else
+  (save/deck/review/known-state/corrections) stays sign-in gated.
+- The prototype's "Ephemeral OFF" toggle is deliberately **not** ported to the
+  anonymous landing: anonymous parses are always ephemeral, so a toggle would be
+  dishonest. The eyebrow states the ephemeral guarantee as plain fact.
 
 ```
 ┌────────────────────────────────────────────────────────────────┐

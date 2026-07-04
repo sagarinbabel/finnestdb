@@ -142,7 +142,7 @@ test('anonymous reveal frames coverage from frequency, not known state', async (
   await page.goto('/');
 
   await page.locator('#landing-text').fill(finnishText);
-  await page.getByRole('button', { name: 'Parse text' }).click();
+  await page.locator('#landing-submit').click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
 
   const reveal = page.locator('#coverage-reveal');
