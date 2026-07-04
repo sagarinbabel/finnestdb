@@ -5124,6 +5124,387 @@ h2 {
 }
 
 /* ============================================================
+   PROTOTYPE LANDING (Claude Design "Aalto edition")
+   Ported from design/aalto-landing.jsx + finnest-prototype.html.
+   The prototype's [data-aalto="bold"] decorations become the
+   landing's default look. Rules are token-driven so the landing
+   renders in both skins; the birch/vase/wordmark/blue-band
+   decorations are gated to [data-skin="aalto"] where the birch +
+   raw palette tokens exist. Scoped under .landing-wrap so it
+   overrides the older .hero-title / .value-grid base rules for
+   the landing only, leaving the About/dashboard heroes untouched.
+   ============================================================ */
+.landing-wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 56px 40px 80px;
+    position: relative;
+}
+
+/* Vertical AALTO wordmark — aalto skin + wide viewport only. */
+.aalto-mark {
+    display: none;
+    position: absolute;
+    left: 12px;
+    top: 8px;
+    bottom: 80px;
+    width: 24px;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    pointer-events: none;
+}
+[data-skin="aalto"] .aalto-mark { display: flex; }
+.aalto-mark .vstrip {
+    width: 8px;
+    flex: 1;
+    background-color: var(--birch);
+    background-image: repeating-linear-gradient(
+        0deg,
+        oklch(from var(--birch) calc(l - 0.10) c h / 0.4) 0 1px,
+        transparent 1px 9px,
+        oklch(from var(--birch) calc(l - 0.06) c h / 0.3) 9px 10px,
+        transparent 10px 32px
+    );
+    border-radius: 4px;
+}
+.aalto-mark .vlabel {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.36em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* Savoy-vase silhouette — aalto skin + wide viewport only, with a
+   slow ambient drift. Reduced-motion visitors get the static form. */
+.vase-svg {
+    display: none;
+    position: absolute;
+    right: -20px;
+    top: 8px;
+    width: 220px;
+    height: 320px;
+    color: var(--birch);
+    opacity: 0.55;
+    pointer-events: none;
+    transform-origin: 50% 15%;
+}
+[data-skin="aalto"] .vase-svg {
+    display: block;
+    animation: vase-drift 13s ease-in-out infinite alternate;
+}
+@keyframes vase-drift {
+    0%   { transform: translateY(0)     rotate(-0.6deg); }
+    100% { transform: translateY(-10px) rotate(0.8deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+    [data-skin="aalto"] .vase-svg { animation: none; }
+}
+
+/* Eyebrow with live pulse dot. */
+.landing-wrap .hero-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 22px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.landing-wrap .hero-eyebrow .pulse {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    background: var(--known);
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 var(--known);
+    animation: landing-pulse 2s infinite;
+}
+@keyframes landing-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 oklch(from var(--known) l c h / 0.5); }
+    50%      { box-shadow: 0 0 0 7px oklch(from var(--known) l c h / 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .landing-wrap .hero-eyebrow .pulse { animation: none; }
+}
+
+/* Hero headline + subtitle — override the base .hero-title/.hero-subtitle
+   sizing for the landing only. */
+.landing-wrap .hero-title.hero-h {
+    font-family: var(--font-disp);
+    font-size: clamp(40px, 7vw, 68px);
+    font-weight: 400;
+    letter-spacing: -0.03em;
+    line-height: 0.98;
+    margin-bottom: 22px;
+    color: var(--text-primary);
+    max-width: 18ch;
+}
+[data-skin="ink"] .landing-wrap .hero-title.hero-h { font-weight: 600; }
+.landing-wrap .hero-title.hero-h em {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: inherit;
+}
+.landing-wrap .hero-subtitle.hero-sub {
+    font-size: 17px;
+    color: var(--text-secondary);
+    max-width: 580px;
+    line-height: 1.55;
+    margin-bottom: 36px;
+    font-family: var(--font-disp);
+    font-weight: 400;
+}
+[data-skin="ink"] .landing-wrap .hero-subtitle.hero-sub { font-family: var(--font-sans); }
+.landing-wrap .hero-sub-quiet {
+    display: block;
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--text-secondary);
+    opacity: 0.8;
+    font-family: var(--font-sans);
+}
+
+/* Paste box — soft radius, focus ring, birch-lined left edge under aalto. */
+.landing-wrap .landing-parse-form { margin: 0; }
+.landing-wrap .paste-box {
+    position: relative;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg, 22px);
+    transition: border-color 0.15s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.landing-wrap .paste-box:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 4px oklch(from var(--accent) l c h / 0.12);
+}
+[data-skin="aalto"] .landing-wrap .paste-box { padding-left: 32px; }
+[data-skin="aalto"] .landing-wrap .paste-box::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 24px;
+    background-color: var(--birch);
+    background-image:
+        repeating-linear-gradient(
+            0deg,
+            oklch(from var(--birch) calc(l - 0.12) c h / 0.45) 0 1px,
+            transparent 1px 9px,
+            oklch(from var(--birch) calc(l - 0.06) c h / 0.3) 9px 10px,
+            transparent 10px 28px
+        ),
+        radial-gradient(ellipse 60% 14% at 40% 38%, oklch(from var(--birch) calc(l - 0.10) c h / 0.25), transparent 70%),
+        radial-gradient(ellipse 50% 10% at 60% 78%, oklch(from var(--birch) calc(l - 0.10) c h / 0.20), transparent 70%);
+}
+.landing-wrap .paste-box #landing-text {
+    width: 100%;
+    min-height: 240px;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 28px 32px 24px;
+    font-family: var(--font-disp);
+    font-size: 20px;
+    line-height: 1.55;
+    color: var(--text-primary);
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    resize: vertical;
+    box-sizing: border-box;
+}
+.landing-wrap .paste-box #landing-text:focus { outline: none; }
+.landing-wrap .paste-box #landing-text::placeholder {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+.landing-wrap .paste-foot {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-primary);
+    flex-wrap: wrap;
+}
+.landing-wrap .paste-foot .meter {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    letter-spacing: 0.02em;
+}
+.landing-wrap .paste-foot .meter .char-count {
+    color: var(--text-primary);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    /* Override the base .char-count { float: right } so the "N / cap" count
+       stays inline before the "chars" suffix inside the meter. */
+    float: none;
+    font-size: inherit;
+}
+.landing-wrap .paste-foot-spacer { flex: 1 1 auto; }
+.landing-wrap .paste-foot .landing-lang { flex: none; }
+.landing-wrap .paste-foot #landing-submit .kbd {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    border: 1px solid currentColor;
+    padding: 1px 5px;
+    border-radius: 4px;
+    opacity: 0.55;
+    font-weight: 400;
+    margin-left: 6px;
+}
+
+/* Demo chips ("or try →"). */
+.demo-chips {
+    margin-top: 18px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    flex-wrap: wrap;
+    letter-spacing: 0.02em;
+}
+.demo-chip {
+    cursor: pointer;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-secondary);
+    transition: all 0.12s;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    background: var(--bg-primary);
+}
+.demo-chip:hover:not(:disabled) {
+    border-color: var(--text-primary);
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+}
+.demo-chip:disabled { opacity: 0.5; cursor: default; }
+
+/* Freemium strip — 3 columns; aalto gets the full-bleed blue band. */
+.landing-wrap .freemium-strip.value-grid {
+    margin-top: 64px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    background: transparent;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    overflow: hidden;
+    position: relative;
+}
+.landing-wrap .freemium-cell { padding: 28px 28px 30px; }
+.landing-wrap .freemium-cell + .freemium-cell { border-left: 1px solid var(--border); }
+.landing-wrap .freemium-num {
+    font-family: var(--font-disp);
+    font-style: italic;
+    font-size: 30px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 6px;
+    font-feature-settings: "tnum";
+    line-height: 1;
+}
+.landing-wrap .freemium-h {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+    letter-spacing: -0.005em;
+}
+.landing-wrap .freemium-p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.55;
+}
+[data-skin="aalto"] .landing-wrap .freemium-strip.value-grid {
+    background: var(--blue);
+    border: none;
+    border-radius: var(--r-lg, 22px);
+    padding: 8px;
+}
+[data-skin="aalto"] .landing-wrap .freemium-cell {
+    color: var(--paper);
+    padding: 24px 24px 26px;
+}
+[data-skin="aalto"] .landing-wrap .freemium-cell + .freemium-cell {
+    border-left: 1px solid oklch(from var(--paper) l c h / 0.18);
+}
+[data-skin="aalto"] .landing-wrap .freemium-num { color: var(--birch); }
+[data-skin="aalto"] .landing-wrap .freemium-h { color: var(--paper); }
+[data-skin="aalto"] .landing-wrap .freemium-p { color: oklch(from var(--paper) l c h / 0.78); }
+
+/* Colophon — quiet credit + palette swatches. */
+.colophon {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 18px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+.colophon .swatches { display: flex; gap: 6px; align-items: center; }
+.colophon .sw {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    display: inline-block;
+}
+.colophon .sw.b { background: var(--accent); border-color: var(--accent); }
+.colophon .sw.k { background: var(--text-primary); border-color: var(--text-primary); }
+.colophon .sw.w { background: var(--bg-primary); }
+[data-skin="aalto"] .colophon .sw.w { background: var(--paper); }
+[data-skin="aalto"] .colophon .sw.r { background: var(--birch); border-color: var(--birch-3, var(--birch)); }
+
+/* Word-list export controls on the results page (all roles). */
+.results-export {
+    display: flex;
+    gap: 8px;
+    margin: 6px 0 4px;
+    flex-wrap: wrap;
+}
+.results-export.hidden { display: none; }
+
+/* ── Mobile: decorations hide, paste foot stacks, single-column band ── */
+@media (max-width: 760px) {
+    .landing-wrap { padding: 32px 20px 64px; }
+    .aalto-mark, .vase-svg { display: none !important; }
+    .landing-wrap .hero-title.hero-h { font-size: clamp(34px, 11vw, 46px); }
+    [data-skin="aalto"] .landing-wrap .paste-box { padding-left: 0; }
+    [data-skin="aalto"] .landing-wrap .paste-box::before { display: none; }
+    .landing-wrap .paste-box #landing-text { font-size: 17px; padding: 20px; min-height: 200px; }
+    .landing-wrap .paste-foot { padding: 12px 14px 14px; }
+    .landing-wrap .paste-foot-spacer { flex-basis: 100%; height: 0; }
+    .landing-wrap .freemium-strip.value-grid { grid-template-columns: 1fr; }
+    .landing-wrap .freemium-cell + .freemium-cell { border-left: none; border-top: 1px solid var(--border); }
+    [data-skin="aalto"] .landing-wrap .freemium-cell + .freemium-cell { border-top: 1px solid oklch(from var(--paper) l c h / 0.18); }
+    .colophon { flex-direction: column; gap: 10px; }
+}
+
+/* ============================================================
    READING SURFACE — Read / Words tabs + the living text.
    The Read view renders the source text with tappable, state-
    colored word spans; Words is the existing lemma table. Token

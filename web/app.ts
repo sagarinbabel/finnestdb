@@ -533,13 +533,17 @@ const OTHER_POS = ['PRON', 'DET', 'ADP', 'NUM', 'CCONJ', 'SCONJ', 'PART', 'INTJ'
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 //
-// Theming is two-dimensional: a *skin* (`ink` = the default INK/PAPER look,
+// Theming is two-dimensional: a *skin* (`ink` = the original INK/PAPER look,
 // `aalto` = the Alvar-Aalto "Paimio"/"Sanatorium" prototype) crossed with a
 // *mode* (`light`/`dark`). Skin is a `data-skin` attribute; mode is the
-// existing `data-theme` attribute. The Aalto skin is opt-in — the default is
-// exactly what users had before (ink skin + their saved light/dark mode), so
-// the `theme` localStorage key keeps its original meaning and the new `skin`
-// key defaults to `ink`.
+// existing `data-theme` attribute.
+//
+// The Aalto skin is now the *default* face of the product (owner decision:
+// the Claude Design prototype is the product's look). A first-time visitor with
+// no saved choice gets Aalto · Paimio light. Saved choices are always honored —
+// only the fallback default changed. The Ink skin stays fully selectable in the
+// picker. To revert the default to the pre-prototype Ink · dark, change the two
+// fallbacks in readThemeSkin/readThemeMode back to 'ink'/'dark'.
 
 type ThemeSkin = 'ink' | 'aalto';
 type ThemeMode = 'light' | 'dark';
@@ -548,12 +552,17 @@ const THEME_MODE_KEY = 'theme';
 const THEME_SKIN_KEY = 'skin';
 
 function readThemeSkin(): ThemeSkin {
-    return localStorage.getItem(THEME_SKIN_KEY) === 'aalto' ? 'aalto' : 'ink';
+    // Default flips to 'aalto' when nothing is saved; an explicit 'ink' still wins.
+    return localStorage.getItem(THEME_SKIN_KEY) === 'ink' ? 'ink' : 'aalto';
 }
 
 function readThemeMode(): ThemeMode {
-    // Default stays 'dark' to preserve the pre-picker behaviour.
-    return localStorage.getItem(THEME_MODE_KEY) === 'light' ? 'light' : 'dark';
+    const saved = localStorage.getItem(THEME_MODE_KEY);
+    if (saved === 'light') return 'light';
+    if (saved === 'dark') return 'dark';
+    // No saved mode: the Aalto default lands on Paimio light; anyone who saved
+    // a skin but somehow no mode keeps the prior 'dark' fallback.
+    return localStorage.getItem(THEME_SKIN_KEY) ? 'dark' : 'light';
 }
 
 function initTheme(): void {
@@ -1696,7 +1705,10 @@ function initSigninForm(): void {
             // Refresh /api/me so we get the dashboard payload too.
             await fetchMe();
             showToast(signinMode === 'register' ? `Welcome, ${data.user.email}` : `Welcome back, ${data.user.email}`, 'success');
-            navigate('/dashboard');
+            // Carry-forward (USER_FLOWS "Carry-forward of anonymous parses"):
+            // if the visitor had a parse open before signing in, return them to
+            // it with learner enrichments now applied — not the dashboard.
+            await landAfterAuth();
         } catch (err: any) {
             errorEl.textContent = err.message || 'Sign-in failed';
             errorEl.classList.remove('hidden');
@@ -1864,9 +1876,11 @@ function renderCatalogCard(e: CatalogEntry, hasKnownForLang: boolean): string {
     </div>`;
 }
 
-// pickCatalogText lazy-loads the full text, drops it into the Inspect textarea
-// (switching the active language to the text's language), and navigates to
-// Inspect so the normal parse → deck flow takes over.
+// pickCatalogText lazy-loads the full text and opens it "like a book": it drops
+// the text into the Inspect textarea (so re-parse/edit still works via the
+// Words/Inspect path), then parses immediately and lands on the Read tab — zero
+// intermediate clicks. The owner hit a dead end here before: the text stopped at
+// the textarea and there was no obvious next step (USER_FLOWS §"catalog").
 async function pickCatalogText(id: string): Promise<void> {
     if (!id) return;
     const meta = state.catalog?.entries.find(e => e.id === id);
@@ -1882,16 +1896,20 @@ async function pickCatalogText(id: string): Promise<void> {
             await setActiveLanguage(lang);
         }
         navigate('/inspect');
-        // Populate after navigation so the inspect page exists in the DOM.
-        const ta = document.getElementById('inspect-text') as HTMLTextAreaElement | null;
-        if (ta) {
-            const els = getInspectEls();
-            if (els) clearLoadedEpub(els, true);
+        // Populate after navigation so the inspect page exists in the DOM. The
+        // text stays in the textarea state so the learner can edit and re-parse
+        // from Inspect afterwards.
+        const els = getInspectEls();
+        const ta = els?.text ?? null;
+        if (els && ta) {
+            clearLoadedEpub(els, true);
             ta.value = data.text;
             ta.dispatchEvent(new Event('input', { bubbles: true }));
-            ta.focus();
+            // Open the text like a book: parse now and land on the Read tab
+            // (forced below), instead of leaving the learner at the textarea.
+            await runParse(els, 'custom', 'inspect', 'inspect-submit');
+            if (state.currentResults) switchResultsTab('read');
         }
-        showToast(`Loaded "${meta ? meta.title : 'text'}". Press Parse to begin.`, 'success');
     } catch {
         showToast('Could not load that text. Please try another.', 'error');
     }
@@ -4377,7 +4395,10 @@ function initLandingForm(): void {
     els.text.addEventListener('input', () => {
         updateCharCount(els);
         updateLangWarning(els, true);
+        autoGrowTextarea(els.text);
     });
+    autoGrowTextarea(els.text);
+    window.addEventListener('resize', () => autoGrowTextarea(els.text));
 
     els.lang.addEventListener('change', () => updateLangWarning(els, true));
 
@@ -4393,6 +4414,49 @@ function initLandingForm(): void {
     form?.addEventListener('submit', async (e) => {
         e.preventDefault();
         await runParse(els, 'custom', 'landing', 'landing-submit');
+    });
+
+    initLandingDemoChips(els);
+}
+
+// Landing "or try →" demo chips. Each chip pulls one curated embedded text from
+// the anonymous /api/demo/text/{id} allowlist, drops it into the paste box, sets
+// the FI/ET selector to the text's language, and scrolls the box into view. It
+// deliberately does NOT auto-parse — the visitor sees the text land in the box
+// (and the char meter tick up) before pressing Parse, matching the prototype.
+function initLandingDemoChips(els: ParseFormElements): void {
+    const chips = document.querySelectorAll<HTMLButtonElement>('.demo-chip[data-demo-id]');
+    chips.forEach(chip => {
+        chip.addEventListener('click', async () => {
+            const id = chip.dataset.demoId;
+            if (!id) return;
+            const origLabel = chip.textContent || '';
+            chip.disabled = true;
+            chip.textContent = 'Loading…';
+            try {
+                const resp = await fetch(`/api/demo/text/${encodeURIComponent(id)}`, { credentials: 'same-origin' });
+                if (!resp.ok) {
+                    showToast('Could not load that sample. Please try another.', 'error');
+                    return;
+                }
+                const data = await resp.json() as { language?: string; text?: string };
+                const lang = (data.language || chip.dataset.demoLang || 'FI').toUpperCase();
+                els.lang.value = lang === 'ET' ? 'ET' : 'FI';
+                els.text.value = data.text || '';
+                // Drive the same input path a paste would, so the char meter,
+                // language-warning gate, and Parse-button enable/disable all
+                // update exactly as if the visitor had pasted the text.
+                els.text.dispatchEvent(new Event('input', { bubbles: true }));
+                const box = document.getElementById('landing-paste-box');
+                (box || els.text).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                els.text.focus();
+            } catch {
+                showToast('Could not load that sample. Please try another.', 'error');
+            } finally {
+                chip.disabled = false;
+                chip.textContent = origLabel;
+            }
+        });
     });
 }
 
@@ -4439,6 +4503,24 @@ function updateCharCount(els: ParseFormElements): void {
     els.charCount.textContent = `${count.toLocaleString()} / ${cap.toLocaleString()}`;
     els.charCount.classList.toggle('char-count-warn', count > cap * 0.9);
     els.charCount.classList.toggle('char-count-over', count > cap);
+}
+
+// autoGrowTextarea grows a textarea to fit its content instead of scrolling
+// inside a fixed small box while the page below sits empty (the owner's "why am
+// I scrolling if there's space on the page" complaint). It grows up to ~70vh,
+// then lets the textarea scroll internally for very long pastes. Driven on input
+// and on load; a manual vertical resize (resize: vertical stays on) persists
+// until the next keystroke, so we don't fight the user's explicit drag.
+function autoGrowTextarea(ta: HTMLTextAreaElement): void {
+    // Reset first so shrinking works when text is deleted, then measure the
+    // content's natural height from scrollHeight.
+    ta.style.height = 'auto';
+    const maxPx = Math.round(window.innerHeight * 0.7);
+    const next = Math.min(ta.scrollHeight, maxPx);
+    ta.style.height = `${next}px`;
+    // Only scroll internally once we've hit the cap; below it there's no
+    // overflow so the box shows all content with room to spare.
+    ta.style.overflowY = ta.scrollHeight > maxPx ? 'auto' : 'hidden';
 }
 
 // Text the parser will actually see — the held EPUB when one is loaded, else
@@ -4887,10 +4969,13 @@ function initInspectForm(): void {
     els.text.addEventListener('input', () => {
         updateCharCount(els);
         updateLangWarning(els, true);
+        autoGrowTextarea(els.text);
         // Hide the cold-start catalog once the learner has text to parse.
         const section = document.getElementById('inspect-catalog-section');
         if (section) section.classList.toggle('hidden', els.text.value.trim() !== '');
     });
+    autoGrowTextarea(els.text);
+    window.addEventListener('resize', () => autoGrowTextarea(els.text));
 
     els.text.addEventListener('paste', () => {
         setTimeout(() => {
@@ -6270,6 +6355,7 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
     renderResultsSaveState();
     renderChapterNav();
     renderAnonResultsChrome();
+    renderResultsExport(data, context);
 
     // Re-apply role visibility so admin-only pills/cells show correctly.
     applyRoleVisibility();
@@ -6301,6 +6387,92 @@ function initAnonResultsChrome(): void {
         state.anonRibbonDismissed = true;
         document.getElementById('anon-signup-ribbon')?.classList.add('hidden');
     });
+}
+
+// ── Word-list export (copy + CSV) ──────────────────────────────────────────
+//
+// Available to every role, anonymous included (landing freemium cell ii: "Copy
+// or download — word list as plain text or CSV"). Both formats are generated
+// entirely client-side from the parse response already in memory: no server
+// call, nothing stored, so it works within the anonymous ephemeral guarantee.
+// The export controls hide in deck context (a saved deck has no ephemeral
+// word-list to export) and when there are no words.
+
+// csvCell RFC-4180-quotes one field: wrap in double quotes and double any
+// embedded quotes, so commas, quotes, and newlines survive a spreadsheet import.
+function csvCell(value: string | number): string {
+    return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function exportRows(data: ParseResponse): WordEntry[] {
+    // Occurrence-desc, mirroring the table's default sort, so the exported list
+    // reads in the same order the learner sees.
+    return [...data.words].sort((a, b) => b.count - a.count);
+}
+
+function wordListAsText(data: ParseResponse): string {
+    // Tab-separated lemma / POS / definition — the shape that drops straight
+    // into Anki or a spreadsheet paste.
+    return exportRows(data)
+        .map(w => [w.lemma, posLabel(w.pos), w.gloss || ''].join('\t'))
+        .join('\n');
+}
+
+function wordListAsCSV(data: ParseResponse): string {
+    const rows: string[] = ['lemma,pos,forms,definition,grammar,count'];
+    for (const w of exportRows(data)) {
+        rows.push([
+            csvCell(w.lemma),
+            csvCell(posLabel(w.pos)),
+            csvCell((w.forms || []).join('|')),
+            csvCell(w.gloss || ''),
+            csvCell(w.grammar_label || ''),
+            csvCell(w.count),
+        ].join(','));
+    }
+    return rows.join('\r\n');
+}
+
+// renderResultsExport shows the export controls whenever there's an ephemeral
+// word list (any non-deck parse with words) and hides them otherwise.
+function renderResultsExport(data: ParseResponse | null, context: ResultsContext): void {
+    const wrap = document.getElementById('results-export');
+    if (!wrap) return;
+    const show = !!data && context !== 'deck' && data.words.length > 0;
+    wrap.classList.toggle('hidden', !show);
+}
+
+async function copyWordList(): Promise<void> {
+    const data = state.currentResults;
+    if (!data || data.words.length === 0) return;
+    const text = wordListAsText(data);
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast(`Copied ${data.words.length} words to the clipboard.`, 'success');
+    } catch {
+        showToast('Could not copy to the clipboard.', 'error');
+    }
+}
+
+function downloadWordListCSV(): void {
+    const data = state.currentResults;
+    if (!data || data.words.length === 0) return;
+    const csv = wordListAsCSV(data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `finnest-${(data.lang || 'xx').toLowerCase()}-wordlist.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(`Downloaded ${data.words.length} words as CSV.`, 'success');
+}
+
+function initResultsExport(): void {
+    document.getElementById('results-copy-list')?.addEventListener('click', () => void copyWordList());
+    document.getElementById('results-download-csv')?.addEventListener('click', downloadWordListCSV);
 }
 
 interface PersistedParse {
@@ -6371,6 +6543,31 @@ async function hydrateLearningStates(data: ParseResponse): Promise<ParseResponse
     } catch {
         return data;
     }
+}
+
+// hasCarriedParse reports whether a carried parse exists in sessionStorage
+// (an anonymous parse the visitor had open before signing in). Deck contexts
+// aren't persisted here, so any hit is a real results/read view to restore.
+function hasCarriedParse(): boolean {
+    try {
+        const raw = sessionStorage.getItem(LAST_PARSE_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw) as PersistedParse;
+        return !!parsed?.data && !!parsed.context;
+    } catch {
+        return false;
+    }
+}
+
+// landAfterAuth decides where a freshly-authenticated user lands. Carry-forward
+// (USER_FLOWS "Carry-forward of anonymous parses"): if a parse was open before
+// sign-in / account creation / session re-auth, restore it — re-rendered against
+// the now-authenticated state so the reveal's known % becomes real and learner
+// controls appear — instead of dropping the user on the dashboard and losing
+// their place. With no carried context, land on the dashboard as before.
+async function landAfterAuth(): Promise<void> {
+    if (hasCarriedParse() && await restoreLastParse()) return;
+    navigate('/dashboard');
 }
 
 async function restoreLastParse(): Promise<boolean> {
@@ -8013,6 +8210,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initInspectForm();
     initWorkbenchForm();
     initAnonResultsChrome();
+    initResultsExport();
     preventStrayFileDrops();
     initCorrectionModal();
     initDecksPage();

@@ -136,6 +136,55 @@ type CatalogTextResponse struct {
 	Text     string `json:"text"`
 }
 
+// demoTextAllowlist is the fixed set of embedded-catalog ids exposed
+// anonymously to back the landing "or try →" demo chips (docs/USER_FLOWS.md §1).
+//
+// The full /api/catalog surface stays signed-in only. We deliberately do NOT
+// open the whole catalog to anonymous visitors: only these three curated,
+// license-clean fixtures are reachable without auth. They already ship embedded
+// in the binary, so serving them statelessly adds no storage or per-request
+// state. Any id outside this set 404s exactly like an unknown text, so this
+// endpoint cannot be used to enumerate the private catalog.
+var demoTextAllowlist = map[string]bool{
+	"fi-sauna-article":     true, // FI · article
+	"fi-hiiri-pekka-story": true, // FI · story
+	"et-linnu-keel-story":  true, // ET · story
+}
+
+// HandleDemoText serves one allowlisted embedded text to anonymous visitors for
+// the landing demo chips. It is intentionally unauthenticated but restricted to
+// demoTextAllowlist; everything else responds 404.
+//
+//	GET /api/demo/text/{id}  -> full text for one allowlisted demo text
+func (a *API) HandleDemoText(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	// Path: /api/demo/text/{id}
+	id := strings.TrimPrefix(r.URL.Path, "/api/demo/text/")
+	if id == "" || strings.Contains(id, "/") || !demoTextAllowlist[id] {
+		http.Error(w, "Text not found", http.StatusNotFound)
+		return
+	}
+	entry, ok := catalog.Find(id)
+	if !ok {
+		http.Error(w, "Text not found", http.StatusNotFound)
+		return
+	}
+	text, err := catalog.Text(id)
+	if err != nil {
+		http.Error(w, "Text not found", http.StatusNotFound)
+		return
+	}
+	writeJSON(w, http.StatusOK, CatalogTextResponse{
+		ID:       entry.ID,
+		Language: entry.Language,
+		Title:    entry.Title,
+		Text:     text,
+	})
+}
+
 func (a *API) HandleCatalogText(w http.ResponseWriter, r *http.Request) {
 	a.requireAuth(a.handleCatalogText).ServeHTTP(w, r)
 }

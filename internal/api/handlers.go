@@ -3294,6 +3294,10 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/catalog", a.HandleCatalog)
 	mux.HandleFunc("/api/catalog/", a.HandleCatalogText)
 
+	// Anonymous landing demo texts — a fixed allowlist of embedded texts
+	// exposed without auth to back the landing "or try →" demo chips.
+	mux.HandleFunc("/api/demo/text/", a.HandleDemoText)
+
 	// Import (file upload → plain text)
 	mux.HandleFunc("/api/import/extract", a.HandleImportExtract)
 	mux.HandleFunc("/api/known-words", a.HandleKnownWords)
