@@ -10,6 +10,24 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Five-level catalog difficulty + FI human review recorded
+
+The first human difficulty review (Sagar, FI, 3 texts) found every text on a
+bucket boundary and one model-vs-human ordering inversion, so the Global
+Difficulty scale is now five-level with a human-override mechanism.
+
+- Added: `internal/catalog/reviews.json` — reviewer sign-offs (reviewer, date,
+  note, optional difficulty override) merged by `cmd/gencatalog`; approved
+  entries carry `difficulty_review: "approved"` + reviewer metadata, and the
+  model's verdict is preserved in `difficulty_computed`.
+- Modified: `internal/catalog/difficulty.go` — four cut points (0.29 / 0.39 /
+  0.53 / 0.63) yielding easy / easy-medium / medium / medium-hard / hard;
+  thresholds re-pinned in `difficulty_test.go`; calibration notes in
+  [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md).
+- FI verdicts applied: sauna easy-medium (model said medium-hard), Kesäaamu
+  medium-hard (model: hard), Hiiri-Pekka medium-hard (model: medium). ET
+  entries remain `pending` for an Estonian reviewer.
+
 ## 2026-07-04 — Overnight launch-gate run (PRs #250–#259)
 
 Ten PRs merged in one overnight run, closing or advancing most public-alpha

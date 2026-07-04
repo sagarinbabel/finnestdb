@@ -2662,9 +2662,11 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     border: 1px solid var(--border);
     color: var(--text-secondary);
 }
-.catalog-diff-easy   { color: #1a7f37; border-color: #1a7f3755; }
-.catalog-diff-medium { color: #9a6700; border-color: #9a670055; }
-.catalog-diff-hard   { color: #b3261e; border-color: #b3261e55; }
+.catalog-diff-easy        { color: #1a7f37; border-color: #1a7f3755; }
+.catalog-diff-easy-medium  { color: #4d7c0f; border-color: #4d7c0f55; }
+.catalog-diff-medium       { color: #9a6700; border-color: #9a670055; }
+.catalog-diff-medium-hard  { color: #c2410c; border-color: #c2410c55; }
+.catalog-diff-hard         { color: #b3261e; border-color: #b3261e55; }
 .catalog-title {
     margin: 0.1rem 0 0;
     font-size: 1rem;

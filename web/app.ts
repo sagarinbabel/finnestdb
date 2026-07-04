@@ -361,7 +361,7 @@ interface CatalogEntry {
     title:             string;
     author?:           string;
     genre:             string;   // story | article | poem
-    difficulty:        string;   // easy | medium | hard
+    difficulty:        string;   // easy | easy-medium | medium | medium-hard | hard
     difficulty_review: string;   // "pending" until human-checked
     source_url?:       string;
     corpus_source:     string;
@@ -1617,7 +1617,8 @@ const GENRE_LABEL: Record<string, string> = {
     story: 'Story', article: 'Article', poem: 'Poem',
 };
 const DIFFICULTY_LABEL: Record<string, string> = {
-    easy: 'Easy', medium: 'Medium', hard: 'Hard',
+    'easy': 'Easy', 'easy-medium': 'Easy\u2013Medium', 'medium': 'Medium',
+    'medium-hard': 'Medium\u2013Hard', 'hard': 'Hard',
 };
 
 // renderCatalogSection toggles a cold-start section on/off and paints the

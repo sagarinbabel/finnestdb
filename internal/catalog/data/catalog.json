@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generated": "2026-07-03",
+  "generated": "2026-07-04",
   "entries": [
     {
       "id": "et-minu-paev-article",
@@ -15,6 +15,7 @@
       "word_count": 122,
       "import_date": "2026-07-04",
       "difficulty": "easy",
+      "difficulty_computed": "easy",
       "metrics": {
         "token_count": 122,
         "sentence_count": 20,
@@ -389,7 +390,8 @@
       "text_length": 1006,
       "word_count": 144,
       "import_date": "2026-07-04",
-      "difficulty": "medium",
+      "difficulty": "medium-hard",
+      "difficulty_computed": "medium-hard",
       "metrics": {
         "token_count": 144,
         "sentence_count": 14,
@@ -994,7 +996,8 @@
       "text_length": 976,
       "word_count": 162,
       "import_date": "2026-07-04",
-      "difficulty": "medium",
+      "difficulty": "easy-medium",
+      "difficulty_computed": "easy-medium",
       "metrics": {
         "token_count": 162,
         "sentence_count": 17,
@@ -1574,7 +1577,8 @@
       "text_length": 1057,
       "word_count": 144,
       "import_date": "2026-07-04",
-      "difficulty": "medium",
+      "difficulty": "easy-medium",
+      "difficulty_computed": "medium-hard",
       "metrics": {
         "token_count": 144,
         "sentence_count": 13,
@@ -1587,7 +1591,10 @@
         "mean_sentence_length": 11.0769,
         "score": 0.5404
       },
-      "difficulty_review": "pending",
+      "difficulty_review": "approved",
+      "difficulty_review_by": "sagar",
+      "difficulty_review_date": "2026-07-04",
+      "difficulty_review_note": "Falls between easy and medium, more on the easy side. Model score 0.540 (medium-hard band) substantially overrates it: everyday vocabulary and familiar topic are not captured by the lexical/structural signals.",
       "fixture": "fi-sauna-article.txt",
       "lemmas": [
         {
@@ -2105,7 +2112,8 @@
       "text_length": 1004,
       "word_count": 126,
       "import_date": "2026-07-04",
-      "difficulty": "hard",
+      "difficulty": "medium-hard",
+      "difficulty_computed": "hard",
       "metrics": {
         "token_count": 125,
         "sentence_count": 11,
@@ -2118,7 +2126,10 @@
         "mean_sentence_length": 11.3636,
         "score": 0.7148
       },
-      "difficulty_review": "pending",
+      "difficulty_review": "approved",
+      "difficulty_review_by": "sagar",
+      "difficulty_review_date": "2026-07-04",
+      "difficulty_review_note": "Between medium and hard. Archaic 1891 poetic Finnish, but short and regular. Model score 0.715 (hard) overshoots by one band.",
       "fixture": "fi-kesaaamu-poem.txt",
       "lemmas": [
         {
@@ -2661,7 +2672,8 @@
       "text_length": 5574,
       "word_count": 721,
       "import_date": "2026-07-04",
-      "difficulty": "medium",
+      "difficulty": "medium-hard",
+      "difficulty_computed": "medium",
       "metrics": {
         "token_count": 714,
         "sentence_count": 62,
@@ -2674,7 +2686,10 @@
         "mean_sentence_length": 11.5161,
         "score": 0.4586
       },
-      "difficulty_review": "pending",
+      "difficulty_review": "approved",
+      "difficulty_review_by": "sagar",
+      "difficulty_review_date": "2026-07-04",
+      "difficulty_review_note": "Clearly more than medium, but not fully hard. Model score 0.459 (medium) undershoots by one band; literary 1930s vocabulary outweighs the short sentences.",
       "fixture": "fi-hiiri-pekka-story.txt",
       "lemmas": [
         {

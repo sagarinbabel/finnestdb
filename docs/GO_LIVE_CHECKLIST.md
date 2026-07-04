@@ -352,6 +352,7 @@ go run ./cmd/gencatalog \
     -data internal/catalog/data \
     -db finnestdb.db \
     -freq-dir localdata/frequency \
+    -reviews internal/catalog/reviews.json \
     -out internal/catalog/data/catalog.json
 # reproducibility guard (CI-friendly; ignores only the "generated" date):
 go run ./cmd/gencatalog -check
@@ -371,10 +372,22 @@ pinned by `difficulty_test.go`):
 - unique-form ratio (weight 0.14, floor 0.45, ceiling 0.85)
 - FEATS variety per token (weight 0.10, ceiling 0.28)
 
-Bucket cut points: `score < 0.34` = Easy, `< 0.58` = Medium, else Hard. Every
-entry ships `difficulty_review: "pending"`; the Global Difficulty label is
-computed only — Sagar sanity-checks Finnish and an Estonian reviewer checks
-Estonian before that field can flip to reviewed. Per-learner Personalized Text
+Labels are five-level since 2026-07-04 (the FI human review showed real texts
+clustering on the old bucket boundaries): `score < 0.29` = Easy, `< 0.39` =
+Easy–Medium, `< 0.53` = Medium, `< 0.63` = Medium–Hard, else Hard.
+
+Human review lives in `internal/catalog/reviews.json` (reviewer, date, note,
+optional difficulty override). The generator merges it: reviewed entries flip
+`difficulty_review` to `approved` with reviewer/date/note, an override replaces
+the learner-facing `difficulty`, and the model's verdict is always preserved in
+`difficulty_computed` for calibration. Sagar reviews Finnish; an Estonian
+reviewer covers Estonian.
+
+Calibration so far (n=3 FI, 2026-07-04): the model over-rated the everyday-topic
+sauna article by two bands (0.540 → human easy-medium) — familiar-topic
+simplicity is invisible to the lexical/structural signals — and was one band
+off in each direction on the other two. Revisit weights once ~10 reviewed texts
+exist. Per-learner Personalized Text
 Fit is a runtime set intersection of each entry's precomputed `(lemma, pos)`
 list against `user_known_lemmas`, computed in `/api/catalog`; it never touches
 the frozen difficulty label.

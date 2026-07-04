@@ -195,7 +195,7 @@ scope, not accidental creep. See Decisions 23-29.
       it means the product. Do not rename the local folder, `finnestdb.db`,
       module paths, historical file names, or GitHub URLs without an explicit
       engineering rename plan.
-- [ ] **Curated embedded text catalog** (mechanism + 6 initial license-clean texts shipped 2026-07-04 in PR #258; remaining: full 36-text matrix and the human difficulty sanity-check — every entry is difficulty_review=pending): checked-in metadata and lazy-loaded full
+- [ ] **Curated embedded text catalog** (mechanism + 6 initial license-clean texts shipped 2026-07-04 in PR #258; FI difficulty review done 2026-07-04 by Sagar — labels widened to a five-level scale with human overrides recorded in internal/catalog/reviews.json; remaining: ET reviewer sign-off, full 36-text matrix, sauna-article naturalness confirmation): checked-in metadata and lazy-loaded full
       text fixtures from redistributable FI/ET sources; target matrix is
       stories/articles/poems x Easy/Medium/Hard x two texts per bucket per
       language, with computed difficulty and human sanity-check.
