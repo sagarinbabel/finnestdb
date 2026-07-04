@@ -451,6 +451,9 @@ func TestDeckFilteredReviewReturnsDeckSurfaceCard(t *testing.T) {
 	if cardB.SentenceText != sentenceB {
 		t.Fatalf("deck B review SentenceText=%q, want %q", cardB.SentenceText, sentenceB)
 	}
+	if len(cardB.DeckCounts) != 1 || cardB.DeckCounts[0][1] != "1" {
+		t.Fatalf("deck B review DeckCounts=%v, want only the deck containing surface koiran", cardB.DeckCounts)
+	}
 
 	cardA, err := db.GetNextReviewCard(user.ID, &deckA, "FI")
 	if err != nil {
@@ -464,6 +467,9 @@ func TestDeckFilteredReviewReturnsDeckSurfaceCard(t *testing.T) {
 	}
 	if cardA.SentenceText != sentenceA {
 		t.Fatalf("deck A review SentenceText=%q, want %q", cardA.SentenceText, sentenceA)
+	}
+	if len(cardA.DeckCounts) != 1 || cardA.DeckCounts[0][1] != "1" {
+		t.Fatalf("deck A review DeckCounts=%v, want only the deck containing surface koira", cardA.DeckCounts)
 	}
 }
 

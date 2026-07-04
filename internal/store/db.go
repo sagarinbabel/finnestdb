@@ -2999,9 +2999,10 @@ func (d *DB) GetNextReviewCard(userID int64, deckID *int64, lang string) (*Revie
 		    AND d.lang = ?
 		    AND o.lemma = ?
 		    AND o.pos = ?
+		    AND `+occurrenceSurfaceNormExpr("o")+` = ?
 		  GROUP BY d.id, d.title
 		  ORDER BY d.created_at DESC, d.id DESC`,
-		userID, userID, card.Lang, card.Lemma, card.POS,
+		userID, userID, card.Lang, card.Lemma, card.POS, card.Surface,
 	)
 	if err != nil {
 		return nil, err
