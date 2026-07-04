@@ -6,7 +6,7 @@ const finnishText = 'Menin pankkiin eilen ja ostin hyvää leipää. Kissa nukku
 
 // Anonymous /api/me mock. anonMax lets a test dial the surfaced cap so the
 // char counter and cap-error copy can be asserted deterministically.
-async function mockAnonMe(page: Page, anonMax = 20000): Promise<void> {
+async function mockAnonMe(page: Page, anonMax = 300000): Promise<void> {
   await page.route('**/api/me', async (route) => {
     await route.fulfill({
       status: 200,
@@ -38,14 +38,14 @@ async function mockAnonParse(page: Page): Promise<void> {
 }
 
 test('anonymous landing shows a parse form with the demo cap in the counter', async ({ page }) => {
-  await mockAnonMe(page, 20000);
+  await mockAnonMe(page, 300000);
   await page.goto('/');
 
   await expect(page.locator('#landing-page')).toHaveClass(/active/);
   await expect(page.locator('#landing-form')).toBeVisible();
   await expect(page.locator('#landing-text')).toBeVisible();
   // Counter reflects the server-surfaced anonymous cap, not the 1.5M signed-in one.
-  await expect(page.locator('#landing-char-count')).toContainText('/ 20,000');
+  await expect(page.locator('#landing-char-count')).toContainText('/ 300,000');
   // The marketing hero + value grid remain below the form.
   await expect(page.locator('.hero-title')).toContainText(/Learn Finnish/i);
   await expect(page.locator('.value-grid')).toBeVisible();
