@@ -10,6 +10,34 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — Starter-deck cards carry curated corpus example sentences
+
+The cold-start "Top N words" official starter deck now attaches a real corpus
+example sentence to each card instead of showing only the bare headword form.
+
+- **New tool `cmd/pickexamples`:** for each lemma in seedcolddeck's Top-N
+  ranking (shared via the new `internal/starterdeck` package), it indexes
+  candidate sentences from the corpus pipeline's per-surface-form example index
+  (`wordlist_user_friendly.tsv`'s `example_ref_id`) — not a 66M-line text scan —
+  then fetches just the needed sentences in one streamed pass over
+  `sentences_user_friendly.tsv`. Both passes are bounded-memory streaming scans;
+  a full FI/ET run is ~20s at ~1.1 GB RSS.
+- **Deterministic "beautiful evocative" heuristics** (documented as named
+  constants in `cmd/pickexamples/select.go`): complete sentence, 4–14 words, no
+  digits/URLs/ALL-CAPS/quote fragments/subtitle artifacts (leading dashes,
+  speaker colons, dialogue-line joins, OCR mid-word-cap garble), a preference
+  for a non-sentence-initial target form and high-frequency surrounding words,
+  plus a coarse foreign-language guard against corpus language contamination.
+- **Checked-in artifact** `testdata/starter-examples/{fi,et}-examples-v1.tsv`
+  (~790 FI / ~764 ET lemmas covered), attributed and licensing-noted in its
+  [README](../testdata/starter-examples/README.md) per the owner's
+  individual-sentence call.
+- **Wiring:** `cmd/seedcolddeck -examples <file>` seeds each matching card with
+  the corpus sentence and the inflected form as the highlighted occurrence;
+  lemmas without a curated example fall back to the prior representative-form
+  sentence. The example reaches the review payload through the existing
+  deck-sentence mechanism. See
+  [`srs-deck-spec.md`](srs-deck-spec.md) "Example sentence policy".
 ## 2026-07-04 — Learner-facing copy sells the pre-learn proposition
 
 Rewrote the persuasion copy across every learner-facing surface (landing hero,

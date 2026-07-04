@@ -1,0 +1,1558 @@
+lemma	pos	form	sentence	source_corpus
+olla	VERB	olette	Saitte löytää ensin itsenne, ja olette nyt valmiita tähän.	fi
+olla	VERB	olivat	Joku kertoo, miten treffit olivat menneet pieleen.	fi
+ne	DET	niihin	Miksi hän halusi lähteä niihin mukaan?	fi
+ne	DET	niinä	Ja varsinkin niinä päivinä, kun tuli metsästä eikä saanut mitään.	fi
+he	PRON	häneen	Törmään häneen kaikkialla, vaikka elän aivan erilaista elämää kuin hän.	fi
+he	PRON	heihin	Mutta sinä et saa kiivastua heihin etkä olla siitä ankara.	fi
+mi	PRON	miltä	Haluan kertoa hänelle, miltä isän kuolema tuntuu, tai kuinka se ei oikeastaan tunnu miltään.	fi
+mi	PRON	missä	Laita sitten silmät kiinni ja muistele, missä punaiset asiat sijaitsivat.	fi
+ei	VERB	ette	Minä laitan Samin soittamaan teille, ja te ette tapa ettekä vammauta sitä.	fi
+ei	VERB	älkää	Muistakaa pitää toisistanne huolta, ja jos toinen on vajoamassa, älkää antako sen tapahtua.	fi
+te	PRON	sinäsi	Jos sinä ja menneet sinäsi osallistuvat,-.	fi
+te	PRON	sinä	En haluaisi olla sinä, Laine kertoo vanhan ystävän sanoneen.	fi
+me	PRON	minua	Sekä kaikenlaista erilaista, väärää ja outoa, joka minua kiehtoo.	fi
+me	PRON	meistä	Ei toki täysin surkeakaan, mutta olisi hän voinut edes joskus sanoa meistä jotain hyvää.	fi
+tämä	DET	tässä	Katsokaa vain, ei tässä ole mitään vaaraa tai väärää!	fi
+tämä	DET	täten	Julistan täten, että olette tulleet turhaan.	fi
+joka	PRON	joihin	Maailmassa on paljon paikkoja, joihin ei saa mennä lapsen kanssa.	fi
+joka	PRON	jotta	Toisaalta olen asunut liian vähän aikaa, jotta oikeasti ymmärtäisin, mistä on kyse.	fi
+en	VERB	Enni	Neuvolan Ulla, lastensuojeluviranomaiset, Jönni, Enni, puiston muut naiset.	fi
+voi	NOUN	voit	Sä voit tehdä omia juttujasi parin tunnin ajan, minä sanon.	fi
+voi	NOUN	voilta	Illalla ei käy laatuun tuoksua voilta.	fi
+hyvä	ADJ	hyvälle	Sellainen tuntuu heistä hyvälle.	fi
+hyvä	ADJ	parhain	Mutta voihan olla, kuka tietää, ehkä kaikki vielä kääntyy parhain päin.	fi
+tulla	VERB	tulisit	Arvelinkin, että tulisit takaisin ennemmin tai myöhemmin.	fi
+tulla	VERB	tulin	Mä tulin auttamaan sua, minä selitän.	fi
+tietää	VERB	tietäisitte	Onkin jo korkea aika, että tietäisitte.	fi
+tietää	VERB	tiedä	Hän ei vieläkään tiedä, miksi siskon mielestä hänelle ei olisi saanut kertoa.	fi
+vain	ADV	vaan	Nopeasti tajuan, että Threadsin ongelma ei ole algoritmi, vaan sinkut.	fi
+vain	ADV	Vaan	Vaan tamma odotti parempaa manausta... ei ollut kuulevinaankaan, laahasi vain jalkojaan kuin vesitynnöriä vetäessään.	fi
+pitää	VERB	pidä	Sitten pidä silmät kiinni ja kerro, missä siniset asiat olivat.	fi
+pitää	VERB	pidin	Ennen pidin heitä vain rikollisina, mutta nyt tiedän, että hekin ovat ihmisiä.	fi
+haluta	VERB	halusi	Miksi hän halusi lähteä niihin mukaan?	fi
+haluta	VERB	haluaisin	Juuri nyt haluaisin löytää syyn sille, miksi en tule raskaaksi.	fi
+saada	VERB	saamme	Mutta mikä on hänen tahtonsa, ja mistä me sen tietää saamme?	fi
+saada	VERB	saatava	Hänen on saatava aikaan käänne.	fi
+mennä	VERB	meen	Mä meen nyt käymään äidin luona.	fi
+mennä	VERB	menevä	Ajattele, että sä olet menevä sinkku, minä sanon.	fi
+tehdä	VERB	teki	Mieleni teki tehdä jotain hyödyllistä.	fi
+tehdä	VERB	tekemällä	Silti hän korostaa, että hallitustyöskentely on kuin käsityötä. ” Sitä oppii vain tekemällä ”.	fi
+tämä	PRON	tää	Ohan tää lopulta aika yksinkertaista.	fi
+kuu	NOUN	kuulla	On lohduttavaa kuulla, että minulla on oikeus tunteisiin.	fi
+kuu	NOUN	Kuulla	Ilmeisesti Kuulla on sillä alalla jokunen ainutkertainen etu.	fi
+nähdä	VERB	näitte	Luulen, että näitte sen kaiken.	fi
+nähdä	VERB	näen	Olen jo melkein hänen talonsa kohdalla, kun näen hänen tulevan ovesta ulos.	fi
+sanoa	VERB	sanomaan	Sitten en pysty sanomaan enää mitään.	fi
+sanoa	VERB	sanotaan	Ainakaan hän ei kuuntele, mitä hänelle sanotaan.	fi
+yksi	NUM	yhden	Suomessa se ehtii yleensä tehdä yhden lentävän sukupolven.	fi
+yksi	NUM	yy	Alaston totuus tulossa än … yy … tee..	fi
+mikään	PRON	miltään	Haluan kertoa hänelle, miltä isän kuolema tuntuu, tai kuinka se ei oikeastaan tunnu miltään.	fi
+mikään	PRON	mitään	Valon ja pimeän raja on niin terävä, ettei sen yli näe mitään.	fi
+tuo	DET	noista	Mutta eihän se johdu noista miehistä, jotka odottavat sua tuolla aulassa?	fi
+tuo	DET	tuolta	Isäsi varmasti katselee tuolta taivaasta ja on ylpeä sinusta.	fi
+antaa	VERB	anna	Suvi olisi ehkä hyväksynyt sen jossain vaiheessa, mutta valehtelua hän ei anna anteeksi.	fi
+antaa	VERB	annettava	Näiden on sinun annettava rauhassa maata maaliskuuhun asti.	fi
+jokin	DET	jotain	Mieleni teki tehdä jotain hyödyllistä.	fi
+jokin	DET	jollain	Hän sanoo suoraan olevansa todennäköisesti älykäs, vaikka jollain saattaa olla erilainenkin näkemys hänestä.	fi
+aika	NOUN	aikaamme	Päivä on meidän aikaamme.	fi
+aika	NOUN	ajalla	Tämä näkyy esimerkiksi siinä, ettei potilaan omalla ajalla ole usein mitään arvoa.	fi
+kertoa	VERB	kerrottava	Minun on kerrottava sinulle totuus.	fi
+kertoa	VERB	kerroimme	Koko sen ajan he ajattelevat edelleen, että olemme sitä, mitä kerroimme.	fi
+puhua	VERB	puhuen	Totta puhuen en etsi ketään, sillä minulla on jo joku.	fi
+puhua	VERB	puhuisit	Puhu minulle niin kun puhuisit itsellesi.	fi
+mies	NOUN	miehiäni	Tiedät, mikä olen miehiäni.	fi
+mies	NOUN	miehiäsi	Luuletko etten tiedä, mikä olet miehiäsi?	fi
+ottaa	VERB	otettiin	Siihen aikaan otettiin muutenkin vähän kuvia.	fi
+ottaa	VERB	ottaisit	Niin pitkään elin siinä kuvitelmassa, että sinä vielä ottaisit minut takaisin.	fi
+asia	NOUN	asialla	Aina asialla, vielä enemmän ilman.	fi
+asia	NOUN	asiaani	Kuten tavallista, hän päästi minut sisään vasta kun olin kertonut asiaani.	fi
+kuka	PRON	kenet	Se saisi kenet tahansa näyttämään erilaiselta.	fi
+kuka	PRON	keneltä	En enää muista keneltä kuulin, että Yllätyksen lapsi voisi poistaa kirouksen.	fi
+tarvita	VERB	tarvitsisivat	Mihin he sitä tarvitsisivat?	fi
+tarvita	VERB	tarvitsemani	Minä taas sain tarvitsemani tiedon.	fi
+oikea	ADJ	oikeastaan	Haluan kertoa hänelle, miltä isän kuolema tuntuu, tai kuinka se ei oikeastaan tunnu miltään.	fi
+oikea	ADJ	oikeaksi	Eikä sen sanan jälkeen enää ollut ketään, joka olisi epäillyt oikeaksi Panun panemaa arpaa.	fi
+kaikki	DET	kaikin	Ja kaikin puolin tuntui niin hyvältä olla.	fi
+kaikki	DET	kaikeksi	Nyt se ei koskaan pääse siitä irti, nyt se on kaikeksi iäkseen kirottu!	fi
+pää	NOUN	päältäni	Ensimmäinen on sellainen, että nouset päältäni ja me puhumme.	fi
+pää	NOUN	päälläni	Toinen miehistä istuu päälläni ja pitää käsiäni selän takana.	fi
+isä	NOUN	isälle	Mutta älä sano isälle, tappaa minut, jos tietää.	fi
+isä	NOUN	isästänne	Voin kertoa lisää tarinoita isästänne.	fi
+lähteä	VERB	lähditte	Pian sen jälkeen, kun te lähditte, vielä tammikuussa, hän lähti pois.	fi
+lähteä	VERB	lähteminen	Ja sitten puku, aluksen ulkopuolelle lähteminen?	fi
+tai	CCONJ	tahi	Sama kai se on, uskooko tahi ei...	fi
+katsoa	VERB	katsoisivat	Ne katsovat mua eri tavalla kuin muuten katsoisivat.	fi
+katsoa	VERB	katsoi	Aluksen kapteeni katsoi merta.	fi
+tee	NOUN	teellä	Hän täytti kuppinsa höyryävällä teellä vailla mitään kiirettä.	fi
+tee	NOUN	teensä	Hänen teensä oli jäähtynyt.	fi
+äiti	NOUN	äidistäni	Tajuan, että en tiedä äidistäni mitään.	fi
+äiti	NOUN	äitiinsä	Sekin on tullut äitiinsä.	fi
+käydä	VERB	käyn	Ainakin on rauhallista, kun käyn saunassa yksin.	fi
+käydä	VERB	käyminen	Virkamiehen kimppuun käyminen voi tulla teille kalliiksi...	fi
+näyttää	VERB	näyttänyt	Jos isä oli niin hyvä, miksi hän ei koskaan näyttänyt sitä meille?	fi
+näyttää	VERB	näytettiin	Ennen lähtöä minulle näytettiin hänestä kuva, ja siinä hän ei ollut yhtään paksu.	fi
+anne	NOUN	Annen	Minulla oli myös hänen miehensä numero, mutta valitsin mieluummin Annen.	fi
+yrittää	VERB	yrittänyt	Se on uusi tilanne ihmiselle, joka on yrittänyt koko elämänsä olla huomaamaton.	fi
+yrittää	VERB	yritimme	Myös Jarkko ja minä yritimme lasta monta vuotta, ennen kuin onnistuimme.	fi
+odottaa	VERB	odottamalla	Mikä on todennäköisyys sille, että asia paranee odottamalla?	fi
+odottaa	VERB	odottavat	Mutta eihän se johdu noista miehistä, jotka odottavat sua tuolla aulassa?	fi
+eikä	VERB	ettekä	Minä laitan Samin soittamaan teille, ja te ette tapa ettekä vammauta sitä.	fi
+eikä	VERB	eivätkä	Nämäkään juhlat eivät ole minun, eivätkä sellaiseksi koskaan muutu.	fi
+pois	ADV	Poissa	Poissa oli siis viimeinkin kaikkine kammoineen, painajaisineen ja sielua ja sydäntä väristyttävine viluineen.	fi
+jo	ADV	Josi	Kirin viritteli käyntiin kaksi ensimmäistä kavennusosumaa tehnyt Roman Josi.	fi
+kuolla	VERB	kuolitte	Luulin, että te kuolitte!	fi
+kuolla	VERB	Kuolkaa	Hän ei ymmärtänyt heitä. » Kuolkaa nälkään sitten », hän sanoi.	fi
+uskoa	VERB	uskoisimme	Mutta miksi me uskoisimme sinua?	fi
+uskoa	VERB	uskoen	Toivoa täynnä, uskoen että tapahtuu se, minkä kuuluukin tapahtua, annan ääneni.	fi
+selvä	ADJ	selväksi	Syy käy nopeasti selväksi.	fi
+selvä	ADJ	selville	He tietävät, kuka olen, ja saavat helposti selville, missä asun.	fi
+auttaa	VERB	autan	Sitten autan hänet taksiin.	fi
+auttaa	VERB	autettiin	Pihalla seisoi ilmavoimien raskas helikopteri, johon naiset autettiin.	fi
+ihminen	NOUN	ihmisestä	On kuitenkin vaikea erottaa sairaus ihmisestä.	fi
+ihminen	NOUN	ihmisiin	Vanhempieni salaisuus vei minulta uskon ihmisiin.	fi
+uusi	ADJ	uusiksi	Täytyy mennä elämässä eteenpäin ja sisustaa kotia uusiksi.	fi
+uusi	ADJ	uusin	Niitä ei voi vallata noin vain, eikä siinä auta uusin tekniikkakaan.	fi
+päivä	NOUN	päiväksi	Voisin jäädä tähän koko päiväksi.	fi
+päivä	NOUN	päiviin	Alkoi sota, joka on jatkunut näihin päiviin saakka.	fi
+kaksi	NUM	kahteen	Äiti haluaa katsoa samaan aikaan uutisia, mutta ei jaksa keskittyä kahteen asiaan yhtä aikaa.	fi
+kaksi	NUM	kahdesta	Minun ei kannata maksaa kahdesta asunnosta, joten muutan äidin luokse asumaan.	fi
+poika	NOUN	poikanne	Arvon rouva, katsokaa nyt vähän poikanne perään!	fi
+poika	NOUN	pojastani	Siksikö te pyysitte minut tänne, puhumaan pojastani?	fi
+tapahtua	VERB	tapahtumalla	Palmerilla ei ollut harhaluuloja siitä, että tapahtumalla olisi mitään tekemistä hänen kanssaan.	fi
+tapahtua	VERB	tapahtumatta	Jokaista todellisuuden hetkeä kohti oli lukemattomia heijastuksia, asioita, jotka jäivät ainiaaksi tapahtumatta.	fi
+löytää	VERB	löydettiin	No ei, mutta löydettiin ratkaisu.	fi
+löytää	VERB	löysimme	Olen iloinen, että löysimme toisemme taas – enemmän kuin iloinen.	fi
+työ	NOUN	työtämme	Tämä on meidän työtämme.	fi
+työ	NOUN	töitäni	Aiotko sinä sanoa äidillesi, että minä en tehnyt tänään töitäni kunnolla?	fi
+voida	VERB	voisimme	Hänellä on jo yksi lapsi, ja voisimme hankkia yhdessä toisen.	fi
+voida	VERB	voidessani	Olin silti tyytyväinen voidessani olla hänelle mieliksi.	fi
+luulla	VERB	luulisivat	Jotta he luulisivat, että vanhus on hulluna minuun.	fi
+luulla	VERB	luulevat	Äiti ja koko suku luulevat tietenkin, että olen rakastunut naiseen, mutta siinähän luulevat.	fi
+kukaan	PRON	kenellekään	Niin ei saisi tapahtua kenellekään.	fi
+kukaan	PRON	kenessäkään	Ei mitään erikoista kenessäkään.	fi
+herra	NOUN	herroiksi	Siis ihan oikeasti, meistä tulee rikkaita ja elämme herroiksi.	fi
+herra	NOUN	herraansa	Kukaan ei itse valitse herraansa, vaan herrat valitsevat, eikös näin ole?	fi
+täytyä	VERB	täytyi	Kuulemma vain hän tiesi, mikä oli lapselle parasta ja miten vaippa täytyi vaihtaa.	fi
+täytyä	VERB	täytyisi	Minun täytyisi käyttää luovuttajasiittiöitä, ja se maksaa tietysti lisää.	fi
+sama	DET	samoihin	Kuuntelin hänen hyräilyään ja mietin, eikö hän koskaan kyllästynyt noihin samoihin sävelmiin.	fi
+sama	DET	samoin	Tuntuisi absurdilta, että miehet tekisivät niin, vaikka he todennäköisesti ajattelevat opesta samoin.	fi
+paha	ADJ	pahoillasi	Älä ole pahoillasi, kun ne alkavat.	fi
+paha	ADJ	pahaa	Mitä pahaa siitä olisi voinut seurata?	fi
+toinen	DET	toisistamme	Nyt vain nautitaan toisistamme ja elämästä, minä sanon.	fi
+toinen	DET	toisianne	Kertokaa kaikki ja koettakaa ymmärtää toisianne.	fi
+vuosi	NOUN	vuosia	Jokainen osallistuja oli sanonut asiansa jo vuosia sitten, eikä kenenkään mielipide ollut muuttunut mihinkään.	fi
+vuosi	NOUN	vuoden	Mutta suurin osa ihmisen keinovaloista palaa ympäri vuoden.	fi
+aa	NOUN	aina	Ehkä olin aina aiemmin ollut valotunnelin vankina.	fi
+aa	NOUN	Aineen	He eivät kyenneet niitä selittämään, he pitivät niitä Aineen antamina enteinä.	fi
+soittaa	VERB	soita	Älä soita poliisille, minä sanon.	fi
+soittaa	VERB	soitan	Mulla on nyt vähän tilanne päällä, mutta sopiiko, että mä soitan myöhemmin? minä kysyn.	fi
+nimi	NOUN	nimelläsi	Kysyn vain siksi, että haluaisin puhutella sinua oikealla nimelläsi.	fi
+nimi	NOUN	nimeni	Olin ollut vähällä sanoa oman nimeni, mutta keksin paremman vaihtoehdon.	fi
+muu	DET	muutta	Vielä voi muutta hyvin.	fi
+muu	DET	muut	Tuttuja nimiä, jotka yrittävät saada muut nauramaan ja tykkäämään itsestään.	fi
+tosi	ADJ	totena	Se oli murtanut miehen, sitä ei voinut oikein pitää totena vieläkään.	fi
+tosi	ADJ	todella	Jos sinne olisi ujutettu pahantahtoista koodia, kiinni jäämisen riski olisi todella suuri.	fi
+tappaa	VERB	tappaisimme	Me vain tappaisimme toisemme.	fi
+tappaa	VERB	tapettaisiin	Mutta en salli, että hänet tapettaisiin ilman että on ensin yritetty päästä pakoon.	fi
+esi-	ADJ	edelle	Ja lisäksi sä menet aina asioiden edelle.	fi
+esi-	ADJ	edeltä	Ehkä oli mennyt edeltä yhtymäpaikalle.	fi
+lapsi	NOUN	lastemme	Jos emme me, niin meidän lapsemme tai lastemme lapset tekevät sen.	fi
+lapsi	NOUN	lapseen	Mitä taas tuohon lapseen tulee, hänkin jäi henkiin sattumalta.	fi
+enää	ADV	enään	Minun ei tarvitse enään piileskellä, ja voin palata kotiini.	fi
+tuntea	VERB	tunnen	Olen yllättynyt siitä, miten vähän tunnen.	fi
+tuntea	VERB	tuntemalla	Miten tällainen eläin voisi jäädä mainitsematta millään ihmisen tuntemalla rannalla?	fi
+kerta	NOUN	kerrasta	Miten hän muistaa asioita kerrasta.	fi
+kerta	NOUN	kertamme	Toinen kertamme sujui hyvin.	fi
+itse	NOUN	itsestäni	Olen silti ylpeä itsestäni.	fi
+itse	NOUN	itsenne	Saitte löytää ensin itsenne, ja olette nyt valmiita tähän.	fi
+kuulla	VERB	kuultu	Nämä jutut on kuultu.	fi
+kuulla	VERB	kuullut	En ole koskaan kuullut häntä noin vihaisena.	fi
+juuri	NOUN	juuremme	Tämä, mitä täällä näet, on juuremme.	fi
+juuri	NOUN	juurillemme	Meidän tulee olla uskollisia juurillemme.	fi
+koti	NOUN	kotiin	Tulen kotiin myöhään illalla.	fi
+koti	NOUN	koteihinne	Lähtekää siis kaikki koteihinne.	fi
+tarkoittaa	VERB	tarkoitettava	Asioiden on tarkoitettava sille aina samaa.	fi
+tarkoittaa	VERB	tarkoittava	Se on nimeäni tarkoittava ideogrammi.	fi
+kunto	NOUN	kunnostasi	Entä, kun kaikki lähinnä puhuvat sinun kovasta kunnostasi?	fi
+kunto	NOUN	kunnostamme	Kaikilla meillä ei ole etuoikeutta sotia etulinjassa, mutta ainakin voimme huolehtia kunnostamme.	fi
+paikka	NOUN	paikkoja	Maailmassa on paljon paikkoja, joihin ei saa mennä lapsen kanssa.	fi
+paikka	NOUN	paikalleni	Vai pitäisikö minun jäädä paikalleni odottamaan, kunnes minut löydetään?	fi
+tyttö	NOUN	tyttöämme	Myös naapuri tuli auttamaan äitiä ja pientä tyttöämme, sanoo isä.	fi
+tyttö	NOUN	tyttöjään	Hän ajatteli tyttöjään, jotka oli lähettänyt sinne.	fi
+ajatella	VERB	ajateltiin	Näin ainakin silloin ajateltiin.	fi
+ajatella	VERB	ajattelisivat	Mutta olen tehnyt kaikkeni, jotta ihmiset ajattelisivat toisin.	fi
+etsiä	VERB	etsi	Totta puhuen en etsi ketään, sillä minulla on jo joku.	fi
+etsiä	VERB	etsittävä	Mutta nyt tiesi hän ainakin, mistä vihollinen oli etsittävä.	fi
+ymmärtää	VERB	ymmärtäisimme	Kuka tietää, ehkä silloin ymmärtäisimme paremmin toisiamme?	fi
+ymmärtää	VERB	ymmärtäisin	Toisaalta olen asunut liian vähän aikaa, jotta oikeasti ymmärtäisin, mistä on kyse.	fi
+raha	NOUN	rahansa	Isä on menettänyt kaikki rahansa.	fi
+raha	NOUN	rahojaan	Hän ei halua menettää rahojaan, vaan hallita niitä.	fi
+varma	ADJ	varmoja	He eivät kai olleet varmoja, mitä sinulle pitäisi tehdä.	fi
+varma	ADJ	varmoista	Hän oli ajatellut että Molly puhui varmoista päivistä, mutta oli silti varonut hiukan.	fi
+jälki	NOUN	jälkiäsi	Nyt sataa joka päivä, kukaan ei löydä jälkiäsi.	fi
+jälki	NOUN	jälkiänne	Siitä lähtien olen etsinyt teidän jälkiänne.	fi
+pyytää	VERB	pyydän	Mä pyydän, minä sanon.	fi
+pyytää	VERB	pyysitte	Te pyysitte että kertoisin.	fi
+ystävä	NOUN	ystävästä	Puhun heille ystävästä, eikä ystäviä voi olla koskaan liikaa.	fi
+ystävä	NOUN	ystävillesi	Hän joi viiniä, ja sinä et koskaan tarjoa mitään kenellekään, vain lähimmille ystävillesi.	fi
+auto	NOUN	autoista	En tiedä autoista mitään.	fi
+auto	NOUN	autossasi	Onko sinulle autossasi takki?	fi
+joku	DET	joillekuille	Hän arveli, että joillekuille nimillä oli edelleen merkitystä.	fi
+joku	DET	jotakuta	Eikä sitä kertaa hiihtänyt Jorma metsässä, ettei jotakuta vähän hyräillyt.	fi
+päästä	VERB	pääsee	Pimeää pääsee kaupungissa kokemaan niin harvoin.	fi
+päästä	VERB	päästäneen	Niin kuului Meggien ensimmäinen ajatus, kun hän huomasi sanojen päästäneen hänet sisäänsä.	fi
+kai	ADV	Kailla	Toisaalta myös Kailla oli vaikutusvaltaa.	fi
+kai	ADV	Kain	Työmatkapyöräily oli ainoa liikuntamuoto, jolle Kain aikataulussa oli tilaa.	fi
+jättää	VERB	jättäisit	Sinut sain takaisin, mutta jos saisit pitää oman pääsi, jättäisit minut uudelleen.	fi
+jättää	VERB	jätettävä	Mutta miekka sinun on jätettävä minulle, ystävä hyvä.	fi
+mieli	NOUN	mielellämme	Olemme rehellistä väkeä, eikä meillä ole mitään syytä pelätä viranomaisia, päinvastoin, olemme mielellämme avuksi.	fi
+mieli	NOUN	mielin	Sieltä se nyt surkein mielin alas maahan katselee.	fi
+viedä	VERB	vei	Vanhempieni salaisuus vei minulta uskon ihmisiin.	fi
+viedä	VERB	viemme	Lähden kohta hänen luokseen... haen hänet tänne... viemme kirkolle siskon... otatko hänet?	fi
+vastata	VERB	vastasit	Tai … ehkä sittenkin vastasit.	fi
+vastata	VERB	vastaat	Jos kysyn jotakin ja vastaat epärehellisesti, myös se merkitsee opetuksen välitöntä loppua.	fi
+rakastaa	VERB	rakastimme	Me molemmat rakastimme paljon.	fi
+rakastaa	VERB	rakastamasi	Älä anna rakastamasi tytön kuolla?	fi
+puoli	ADJ	puolelleni	Nuoret miehet puolelleni tahdon, vanhat eivät uskalla, yksin en voi.	fi
+puoli	ADJ	puolellanne	Vakuutan, että olemme yhä teidän puolellanne, sekä minä että Vilgefortz.	fi
+tapa	NOUN	tavallani	En jää luoksesi, mutta taisin minäkin olla rakastunut sinuun … Omalla tavallani.	fi
+tapa	NOUN	tapanne	Toiseksi, ainoa tapanne selvitä tästä päivästä on se, että teette täsmälleen kuten sanon.	fi
+ulkona	ADV	ulompana	Winston tähyili ulompana olevalle niitylle ja koki oudon, vähittäisen järkytyksen kun tunnisti sen.	fi
+ulkona	ADV	ulkoa	Kun ei liene kotikylässä, ulkoa hakekaamme!	fi
+toi	PRON	tossa	Ja tossa se on.	fi
+toi	PRON	Lang	Jopa supermarketin kassa, rouva Lang, kyselee aina, mitä Ihmemiehelle kuuluu.	fi
+tavata	VERB	tapaatte	Jos kerran sellaisten kanssa tapaatte olla niin … omapa on asianne.	fi
+tavata	VERB	tavatessanne	Jos hän vaikutti selväjärkiseltä tavatessanne hänet, teillä oli onnea.	fi
+juttu	NOUN	jutuistaan	En tiedä hänen jutuistaan mitään.	fi
+juttu	NOUN	juttujasi	Sä voit tehdä omia juttujasi parin tunnin ajan, minä sanon.	fi
+elämä	NOUN	elämässäsi	Sinun täytyy itse päättää, mitä elämässäsi tapahtuu.	fi
+elämä	NOUN	elämäsi	Sinä olet miettinyt tuota koko elämäsi!	fi
+käyttää	VERB	käytät	Olen huomannut, että käytät enemmän toista kättäsi.	fi
+käyttää	VERB	käyttämän	Lähellä paperin yläreunaa oli isäni aiemmin käyttämän lakiasiaintoimiston nimi ja osoite.	fi
+aikoa	VERB	aio	En todellakaan aio kertoa töissä, mistä on kyse.	fi
+aikoa	VERB	aikonee	Kun niin isot lunnaat tahtoo, mihin vielä aikonee myydä, toiselle eikä sinulle.	fi
+oleva	VERB	olevinani	Nyt olin olevinani yksi heistä.	fi
+oleva	VERB	olevin	Kaikin käytettävissä olevin keinoin, kunnes toisin määrätään.	fi
+lopettaa	VERB	lopettavasi	Jos olisit kertonut minulle lopettavasi työt,- emme olisi menneet naimisiin.	fi
+lopettaa	VERB	lopetimme	Kun hän lopetti, me myös lopetimme.	fi
+hieno	ADJ	hienolle	Hän osti kukkia tai vei meidät hienolle päivälliselle tai sen sellaista.	fi
+hieno	ADJ	hienoihin	Kuninkaan takana seisoi toinen, hienoihin vaatteisiin pukeutunut mies kasvoillaan kopea ilme.	fi
+kolme	NUM	kolmelta	Nukahdin kolmelta ja heräsin seitsemältä.	fi
+kolme	NUM	kolmesta	Asiantuntijat vastaavat, kumpi on kolmesta väittämästä oikeassa.	fi
+osa	NOUN	osaltani	Älä pelkää, sinua ei uhkaa mikään paha minun osaltani.	fi
+osa	NOUN	osakseen	Saiko hän osakseen rakkautta?	fi
+käsi	NOUN	käsissäsi	Sinulla on verta käsissäsi!	fi
+käsi	NOUN	käsiensä	Mutta Matti ei kuullut... hän jo käsiensä varassa nukkui.	fi
+oma	ADJ	omillaan	Nyt hän on omillaan.	fi
+oma	ADJ	omistani	Jos katsoisin häntä nyt, hänen kasvonsa olisivat vain senttien päässä omistani.	fi
+kysyä	VERB	kysy	En minäkään kysy, että aiotko pian kuolla!	fi
+kysyä	VERB	kysyminen	Mutta kysyminen ei maksa mitään.	fi
+nainen	NOUN	naisestani	Oikeastaan hän luulee, että kysymys on minun naisestani.	fi
+nainen	NOUN	naisessa	Tässä naisessa oli vähän samanlaista.	fi
+hetki	NOUN	hetkeni	Luulin, että hetkeni oli tullut.	fi
+hetki	NOUN	hetkenä	Hän huomaa sen, hän alkaa hetkenä minä hyvänsä epäillä, sillä hän ei luota sinuun.	fi
+itse	PRON	itte	Voitais itte jauhaa omat viljat.	fi
+muistaa	VERB	muistivat	Tuli päivä, jolloin he muistivat tämän keskustelun.	fi
+muistaa	VERB	muistaminen	Ne voivat olla vaikeat ääntää, ja niiden muistaminen se vasta vaikeaa onkin.	fi
+tie	NOUN	tiehesi	Älä pelkää, Riitta, ei se sinulle mitään taida... mene tiehesi täältä, kuuletko...	fi
+tie	NOUN	tiellään	Kumma, kun jyvänsä muisti maksaa?... olisi nekin unohtanut yhdellä tiellään!...	fi
+alas	ADV	alla	Kuusen alla istui pieni jänis.	fi
+alas	ADV	alimmaksi	Hän, joka eilen itki tappiotaan, ei halua enää koskaan jäädä painiottelussa alimmaksi.	fi
+taitaa	VERB	taidat	No, taidat sinä olla, ei kai siitä ole epäilystäkään.	fi
+taitaa	VERB	taidettu	Ei me taidettu jutella synnytyksistäkään, mutta ei niistä tehty silloin mitään numeroa.	fi
+sellainen	ADJ	sellaisissa	Ajan virtaus on sellaisissa paikoissa normaali, vaikka olette saattanut kuulla muuta.	fi
+sellainen	ADJ	sellaiseksi	Nämäkään juhlat eivät ole minun, eivätkä sellaiseksi koskaan muutu.	fi
+maa	NOUN	maassaan	Mutta harva oli se vieras, joka heidän maassaan oli käynyt.	fi
+maa	NOUN	maalla	Siipien sijasta pitää vain olla pyörät, kun se kulkee maalla.	fi
+ilma	NOUN	ilman	Mutta kun luin Johan Eklöfin Maailma ilman pimeää, ymmärsin, miten vaarallista valosaaste on.	fi
+ilma	NOUN	ilmassa	Kun kiekko on ilmassa, maalivahti voi vain toivoa ennakoineensa oikein.	fi
+valmis	ADJ	valmiita	Saitte löytää ensin itsenne, ja olette nyt valmiita tähän.	fi
+valmis	ADJ	valmiina	Hautajaiset olivat tavallaan piristävää vaihtelua arkeen, sillä ruoka oli valmiina ja siivous kuului pakettiin.	fi
+alkaa	VERB	alkanut	Kausi oli juuri alkanut.	fi
+alkaa	VERB	aloitte	Ja sitten teistä jo tulikin vahvempia ja aloitte tappaa meitä sukupuuttoon.	fi
+poliisi	NOUN	poliisina	Aivan kuin hän ei poliisina saisi selville kenelle auto kuuluu.	fi
+poliisi	NOUN	poliisisi	Älä sitten rukoile minulta tietoja, kun poliisisi tarvitsevat niitä.	fi
+toimia	VERB	toimisimme	Me toimisimme niin kuin poliisi, joka ehtii ampua ennen kuin häntä tähtäävä rikollinen.	fi
+toimia	VERB	toimittaisiin	Matka oli harjoitus, jonka tarkoituksena oli tutustuttaa valtion ylin johto siihen, miten hätätilanteessa toimittaisiin.	fi
+hauska	ADJ	hauskassa	Niitä on myös parissa muussa hauskassa paikassa.	fi
+hauska	ADJ	hauskoista	He olivat poistuneet hauskoista juhlista yläkerrasta ja olivat aikeissa palata niihin mitä pikimmin.	fi
+pysyä	VERB	pysyisimme	Niinpä hän yrittää pelotella meitä niin että pysyisimme sivussa.	fi
+pysyä	VERB	pysyisitte	Mehän maksamme teille, jotta te pysyisitte poissa ravintolasta, tästä hetkestä lähtien, vai mitä?	fi
+helvetti	NOUN	helvetistä	Mistä helvetistä hän sen tietää?	fi
+helvetti	NOUN	helvettisi	Onko helvettisi kylmä vai kuuma tämä rytkeen keskellä?	fi
+syödä	VERB	syötte	Kai te syötte lihaa?	fi
+syödä	VERB	söisimme	Walter näytti yllättyneeltä. ” Oletin että söisimme kaikki yhdessä päivällistä täällä ”, hän sanoi.	fi
+vanha	ADJ	vanhastaan	Pysymme siinä, mitä olemme esivanhemmiltamme oppineet ja jotka vanhastaan ovat olemassa olleet.	fi
+vanha	ADJ	vanhan	En haluaisi olla sinä, Laine kertoo vanhan ystävän sanoneen.	fi
+kauko-	ADJ	kauas	En näe matkan varrella motoristeja, mutta konttorimme edessä on ihmisjoukko, jonka huuto kuuluu kauas.	fi
+kauko-	ADJ	Kauaa	Kauaa ei kulunut tuosta keikasta, kun Kallio kuuli Virran kuolemasta.	fi
+ilta	NOUN	iltamme	Viimeinen iltamme ei mennyt kovin hyvin.	fi
+ilta	NOUN	illalla	Tulen kotiin myöhään illalla.	fi
+kuunnella	VERB	kuuntelisitte	Olisi hyvä jos kuuntelisitte, mitä minä nyt sanon, luulen että se on tärkeää.	fi
+kuunnella	VERB	kuuntele	Ainakaan hän ei kuuntele, mitä hänelle sanotaan.	fi
+pieni	ADJ	pienien	Enää ei voi valittaa, että huono menestys tekoälymarkkinoilla on pelkästään liian pienien investointien syytä.	fi
+pieni	ADJ	pienissä	Äly näkyy pienissä asioissa.	fi
+syy	NOUN	syytäni	Tämä on minun syytäni.	fi
+syy	NOUN	syyn	Juuri nyt haluaisin löytää syyn sille, miksi en tule raskaaksi.	fi
+pari	NOUN	parinasi	En ansaitse olla sinun parinasi enää.	fi
+pari	NOUN	parina	Kaupunki maksaa äidille hoitajan parina päivänä kuussa, jotta minä voin tehdä jotain muuta.	fi
+kuulua	VERB	kuulumatta	Sitten suu liikkui äänen kuulumatta.	fi
+kuulua	VERB	kuuluin	Silloin muodostettiin useita sellaisia ryhmiä kuin se, johon minä kuuluin.	fi
+yö	NOUN	yöhön	Ensimmäinen uni moneen yöhön.	fi
+yö	NOUN	öitään	Pia alkoi nukkua öitään sohvalla, sänky oli kuulemma liian pehmeä.	fi
+luoja	NOUN	Luojasi	Tuollaisena menet Luojasi eteen surkeassa kunnossa!	fi
+luoja	NOUN	luojaasi	Nyt voit sännätä lähtöportille ja kiittää luojaasi, että olet jotenkuten henkisesti kasassa.	fi
+maailma	NOUN	maailmassani	Siellä, minun maailmassani, he ovat vaarassa juuri nyt, tällä hetkellä.	fi
+maailma	NOUN	maailmaansa	Ainut, mitä hän on halunnut, on ollut palata takaisin omaan maailmaansa.	fi
+hoitaa	VERB	hoidatte	Ja te täällä hoidatte niitä?	fi
+hoitaa	VERB	hoidat	Minä olen palkannut sinut tähän tehtävään ja vaadin että hoidat sen.	fi
+tunti	NOUN	tuntini	Katsoin sitä ja tajusin, että tuntini oli kulunut umpeen aikoja sitten.	fi
+tunti	NOUN	tunneissa	Niitä oli enemmän kuin olisimme mitenkään ehtineet tutkia muutamissa tunneissa.	fi
+loppu	NOUN	lopuissa	Mutta lopuissa oli jonkinlainen järki.	fi
+loppu	NOUN	lopussa	Olen henkisesti ja taloudellisesti aivan lopussa.	fi
+laittaa	VERB	laittanut	Minusta on apua tyttöjen kanssa, ja olen siivonnut ja laittanut ruokaa.	fi
+laittaa	VERB	laitetaan	Nyt rahoja laitetaan johonkin, missä ne tuottavat.	fi
+kutsua	VERB	kutsuitte	Kiva kun kutsuitte, äiti sanoo.	fi
+kutsua	VERB	kutsuit	Vaikka en löytänyt häntä täältä, kutsuit minut sisään.	fi
+talo	NOUN	talossamme	Ei sitä kai meidän talossamme.	fi
+talo	NOUN	talonsa	Olen jo melkein hänen talonsa kohdalla, kun näen hänen tulevan ovesta ulos.	fi
+vaimo	NOUN	vaimollenne	Tai sitten niin käy vaimollenne.	fi
+vaimo	NOUN	vaimostanne	Hän kertoi kaiken vaimostanne …	fi
+tuntua	VERB	tuntunee	Aika pahalta tuntunee viikonlopun jälkeen Saksassa.	fi
+tuntua	VERB	tuntunut	Me oikeasti seurustelemme, eikä mikään ole koskaan tuntunut näin oikealta.	fi
+seurata	VERB	seuraa	Itselleen nauravat ihmiset ovat mukavaa seuraa.	fi
+seurata	VERB	seuraaman	Lähetin yksikön seuraaman häntä ja toisen vartioimaan hänen kotiaan.	fi
+elää	VERB	elämme	Mitä siitä että elämme muita pidempään?	fi
+elää	VERB	elimme	Siitä lähtien elimme aluksen kellon mukaan.	fi
+ongelma	NOUN	ongelmistasi	Hän kertoi minulle yhtä jos toista ongelmistasi.	fi
+ongelma	NOUN	ongelmitta	Se oli yksinkertainen keikka, sisään ja ulos täysin ongelmitta.	fi
+ikä	NOUN	iässäsi	Ensimmäiset oireet voivat tulla jo sinun iässäsi.	fi
+ikä	NOUN	iäkseen	Nyt se ei koskaan pääse siitä irti, nyt se on kaikeksi iäkseen kirottu!	fi
+ensimmäinen	ADJ	ensimmäisensä	Hän muisti harvoin, missä kerroksessa vanhemmat asuivat, oliko lapsi heidän ensimmäisensä vai toisensa.	fi
+ensimmäinen	ADJ	ensimmäisestä	Hän oli ainoa näyttelijä, jonka oli tarkoitus olla mukana ensimmäisestä jaksosta sarjan loppuun asti.	fi
+perhe	NOUN	perheellemme	Siitä, mikä on parasta perheellemme.	fi
+perhe	NOUN	perheemme	Ei aavistustakaan, mitä perheemme tekisi ilman sitä.	fi
+ampua	VERB	ampuen	He kävivät poliisien kimppuun, toiset ampuen ja toiset käyttäen kivääriä nuijana.	fi
+ampua	VERB	ampuivat	Heillä oli siellä myös kiväärejä, ja silloin tällöin he ampuivat jotakin lähestyvää estettä.	fi
+suuri	ADJ	suurin	Mutta suurin osa ihmisen keinovaloista palaa ympäri vuoden.	fi
+suuri	ADJ	suureni	Vaara toisella puolen lahden suureni ja suli yhdeksi ainoaksi möhkäleeksi.	fi
+kaveri	NOUN	kavereiden	Niinhän se menee kavereiden kesken.	fi
+kaveri	NOUN	kaveriesi	Sinun ja sinun kaveriesi puolesta uhrit saavat vapaasti jäädä mätänemään.	fi
+pitkä	ADJ	pitkällään	Pystyssä puu parempi kuin pitkällään.	fi
+pitkä	ADJ	pitkällesi	Juo kahvisi loppuun, ja käy sitten pitkällesi.	fi
+unohtaa	VERB	unohtakaa	Jos teillä on joitain typeriä kysymyksiä kirjasta, unohtakaa ne saman tien.	fi
+unohtaa	VERB	unohtaisit	Voisin myös aivopestä sinut niin, että unohtaisit kuka olen ja mikä nimeni on.	fi
+väärä	ADJ	vääriin	Hän ei saa joutua kenenkään … vääriin käsiin.	fi
+väärä	ADJ	väärää	Sekä kaikenlaista erilaista, väärää ja outoa, joka minua kiehtoo.	fi
+apu	NOUN	apuni	On vain mukavaa, että joku haluaa ottaa apuni vastaan.	fi
+apu	NOUN	apumme	Muutamassa tunnissa olisit ollut meidän apumme ulottumattomissa.	fi
+istua	VERB	istuu	Talon edessä kadulla on suuri moottoripyörä, jonka selässä istuu komea nuori mies.	fi
+istua	VERB	istukaa	Mutta istukaa, vieraat, ja nauttikaa, mitä maja matala tarjota taitaa.	fi
+iso	ADJ	isossa	Hän opetteli työkaluja, jotka auttavat vastoinkäymisissä: tappio ei ole isossa kuvassa tärkeää, puhuminen auttaa.	fi
+iso	ADJ	isolta	Olisi sitä Liisa halunnut tietää, mutta kovin näytti isolta herralta, että olisi ilennyt kysyä.	fi
+naida	VERB	nainut	Mä en nainut sitä!	fi
+naida	VERB	naitava	Tyttäreni on naitava oikea mies, koska hän on minun tyttäreni.	fi
+viikko	NOUN	viikon	Jotain sellaista on nähty viimeisen viikon aikana.	fi
+viikko	NOUN	viikot	Viime viikot ovat olleet kamalia.	fi
+jatkaa	VERB	jatka	Jos se auttaa sinua, jatka kaikin mokomin.	fi
+jatkaa	VERB	jatkaisivat	Jos he jatkaisivat vielä matkaa eivätkä edelleenkään löytäisi vettä, paluumatkaan ei ehkä riittäisi voimia.	fi
+joutua	VERB	jouduttu	Siihen oli nyt jouduttu ja siinä sitä nyt mentiin...	fi
+joutua	VERB	jouduttava	On jouduttava ennenkuin Ukko saapuu.	fi
+sopia	VERB	sovittu	Se oli siis sovittu.	fi
+sopia	VERB	sopisin	Ajattelin, että sopisin paremmin sellaisiin hommiin kuin kentälle.	fi
+kohta	NOUN	kohtani	Mutta minä en tiennyt, mikä minun heikko kohtani oli.	fi
+kohta	NOUN	kohtaani	Hän voisi odottaa ja etsiä heikkoa kohtaani, kunnes löytäisi sen.	fi
+pala	NOUN	palani	Tuon palani takaisin, se maistui.	fi
+pala	NOUN	palaan	Käännyn kadulla ympäri ja palaan Markuksen luokse.	fi
+lähes	ADV	läsnä	Olin todellinen ja läsnä.	fi
+lähes	ADV	lähellänne	Merkityksellistä on se, että Andrew on voittanut ennakkoluulonsa ja sallinut heidän elää lähellänne.	fi
+saattaa	VERB	saatoin	Surullista kyllä, saatoin oivaltaa tämän ensimmäistä kertaa.	fi
+saattaa	VERB	saattakaa	Mutta pyydän, saattakaa minut Nauhasen rantaan asti.	fi
+jäädä	VERB	jäätäisiin	Ja sitten jäätäisiin vain siihen, koska hetki olisi hyvä.	fi
+jäädä	VERB	jäädessäni	Minua pelotti ja mietin, olinko tehnyt oikean ratkaisun jäädessäni hänen luokseen.	fi
+ainoa	ADJ	ainoaksi	Vaara toisella puolen lahden suureni ja suli yhdeksi ainoaksi möhkäleeksi.	fi
+ainoa	ADJ	Ainoasta	Ainoasta huoneesta, johon en ollut nähnyt sisälle.	fi
+hullu	ADJ	hulluina	Japanilaiset olivat siihen hulluina, Suomen metsissä sitä kasvoi.	fi
+hullu	ADJ	hullujen	Jos taistelut kestävät pitkään ja ovat verisiä ja raskaita, hullujen määrä lisääntyy.	fi
+mukava	ADJ	mukavissa	Kysyin sinulta erästä asiaa melko mukavissa olosuhteissa.	fi
+mukava	ADJ	mukavaa	Itselleen nauravat ihmiset ovat mukavaa seuraa.	fi
+tieto	NOUN	tietonsa	Luulit saavasi hänen tietonsa, mutta mennessään hän ne vei.	fi
+tieto	NOUN	tietonasi	Pyydän, että pidät yksinomaan omana tietonasi sen, minkä kohta kerron sinulle.	fi
+kyse	NOUN	kyseissä	Joukkueenjohtaja-aikoina Hakanen törmäsi usein siihen, että ulkomaalaispelaaja kohtasi ensimmäisen kerran naisen kyseissä tehtävässä.	fi
+kyse	NOUN	kysessä	Vikille ja Jenspalle kysessä oli jo kolmas Robinin kanssa tehty musavideo.	fi
+paska	NOUN	paskaasi	Saat syödä omaa paskaasi.	fi
+paska	NOUN	paskaan	Meillä ei enää ole aikaa tällaiseen paskaan.	fi
+kuva	NOUN	kuvat	Olin ajatellut, että ehkä olin vain ruma lapsi, tai kuvat olivat kadonneet.	fi
+kuva	NOUN	kuvansa	Jotta hän ottaisi hänen kuvansa mukaan sinne, minne menisi.	fi
+hitto	NOUN	hitot	Katselin kaaosta ja ajattelin, että hitot alan siivota.	fi
+hitto	NOUN	Hitot	Hitot kantajista, hän tajusi.	fi
+kaunis	ADJ	kauniilta	Nainen näyttää kuvassa kauniilta, jopa vähän liian kauniilta minulle.	fi
+kaunis	ADJ	kaunista	Seijan silmissä on jotain turvallista ja kaunista, ja nyt niissä on niin paljon muutakin.	fi
+onni	NOUN	onnena	Minusta meidän pitäisi ottaa heidät ja pitää sitä onnena.	fi
+onni	NOUN	onnen	Minä ansaitsen kaiken tämän onnen, vaikka vanha olenkin.	fi
+veli	NOUN	veljellesi	Kuten olen jo veljellesi kertonut, tämä upea kehitys voi alkaa täältä.	fi
+veli	NOUN	veljeltäni	Ja vain hieman myöhemmin perin seikkailupuiston veljeltäni, joka juuri silloin sattui olemaan kuollut.	fi
+joo	ADV	Joona	Hänestä tuntui että hän oli kuin Joona valaan vatsassa.	fi
+aloittaa	VERB	aloittaisin	En tiedä kuinka kaukaa aloittaisin.	fi
+aloittaa	VERB	aloitat	Mitä pikemmin aloitat, sen parempi.	fi
+parempi	ADJ	paremmasta	Kaipaan vain hieman omaa aikaa ja toivoa paremmasta.	fi
+parempi	ADJ	parempia	Äidin paikka oli keittiössä, ja naapurin lapset olivat aina parempia kuin Henna ja minä.	fi
+matka	NOUN	matkoihinne	Menkää matkoihinne, sillä tehtävänne on tehty eikä kuolema ole kaukana.	fi
+matka	NOUN	matkani	Isäsi rahoitti matkani tänne, ja sen jälkeen minun tarvitsi vain pitää aluksia silmällä.	fi
+kulta	NOUN	kullillasi	Ainoa käsi kullillasi on sinun omasi.	fi
+kulta	NOUN	kultaani	Jos mä näytän loistavan, kultaani mä syytän vaan.	fi
+panna	VERB	panisitte	Te panisitte asiat kohdalleen.	fi
+panna	VERB	panimme	Me vain panimme heidät vähäksi aikaa tuonne ruokakomeroon.	fi
+silmä	NOUN	silmilleni	Kuvernööri oli liian arvokas silmilleni.	fi
+silmä	NOUN	silmiemme	Tuolla, silmiemme edessä, istuu kultainen lohikäärme.	fi
+viimeinen	ADJ	viimeisenne	Se on myös viimeisenne.	fi
+viimeinen	ADJ	viimeisen	Jotain sellaista on nähty viimeisen viikon aikana.	fi
+vittu	NOUN	Vittua	Kun hän huusi Vittua avukseen, Vittu ilmoitti että hänen tulee lähteä pois siitä paikasta.	fi
+vittu	NOUN	vituillaan	Tämä on vituillaan, Mae.	fi
+jumala	NOUN	jumalia	Paha on, kun ei omia jumalia palvella, mutta pahempi vielä, kun vieraita suositellaan.	fi
+jumala	NOUN	Jumalista	Odin Jumalista korkein ja vanhin.	fi
+pysty	ADJ	pystyt	Sä pystyt siihen, minä sanon.	fi
+pysty	ADJ	pystyn	Yritän rentoutua niin hyvin kuin pystyn.	fi
+huoli	NOUN	huoleksesi	En aio jättää mitään sinun huoleksesi.	fi
+huoli	NOUN	huolenne	Silti se on teidän huolenne eikä ainakaan tällä hetkellä kiinnosta minua tippaakaan.	fi
+ostaa	VERB	ostin	Eilen ostin, minä vastaan nopeasti.	fi
+ostaa	VERB	ostaessa	Tai voihan olla että maalaukset olivat talossa jo komentajan ostaessa sen.	fi
+muuttaa	VERB	muuttaisit	Oletko koskaan harkinnut, että muuttaisit Maahan?	fi
+muuttaa	VERB	muutan	Minun ei kannata maksaa kahdesta asunnosta, joten muutan äidin luokse asumaan.	fi
+ovi	NOUN	ovellasi	Täällä on kaksi miestä ovellasi, eikä minulla ole aavistustakaan, pitäisikö minut päästää heidät sisään.	fi
+ovi	NOUN	ovellanne	Kävin ovellanne jo iltapäivällä, mutta ette ollut kotona.	fi
+toivoa	VERB	toivoit	Mutta en tartu miekkaan, jos toivoit sitä.	fi
+toivoa	VERB	toivottava	Ja joskus yksi ongelma, vaikkakin suurikokoinen, on jopa toivottava tilanne.	fi
+henki	NOUN	Hengessä	Hän on nyt Hengessä.	fi
+henki	NOUN	henkeänne	Tietojemme mukaan tämä ei välttämättä ollut ainoa henkeänne vastaan tehty yritys.	fi
+kova	ADJ	koville	Siinä on tarpeeksi aihetta panna planeetta koville.	fi
+kova	ADJ	kovia	Pidämme kovaa vauhtia yllä ja on tosi terveellistä uskaltaa asettaa kovia tavoitteita.	fi
+täysi	ADJ	täydempi	Huone on vielä äskeistä täydempi.	fi
+täysi	ADJ	täysien	Ojentuneena hän otti vielä neljä keinuvaa askelta ja kaatui sitten täysien kalakärryjen päälle.	fi
+rouva	NOUN	rouvalla	En tarkoita että rouvalla tulee, hoikka varsi niin voi olla että ei.	fi
+rouva	NOUN	rouvista	Tarjoaako joku rouvista enemmän?	fi
+luottaa	VERB	luotettava	Tämä on outoa, sillä hän on yleensä niin luotettava.	fi
+luottaa	VERB	luottaisin	Miksi minä luottaisin juuri teihin?	fi
+riittää	VERB	riitä	Pelkästään toinen näistä ei yksin riitä selittämään sitä, mitä Trump tulleilla tavoittelee.	fi
+riittää	VERB	riittäminen	Ainoa sulhasta jännittävä asia massiivisissa häissä on kakku tai lähinnä sen riittäminen.	fi
+jää	NOUN	jäissä	Ne ovat jäissä, kyllä.	fi
+jää	NOUN	jäät	Jos jäät jälkeen, emme odota.	fi
+kaupunki	NOUN	kaupungissa	Pimeää pääsee kaupungissa kokemaan niin harvoin.	fi
+kaupunki	NOUN	kaupungissamme	Mutta velho Istredd … muista, hän on tärkeä mies kaupungissamme.	fi
+miettiä	VERB	mieti	Älä mieti sellaista, minä sanon.	fi
+miettiä	VERB	miettikää	Menkää kotiin ja miettikää asiaa.	fi
+tärkeä	ADJ	tärkeän	Mikä tästä tekee niin tärkeän?	fi
+tärkeä	ADJ	tärkeänä	Yksikään kapteeni ei voi luvata sellaista, mikäli pitää totuutta tärkeänä.	fi
+eri	ADJ	erillä	Mutta sinä haluat pitää minut laatikossa, erillä omasta elämästäsi.	fi
+eri	ADJ	erit	En ole muuttunut, tavoitteet ovat samat, keinot erit, Veera Ruoho sanoi.	fi
+lukea	VERB	luettava	Siitä huolimatta hänen oli luettava.	fi
+lukea	VERB	lukemasta	Se ei silti estä minua lukemasta luita.	fi
+ala	NOUN	alaani	Sellainen ei ole minun alaani.	fi
+ala	NOUN	aloillesi	Olisitko asettunut aloillesi, jos sulla olisi ollut puoliso?	fi
+palata	VERB	palaaminen	Kirjastoon palaaminen olisi kuitenkin ollut minulle liian raskasta.	fi
+palata	VERB	palaavat	Tytöt palaavat television ääreen.	fi
+tuoda	VERB	tuodessani	Olen pahoillani tuodessani sinulle kiusallisia uutisia, mutta nolasin myös itseni sinun silmissäsi.	fi
+tuoda	VERB	tuotiin	Yksi tytöistä oli eksynyt muista ja tuotiin Panulaan, jossa otettiin orjaksi.	fi
+pelastaa	VERB	pelastaessani	Mistä tietää, että tein hyvin pelastaessani sinut?	fi
+pelastaa	VERB	pelastaisit	Mutta heti kun näin sinut, tiesin että pelastaisit minut.	fi
+hätä	NOUN	hätää	Ja ei kai tässä hengen hätää ole, koska se nauroi.	fi
+hätä	NOUN	hädän	Et odota keneltäkään apua etkä aio katsoa kenenkään toisen hädän puoleen.	fi
+pelätä	VERB	pelätty	Tässä leirissä ei pelätty kuolemaa.	fi
+pelätä	VERB	pelkäävä	Jokainen kuolemaa pelkäävä ihminen aneli armoa samalla tavalla.	fi
+huone	NOUN	huonetta	Talossa on viisi huonetta ja iso keittiö.	fi
+huone	NOUN	huonettani	Lähdin kävelemään kohti huonettani.	fi
+maksa	NOUN	maksaani	Saanko pyytää teitä harkitsemaan maksaani?	fi
+maksa	NOUN	maksaan	Jopa vatsaan osuessaan nuoli olisi lävistänyt sen ja osunut sydämeen, maksaan tai keuhkoihin.	fi
+viisi	NUM	viideltä	Miksi herätä vasta viideltä, kysyin itseltäni.	fi
+viisi	NUM	viidet	Heitä oli kuusi saapuessamme sisään, ja viidet noista kasvoista olivat minulle täysin vieraita.	fi
+lähettää	VERB	lähetät	He lähettävät sinulle tavaraa ja sinä lähetät takaisin.	fi
+lähettää	VERB	lähettämäsi	No, sehän kohta nähdään … Katsotaan, miten lähettämäsi tiedot täsmäävät tytön kanssa.	fi
+tosa	NOUN	tosia	Truismit olivat tosia, niistä oli pidettävä kiinni!	fi
+tosa	NOUN	tosiaan	Minä mietin, että pitääkö jokainen kolkka tosiaan valaista.	fi
+ase	NOUN	aseitanne	Ne voisivat olla aseitanne.	fi
+ase	NOUN	aseella	Kolme poliisia osoittaa minua aseella.	fi
+ajaa	VERB	ajaessasi	Älä kuuntele tätä biisiä ajaessasi.	fi
+ajaa	VERB	ajoivat	Miehet, jotka hänen ohitsensa ajoivat, olivat vähän väliä hänen tiellään, milloin pitkin, milloin poikki.	fi
+vuo	NOUN	vuon	Hän tunsi surun vuon pulpahtavan sisällään ja kääntyi pois.	fi
+vuo	NOUN	vuoksensa	Elovaara erosi vaimostaan, sillä ei halunnut nähdä tämän kärsivän vuoksensa.	fi
+minuutti	NOUN	minuuttiin	Mitään ei tapahtunut minuuttiin tai pariin.	fi
+minuutti	NOUN	minuuteista	Periaate ei tietenkään tule tekemään minuuteista yhtään vähemmän epämiellyttäviä.	fi
+tohtori	NOUN	tohtorin	Antaa tohtorin tehdä terveeksi.	fi
+tohtori	NOUN	tohtoreita	Maailmoissa on tohtoreita, jotka pystyvät parantamaan hehkutaudin, jos haluaisin parantua.	fi
+lupa	NOUN	lupaa	Pomoni ei lupaa mitään.	fi
+lupa	NOUN	luvat	Luulen, että minulla on tarvittavat luvat.	fi
+väli	NOUN	välillänne	En halua enää katsella tuota menoa teidän välillänne!	fi
+väli	NOUN	väleistämme	Ja oikeastaan voisi olla hyvä, jos puhuisimme myös vähän meidän … väleistämme.	fi
+vaikea	ADJ	vaikeana	Et halua kommentoida enempää ja pyydät, että Elizabethin yksityisyyttä kunnioitetaan tänä vaikeana aikana.	fi
+vaikea	ADJ	vaikealla	Miehistä tulisi hänen matkakumppaneitaan vaikealla matkalla.	fi
+avata	VERB	avattiin	Ovet avattiin, ja väkeä tunki sisään niin paljon kuin sinne mahtui.	fi
+avata	VERB	avaamasta	Fernanda ei ainoastaan kieltäytynyt avaamasta ovia kun kuuma ja kuiva tuuli alkoi puhaltaa.	fi
+kiva	ADJ	kivempi	Hirveän paljon kivempi kuin isän paikka.	fi
+kiva	ADJ	kivalta	En tiennyt mitään kelloista, mutta se tosiaankin näytti kivalta.	fi
+hakea	VERB	haettaisiin	Pian ne haettaisiin pois.	fi
+hakea	VERB	haitte	Viimeksi täällä ollessanne te haitte apua meiltä.	fi
+nukkua	VERB	nukkumaan	Hän halusi vain mennä nukkumaan.	fi
+nukkua	VERB	nukuttu	Takana on erittäin huonosti nukuttu yö.	fi
+kirjoittaa	VERB	kirjoittava	Jossain määrin hän oli luultavasti parempi, kiltimpi versio kuin näitä sanoja kirjoittava tyyppi.	fi
+kirjoittaa	VERB	kirjoittaminen	Se tulee viemään aikaa, koska kirjoittaminen on minulle vaikeaa, mutta se tekee hyvää sormilleni.	fi
+käskeä	VERB	käskemällä	Ei hän ketään pakota, ei ketään käskemällä käske.	fi
+käskeä	VERB	käskisit	Sinä käskisit häntä ostamaan.	fi
+tutkia	VERB	tutkikaa	Kyllä, tutkikaa kaikin mokomin – olen varma, että sellaisia asioita odotetaan.	fi
+tutkia	VERB	tutkiessani	Tunnistin hänet kuvista, joita olin nähnyt netissä tutkiessani yhtiötä.	fi
+huono	ADJ	huonoiksi	Ajat ovat muuttumassa huonoiksi.	fi
+huono	ADJ	huonossa	Tiedänhän minä toki, että aseemme olivat melko huonossa kunnossa.	fi
+sana	NOUN	sananne	Mutta ennen kaikkea sananne eivät ole totta.	fi
+sana	NOUN	sanoissaan	Hänen sanoissaan oli silti jotain järkeä.	fi
+välittää	VERB	välität	Haluan, että välität viestin niin, ettei hän unohda sitä heti.	fi
+välittää	VERB	välittänyt	Joko ei pastori kuullut tai ei siitä välittänyt.	fi
+voittaa	VERB	voitin	Minä voitin, siis jään.	fi
+voittaa	VERB	voittakoon	Sotilas toista vastaan, paras voittakoon.	fi
+tajuta	VERB	tajuaminen	Nyt he olivat poissa, ja niin nopeasti, että sen tajuaminen oli melkein liian järkyttävää.	fi
+tajuta	VERB	tajuatte	Kuinka paljon aikaa ja tosiasioita te kaksi tarvitsette ennen kuin tajuatte?	fi
+menettää	VERB	menetetty	Onko peli niiden suhteen jo menetetty?	fi
+menettää	VERB	menettäisin	Koska jos asia tulisi julki, menettäisin pääni.	fi
+kuulostaa	VERB	kuulostivat	Hetken aikaa he kuulostivat, mutta ei sieltä mitään kuulunut.	fi
+kuulostaa	VERB	kuulostavansa	Tuottaja tiesi kuulostavansa hölmöltä, mutta ei hän osannut muotoilla asiaa toisinkaan.	fi
+huomata	VERB	huomasit	Tiedän, että huomasit sen nopeasti.	fi
+huomata	VERB	huomaamaton	Se on uusi tilanne ihmiselle, joka on yrittänyt koko elämänsä olla huomaamaton.	fi
+mikin	PRON	millekin	Silloin Kaarina heitä tutkimaan, mikä heille millekin nimeksi.	fi
+mikin	PRON	mihinkin	Strambli, ota haarniskat esiin ja selvitä, mikä osa kuuluu mihinkin.	fi
+kysymys	NOUN	kysymyksiisi	Meidän tehtävämme on selvittää kysymyksiisi vastaukset.	fi
+kysymys	NOUN	kysymysten	Vaikeinta oli löytää oikea hetki kysymysten esittämiseen.	fi
+homma	NOUN	hommasi	Se on sinun hommasi, ja ymmärrän sen.	fi
+homma	NOUN	hommista	Isä sai niistä hommista hyvät rahat, sen muistan.	fi
+nuori	ADJ	nuoremme	Meidän omat nuoremme kasvavat, perustavat myös perheitä.	fi
+nuori	ADJ	nuorta	Pesonen ei odota mitään nuorta huippumallia, mutta ehkä voin yrittää tehdä iholleni jotain.	fi
+dollari	NOUN	dollarini	Lähetit tuon minulle, ja Clarence piti dollarini.	fi
+dollari	NOUN	dollarianne	Annan kaksi dollarianne takaisin, niillä saatte uuden vihkitodistuksen.	fi
+neljä	NUM	neljälle	Tilaa oli riittävästi meille neljälle ja pienelle määrälle saalista.	fi
+neljä	NUM	neljältä	Sitten hän sytytti ne huolellisesti palamaan kaikilta neljältä kulmalta.	fi
+ohi	ADV	oheen	Kun muiden vaivojeni oheen näyttää liittyvän päänsärky, pysähdyn ensin apteekissa, sitten kioskilla.	fi
+ohi	ADV	ohelle	Siksi köyhille lisättiin kirjainten ohelle kuvia, jotta hekin ymmärtäisivät tarinoita.	fi
+outo	ADJ	oudoksi	Mutta sen jälkeen kaikki muuttui oudoksi.	fi
+outo	ADJ	outoa	Sekä kaikenlaista erilaista, väärää ja outoa, joka minua kiehtoo.	fi
+onnistua	VERB	onnistuvasi	Ja kuinka kauan luulet onnistuvasi siinä?	fi
+onnistua	VERB	onnistuvani	En voinut väittää onnistuvani.	fi
+aamu	NOUN	aamuna	Seuraavana aamuna tilanne on kuitenkin muuttunut.	fi
+aamu	NOUN	aamulla	Isällä oli kuitenkin aamulla niin heikko olo, että hän jäi kotiin.	fi
+vesi	NOUN	vetemme	Epätoivoiset ihmiset voisivat tappaa meidät vetemme vuoksi.	fi
+vesi	NOUN	vetensä	Puro, josta suihkulähde oli saanut vetensä, oli kaiketi muuttanut uomaansa monta kertaa.	fi
+koulu	NOUN	koulussamme	Se pani miettimään, oliko koulussamme muita mahdollisesti kodittomia nuoria.	fi
+koulu	NOUN	koululta	Kun olin ajamassa koululta kotiin, auton takana välähti sinistä.	fi
+valita	VERB	valitsemastasi	Pystytkö tekemään valitsemastasi sanasta aivan erityisen.	fi
+valita	VERB	valitse	Kukaan ei itse valitse herraansa, vaan herrat valitsevat, eikös näin ole?	fi
+päättää	VERB	päätit	Miten sinä sellaista päätit toivoa?	fi
+päättää	VERB	päättäisivät	Jumala ei ollut luonut ihmisiä sitä varten, että nämä päättäisivät itse päivänsä.	fi
+tyyppi	NOUN	tyyppini	Millainen minun tyyppini sitten on? hän kysyi itseltään.	fi
+tyyppi	NOUN	tyyppiäni	Olin hiukan hämilläni, se ei ollut oikein tyyppiäni.	fi
+taka	NOUN	taaksenne	Teidän on määrä jättää taaksenne poltettu maa.	fi
+taka	NOUN	takanamme	Ovet alkoivat sulkea leukojaan takanamme.	fi
+tytär	NOUN	tyttäreensä	Eikö hän edes pitänyt yhteyttä tyttäreensä?	fi
+tytär	NOUN	tyttärellenne	Sen verran te olette tyttärellenne velkaa!	fi
+löytyä	VERB	löytyisi	Jospa sieltä löytyisi uskoa, pelkoa tai viisautta niiden välistä.	fi
+löytyä	VERB	löydyttävä	Eli poistumistien ja -tavan on löydyttävä jostakin hyvin läheltä.	fi
+okei	INTJ	ookoo	Jos on valmis menettämään sen mitä tavoittelee, niin se on tietysti ookoo.	fi
+molempi	PRON	molempain	Kylmä ilman henki nuolaisi molempain kasvoja ja tuntui selkäpiihin saakka.	fi
+molempi	PRON	molemmista	Yhtä suuria tietäjiä tuli molemmista, yhtä hyviä laulajia, metsämiehiä ja kaupantekijöitä he olivat.	fi
+neiti	NOUN	neidistä	Pidän nuoresta neidistä huolta miten parhaiten taidan.	fi
+neiti	NOUN	neidiksi	Mies nimitti häntä neidiksi vaikka hän oli selkeästi painottanut olevansa rouva.	fi
+vaikuttaa	VERB	vaikuttamassa	Historiaa hyvinkin, mutta he kaikki olivat olleet vaikuttamassa siihen, niin eri leireissä kuin olivatkin.	fi
+vaikuttaa	VERB	vaikutettava	Oli pidettävä pää kylmänä ja vaikutettava vaatimattomalta.	fi
+valehdella	VERB	valehdeltiin	Ei, vaan sen takia, että sinulle valehdeltiin.	fi
+valehdella	VERB	valehtelet	Vaan jos sinä valehtelet?	fi
+tilanne	NOUN	tilanteesi	Mutta tilanteesi on vakaa.	fi
+tilanne	NOUN	tilanteeseen	Häntä hävettää, vaikka kaikki tänne tulevat miehet joutuvat samaan tilanteeseen.	fi
+kello	NOUN	kelloon	Otat kelloon toisen äänen.	fi
+kello	NOUN	kelloista	En tiennyt mitään kelloista, mutta se tosiaankin näytti kivalta.	fi
+selvittää	VERB	selvittäneeni	Luulen selvittäneeni suurimman osan tarinaa.	fi
+selvittää	VERB	selvittävä	On ensinnäkin selvittävä yöstä hengissä.	fi
+juoda	VERB	joi	Matti joi kahvia eikä vastannut mitään.	fi
+juoda	VERB	juon	Jos syön liikaa, vatsaani sattuu, ja jos taas juon liikaa, sattuu päähän.	fi
+perä	NOUN	perässäsi	Sitten tulin perässäsi kaupunkiin.	fi
+perä	NOUN	perän	Tindouf meni perän suuntaan siihen osaan alusta, jonka hän tunsi parhaiten.	fi
+kuukausi	NOUN	kuukaudet	Lasten elämä on ollut melko tasaista viimeiset kuukaudet, enkä haluaisi, että se muuttuu.	fi
+kuukausi	NOUN	kuukauteen	Jääkiekkoa hän ei edes katsonut moneen kuukauteen.	fi
+rauha	NOUN	rauhaa	Uskonto on kuulemma tuonut rauhaa.	fi
+rauha	NOUN	rauhalle	Majuri joi isänmaalle, rauhalle, joululle ja kaikelle mikä maailmassa oli kallisarvoista.	fi
+kiltti	ADJ	kiltein	Hän on maailman suloisin ja kiltein mies.	fi
+kiltti	ADJ	kiltimpi	Jossain määrin hän oli luultavasti parempi, kiltimpi versio kuin näitä sanoja kirjoittava tyyppi.	fi
+kuolema	NOUN	kuolemastani	Näin viime yönä unta omasta kuolemastani.	fi
+kuolema	NOUN	kuolemissa	Mikä oli ollut erityistä näissä kuolemissa?	fi
+muuttua	VERB	muuttuu	Lasten elämä on ollut melko tasaista viimeiset kuukaudet, enkä haluaisi, että se muuttuu.	fi
+muuttua	VERB	muuttuisi	Edellinen luidenlukijamme oli varma, että näiden avulla kaikki muuttuisi paremmaksi.	fi
+suora	ADJ	suorassa	Kaikki olivat suorassa ja kauniisti.	fi
+suora	ADJ	suoralla	He olivat melkoisen matkan päässä – kaupunkiin johtavalla suoralla tiellä.	fi
+moni	PRON	monia	Syitä on monia, hän vastaa.	fi
+moni	PRON	moneen	Jääkiekkoa hän ei edes katsonut moneen kuukauteen.	fi
+puhelin	NOUN	puhelimestasi	Voit soittaa heille puhelimestasi, kun pääsemme sinne.	fi
+puhelin	NOUN	puhelimessasi	Mies puhelimessasi lähettää jonkun.	fi
+mikä	DET	minkä	Hän sai kaiken, minkä halusi.	fi
+tällainen	ADJ	tällaisia	Ei hän ennen ollut tällaisia miettinyt.	fi
+tällainen	ADJ	tällaiselta	Jos se olisi täytetty kirjoilla ja kartoilla, se olisi tuntunut juuri tällaiselta.	fi
+veri	NOUN	verestäsi	Olemme molemmat verta verestäsi.	fi
+veri	NOUN	verissäni	Voisi sanoa, että kortinpeluu on verissäni.	fi
+luoda	VERB	luotiin	Minut luotiin tekemään tätä työtä.	fi
+luoda	VERB	loimme	Sisälläni asuu ihminen, jonka loimme yhdessä.	fi
+seuraava	ADJ	seuraavasi	Luulet seuraavasi minua ja että minä kieltäydyn- mutta asia on päinvastoin.	fi
+seuraava	ADJ	seuraavana	Kuvaukset olisivat seuraavana päivänä.	fi
+ruoka	NOUN	ruokiasi	Odotan sinun ruokiasi, kun pääsen kotiin.	fi
+ruoka	NOUN	ruokaanne	Teen töitä teille, en juo vettänne-- en syö ruokaanne.	fi
+oikeus	NOUN	oikeuteni	Se on minun oikeuteni.	fi
+oikeus	NOUN	oikeudesta	Onko kyse ensi yön oikeudesta?	fi
+suhde	NOUN	suhteesta	Mitä te saatte tuosta suhteesta? minä kysyn.	fi
+suhde	NOUN	suhteen	Onko peli niiden suhteen jo menetetty?	fi
+vetää	VERB	vetäisimme	Ja mihin vetäisimme rajan?	fi
+vetää	VERB	vetävä	Löytyisi vain tosi vetävä ruumis ulkoa Kuun pinnalta, sitten kun joku sen joskus huomaisi.	fi
+helppo	ADJ	helpolta	Se näyttää niin helpolta, mutta ei sitä ole.	fi
+helppo	ADJ	helppoa	Meidän olisi pitänyt tehdä lapsi jo kymmenen vuotta sitten, mutta jälkiviisaus on helppoa.	fi
+millainen	ADJ	millaiset	Tiedätkö, millaiset hiukset minulla oli?	fi
+millainen	ADJ	millaisten	Tiesin, millaisten asioiden kanssa olin tekemisissä.	fi
+meno	NOUN	menojasi	Sinä saat mennä menojasi.	fi
+meno	NOUN	menosta	Olette häpeämätön mies, jonka menosta on tehtävä loppu.	fi
+tuhota	VERB	tuhosin	Tiedän, että tuhosin itse kaiken, koska valehtelin sinulle.	fi
+tuhota	VERB	tuhoa	Paha henki on heikompi kuin hyvä, mutta jonkin aikansa voi hän tuhoa tuottaa.	fi
+naiminen	NOUN	naimiseen	Ja jos tarkoituksesi on saada lupa Mollyn naimiseen, kuningatar voi olla hyvin voimakas liittolainen.	fi
+naiminen	NOUN	naimisiin	Jordan Leigh ja Patrik Laine menevät naimisiin ensi kesänä Floridassa West Palm Beachilla.	fi
+myydä	VERB	myytävä	Nyt ajatus oli vain myytävä asiakkaalle.	fi
+myydä	VERB	myit	Kenelle oikein myit hevoseni?	fi
+kestää	VERB	kestettävä	Ja kestettävä hiljaisuus yhdessä hänen kanssaan.	fi
+kestää	VERB	kestät	Puoli kaupunkia on jo lyönyt vetoa, mihin asti kestät.	fi
+muutama	PRON	muutamiin	Meillä olisi varaa muutamiin virheisiin, mutta ei liian moniin.	fi
+muutama	PRON	muutamissa	Niitä oli enemmän kuin olisimme mitenkään ehtineet tutkia muutamissa tunneissa.	fi
+ääni	NOUN	äänesi	On oikein hyvä kuulla äänesi.	fi
+ääni	NOUN	äänestäsi	Mutta kuulen äänestäsi, että voit jo paremmin.	fi
+kirja	NOUN	kirjaanne	Teidän kirjaanne myytiin täällä viime vuonna.	fi
+kirja	NOUN	kirjoissa	Niin ainakin sanotaan kirjoissa – niin meille opetettiin.	fi
+kukin	PRON	kuitenkin	Päätän kuitenkin siistiä sisältöä.	fi
+kukin	PRON	kussakin	Siellä oli hänellä rautoja kolmessa kohden, kolme rautaa kussakin.	fi
+liittyä	VERB	liitytte	Miten te siihen kaikkeen liitytte?	fi
+liittyä	VERB	liityt	Joko tulet minun mukanani tai sitten liityt mustatakkisiin.	fi
+tapaus	NOUN	tapaukseni	Hän oli ensimmäinen tapaukseni.	fi
+tapaus	NOUN	tapauksessa	Me löydetään sut joka tapauksessa! he huutavat.	fi
+totuus	NOUN	totuutensa	Siinä hetkessä on oma totuutensa.	fi
+totuus	NOUN	totuutta	Tätä on jatkunut jo muutaman kuukauden ajan, mutta en vieläkään pysty kertomaan totuutta työpaikastani.	fi
+jutella	VERB	juttelisit	Että jos vaikka juttelisit sen kanssa.	fi
+jutella	VERB	jutellut	En ole jutellut hänen kanssaan pitkään aikaan.	fi
+kuollut	ADJ	kuolleista	Mutta kun hän kuollut oli, nousi hän ylös kuolleista...	fi
+kuollut	ADJ	kuolleempi	En olisi yhtään kuolleempi, jos olisin lähempänä.	fi
+pelata	VERB	pelaatte	Sellaista peliä te pelaatte.	fi
+pelata	VERB	pelasin	Reilusti yli tarpeen( niin ainakin toivoin), mutta pelasin varman päälle.	fi
+peli	NOUN	pelini	Tämä ei ole minun pelini.	fi
+peli	NOUN	peliämme	Hän ainoastaan seuraa meidän peliämme, siinä kaikki.	fi
+alus	NOUN	alukseen	Heitä oli kolme, ja he kaikki tulivat alukseen.	fi
+alus	NOUN	alukseenne	Kun hän tuli alukseenne, hän ei ollut tarpeeksi vanha tehdäkseen päätöksiä sellaisista jutuista.	fi
+eli	CCONJ	Elissa	Taiteilija Elissa Eriksson uskoo, että niinkin yksinkertainen asia kuin kynttilälyhty torilla voi lisätä turvallisuutta.	fi
+eli	CCONJ	Elistä	Lapset istuivat pöydän ääressä tuijottaen Elistä.	fi
+laskea	VERB	laskekaa	Naiset hoi, vaatteet päälle ja laskekaa lapset!	fi
+laskea	VERB	laskenut	Kerran oli Liisa koskea laskenut, mutta ei se niin hirveätä ollut kuin tämä...	fi
+yhteys	NOUN	yhteytemme	Ovatko yhteytemme yhä toiminnassa?	fi
+yhteys	NOUN	yhteyksiä	He alkavat nähdä olemattomia malleja, yhteyksiä, joissa ei ole järkeä.	fi
+murha	NOUN	murhaisi	On tietysti mukava kuulla, että vaimoni ei sentään murhaisi minua.	fi
+murha	NOUN	murhastasi	Hänet hirtetään sinun murhastasi.	fi
+kapteeni	NOUN	Kapteenia	Harry kiitti ja oli vähällä pyytää Kapteenia soittamaan uudestaan, jos tämä muistaisi vielä jotain.	fi
+kapteeni	NOUN	Kapteeniksi	Siellä kasarmialueella miestä oli nimitetty Kapteeniksi.	fi
+ollut	VERB	olleessaan	Jollain tasolla Ronja ymmärsi, että tuskin isä eli täysin yksin hänen poissa olleessaan.	fi
+ollut	VERB	olleesta	Olen lukenut niistä vain ja ainoastaan temppelissä olleesta Myyttien kirjasta.	fi
+pakko	NOUN	Pakolla	Pakolla sanaa ei voi vakiinnuttuaa.	fi
+sota	NOUN	sotana	Hän piti sitä näkymättömänä sotana, jossa meidän piti käydä vihollista vastaan.	fi
+sota	NOUN	sodin	Minä sodin kaikki yöt, hiki päässä huusin ja huidoin.	fi
+paras	ADJ	parhaaksi	En haluaisi, mutta teen sen Markuksen parhaaksi.	fi
+paras	ADJ	parhaat	Kovasti se vaan meni, kun ei parhaat juoksijat rinnalla pysyneet!...	fi
+vanhempi	ADJ	vanhempani	Hän on lämmin ja pehmeä, toisin kuin omat vanhempani.	fi
+vanhempi	ADJ	vanhempansa	Pesonen on menettänyt molemmat vanhempansa, ja hän vain tarvitsee jonkun, joka voi lohduttaa.	fi
+pelkkä	ADJ	pelkästään	Päätän ottaa etäisyyttä ja jatkaa palvelun käyttöä satunnaisesti pelkästään työkoneellani.	fi
+pelkkä	ADJ	pelkkiin	Eikä se loppunut pelkkiin seinämiin.	fi
+viesti	NOUN	viestejään	Oli myös mahdollista, etten minä ollut saanut hänen viestejään.	fi
+viesti	NOUN	viestejäni	Oli mahdollista, ettei hän ollut saanut kaikkia viestejäni.	fi
+turpa	NOUN	turpiisi	Saat turpiisi tytön nähden.	fi
+turpa	NOUN	turpasi	Et kysele ylimääräisiä ja pidät turpasi kiinni.	fi
+vika	NOUN	vikana	Vai eikö sun kämpässä olekaan mitään vikana? minä kysyn.	fi
+vika	NOUN	vikansa	Salla on sairas, eikä se ole hänen vikansa.	fi
+keksi	NOUN	keksiä	Yritän sen jälkeen keksiä jotain muuta ajateltavaa, ja päädyn taas lukemaan Pintaremontti-blogia.	fi
+keksi	NOUN	keksistä	Hän söi loput keksistä ja pyyhki hitaasti muruset käsistään.	fi
+vapaa	ADJ	Vapaaseen	Mutta mitään ei sanottu, ja hän käveli pysäyttämättä Vapaaseen maailmaan.	fi
+vapaa	ADJ	vapaassa	Mietin, jättäisinkö häiritsemättä häntä ja antaisin hänen vain nukkua pois tuossa huolista vapaassa tilassaan.	fi
+jalka	NOUN	jaloissa	Juuri kun jaloissa pyörivät, ei ole jälkeäkään näkyvissä.	fi
+jalka	NOUN	jalassani	Minulla on puhelin kädessäni ja alushousut jalassani.	fi
+sydän	NOUN	sydämellä	Käsi sydämellä, voitko sinä tarjota samaa?	fi
+sydän	NOUN	sydämeni	Ei kärsi sydämeni nähdä.	fi
+rauhoittua	VERB	rauhoitu	Ja nainen siellä, rauhoitu.	fi
+rauhoittua	VERB	rauhoituttava	Olet aivan mieletön, mutta minun on rauhoituttava nyt vähän.	fi
+koira	NOUN	koirastasi	Jos sinulla on koira, kerro lisää koirastasi, jooko.	fi
+koira	NOUN	koirasi	Kerro, miten jäit kiinni, kun luit sinä iltana typerän koirasi kirjasta!	fi
+suunnitelma	NOUN	suunnitelmiamme	Pian meillä on vauva hoidettavana, mikä vaikeuttaa aika lailla suunnitelmiamme.	fi
+suunnitelma	NOUN	Suunnitelmaan	Hänen on kiinnyttävä Suunnitelmaan, ja sen on oltava hänelle henki ja elämä.	fi
+vihata	VERB	vihaamatta	Toivon että voimme hoitaa tämän vihaamatta toisiamme.	fi
+vihata	VERB	vihaamasi	Siinä on vihaamasi idean ydin.	fi
+selvitä	VERB	selviän	Todellisuudessa minulla ei ole hajuakaan siitä, miten selviän yksin kolmen tytön kanssa.	fi
+selvitä	VERB	selvittiin	Ihme että selvittiin ilman miekaniskuja, verta ja ruumiita.	fi
+päästää	VERB	päästäisi	Kun olisi joku, joka sen poloisen siitä päästäisi.	fi
+päästää	VERB	päästämässä	Kukaan ei kuitenkaan ollut tolkuissaan päästämässä meitä sisään.	fi
+vankila	NOUN	vankiloita	Meillä ei ole vankiloita eikä sakkoja.	fi
+vankila	NOUN	vankilaani	Vasta kun palasin outoon vankilaani, aloin tajuta tilanteen.	fi
+melkein	ADV	melkeen	Mä melkeen muistankin sen numeron.	fi
+lyödä	VERB	lyömässä	Ehkäpä olin unessani lyömässä vetoa.	fi
+lyödä	VERB	löisivät	He saisivat minut kiinni, löisivät oven auki ja sitoisivat silmäni.	fi
+numero	NOUN	numeroaan	Tosin kovin moni ei tiennyt hänen numeroaan.	fi
+numero	NOUN	numeron	Voitko etsiä mulle yhden numeron? minä pyydän.	fi
+rakkaus	NOUN	rakkauden	Kaikki tämä vain rakkauden takia.	fi
+rakkaus	NOUN	rakkauttasi	Älä vie meiltä rakkauttasi.	fi
+mahtava	ADJ	mahtaviksi	Hyvin mahtaviksi niitä on sanottu.	fi
+mahtava	ADJ	mahtavaa	Sä oot mun paras kaveri ja musta on mahtavaa, että sä asut täällä.	fi
+lääkäri	NOUN	lääkärillä	Voihan lääkärillä olla myös hyviä uutisia.	fi
+lääkäri	NOUN	lääkärilleen	Hän sanoi lääkärilleen, että tuntui väärältä olla turvassa ja tehdä sitä, mitä hän teki.	fi
+miljoona	NUM	miljoonaani	Lähetän tiedot sitten, kun huomaan yhtäkkiä tarvitsevani kipeästi kahta miljoonaani.	fi
+miljoona	NUM	miljoonassa	Kloroformia on siis ainakin viisitoista tuhatta osaa miljoonassa.	fi
+sulkea	VERB	sulkiessani	Voin nytkin silmät sulkiessani nähdä sen rungon.	fi
+sulkea	VERB	sulkemalla	Että reagoi niin kuin reagoi, sotkemalla kaiken, sulkemalla kaikki ulkopuolelle.	fi
+mahdollisuus	NOUN	mahdollisuutemme	Tämä on ainoa mahdollisuutemme.	fi
+mahdollisuus	NOUN	mahdollisuuksiani	Jokainen kuukausi huonontaa mahdollisuuksiani tulla raskaaksi, joten minun täytyy toimia nopeasti.	fi
+selittää	VERB	selittämällä	Hän jatkoi selittämällä, että Putin on sanonut, ettei Venäjällä ole rajoja.	fi
+selittää	VERB	selitetty	Ilmiötä on selitetty sillä, että äidit kantavat yhä suuren vastuun kodista ja lapsista.	fi
+koskea	VERB	koskette	Jos koskette niihin, joudutte lähtemään kotiin niiden kanssa.	fi
+koskea	VERB	koskiessa	Se tapahtui väkijoukon koskiessa häneen, George tajusi.	fi
+minä	PRON	mää	En mää halua mitään henkivartijaa.	fi
+ajatus	NOUN	ajatukseen	Yritä nyt vain tottua siihen ajatukseen, että te erositte.	fi
+ajatus	NOUN	ajatuksiani	Itse asiassa biologinen kelloni tikittää niin lujaa, että en aina kuule edes omia ajatuksiani.	fi
+tarjota	VERB	tarjosi	Silloinen Twitter tarjosi erinomaisen kurkistusikkunan maailmaan, johon minulla ei normaalisti ollut pääsyä.	fi
+tarjota	VERB	tarjoaisivat	Josko ne advisorit, managerit ja specialistit vaikka hyvällä onnella tarjoaisivat määräaikaisuuksia.	fi
+sattua	VERB	sattuma	Jos niin olisi, niin aikamoinen sattuma.	fi
+sattua	VERB	satuin	Minä vain satuin olemaan tiellä.	fi
+asea	VERB	asemassa	En ole siinä asemassa, että voisin kysyä palkasta, lomapäivistä tai työsuhde-eduista.	fi
+asea	VERB	asettaman	Yhdessä nämä jättimäiset gravitaatioaaltojärjestelmät muodostivat ihmiskunnan Trisolarista vastaan asettaman Synkän metsän pelotteen.	fi
+keski-	ADJ	keskenään	He eivät ole kovin hyvissä väleissä keskenään.	fi
+keski-	ADJ	Keskenään	Keskenään William ja Walter olivat tappaneet kolme miestä ennen aamiaista.	fi
+kannattaa	VERB	kannattanut	Meidän olisi kannattanut viedä isommat tytöt päiväkotiin, mutta Salla halusi pitää heidät kotona.	fi
+kannattaa	VERB	kannata	Toisaalta ei ehkä kannata täyttää kaappeja Samin ja Hennan vaivoiksi, sillä joskus minäkin kuolen.	fi
+luo	POSTP	luokse	Huomiseen! minä huikkaan ja lähden äidin luokse.	fi
+luo	POSTP	Luona	Luona eläväin vai kuolleiden?	fi
+ihana	ADJ	ihanat	Minähän olen nainen, jolla on rakastava mies ja ihanat lapset.	fi
+ihana	ADJ	ihanaksi	Kelaa tunti eteenpäin, ja he sanovat jo ihanaksi.	fi
+arvata	VERB	arvaan	Melkein arvaan, mitä siellä on.	fi
+arvata	VERB	arvaamatta	Ja silloin, täysin arvaamatta, sota muistutti taas itsestään.	fi
+ihme	NOUN	ihmeeltä	Ja kun ne sitten tulivat, se oli varmasti tuntunut ihmeeltä.	fi
+ihme	NOUN	ihmeissämme	Ja nyt minusta tuntuu, että meidän pitäisi olla yhtä ihmeissämme myös Garberin uudesta komennuksesta.	fi
+tila	NOUN	tilani	Lääkärin tila … Toisin sanoen minun tilani on hieman parempi, sillä sain nukuttua hieman..	fi
+tila	NOUN	tilaasi	Älä yhtään pelkää, seuraan sinua koko ajan, tarkkailen tilaasi.	fi
+musta	ADJ	mustaa	Kaikki täällä on niin mustaa ja nokeentunutta.	fi
+musta	ADJ	mustalla	Taas tuo pimeyden solmu, musta ruusu mustalla pellolla.	fi
+hetkinen	NOUN	hetkisellä	Tämän hetkisellä nopeudella aikaa olisi alle minuutti jäljellä.	fi
+hetkinen	NOUN	hetkisestä	Miehet keskustelivat pitkään Venäjän sen hetkisestä tilanteesta ja tulevaisuudesta.	fi
+kuusi	NUM	kuudesta	Kyse on vain kuudesta päivästä!	fi
+kuusi	NUM	kuudeksi	Vaikkapa – kuudeksi kuukaudeksi.	fi
+maksaa	VERB	maksaminen	Vähitellen mukaan tuli myös lounaan maksaminen.	fi
+maksaa	VERB	maksetaan	Ja totta kai me maksetaan sulle palkka hyvästä työstä, Väänänen sanoo.	fi
+uutinen	NOUN	uutisille	Pidit korvat auki uutisille.	fi
+uutinen	NOUN	uutisissa	Etsin rakennuksen, jonka näin uutisissa, lasken kassini maahan ja koputan oveen.	fi
+kaivata	VERB	kaivattiin	Hän toi uutisia, joita kaivattiin.	fi
+kaivata	VERB	kaipaat	Ja nyt sinä kaipaat apuani.	fi
+asu	NOUN	asun	He tietävät, kuka olen, ja saavat helposti selville, missä asun.	fi
+asu	NOUN	asut	Sä oot mun paras kaveri ja musta on mahtavaa, että sä asut täällä.	fi
+liike	NOUN	liikettäni	Hän oli tehnyt selväksi, etten tarvinnut vartijaa vahtimaan jokaista liikettäni.	fi
+liike	NOUN	liikkeeltä	Siinä mielessä se tuntuisi oman tavoitteen kannalta vähän huonolta liikkeeltä.	fi
+oppia	VERB	opi	Miten jotkut eivät ikinä opi?	fi
+oppia	VERB	oppimaton	Minä olen oppimaton sotilas.	fi
+johtaa	VERB	johdat	Kun johdat, hän aloitti mielessään, johda.	fi
+johtaa	VERB	johtaisi	Siinä vaiheessa katselin häntä varmana siitä, että omat ponnistukseni eivät johtaisi mihinkään.	fi
+vauhti	NOUN	vauhdissa	Jos se pitää meidät vauhdissa, olkoon niin.	fi
+vauhti	NOUN	vauhtia	Pidämme kovaa vauhtia yllä ja on tosi terveellistä uskaltaa asettaa kovia tavoitteita.	fi
+asua	VERB	asuttava	Niiden oli asuttava siellä kaksi vuotta.	fi
+asua	VERB	asumaan	Minun ei kannata maksaa kahdesta asunnosta, joten muutan äidin luokse asumaan.	fi
+nousta	VERB	nouset	Ensimmäinen on sellainen, että nouset päältäni ja me puhumme.	fi
+nousta	VERB	nouskoot	En oo ikinä maksanut kalastusluvista, enkä muuten maksa nytkään, eli nouskoot kuinka isoksi tahansa.	fi
+ehtiä	VERB	ehdin	Mä menen, kun ehdin.	fi
+ehtiä	VERB	ehtimättä	Näytti kuin hän olisi itse yrittänyt päästä venttiilin luo, ehtimättä kuitenkaan perille.	fi
+idea	NOUN	ideoistani	Se oli yksi minun ideoistani.	fi
+idea	NOUN	ideamme	Ei ollut meidän ideamme.	fi
+elokuva	NOUN	elokuviasi	Olenhan minä nähnyt sinun elokuviasi!	fi
+elokuva	NOUN	elokuvanne	Luulen nähneeni kaikki elokuvanne.	fi
+ikävä	ADJ	ikävästä	Jostain ikävästä, jota ei olisi pitänyt ottaa esille.	fi
+ikävä	ADJ	ikävät	Yritämme unohtaa ikävät asiat.	fi
+mahdollinen	ADJ	mahdolliset	Lääkärit haluavat vain sulkea pois kaikki mahdolliset syyt, minä sanon.	fi
+mahdollinen	ADJ	mahdolliselta	Pitkään aikaan ei vaikuttanut mahdolliselta, että pääsisimme ikinä mihinkään.	fi
+suojella	VERB	suojeltu	Minulla ei ollut eläessäni ollut yhtä suojeltu olo.	fi
+suojella	VERB	suojelisivat	He alkoivat keskustella siitä, kuinka mätä maailma onkaan ja miten he suojelisivat perheenjäseniään siltä.	fi
+kiittää	VERB	kiitätte	Näinkö te siitä kiitätte?	fi
+kiittää	VERB	kiittämään	Ja siitä naiset pappia kiittämään.	fi
+liikkua	VERB	liikkuisi	Joten, vaikka olemme kiertoradalla, meistä näyttää kuin Maa ei liikkuisi lainkaan.	fi
+liikkua	VERB	liikkumaton	Robotti oli hetken liikkumaton.	fi
+juosta	VERB	juostessani	Olin palaa pelastamaan juostessani.	fi
+juosta	VERB	juoksevat	Vartijat juoksevat paikalle ja soittavat poliisille.	fi
+vaiva	NOUN	vaivoihin	Jos on rahaa, voi ostaa lääkettä kaikkiin muihin vaivoihin.	fi
+vaiva	NOUN	vaivaasi	Miten ja miksi hait apua vaivaasi?	fi
+pärjätä	VERB	pärjännyt	Siihen saakka olin pärjännyt hyvin.	fi
+pärjätä	VERB	pärjäisin	Luvata, että pärjäisin ja että … että jäisin kaipaamaan häntä.	fi
+terve	ADJ	terveitä	Minä ja lapset olemme terveitä, mutta silti mikään ei tunnu olevan oikein.	fi
+terve	ADJ	terveet	Minulla on kaunis koti, ihana mies ja täydelliset ja terveet lapset.	fi
+kävellä	VERB	kävellään	Mutta kävellään nyt vielä yhdessä kun voidaan.	fi
+kävellä	VERB	kävelty	Niillä on kävelty kenties kerran.	fi
+todiste	NOUN	todisteeni	Jamaika hylkäsi kaikki minun todisteeni, myös sen, että näytteen pulloa oli peukaloitu.	fi
+todiste	NOUN	todisteissa	Saksalaisten mukaan todisteissa puutteita.	fi
+uhri	NOUN	uhreille	Suostuin hyväksymään myös sen, että olin noille uhreille ainoa mahdollinen avun lähde.	fi
+uhri	NOUN	uhrissa	Eilen illalla rikospaikalla Ruhn oli käynyt kysymässä noidalta, oliko tämä huomannut uhrissa mitään erityistä.	fi
+para	NOUN	parasta	Tämä ei ole ehkä parasta luettavaa juuri nyt.	fi
+para	NOUN	Parasta	Parasta on se, että Sini on luvannut tulla mukaani hoitoihin.	fi
+sairaala	NOUN	sairaalassani	En halua enää nähdä sinua sairaalassani.	fi
+sairaala	NOUN	sairaalani	En halua, että sairaalani on kuin saastainen ravintola.	fi
+täydellinen	ADJ	täydelliseltä	Ajatus tuntui hänestä niin täydelliseltä ettei hän voisi koskaan selittää sitä.	fi
+täydellinen	ADJ	täydelliset	Minulla on kaunis koti, ihana mies ja täydelliset ja terveet lapset.	fi
+loistava	ADJ	loistavalta	Etten sanoisi suorastaan loistavalta.	fi
+loistava	ADJ	loistavaa	Sanalla sanoen on siis kerrassaan loistavaa, että he korjaavat luunsa.	fi
+ero	NOUN	erot	Se voisi myös selittää muut erot välillämme.	fi
+ero	NOUN	erostasi	Kirjoita meille erostasi ja kerro, mitä** eron hetkellä tapahtui ja mitä sanoitte** toisillenne.	fi
+huomen	NOUN	huomenta	Liisa asettui niiaamaan... niiasi ja toivotti hyvää huomenta.	fi
+herätä	VERB	heräät	Ja kun heräät, et enää halua.	fi
+herätä	VERB	heräisit	Halusin olla kanssasi, kun heräisit.	fi
+heittää	VERB	heitän	Äiti tulee sitten myöhemmin kotiin, minä sanon ja heitän löylyä.	fi
+heittää	VERB	heitettävä	Hän ajatteli, että heitettävä tavara loppuisi pian, jälkiruoka ja viini oli nautittu.	fi
+suu	NOUN	suullasi	Väitit niin omalla suullasi.	fi
+suu	NOUN	suulleni	Painoin käden suulleni, koska olin niin kauhuissani.	fi
+pomo	NOUN	pomoasi	Mutta ajattelin sitä sinun pomoasi.	fi
+pomo	NOUN	pomoosi	Sinulla on suhde pomoosi.	fi
+varastaa	VERB	varastettava	Se oli kova, hänen olisi varastettava pian uusi.	fi
+varastaa	VERB	varastaisi	Miksi kukaan varastaisi auton?	fi
+avu	NOUN	avuin	Mutta he eivät pääse ulos omin avuin.	fi
+avu	NOUN	avut	Sinä olet nuori ja komea, sinulla on kaikki tarvittavat avut.	fi
+voima	NOUN	voimaksi	Sitä kutsutaan myös elämän voimaksi.	fi
+voima	NOUN	voimistasi	Minusta tuntuu, että sinä käytit suurimman osan voimistasi, kun yritit parantaa hänet.	fi
+vaihtaa	VERB	vaihtanut	Ehkä hän on vaihtanut taktiikkaa.	fi
+vaihtaa	VERB	vaihtaisivat	Aivan kuin aivoni vaihtaisivat toiselle raiteelle.	fi
+onnellinen	ADJ	onnellisilta	Katso nyt, miten onnellisilta nuo näyttävät, ja sinun pitää taas tuoda huonoja uutisia.	fi
+onnellinen	ADJ	onnellisin	Olisin miehistä onnellisin, jos haluaisit käydä katsomassa minua täällä Rissbergissä.	fi
+taistella	VERB	taistelen	Juuri siitä minä taistelen.	fi
+taistella	VERB	taistelisimme	Juttelemme niitä näitä sen sijaan että taistelisimme!	fi
+hankkia	VERB	hankkimassa	Me olemme myös hankkimassa lisää maata.	fi
+hankkia	VERB	hankkisin	Olen jopa harkinnut, että hankkisin lapsen yksin.	fi
+sopimus	NOUN	sopimuksessa	Kerron teille nyt, mistä sopimuksessa on kysymys.	fi
+sopimus	NOUN	sopimuksena	Emmekö voisi yksinkertaisesti pitää tätä sopimuksena, jossa on kysymys oikeuksista ja velvollisuuksista?	fi
+valo	NOUN	valoon	Luonto on oppinut luottamaan valoon.	fi
+valo	NOUN	valolta	Kävelin jonkin verran metsäpoluilla Keskuspuistossa, mutta siellä valolta oli vaikea päästä pakoon.	fi
+häipyä	VERB	Häipykää	Viesti kuuluu ’ Häipykää helvettiin täältä, nyt ’.	fi
+häipyä	VERB	häivyt	Jos et ratkaise, minä jään ja sinä häivyt.	fi
+kone	NOUN	konettani	Istun ja katson konettani.	fi
+kone	NOUN	koneemme	Hän tuntee koneemme ja laitteemme ja asentaa ja korjaa kaiken mitä tarvitsemme.	fi
+muka	ADV	Mukan	Mukan** vahvaa kirjaa__ Tabu__ ja nykyajan tabuja.	fi
+esittää	VERB	esittäisin	Olen miettinyt kysymyksiä, jotka esittäisin.	fi
+esittää	VERB	esitin	Kului päiviä ja taas päiviä, joina esitin kunnon tyttöä.	fi
+elo	NOUN	eloa	Eikä sinulla nyt sitä tointa, että eloa ostanut olisit!	fi
+elo	NOUN	elon	Vesieristettä tursutetaan rintoihin ja kaiken elon tappavia ruiskeita kasvoihin.	fi
+katu	NOUN	kaduin	Ensin ajattelin, etten vastaa, ja sitten kaduin, että vastasin.	fi
+katu	NOUN	katua	Ei olisi pitänyt reagoida niin nopeasti, mutta nyt on myöhäistä katua.	fi
+kiire	NOUN	kiireettä	Pöydän ääressä hän valmistautui tehtäväänsä kiireettä, kaikessa rauhassa ja huolellisesti.	fi
+kiire	NOUN	kiireiltään	Miilunpolttajat eivät kiireiltään ehtineet kiinnittää heihin huomiota.	fi
+tyhmä	ADJ	tyhmiä	Sijoittajat eivät silti ole tyhmiä.	fi
+tyhmä	ADJ	tyhmästä	Tutki ajatuksiasi, etsi vastaus tyhmästä päästäsi!	fi
+todistaa	VERB	todistatte	Niin todistatte hänelle, että arvioni ei ollut väärä.	fi
+todistaa	VERB	todistit	Mutta pyytäessäsi anteeksi todistit, että en ole ollut väärässä sinun suhteesi.	fi
+tarkistaa	VERB	tarkistanut	En tarkistanut, koska minulla ei ollut syytä uskoa, ettet ollut kuollut.	fi
+tarkistaa	VERB	tarkistatte	Tahtoisin, että tarkistatte puhuuko hän totta.	fi
+nostaa	VERB	nostimme	En ole ollut aidosti onnellinen kertaakaan sen jälkeen, kun nostimme purjeet.	fi
+nostaa	VERB	nostan	Sitten nostan äidin istumaan suihkujakkaralle ja annan suihkun hänen käteensä.	fi
+sisko	NOUN	siskoosi	Täytyy yrittää tuota siskoosi.	fi
+sisko	NOUN	siskon	Hän ei vieläkään tiedä, miksi siskon mielestä hänelle ei olisi saanut kertoa.	fi
+olo	NOUN	olosta	Kun seuraavana aamuna olosta huolimatta on oltava taas valmis sotaan.	fi
+olo	NOUN	oloanne	Se varmasti helpottaa oloanne.	fi
+vara	NOUN	varaasi	Jos et pidä varaasi, sinulle käy huonosti.	fi
+vara	NOUN	varalleen	Minulla on kuitenkin suunnitelmia hänen varalleen.	fi
+kuvitella	VERB	kuvitelleeni	Luulin jo hetken aikaa kuvitelleeni kaiken, vaikka nimi oli täsmälleen sama.	fi
+kuvitella	VERB	kuvittelemani	Mitä minun kuvitelmastani mahdollisesti ajattelevat he, jotka ovat oikeasti kokeneet kuvittelemani asiat?	fi
+alku	NOUN	alkujen	Se on kaikkien alkujen ja loppujen tuolla puolen.	fi
+alku	NOUN	alkuni	Tämä on uuden alkuni ensimmäinen merkintä.	fi
+jokainen	DET	jokaiselta	Minun täytyy tehdä sukuselvitys jokaiselta paikkakunnalta, jossa äiti on asunut.	fi
+jokainen	DET	jokaisissa	Sen nimi toistettiin jokaisissa uutisissa.	fi
+tavara	NOUN	tavaraansa	Miehet uskoivat, ettei ollut, sillä ei Panu tavaraansa piilottanut.	fi
+tavara	NOUN	tavaroihinsa	Rose kysyi ja nyökkäsi heidän tavaroihinsa päin.	fi
+estää	VERB	estetään	Jos me estetään sitä.	fi
+estää	VERB	estän	Minä estän hääsi vaikka minun pitäisi tappaa sinut.	fi
+sinä	PRON	sää	Asukkaiden valtaosa saa elantonsa merestä, ja kuten tiedät, harhakuvien ohella erikoisuuteni on sää.	fi
+sinä	PRON	Sasi	Ilkka Sasi sanoo, että ryhmä sitoutuu pormestariohjelmaan.	fi
+kymmenen	NUM	kymmenenä	Yhdessä yössä oli satanut enemmän kuin kymmenenä viime talvena yhteensä.	fi
+kymmenen	NUM	kymmeneen	En minä tuntenut Martinkaan kanssa näin moneen kymmeneen vuoteen.	fi
+tuollainen	ADJ	tuollaisessa	Olen järkyttynyt siitä, että minun poikani on tuollaisessa tilanteessa.	fi
+tuollainen	ADJ	tollanen	Jos sitä kysyi keikalle, se vastasi, että vittusaatana kiinnosta tollanen, mikä tarkoitti, että okei.	fi
+presidentti	NOUN	presidenttini	Kuka ampui minun presidenttini? hän ajatteli.	fi
+presidentti	NOUN	presidenttiämme	Jumala siunatkoon presidenttiämme, seksiä ja Amerikkaa.	fi
+johtaja	NOUN	johtajaksemme	Mutta tule pois ja rupea johtajaksemme.	fi
+johtaja	NOUN	johtajalle	Sillä tavalla saimme hankittua johtajalle kaksi vaimoa.	fi
+mahtaa	VERB	mahtava	Esimerkiksi mahtava äiti, minä sanon.	fi
+mahtaa	VERB	mahtavat	Mädäntyneen puun säikeitä murtui irti, kun hänen mahtavat hartiansa ja selkänsä painautuivat lankkuja vasten.	fi
+tehtävä	NOUN	tehtävänsä	Hän on tehnyt oman tehtävänsä.	fi
+tehtävä	NOUN	tehtäväsi	Tiesin, mitä tein... kun olisit sinäkin tehtäväsi tehnyt.	fi
+loppua	VERB	loppumassa	Mikään ei viittaa siihen, että se olisi loppumassa.	fi
+loppua	VERB	loppuivat	Aamiaiset Jarkon kanssa loppuivat kuin seinään, mutta koti on silti rakennettu rakkaudella.	fi
+näkyä	VERB	näkyisi	Kalaan lähti, mutta kohta käski tuoda sanan, jos mitä näkyisi.	fi
+näkyä	VERB	näkymällä	Hän oli nähnyt tämän lennokkiensa kameroiden välityksellä, tällä näkymällä hänet oli palkittu neljällä lennolla.	fi
+pysäyttää	VERB	pysäytetään	Minä sanon sitten, missä pysäytetään.	fi
+pysäyttää	VERB	pysäyttävänsä	Hän uskoo pysäyttävänsä sodan.	fi
+ansaita	VERB	ansaitsisivat	Ja jotkut jotka kuolevat ansaitsisivat elämän.	fi
+ansaita	VERB	ansaitsen	Minä ansaitsen kaiken tämän onnen, vaikka vanha olenkin.	fi
+opettaa	VERB	opetamme	Me opetamme sinulle, miten voit käyttää sitä.	fi
+opettaa	VERB	opettanut	Ainakin se on opettanut.	fi
+työskennellä	VERB	työskentelisit	Milloin sinä työskentelisit, jos saisit itse valita?	fi
+työskennellä	VERB	työskentele	Eivät he kaikki työskentele hänelle vain sen takia, että olisivat tuskissaan tai peloissaan.	fi
+paeta	VERB	pakenisin	Entä jos vain pakenisin?	fi
+paeta	VERB	paettava	Minun pitää keskittyä … Sinun on paettava.	fi
+uni	NOUN	unta	En vain saanut unta.	fi
+uni	NOUN	uneni	Näin hänet yöllä unessa, laulan teille uneni.	fi
+agentti	NOUN	agenttejamme	Mutta hän on parhaita agenttejamme.	fi
+agentti	NOUN	agenttiamme	Kaksi parasta agenttiamme pidätettiin samana yönä.	fi
+huomio	NOUN	huomiotamme	Niin salaperäinen, ettei hän ole kertaakaan herättänyt huomiotamme kaikkien näiden vuosien aikana?	fi
+huomio	NOUN	huomioita	En halua viedä huomioita pois teidän onnestanne, mutta minullakin on hyviä uutisia.	fi
+vauva	NOUN	vauvallesi	Ala puhua vauvallesi; hän kyllä kuulee sinut.	fi
+vauva	NOUN	vauvallemme	On hienoa, että ymmärrän jatkuvasti enemmän, mitä vaimoni juttelee vauvallemme, kertoo Hurley.	fi
+kuningas	NOUN	kuninkaiden	Antaa kaikki anteeksi kuninkaiden tapaan?	fi
+kuningas	NOUN	kuningastasi	Uskotko sinä omaa kuningastasi?	fi
+hyväksyä	VERB	hyväksyttäneen	Onko kysyttävää … Päätös hyväksyttäneen.	fi
+hyväksyä	VERB	hyväksyminen	On kuitenkin myös muistettava, että ymmärtäminen on täysin eri asia kuin hyväksyminen.	fi
+vihainen	ADJ	vihaiselle	Se saa minut joskus vihaiselle päälle.	fi
+vihainen	ADJ	vihaiselta	Nyt hän näytti vihaiselta.	fi
+avain	NOUN	avaimia	Jos tahtoisi, ei tarvitsisi se mies avaimia odottaa.	fi
+avain	NOUN	avaimena	Jo lapsena näin matematiikan avaimena tähän.	fi
+paskiainen	NOUN	paskiaiseen	Ja mitä tulee siihen paskiaiseen tuolla ylhäällä, niin älä puhu hänestä mitään.	fi
+paskiainen	NOUN	paskiaisella	Hän oli paikalla, koska jollakin paskiaisella oli ollut tärkeämpi tapaaminen.	fi
+uskomaton	ADJ	uskomatonta	Tämä on ihan uskomatonta.	fi
+uskomaton	ADJ	uskomattomampi	Totuus on selvästi uskomattomampi.	fi
+juhla	NOUN	juhliani	Älä nyt mieti niitä minun juhliani.	fi
+juhla	NOUN	juhlissanne	Olen ollut kaikissa juhlissanne.	fi
+iloinen	ADJ	iloisina	Lapset leikkivät pihalla iloisina.	fi
+iloinen	ADJ	iloisiksi	He tulivat havainnostaan oikein iloisiksi, pitkästä aikaa.	fi
+epäillä	VERB	epäilisin	Ei sillä, että epäilisin niitä, mutta kunnes hän on näyttänyt ne...	fi
+epäillä	VERB	epäilette	Mutta sitä, mistä te minua epäilette, en kerta kaikkiaan edes pystyisi tekemään.	fi
+rakas	ADJ	rakkaitanne	Nyt voitte mennä katsomaan rakkaitanne.	fi
+rakas	ADJ	rakkaillesi	Hyviä pyhiä, anna aikaa rakkaillesi kun he vielä elävät.	fi
+tähti	NOUN	tähdelle	Emme pääse koskaan toiselle tähdelle.	fi
+tähti	NOUN	tähtensä	Tuntuu vain niinkuin olisi jotakin hänen tähtensä tekeillä.	fi
+virhe	NOUN	virheeltä	Kiitos siitä, mitä sanoit hänestä, sillä voi olla että oikeasti pelastit minut virheeltä.	fi
+virhe	NOUN	virhettäsi	Et uskalla tunnustaa virhettäsi.	fi
+kahvi	NOUN	kahvisi	Juo kahvisi loppuun, ja käy sitten pitkällesi.	fi
+kahvi	NOUN	kahvin	Tilaan kahvin ja munkin.	fi
+laki	NOUN	lakini	Sinun sanasi on minun lakini.	fi
+laki	NOUN	laeissa	Mutta laeissa on se hyvä puoli, että niiden rikkomisesta voi saada nautintoa.	fi
+eräs	PRON	eräisiin	Usko minua, on parempi lukeutua eräisiin kuin kaikkiin.	fi
+eräs	PRON	eräästä	Joissain lehdissä on ollut ilkeitä kirjoitteluita miehestäni ja eräästä nuoremmasta naisesta.	fi
+ilmoittaa	VERB	ilmoititte	Kiitos, kun ilmoititte niin nopeasti.	fi
+ilmoittaa	VERB	ilmoittakaa	Muistakaa pitää silmät auki ja ilmoittakaa heti poliisille, jos huomaatte jotain.	fi
+polttaa	VERB	polttaisivat	Ne polttaisivat tiensä läpi uudelleen.	fi
+polttaa	VERB	polttaman	Kostaman sinun pitää ja tulella polttaman, sanoo Herra, Herra!	fi
+taivas	NOUN	taivaasta	Isäsi varmasti katselee tuolta taivaasta ja on ylpeä sinusta.	fi
+taivas	NOUN	taivaita	Pilvien ja tähtitarhain takana istui ja hallitsi maita ja taivaita.	fi
+nauttia	VERB	nauttinut	En vain ole nauttinut siitä.	fi
+nauttia	VERB	nautitaan	Nyt vain nautitaan toisistamme ja elämästä, minä sanon.	fi
+luvata	VERB	luvataan	Mitä tahansa teille luvataan, lupaan tarjota parempaa, tavalla tai toisella.	fi
+luvata	VERB	lupaamani	Vastineeksi saat lupaamani tiedot, ja saat ne saman tien.	fi
+lähetti	NOUN	lähettinsä	Hänen lähettinsä sai tehtäväksi ilmoittaa heti kun isot herrat olivat lähteneet.	fi
+lähetti	NOUN	lähettiä	Valkotukkainen mies oli hetken hiljaa ja katseli lähettiä tutkivasti.	fi
+saapua	VERB	saapumatta	Yksi ihminen oli vielä saapumatta.	fi
+saapua	VERB	saapuu	Olen tilannut meille joulupukin, ja kun pukki saapuu, tunnelma kohoaa ainakin hetkeksi.	fi
+koe	NOUN	Kokeet	Ensin Valinta, sitten Kokeet, ja sitten vielä Muutokset.	fi
+koe	NOUN	Kokeisiin	Menit Kokeisiin ja selvisit niistä.	fi
+pystyä	VERB	pystyisimme	Katselin kaikkea saalista, sitten meitä kahdeksaa, ja ajattelin kuinka vähän pystyisimme kantamaan ylös portaita.	fi
+pystyä	VERB	pystyvä	Hän oli omasta mielestään yhä pystyvä mies mitä naisasioihin tuli.	fi
+lentää	VERB	lentäisimme	En todellakaan odottanut, että lentäisimme kädet levällään toistemme syliin.	fi
+lentää	VERB	lennetään	Eikä Pyörre ole jotain, mihin lennetään.	fi
+lahja	NOUN	lahjansa	Hänen lahjansa ovat ihan muualla.	fi
+lahja	NOUN	lahjalta	Tilaisuus oli näyttänyt taivaan lahjalta.	fi
+alue	NOUN	aluettasi	Ja olet oikeassa, tämä on sinun aluettasi.	fi
+alue	NOUN	alueellaan	Hän kuulostaa mieheltä, joka nyt liikkuu omalla alueellaan, sektorilla jonka hallitsee.	fi
+sairas	ADJ	sairaasta	Olen eri mieltä, mutta kerron hänelle sairaasta tempusta, jonka tein vain kaksitoista tuntia sitten.	fi
+sairas	ADJ	sairaaksi	Tunsin oloni vapisevaksi ja sairaaksi, aivan kuin olisin tajunnut ensi kertaa, mihin olin ryhtymässä.	fi
+kausi	NOUN	kausillaan	Kaikkien tarinat on jo käyty läpi heidän omilla kausillaan.	fi
+kausi	NOUN	kausille	Se antaa uskoa tuleville kausille, että joskus pystyn olemaan siellä ihan kärjessä.	fi
+järjestää	VERB	järjestäisi	Hän ei tiennyt miten järjestäisi asiat.	fi
+järjestää	VERB	järjestän	Järjestin itseni tähän liemeen, ja järjestän itseni siitä pois.	fi
+vaate	NOUN	vaatteissaan	Se merkki oli kaikissa hänen vaatteissaan... tämä on äiti vainajan huivi!	fi
+vaate	NOUN	vaatteiden	Sitten soitan Pesoselle, ja hän tulee pian paikalle vaatteiden kanssa.	fi
+satuttaa	VERB	satuttaisin	Luulin, että jos vain satuttaisin häntä yhtä paljon kuin hän satutti minua, saisin kostoni.	fi
+satuttaa	VERB	satuttamatta	Pitelin hänestä kiinni niin lujaa kuin satuttamatta pystyin.	fi
+ruumis	NOUN	ruumiita	Suurin järkytys ei ollut se, että siellä oli ruumiita.	fi
+ruumis	NOUN	ruumiilleen	Hänen ruumiilleen tehtiin kuulemma kauheita asioita.	fi
+vaarallinen	ADJ	vaarallisempi	Kirves oli vaarallisempi, mutta miekka nopeampi.	fi
+vaarallinen	ADJ	vaaralliseksi	Mutta älä kerro kenellekään, tai tämä menee vaaralliseksi, Väänänen sanoo.	fi
+tarkka	ADJ	tarkkaan	Ne ovat tarkkaan harkittu ja pitkään valmisteltu operaatio.	fi
+tarkka	ADJ	tarkoitta	Se tarkoitta, että alueelle tarvitaan lisää teollisia työpaikkoja.	fi
+kamala	ADJ	kamalia	Tarkoitan, että meille tapahtui kamalia asioita.	fi
+kamala	ADJ	kamalaa	Mutta kuulin kaiken, ja sekin oli tarpeeksi kamalaa.	fi
+usein	ADV	Useammin	Useammin kuin kerran tämän kirjan kirjoittamisen aikana halusin haastaa juonenkulun.	fi
+järki	NOUN	järkeäni	En ehkä olekaan menettänyt järkeäni.	fi
+järki	NOUN	järkiisi	Toki uskoin sinua silloin, mutta luotin, että olisit tähän mennessä tullut järkiisi.	fi
+päätös	NOUN	päätöksille	Aikaa on vain päätöksille.	fi
+päätös	NOUN	päätöksestä	Yritykset eivät voi valittaa pankin päätöksestä.	fi
+kauppa	NOUN	kaupastaan	Voi olla, että saavat enemmänkin kuin ovat kaupastaan odottaneet.	fi
+kauppa	NOUN	kaupasta	Nostan joka aamu kaksi kahvikuppia pöytään ja ostan kaupasta liikaa ruokaa.	fi
+seksi	NOUN	seksiä	Olemme naisia ja tiedämme, mihin kaikkeen seksiä voi käyttää nautinnon ohella.	fi
+seksi	NOUN	seksiksi	Kähmii sen alle kuusi minuuttia ja kutsuu sitä seksiksi.	fi
+valkoinen	ADJ	valkoista	Kaksi valkoista kanaa oli käynyt lankaan.	fi
+valkoinen	ADJ	valkoiset	Naisella oli pyöreät kasvot, hyvin valkoiset hiukset ja pystynenä.	fi
+tilaisuus	NOUN	tilaisuudeksi	Oli kutsunut sitä tilaisuudeksi aloittaa elämä uudestaan alusta.	fi
+tilaisuus	NOUN	tilaisuutenne	Olette jo menettänyt ainoan tilaisuutenne.	fi
+sänky	NOUN	sänkyynne	Ehkä haluatte tämän sänkyynne.	fi
+sänky	NOUN	sänkysi	Sitten he istuivat sänkysi vieressä melkein aamuun asti, mutta eivät sanoneet toisilleen sanaakaan.	fi
+upea	ADJ	upeaksi	Hän tunsi olonsa upeaksi, kuin juopuneeksi, eikä se varmasti johtunut surkeasta viinistä.	fi
+upea	ADJ	Upeata	Emmi Peltonen oli iloinen ja vapautunut suorituksensa jälkeen.\- Upeata, että saan jatkaa vielä vapaaohjelmaan.	fi
+aiheuttaa	VERB	aiheuttaisin	Pakotin itseni liikkumaan hitaasti, jotta aiheuttaisin mahdollisimman vähän melua.	fi
+aiheuttaa	VERB	aiheutin	Jos aiheutin ääntä, hän ei kuullut sitä pukunsa läpi.	fi
+typerä	ADJ	typerältä	Sitten hiljenin ennen kuin esitin ajatuksen, joka olisi saanut minut vaikuttamaan typerältä.	fi
+typerä	ADJ	typerää	En ollut toiminut huolimattomasti tai olettanut jotain typerää.	fi
+toimisto	NOUN	toimistolle	Sinä päivänä, kun Miranda tapaa Arthurin, Pablo soittaa toimistolle.	fi
+toimisto	NOUN	toimistoasi	Hoidatko sinä toimistoasi vieläkin yksin?	fi
+puhe	NOUN	puheilleni	Kukaan ei koskaan tule puheilleni suoraan, satamassa, ja vaadi minulta hommia.	fi
+puhe	NOUN	puheeni	Kun lopetin puheeni, yleinen hiljaisuus laskeutui.	fi
+kunnia	NOUN	kunniasi	Sinun kunniasi on yhtä tyhjän kanssa.	fi
+kunnia	NOUN	kunniaamme	Se, joka loukkaa kunniaamme, saa meidät kimppuunsa, hän uhoaa.	fi
+syntyä	VERB	syntymätön	Onnellinen on vain syntymätön.	fi
+syntyä	VERB	synnyttäessä	Hän haluaa tietää, mitä tehdä, jos synnyttäessä tulee kakka.	fi
+tarkoitus	NOUN	tarkoitustaan	Ymmärrän, että he etsivät vain omaa heimoaan, tarkoitustaan ja ehkä vähän itseään.	fi
+tarkoitus	NOUN	tarkoituksenani	Olen käynyt pankissa tarkoituksenani muuttaa miekka rahaksi, sillä mitä leskirouva nyt miekalla tekee?	fi
+vahva	ADJ	vahvaa	Hän myöntää, ettei hänellä ole yhtä vahvaa tunteen paloa.	fi
+vahva	ADJ	vahvoja	Luuletteko olevanne tarpeeksi vahvoja pitämään kuiskaukset siellä, mihin ne kuuluvat?	fi
+keino	NOUN	keinomme	Nyt ainoa keinomme on yrittää pakoon.	fi
+keino	NOUN	keinosta	Paitsi jos kyse on jostain uudesta keinosta.	fi
+velka	NOUN	velkojensa	Mitä isä tekisi velkojensa kanssa?	fi
+velka	NOUN	velkanne	Kuninkaan käskystä teidän on maksettava velkanne välittömästi.	fi
+siirtää	VERB	siirrettiin	Okei, sen avulla siis siirrettiin tietoa.	fi
+siirtää	VERB	siirtämään	Mutta olen valmis siirtämään maailmoja saadakseni tyttäreni takaisin kotiin.	fi
+sääntö	NOUN	sääntöjeni	Minun sääntöjeni mukaan, onko selvä?	fi
+sääntö	NOUN	sääntöjesi	Pelaan sääntöjesi mukaan, mutta en pidä niistä.	fi
+tunne	NOUN	tunteille	Hän ei voinut antaa tunteille valtaa.	fi
+tunne	NOUN	tunteita	Hän ei jaksanut enää käsitellä asioita eikä tunteita.	fi
+rakentaa	VERB	rakentamasi	Oliko rakentamasi talo oikein hieno?	fi
+rakentaa	VERB	rakenna	Minä en pelkää, en rakenna riitaa enkä palvele.	fi
+hai	NOUN	haittasi	Mutta mitä se haittasi?	fi
+hai	NOUN	hailla	Groom oli se kaveri, jolla oli silmät kuin hailla.	fi
+korjata	VERB	korjaamatta	Eihän se korjaamatta kestä ajaa.	fi
+korjata	VERB	korjaisi	Kuka muu hänet muka korjaisi täältä jumalten selän takaa?	fi
+kyyti	NOUN	kyytini	Voihan paska, Reacher ajatteli, siinä meni minun kyytini.	fi
+kyyti	NOUN	kyytiä	Yrittäjille tarkastukset ovat tuoneet kylmää kyytiä vanhaan verrattuna.	fi
+myöhä	ADJ	myöhällä	Mutta myös liian myöhällä niiden tekeminen voi olla liian väsyttävää.	fi
+henkilö	NOUN	henkilöitä	On vaikeaa muistaa kaikkea henkilöitä.	fi
+henkilö	NOUN	henkilöinä	Ehkä siksi, että Ailing kohtasi ihmiset henkilöinä.	fi
+asiakas	NOUN	asiakkaitani	Minä muistan hänet – ei hän tosin koskaan minun asiakkaitani ollut.	fi
+asiakas	NOUN	asiakkaalta	Se pitäisi selvittää asiakkaalta.	fi
+erilainen	ADJ	erilaiselta	Se saisi kenet tahansa näyttämään erilaiselta.	fi
+erilainen	ADJ	erilaista	Sekä kaikenlaista erilaista, väärää ja outoa, joka minua kiehtoo.	fi
+haitata	VERB	haittaavat	Noiturit eivät käytä valoa eivätkä tulta, sillä ne haittaavat näkemistä.	fi
+haitata	VERB	haittasivat	Kalisevat hampaat hieman haittasivat ääntämystä.	fi
+tulevaisuus	NOUN	tulevaisuuttani	Mutta minä en halua tietää tulevaisuuttani.	fi
+tulevaisuus	NOUN	tulevaisuudestani	Pelkään vain sitä, että se on poissa minun tulevaisuudestani.	fi
+huolehtia	VERB	huolehtisi	Enkä sinuna huolehtisi liikaa käden takia.	fi
+huolehtia	VERB	huolehdittava	En kuitenkaan voi jäädä tätä pohtimaan, minun on huolehdittava …	fi
+tahtoa	VERB	tahdottu	Se oli selvä merkki siitä, että heitä ei enää tahdottu ottaa vastaan.	fi
+tahtoa	VERB	tahdomme	Siitä tahdomme kanssanne vielä puhua.	fi
+kasvot	NOUN	kasvoistani	Sen sijaan se olikin kolmen metrin päässä kasvoistani.	fi
+kasvot	NOUN	kasvoillani	Yritin peitellä tunteitani, mutta häpeän täytyi näkyä kasvoillani.	fi
+sata	NUM	sadalla	Minä olen käynyt sadalla planeetalla, ja se on pelkkä raapaisu.	fi
+sata	NUM	sadan	Olen tässä sadan metrin päässä leikkipuiston vieressä.	fi
+asunto	NOUN	asunnosta	Minun ei kannata maksaa kahdesta asunnosta, joten muutan äidin luokse asumaan.	fi
+asunto	NOUN	asunnollani	Kaikki hänen vaatteensa ovat asunnollani.	fi
+joukko	NOUN	Joukon	Mutta Joukon täytyi niitä noudattaa joka asiassa, mihin ryhtyi.	fi
+joukko	NOUN	joukkoa	Vaimo hänellä oli, Liisa, muttei muuta joukkoa mitään.	fi
+armeija	NOUN	armeijaansa	Kuka nyt johtaa heidän armeijaansa?	fi
+armeija	NOUN	armeijan	Ne eivät anna riittävän paljon aseita Venäjän armeijan voittamiseksi.	fi
+kääntyä	VERB	käännyn	Sitten jatkan matkaani, mutta käännyn varovasti katsomaan naista.	fi
+kääntyä	VERB	kääntymästä	Ehkä se myös esti minua kääntymästä ja kysymästä Halikolta oliko tällä ollut ongelmia sisäänkirjautumisessa.	fi
+vaihtoehto	NOUN	vaihtoehdolle	En mielelläni suo ajatuksia sille vaihtoehdolle, että suunnitelmani ei toimi.	fi
+vaihtoehto	NOUN	vaihtoehtoni	Tiesin, että ainoa vaihtoehtoni oli olla hänelle ehdottoman rehellinen.	fi
+valta	NOUN	Vallasta	Mutta ihmisen on niin vaikea kieltäytyä Vallasta.	fi
+valta	NOUN	vallastaan	Ellei hän olisi niin varma vallastaan, ei hän niin esiintyisi.	fi
+tari	NOUN	tarinansa	Kuuntelen, kun Sami kertoo järjettömän tarinansa.	fi
+tari	NOUN	Tarin	Punaisen ristin edustajan mukaan maanvyöryt ovat katkaisseet teitä Tarin asutuskeskukseen.	fi
+ruuma	NOUN	ruumiini	Ainakin ruumiini löytyy nopeammin, jos minulle tapahtuu jotain.	fi
+ruuma	NOUN	ruumissa	Hän tunsi muistavansa, miten tulinen myrkky virtasi ruumissa.	fi
+es	NOUN	esille	Ja olihan Pääkkönen noussut muutamaa vuotta aiemmin näyttävästi esille historiallisessa hittisarjassa Viikingit.	fi
+es	NOUN	Esiin	Esiin ilmestyivät vähitellen kasvot.	fi
+tekeminen	NOUN	tekemisiä	Hän seurasi tämän tekemisiä.	fi
+tekeminen	NOUN	tekemisessä	Sinusta tuntuu, että minä häiritsen häntä päätöksen tekemisessä?	fi
+palvelus	NOUN	palveluksistanne	Tilanne on nyt sellainen, että meidän on toimittava nopeasti, jos aiomme hyötyä teidän palveluksistanne.	fi
+palvelus	NOUN	palvelukseni	Tämä on kunnian mies, joka ansaitsee täysin kaiken minun uskollisuuteni ja palvelukseni.	fi
+tyhjä	ADJ	tyhjillään	Toisella seinällä oli viisi ihmistä, toisella kuusi, joten vain yksi syvennys oli tyhjillään.	fi
+tyhjä	ADJ	tyhjille	Hän muisti, mitä se teki tyhjille keittopurkeille ja ihmisille.	fi
+tom	NOUN	Tomia	Kuka muu vielä voisi vihata häntä tai Tomia tai haluta tehdä kiusaa?	fi
+tom	NOUN	Tomin	Hieman sumeat kuvat Robertin ja Tomin osittain pelilasien peittämistä kasvoista alkoivat liikkua.	fi
+varmistaa	VERB	varmistimme	Toisilla oli edelleen varsijousensa, ja varmistimme, että ne olivat kaikki laukaisuvalmiina.	fi
+varmistaa	VERB	varmistaisin	Että koputtaisin vain hänen ovelleen, viipyisin vain lyhyen tuokion ja varmistaisin kaiken olevan kunnossa.	fi
+kasvaa	VERB	kasvavat	Pankin kulut ja riskit kasvavat, mutta yritystili ei tuo juuri lainkaan tuloja pankille.	fi
+kasvaa	VERB	kasvamassa	Koreitapa oli kukkia siinä kasvamassa... mikähän lie mikin nimeltään...	fi
+pöytä	NOUN	pöydällesi	Tarkoitin että mistä se tuli sinun pöydällesi.	fi
+pöytä	NOUN	pöytämme	Tarjoilija pyörii pöytämme ympärillä ja odottaa, että ymmärrämme lähteä.	fi
+tahto	NOUN	tahdostasi	Se on tapahtunut omasta tahdostasi.	fi
+tahto	NOUN	tahtoasi	Ellei hän kärsi, miten voit olla varma, että hän tottelee sinun tahtoasi eikä omaansa?	fi
+vasen	ADJ	vasemmalla	Matti nosti tammalleen toisen kapallisen vettä, tällä kertaa vasemmalla kädellään.	fi
+vasen	ADJ	vasemmallaan	Reacher loikkasi huoneen poikki ja löi naista vasemmallaan ohimoon.	fi
+salaisuus	NOUN	salaisuuksistasi	Tiedän, että pidät salaisuuksistasi.	fi
+salaisuus	NOUN	salaisuudesta	Haluaisin vain tuijottaa niihin ja ottaa salaisuudesta selvää.	fi
+entinen	ADJ	entisille	Jos sitä varten tulit, parasta kun pyörrät entisille jäljillesi.	fi
+entinen	ADJ	entiselle	Kesällä hän oli ilmoittanut entiselle joukkueelleen Columbus Blue Jacketsille, että haluaa vaihtaa maisemaa.	fi
+suomennos	NOUN	suomennoksissa	Palkinnon myöntänyt raati kiittää Kunnasta vahvasta kielen tajusta, joka näkyy myös runoilijan tekemissä suomennoksissa.	fi
+suomennos	NOUN	suomennosten	Yhtenä syynä Salmisen teosten unohdukseen saattaa olla suomennosten kömpelyys.	fi
+ylpeä	ADJ	ylpeämpi	En ole ikinä ollut ylpeämpi sinusta.	fi
+ylpeä	ADJ	ylpeäksi	Ajatus tekee minut sekä ylpeäksi että surulliseksi.	fi
+lehti	NOUN	lehteäsi	Mene vain lukemaan lehteäsi.	fi
+lehti	NOUN	lehden	Laitan lehden pois ja yritän rentoutua ja ajatella positiivisesti.	fi
+vieras	ADJ	vieraallemme	Mietitään mieluummin, mitä teemme vieraallemme.	fi
+vieras	ADJ	vieraitani	En halua kuulustella vieraitani.	fi
+poistua	VERB	poistukaa	Olkaa hyvä ja poistukaa.	fi
+poistua	VERB	poistuminen	Pelkkä hiljainen poistuminen ei tule kyseeseen, se herättää enemmän huomiota kuin mikä tahansa muu.	fi
+puhelu	NOUN	puhelussa	Tuossa puhelussa hän kuitenkin jäi jumiin asiaan.	fi
+puhelu	NOUN	puheluni	Soitan kaikki tärkeimmät puheluni kotoa.	fi
+luu	NOUN	luihin	On eräs lääke, kemikaali, joka vaikuttaa luihin.	fi
+luu	NOUN	luissaan	Anton oli tuntenut luissaan, ettei vainajan taskusta löytynyt maisemakortti ollut siellä sattumalta.	fi
+idiootti	NOUN	idioottia	Minusta kun ei noin vain tehdä idioottia.	fi
+idiootti	NOUN	idiootilta	Opettaja puolestaan näyttää idiootilta, joka koettaa karjumalla lannistaa tytön.	fi
+kuuma	ADJ	kuumaksi	Nyt menee liian kuumaksi!	fi
+kuuma	ADJ	kuumempi	Ulkona on kuumempi kuin sisällä!	fi
+erota	VERB	erottava	Meidän on erottava, jotta emme satuttaisi toisiamme.	fi
+erota	VERB	erositte	Yritä nyt vain tottua siihen ajatukseen, että te erositte.	fi
+seitsemän	NUM	seitsemältä	Nukahdin kolmelta ja heräsin seitsemältä.	fi
+seitsemän	NUM	seitsemänä	Näinä seitsemänä vuotena hän on perustanut uuden imperiumin.	fi
+eteenpäin	ADV	edestäpäin	Silloin tuikahti tuli jostakin edestäpäin näyttäen olevan hyvin kaukana taivaanrannan rajassa.	fi
+merkitä	VERB	merkitsisi	Mikään ei merkitsisi minulle enempää.	fi
+merkitä	VERB	merkitset	Totta kai sä merkitset ….	fi
+määrä	NOUN	määrässä	Muutos valon määrässä on niin valtava, että se näkyy avaruuteen asti.	fi
+määrä	NOUN	määrälle	Tilaa oli riittävästi meille neljälle ja pienelle määrälle saalista.	fi
+luultavasti	ADV	Luultavammin	Luultavammin hän oli vain nukahtanut.	fi
+myöntää	VERB	myönnä	Mutta hän ei voi tehdä niin, ellei myönnä, mikä hän todella on.	fi
+myöntää	VERB	myönnän	Mä myönnän, että tein väärin.	fi
+varovainen	ADJ	varovaisen	Käsien kosketusta hyväkseen käyttäen hän lähetti varovaisen taikasignaalin.	fi
+varovainen	ADJ	varovaisina	He kulkivat metsässä aluksi varovaisina ja jännittyneinä, jokaista räsähdystä säikkyen.	fi
+tuhat	NUM	tuhansille	Hänen loppunsa oli samanlainen kuin mitä hän itse oli järjestänyt tuhansille muille.	fi
+tuhat	NUM	tuhansilla	Piinasin itseäni tuhansilla mielikuvilla siitä, mitä oli saattanut tapahtua.	fi
+huutaa	VERB	huutakaa	Kun olette valmiit, huutakaa, ja luutnantti tuo veitsen.	fi
+huutaa	VERB	huutavat	Me löydetään sut joka tapauksessa! he huutavat.	fi
+huume	NOUN	huumeella	Mutta huumeella ei ollut voimaa kuolleiden yli.	fi
+huume	NOUN	huumeiden	Ja onneksi huumeiden myyjä oli viimeinen, joka asian ymmärsi.	fi
+raskas	ADJ	raskasta	Vanhemmuus on raskasta, mutta erityisen raskasta se on yksin.	fi
+raskas	ADJ	raskaana	Olen ollut kerran raskaana, mutta raskaus päättyi keskenmenoon.	fi
+sotilas	NOUN	sotilaalla	Ette ole kertaakaan käyttänyt sellaista, vaikka se on jokaisella Säätiön sotilaalla.	fi
+sotilas	NOUN	sotilaaksi	Ei minusta ole sotilaaksi eikä sankariksi.	fi
+ikkuna	NOUN	ikkunaasi	Etsin ikkunaasi, koko talo oli pimeänä.	fi
+ikkuna	NOUN	ikkunasta	Sitten vilkaisen varovasti keittiön ikkunasta ja näen kadulla kaksi liivimiestä.	fi
+kusipää	NOUN	kusipäähän	Tämä tepsii siihen kusipäähän.	fi
+kusipää	NOUN	kusipäällä	Eikö kusipäällä ollut parempaa tekemistä kuin kytätä minua lakkaamatta?	fi
+pakottaa	VERB	pakottava	Hänelle oli tullut taas se sama pakottava tunne kuin aiemmin.	fi
+pakottaa	VERB	pakotimme	Lopulta pakotimme itsemme avaamaan muutaman.	fi
+seisoa	VERB	seisotte	Teidät kaikki jotka tässä seisotte.	fi
+seisoa	VERB	seiso	Älä siinä seiso vaan juokse pakoon!	fi
+pysähtyä	VERB	pysähtyisivät	Ehkäpä paras aika astua esiin olisi silloin, kun he pysähtyisivät yöksi.	fi
+pysähtyä	VERB	pysähtymästä	Aika kieltäytyi kuitenkin pysähtymästä hänen takiaan.	fi
+todellinen	ADJ	todellisiksi	Nyt yhtäkkiä asiat aivan kuin tulivat todellisiksi.	fi
+todellinen	ADJ	todellisella	Kuljetusauto on todellinen, ja se liikkuu todellisella tiellä sisällään konkreettista tavaraa.	fi
+tappaja	NOUN	tappajalla	Vaan eipä ole miekkaa tappajalla!	fi
+tappaja	NOUN	tappajansa	Että poika heräisi henkiin nyt, kun hänen tappajansa oli kuollut?	fi
+napata	VERB	nappaaminen	Ihmisen nappaaminen on sille pikkujuttu.	fi
+napata	VERB	napataan	Mitä me tässä istumme, hemmetti soikoon, mennään ja napataan se dopplerinhyväkäs!	fi
+sekunti	NOUN	sekunneissa	Se oli tapahtunut sekunneissa.	fi
+sekunti	NOUN	sekunneista	Se olisi voinut kestää tuntikausia, vaikka kyse oli luullakseni pelkistä sekunneista.	fi
+kulkea	VERB	kuljette	Harvoin tulette, usein ohi kuljette.	fi
+kulkea	VERB	kulkematta	Ne pitää vain kouluttaa olemaan kulkematta tiettyyn suuntaan enää toiste.	fi
+laulaa	VERB	laulatte	Tarkemmin sanottuna tietyt henkilöt, joista laulatte.	fi
+laulaa	VERB	laulamassa	Kari oli jo laulamassa, kun näki Annikin oven suussa.	fi
+kylmä	ADJ	kylmissäni	Olen ärtynyt ja kylmissäni.	fi
+kylmä	ADJ	kylmiin	Sitten otin kynän kylmiin tinasormiini ja raapustin sisareni nimen, koska hänestä kaikki sai alkunsa.	fi
+samanlainen	ADJ	samanlaiseksi	Olet muuttunut samanlaiseksi kuin ennen.	fi
+samanlainen	ADJ	samanlaiselta	Tiedän, etten näytä samanlaiselta kuin te enkä puhu samalla tavalla.	fi
+merkki	NOUN	merkkiäsi	Odotan poliisiveneessä merkkiäsi ja tulen.	fi
+merkki	NOUN	Merkkejä	Et onnistu tekemään yksinkertaisimpiakaan Merkkejä.	fi
+kolmas	ADJ	kolmannella	He olivat kolmannella luokalla!	fi
+kolmas	ADJ	kolmatta	Muuton jälkeen he päättivät yrittää vielä kolmatta lasta.	fi
+arvo	NOUN	arvosi	Kun he tajuavat arvosi, on ihan sama, millainen sinun taustasi on.	fi
+arvo	NOUN	arvoni	Minä tiesin arvoni, minussa oli Aachalendran sielu, eikä kukaan voisi ottaa sitä minulta pois.	fi
+tanssi	NOUN	tanssissa	Näin he pyörivät hitaasti kuin tanssissa.	fi
+tanssi	NOUN	tanssille	He elivät vain toisilleen ja tanssille.	fi
+puu	NOUN	Puiden	Seuraavana päivänä he saapuivat Puiden luo.	fi
+puu	NOUN	puunsa	Ja aina uhrasi hän puunsa alle palasen hopeaa, toisen vaskea.	fi
+pelottaa	VERB	pelottanut	Ensimmäinen, jossa minua ei pelottanut.	fi
+pelottaa	VERB	pelottaisi	Ikään kuin häntä pelottaisi, että minä putoan.	fi
+siirtyä	VERB	siirtynyt	Hän on siirtynyt uskon mieheksi.	fi
+siirtyä	VERB	siirryttäisiin	Ehdotin, että siirryttäisiin takaisin olohuoneen puolelle, ennen kuin tuoli romahtaa.	fi
+musiikki	NOUN	musiikkiinsa	Siitä oli vuosia, kun isä oli viimeksi kuljettanut minut musiikkiinsa.	fi
+musiikki	NOUN	musiikilleen	Sellainen Konni on, hän elää musiikilleen ja lapsilleen.	fi
+hypätä	VERB	hypättävä	Minun on hypättävä, vietävä sinut muualle.	fi
+hypätä	VERB	hypättiin	Ei etenkään yöllä, jolloin eniten hypättiin.	fi
+leikki	NOUN	leikeistä	Mutta aloittakoon siitä mistä muutkin, leikeistä.	fi
+leikki	NOUN	leikkiä	Vaikka pehtori muuten oli ylpeänlainen mies, niin välistä hän laski leikkiä.	fi
+kohde	NOUN	kohteistamme	Tämä ei mitenkään poikkea meidän uusista kohteistamme.	fi
+kohde	NOUN	kohteekseen	Ei ole mitään syytä, miksi hän valitsisi tämän onnettoman aluksen kohteekseen.	fi
+viettää	VERB	vietettäisiin	Tämä joulu vietettäisiin meillä.	fi
+viettää	VERB	vietän	Minä vietän joulua kahdestaan Samin kanssa, mutta onhan sekin parempi kuin ei mitään.	fi
+pelko	NOUN	peloissasi	Saat tietenkin olla peloissasi – mutta sen vuoksi et sitten aio tehdä mitään, vai?	fi
+pelko	NOUN	pelkoani	Katson pelkoani suoraan …	fi
+selkä	NOUN	selkäsi	Hyvä jos se, että sinulla on minut selkäsi takana, saa sinut tuntemaan olosi paremmaksi.	fi
+selkä	NOUN	selässä	Talon edessä kadulla on suuri moottoripyörä, jonka selässä istuu komea nuori mies.	fi
+vaara	NOUN	vaaraa	Katsokaa vain, ei tässä ole mitään vaaraa tai väärää!	fi
+vaara	NOUN	vaaroilta	Lapset tarvitsevat kaksi ihmistä suojelemaan heitä maailman vaaroilta.	fi
+ryhmä	NOUN	ryhmänä	Vartijat tulivat sisään ryhmänä.	fi
+ryhmä	NOUN	ryhmääni	En nähnyt mitään syytä tehdä samoja asioita kahteen kertaan tai ottaa kielitieteilijää mukaan ryhmääni.	fi
+syyttää	VERB	syytti	Avioeron jälkeen isä sairastui syöpään ja syytti siitä tietenkin äitiä.	fi
+syyttää	VERB	syyttämättä	On kuitenkin vaikea olla syyttämättä Sallaa, sillä hän ei suostunut menemään ajoissa hoitoon.	fi
+keskittyä	VERB	keskittyisi	Ja kyselee sen sijaan, että keskittyisi siihen, mitä käsillään juuri nyt on.	fi
+keskittyä	VERB	keskittyisivät	He näyttivät siltä kuin keskittyisivät vain ja ainoastaan töihinsä, mikä oli jossain määrin yllättävää.	fi
+kieltää	VERB	kieltävä	Hänen nimensä, yksi kieltävä ja yksi myöntävä sana, ja muuta emme saaneet hänestä irti.	fi
+kieltää	VERB	kiellettävä	Se on siitä estettävä, kiellettävä.	fi
+sujua	VERB	sujui	Elämämme sujui aluksi niin hyvin, että en edes ajatellut mielenterveysasioita.	fi
+sujua	VERB	sujut	Annan siis Pavettan sinulle ja olemme sujut.	fi
+lähtö	NOUN	lähtöni	Haluan että lähtöni huomataan, tavalla tai toisella.	fi
+lähtö	NOUN	lähdöistä	En voi olla kahdessa paikassa yhtä aikaa, joten missaamme puolet lähdöistä.	fi
+tarve	NOUN	tarpeeni	On minulla oma tarpeeni!	fi
+tarve	NOUN	tarpeemme	Tähdet voivat olla lähellä tai kaukana tarpeemme mukaan.	fi
+ympäri	PREP	ympäriltäsi	Istu tuolille ja rekisteröi ympäriltäsi kaikki punaiset asiat.	fi
+ympäri	PREP	ympärille	Liikennevaloissa Jarkko laittaa kätensä naisen ympärille ja suutelee häntä Se ei ole sukulaisten halaus.	fi
+vannoa	VERB	vannomaan	Saatoin ehkä muistaa nimen Maailmojen kirjasta, mutta en uskaltanut mennä vannomaan.	fi
+vannoa	VERB	vannomme	Uskon että seremoniasta tulee oikein tunnelmallinen, kun me vannomme toisillemme ikuista uskollisuutta.	fi
+hotelli	NOUN	hotellissa	Hän ei mitenkään voinut tietää, että minäkin olin hotellissa.	fi
+hotelli	NOUN	hotellille	Eihän se hotellille mitään maksanut.	fi
+väittää	VERB	väittäisi	Vaikka toinen väittäisi, että kaikki on kunnossa, minä sanon.	fi
+väittää	VERB	väittäisivät	Ennen pitkää he väittäisivät niin.	fi
+katsella	VERB	katselemme	Silti me olemme täällä ja katselemme sitä omin silmin!	fi
+katsella	VERB	katselee	Isäsi varmasti katselee tuolta taivaasta ja on ylpeä sinusta.	fi
+suunnitella	VERB	suunnitteli	Steve suunnitteli raketteja, joilla piti toteuttaa hänen pomonsa suuret suunnitelmat.	fi
+suunnitella	VERB	suunnittelevansa	Mitä Chani sanoisi, jos hän menisi kertomaan suunnittelevansa erästä tiettyä kuolemaa?	fi
+luovuttaa	VERB	luovuta	Hän ei luovuta, joten minun on pakko vastata.	fi
+luovuttaa	VERB	luovutin	Olen yrittänyt selvittää, mistä rahat tulivat, mutta luovutin neljännen pankin jälkeen.	fi
+tavallinen	ADJ	tavallisista	Sillä, että suurin osa tavallisista ihmisistä ei osannut lukea, ei ollut väliä.	fi
+tavallinen	ADJ	tavallisille	Se oli osoitettu tavallisille ihmisille.	fi
+vitsi	NOUN	vitseillesi	Aina kun hän nauroi vitseillesi, minusta tuntui entistä paremmalta, että kutsuin hänet sisään.	fi
+vitsi	NOUN	vitsejään	Ihmiset eivät aina ymmärtäneet hänen vitsejään, tytöt eivät juuri koskaan.	fi
+hallita	VERB	hallitsit	Kun viimeksi hallitsit tätä planeettaa, pidin sinut tiukassa kurissa.	fi
+hallita	VERB	hallitseva	Jos hän oli hallitseva kuningataräitinä, niin olkoon hän äitinä pojalle.	fi
+vihollinen	NOUN	vihollisiasi	Mutta emme ole vihollisiasi.	fi
+vihollinen	NOUN	vihollisistani	Mitä hän tiesi minun vihollisistani?	fi
+eläin	NOUN	eläimeltä	Robin näytti eläimeltä, joka oli juuri herännyt.	fi
+eläin	NOUN	eläimesi	Sinä ja eläimesi olette opettaneet minulle valtavan paljon.	fi
+kirje	NOUN	kirjeemme	Saimme ensimmäisen kirjeemme eilen.	fi
+kirje	NOUN	kirjeessäni	Viime kirjeessäni pyysin sinua puhumaan minulle niin kuin puhuisit itsellesi.	fi
+vuoro	NOUN	vuoromme	Mutta nyt on meidän vuoromme.	fi
+vuoro	NOUN	vuorostasi	Noudatan niitä, mikäli … Mutta kuuntele nyt sinä vuorostasi minua tarkkaan.	fi
+keittää	VERB	keitettävä	Toby päättää kuitenkin ilmoittaa kaikille, että vesi on keitettävä.	fi
+keittää	VERB	keitä	Mutta keitä kahvit niin jutellaan, minä sanon.	fi
+kahdeksan	NUM	kahdeksatta	Mitään kahdeksatta nimeä ei ole.	fi
+kahdeksan	NUM	kahdeksassa	Jos kaikki menee hyvin, he löytävät saalista kuudessa, ehkä kahdeksassa tunnissa.	fi
+kauhea	ADJ	kauheaksi	Myöhemmin hän ymmärsi, mitä oli tehnyt ja tunsi varmaan olonsa kauheaksi.	fi
+kauhea	ADJ	kauhealla	Nämä pitkät päivät merellä rasittavat henkeä kauhealla tavalla.	fi
+vanki	NOUN	vankeja	Me olemme ihan tavallisia varkaita, emme poliittisia vankeja.	fi
+vanki	NOUN	vankinani	Kunnes olosuhteet sallivat tai vaativat minua toisin päättämään, pidän sinua edelleen vankinani.	fi
+itkeä	VERB	itkenyt	Mutta hän ei itkenyt.	fi
+itkeä	VERB	itketään	Ja hänen peräänsä joko itketään tai sitten ei.	fi
+hävitä	VERB	hävitään	Jos sota hävitään, mitä hyötyä on siitä, että piileksin kukkuloilla?	fi
+hävitä	VERB	hävisit	Mutta minnekä sinä, Panu, sieltä kirkosta hävisit silloin, kun se pappi meitä kumpaakin kirosi?	fi
+hevonen	NOUN	hevosille	Vauhtia nyt, hevosille ja vaunuille siitä.	fi
+hevonen	NOUN	hevosistaan	Ja kun kuuluisa ratsuväki on popsinut puolet omista hevosistaan, järjestämme heille toisen Soddenin.	fi
+tehnyt	VERB	tehneelle	Connor sanoi pidätyksen tehneelle poliisille.	fi
+tehnyt	VERB	tehnyttä	Hyökkäyksen tehnyttä hallintoa ei ollut enää olemassa.	fi
+siistiä	VERB	siistimme	Voitte katsoa sillä aikaa, kun siistimme hänet.	fi
+siistiä	VERB	siistittävä	Jos auringonkukan on tarkoitus seistä keskellä huonetta, sen takapuoli on siistittävä.	fi
+punainen	ADJ	punaisiksi	Myös hänen ruumiinsa kaatui, ja veri värjäsi koko kallon, seinät ja minut punaisiksi.	fi
+punainen	ADJ	punaisiin	Se on vaikeaa, koska keskityit niin kovasti punaisiin asioihin.	fi
+kamera	NOUN	kameralla	Vincent ei ollut varma, mitä hänen pitäisi kameralla tehdä.	fi
+kamera	NOUN	kameroihin	Hän ei vastannut vaan vilkaisi ylös kameroihin.	fi
+väki	NOUN	väestään	Ehkä joku hänen väestään.	fi
+väki	NOUN	väillä	Hän rakasti miestään syvästi, mutta huh, että oli väillä vaikeaa kestää tämän päähänpinttymiä.	fi
+nälkä	NOUN	nälkäni	Joutuisin syömään sitä paljon lisää, jotta saisin nälkäni tyydytettyä.	fi
+nälkä	NOUN	nälän	He ovat käyttäneet sinua hyväkseen, jättäneet sinut nälän, paahteen ja janon armoille, harhailemaan, yksinäisyyteen!	fi
+jaksaa	VERB	jaksaminen	Siinä, missä oli ennen jaksaminen, ei ollut enää mitään.	fi
+jaksaa	VERB	jaksa	Muuten hän ei jaksa elää.	fi
+vastuu	NOUN	vastuutasi	Etkö halua kantaa vastuutasi edes heitä kohtaan?	fi
+vastuu	NOUN	vastuullani	Et ehkä pidä minusta, eversti, mutta hyvinvointisi on yhä minun vastuullani.	fi
+taistelu	NOUN	taisteluumme	Heistä olisi ollut iso apu meidän taisteluumme.	fi
+taistelu	NOUN	taistelussaan	Heidän taistelussaan ei ole enää mieltä, kun meillä on oma maakaistaleemme.	fi
+kärsiä	VERB	kärsimme	Joskus tuntuu kuitenkin siltä, että minä ja tytöt kärsimme enemmän kuin hän.	fi
+kärsiä	VERB	kärsimään	Kukaan ei ole joutunut kärsimään, vai mitä?	fi
+rikkoa	VERB	rikomme	Ja niin raskas kuin valinta onkin, rikomme kaavan ennen kuin kaava rikkoo meidät.	fi
+rikkoa	VERB	rikoit	Liittyykö tämä niihin moottoripyöriin, jotka sä rikoit?	fi
+hyökätä	VERB	hyökkäsivät	He hyökkäsivät prinsessan kimppuun.	fi
+hyökätä	VERB	hyökkäämättä	Jospa päätänkin hyökätä ensi vuonna tai olla hyökkäämättä ollenkaan?	fi
+päätyä	VERB	päädymme	Olen näyttänyt sinulle totuuden lukemattomia kertoja, mutta päädymme aina takaisin tänne.	fi
+päätyä	VERB	päätyisin	Saattaisi olla, että päätyisin sellaiseen tilaan.	fi
+tuomari	NOUN	tuomarien	En kai minä nyt teille kerro sitä, mistä vaikenin tuomarien edessä, hän ajatteli.	fi
+tuomari	NOUN	tuomarin	Vaakunan alla oli tuomarin pöytä.	fi
+amerikkalainen	ADJ	amerikkalaisiksi	He, ja ne lapset joita Maria itse ehkä tulevaisuudessa saisi, kasvaisivat toisen luokan amerikkalaisiksi.	fi
+amerikkalainen	ADJ	amerikkalaiseen	Joi vihreää teetä, oli amerikkalaiseen tyyliin avoin ja hyväpuheinen, vilpitön ja kiitollinen.	fi
+kiitos	NOUN	kiitoksen	Saat kauniin kiitoksen, mutta maksaa en voi.	fi
+kiitos	NOUN	kiitosta	Ja hän nauraa hiljaa ja äänettömästi työnsä menestystä ja kiitosta, jonka on saava Panulta.	fi
+vieri	NOUN	viereesi	Saanko istua tähän viereesi?	fi
+vieri	NOUN	vierelle	Jään yksin kuolleen äitini vierelle.	fi
+valittaa	VERB	valittaisi	Hän olisi hyvä minulle, hän ei valittaisi, mutten voisi katsoa vierestä, kuinka pilaisin hänet.	fi
+valittaa	VERB	valittamalla	Jos jotain meni vikaan, äiti ei hukannut aikaa kohtaloaan valittamalla, vaan ryhtyi korjaamaan vahinkoa.	fi
+hinta	NOUN	hintansa	Mutta sillä oli hintansa.	fi
+hinta	NOUN	hintanne	On minun vastuullani katsoa, että maksatte hintanne takaisin.	fi
+kirkko	NOUN	kirkkoni	Tänä aamuna se tuntuu kirkolta, ja tiedän miksi: se on minun kirkkoni.	fi
+kirkko	NOUN	kirkkoonsa	Itsekin tunsi hän niin voimistuneensa, että oli kuin olisi valmistautunut omaan kirkkoonsa lähtemään.	fi
+lista	NOUN	listamme	Tässä on meidän listamme.	fi
+lista	NOUN	listastani	Olet se nainen joka soitti ja kyseli listastani.	fi
+tai	NOUN	taita	Eikä Käärmekallo taita hiustakaan kummankaan kuontalosta ennen kuin kirja on valmis.	fi
+englanti	NOUN	englantini	Eikö minun englantini olekin parantunut?	fi
+englanti	NOUN	englantia	Hän puhui englantia ja ranskaa erinomaisesti ja oli selvästi viettänyt aikaa Lontoossa ja Pariisissa.	fi
+kaikkialla	ADV	kaikkialle	Tai näin oli, kunnes ihminen keksi hehkulampun ja alkoi levittää valoa kaikkialle.	fi
+kaikkialla	ADV	kaikkialta	Aaltoilevat viivat saivat ihoni hehkumaan kaikkialta, kasvoista nilkkoihin.	fi
+osua	VERB	osuisivat	Kunpa he vain aina osuisivat sinne, missä heitä kipeimmin tarvitaan.	fi
+osua	VERB	osuttava	Ajoituksen oli osuttava kohdalleen – ei hetkeäkään liian aikaisin tai liian myöhään.	fi
+mahdoton	ADJ	mahdottomat	Hän oli myynyt puiston työntekijöille heidän omat mahdottomat unelmansa ja itsensä niiden toteuttajana.	fi
+mahdoton	ADJ	mahdottomaksi	Tämä tekee organisaatioiden osallistumisen käytännössä mahdottomaksi – tai ainakin hyvin epähoukuttelevaksi.	fi
+paperi	NOUN	paperilta	Tai ainakin se tuntuu paperilta.	fi
+paperi	NOUN	papereitanne	Tutkikaa papereitanne ja ilmoittakaa minulle, mitä löysitte.	fi
+ulkopuoli	NOUN	ulkopuolelleen	Hän vain sulkee maailman ulkopuolelleen juuri nyt.	fi
+ulkopuoli	NOUN	ulkopuolella	Ajan perässä sairaalaan ja odotan hoitohuoneen ulkopuolella.	fi
+normaali	ADJ	normaaleilla	Meillä normaaleilla ihmisillä on tapana antaa toisillemme lahjoja syntymäpäivänä.	fi
+normaali	ADJ	normaaleiksi	Hän alkoi olla todella ylpeä ruumiinkunnostaan ja toivoa, että kasvotkin vielä palautuisivat normaaleiksi.	fi
+vartija	NOUN	vartijamme	Kun vartijamme ajoi minut kotiin koulusta iltapäivällä, menin suoraan keittiöön.	fi
+vartija	NOUN	Vartijoiden	Se on päässyt Vartijoiden ohi, ja sellainen on tarkkien työtä.	fi
+käsky	NOUN	käskyyn	Mutta se ei kuulunut käskyyn.	fi
+käsky	NOUN	käskyjämme	Muisti ei tottele meidän käskyjämme.	fi
+seka-	ADJ	sekaisin	Kannattaa valehdella kaikille samalla tavalla, niin en mene sekaisin.	fi
+seka-	ADJ	seasta	Pappi oli hypännyt uhripaadelle ja huusi savun seasta kirvestään välähyttäen.	fi
+ajo	NOUN	ajosta	Vouti kun oli kyllästynyt odottamaan miehiä toisen karhun ajosta, oli vaatinut käymään uuden kimppuun.	fi
+ajo	NOUN	ajoa	Tienhän piti olla suljettu, eivätkö vartijat alhaalla olleet estäneet ajoa?	fi
+tukea	VERB	tukematta	Hädin tuskin pysyy pystyssä tukematta.	fi
+tukea	VERB	tuit	Ja kiitos, että tuit minua hääpäivänäni tavalla, jolla moni isä ei olisi sitä tehnyt.	fi
+amerikka	NOUN	Amerikalle	Koska kirja on varmasti ainoa keino todistaa Amerikalle, että Harry ei ole hirviö.	fi
+amerikka	NOUN	amerikassa	Viimeiset viikonpäivät ollaan vietetty pohjois amerikassa ja tarkemmin Salt Lake Cityssä.	fi
+koko	NOUN	koossa	Pian oli aamiainen syöty, tavarat koossa, tuli sammutettu ja miehet valmiina lähtemään.	fi
+koko	NOUN	koosta	Se antaa yhtiön koosta hieman harhaanjohtavan kuvan.	fi
+vapauttaa	VERB	vapauttava	Se on samalla hyvin vapauttava.	fi
+vapauttaa	VERB	vapauttaisit	Tiesin että tulisit vielä järkiisi ja vapauttaisit minut.	fi
+painaa	VERB	painamaan	Mutta ei tahtonut sitä toisen suusta kuulla, astui suksilleen ja lähti painamaan eteenpäin.	fi
+painaa	VERB	painamme	Mitä nopeammin painamme päälle, sitä todennäköisemmin pääsemme palloon.	fi
+tyttöystävä	NOUN	tyttöystävälleen	Joka ei kelpaa enää edes tyttöystävälleen.	fi
+tyttöystävä	NOUN	tyttöystäväsi	Onhan hän yhä tyttöystäväsi?	fi
+salainen	ADJ	salaisin	Mikä on salaisin toiveesi?	fi
+salainen	ADJ	salaiselle	Mitä hän teki Kaedwenin salaiselle poliisille, sitä en ole onnistunut saamaan selville.	fi
+osoittaa	VERB	osoittavansa	Ne luulevat osoittavansa minulle kunniaa, hän ajatteli.	fi
+osoittaa	VERB	osoittaisit	Että osoittaisit kiinnostusta minua kohtaan.	fi
+enempi	ADJ	enemmin	Mutta muuten ei ollut hyvä ollenkaan, paljoa enemmin paha ja ikävä.	fi
+enempi	ADJ	enemmältä	Tiedän, ettei se ole kuin lohduttava ele, mutta hänen kosketuksensa tuntuu niin paljon enemmältä.	fi
+lääke	NOUN	lääkkeesi	Siinä on myös lääkkeesi, tiedät mihin.	fi
+lääke	NOUN	lääkettäsi	Oletko sinä ottanut lääkettäsi?	fi
+poistaa	VERB	poistakaa	Ensiksi, etsikää se muukalainen, josta kaikki puhuvat, ja poistakaa hänet pelistä.	fi
+poistaa	VERB	poistamatta	Hän tunsi illallisen jälkeen olevansa niin väsyksissä, että kävi nukkumaan poistamatta edes meikkiä.	fi
+kilometri	NOUN	kilometreistä	Hän oli edelleen hikinen kilometreistä, jotka oli ehtinyt polkea ennen kuin pyörä oli hajonnut.	fi
+kilometri	NOUN	kilometrissä	Kestäisi vielä minuutin, ennen kuin ne olisivat kahdessakymmenessä kilometrissä.	fi
+lisä	NOUN	lisäksemme	Kukaan muu meidän lisäksemme ei tiedä niistä mitään.	fi
+lisä	NOUN	lisäkseen	Ja hän tiesi, että heidän lisäkseen sitä ei nähnyt kukaan muu.	fi
+aurinko	NOUN	aurinkoon	Käännä vasen korvasi aurinkoon päin ja pidä se niin, ja pian olet jo tiellä.	fi
+aurinko	NOUN	aurinkoa	Pilviä oli koko päivän aurinkoa vasten kasvattanut, ja ukkonenkin keskipäivällä jymissyt.	fi
+leikata	VERB	leikkaamassa	Olen parhaillaan leikkaamassa niitä yhteyksiä irti.	fi
+leikata	VERB	leikkaamaton	Tukkani on nyt pitkä, leikkaamaton.	fi
+päättyä	VERB	päättyi	Olen ollut kerran raskaana, mutta raskaus päättyi keskenmenoon.	fi
+päättyä	VERB	päättynyt	Koeaika olisi päättynyt kaksi päivää myöhemmin.	fi
+muistuttaa	VERB	muistutamme	Ketä me oikein muistutamme?	fi
+muistuttaa	VERB	muistuta	Kun kuulet oudon äänen, joka ei muistuta mitään muuta, se olen minä.	fi
+kenraali	NOUN	kenraaliin	Tässä oli tilaisuus tehdä vaikutus tärkeään kenraaliin, vaikkakin epäsuorasti.	fi
+kenraali	NOUN	kenraalina	Silti hänenkin tilaisuutensa koitti, kun hän joutui ensimmäisenä Imperiumin kenraalina vastatusten Säätiön kanssa …	fi
+aivot	NOUN	aivoina	Vain lihaksia mielessä ja tankki aivoina, paroni ajatteli.	fi
+aivot	NOUN	aivonsa	Aikuiset eivät pysty siihen, kun heidän aivonsa ovat kovettuneet.	fi
+fiksu	ADJ	fiksun	Minä tarvitsen jonkun tosi fiksun, ja minulla on rahaa.	fi
+fiksu	ADJ	fiksua	Tiedän kyllä, ettei ole fiksua mennä ulos, mutta se kannatti.	fi
+vessa	NOUN	vessassa	Olen alkanut pistää itseeni hormoniruiskeita aikataulun mukaan kotona ja työpaikan vessassa.	fi
+vessa	NOUN	vessan	Seison vessan peilin edessä ja kosketan kasvojani.	fi
+yllätys	NOUN	yllätyksensä	Sitä isompi oli heidän yllätyksensä.	fi
+yllätys	NOUN	yllätyksiä	Seuraava aamu toi tullessaan uusia yllätyksiä.	fi
+metri	NOUN	metrillä	Ei edes sadalla metrillä.	fi
+metri	NOUN	metrille	Pysähdyimme varjon viimeiselle kolmelle metrille.	fi
+valmistaa	VERB	valmista	Kaikki on valmista häitä varten.	fi
+valmistaa	VERB	Valmistat	Kari Jalonen.\- Valmistat joukkuetta ja koko ajan on maailman parhaat vastassa.	fi
+nauraa	VERB	nauroimme	Me molemmat nauroimme paljon.	fi
+nauraa	VERB	nauravat	Itselleen nauravat ihmiset ovat mukavaa seuraa.	fi
+rikos	NOUN	rikoksenne	Ja tunnustaa kaikki muutkin rikoksenne.	fi
+rikos	NOUN	rikoksia	Jos ne ovat rikollisia, niillä ei ole varaa tehdä turhia rikoksia.	fi
+vene	NOUN	veneille	Hänen on siis mentävä takaisin veneille.	fi
+vene	NOUN	veneessäni	Vakuutan, että minulla on veneessäni maailman paras kapteeni.	fi
+piru	NOUN	pirussa	Mihin Emhyr muka tarvitsisi tyttöä, miksi pirussa hän havittelisi naimisiin?	fi
+piru	NOUN	piruja	Ristin-Kiesus Maarian poika, en pelkää pahoja enkä piruja... sinun pitää rikki polkeman käärmeen pää.	fi
+pidättää	VERB	pidättämässä	Jos hän olisi pidättämässä minua, hänellä olisi apuvoimia mukanaan.	fi
+pidättää	VERB	pidätimme	Tämä tapahtui vain joitakin päiviä ennen kuin me pidätimme Leiken.	fi
+esitellä	VERB	esittelisin	Ele tulee luonnostaan, mutta tajuan heti miltä näytän: siltä kuin esittelisin mitä on tarjolla.	fi
+esitellä	VERB	esittelit	Olen ajatellut sitä Nataliaa, jonka esittelit viime vuonna.	fi
+historia	NOUN	historiat	Tässä ne historiat ovat.	fi
+historia	NOUN	historiassaan	Ehkä hänellä oli omassa historiassaan joku tärkeä tapahtuma joka liittyy siihen taloon.	fi
+mielellään	ADV	mieluiten	Valokuvaaja Vuorinen rakentaisi myös mieluiten oman eläkkeensä itse.	fi
+mielellään	ADV	Mieluummin	Mieluummin en tuntisi, mutta tunnen.	fi
+tunnistaa	VERB	tunnistaneensa	Esittelen itseni, lääkäri kertoo tunnistaneensa numeroni.	fi
+tunnistaa	VERB	tunnistan	Käännyn katsomaan ja tunnistan naisen.	fi
+syvä	ADJ	syvään	Hengitän syvään ja yritän rauhoittua, kun puhelin soi.	fi
+syvä	ADJ	syvänä	Drayn hengitys kulki syvänä, niin kuin hän olisi saanut vedettyä happea kunnolla vasta nyt.	fi
+juhlia	VERB	juhlisimme	Hän ehdotti, että lähtisimme ulos syömään ja juhlisimme kirjan valmistumista.	fi
+juhlia	VERB	juhlittaisiin	Heti kutsukortin saatuaan kaikki olivat sitä paitsi soittaneet ja udelleet, mitä oikein juhlittaisiin.	fi
+henry	NOUN	Henrya	Se, miten hän luo itselleen maalipaikan lähes mistä tahansa tilanteesta muistuttaa Henrya.	fi
+henry	NOUN	Henryä	Saatan pyytää Henryä kuskaamaan teidät takaisin, kunhan pääsemme perille.	fi
+puhdas	ADJ	puhtaampi	Mutta nyt kun hiukseni ovat kuivat ja olen puhtaampi kuin koskaan, uskon pystyväni tähän.	fi
+puhdas	ADJ	puhtaassa	Kala on melko vaativa hoidettava ja se viihtyy ainoastaan puhtaassa vedessä.	fi
+kokeilla	VERB	kokeilemassa	Kävin kokeilemassa seuraavaa ovea.	fi
+kokeilla	VERB	kokeilisimme	Tekisimme kaikkemme ja kokeilisimme kaikkea, ennen kuin menettäisimme toivomme hänen suhteensa.	fi
+saatana	NOUN	saatanan	Tule esiin, saatanan pelkuri!	fi
+saatana	NOUN	Saatanaa	Eikö Jumala ole antanut meille Shaitanaa( Iblisiä, Saatanaa)?	fi
+poikaystävä	NOUN	poikaystävälleni	Menin sinne vain saadakseni jotain kerrottavaa poikaystävälleni, kun hän tulisi kotiin.	fi
+poikaystävä	NOUN	poikaystävältäsi	Haluan, että tuot minulle jotakin poikaystävältäsi.	fi
+täyttää	VERB	täyttämään	Joudun täyttämään kymmeniä papereita, jotta saisin hänelle sopivaa apua.	fi
+täyttää	VERB	täytetty	Valkoinen talo on täytetty ihmisillä, jotka ovat lojaaleja ja saavat asioita aikaan.	fi
+osoite	NOUN	osoitteesi	Minä sain sinun osoitteesi.	fi
+osoite	NOUN	osoitteenne	Hän myös hankki minulle osoitteenne.	fi
+tuli	NOUN	tulille	Ei auttanut muu kuin ruveta tulille.	fi
+tuli	NOUN	tulensa	Hänen tulensa teki pyörteitä hänen ympärilleen, tanssi hänen kanssaan kuitenkaan purematta häntä.	fi
+raja	NOUN	rajanne	He sanovat, että olisi pitänyt kokeilla, missä rajanne tulee vastaan.	fi
+raja	NOUN	rajoilla	Siinä vaiheessa olisimme rajoilla.	fi
+sankari	NOUN	sankareilta	Minä varastin sen sankareilta kauan sitten, ja siitä lähtien – ilmaista ruokaa!	fi
+sankari	NOUN	sankaria	Älä koeta leikkiä sankaria.	fi
+rakennus	NOUN	rakennuksesta	Sitten hän vetää minut ylös ja ohjaa ulos rakennuksesta ulkona odottavaan poliisiautoon.	fi
+rakennus	NOUN	rakennukseensa	Kerrankin kävi niin, ettei Hornbeam pannut laiminlyöntiä pahakseen, niin tyytyväinen hän oli uuteen rakennukseensa.	fi
+syyllinen	ADJ	syylliseksi	Olen … Tunnen itseni syylliseksi.	fi
+syyllinen	ADJ	syyllisempi	Hän ei olisi voinut olla syyllisempi, vaikka olisi itse tarttunut murha-aseeseen.	fi
+kato	NOUN	katoamme	Sitten katoamme kaikki kolme päivän askareisiin.	fi
+kato	NOUN	katosi	Seu­raavana vuonna liikevaihdosta katosi kolman­nes.	fi
+riski	NOUN	riskissä	Ukko on aika riskissä kunnossa.	fi
+riski	NOUN	riskeiltä	On kuitenkin monia tapoja suojautua riskeiltä.	fi
+valtava	ADJ	valtavilta	Hänen kasvonsa näyttivät läheltä katsottuna valtavilta ja alhaalta katsottuna hirvittävän rumilta.	fi
+valtava	ADJ	valtavasta	Hän oli vähällä kompastua ja otti tukea eräästä valtavasta, humisevasta putkesta.	fi
+nähnyt	VERB	nähneeni	Se oli eräänlaista kieltä, mutta en uskonut koskaan nähneeni mitään samanlaista edes Rackamoren kirjastossa.	fi
+nähnyt	VERB	nähneensä	Pappi tulee häntä kieltämään, ja Jouko selittää nähneensä pahan silmän, joka ikkunasta katseli.	fi
+sivu	NOUN	sivuille	Olin siirtynyt seuraaville sivuille, pikku pallomaailmamme liike-elämän ja kaupan pariin.	fi
+sivu	NOUN	sivuilleen	Noituri katseli sivuilleen ja pysäytti hevosensa.	fi
+kivi	NOUN	kiveltä	Pastori astui alas kiveltä ja kävi häneen kiinni pidätellen häntä käsiään riuhtomasta.	fi
+kivi	NOUN	kiveni	Puoli tuntia myöhemmin palasin rikshaan huomattuani miehen silmistä, kuinka erityisen kallisarvoisia kiveni olivat.	fi
+potku	NOUN	potkuille	Ovi antoi periksi potkuille.	fi
+potku	NOUN	potkuihin	Tästä ei ollut pitkä matka potkuihin, sen majuri Remes kyllä hyvin tiesi.	fi
+eversti	NOUN	everstiä	Sinä syytit siitä everstiä, jotta voisit huijata itsesi uskomaan, että omatuntosi oli edelleen tahraton.	fi
+eversti	NOUN	everstin	Murgatroyd piteli hänen päätään molemmin käsin yrittäen estää sitä kalahtelemasta kantta vasten everstin nytkähdellessä.	fi
+business	NOUN	bisnekselle	Pimeys oli hyväksi bisnekselle.	fi
+business	NOUN	bisneksissä	Mitä salattavaa sedän bisneksissä on?	fi
+korkea	ADJ	korkeista	Valo tulvii korkeista ikkunoista kuin kirkossa.	fi
+korkea	ADJ	korkeilta	Tie kylästä teemestarin taloon ei tuntunut pitkältä eivätkä puiden varjot korkeilta.	fi
+vakava	ADJ	vakavaksi	Asia alkaa käydä vakavaksi.	fi
+vakava	ADJ	vakavina	Heitä oli tullut paikalle jo paljon – he seisoivat vakavina, peloissaan ja vaiti.	fi
+maata	VERB	makaisit	Mitä siihen tulee, minua ei kiinnosta vaikka makaisit miesten kanssa.	fi
+maata	VERB	makasitte	Ja oliko tämä ainoa kerta kun makasitte yhdessä, vai tuliko niitä useampia?	fi
+tulos	NOUN	tulokseksi	Sain tulokseksi viisi päivää.	fi
+tulos	NOUN	tulostaan	Mutta hänen tulostaan kerrottiin kohta kumma tarina.	fi
+puuttua	VERB	puutu	Minulta ei puutu mitään.	fi
+puuttua	VERB	puuttuivat	Sanat oli miehellä hyvät, mutta taiat puuttuivat.	fi
+metsä	NOUN	metsissämme	Kuolleesta puusta riippuvaisia lajeja metsissämme on tuhansia.	fi
+metsä	NOUN	metsäänsä	Sitten puueläimet saivat häipyä omaan metsäänsä.	fi
+olettaa	VERB	olettanut	En ollut toiminut huolimattomasti tai olettanut jotain typerää.	fi
+olettaa	VERB	olettaisi	Sitä paitsi, jos joku näkisikin minut, hän luultavasti olettaisi, että tein huoltotöitä.	fi
+sielu	NOUN	sielullasi	Mitä minä sinun sielullasi tekisin?	fi
+sielu	NOUN	sieluusi	Olet hyvä, aina sieluusi saakka.	fi
+murhaaja	NOUN	murhaajamme	Ehkä meidän murhaajamme tietää, että me tiedämme sen?	fi
+murhaaja	NOUN	murhaajat	Hyvä on, murhaajat, hän ajatteli.	fi
+pistää	VERB	pistit	He tekivät virheen, josta pistit heidät maksamaan.	fi
+pistää	VERB	pistäminen	Teen sen aina salaa Esalta, sillä pistäminen ahdistaa häntä.	fi
+tri	NOUN	Trin	Lapset, nuoret ja vanhukset ovat Trin sydäntä lähellä.	fi
+tri	NOUN	Trina	Isommasta possusta tuli Trina Terttu Tomera ja pienemmästä Saini Sinikka Suloinen.	fi
+kohtalo	NOUN	kohtaloon	Ajatella, että on olemassa ihmisiä, jotka eivät usko kohtaloon.	fi
+kohtalo	NOUN	kohtaloamme	Pitää luottaa siihen, että Jumala ohjaa kohtaloamme.	fi
+meri	NOUN	merille	Minua ei ollut luotu merille, ja kaikki miehet enemmän tai vähemmän tiesivät sen.	fi
+meri	NOUN	merta	Aluksen kapteeni katsoi merta.	fi
+kortti	NOUN	korttini	Ilman heitä minun olisi pakko pelata korttini oikein.	fi
+kortti	NOUN	kortit	Eikö teistäkin tunnu, että olisi jo aika lyödä kaikki kortit pöytään?	fi
+hius	NOUN	hiuksilta	Se tuoksuu Lauran hiuksilta ja …	fi
+hius	NOUN	hiuksiisi	Jos haluat, voit työntää kukan hiuksiisi.	fi
+ohjelma	NOUN	ohjelmaasi	Eilen kun katselimme yhdessä ohjelmaasi, kysyin häneltä, mistä hän sai nimensä.	fi
+ohjelma	NOUN	ohjelmaa	Katsokaa vaikka jotain ohjelmaa telkkarista, minä sanon.	fi
+nopea	ADJ	nopeiksi	Hän ei halunnut miehen tietävän, kuinka nopeiksi hänen liikkeensä ja reaktionsa olivat muuttuneet.	fi
+nopea	ADJ	nopeaa	Lataan taas X-sovelluksen, koska tietokoneen kautta en pääse tarpeeksi nopeasti seuraamaan nopeaa uutistilannetta.	fi
+pimeä	ADJ	pimeällä	Sellaisia, joita pelottaa kuunnella pimeällä.	fi
+pimeä	ADJ	pimeän	Valon ja pimeän raja on niin terävä, ettei sen yli näe mitään.	fi
+huonosti	ADV	Huonommin	Huonommin se ei voisi enää mennä.	fi
+treffit	NOUN	treffeilläsi	Hei, oliko sinulla hauskaa treffeilläsi?	fi
+treffit	NOUN	treffeille	Haluaisin pyytää häntä treffeille, vaikka en tiedä hänestä juuri mitään.	fi
+pommi	NOUN	pommille	Hän teki jotakin pommille ja asetti sen oveen.	fi
+pommi	NOUN	pommilla	Sen tehtävä oli toimittaa transponderi sellaiseen paikkaan, jonne ainoastaan pommilla oli pääsy.	fi
+pyhä	ADJ	pyhempi	Se on oikeastaan pyhä asia, pyhempi ja koskemattomampi kuin...	fi
+pyhä	ADJ	Pyhää	Hän muistutti äitiään, Pyhää Sofiaa.	fi
+kenkä	NOUN	kenkiesi	He tappavat sinut jo kenkiesi vuoksi.	fi
+kenkä	NOUN	kenkiini	Hän nyökkää ja auttaa minut takaisin kenkiini.	fi
+aikainen	ADJ	aikaisempi	Suvin menettäminen tuntuu pahemmalta kuin mikään aikaisempi ero.	fi
+aikainen	ADJ	aikaisissa	Musiikki, palmut, valo ja varjot olivat kuin edellisen vuosisadan aikaisissa filmeissä.	fi
+laatikko	NOUN	laatikoissa	Nyt pullaa piti kantaa jo isoissa laatikoissa.	fi
+laatikko	NOUN	laatikkoonsa	Punaiset haalarit hän laittoi laatikkoonsa.	fi
+asianajaja	NOUN	asianajajilleni	Antakaa paperit minulle, niin välitän ne asianajajilleni.	fi
+asianajaja	NOUN	asianajajiensa	Hänen asianajajiensa olisi oltava läsnä.	fi
+potilas	NOUN	potilaillesi	Mitä sinä oikein olet tehnyt potilaillesi?	fi
+potilas	NOUN	potilaiden	Elävien potilaiden luo heitä ei pidä päästää.	fi
+baari	NOUN	baariini	Näin unta, että tulit baariini etkä tuntenut minua.	fi
+baari	NOUN	baarissasi	Etkö pidä juutalaisista baarissasi?	fi
+vähempi	ADJ	vähempää	Mutta sen piti vaan saada puoli tynnöriä... ei sanonut ilkiävänsä vähempää selässään makasiiniin kantaa.	fi
+vähempi	ADJ	vähemmästä	Väittää olevansa puolueeton – eikä puhu vähemmästä kuin diplomaattisesta koskemattomuudesta.	fi
+voitto	NOUN	voitostani	Saatte vielä kuulla voitostani.	fi
+voitto	NOUN	voitot	Sitten tulemme takaisin kotiin ja jaamme voitot isän kanssa.	fi
+teko	NOUN	tekoani	Ne olivat minun tekoani.	fi
+teko	NOUN	teoin	Joko sanoin tai teoin!	fi
+yritys	NOUN	yrityksemme	Perustimme vaimoni kanssa yrityksemme kolme ja puoli vuotta sitten.	fi
+yritys	NOUN	yrityksestä	Sinut itsesi kutsun kuninkaan käskynhaltijan nimessä vastaamaan murhasta, murhan yrityksestä ja velhoudesta.	fi
+kääntää	VERB	kääntäisi	Ei mitään, mikä kääntäisi kenenkään onnen parempaan tai huonompaan suuntaan.	fi
+kääntää	VERB	käännettäisiin	Entä jos onni kääntyisi, tai jos onni kerta kaikkiaan käännettäisiin?	fi
+vaatia	VERB	vaadittu	Papereita ei tarkistettu, meiltä ei kysytty mitään, maksua ei vaadittu.	fi
+vaatia	VERB	vaatinut	Jos tilanne olisi vaatinut, Aronson olisi ollut valmis lähtemään sairaalaan.	fi
+tutkimus	NOUN	tutkimuksissamme	Me täällä olemme tulleet tutkimuksissamme siihen.	fi
+tutkimus	NOUN	tutkimukset	Olemme yrittäneet lasta nyt kaksi vuotta, ja tutkimukset olisi pitänyt aloittaa jo vuosi sitten.	fi
+ilmainen	ADJ	ilmaisessa	Enimmäkseen niistä kertyi vain sen verran, että sai itse olla ilmaisessa humalassa melkein jatkuvasti.	fi
+ilmainen	ADJ	ilmaisista	Täällä ei ollut pulaa seurasta eikä ilmaisista juomista.	fi
+ilo	NOUN	ilolla	Ainakin tiesimme nyt molemmat, että olimme yhä elossa, ja otin tiedon ilolla vastaan.	fi
+ilo	NOUN	iloasi	En aio pilata iloasi.	fi
+omistaa	VERB	omistettu	Yksi sivu on selvästikin omistettu lounasvalinnoille.	fi
+omistaa	VERB	omistimme	Mutta mielessämme me edelleen omistimme kaiken, niin kuin naapureiden talot olisivat olleet orjien asumuksia.	fi
+tekevä	VERB	tekevämme	He tekivät asioita, joita me emme pysty tekemään tai edes kuvittelemaan tekevämme.	fi
+tekevä	VERB	tekevänsä	Kuningas vannoi tekevänsä näin.	fi
+laiva	NOUN	laivani	Ja huomenna aamulla laivani lähtee takaisin.	fi
+laiva	NOUN	laivalta	Olen lukenut kaikki mukanani tuomani kirjat, ja kaikki muut kirjat, joita löysin laivalta.	fi
+lainata	VERB	lainasimme	Me lainasimme hänelle rahaa, jotta hän voisi pelata.	fi
+lainata	VERB	lainaamme	Me lainaamme ihmisille rahaa.	fi
+tuleva	ADJ	tulevaa	Olisi joskus mukava olla vaikka viisi minuuttia miettimättä mennyttä tai tulevaa, Sami sanoo.	fi
+tuleva	ADJ	tulevalla	Ei ollut hänessä sitä vakavuutta, joka olisi tietäjäksi tulevalla olla pitänyt.	fi
+vastaus	NOUN	vastaustaan	Minun ei tarvinnut odottaa hänen vastaustaan pitkään.	fi
+vastaus	NOUN	vastauksesi	Haluaisin … haluaisin nimittäin kovasti kuulla vastauksesi.	fi
+pudota	VERB	putoavani	En oikeastaan tuntenut putoavani pimeyden läpi, olin yhtä sen kanssa.	fi
+pudota	VERB	pudottaneen	Tyynyn hän näkyi pudottaneen lattialle sängyn viereen.	fi
+juna	NOUN	junasi	Tuntuuko, että juuri sinun junasi on aina myöhässä?	fi
+juna	NOUN	junamme	Meidän junamme matkalla pohjoiseen.	fi
+lounas	NOUN	lounastamme	Ja lounastamme huomenna ulkona.	fi
+lounas	NOUN	lounaita	Siis se sama sovellus, jolla Suomessa noin miljoona ihmistä maksaa lounaita ja kuntoiluaan.	fi
+hylätä	VERB	hylkään	Minä siis hylkään sen.	fi
+hylätä	VERB	hylkäsin	Kaiken muun hylkäsin täydellisesti.	fi
+hengittää	VERB	hengitetään	Mä oon unohtanut miten hengitetään.	fi
+hengittää	VERB	hengittäisi	Petri näyttää siltä kuin ei juuri hengittäisi.	fi
+perse	NOUN	perseeltä	Anteeksi ilmaisu, mutta hän kuulostaa aivan perseeltä.	fi
+perse	NOUN	perseelläni	Suurimman osan tätä päivää olen istunut perseelläni ja vain odotellut ja jutustellut.	fi
+kiinnostaa	VERB	kiinnostanee	Sinua kiinnostanee se, että kumpikin on vedonnut Yenneferin karkottamiseksi kaupungista.	fi
+pankki	NOUN	pankkiisi	Palaa takaisin pankkiisi laskemaan rahojasi!	fi
+pankki	NOUN	pankkiinsa	Hän oli pitkään pyydellyt minua töihin pankkiinsa, ja nyt päätin vihdoin suostua.	fi
+veto	NOUN	vetoaan	Ehkä olin vain liian väsynyt vastustamaan hänen vetoaan.	fi
+veto	NOUN	vetonsa	Hän on vedonvälittäjä ja hoitaa itse kaikki omat vetonsa.	fi
+käyttäytyä	VERB	käyttäytyneensä	Siitä huolimatta hän pelkäsi käyttäytyneensä kuin huora.	fi
+käyttäytyä	VERB	käyttäytyisin	Sitä paitsi en aivan tiennyt, miten käyttäytyisin heidän lähellään.	fi
+kansa	NOUN	kansallenne	Menkää kertomaan se kansallenne.	fi
+kansa	NOUN	kansalla	Lähes joka kansalla on oma virstansa, joten ei ole vaikea erehtyä.	fi
+planeetta	NOUN	planeetallasi	Sitä tapahtuu juuri tällä hetkellä sinun planeetallasi.	fi
+planeetta	NOUN	planeetalleni	En pääse muuten planeetalleni.	fi
+onnettomuus	NOUN	onnettomuuksia	Sen jälkeen onnettomuuksia ei enää sattunut.	fi
+onnettomuus	NOUN	onnettomuudestaan	Ehkä hän jopa luuli, että tämä iloitsi hänen onnettomuudestaan.	fi
+kokea	VERB	kokemaan	Pimeää pääsee kaupungissa kokemaan niin harvoin.	fi
+kokea	VERB	koemme	Aluksi ajattelen, että tunnelma on erikoinen siihen nähden mitä olemme kokeneet, mitä koemme.	fi
+luoti	NOUN	luotisi	Säästä kuitenkin luotisi vihollista varten.	fi
+luoti	NOUN	luotini	Duffy ehdotti, että poliisin pitäisi vain kompuroida luotini reitille muka sattumalta.	fi
+olut	NOUN	oluensa	Hän joi oluensa loppuun ja nyökkäsi kyypparinaiselle, jotta tämä toisi vielä yhden.	fi
+olut	NOUN	oluen	Kun tytöt nukahtavat, teen keittiössä kinkkuvoileivän ja avaan oluen.	fi
+suostua	VERB	suostuivat	Se oli Panun neuvo, ja kaikki siihen suostuivat.	fi
+suostua	VERB	suostunut	On kuitenkin vaikea olla syyttämättä Sallaa, sillä hän ei suostunut menemään ajoissa hoitoon.	fi
+paljastaa	VERB	paljastivat	Kaikki, joita hän puhutteli tai joiden ohitse hän kulki, paljastivat päänsä hänen edessään.	fi
+paljastaa	VERB	paljastamaan	Missä vain heidän liikkuvan kuulette, menkää sinne heidän tekojansa tutkimaan ja paljastamaan.	fi
+turvallinen	ADJ	turvallisessa	Sillä keinoja on helppo arvostella, mutta samalla tekee mieli saada elää turvallisessa maailmassa.	fi
+turvallinen	ADJ	turvallisiksi	Asukkaat pitivät heistä, kokivat heidät turvallisiksi, tunsivat että heistä pidettiin huolta.	fi
+rukoilla	VERB	rukoilin	Hän piti minusta kiinni, vaikka rukoilin häntä lopettamaan.	fi
+rukoilla	VERB	rukoilee	Pariskunta myös rukoilee yhdessä ennen pelejä.	fi
+surullinen	ADJ	surullisempi	Hän on surullisempi kuin millaisena olen koskaan nähnyt hänet, kun hän kävelee ovelle.	fi
+surullinen	ADJ	surulliselle	Kun luen Atlasista, se saa minut surulliselle päälle.	fi
+huijata	VERB	huijasin	Totta, minä huijasin sinua.	fi
+huijata	VERB	huijasit	Kerran jo huijasit minua, toista kertaa ei tule.	fi
+myöhäinen	ADJ	myöhäistä	Ei olisi pitänyt reagoida niin nopeasti, mutta nyt on myöhäistä katua.	fi
+myöhäinen	ADJ	myöhäiseksi	Joskus Mo heitti hänet sänkyyn kuin säkillisen pähkinöitä, kun kävi liian myöhäiseksi.	fi
+ranta	NOUN	rannoiltaan	Juuri sellaisena päivänä, mätäkuussa, voi sattua että veneet lähtevät yksinään pois rannoiltaan.	fi
+ranta	NOUN	rannoilla	Samassa kun päivä pimeni, syttyi tulia taloissa, rannoilla ja metsissä.	fi
+arvostaa	VERB	arvostettaisiin	Sanon hänen kanssaan, jotta minua arvostettaisiin enemmän.	fi
+arvostaa	VERB	arvostanut	Se ei johtunut siitä, etten olisi arvostanut ihmisiä.	fi
+pula	NOUN	pulassa	Olen pulassa, jos tämä kirjoitus on paras neuvo.	fi
+pula	NOUN	pulista	Tikkakisa oli taas täydessä vauhdissa, ja baaritiskillä notkuva miesjoukko oli alkanut pulista lottonumeroista.	fi
+seinä	NOUN	seinälleni	Voisin piirtää kuvan taistelusta ja ripustaa sen seinälleni.	fi
+seinä	NOUN	seinällesi	Pienet hyönteiset ovat puutarhurin parhaita ystäviä, ja parhaat ystävät haluat tietenkin seinällesi koko vuodeksi.	fi
+varoittaa	VERB	varoittamassa	Olin sittenkin oikeassa, kävin varoittamassa häntä … Mutta mitä hyötyä siitä oli?	fi
+varoittaa	VERB	varoittava	Olen tosin edelleen sitä mieltä, että meidän pitäisi antaa varoittava esimerkki.	fi
+rikas	ADJ	rikkaassa	Ehkä Agnes saisi kokoon jonkin pennyn kyökkipiikana jossakin rikkaassa talossa Winchesterissä.	fi
+rikas	ADJ	rikkaita	Verotulojen lisäksi työ palvelee lähinnä yritysten osakkeenomistajia, lisää turhaa tuotantoa ja rikastuttaa jo rikkaita.	fi
