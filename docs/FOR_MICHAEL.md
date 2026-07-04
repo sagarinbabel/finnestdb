@@ -39,8 +39,13 @@ export FINNESTDB_ADMIN_EMAILS=you@example.com   # keep set when running the serv
 
 make import-gold-surfaces            # correction-acceptance safety rail (empty = no-op)
 make fetch-frequency-baselines       # OpenSubtitles lists into localdata/frequency/
-go run ./cmd/seedcolddeck -lang FI -owner-email you@example.com   # Top-1000 official deck
-go run ./cmd/seedcolddeck -lang ET -owner-email you@example.com
+# Top-1000 official decks, with real corpus example sentences on the cards.
+# -replace deletes a prior same-title deck first, so reseeding never
+# duplicates it (the flag's absence only warns and creates a duplicate).
+go run ./cmd/seedcolddeck -lang FI -owner-email you@example.com \
+    -examples testdata/starter-examples/fi-examples-v1.tsv -replace
+go run ./cmd/seedcolddeck -lang ET -owner-email you@example.com \
+    -examples testdata/starter-examples/et-examples-v1.tsv -replace
 ```
 
 **Run it:**

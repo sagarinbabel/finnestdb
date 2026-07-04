@@ -2065,6 +2065,19 @@ func (d *DB) UpdateDeckTitle(userID, deckID int64, title string) error {
 	return nil
 }
 
+// FindOfficialDeckByTitle returns the ID of an official (is_public = 1) deck
+// owned by ownerID with an exact (title, lang) match, or sql.ErrNoRows if none
+// exists. Used by cmd/seedcolddeck to find a prior run's starter deck before
+// reseeding, so re-running the seeder does not silently duplicate it.
+func (d *DB) FindOfficialDeckByTitle(ownerID int64, title, lang string) (int64, error) {
+	var id int64
+	err := d.db.QueryRow(
+		`SELECT id FROM decks WHERE user_id = ? AND title = ? AND lang = ? AND is_public = 1`,
+		ownerID, title, lang,
+	).Scan(&id)
+	return id, err
+}
+
 func (d *DB) DeleteDeck(userID, deckID int64) error {
 	tx, err := d.db.Begin()
 	if err != nil {

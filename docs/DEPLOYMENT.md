@@ -318,16 +318,24 @@ snapshot.
 New accounts land on an empty dashboard whose CTA links to the official-decks
 tab. Seed the "Top 1000 words" official decks once per language after the
 admin account exists (requires the frequency baselines from
-`make fetch-frequency-baselines` on the machine running the seed):
+`make fetch-frequency-baselines` on the machine running the seed). Pass
+`-examples` with the checked-in starter-examples artifact so cards carry a
+real corpus sentence instead of a bare lemma:
 
 ```bash
-go run ./cmd/seedcolddeck -db finnestdb.db -lang FI -owner-email <admin>
-go run ./cmd/seedcolddeck -db finnestdb.db -lang ET -owner-email <admin>
+go run ./cmd/seedcolddeck -db finnestdb.db -lang FI -owner-email <admin> \
+    -examples testdata/starter-examples/fi-examples-v1.tsv -replace
+go run ./cmd/seedcolddeck -db finnestdb.db -lang ET -owner-email <admin> \
+    -examples testdata/starter-examples/et-examples-v1.tsv -replace
 ```
 
 Forms are resolved to lemmas through the dictionary and ranked by summed
-token mass across inflections; proper names are filtered. Re-running creates
-a duplicate deck — delete the old one from the admin UI first if reseeding.
+token mass across inflections; proper names are filtered. `-replace` deletes a
+prior official deck with the same title+lang (same teardown as deleting it
+from the admin UI) before reseeding, so reseeding never leaves a duplicate
+deck behind. Without `-replace`, a same-title deck already existing only
+prints a loud warning and still creates a duplicate — pass the flag whenever
+you're intentionally reseeding.
 
 ## Pre-launch gate
 
