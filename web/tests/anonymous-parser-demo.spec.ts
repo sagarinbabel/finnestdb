@@ -47,7 +47,7 @@ test('anonymous landing shows a parse form with the demo cap in the counter', as
   // Counter reflects the server-surfaced anonymous cap, not the 1.5M signed-in one.
   await expect(page.locator('#landing-char-count')).toContainText('/ 300,000');
   // The marketing hero + value grid remain below the form.
-  await expect(page.locator('.hero-title')).toContainText(/Learn Finnish/i);
+  await expect(page.locator('.hero-title')).toContainText(/reading what you love/i);
   await expect(page.locator('.value-grid')).toBeVisible();
 });
 
@@ -91,6 +91,8 @@ test('sign-up ribbon dismisses per session and reappears on the next parse', asy
   const ribbon = page.locator('#anon-signup-ribbon');
   await expect(ribbon).toBeVisible();
   await expect(ribbon).toContainText(/Save these words/i);
+  // The ribbon must sell a concrete gain behind signup, not a flat save-your-work line.
+  await expect(ribbon).toContainText(/study deck/i);
 
   // Dismiss for the session.
   await page.locator('#anon-ribbon-dismiss').click();

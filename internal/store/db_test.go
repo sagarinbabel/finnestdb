@@ -329,6 +329,87 @@ func TestGetNextReviewCardRespectsDailyNewCardLimit(t *testing.T) {
 	}
 }
 
+// TestCountDueCardsExcludesNeverIntroducedCards pins a deliberate semantics
+// change: a fresh account that adds a deck full of cards it has never seen
+// must NOT report those cards as "due to review". Before this fix,
+// CountDueCards treated next_due IS NULL (the default for a brand-new
+// card_state row) as due, so two Top-1000 starter decks made a fresh account
+// show "Due to review: 2,000" — cards that were never introduced, alongside
+// the correctly-gated "New words today" count. Due now requires the card to
+// have review history (introduced_at or last_answer_at set); GetUserDeckStats
+// due_count and GetNextReviewCard's new/due pooling behavior are unaffected.
+func TestCountDueCardsExcludesNeverIntroducedCards(t *testing.T) {
+	db := newTestDB(t)
+	user := createTestUser(t, db, "due-semantics@example.com")
+
+	deckID := createSingleTokenDeck(t, db, user.ID, "FI", "Kissa nukkuu.", "Kissa", "kissa", "NOUN")
+	if _, err := db.EnsureCard(user.ID, "FI", "", "koira", "NOUN"); err != nil {
+		t.Fatalf("EnsureCard(koira): %v", err)
+	}
+
+	// Both cards are brand new (never shown to the learner): CountNewCards
+	// sees them, CountDueCards must not.
+	newCount, err := db.CountNewCards(user.ID)
+	if err != nil {
+		t.Fatalf("CountNewCards: %v", err)
+	}
+	if newCount != 2 {
+		t.Fatalf("new cards=%d want 2 before any review", newCount)
+	}
+	dueCount, err := db.CountDueCards(user.ID)
+	if err != nil {
+		t.Fatalf("CountDueCards: %v", err)
+	}
+	if dueCount != 0 {
+		t.Fatalf("due cards=%d want 0 for never-introduced cards", dueCount)
+	}
+
+	deckStats, err := db.GetUserDeckStats(user.ID)
+	if err != nil {
+		t.Fatalf("GetUserDeckStats: %v", err)
+	}
+	for _, ds := range deckStats {
+		if ds.ID == deckID && ds.Due != 0 {
+			t.Fatalf("deck %d due=%d want 0 for never-introduced cards", ds.ID, ds.Due)
+		}
+	}
+
+	// Answer the kissa card: it is now introduced and, once its schedule
+	// lapses, must count as genuinely due. FSRS always schedules the next
+	// review in the future on a first "good" answer, so force next_due into
+	// the past the way a real lapsed card would look, rather than reaching
+	// into FSRS internals.
+	card, err := db.GetNextReviewCard(user.ID, nil, "FI")
+	if err != nil || card == nil {
+		t.Fatalf("GetNextReviewCard: card=%v err=%v", card, err)
+	}
+	if err := db.RecordReviewAnswer(user.ID, card.CardID, "good"); err != nil {
+		t.Fatalf("RecordReviewAnswer: %v", err)
+	}
+	if _, err := db.db.Exec(
+		`UPDATE card_state SET next_due = datetime('now', '-1 day') WHERE card_id = ?`,
+		card.CardID,
+	); err != nil {
+		t.Fatalf("force next_due into the past: %v", err)
+	}
+
+	dueCount, err = db.CountDueCards(user.ID)
+	if err != nil {
+		t.Fatalf("CountDueCards after introduction: %v", err)
+	}
+	if dueCount != 1 {
+		t.Fatalf("due cards=%d want 1 once the introduced card lapses", dueCount)
+	}
+	// The still-never-introduced koira card must stay out of the due count.
+	newCount, err = db.CountNewCards(user.ID)
+	if err != nil {
+		t.Fatalf("CountNewCards after introduction: %v", err)
+	}
+	if newCount != 1 {
+		t.Fatalf("new cards=%d want 1 (koira still unseen)", newCount)
+	}
+}
+
 func TestReviewLogAndActivity(t *testing.T) {
 	db := newTestDB(t)
 	user := createTestUser(t, db, "review-log@example.com")
