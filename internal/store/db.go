@@ -99,8 +99,11 @@ type Deck struct {
 
 type DeckStats struct {
 	Deck
-	Known      int
-	Unique     int
+	Known  int
+	Unique int
+	// Due counts only introduced cards (review history or introduced_at set)
+	// that are due now. Never-introduced cards are NEW, not due — see
+	// CountDueCards.
 	Due        int
 	Subscribed bool
 	// Token-weighted coverage: distinct content-token positions in the deck,
@@ -1397,6 +1400,7 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 		            WHEN uk.lemma IS NULL
 		             AND ui.lemma IS NULL
 		             AND c.id IS NOT NULL
+		             AND (cs.introduced_at IS NOT NULL OR cs.last_answer_at IS NOT NULL)
 		             AND (cs.next_due IS NULL OR cs.next_due <= CURRENT_TIMESTAMP)
 		            THEN o.lemma || char(31) || o.pos
 		            ELSE NULL
@@ -2745,6 +2749,13 @@ func (d *DB) CountKnownLemmasByLang(userID int64) (map[string]int, error) {
 	return out, rows.Err()
 }
 
+// CountDueCards counts cards that are due for review. "Due" requires the
+// card to have been introduced already (has review history or an explicit
+// introduced_at) — a card that has never been shown to the learner is a NEW
+// card, not a due one, even though its next_due is NULL by default. Mixing
+// the two made a brand-new account with two starter decks show "Due to
+// review: 2,000" instead of the correct near-zero count; new cards are
+// already surfaced separately via CountNewCards / new_capacity_today.
 func (d *DB) CountDueCards(userID int64) (int, error) {
 	var count int
 	err := d.db.QueryRow(
@@ -2753,6 +2764,7 @@ func (d *DB) CountDueCards(userID int64) (int, error) {
 		   JOIN card_state cs ON cs.card_id = c.id
 		  WHERE c.user_id = ?
 		    AND c.mwe_id IS NULL
+		    AND (cs.introduced_at IS NOT NULL OR cs.last_answer_at IS NOT NULL)
 		    AND NOT EXISTS (
 		        SELECT 1 FROM user_known_lemmas uk
 		         WHERE uk.user_id = c.user_id AND uk.lang = c.lang AND uk.lemma = c.lemma AND uk.pos = c.pos

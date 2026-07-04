@@ -43,6 +43,58 @@ was left alone per [`FEATURES.md`](FEATURES.md) Mobile Direction's usable-at-375
 
 No new breakpoints were introduced; both fixes reuse the existing "Mobile
 (375 px) tweaks" `@media (max-width: 600px)` block in `web/styles.css`.
+## 2026-07-04 — First manual test-run fixes: logo case, due-count semantics, sentence chip
+
+Four fixes from the owner's first manual test of the app.
+
+- **Nav logo capitalization:** `.nav-logo::before` in `web/styles.css`
+  (the "Design v2 alignment" cascade block, which wins over the earlier
+  `.nav-logo` rule and the correct `FinnEst` text already in
+  `web/index.html`) injected the literal lowercase string `"finnest"` via
+  CSS `content`, overriding the real DOM text with `font-size: 0`. Changed
+  the injected content to `"FinnEst"` to match [CONTEXT.md "Product
+  Name"](../CONTEXT.md) and grill Q53. Titles, About-page copy, and Sign-in
+  already said `FinnEst` correctly — only the CSS injection was wrong.
+  Added a Playwright assertion on the logo's rendered `::before` content.
+- **Dashboard due-count semantics (deliberate change):** `CountDueCards` and
+  `GetUserDeckStats`'s `due_count` treated `card_state.next_due IS NULL` —
+  the default for a card that has never been introduced — as "due now". A
+  fresh account adding the two Top-1000 starter decks immediately saw "Due
+  to review: 2,000" even though none of those cards had ever been shown to
+  the learner (the correctly-gated "New words today" tile showed 20).
+  "Due" now additionally requires `introduced_at IS NOT NULL OR
+  last_answer_at IS NOT NULL` — the same "introduced" predicate
+  `CardsInReview` already used. Never-introduced cards now surface only
+  through the existing `new_capacity_today` / "New words today" tile; no
+  new dashboard tile was added. `GetNextReviewCard`'s new/due pooling and
+  the daily-new-card limit are unchanged. Added
+  `TestCountDueCardsExcludesNeverIntroducedCards` in
+  `internal/store/db_test.go` pinning the new semantics.
+- **"Sentence card" chip on sentence-less cards:** `HandleReviewNext`
+  hard-coded `CardResponse.Mode` and `Front.Type` to `"sentence"`
+  regardless of whether the card actually had a source sentence. Starter
+  decks (no source sentences) showed a "Sentence card" chip over a
+  front-text line that just repeated the surface heading below it, with
+  nothing in between. Mode/front type are now `"word"` when
+  `card.SentenceText` is empty; `web/app.ts` hides `#review-card-front`
+  (chip + front text) entirely in that case so the card reads cleanly:
+  surface, lemma, gloss, deck tag. Added a Playwright case for the
+  no-sentence card.
+- **Top-1000 FI starter deck lemma resolution (`ase` → `asea`, ledgered, not
+  fixed):** diagnosed `cmd/seedcolddeck` resolving surface `ase` ("weapon")
+  to lemma `asea`/VERB ("synonym of asettaa") instead of `ase`/NOUN. Root
+  cause is a stale dictionary import, not `seedcolddeck` ranking or Decision
+  19/20 filtering: `finnestdb.db`'s `forms` table has every inflected form
+  of noun `ase` (aseen, aseita, aseessa, ...) except the bare nominative
+  self-mapping row `ase→ase/NOUN`, while `ase→asea/VERB` is the only row
+  keyed by that surface — so the ranker never had a competing candidate to
+  prefer. `dict_metadata` shows the live FI import ran 2026-03-13; the
+  on-disk `kaikki.org-dictionary-Finnish.jsonl.gz` is dated 2026-05-07 and
+  does contain the missing nominative-singular form tag for `ase`. Logged
+  as `DICT-1` in [`TODO.md` "Alpha launch issue
+  ledger"](../TODO.md#alpha-launch-issue-ledger) with the re-import +
+  reseed + re-freeze-baseline exit condition, per instruction not to
+  work around a data-staleness issue in ranking code.
 
 ## 2026-07-04 — Multiple possible meanings flow shipped (Ambiguous meaning flow gate)
 
