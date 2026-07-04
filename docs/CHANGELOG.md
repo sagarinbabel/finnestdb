@@ -30,6 +30,67 @@ prototype pointer in [`DESIGN_AI_PROMPTS.md`](DESIGN_AI_PROMPTS.md) ("Aalto
 skin"). CSS-first skin, no layout/markup restructuring beyond the picker
 control; both skins verified at 375 px with no horizontal overflow.
 
+## 2026-07-04 — FSRS enabled by default after staging validation
+
+Made **FSRS the default review scheduler** after the documented staging gate came
+back green. The `FINNESTDB_FSRS_ENABLED` flag flips from opt-IN to **opt-OUT**:
+unset → FSRS on (the shipped default); `0`/`false`/`no`/`off` → the deterministic
+step scheduler, which is now the rollback fallback rather than the runtime
+default.
+
+- **Validation harness:** [`internal/store/fsrs_validation_test.go`](../internal/store/fsrs_validation_test.go)
+  runs the DEPLOYMENT.md "FSRS scheduler rollout" gate as in-suite Go tests on
+  temp DBs (the shared `finnestdb.db` is never written): seeded-history
+  validation across new/learning/mature/legacy/NULL shapes, 1k-card lazy-migration
+  scale check, a rollback round trip, and a read-only real-DB smoke (4031 sampled
+  real cards, 0 corrupt). All green — see the report below.
+- **Report added:** [`launch-readiness/2026-07-04-fsrs-validation.md`](launch-readiness/2026-07-04-fsrs-validation.md)
+  records each drill's result in tables (interval ordering per button, monotonic
+  stability growth, real-DB shape distribution).
+- **Flag semantics:** `store.FSRSEnabled()` is now opt-out; the flag-off
+  byte-identical regression pin
+  (`TestRecordReviewAnswerFlagOffByteIdenticalToStepScheduler`) still guards the
+  rollback path, and a new `TestFSRSEnabledDefaultsOnOptOut` pins the default-on
+  parsing.
+- **Docs modified:** [`DEPLOYMENT.md`](DEPLOYMENT.md) (flag table + rewritten
+  rollout/rollback section), [`srs-deck-spec.md`](srs-deck-spec.md)
+  (current-scheduler statements + Implemented FSRS state model),
+  [`../CONTEXT.md`](../CONTEXT.md) ("Alpha Step Scheduler" is now the fallback),
+  [`../TODO.md`](../TODO.md) ("Review readiness" gate ticked with the report
+  pointer).
+
+Rollback remains a single flag flip (`FINNESTDB_FSRS_ENABLED=0` + restart), no
+data migration; FSRS and step state coexist in `card_state.fsrs_json` via the
+version discriminator, and FSRS-touched cards keep their earned progress on
+rollback.
+## 2026-07-04 — Starter-deck cards carry curated corpus example sentences
+
+The cold-start "Top N words" official starter deck now attaches a real corpus
+example sentence to each card instead of showing only the bare headword form.
+
+- **New tool `cmd/pickexamples`:** for each lemma in seedcolddeck's Top-N
+  ranking (shared via the new `internal/starterdeck` package), it indexes
+  candidate sentences from the corpus pipeline's per-surface-form example index
+  (`wordlist_user_friendly.tsv`'s `example_ref_id`) — not a 66M-line text scan —
+  then fetches just the needed sentences in one streamed pass over
+  `sentences_user_friendly.tsv`. Both passes are bounded-memory streaming scans;
+  a full FI/ET run is ~20s at ~1.1 GB RSS.
+- **Deterministic "beautiful evocative" heuristics** (documented as named
+  constants in `cmd/pickexamples/select.go`): complete sentence, 4–14 words, no
+  digits/URLs/ALL-CAPS/quote fragments/subtitle artifacts (leading dashes,
+  speaker colons, dialogue-line joins, OCR mid-word-cap garble), a preference
+  for a non-sentence-initial target form and high-frequency surrounding words,
+  plus a coarse foreign-language guard against corpus language contamination.
+- **Checked-in artifact** `testdata/starter-examples/{fi,et}-examples-v1.tsv`
+  (~790 FI / ~764 ET lemmas covered), attributed and licensing-noted in its
+  [README](../testdata/starter-examples/README.md) per the owner's
+  individual-sentence call.
+- **Wiring:** `cmd/seedcolddeck -examples <file>` seeds each matching card with
+  the corpus sentence and the inflected form as the highlighted occurrence;
+  lemmas without a curated example fall back to the prior representative-form
+  sentence. The example reaches the review payload through the existing
+  deck-sentence mechanism. See
+  [`srs-deck-spec.md`](srs-deck-spec.md) "Example sentence policy".
 ## 2026-07-04 — Learner-facing copy sells the pre-learn proposition
 
 Rewrote the persuasion copy across every learner-facing surface (landing hero,
