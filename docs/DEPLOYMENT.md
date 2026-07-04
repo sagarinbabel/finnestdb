@@ -164,6 +164,41 @@ automatically, caps request bodies at the edge, and adds HSTS,
 `X-Content-Type-Options`, `X-Frame-Options`, and a referrer policy. Point the
 domain's A/AAAA records at the host and set the real domain in the file.
 
+## Asset versioning (cache-busting)
+
+The app versions its own JS/CSS so a deploy never leaves a browser running stale
+`app.js` (this bit an operator during manual testing after a `git pull`). It is
+handled entirely in-process — no build step, no CDN config:
+
+- On startup the server hashes `web/app.js` and `web/styles.css` (short sha256)
+  and logs the stamps: `asset app.js versioned as ?v=<hash>`.
+- `index.html` is served with `Cache-Control: no-cache` (always revalidated) and
+  its `app.js` / `styles.css` references are re-stamped with the current hashes
+  on every request. So a browser always fetches the current `index.html`, which
+  points at the current asset URLs.
+- `app.js` / `styles.css` are served with `Cache-Control: no-cache,
+  must-revalidate` and a content-hash `ETag`, so even an intermediary that
+  strips the `?v=` query revalidates instead of serving stale bytes. Matching
+  `If-None-Match` returns `304`.
+- All other web files keep `Cache-Control: no-store`.
+
+Implication for deploys: **the hash refreshes only when the server process
+restarts** (it is computed at startup). The `systemctl restart finnestdb` step
+in "Deploying an update" is what publishes new asset hashes. If you sync new
+`web/` files but don't restart, `index.html` keeps stamping the old hashes.
+
+At the reverse proxy (`deploy/Caddyfile`), do **not** add caching directives for
+`index.html`; the app's own headers are authoritative. Verify after a deploy:
+
+```bash
+curl -sI https://<domain>/ | grep -i cache-control          # no-cache
+curl -s  https://<domain>/ | grep -o 'app.js?v=[a-f0-9]*'    # current hash
+curl -sI "https://<domain>/app.js?v=<hash>" | grep -iE 'cache-control|etag'
+```
+
+The stamped hash must change across a rebuild+restart when the asset content
+changes.
+
 ## Services and timers
 
 Install from [`deploy/`](../deploy/):
