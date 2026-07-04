@@ -1323,6 +1323,47 @@ func uniqueNonEmptyStrings(values []string) []string {
 // Forms with no direct dict hit are absent from the result map. Each form's
 // slice is non-empty when present.
 func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string) map[string][]FormResolution {
+	return d.batchLookupAllForms(forms, lang, parserMode, AllFormsOptions{})
+}
+
+// AllFormsOptions tunes BatchLookupAllFormsWithOptions. The zero value
+// reproduces the historical dict-only BatchLookupAllForms behavior.
+type AllFormsOptions struct {
+	// MergeFSTReadings, when true, appends FST-known (lemma, POS) readings for
+	// the surface that the dictionary `forms` table does not already list, so
+	// cross-POS homographs such as `kuusi` (NOUN spruce vs NUM six), `tuli`
+	// (NOUN fire vs `tulla` VERB), and `voi` (NOUN butter vs `voida` VERB)
+	// become offerable in the candidate set even though kaikki's `forms`
+	// table stores only one reading per homograph surface.
+	//
+	// This is the INCLUSION lever for the ambiguity / meaning-check path
+	// (cmd/ambiguityeval, and the future "Multiple possible meanings" API). It
+	// is deliberately NOT enabled on the deck / import expansion path, which
+	// consumes the dict-only result through filterLowValueAlternatives; adding
+	// FST-only readings there would change learner-facing deck word counts and
+	// surface no-gloss / inflectional-gloss senses as spurious cards. See
+	// docs/FEATURES.md (multi-lemma) and docs/srs-deck-spec.md.
+	//
+	// FST readings are appended BELOW authoritative dict/override candidates
+	// (source-priority model, DECISIONS.md Decision 21) and deduped by
+	// (lemma, POS) against them — an FST reading that corroborates an existing
+	// dict candidate is dropped, never re-listed. Lexical-overlay and accepted
+	// custom-override short-circuits are still authoritative and suppress the
+	// FST merge for that surface. FI only today; ET candidate inclusion is
+	// already complete via Ekilex (see PARSER_EVAL_METHODOLOGY.md §5).
+	MergeFSTReadings bool
+}
+
+// BatchLookupAllFormsWithOptions is BatchLookupAllForms with an explicit
+// options struct. Callers on the ambiguity / meaning-check candidate path pass
+// AllFormsOptions{MergeFSTReadings: true} so FST-known homograph senses enter
+// the candidate set; the deck / import expansion path keeps calling the plain
+// BatchLookupAllForms so learner-facing word counts stay dict-driven.
+func (d *DB) BatchLookupAllFormsWithOptions(forms []string, lang, parserMode string, opts AllFormsOptions) map[string][]FormResolution {
+	return d.batchLookupAllForms(forms, lang, parserMode, opts)
+}
+
+func (d *DB) batchLookupAllForms(forms []string, lang, parserMode string, opts AllFormsOptions) map[string][]FormResolution {
 	result := make(map[string][]FormResolution, len(forms))
 	if len(forms) == 0 {
 		return result
@@ -1373,15 +1414,80 @@ func (d *DB) BatchLookupAllForms(forms []string, lang string, parserMode string)
 		}
 		rows.Close()
 		if len(customOverrideCandidates) > 0 {
+			// Accepted overrides are authoritative and intentionally suppress
+			// lower-priority readings; do not dilute them with FST candidates.
 			candidates = customOverrideCandidates
-		} else if lang == "FI" {
-			candidates = correctFICandidates(d, form, lower, candidates)
+		} else {
+			if lang == "FI" {
+				candidates = correctFICandidates(d, form, lower, candidates)
+			}
+			if opts.MergeFSTReadings && lang == "FI" {
+				candidates = d.mergeFSTOnlyCandidates(form, lower, candidates)
+			}
 		}
 		if len(candidates) > 0 {
 			result[form] = candidates
 		}
 	}
 	return result
+}
+
+// mergeFSTOnlyCandidates appends FST-known (lemma, POS) readings that are not
+// already present in the dict-derived candidate slice. It is the candidate-set
+// analogue of the dict+FST merge BatchLookupForms already runs for the single
+// pick (mergeAndRankDictFSTCandidates): the single-pick path can *choose* an
+// FST reading, but the ambiguity candidate set could not previously *offer*
+// one that the `forms` table omits.
+//
+// Ordering contract: dict candidates keep their position (authoritative
+// source priority per DECISIONS.md Decision 21); FST-only readings are
+// appended after them in the analyzer's native emission order, which is itself
+// a priority signal that must not be re-sorted (PR #148 P1). Dedup is by
+// (lemma, POS) against the dict candidates and against earlier FST readings, so
+// a corroborating FST reading never double-lists and the analyzer's first
+// emission of each (lemma, POS) wins on ties.
+//
+// FST-only candidates carry Source "fst" and their FST FEATS/GrammarLabel, so
+// a consumer with no dict gloss can still render lemma + POS. This does not run
+// on the deck-expansion path (see AllFormsOptions.MergeFSTReadings).
+func (d *DB) mergeFSTOnlyCandidates(surface, lower string, dictCandidates []FormResolution) []FormResolution {
+	lem := d.fstLemmatizer()
+	if lem == nil {
+		return dictCandidates
+	}
+	analyses := lem.Lemmatize("FI", lower)
+	if len(analyses) == 0 {
+		return dictCandidates
+	}
+
+	seen := make(map[string]struct{}, len(dictCandidates)+len(analyses))
+	for _, c := range dictCandidates {
+		seen[lemmaPOSKey(c.Lemma, c.POS)] = struct{}{}
+	}
+
+	out := dictCandidates
+	for _, a := range analyses {
+		if a.Lemma == "" || a.UPOS == "" {
+			continue
+		}
+		res := formResolutionFromFSTAnalysis(lower, a, "fst")
+		key := lemmaPOSKey(res.Lemma, res.POS)
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		// Apply the same lemma-quality and case-compatibility guards the dict
+		// branch applies, so the FST merge cannot revive a known bad lemma or a
+		// casing-incompatible reading.
+		if isBadDictCandidate("FI", lower, res.Lemma, res.POS) {
+			continue
+		}
+		if !candidateCaseCompatible(surface, res.Lemma) {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, res)
+	}
+	return out
 }
 
 // correctFICandidates is the BatchLookupAllForms-side analogue of the

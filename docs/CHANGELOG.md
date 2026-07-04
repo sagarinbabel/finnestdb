@@ -10,6 +10,27 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — FI candidate-inclusion gap closed (FST-merged ambiguity candidate set)
+
+Merged FST-known homograph readings into the ambiguity / meaning-check
+candidate set so cross-POS second senses become offerable. kaikki's `forms`
+table stores only one reading per homograph surface (`kuusi`→NUM, `tuli`→VERB,
+`voi`→NOUN), so the second sense was previously absent from the candidate set
+even though the FST knows it. New
+`store.BatchLookupAllFormsWithOptions(..., AllFormsOptions{MergeFSTReadings: true})`
+appends FST-only `(lemma, POS)` readings, deduped against dict rows and ranked
+below authoritative dict/override candidates (source-priority model), with
+analyzer emission order preserved. `cmd/ambiguityeval` now measures this merged
+set. FI ambiguity **candidate inclusion 72.9% → 95.8%**; selection accuracy
+unchanged at 70.8%; FI + ET headline baselines byte-stable. The deck / import
+expansion path keeps the dict-only `BatchLookupAllForms`, so learner-facing deck
+word counts are unchanged (deliberate gating — see
+[`FEATURES.md`](FEATURES.md) multi-lemma and
+[`srs-deck-spec.md`](srs-deck-spec.md)). Parser stamp `2026.05.15a` →
+`2026.05.15b` ([`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) §2026-05-15b,
+[`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md),
+[`PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) §Ambiguity).
+
 ## 2026-07-04 — `cmd/ambiguityeval` + `make compare-ambiguity` shipped
 
 Implemented the runner specced earlier the same day in
