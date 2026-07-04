@@ -185,10 +185,20 @@ scope, not accidental creep. See Decisions 23-29.
             `ambiguity-homograph` (FI `kuusi`/`tuli`/`voi` + one ET case) via
             the Go parser runner; `deck-save` + `first-review` (FI+ET) and
             `parser-feedback` (FI only) via Playwright.
-      - [ ] Pending journeys still needing real coverage: `anonymous-demo`
-            (FI+ET — no anonymous parser demo surface yet), `known-word-import`
-            (FI+ET — needs an RC-fixture-driven Playwright case), and
-            `parser-feedback` for ET (FI-only correction-submit coverage today).
+      - [x] Pending journeys now covered (done 2026-07-04): `anonymous-demo`
+            (FI+ET, driven against the manifest's embedded-text fixtures on the
+            landing page), `known-word-import` (FI+ET, RC-fixture-driven on
+            `/#/vocab`), and `parser-feedback` for ET (parity Playwright case
+            alongside the existing FI one). Ambiguity-homograph journeys also
+            gained a Playwright pass asserting the "Multiple possible
+            meanings" panel and its flag-only escape, on top of the existing
+            Go parser-quality assertions. `make first-experience-rc` now runs
+            all 18 manifest cases with zero `automation:"pending"` entries.
+      - [ ] Remaining human step: the manual product walkthrough (trust,
+            clarity, first-screen credibility judgment calls per
+            `docs/GO_LIVE_CHECKLIST.md`) and the go/no-go call itself. All
+            automated coverage is in place; this checklist item stays open
+            until that walkthrough runs and findings are graded.
 - [x] **Documentation consolidation pass** (done 2026-07-03/04: handoff read order, canonical doc roles, FOR_MICHAEL guide): avoid adding new docs for execution
       ledgers. Keep launch issues in this TODO, keep the quality rubric in
       `docs/GO_LIVE_CHECKLIST.md`, and audit overlapping docs for merge,

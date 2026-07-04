@@ -29,6 +29,49 @@ load-tested yet.
   load-test progress note.
 - Modified: `web/app.ts` — stale fallback-comment default (the code constant
   was already 300,000).
+## 2026-07-04 — First-experience RC pack completed: zero pending journeys
+
+Follows up the "First-experience RC pack skeleton" entry below: every
+journey the skeleton marked `automation:"pending"` now has real automated
+coverage, because the underlying features (anonymous parser demo, embedded
+catalog, ambiguity meanings panel, known-word import) shipped earlier the
+same day. `make first-experience-rc` now runs the full 18-case manifest with
+zero pending skips.
+
+- Modified: `testdata/first-experience-rc/manifest.json` — flipped
+  `fi/et-anonymous-demo`, `fi/et-known-word-import`, and `et-parser-feedback`
+  from `automation:"pending"` to `automation:"playwright"` with honest
+  `expect` blocks (including a new `known_lemma_pos` field for the
+  known-word-import cases). Added cross-reference notes to the
+  `ambiguity-homograph` cases pointing at their new Playwright UI-level
+  coverage. No case remains `automation:"pending"`.
+- Modified: `web/tests/first-experience-rc.spec.ts` — implemented one
+  Playwright journey pass per newly-flipped case, reusing existing spec
+  conventions rather than duplicating their detailed coverage:
+  - `anonymous-demo` (FI+ET): unsigned paste on the landing form using the
+    manifest's own embedded-text fixture, parse, then explore via the Words
+    tab, asserting signed-in-only controls (save-as-deck, corrections, known
+    pills) stay absent. Detailed landing/export behavior stays in
+    `anonymous-parser-demo.spec.ts` / `landing-prototype.spec.ts`.
+  - `known-word-import` (FI+ET): pastes the manifest's fixture word list on
+    `/#/vocab` and asserts every fixture word resolves to the manifest's
+    expected (lemma, POS). Detailed import/remove/unresolved-word coverage
+    stays in `parse-results.spec.ts`.
+  - `parser-feedback` (ET parity): the FI correction-submit test was
+    generalized into a parametric FI/ET helper driven by per-language
+    fixtures instead of duplicating the flow, closing the FI-only gap.
+  - `ambiguity-homograph` (FI+ET, new UI-level pass alongside the existing
+    Go parser-quality cases): parses a mocked ambiguous-surface payload for
+    the journey's homograph pair, opens the "Multiple possible meanings"
+    panel, and asserts >=2 candidates plus the flag-only "None of these
+    looks right" escape. Deliberately does not grade which candidate is
+    correct — that is the Go runner's `lemma_pos` assertions and the eval
+    slice's job (`PARSER_EVAL_METHODOLOGY.md`).
+- Modified: `docs/GO_LIVE_CHECKLIST.md` and `TODO.md` — recorded the
+  completed automated-coverage state; the manual product walkthrough and the
+  go/no-go call remain the outstanding human step.
+- `cmd/firstexperiencerc` (the Go runner) is unchanged: no manifest field it
+  parses changed shape, only which cases carry `automation:"playwright"`.
 
 ## 2026-07-04 — Landing: port the Claude Design "Aalto edition" prototype
 
