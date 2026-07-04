@@ -361,6 +361,18 @@ Google for Android) is a later wrapper concern.
   later want survival across restarts, it must be opt-in (a "remember
   these parses on this device" checkbox on the sign-up form) and
   documented in the privacy footer; never silent.
+  - **Shipped 2026-07-04 (view carry-forward).** The last anonymous parse
+    (source text + response + active Read/Words tab) is held in
+    `sessionStorage` (`finnestdb:lastParse:v1`), tab-scoped as above. After
+    sign-in or account creation — and after a mid-results session re-auth — the
+    user returns to the **results view** with that parse intact (the remembered
+    tab, defaulting to Read), instead of being dropped on the dashboard. On
+    return the parse re-renders against the now-authenticated state: learner
+    controls appear and the coverage reveal's known % becomes real (learning
+    state is refreshed via `/api/lemma-states`, not a re-`POST /api/parse`, so
+    the refresh stays a read). With no carried parse, the dashboard is the
+    landing as before. The server-side `/api/parse/import-anonymous` persistence
+    into `parse_sessions` above remains the still-open follow-up.
 
 ### 4. Dashboard (post-login default)
 

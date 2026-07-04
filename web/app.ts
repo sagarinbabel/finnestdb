@@ -1705,7 +1705,10 @@ function initSigninForm(): void {
             // Refresh /api/me so we get the dashboard payload too.
             await fetchMe();
             showToast(signinMode === 'register' ? `Welcome, ${data.user.email}` : `Welcome back, ${data.user.email}`, 'success');
-            navigate('/dashboard');
+            // Carry-forward (USER_FLOWS "Carry-forward of anonymous parses"):
+            // if the visitor had a parse open before signing in, return them to
+            // it with learner enrichments now applied — not the dashboard.
+            await landAfterAuth();
         } catch (err: any) {
             errorEl.textContent = err.message || 'Sign-in failed';
             errorEl.classList.remove('hidden');
@@ -1873,9 +1876,11 @@ function renderCatalogCard(e: CatalogEntry, hasKnownForLang: boolean): string {
     </div>`;
 }
 
-// pickCatalogText lazy-loads the full text, drops it into the Inspect textarea
-// (switching the active language to the text's language), and navigates to
-// Inspect so the normal parse → deck flow takes over.
+// pickCatalogText lazy-loads the full text and opens it "like a book": it drops
+// the text into the Inspect textarea (so re-parse/edit still works via the
+// Words/Inspect path), then parses immediately and lands on the Read tab — zero
+// intermediate clicks. The owner hit a dead end here before: the text stopped at
+// the textarea and there was no obvious next step (USER_FLOWS §"catalog").
 async function pickCatalogText(id: string): Promise<void> {
     if (!id) return;
     const meta = state.catalog?.entries.find(e => e.id === id);
@@ -1891,16 +1896,20 @@ async function pickCatalogText(id: string): Promise<void> {
             await setActiveLanguage(lang);
         }
         navigate('/inspect');
-        // Populate after navigation so the inspect page exists in the DOM.
-        const ta = document.getElementById('inspect-text') as HTMLTextAreaElement | null;
-        if (ta) {
-            const els = getInspectEls();
-            if (els) clearLoadedEpub(els, true);
+        // Populate after navigation so the inspect page exists in the DOM. The
+        // text stays in the textarea state so the learner can edit and re-parse
+        // from Inspect afterwards.
+        const els = getInspectEls();
+        const ta = els?.text ?? null;
+        if (els && ta) {
+            clearLoadedEpub(els, true);
             ta.value = data.text;
             ta.dispatchEvent(new Event('input', { bubbles: true }));
-            ta.focus();
+            // Open the text like a book: parse now and land on the Read tab
+            // (forced below), instead of leaving the learner at the textarea.
+            await runParse(els, 'custom', 'inspect', 'inspect-submit');
+            if (state.currentResults) switchResultsTab('read');
         }
-        showToast(`Loaded "${meta ? meta.title : 'text'}". Press Parse to begin.`, 'success');
     } catch {
         showToast('Could not load that text. Please try another.', 'error');
     }
@@ -4386,7 +4395,10 @@ function initLandingForm(): void {
     els.text.addEventListener('input', () => {
         updateCharCount(els);
         updateLangWarning(els, true);
+        autoGrowTextarea(els.text);
     });
+    autoGrowTextarea(els.text);
+    window.addEventListener('resize', () => autoGrowTextarea(els.text));
 
     els.lang.addEventListener('change', () => updateLangWarning(els, true));
 
@@ -4491,6 +4503,24 @@ function updateCharCount(els: ParseFormElements): void {
     els.charCount.textContent = `${count.toLocaleString()} / ${cap.toLocaleString()}`;
     els.charCount.classList.toggle('char-count-warn', count > cap * 0.9);
     els.charCount.classList.toggle('char-count-over', count > cap);
+}
+
+// autoGrowTextarea grows a textarea to fit its content instead of scrolling
+// inside a fixed small box while the page below sits empty (the owner's "why am
+// I scrolling if there's space on the page" complaint). It grows up to ~70vh,
+// then lets the textarea scroll internally for very long pastes. Driven on input
+// and on load; a manual vertical resize (resize: vertical stays on) persists
+// until the next keystroke, so we don't fight the user's explicit drag.
+function autoGrowTextarea(ta: HTMLTextAreaElement): void {
+    // Reset first so shrinking works when text is deleted, then measure the
+    // content's natural height from scrollHeight.
+    ta.style.height = 'auto';
+    const maxPx = Math.round(window.innerHeight * 0.7);
+    const next = Math.min(ta.scrollHeight, maxPx);
+    ta.style.height = `${next}px`;
+    // Only scroll internally once we've hit the cap; below it there's no
+    // overflow so the box shows all content with room to spare.
+    ta.style.overflowY = ta.scrollHeight > maxPx ? 'auto' : 'hidden';
 }
 
 // Text the parser will actually see — the held EPUB when one is loaded, else
@@ -4939,10 +4969,13 @@ function initInspectForm(): void {
     els.text.addEventListener('input', () => {
         updateCharCount(els);
         updateLangWarning(els, true);
+        autoGrowTextarea(els.text);
         // Hide the cold-start catalog once the learner has text to parse.
         const section = document.getElementById('inspect-catalog-section');
         if (section) section.classList.toggle('hidden', els.text.value.trim() !== '');
     });
+    autoGrowTextarea(els.text);
+    window.addEventListener('resize', () => autoGrowTextarea(els.text));
 
     els.text.addEventListener('paste', () => {
         setTimeout(() => {
@@ -6510,6 +6543,31 @@ async function hydrateLearningStates(data: ParseResponse): Promise<ParseResponse
     } catch {
         return data;
     }
+}
+
+// hasCarriedParse reports whether a carried parse exists in sessionStorage
+// (an anonymous parse the visitor had open before signing in). Deck contexts
+// aren't persisted here, so any hit is a real results/read view to restore.
+function hasCarriedParse(): boolean {
+    try {
+        const raw = sessionStorage.getItem(LAST_PARSE_KEY);
+        if (!raw) return false;
+        const parsed = JSON.parse(raw) as PersistedParse;
+        return !!parsed?.data && !!parsed.context;
+    } catch {
+        return false;
+    }
+}
+
+// landAfterAuth decides where a freshly-authenticated user lands. Carry-forward
+// (USER_FLOWS "Carry-forward of anonymous parses"): if a parse was open before
+// sign-in / account creation / session re-auth, restore it — re-rendered against
+// the now-authenticated state so the reveal's known % becomes real and learner
+// controls appear — instead of dropping the user on the dashboard and losing
+// their place. With no carried context, land on the dashboard as before.
+async function landAfterAuth(): Promise<void> {
+    if (hasCarriedParse() && await restoreLastParse()) return;
+    navigate('/dashboard');
 }
 
 async function restoreLastParse(): Promise<boolean> {

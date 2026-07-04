@@ -78,13 +78,16 @@ func main() {
 		log.Fatalf("Web directory not found: %s", webDir)
 	}
 
-	// Serve static files. During local UI iteration, stale cached CSS/JS is more
-	// confusing than helpful, so make the shipped web assets revalidate on load.
-	fs := http.FileServer(http.Dir(webDir))
-	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "no-store")
-		fs.ServeHTTP(w, r)
-	}))
+	// Serve static files with content-hash cache-busting. index.html is
+	// re-stamped with the current app.js / styles.css hashes on every request
+	// and served no-cache, so a rebuild reaches browsers immediately instead of
+	// running stale JS after a deploy (see cmd/server/static.go and
+	// docs/DEPLOYMENT.md "Asset versioning").
+	static := newStaticHandler(webDir)
+	for name, asset := range static.assets {
+		log.Printf("asset %s versioned as ?v=%s", name, asset.hash)
+	}
+	mux.Handle("/", static)
 
 	// Start server
 	addr := fmt.Sprintf(":%s", *port)
