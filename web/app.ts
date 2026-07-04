@@ -4,7 +4,7 @@
 const MAX_CHARS = 1_500_000;
 
 // Client-side fallback for the anonymous /api/parse text-size cap. The server
-// is authoritative (FINNESTDB_ANON_MAX_CHARS, default 20,000) and surfaces the
+// is authoritative (FINNESTDB_ANON_MAX_CHARS, default 300,000) and surfaces the
 // live value on /api/me → state.anonMaxChars; this default only applies if that
 // response is missing the field (e.g. a stale server).
 const DEFAULT_ANON_MAX_CHARS = 300_000;

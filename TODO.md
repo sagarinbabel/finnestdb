@@ -70,7 +70,7 @@ scope, not accidental creep. See Decisions 23-29.
       paste text on the landing form, parse it, get a parsed word list, and
       explore the list (POS filters, sorting, row expansion, definitions/forms/
       examples, counts). Stateless, ephemeral, rate-limited, and capped below
-      signed-in text size via `FINNESTDB_ANON_MAX_CHARS` (default 20,000, vs the
+      signed-in text size via `FINNESTDB_ANON_MAX_CHARS` (default 300,000, vs the
       1,500,000 signed-in cap), enforced server-side before parser work and
       surfaced to the client through `/api/me`. Save/deck/review, known/ignored
       state, imports, parser feedback, history, and account settings stay
@@ -106,9 +106,12 @@ scope, not accidental creep. See Decisions 23-29.
       dedicated anonymous-heavy mixed stage confirm: anonymous parse sheds at
       a meaningfully higher rate than signed-in parse (e.g. 50.2% vs. 12.7% in
       the anon-heavy stage), and deck/review reads never errored or exceeded
-      ~700ms p95 even at full 1000-VU saturation. Anonymous 20,000-char cap
-      re-checked against this load, not changed — no evidence justified
-      lowering it (see report for the `custom`-parser-mode caveat). Full
+      ~700ms p95 even at full 1000-VU saturation. The anonymous cap was
+      20,000 chars during this run and was re-checked against this load, not
+      changed — no evidence justified lowering it (see report for the
+      `custom`-parser-mode caveat). Note: the default was raised to 300,000
+      later the same day (commit 7bff399); the larger cap has not itself been
+      load-tested and should be covered by the production-host re-run. Full
       method, numbers, and hardware caveat:
       [`docs/launch-readiness/2026-07-04-load-test.md`](docs/launch-readiness/2026-07-04-load-test.md).
       **Remaining, gate stays open**: this was a laptop run against a local DB,
@@ -182,10 +185,20 @@ scope, not accidental creep. See Decisions 23-29.
             `ambiguity-homograph` (FI `kuusi`/`tuli`/`voi` + one ET case) via
             the Go parser runner; `deck-save` + `first-review` (FI+ET) and
             `parser-feedback` (FI only) via Playwright.
-      - [ ] Pending journeys still needing real coverage: `anonymous-demo`
-            (FI+ET — no anonymous parser demo surface yet), `known-word-import`
-            (FI+ET — needs an RC-fixture-driven Playwright case), and
-            `parser-feedback` for ET (FI-only correction-submit coverage today).
+      - [x] Pending journeys now covered (done 2026-07-04): `anonymous-demo`
+            (FI+ET, driven against the manifest's embedded-text fixtures on the
+            landing page), `known-word-import` (FI+ET, RC-fixture-driven on
+            `/#/vocab`), and `parser-feedback` for ET (parity Playwright case
+            alongside the existing FI one). Ambiguity-homograph journeys also
+            gained a Playwright pass asserting the "Multiple possible
+            meanings" panel and its flag-only escape, on top of the existing
+            Go parser-quality assertions. `make first-experience-rc` now runs
+            all 18 manifest cases with zero `automation:"pending"` entries.
+      - [ ] Remaining human step: the manual product walkthrough (trust,
+            clarity, first-screen credibility judgment calls per
+            `docs/GO_LIVE_CHECKLIST.md`) and the go/no-go call itself. All
+            automated coverage is in place; this checklist item stays open
+            until that walkthrough runs and findings are graded.
 - [x] **Documentation consolidation pass** (done 2026-07-03/04: handoff read order, canonical doc roles, FOR_MICHAEL guide): avoid adding new docs for execution
       ledgers. Keep launch issues in this TODO, keep the quality rubric in
       `docs/GO_LIVE_CHECKLIST.md`, and audit overlapping docs for merge,
@@ -1158,7 +1171,8 @@ New work surfaced by the review (not yet broken into sequenced PRs):
 - [x] **Anonymous parse has a stricter text-size limit.** Signed-in parsing
   keeps the 1,500,000-character cap; anonymous demo parsing uses a lower
   configurable cap. Shipped 2026-07-04 as `FINNESTDB_ANON_MAX_CHARS` (default
-  20,000), enforced server-side before expensive parser work, returning a 4xx
+  20,000 at ship, raised to 300,000 the same day), enforced server-side before
+  expensive parser work, returning a 4xx
   that names the limit and prompts sign-up for longer texts.
 - [x] **Public alpha language status: Finnish and Estonian are equal.** Do not
   label either language experimental or secondary. If parity gaps exist, track

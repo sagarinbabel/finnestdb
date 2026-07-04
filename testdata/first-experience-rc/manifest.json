@@ -4,21 +4,21 @@
       "id": "fi-anonymous-demo",
       "language": "fi",
       "journey": "anonymous-demo",
-      "automation": "pending",
+      "automation": "playwright",
       "fixture": "fi-embedded-text.txt",
       "expect": {
-        "notes": "Anonymous paste -> parse -> word list -> explore has no dedicated Playwright coverage yet; needs a stateless-demo spec once the anonymous parser demo surface lands."
+        "notes": "Anonymous paste -> parse -> word list -> explore, driven against this manifest's FI embedded-text fixture on the landing page (/), with no signed-in-only controls (save-as-deck, corrections, known-word pills) rendered. Covered by web/tests/first-experience-rc.spec.ts 'fi journey: anonymous paste -> parse -> explore'."
       },
-      "notes": "Anonymous Parser Demo per CONTEXT.md: unsigned paste/parse/explore, stateless and ephemeral, stricter text-size cap than signed-in parsing."
+      "notes": "Anonymous Parser Demo per CONTEXT.md: unsigned paste/parse/explore, stateless and ephemeral, stricter text-size cap than signed-in parsing. Shipped: landing form (#landing-text/#landing-submit), demo chips, anonymous copy/CSV export; see web/tests/anonymous-parser-demo.spec.ts and web/tests/landing-prototype.spec.ts for the detailed feature coverage this RC case does not duplicate."
     },
     {
       "id": "et-anonymous-demo",
       "language": "et",
       "journey": "anonymous-demo",
-      "automation": "pending",
+      "automation": "playwright",
       "fixture": "et-embedded-text.txt",
       "expect": {
-        "notes": "Same as fi-anonymous-demo; ET parity case for the unsigned demo surface."
+        "notes": "Same as fi-anonymous-demo but with the ET embedded-text fixture and ET language selector. Covered by web/tests/first-experience-rc.spec.ts 'et journey: anonymous paste -> parse -> explore'."
       },
       "notes": "ET parity for the anonymous demo journey."
     },
@@ -131,23 +131,37 @@
       "id": "fi-known-word-import",
       "language": "fi",
       "journey": "known-word-import",
-      "automation": "pending",
+      "automation": "playwright",
       "fixture": "fi-known-word-import.txt",
       "expect": {
-        "notes": "Import a short comma-separated FI word list on /#/vocab and confirm each lemma resolves to the right (lemma, POS): kissa/NOUN, koira/NOUN, talo/NOUN, kirja/NOUN, syödä/VERB."
+        "known_lemma_pos": [
+          { "lemma": "kissa", "pos": "NOUN" },
+          { "lemma": "koira", "pos": "NOUN" },
+          { "lemma": "talo", "pos": "NOUN" },
+          { "lemma": "kirja", "pos": "NOUN" },
+          { "lemma": "syödä", "pos": "VERB" }
+        ],
+        "notes": "Import the fixture's comma-separated FI word list on /#/vocab and confirm each lemma resolves to the right (lemma, POS): kissa/NOUN, koira/NOUN, talo/NOUN, kirja/NOUN, syödä/VERB. Covered by web/tests/first-experience-rc.spec.ts 'fi journey: known-word import'."
       },
-      "notes": "web/tests/parse-results.spec.ts has a known-words import test with mocked responses, but no RC case wires the manifest's fixture words through it yet. Needs a dedicated first-experience-rc Playwright case."
+      "notes": "Shipped: known-word import paste flow (vocab page), coverage reveal. Covered by web/tests/first-experience-rc.spec.ts, wired against this manifest's fixture words; see web/tests/parse-results.spec.ts 'user can import and remove known words' for the detailed feature coverage this RC case does not duplicate."
     },
     {
       "id": "et-known-word-import",
       "language": "et",
       "journey": "known-word-import",
-      "automation": "pending",
+      "automation": "playwright",
       "fixture": "et-known-word-import.txt",
       "expect": {
-        "notes": "ET parity: kass/NOUN, koer/NOUN, maja/NOUN, raamat/NOUN, sööma/VERB."
+        "known_lemma_pos": [
+          { "lemma": "kass", "pos": "NOUN" },
+          { "lemma": "koer", "pos": "NOUN" },
+          { "lemma": "maja", "pos": "NOUN" },
+          { "lemma": "raamat", "pos": "NOUN" },
+          { "lemma": "sööma", "pos": "VERB" }
+        ],
+        "notes": "ET parity: kass/NOUN, koer/NOUN, maja/NOUN, raamat/NOUN, sööma/VERB. Covered by web/tests/first-experience-rc.spec.ts 'et journey: known-word import'."
       },
-      "notes": "ET parity for fi-known-word-import; also pending."
+      "notes": "ET parity for fi-known-word-import."
     },
     {
       "id": "fi-ambiguity-homograph",
@@ -160,7 +174,7 @@
         "lemma_pos": [
           { "lemma": "kuusi", "pos": "NUM" }
         ],
-        "notes": "Known parser limitation, asserted rather than hidden: 'kuusi' the spruce (NOUN) and 'kuusi' the number six (NUM) both surface as the bare form 'kuusi' and the parser currently collapses both occurrences into a single (kuusi, NUM) word-list entry (count=2) instead of splitting NOUN vs NUM senses. See docs/PARSER_EVAL_METHODOLOGY.md 'Ambiguity and meaning-check calibration'."
+        "notes": "Known parser limitation, asserted rather than hidden: 'kuusi' the spruce (NOUN) and 'kuusi' the number six (NUM) both surface as the bare form 'kuusi' and the parser currently collapses both occurrences into a single (kuusi, NUM) word-list entry (count=2) instead of splitting NOUN vs NUM senses. See docs/PARSER_EVAL_METHODOLOGY.md 'Ambiguity and meaning-check calibration'. UI-level coverage (Multiple possible meanings panel with >=2 candidates and the flag-only escape) is asserted by web/tests/first-experience-rc.spec.ts 'fi journey: ambiguity homograph meanings panel', driven by a mocked ambiguous_surfaces payload for this pair; candidate-selection accuracy is out of scope for that test (see web/tests/ambiguity-meanings.spec.ts for the full feature coverage)."
       },
       "notes": "Homograph case from docs/PARSER_EVAL_METHODOLOGY.md: kuusi NUM 'six' vs NOUN 'spruce'. Verified against the real custom parser 2026-07-04 — confirms the parser does not yet disambiguate; the UI should show 'Multiple possible meanings' rather than a confident Meaning Check for this pair."
     },
@@ -207,7 +221,7 @@
           { "lemma": "kuusk", "pos": "NOUN" },
           { "lemma": "kuus", "pos": "NOUN" }
         ],
-        "notes": "ET mirrors the FI 'tuli' collapse: 'tuli' NOUN 'fire' and 'tuli'/'tulla' VERB 'came/come' both surface as forms of 'tuli', and the parser resolves all occurrences to (tulema, VERB) (count=3) rather than splitting out a NOUN 'fire' sense. 'kuusk' (spruce) and 'kuus' (six) are spelled distinctly in Estonian and are NOT a homograph pair here, unlike FI 'kuusi' — included so the case documents that ET does not inherit every FI ambiguity 1:1."
+        "notes": "ET mirrors the FI 'tuli' collapse: 'tuli' NOUN 'fire' and 'tuli'/'tulla' VERB 'came/come' both surface as forms of 'tuli', and the parser resolves all occurrences to (tulema, VERB) (count=3) rather than splitting out a NOUN 'fire' sense. 'kuusk' (spruce) and 'kuus' (six) are spelled distinctly in Estonian and are NOT a homograph pair here, unlike FI 'kuusi' — included so the case documents that ET does not inherit every FI ambiguity 1:1. UI-level coverage (Multiple possible meanings panel with >=2 candidates and the flag-only escape) is asserted by web/tests/first-experience-rc.spec.ts 'et journey: ambiguity homograph meanings panel', driven by a mocked ambiguous_surfaces payload for the ET 'tuli' pair; candidate-selection accuracy is out of scope for that test."
       },
       "notes": "PARSER_EVAL_METHODOLOGY.md's kuusi/tuli/voi ambiguity slice is explicitly Finnish-first (see 'Start Finnish-first, then add Estonian parity cases'). This ET case exercises the real custom parser on Estonian sentences covering the same three concepts (spruce/six, fire/came, butter/may) and documents which collapse translates to Estonian (tuli) and which does not (kuusk vs kuus is not a collision in ET orthography). A dedicated ET-native ambiguity slice with its own homograph pairs is still pending; this fixture is a starting point, not a replacement for that work. Verified against the real custom parser 2026-07-04; TOTAL TOKENS=45."
     },
@@ -226,12 +240,12 @@
       "id": "et-parser-feedback",
       "language": "et",
       "journey": "parser-feedback",
-      "automation": "pending",
+      "automation": "playwright",
       "fixture": "et-parser-feedback.txt",
       "expect": {
-        "notes": "ET parity for the parser-feedback correction-submit flow; no ET-specific Playwright coverage exists yet."
+        "notes": "ET parity for the parser-feedback correction-submit flow: Inspect -> parse -> open 'Suggest fix' on a word -> submit -> success toast, using this manifest's ET fixture text. Covered by web/tests/first-experience-rc.spec.ts 'et journey: parser feedback correction submit'."
       },
-      "notes": "ET parity for fi-parser-feedback; pending an ET-specific Playwright case (existing coverage in parse-results.spec.ts is FI-only)."
+      "notes": "ET parity for fi-parser-feedback. The flag-only + propose-fix feedback modal works identically for ET; this case drives the same /api/parse/feedback contract as the FI case against ET text."
     }
   ]
 }
