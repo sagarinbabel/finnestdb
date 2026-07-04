@@ -35,7 +35,7 @@ const (
 // well below the signed-in ceiling (parsecore.MaxTextChars = 1,500,000) so the
 // demo stays cheap and abuse-resistant; longer texts require sign-in. Tune via
 // the 1,000-concurrent load test (see docs/GO_LIVE_CHECKLIST.md).
-const defaultAnonMaxChars = 20_000
+const defaultAnonMaxChars = 300_000
 
 type API struct {
 	store           *store.DB
@@ -73,7 +73,11 @@ type LoginResponse struct {
 }
 
 type DashboardData struct {
-	KnownCount       int `json:"known_count"`
+	KnownCount int `json:"known_count"`
+	// DueCount is cards that were already introduced (have review history)
+	// and are due now. It excludes never-introduced cards, which show up in
+	// NewCapacityToday instead — otherwise a fresh account adding starter
+	// decks reports thousands "due" before the learner has ever seen them.
 	DueCount         int `json:"due_count"`
 	NewCapacityToday int `json:"new_capacity_today"`
 	CardsInReview    int `json:"cards_in_review"`
@@ -2294,16 +2298,24 @@ func (a *API) HandleReviewNext(w http.ResponseWriter, r *http.Request) {
 	if frontText == "" {
 		frontText = card.Lemma
 	}
+	// Mode/front type only claim "sentence" when the card actually has a
+	// source sentence. Starter decks (e.g. Top-1000) attach no occurrence
+	// sentence, so those cards must render as plain word cards instead of a
+	// "Sentence card" chip over an empty example area.
+	mode := "word"
+	frontType := "word"
 	if card.SentenceText != "" {
+		mode = "sentence"
+		frontType = "sentence"
 		frontText = card.SentenceText
 	}
 
 	writeJSON(w, http.StatusOK, CardResponse{
 		CardID:     strconv.FormatInt(card.CardID, 10),
-		Mode:       "sentence",
+		Mode:       mode,
 		DeckCounts: deckCounts,
 		Front: CardFront{
-			Type:      "sentence",
+			Type:      frontType,
 			Text:      frontText,
 			Highlight: card.Surface,
 		},

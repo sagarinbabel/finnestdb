@@ -7,7 +7,7 @@ const MAX_CHARS = 1_500_000;
 // is authoritative (FINNESTDB_ANON_MAX_CHARS, default 20,000) and surfaces the
 // live value on /api/me → state.anonMaxChars; this default only applies if that
 // response is missing the field (e.g. a stale server).
-const DEFAULT_ANON_MAX_CHARS = 20_000;
+const DEFAULT_ANON_MAX_CHARS = 300_000;
 
 const POS_LABELS: Record<string, string> = {
     NOUN:  'Noun',
@@ -1509,7 +1509,7 @@ function setSigninMode(mode: SigninMode): void {
     });
     if (mode === 'register') {
         if (heading)  heading.textContent  = 'Create account';
-        if (lede)     lede.textContent     = 'Pick an email and a password (8+ characters).';
+        if (lede)     lede.textContent     = 'An account lets you save decks, upload whole EPUBs and books, track the words you already know, and review with spaced repetition. Pick an email and a password (8+ characters).';
         if (submit)   submit.textContent   = 'Create account';
         if (password) password.autocomplete = 'new-password';
     } else {
@@ -5785,13 +5785,14 @@ function renderCurrentReviewCard(): void {
     const emptyEl = document.getElementById('review-empty');
     const deckCountsEl = document.getElementById('review-card-decks');
     const exampleEl = document.getElementById('review-card-example');
+    const frontEl = document.getElementById('review-card-front');
     const frontTextEl = document.getElementById('review-card-front-text');
     const surfaceEl = document.getElementById('review-card-surface');
     const lemmaEl = document.getElementById('review-card-lemma');
     const homographEl = document.getElementById('review-card-homograph');
     const meaningEl = document.getElementById('review-card-meaning');
     const modeEl = document.getElementById('review-card-mode');
-    if (!cardEl || !emptyEl || !deckCountsEl || !exampleEl || !frontTextEl || !surfaceEl || !lemmaEl || !homographEl || !meaningEl || !modeEl) return;
+    if (!cardEl || !emptyEl || !deckCountsEl || !exampleEl || !frontEl || !frontTextEl || !surfaceEl || !lemmaEl || !homographEl || !meaningEl || !modeEl) return;
 
     const card = state.currentReviewCard;
     const hasCard = Boolean(card);
@@ -5799,8 +5800,19 @@ function renderCurrentReviewCard(): void {
     emptyEl.classList.toggle('hidden', hasCard);
     if (!card) return;
 
-    modeEl.textContent = card.mode === 'sentence' ? 'Sentence card' : 'Word card';
-    frontTextEl.textContent = card.front.text || card.back.surface || card.back.lemma;
+    // Starter decks (e.g. Top-1000) have no source sentence, so the API sends
+    // mode "word" with no front text. Hide the "Sentence card" chip and the
+    // front-text line entirely rather than showing a chip over text that just
+    // repeats the surface heading below with nothing in between.
+    const isSentenceCard = card.mode === 'sentence' && Boolean(card.front.text);
+    frontEl.classList.toggle('hidden', !isSentenceCard);
+    if (isSentenceCard) {
+        modeEl.textContent = 'Sentence card';
+        frontTextEl.textContent = card.front.text || card.back.surface || card.back.lemma;
+    } else {
+        modeEl.textContent = '';
+        frontTextEl.textContent = '';
+    }
     // Surface form is the card's primary identity; lemma/POS are supporting
     // metadata shown beneath it.
     const surface = card.back.surface || card.back.lemma;
