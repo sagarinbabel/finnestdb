@@ -3837,12 +3837,27 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     .history-header { flex-direction: column; }
     .history-row { grid-template-columns: 1fr; }
     .history-row .btn { width: 100%; }
-    .col-actions { padding-left: 0.25rem; padding-right: 0.25rem; }
+    /* Narrow the results-table columns so row + lemma + count + actions fit
+       close to a 375px viewport instead of forcing horizontal table scroll
+       just to reach the known/ignore/correction controls, which were
+       previously pinned off the right edge by a 13rem min-width carried
+       over from desktop. */
+    .col-row     { width: 2rem; }
+    .col-lemma   { width: 7.5rem; }
+    .col-count   { width: 4rem; }
+    .col-count .sort-btn { white-space: normal; }
+    .col-actions { width: 9.5rem; min-width: 9.5rem; padding-left: 0.25rem; padding-right: 0.25rem; }
     .word-actions { justify-content: flex-start; }
     .col-actions .correction-btn,
     .col-actions .word-state-btn { padding: 0.25rem 0.25rem; font-size: 0.85rem; }
     .results-meta { flex-wrap: wrap; gap: 0.5rem; }
     .modal-card { padding: 1.25rem; }
+    /* The ambiguity panel lives in a colspan cell that otherwise inherits
+       the (wider) fixed table-column widths above; clamp it to the
+       scroll container's own width so candidate rows and their actions
+       stay reachable without being clipped past the viewport edge. */
+    .ambiguity-panel { max-width: calc(100vw - 3rem); }
+    .ambiguity-candidate-actions button { min-height: 2rem; padding: 0.35rem 0.55rem; }
 }
 
 /* ============================================================
@@ -3931,7 +3946,7 @@ a {
 }
 
 .nav-logo::before {
-    content: "finnest";
+    content: "FinnEst";
     font-size: 22px;
 }
 
