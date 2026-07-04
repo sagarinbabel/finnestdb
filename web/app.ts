@@ -346,6 +346,10 @@ interface ParseSessionHistoryItem {
     id:             number;
     lang:           string;
     parser:         string;
+    // Derived-only display title (see store.DeriveTitle server-side).
+    // Parse sessions have no title column; the server computes this at read
+    // time from source text, same as the deck-save modal's prefill.
+    title:          string;
     source_preview: string;
     total_tokens:   number;
     unique_words:   number;
@@ -1960,13 +1964,17 @@ function renderHistoryPage(): void {
     list.innerHTML = sessions.map(item => {
         const lang = escapeHtml(languageName(item.lang));
         const parser = escapeHtml(item.parser || 'custom');
-        const preview = escapeHtml(item.source_preview || '(empty text)');
+        // item.title is the derived display title (store.DeriveTitle, same
+        // rule set as the deck-save modal's prefill) — it replaces the raw
+        // truncated source_preview as the row's headline so raw pastes read
+        // as cleanly here as a deliberately-named deck.
+        const title = escapeHtml(item.title || '(empty text)');
         const deckPart = `${item.deck_count.toLocaleString()} deck${item.deck_count === 1 ? '' : 's'}`;
         const feedbackPart = `${item.feedback_count.toLocaleString()} feedback item${item.feedback_count === 1 ? '' : 's'}`;
         return `<article class="history-row">
             <div class="history-row-main">
                 <p class="history-row-meta">${lang} · ${parser} · ${formatHistoryDate(item.created_at)}</p>
-                <p class="history-row-preview">${preview}</p>
+                <p class="history-row-preview">${title}</p>
                 <p class="history-row-counts">${item.total_tokens.toLocaleString()} tokens · ${item.unique_words.toLocaleString()} unique words · ${deckPart} · ${feedbackPart}</p>
             </div>
             <button type="button" class="btn btn-outline btn-sm" data-delete-parse-session="${item.id}">Delete</button>
@@ -5779,6 +5787,102 @@ function formatDeckCreatedAt(iso: string): string {
     return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+const MAX_DERIVED_TITLE_LEN = 60;
+
+// deriveTitle mirrors internal/store/titles.go's DeriveTitle: the first
+// clause/sentence of pasted text, cleaned and cut at a sentence/clause
+// boundary under MAX_DERIVED_TITLE_LEN chars. It exists so the save modal can
+// prefill a good title BEFORE the round trip to the server (better UX: the
+// learner sees and can edit the suggestion immediately). The server re-derives
+// the same way as the blank-title fallback (CreateDeckRequest.Title), so a
+// title is never required client-side and the API contract stays honest for
+// non-browser callers. Keep this in sync with DeriveTitle if the rules change.
+function deriveTitle(sourceText: string, lang: string): string {
+    const cleaned = cleanTitleSource(sourceText);
+    if (!cleaned) {
+        return lang === 'ET' ? 'Untitled Estonian text' : 'Untitled Finnish text';
+    }
+    if (isDegenerateTitleSource(cleaned)) {
+        return truncateToWordsForTitle(cleaned, 4);
+    }
+    return truncateAtClause(cleaned);
+}
+
+function cleanTitleSource(text: string): string {
+    let s = text.trim();
+    if (!s) return '';
+    const newlineIx = s.search(/[\n\r]/);
+    if (newlineIx >= 0) s = s.slice(0, newlineIx);
+    s = s.trim().replace(/^(#{1,6}\s+|[-*+]\s+|>\s+)/, '');
+    s = s.replace(/\s+/g, ' ').trim();
+    s = s.replace(/^["'“”«»*_]+|["'“”«»*_]+$/g, '');
+    return s.trim();
+}
+
+function isDegenerateTitleSource(text: string): boolean {
+    if (/^https?:\/\/\S+$/.test(text)) return true;
+    if (isDigitsOnlyTitleSource(text)) return true;
+    return text.split(/\s+/).filter(Boolean).length <= 1;
+}
+
+function isDigitsOnlyTitleSource(text: string): boolean {
+    let seenDigit = false;
+    for (const ch of text) {
+        if (/\d/.test(ch)) { seenDigit = true; continue; }
+        if (/[\s.,:-]/.test(ch)) continue;
+        return false;
+    }
+    return seenDigit;
+}
+
+function truncateToWordsForTitle(text: string, n: number): string {
+    const fields = text.split(/\s+/).filter(Boolean).slice(0, n);
+    return hardTruncateTitle(fields.join(' '));
+}
+
+// Matches a real sentence end (. ! ?), optionally followed by a closing
+// quote, followed by whitespace or end-of-string — mirrors reSentenceEnd in
+// titles.go so "example.com" isn't mistaken for a sentence boundary.
+const SENTENCE_END_RE = /[.!?]["'”’]?(\s|$)/;
+
+function truncateAtClause(text: string): string {
+    if ([...text].length <= MAX_DERIVED_TITLE_LEN) {
+        const m = SENTENCE_END_RE.exec(text);
+        if (m) return text.slice(0, m.index + 1).trim();
+        return text;
+    }
+
+    const chars = [...text];
+    const window = chars.slice(0, MAX_DERIVED_TITLE_LEN).join('');
+
+    const m = SENTENCE_END_RE.exec(window);
+    if (m) return window.slice(0, m.index + 1).trim();
+
+    const ellipsisWindow = chars.slice(0, MAX_DERIVED_TITLE_LEN - 1).join('');
+    const clauseIx = lastIndexOfAny(ellipsisWindow, ',;:');
+    if (clauseIx >= 0) return ellipsisWindow.slice(0, clauseIx).trim() + '…';
+
+    const spaceIx = ellipsisWindow.lastIndexOf(' ');
+    if (spaceIx > 0) return ellipsisWindow.slice(0, spaceIx).trim() + '…';
+
+    return ellipsisWindow.trim() + '…';
+}
+
+function lastIndexOfAny(text: string, chars: string): number {
+    let best = -1;
+    for (const ch of chars) {
+        const ix = text.lastIndexOf(ch);
+        if (ix > best) best = ix;
+    }
+    return best;
+}
+
+function hardTruncateTitle(text: string): string {
+    const chars = [...text];
+    if (chars.length <= MAX_DERIVED_TITLE_LEN) return text;
+    return chars.slice(0, MAX_DERIVED_TITLE_LEN - 1).join('').trim() + '…';
+}
+
 function renderResultsSaveState(): void {
     const cta = document.querySelector<HTMLElement>('.results-deck-cta');
     const form = document.getElementById('results-save-form');
@@ -5787,16 +5891,16 @@ function renderResultsSaveState(): void {
     if (!form || !input) return;
     form.classList.add('hidden');
     // For an EPUB import, the book title is a much better deck-name default
-    // than "Finnish: <first chars of body>". Use the results-context EPUB so
+    // than a derived first-clause title. Use the results-context EPUB so
     // a still-loaded book in another form doesn't leak into this default.
     const epub = state.resultsEpub;
     if (epub) {
         input.value = epub.bookTitle;
         return;
     }
-    const langName = state.currentResults?.lang === 'ET' ? 'Estonian' : 'Finnish';
-    input.value = state.currentTextPreview
-        ? `${langName}: ${state.currentTextPreview.slice(0, 48)}`
+    const lang = state.currentResults?.lang === 'ET' ? 'ET' : 'FI';
+    input.value = state.currentSourceText
+        ? deriveTitle(state.currentSourceText, lang)
         : '';
 }
 

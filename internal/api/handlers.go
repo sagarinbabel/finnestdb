@@ -1479,11 +1479,6 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 		return
 	}
 
-	if strings.TrimSpace(req.Title) == "" {
-		http.Error(w, "Title is required", http.StatusBadRequest)
-		return
-	}
-
 	if req.Lang != "FI" && req.Lang != "ET" {
 		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
 		return
@@ -1497,6 +1492,15 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 	if req.IsPublic && !auth.IsAdmin {
 		http.Error(w, "Admin access required to publish official decks", http.StatusForbidden)
 		return
+	}
+
+	// The save modal prefills a suggested title client-side, but a blank
+	// title must still produce a good deck name — e.g. a scripted API caller,
+	// or a user who clears the field. Derive the same way History derives its
+	// display titles so raw pastes look as good as a deliberately-named deck.
+	title := strings.TrimSpace(req.Title)
+	if title == "" {
+		title = store.DeriveTitle(req.Text, req.Lang)
 	}
 
 	// Deck creation always runs signed-in (requireAuth on this route), so it
@@ -1559,7 +1563,7 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 	// server-side ambiguity candidate set actually supports get a card.
 	a.injectSelectedSenses(sentences, req.Lang, req.SelectedSenses)
 
-	deckID, err := a.store.CreateDeckWithSentencesOptions(auth.UserID, strings.TrimSpace(req.Title), req.Lang, req.IsPublic, sentences)
+	deckID, err := a.store.CreateDeckWithSentencesOptions(auth.UserID, title, req.Lang, req.IsPublic, sentences)
 	if err != nil {
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
