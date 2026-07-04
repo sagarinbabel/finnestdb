@@ -2146,7 +2146,7 @@
       "text_length": 1690,
       "word_count": 196,
       "import_date": "2026-07-04",
-      "difficulty": "medium-hard",
+      "difficulty": "easy-medium",
       "difficulty_computed": "medium-hard",
       "metrics": {
         "token_count": 196,
@@ -2160,7 +2160,10 @@
         "mean_sentence_length": 9.3333,
         "score": 0.5848
       },
-      "difficulty_review": "pending",
+      "difficulty_review": "approved",
+      "difficulty_review_by": "sagar",
+      "difficulty_review_date": "2026-07-04",
+      "difficulty_review_note": "Easy-medium. Model score put it in the medium-hard band — the second consecutive two-band overrate on an everyday-topic article (the replaced machine-written sauna text was misjudged identically): familiar concrete topics read easier than the lexical/structural signals suggest.",
       "fixture": "fi-sauna-article.txt",
       "lemmas": [
         {
