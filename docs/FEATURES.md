@@ -62,7 +62,11 @@ The signed-in core loop is `paste -> inspect -> correct -> deck -> review`.
    from a curated embedded text. Inspect parses are ephemeral until you save a
    deck or submit parser feedback; see
    [What We Store During Alpha](#what-we-store-during-alpha).
-2. Inspect the parsed result: every unique word, its lemma, its meaning.
+2. Inspect the parsed result. It opens on the **Read** tab — the source text
+   itself, with every parsed word colored by whether you already know it,
+   already study it, or have yet to learn it. Tap a word for its meaning and to
+   mark it known, add it to study, or ignore it. A **Words** tab holds the full
+   table (every unique word, its lemma, its meaning) for scanning and export.
 3. Correct the parser if it gets a word wrong (logged-in users only).
 4. Save the parsed vocabulary as a deck.
 5. Review the deck with spaced repetition.

@@ -5093,3 +5093,245 @@ h2 {
 [data-skin="aalto"] #parse-text {
     background: var(--bg-secondary);
 }
+
+/* ============================================================
+   READING SURFACE — Read / Words tabs + the living text.
+   The Read view renders the source text with tappable, state-
+   colored word spans; Words is the existing lemma table. Token
+   colors consume the --known / --learning / --new role tokens
+   (defined under both skins), so this styling is skin-agnostic
+   with a couple of typography overrides for the Aalto voice.
+   ============================================================ */
+
+/* ── Tab bar ── */
+.results-tabs {
+    display: flex;
+    gap: 0.25rem;
+    margin: 0.75rem 0 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+.results-tabs.hidden { display: none; }
+.results-tab {
+    appearance: none;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    padding: 0.5rem 0.9rem;
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    min-height: 44px;
+}
+.results-tab:hover { color: var(--text-primary); }
+.results-tab.active {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent);
+}
+.results-tab:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* ── Read view (the living text) ── */
+.read-view { margin-top: 0.25rem; }
+.read-view.hidden { display: none; }
+
+.read-text {
+    max-width: 42rem;
+    margin: 1rem 0 2rem;
+    /* Clean readable sans under Ink; the Aalto override below switches to the
+       display serif for a book-like reading feel. */
+    font-family: var(--font-sans, inherit);
+    font-size: 1.15rem;
+    line-height: 1.7;
+    color: var(--text-primary);
+}
+[data-skin="aalto"] .read-text {
+    font-family: var(--font-disp);
+    font-size: 1.25rem;
+    line-height: 1.75;
+}
+.read-para { margin: 0 0 1.1rem; }
+.read-para:last-child { margin-bottom: 0; }
+.read-empty { color: var(--text-secondary); font-style: italic; }
+
+/* Tappable word span. Base = a "new" (unknown, no card) word gets a soft accent
+   underline; known/learning override via role tokens; ignored renders neutral
+   (uncolored) — the least-noisy treatment for a deliberately suppressed word. */
+.read-token {
+    cursor: pointer;
+    border-radius: 3px;
+    padding: 0 1px;
+    transition: background 0.08s;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+}
+.read-token:hover { background: color-mix(in srgb, var(--text-primary) 8%, transparent); }
+.read-token:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+/* new: not known, no study card — the words worth learning. */
+.read-token.is-new {
+    color: var(--new);
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--new) 45%, transparent);
+}
+/* learning: selected to study (pending review card). */
+.read-token.is-learning {
+    color: var(--learning);
+    background: color-mix(in srgb, var(--learning) 14%, transparent);
+}
+/* known: a settled word — quiet, low-emphasis. */
+.read-token.is-known {
+    color: var(--known);
+}
+/* neutral / ignored: plain body text, no coloring. */
+.read-token.is-neutral {
+    color: inherit;
+}
+/* An ambiguous surface gets a subtle dotted underline cue that it holds more
+   than one meaning behind the tap. */
+.read-token.is-ambiguous {
+    text-decoration: underline dotted;
+    text-decoration-color: color-mix(in srgb, var(--new) 60%, transparent);
+    text-underline-offset: 3px;
+}
+
+/* ── Reading popover ── */
+.read-popover-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: transparent;
+}
+.read-popover-backdrop.hidden { display: none; }
+
+.read-popover {
+    position: absolute;
+    z-index: 61;
+    width: min(22rem, calc(100vw - 2rem));
+    max-height: 70vh;
+    overflow-y: auto;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 18px 44px var(--shadow);
+    padding: 0.9rem 1rem 1rem;
+}
+.read-popover.hidden { display: none; }
+.read-popover:focus-visible { outline: none; }
+.read-popover-close {
+    position: absolute;
+    top: 0.35rem;
+    right: 0.45rem;
+    appearance: none;
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    line-height: 1;
+    color: var(--text-secondary);
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+}
+.read-popover-close:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+
+.read-pop-sense { margin-top: 0.15rem; }
+.read-pop-sense + .read-pop-sense {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+.read-pop-head { display: flex; flex-direction: column; gap: 0.15rem; padding-right: 1.5rem; }
+.read-pop-surface {
+    font-family: var(--font-disp, inherit);
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.read-pop-lemma-line {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+}
+.read-pop-gloss {
+    margin: 0.4rem 0 0.6rem;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+.read-pop-lemma { font-weight: 600; margin: 0 0 0.3rem; }
+.read-pop-empty, .read-pop-nudge {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin: 0.4rem 0 0;
+}
+.read-pop-actions {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: 0.3rem;
+}
+.read-pop-btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-radius: 999px;
+    padding: 0.4rem 0.8rem;
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 36px;
+}
+.read-pop-btn:hover:not(:disabled) { border-color: var(--accent); }
+.read-pop-btn:disabled { opacity: 0.5; cursor: default; }
+.read-pop-known.is-active {
+    background: color-mix(in srgb, var(--known) 18%, transparent);
+    border-color: var(--known);
+    color: var(--known);
+}
+.read-pop-study.is-active {
+    background: color-mix(in srgb, var(--learning) 18%, transparent);
+    border-color: var(--learning);
+    color: var(--learning);
+}
+.read-pop-ignore.is-active {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+.read-pop-hint {
+    margin: 0.5rem 0 0;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+/* Bottom sheet on narrow screens: pin to the viewport bottom, full-width,
+   scrollable, with tap targets kept >=44px. */
+@media (max-width: 440px) {
+    .read-popover {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: auto !important;
+        width: 100%;
+        max-height: 75vh;
+        border-radius: 16px 16px 0 0;
+        padding: 1.1rem 1.15rem 1.6rem;
+    }
+    .read-popover-backdrop:not(.hidden) {
+        background: color-mix(in srgb, var(--text-primary) 25%, transparent);
+    }
+    .read-pop-btn { min-height: 44px; padding: 0.55rem 1rem; }
+    .read-popover-close { width: 44px; height: 44px; }
+}

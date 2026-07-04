@@ -2,6 +2,16 @@ import { expect, test, type Page } from '@playwright/test';
 
 const mixedFinnishText = 'Viisutubettaja lauloi nopeasti. Menin pankkiin eilen.';
 
+// The results page defaults to the Read tab (the living text); the lemma table
+// now lives behind the Words tab. Tests that assert on table rows / correction
+// buttons / chapter sidebar must switch to Words first. When there's no source
+// text (deck context) the tab bar is hidden and the table shows regardless, so
+// this no-ops there.
+async function openWordsTab(page: Page): Promise<void> {
+  const tab = page.locator('#results-tab-words');
+  if (await tab.isVisible()) await tab.click();
+}
+
 type Role = 'anon' | 'user' | 'admin';
 
 interface MockMeOptions {
@@ -346,6 +356,8 @@ test('user inspect flow parses text and shows results with correction entry poin
   await expect(page.locator('#results-page')).toHaveClass(/active/);
   // Internal parser-mode terminology must be hidden from non-admin users
   await expect(page.locator('#results-parser')).toHaveText('Your text');
+
+  await openWordsTab(page);
   await expect(page.locator('#coverage-value')).toContainText('%');
 
   // User has the correction entry point
@@ -375,6 +387,7 @@ test('user can mark result rows known or ignored from inspect results', async ({
   await page.locator('#inspect-text').fill(mixedFinnishText);
   await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
+  await openWordsTab(page);
 
   const firstRow = page.locator('#word-table-body tr').first();
   await expect(firstRow.locator('.word-pill-known.is-active')).toBeVisible();
@@ -882,6 +895,7 @@ test('signing out clears prior parse results from memory and route', async ({ pa
   await page.locator('#inspect-text').fill(mixedFinnishText);
   await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
+  await openWordsTab(page);
   await expect(page.locator('.correction-btn').first()).toBeVisible();
 
   // Sign out via the desktop nav. Signout clears the cached parse (sessionStorage
@@ -913,6 +927,7 @@ test('correction submit shows error toast on backend failure', async ({ page }) 
   await page.locator('#inspect-text').fill(mixedFinnishText);
   await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
+  await openWordsTab(page);
 
   await page.locator('.correction-btn').first().click();
   await expect(page.locator('#correction-modal')).not.toHaveClass(/hidden/);
@@ -940,6 +955,7 @@ test('correction submit posts the PR-53 /api/parse/feedback contract', async ({ 
   await page.locator('#inspect-text').fill(mixedFinnishText);
   await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
+  await openWordsTab(page);
 
   await page.locator('.correction-btn').first().click();
   // Switch to the "propose a fix" path so the proposed fields are sent.
@@ -990,6 +1006,7 @@ test('flag-only path submits without a proposed correction', async ({ page }) =>
   await page.locator('#inspect-text').fill(mixedFinnishText);
   await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
+  await openWordsTab(page);
 
   await page.locator('.correction-btn').first().click();
   await expect(page.locator('#correction-modal')).not.toHaveClass(/hidden/);
@@ -1050,6 +1067,7 @@ test('correction submit without parse_id sends source text for lazy attribution'
   await page.locator('#inspect-text').fill(mixedFinnishText);
   await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
+  await openWordsTab(page);
 
   await page.locator('.correction-btn').first().click();
   await expect(page.locator('#correction-auth-hint')).toBeHidden();
@@ -1087,6 +1105,7 @@ test('mobile keeps the correction entry point visible at 375 px', async ({ page 
   await page.locator('#inspect-text').fill(mixedFinnishText);
   await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
+  await openWordsTab(page);
   await expect(page.locator('.correction-btn').first()).toBeVisible();
 });
 
@@ -1180,6 +1199,7 @@ test('epub upload sends chapters payload and chapter clicks reuse the cache', as
   await expect(page.locator('.loaded-filename').first()).toHaveText('Tiny');
   await page.getByRole('button', { name: 'Parse text' }).click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
+  await openWordsTab(page);
 
   // EXACTLY one /api/parse call so far, with chapters body (not text).
   expect(parseBodies).toHaveLength(1);

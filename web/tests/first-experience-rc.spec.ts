@@ -228,6 +228,10 @@ if (fiParserFeedbackCase.automation === 'playwright') {
     await page.locator('#inspect-text').fill(feedbackText);
     await page.getByRole('button', { name: 'Parse text' }).click();
     await expect(page.locator('#results-page')).toHaveClass(/active/);
+    // The correction entry point lives in the lemma table (Words tab); the
+    // results page now defaults to the Read tab.
+    const wordsTab = page.locator('#results-tab-words');
+    if (await wordsTab.isVisible()) await wordsTab.click();
 
     await page.locator('.correction-btn').first().click();
     await expect(page.locator('#correction-modal')).not.toHaveClass(/hidden/);

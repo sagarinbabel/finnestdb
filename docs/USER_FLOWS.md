@@ -184,6 +184,45 @@ and value grid; file upload stays a signed-in capability.
 
 ### 2. Inline results (anonymous)
 
+**Read / Words tabs (shipped 2026-07-04, reading surface).** The `/results` page
+is text-first. It opens on a **Read** tab — the *living text*: the source text
+rendered with paragraph structure preserved, in reading typography, where every
+parsed word is a tappable span colored by its learner state. A second **Words**
+tab holds the lemma table described below (its behavior is unchanged). The tab
+choice is remembered in `localStorage`. There is no Read tab in the saved-deck
+context (a saved deck carries no raw source text to render); the deck view shows
+the Words table alone with its tab bar hidden.
+
+- **Coloring.** `--new` (a word with no card and not known — the words worth
+  learning) gets a soft accent underline; `--learning` (a word selected to study
+  in this parse) gets a highlighted tint; `--known` renders quiet/low-emphasis;
+  **ignored words render neutral (uncolored)** — the least-noisy treatment for a
+  word the learner has deliberately suppressed. Coloring updates live when a
+  word's state changes from any surface (table, popover), through the same
+  `currentLemmaState` / `selectedSenses` model the table uses. Unparsed tokens
+  (punctuation, numbers, words the parser didn't attach) are plain text.
+- **Tap popover.** Tapping a word opens a small anchored popover with surface,
+  lemma, POS, and gloss, plus **Known** / **Study** / **Ignore** actions wired
+  to the existing endpoints. "Study" in an unsaved parse marks the pending
+  deck-save selection with the same copy as the chip flow ("Creates a review
+  card when you save."). For an **ambiguous surface** the popover shows the same
+  **Multiple possible meanings** candidate list + per-candidate actions + "None
+  of these looks right" flag-only escape as the Words-tab chip — the same code,
+  not a reimplementation. One popover at a time; ESC / tap-outside closes; it is
+  keyboard-focusable. On a 375px viewport the popover becomes a scrollable bottom
+  sheet with ≥44px tap targets.
+- **Anonymous.** The Read tab renders for anonymous parses too, in neutral
+  coloring (no learner state exists); its popover shows the gloss with a sign-in
+  nudge instead of durable actions, consistent with the stateless demo.
+- **Coverage reveal placement.** The animated coverage reveal (aha #1) is
+  re-homed to the top of the Read tab. The compact coverage gauge stays in the
+  shared summary above both tabs, so the Words tab keeps the gauge it had before
+  the reveal.
+
+The historical table spec follows. The shared summary (parser pill, compact
+coverage gauge, stats, save-as-deck CTA) and the anonymous sign-up ribbon +
+privacy footer sit above the tabs, so save works identically from either tab.
+
 Status: shipped 2026-07-04. The `/results` page is now reachable anonymously and
 reuses the same table for anonymous and signed-in visitors. Anonymous results
 show a dismissible **sign-up ribbon at the top** (reappears on the next parse)
