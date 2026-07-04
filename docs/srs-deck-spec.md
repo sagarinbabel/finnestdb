@@ -504,6 +504,15 @@ include the quarantined rows with their correction-issue metadata.
 > - **Token identity is a position, not a row.** Multi-lemma homonym expansion
 >   stores one occurrence row per candidate; a token position counts as covered
 >   when ANY of its candidates is known.
+> - **Deck expansion stays dictionary-driven.** The candidates a deck save
+>   expands come from `store.BatchLookupAllForms` (dict-only, filtered by
+>   `filterLowValueAlternatives`), so deck word counts are stable and cards are
+>   well-glossed. The FST-known homograph senses merged for the meaning-check
+>   candidate set (2026-07-04, parser `2026.05.15b`;
+>   `BatchLookupAllFormsWithOptions{MergeFSTReadings}`) are deliberately gated
+>   off this path — they raise ambiguity offerability without inflating decks
+>   with no-gloss or inflectional-form cards. See
+>   [`FEATURES.md`](FEATURES.md) "Words With Multiple Senses".
 > - **Coverage is lemma-level** for v1; form-level display is a possible later
 >   toggle.
 

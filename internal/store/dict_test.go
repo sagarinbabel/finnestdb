@@ -350,6 +350,170 @@ func TestBatchLookupAllForms_FI_NoFSTKeepsFilteredDict(t *testing.T) {
 	}
 }
 
+// --- BatchLookupAllFormsWithOptions{MergeFSTReadings} tests ---
+
+// TestBatchLookupAllForms_MergeFST_OffersHomographSecondSense is the
+// regression test for the FI candidate-inclusion gap: kaikki's `forms`
+// table stores only ONE reading per cross-POS homograph surface
+// (kuusi→NUM only), so the second sense (kuusi/NOUN "spruce") was never
+// offerable. With MergeFSTReadings the FST-known NOUN reading merges in,
+// so BOTH senses of kuusi become offerable for the meaning-check UI —
+// while the default (deck) path stays dict-only.
+func TestBatchLookupAllForms_MergeFST_OffersHomographSecondSense(t *testing.T) {
+	// Mirror production: dict has kuusi/NUM only; the FST knows both the
+	// NOUN "spruce" reading and the NUM "six" reading (emission order is a
+	// priority signal — NOUN emitted before NUM here).
+	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
+		"kuusi": {
+			{Lemma: "kuusi", UPOS: "NOUN", Feats: "Number=Sing", Raw: "generated-table"},
+			{Lemma: "kuusi", UPOS: "NUM", Feats: "NumType=Card|Number=Sing", Raw: "generated-table"},
+		},
+	})
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"kuusi", "kuusi", "NUM", "FI"}, // kaikki's single stored reading
+	})
+
+	// Default path (deck expansion) stays dict-only: only NUM offered.
+	deck := db.BatchLookupAllForms([]string{"kuusi"}, "FI", "custom")["kuusi"]
+	if len(deck) != 1 || deck[0].POS != "NUM" {
+		t.Fatalf("default BatchLookupAllForms: got %+v, want only kuusi/NUM (deck path stays dict-only)", deck)
+	}
+
+	// Ambiguity path merges the FST NOUN reading so both senses are offerable.
+	cands := db.BatchLookupAllFormsWithOptions(
+		[]string{"kuusi"}, "FI", "custom", AllFormsOptions{MergeFSTReadings: true},
+	)["kuusi"]
+	if len(cands) != 2 {
+		t.Fatalf("MergeFSTReadings kuusi: got %d candidates, want 2 (NUM + NOUN): %+v", len(cands), cands)
+	}
+	// Ordering: authoritative dict candidate first, FST-only reading appended.
+	if cands[0].Lemma != "kuusi" || cands[0].POS != "NUM" || cands[0].Source != "dict" {
+		t.Errorf("kuusi[0]: got %+v, want dict kuusi/NUM first", cands[0])
+	}
+	if cands[1].Lemma != "kuusi" || cands[1].POS != "NOUN" || cands[1].Source != "fst" {
+		t.Errorf("kuusi[1]: got %+v, want FST kuusi/NOUN appended", cands[1])
+	}
+}
+
+// TestBatchLookupAllForms_MergeFST_DedupesAgainstDict proves a corroborating
+// FST reading (same lemma+POS as a dict row) is never double-listed, and the
+// dict candidate keeps its authoritative position and source tag.
+func TestBatchLookupAllForms_MergeFST_DedupesAgainstDict(t *testing.T) {
+	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
+		"tuli": {
+			{Lemma: "tuli", UPOS: "NOUN", Feats: "Number=Sing", Raw: "generated-table"},
+			// FST re-emits the verb reading the dict already has: must dedupe.
+			{Lemma: "tulla", UPOS: "VERB", Feats: "Mood=Ind|Tense=Past|VerbForm=Fin", Raw: "generated-table"},
+		},
+	})
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"tuli", "tulla", "VERB", "FI"}, // kaikki's single stored reading (verb)
+	})
+
+	cands := db.BatchLookupAllFormsWithOptions(
+		[]string{"tuli"}, "FI", "custom", AllFormsOptions{MergeFSTReadings: true},
+	)["tuli"]
+	if len(cands) != 2 {
+		t.Fatalf("tuli: got %d candidates, want 2 (tulla/VERB dict + tuli/NOUN fst): %+v", len(cands), cands)
+	}
+	if cands[0].Lemma != "tulla" || cands[0].POS != "VERB" || cands[0].Source != "dict" {
+		t.Errorf("tuli[0]: got %+v, want dict tulla/VERB (deduped, not re-listed by FST)", cands[0])
+	}
+	if cands[1].Lemma != "tuli" || cands[1].POS != "NOUN" || cands[1].Source != "fst" {
+		t.Errorf("tuli[1]: got %+v, want FST tuli/NOUN appended", cands[1])
+	}
+}
+
+// TestBatchLookupAllForms_MergeFST_FSTOnlyCandidateShape proves an FST-only
+// candidate is offerable with lemma+POS even when the dict has no matching
+// row, and carries the FST source + FEATS so a consumer with no dict gloss can
+// still render it.
+func TestBatchLookupAllForms_MergeFST_FSTOnlyCandidateShape(t *testing.T) {
+	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
+		"voi": {
+			{Lemma: "voi", UPOS: "NOUN", Feats: "Number=Sing", Raw: "generated-table"},
+			{Lemma: "voida", UPOS: "VERB", Feats: "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act", Raw: "generated-table"},
+		},
+	})
+	db := newTestDB(t)
+	seedForms(t, db, [][4]string{
+		{"voi", "voi", "NOUN", "FI"}, // dict has the noun only
+	})
+
+	cands := db.BatchLookupAllFormsWithOptions(
+		[]string{"voi"}, "FI", "custom", AllFormsOptions{MergeFSTReadings: true},
+	)["voi"]
+	var verb *FormResolution
+	for i := range cands {
+		if cands[i].Lemma == "voida" && cands[i].POS == "VERB" {
+			verb = &cands[i]
+		}
+	}
+	if verb == nil {
+		t.Fatalf("voi: FST-only voida/VERB missing from %+v", cands)
+	}
+	if verb.Source != "fst" {
+		t.Errorf("voida/VERB: source %q, want \"fst\"", verb.Source)
+	}
+	if verb.Feats == "" {
+		t.Errorf("voida/VERB: want non-empty FEATS for renderability, got empty")
+	}
+}
+
+// TestBatchLookupAllForms_MergeFST_RespectsBadLemmaBlocklist proves the FST
+// merge is subject to the same lemma-quality guard as the dict branch: a
+// known-bad FST lemma cannot enter the candidate set.
+func TestBatchLookupAllForms_MergeFST_RespectsBadLemmaBlocklist(t *testing.T) {
+	// "poli" is an always-bad FI lemma (see TestBatchLookupAllForms_FiltersBadDictLemmas).
+	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
+		"poliisissa": {
+			{Lemma: "poliisi", UPOS: "NOUN", Feats: "Case=Ine|Number=Sing", Raw: "generated-table"},
+			{Lemma: "poli", UPOS: "NOUN", Feats: "Case=Ine|Number=Sing", Raw: "generated-table"},
+		},
+	})
+	db := newTestDB(t)
+	// No dict rows for the surface; the FST supplies both readings.
+	cands := db.BatchLookupAllFormsWithOptions(
+		[]string{"poliisissa"}, "FI", "custom", AllFormsOptions{MergeFSTReadings: true},
+	)["poliisissa"]
+	for _, c := range cands {
+		if c.Lemma == "poli" {
+			t.Errorf("poliisissa: bad lemma 'poli' leaked into FST-merged candidates: %+v", cands)
+		}
+	}
+	if len(cands) != 1 || cands[0].Lemma != "poliisi" {
+		t.Fatalf("poliisissa: got %+v, want only poliisi/NOUN (bad 'poli' blocked)", cands)
+	}
+}
+
+// TestBatchLookupAllForms_MergeFST_OverrideStillAuthoritative proves an
+// accepted custom-override still short-circuits: it suppresses lower-priority
+// readings and the FST merge does not dilute it.
+func TestBatchLookupAllForms_MergeFST_OverrideStillAuthoritative(t *testing.T) {
+	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
+		"tuli": {
+			{Lemma: "tuli", UPOS: "NOUN", Feats: "Number=Sing", Raw: "generated-table"},
+			{Lemma: "tulla", UPOS: "VERB", Feats: "Mood=Ind|Tense=Past|VerbForm=Fin", Raw: "generated-table"},
+		},
+	})
+	db := newTestDB(t)
+	seedFormsWithSource(t, db, []struct {
+		form, lemma, pos, lang, source string
+		priority                       int
+	}{
+		{"tuli", "tulla", "VERB", "FI", SourceCustomOverrides, CustomOverridesSourcePriority},
+	})
+
+	cands := db.BatchLookupAllFormsWithOptions(
+		[]string{"tuli"}, "FI", "custom", AllFormsOptions{MergeFSTReadings: true},
+	)["tuli"]
+	if len(cands) != 1 || cands[0].Lemma != "tulla" || cands[0].POS != "VERB" {
+		t.Fatalf("tuli with accepted override: got %+v, want only override tulla/VERB (FST merge suppressed)", cands)
+	}
+}
+
 func TestBatchLookupAllForms_LexOverlaySuppressesRawDictTrapsInCustomMode(t *testing.T) {
 	db := newTestDB(t)
 	seedForms(t, db, [][4]string{

@@ -129,6 +129,20 @@ If the dictionary has no entry for a word, the parser's single best guess
 is used and only one card is created. The dictionary is only authoritative
 about ambiguity when it actually knows the word.
 
+**Deck expansion vs. the meaning-check candidate set.** Two candidate views
+exist and are deliberately kept separate. The **deck / import expansion** path
+(the word counts and cards above) stays dictionary-driven, so saving a deck
+creates a stable, well-glossed set of cards. The **meaning-check** candidate set
+(the **Multiple possible meanings** flow) additionally merges FST-known
+homograph readings the dictionary's form table omits — the classic Finnish
+cross-POS homographs `kuusi` (NOUN spruce / NUM six), `tuli` (NOUN fire /
+`tulla` VERB), and `voi` (NOUN butter / `voida` VERB) each store only one
+reading in the imported dictionary, so their second sense would otherwise be
+unofferable. Merging these FST senses raised measured FI ambiguity candidate
+inclusion from 72.9% to 95.8% (see
+[`PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) §Ambiguity) without
+changing deck word counts.
+
 ## Progress Tracking
 
 You can see, across the whole app:

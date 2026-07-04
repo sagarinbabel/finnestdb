@@ -64,6 +64,57 @@ committed run.
 
 ## Entries
 
+### 2026-05-15b — FI candidate-inclusion gap closed: FST-merged ambiguity candidate set
+
+**Parser stamp**: `2026.05.15b`
+**Scope**: `internal/store/` (`BatchLookupAllFormsWithOptions`, `mergeFSTOnlyCandidates`), `cmd/ambiguityeval`, `testdata/parser-eval/*-ambiguity`
+
+Closes the FI candidate-inclusion gap identified in the ambiguity eval
+slice (`docs/PARSER_EVAL_METHODOLOGY.md` §Ambiguity). kaikki's `forms`
+table stores only one reading per cross-POS homograph surface
+(`kuusi`→NUM only, `tuli`→VERB only, `voi`→NOUN only), so the second
+sense was never offerable in the candidate set even though the FST knows
+it. The single-pick path (`BatchLookupForms`) already merged dict+FST via
+`mergeAndRankDictFSTCandidates`; the candidate-set path
+(`BatchLookupAllForms`) was dict-only.
+
+**What changed:**
+
+1. New `store.BatchLookupAllFormsWithOptions(..., AllFormsOptions{MergeFSTReadings})`.
+   When enabled, FST-known `(lemma, POS)` readings the `forms` table omits
+   are appended to the candidate list, deduped by `(lemma, POS)` against
+   dict rows and ranked BELOW authoritative dict/override candidates
+   (source-priority model). FST emission order is preserved (a priority
+   signal — never re-sorted). Same bad-lemma and case-compat guards as the
+   dict branch. FI-only; ET inclusion is already complete via Ekilex.
+2. `cmd/ambiguityeval` now measures the merged candidate set; the deck /
+   import expansion path (`handleCreateDeck`, `/api/parse`) keeps calling
+   the dict-only `BatchLookupAllForms`, so learner-facing deck word counts
+   are unchanged. FST-only readings are gated to the ambiguity /
+   meaning-check path by design (see `AllFormsOptions.MergeFSTReadings`).
+
+**Measured (production DB + FST tables):**
+
+- FI ambiguity **candidate inclusion 35/48 → 46/48 (72.9% → 95.8%)**.
+  Classes `kuusi`, `tuli`, `voi`, `palaa`, `alusta` go to 100% inclusion;
+  `tie` reaches 2/2. Remaining misses: `sanoin` (FST emits one reading)
+  and `lääkärikäynti` (compound, no FST analysis) — both genuinely
+  unreachable by FST-merge, not special-cased.
+- FI ambiguity **selection accuracy 34/48 = 70.8% (unchanged)** — this is
+  an inclusion change, not a ranking change.
+- FI + ET **headline baselines byte-identical** (accuracy columns) — the
+  headline `parsecore.Analyze` path is untouched.
+
+**Verification:**
+
+- `make compare-ambiguity` (before/after), `make compare-parsers` +
+  `make compare-parsers-et` (stash-diff, accuracy identical),
+  `go test ./... -count=1`, `go vet ./...`.
+
+**No new freeze yet.** Parser stamp moves to `2026.05.15b`; the headline
+baselines are byte-stable, and the ambiguity slice freeze stays a
+maintainer action per `docs/baselines/README.md`.
+
 ### 2026-05-15a — FI manual-card trap promotions: `sanoin`, `Maria`, `Norjan`
 
 **Parser stamp**: `2026.05.15a`

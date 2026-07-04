@@ -408,13 +408,28 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
             extension (`YYYY-MM-DD<rev>-fi-ambiguity`) is documented in
             `docs/baselines/README.md` but the actual freeze stays a maintainer
             action, as instructed — no frozen baseline is committed by this PR.
-      - [ ] **Close the FI candidate-inclusion gap** (M): merge FST-known
+      - [x] **Close the FI candidate-inclusion gap** (M): merge FST-known
             readings into `store.BatchLookupAllForms` (or a candidate-set path the
             product's Multi-Lemma expansion consumes) so `kuusi`/`tuli`/`voi`
             second sense becomes offerable. Gated behind the eval slice: re-run
             `make compare-ambiguity` and keep only justified gains. Do NOT extend
             the frozen suffix tables (DECISIONS.md Decision 5); this is FST-merge
             + candidate-API work.
+            (M — done) Shipped as `store.BatchLookupAllFormsWithOptions(...,
+            AllFormsOptions{MergeFSTReadings: true})`: FST-known homograph readings
+            the `forms` table omits are appended to the candidate set, deduped by
+            `(lemma, POS)` against dict rows and ranked below authoritative
+            dict/override candidates (source-priority model), analyzer emission
+            order preserved. `cmd/ambiguityeval` uses it. **FI ambiguity candidate
+            inclusion 35/48 → 46/48 (72.9% → 95.8%); selection accuracy unchanged
+            at 34/48 = 70.8%.** Classes `kuusi`/`tuli`/`voi`/`palaa`/`alusta` reach
+            100% inclusion (`tie` → 2/2). The two remaining misses (`sanoin`,
+            `lääkärikäynti` compound) are genuinely outside the FST-merge
+            mechanism and not special-cased. FI + ET headline baselines byte-stable
+            (accuracy columns; only timing noise differs). The merge is gated OFF
+            the deck / import expansion path (still dict-only
+            `BatchLookupAllForms`), so learner-facing deck word counts are
+            unchanged. Parser stamp `2026.05.15a` → `2026.05.15b`.
       - [ ] **Expand + freeze** (M): raise per-class case counts to N ≥ 4
             (≥ 2/sense) so control classes become threshold-eligible; expand ET to
             ~20-30 cases; freeze the first formal ambiguity baseline and record it

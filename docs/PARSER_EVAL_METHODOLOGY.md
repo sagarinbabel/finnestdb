@@ -306,6 +306,35 @@ No FI or ET class meets the §4 threshold on this run (unchanged from §3/§5's
 conclusion): every class is either below N=4, below 100% candidate inclusion,
 or below 90% selection accuracy.
 
+**FI candidate-inclusion gap closed 2026-07-04 (parser `2026.05.15b`).** The
+FST-known homograph readings that kaikki's `forms` table omits are now merged
+into the ambiguity candidate set via
+`store.BatchLookupAllFormsWithOptions(..., AllFormsOptions{MergeFSTReadings: true})`,
+which `cmd/ambiguityeval` uses. FST readings are deduped by `(lemma, POS)` and
+ranked below authoritative dict/override candidates (source-priority model),
+with the analyzer's emission order preserved. Measured against the production
+DB + FST tables:
+
+- **FI**: candidate inclusion **35/48 → 46/48 (72.9% → 95.8%)**; selection
+  accuracy **34/48 = 70.8% (unchanged)**. This is an *inclusion* change, not a
+  ranking change — the single-pick `parsecore.Analyze` path is untouched, so
+  the FI + ET headline baselines are byte-stable on all accuracy columns.
+- Classes now at 100% inclusion: `kuusi`, `tuli`, `voi`, `palaa`, `alusta`
+  (`tie` reaches 2/2). The two remaining FI misses are `sanoin` (the FST emits
+  only the `sanoa/VERB` reading, so `sana/NOUN` "with words" stays unreachable)
+  and `lääkärikäynti` (a compound the FST returns no analysis for) — both
+  genuinely outside the FST-merge mechanism and deliberately *not* special-cased.
+- The proxy-stratified table now populates the `multi` and `dict_fst_agree`
+  buckets (previously every FI target was `single` because the candidate set
+  had exactly one reading), which is the calibration signal §4's threshold rule
+  consumes.
+
+The merge is gated to the ambiguity / meaning-check path: the deck / import
+expansion path (`handleCreateDeck`, `/api/parse`) keeps calling the dict-only
+`BatchLookupAllForms`, so learner-facing deck word counts are unchanged. The
+still-open work is §4's threshold promotion (raise N ≥ 4 per class, expand ET),
+now that inclusion is no longer the FI blocker.
+
 ## What we measure
 
 Per dataset, per parser, on **non-PUNCT tokens** that the gold answer marks for

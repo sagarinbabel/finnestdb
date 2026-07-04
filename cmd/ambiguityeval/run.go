@@ -10,9 +10,11 @@ import (
 // EvaluateDataset runs one ambiguity gold dataset against the "custom"
 // parser and returns one CaseResult per case, in gold-file order. For each
 // case it runs parsecore.Analyze for the single pick and
-// store.BatchLookupAllForms for the candidate set on the target surface —
-// exactly the dict-candidate list that powers Multi-Lemma Surface expansion
-// (internal/api/handlers.go::expandTokenLemmas), per the spec.
+// store.BatchLookupAllFormsWithOptions (MergeFSTReadings) for the candidate
+// set on the target surface — the dict candidates the Multi-Lemma Surface
+// expansion offers, plus the FST-known homograph readings kaikki's `forms`
+// table omits, which is the candidate set the "Multiple possible meanings"
+// meaning-check UI needs (see PARSER_EVAL_METHODOLOGY.md §Ambiguity).
 func EvaluateDataset(db *store.DB, dataset *Dataset) ([]CaseResult, error) {
 	results := make([]CaseResult, 0, len(dataset.Cases))
 	for _, c := range dataset.Cases {
@@ -42,7 +44,12 @@ func evaluateCase(db *store.DB, lang string, c Case) (CaseResult, error) {
 	}
 	pick, found := findOccurrence(parsed.Sentences, target.Surface, occurrence)
 
-	candSet := db.BatchLookupAllForms([]string{target.Surface}, lang, "custom")
+	// Measure the ambiguity / meaning-check candidate set: dict candidates
+	// merged with FST-known homograph readings the `forms` table omits. This
+	// is the inclusion lever the "Multiple possible meanings" UI depends on;
+	// the deck-expansion path deliberately stays dict-only (see
+	// store.AllFormsOptions.MergeFSTReadings).
+	candSet := db.BatchLookupAllFormsWithOptions([]string{target.Surface}, lang, "custom", store.AllFormsOptions{MergeFSTReadings: true})
 	candidates := dedupeCandidates(candSet[target.Surface])
 
 	result := CaseResult{
