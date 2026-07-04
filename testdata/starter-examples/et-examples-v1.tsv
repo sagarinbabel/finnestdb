@@ -1,0 +1,1428 @@
+lemma	pos	form	sentence	source_corpus
+olema	VERB	oli	Aga väljas oli liiga külm.	et
+olema	VERB	pole	Ei, neil pole tütart, aga neil on poeg.	et
+ma	PRON	minust	Mu vend on minust vanem.	et
+ma	PRON	minu	Aga minu toit ei maitse hästi.	et
+see	PRON	seda	Ei, ta ei kontrolli seda kõigepealt.	et
+see	PRON	selles	See on nende esimene kord selles restoranis ja nad otsustavad, mida süüa.	et
+tema	PRON	Ta	Ta nägi kaks kuusekäbi maas.	et
+sa	PRON	sulle	Su vanemad ütlesid sulle, et sa pead ülikooli minema.	et
+sa	PRON	Sinul	Kas Sinul tuleb midagi taolist ette?	et
+mis	PRON	mida	Ta on närvis ja mõtleb, mida osta.	et
+mis	PRON	Millega	Millega nad veel aitasid?	et
+meie	PRON	me	My teachers like me a lot.	et
+meie	PRON	Me	Me aitame üksteist kodutööde tegemisel.	et
+saama	VERB	saaksime	Ta tõi oma poja täna meie majja, et saaksime temaga esimest korda kohtuda.	et
+saama	VERB	saaksin	Ma ostan piletid homme, et ma saaksin ka kontserdile minna.	et
+tegema	VERB	teeksin	Mu ülemus ütles mulle, et on väga tähtis, et ma teeksin head tööd.	et
+tegema	VERB	tehku	Ise tehku, mida heaks arvab.	et
+minema	VERB	läheksin	Mu sõber tahtis, et ma tema peole läheksin.	et
+minema	VERB	läheks	Leo sõber tahab, et ta tema peole läheks.	et
+teadma	VERB	teadnud	Kuid me ei teadnud, millist nime lapsele anda.	et
+teadma	VERB	teavad	Kas nad teavad, millist nime lapsele anda?	et
+kõik	PRON	kõiki	Ta kavatses pärast reisi kõiki oma pilte internetis näidata.	et
+kõik	PRON	kõige	Toomasele on Itaalia toit alati kõige rohkem meeldinud.	et
+tahtma	VERB	tahtnud	Ei, ta ei tahtnud hiljaks jääda.	et
+tahtma	VERB	tahtsin	Ma tahtsin minna filmi vaatama.	et
+tulema	VERB	tulemas	Täna ütles treener talle, et tulemas on võistlus.	et
+tulema	VERB	tulen	Ma tulen töölt koju.	et
+ta	PRON	temaga	Ta tõi oma poja täna meie majja, et saaksime temaga esimest korda kohtuda.	et
+ta	PRON	talle	Jah, talle meeldib kool.	et
+pidama	VERB	pidin	Ma pidin tööle minema.	et
+pidama	VERB	pidanud	Ta oleks pidanud piletid ostma, et ta saaks minna.	et
+teie	PRON	Te	Te olite tahtnud osta uut kodu, sest teie kaks last olid saanud vanemaks.	et
+ütlema	VERB	ütlesid	Mu vanemad ütlesid mulle, et ma pean ülikooli minema.	et
+ütlema	VERB	ütlesin	Ma ütlesin arstile, kuidas ma end tunnen.	et
+omama	VERB	omage	Ja jumala eest ärge omage kodus sularaha.	et
+omama	VERB	omada	Nad mõtlesid ühel hetkel kodu üürida, kuid tundsid, et tahavad ikkagi oma kodu omada.	et
+võima	VERB	võimal	Kas tead, et on võimal...	et
+võima	VERB	võiksin	Mida nad ütlesid, et ma võiksin saada?	et
+nii	ADV	Niina	Niina Murdvee) ning tegeleb aktiivselt ka heliloominguga.	et
+kes	PRON	kellel	Sel hetkel oli mul hea meel olla vanem naine, kellel on täiskasvanud lapsed.	et
+kes	PRON	Kelle	Kelle üle sa mõtled?	et
+miski	PRON	millegisse	Pigem tuleks seda vaadata suhtes millegisse.	et
+miski	PRON	miskiks	Seda teadvustades pole ohtu, et hakkad end miskiks eriliseks või väljavalituks pidama.	et
+nemad	PRON	nad	Jah, nad on väsinud.	et
+nemad	PRON	Nad	Nad räägivad palju erinevaid keeli.	et
+nägema	VERB	näe	Ei, ta ei näe musta arvutit.	et
+nägema	VERB	nägin	Ma arvasin, et ma nägin oma uues ülikonnas hea välja.	et
+mina	PRON	Ma	Ma joon vett iga hommik.	et
+rääkima	VERB	rääkisid	Mida mu vanemad mulle rääkisid?	et
+rääkima	VERB	räägime	Me räägime sellest iga päev koolis.	et
+mull	NOUN	mullideta	Tohtri sõnul ei kõlba pohmellirohuks kurgisoolvesi, vaid ohtras koguses mullideta vesi.	et
+mull	NOUN	Mulle	Mulle meeldib kool väga.	et
+hea	ADJ	head	Ja ta tahab head klaviatuuri.	et
+hea	ADJ	heasse	Eduühiskonnas tähendab heasse kooli pääsemine helge tuleviku kindlustamist.	et
+arvama	VERB	arvasite	Mis te siis arvasite.	et
+arvama	VERB	arvasin	Ma arvasin, et ma nägin oma uues ülikonnas hea välja.	et
+võtma	VERB	võta	Ja ta ei võta kaalus nii kergelt alla kui varem.	et
+võtma	VERB	võtad	Sa jätad tihti oma vihmavarju kuhugi maha, kui sa selle kaasa võtad.	et
+te	PRON	teieta	Ilma teieta poleks me siin.	et
+te	PRON	Teieni	Kuidas need Teieni tulevad?	et
+üks	NUM	ühe	Nad on väga põnevil, et saavad veel ühe lapse.	et
+aeg	NOUN	ajast	Kuigi tal on veel natuke aega enda jaoks, läheb suurem osa tema ajast õppimiseks.	et
+aeg	NOUN	aega	Talvel on tal veidi vaba aega.	et
+mina	NOUN	minade	Kas sulle meeldib selline seesmine kooslus või käib erinevate minade vahel vaidlus?	et
+vaatama	VERB	vaadanud	Kuhu ta on vaadanud?	et
+vaatama	VERB	vaatab	Nende poeg vaatab ka telekat.	et
+nad	PRON	neil	Kas neil on tütar?	et
+nad	PRON	nende	Kas nende poeg vaatab telekat?	et
+küll	NOUN	Küllaga	Küllaga oli tal aga empaatiavõimet teiste suhtes.	et
+andma	VERB	antagu	Kui selliseid on, antagu tuld!	et
+andma	VERB	anda	Kuid nad ei tea, millist nime lapsele anda.	et
+tänama	VERB	tänanud	Ma olen tänanud mitu korda, ma olen tänulik ka praegu.	et
+tänama	VERB	tänasime	Hostelis teenindas meid meeldivalt armeenlaste noorpere, keda järgmisel päeval pärast hommikusööki samuti lauluga tänasime.	et
+me	PRON	meile	Meie vanemad andsid meile mõned ideed.	et
+me	PRON	meiega	Meie poeg sööb koos meiega õhtusööki.	et
+kuu	NOUN	kuid	Jane loeb raamatut, kuid jääb magama.	et
+kuu	NOUN	kuul	Ta lõpetab ülikooli sel kuul.	et
+kuulma	VERB	kuuldakse	Kes karjub kõige kõvemini, seda kuuldakse.	et
+kuulma	VERB	kuulvat	Kuula helifaili ja lohista selle peale selle tuntud inimese pilt, keda arvasid kuulvat.	et
+mees	NOUN	mees-	Võitlev feminist – olgu mees- või naissoost – ei tohiks unustada huumorit.	et
+mees	NOUN	mehist	Sellist mehist ja intelligentset, mahuka, kuid mitte iialgi forsseeriva maneeriga baritoni oli nauding kuulata.	et
+vajama	VERB	vaja	Aga mul on vaja uut arvutit.	et
+vajama	VERB	vajab	Kuid ta vajab uut arvutit.	et
+pea	ADV	pead	Su vanemad ütlesid sulle, et sa pead ülikooli minema.	et
+pea	ADV	peaks	Õpetaja ütleb talle, et ta peaks hüppama.	et
+tee	NOUN	teeks	Tema boss ütles talle, et on väga tähtis, et ta teeks head tööd.	et
+tee	NOUN	teed	Kas Mike joob teed?	et
+keegi	PRON	Kedagi	Kedagi võimsat, karvast, jõulist, kartmatut.	et
+paluma	VERB	palun	Tule kohe siia, palun.	et
+paluma	VERB	palutud	Miks tema peab olema jälle see, kes palutud asja ära tegi või järgi andis?	et
+jääma	VERB	jään	Ma loen raamatut, kuid jään magama.	et
+jääma	VERB	jäävad	Alles jäävad vaid mõned piletid.	et
+siig	NOUN	siia	Tule kohe siia, palun.	et
+siig	NOUN	Siia	Siia tuleks lisada ka nn külma sõja lõpetamine ja Nõukogude Liidu laiali laskmine.	et
+inimene	NOUN	inimesi	Maanteel on iga päev liiga palju inimesi.	et
+inimene	NOUN	inimesega	Nad olid tahtnud ühel päeval kohtuda kuulsa inimesega.	et
+kord	NOUN	korraga	Bussid ei sõida enam ja sajad inimesed üritavad korraga lahkuda.	et
+kord	NOUN	korda	Toomas otsustas esimest korda Tai toitu süüa.	et
+leidma	VERB	leidsin	Ma leidsin, et on kasulik olla sõber nendega, kes ei joonud üldse.	et
+leidma	VERB	leidsid	Sa leidsid, et on kasulik omada sõpru, kes ei joonud üldse.	et
+mõtlema	VERB	mõelda	Võib-olla, kui ta saab magada, saab ta selle homme välja mõelda.	et
+mõtlema	VERB	mõtlesime	Millest me ühel hetkel mõtlesime?	et
+laskma	VERB	laskem	Ärgem laskem teda sisse.	et
+laskma	VERB	lasite	Te lasite käest võimaluse näha harukordset, ütleksin isegi et ainukordset ilu.	et
+asi	NOUN	asja	Ta teeb iga päev sama asja.	et
+asi	NOUN	asjal	Igal asjal on oma hind.	et
+tundma	VERB	tundnud	Ma ei tundnud end hästi.	et
+tundma	VERB	tundsin	Ma tundsin, et kui ma seda teeksin, saaksin ehk magada.	et
+hakkama	VERB	hakkas	Ta hakkas pileteid internetist otsima.	et
+hakkama	VERB	hakkavad	Kus Peep ja ta vend elama hakkavad?	et
+isa	NOUN	Isani	Ban Khori viipekeel( kasutatakse Isani piirkonnas Tais).	et
+isa	NOUN	Isale	Isale ei meeldinud rääkida minevikust.	et
+meil	NOUN	meilist	Piisas meilist justitsministeeriumile ja selgus oligi käes.	et
+ise	PRON	enda	Kuigi tal on veel natuke aega enda jaoks, läheb suurem osa tema ajast õppimiseks.	et
+ema	NOUN	emadele	Seda tuleb seletada muide ka emadele.	et
+ema	NOUN	emad	Veel praegugi on paljud läti emad igal õhtul oma kadunud poegade kojunaasmise ootel.	et
+ainu	NOUN	ainult	Ei, mitte kõik kliendid, ainult mõned kliendid on sõbralikud.	et
+neid	NOUN	neiuga	Mõjus nii hästi, et isegi poolik pudel jäeti meile neiuga alles.	et
+neid	NOUN	Neiul	Neiul oli seljas lühike seelik, mis põlved paljaks jättis.	et
+kurat	NOUN	kuradis	Milles kuradis asi on?	et
+kurat	NOUN	Kuradist	Ajapikku saab Kuradist kättemaksja.	et
+meeldima	VERB	meeldisime	Tahaksin talle kirjutada, et kohtusime ja meeldisime teineteisele väga.	et
+meeldima	VERB	meeldinud	Toomasele on Itaalia toit alati kõige rohkem meeldinud.	et
+käsi	NOUN	Käeks	Meest kutsuti Mustaks Käeks.	et
+käsi	NOUN	kätes	Seejärel oli kõik Skrzyczynski kätes.	et
+jätma	VERB	jätad	Sa jätad tihti oma vihmavarju kuhugi maha, kui sa selle kaasa võtad.	et
+jätma	VERB	jätsin	Ma lihtsalt jätsin selle vahele ja hakkasin uut albumit tegema.	et
+töö	NOUN	tööta	Ei, ta ei tööta.	et
+töö	NOUN	tööle	Ta sõidab oma autoga tööle.	et
+viima	VERB	viiksid	Need kõik viiksid edasi Eestit tulevikku vaadates.	et
+viima	VERB	viisime	Enne seda viisime läbi väga hoolika ja põhjaliku luure kõikide sihtmärkide osas.	et
+päev	NOUN	päevana	Ma ei tea, miks, aga ütlesin kohe, et need mõjuvad mulle eilse päevana.	et
+päev	NOUN	päeva	Päike paistis terve päeva.	et
+jumal	NOUN	jumalaile	Iidsete aegade inimesed olid jumalaile lähemal ja see avaldus nende ebatavalises väekuses.	et
+jumal	NOUN	Jumalani	Näitleja transfarmatsioon ehk teater on ka täna niidiots Jumalani.	et
+aasta	NOUN	aastaid	Uue kodu ostmiseks on nad raha kogunud juba aastaid.	et
+aasta	NOUN	aastate	Viimaste aastate jooksul on autode ühiskasutus kasvanud, sest liiklus on aina halvemaks muutunud.	et
+iga	NOUN	eani	Tänapäeval peab inimene töötama suhteliselt kõrge eani.	et
+iga	NOUN	ikka	Aga Markusl on ikka veel igav ja ta on väsinud.	et
+nimi	NOUN	nime	Kuid nad ei tea, millist nime lapsele anda.	et
+nimi	NOUN	nimeks	Meelis ja tema naine otsustavad anda lapsele nimeks Indrek.	et
+naine	NOUN	naisega	Meil on naisega üks poeg ja üks tütar.	et
+naine	NOUN	naisel	Meelisel ja tema naisel on üks poeg ja üks tütar.	et
+uskuma	VERB	uskumas	Leidsin end sellesse uskumas.	et
+uskuma	VERB	uskus	Ta uskus, et autentne mälu sünnib väikestes külakogukondades ja seda antakse edasi suuliselt.	et
+suur	ADJ	suurde	Kõigepealt läheb ta suurde linna.	et
+suur	ADJ	suureni	Su tõestus võib millegi suureni välja viia.	et
+mill	NOUN	millist	Kuid nad ei tea, millist nime lapsele anda.	et
+mill	NOUN	mille	Üks klass, mille ta valis on sotsioloogia.	et
+hoidma	VERB	hoida	Kui ma seda teen saan palju raha kokku hoida.	et
+hoidma	VERB	hoitakse	Kokku hoitakse ligi miljon eurot.	et
+juhtuma	VERB	juhtuda	Mis võib juhtuda, kui tal läheb hästi?	et
+juhtuma	VERB	juhtunud	Mis oleks juhtunud, kui Allan oleks palju toitu tellinud?	et
+suutma	VERB	suudan	Ma lootsin, et suudan selle probleemi lahendada.	et
+suutma	VERB	suutnud	Aga ma pole suutnud silmi sulgeda.	et
+enam	ADJ	enama	Nendes sõiduradades saavad sõita ainult kahe, kolme või enama inimesega autod.	et
+enam	ADJ	Enamat	Enamat kui silma, südant ja oskust sõnu kirja panna.	et
+läbima	VERB	läbite	Palju neid kilomeetreid on, mis te iga päev läbite?	et
+läbima	VERB	läbi	Ma mõtlen, kas ma saaksin oma töökaaslastega läbi.	et
+kaks	NUM	kahe	Nendes sõiduradades saavad sõita ainult kahe, kolme või enama inimesega autod.	et
+aru	NOUN	arule	Sellest tehti – jällegi lihtinimese arule kättesaamatult keerukate tehniliste protsesside abil – energiat.	et
+sõber	NOUN	sõpradele	Ta tahab näidata oma pilte oma sõpradele.	et
+sõber	NOUN	sõbral	Sel nädalavahetusel on Leo sõbral aga sünnipäev.	et
+või	ADV	võis	Ta arvab, et ta võis hoopis põhja poole minna.	et
+või	ADV	Võisid	Võisid minna panka, paljas kümme sõrme taskus, ning tulla sealt välja hoopis rikkama mehena.	et
+tooma	VERB	tõi	Ta tõi oma poja täna meie majja, et saaksime temaga esimest korda kohtuda.	et
+tooma	VERB	tõid	Nad tõid oma poja täna meie majja, et saaksime temaga esimest korda kohtuda.	et
+panema	VERB	paneme	Me paneme oma poja kell kaheksa magama.	et
+panema	VERB	panevad	Nad panevad oma poja kell kaheksa magama.	et
+laps	NOUN	lapsele	Kuid nad ei tea, millist nime lapsele anda.	et
+laps	NOUN	lapsed	Sel hetkel oli mul hea meel olla vanem naine, kellel on täiskasvanud lapsed.	et
+ootama	VERB	oodanud	Tema poeg ja abikaasa olid samuti hommikusööki oodanud.	et
+ootama	VERB	ootavat	Ma loodan, et meie sõbrad mõistavad peagi ees ootavat valikut.	et
+i	NOUN	Id	Energia allikas on aga alateadvuses, seletamatus Miskis( Id).	et
+i	NOUN	Is	Is Mike a cook?	et
+algama	VERB	algas	Mul oli ainult natuke aega, enne kui töö algas.	et
+algama	VERB	algab	Tema töö algab kell pool kaheksa hommikul.	et
+mõni	PRON	mõnda	Siis kuulab ta mõnda laulu.	et
+mõni	PRON	mõned	Kuid mõned kliendid ei ole sõbralikud.	et
+tapma	VERB	tapaksite	Kas tapaksite veel mõne mehe?	et
+tapma	VERB	tapate	Enne kui tapate, peate levitama kuulujutte, et ta on räpane.	et
+kodu	NOUN	koduga	Eriti, kui seda võrrelda teise inimese rajatud koduga?	et
+kodu	NOUN	kodusse	Teatavad inimesed olid valitud sihtmärgiks, tungiti nende kodusse, neid ähvardati, rünnati ja mõnikord tapeti.	et
+teine	NOUN	teised	Mõned ideed on paremad kui teised.	et
+teine	NOUN	teisteni	Tänapäeval ei jää enam midagi saladuseks, vaid info liigub kiiresti ka teisteni.	et
+parem	ADJ	paremad	Mõned ideed on paremad kui teised.	et
+parem	ADJ	paremat	Nad tunnevad, et saavad seal lihtsamat elu elada ja paremat pereelu nautida.	et
+lõpetama	VERB	lõpetamas	Ma olin lõpetamas sel kuul.	et
+lõpetama	VERB	lõpetan	Võib-olla lõpetan homme, või saab minust hoopis vana näitleja, kes mängib igavesti.	et
+koguma	VERB	kogunud	Uue kodu ostmiseks on nad raha kogunud juba aastaid.	et
+koguma	VERB	kogub	Kõigepealt kogub ta oma räpased riided kuhja.	et
+selline	PRON	sellised	Millena olid sellised inimesed alati nõutud?	et
+selline	PRON	Sellistega	Sellistega ei taha mitte keegi suhelda.	et
+elama	VERB	elad	Elu on elu ja elad vaid korra.	et
+elama	VERB	elasin	Ma elasin üksi väikeses korteris.	et
+tüdruk	NOUN	tüdrukuta	Roomas pole ilma tüdrukuta huvitav.	et
+tüdruk	NOUN	tüdrukutele	Jah, tüdrukutele on maadlus alati meeldinud.	et
+aitama	VERB	aidake	Tean, et targem on nina mitte välja pista, aga aidake neid, kes on hädas.	et
+aitama	VERB	aitaksime	Kindlasti toetan seda, et aitaksime neid, kes kõige rohkem abi vajavad.	et
+vabandus	NOUN	Vabandusest	Vabandusest jääb väheks, söör!	et
+kindel	ADJ	kindlasse	Sõna ei kuulu ühte kindlasse kohta, ta on tooraine.	et
+kindel	ADJ	Kindlaks	Kindlaks määrati võtteperioodi algusaeg ja see, mis ajaks pidi film valmis olema.	et
+uus	ADJ	uued	Kas püksid on uued?	et
+uus	ADJ	uusi	Kas Karen teeb palju uusi asju?	et
+armastama	VERB	armastate	Sest kui te armastate neid, kes teid armastavad, mis palka te saate?	et
+armastama	VERB	armasta	Võib-olla on seegi minu kiiks, aga ma ei armasta neid eriti.	et
+väike	ADJ	väikseid	Kindlasti ei tohiks jätta väikseid lapsi üksinda.	et
+väike	ADJ	väikeses	Martin elab üksi väikeses korteris.	et
+käima	VERB	käin	Ma käin iga päev koolis.	et
+käima	VERB	käinud	Viimasel ajal ma olen käinud palju sõpradega õhtust söömas.	et
+kohtama	VERB	kohtaksid	Kui kohtaksid mind, hakkaksid mind armastama nagu kord selles unenäos.	et
+kohtama	VERB	Kohtan	Kohtan teda täna esimest korda ja ei tea veel, mis mind ees ootab.	et
+raha	NOUN	Rahaga	Rahaga on tavaliselt kitsas ja lihtsam on see küsimus maha vaikida.	et
+raha	NOUN	Rahal	Rahal, just sellel seaduslikul maksevahendil, on siiani olnud konkreetsed emitendid- selleks on olnud riigid.	et
+oo	INTJ	oosid	Saar on väga tasane, kuid pinnamoele lisavad vorme oosid ja rannavallid.	et
+helistama	VERB	helistan	Täna helistan ma oma klientidele, istudes samal ajal koosolekul.	et
+helistama	VERB	helistame	Pole olemas surmataotlust, et võtame telefoni kätte, helistame ja hakkame avaldust täitma.	et
+valmima	VERB	Valmib	Valmib Tallinna kunstikooli projekteerimine ja alustatakse ehitustöödega.	et
+surema	VERB	sureb	Ta saaks umbes viieteistkümne aastaseks, kui ta sureb.	et
+surema	VERB	suri	Ta oli viieteiskümnetaastane, kui ta suri.	et
+koht	NOUN	kohti	Siis külastab ta linna mõningaid kuulsaid kohti.	et
+koht	NOUN	kohale	Siim tuleb õigel ajal kohale.	et
+auto	NOUN	autoga	Ta sõidab oma autoga tööle.	et
+auto	NOUN	autodest	Siis, oletame, pildid autodest nüüd ja sada aastat tagasi.	et
+kuulama	VERB	kuulan	Ma kuulan siis mõnda laulu.	et
+kuulama	VERB	kuulab	Siis kuulab ta mõnda laulu.	et
+tore	ADJ	toredasse	Ta on sisse võetud tüdrukust, kes suhtub temasse peagi kui ühte toredasse sõpra.	et
+tore	ADJ	toredates	Veel üks tore hommik toredates tingimustes.	et
+jõudma	VERB	jõuavad	Seetõttu on oluline, et nad mõtleksid sellele, kuidas nad pärast õhtusööki koju jõuavad.	et
+jõudma	VERB	jõudsid	Toomas ja ta sõbrad jõudsid restorani.	et
+pea	NOUN	peal	Kaelakee peal on sinine kass.	et
+pea	NOUN	Päis	Päis tähistab puitu ja jalus betooni.	et
+kordama	VERB	kordaksite	Kas te palun kordaksite?	et
+kordama	VERB	kordaksin	Ja kõik küsisid mult sedasama küsimust, et ma kordaksin, et on küll äge.	et
+mingi	NOUN	mingis	Lavaaugus olles on mingis mõttes mu lavaruum kitsam kui eales varem.	et
+mingi	NOUN	mingitele	Mitte keegi, kes on toonud välja neid ohukohti, ei ole mingitele tehnilistele parameetritele viidanud.	et
+otsima	VERB	otsisin	Ma otsisin uut tööd.	et
+otsima	VERB	otsinud	Miks Jaanika uut tööd ei otsinud?	et
+alla	ADP	Allas	Lisaks ilmusid tema illustratsioonid ja karikatuurid rootsikeelsetes ajakirjades Garm, Lunkentus, Vårbrodd ja Allas Krönika.	et
+enda	PRON	endale	Ta tegi ka endale ja oma abikaasale teed.	et
+enda	PRON	endasse	Ta võtab sind automaatselt endasse.	et
+küsima	VERB	küsin	Ma küsin, kui palju need mustad kingad maksavad.	et
+küsima	VERB	küsisite	Nemad ise pakuvad teile osa sellest, mida küsisite.	et
+vahe	NOUN	vahest	Aga vahest ei ole ka?	et
+vahe	NOUN	vahel	Valida saab ajavõtuga ja ilma ajavõtuta distantside vahel.	et
+poiss	NOUN	poistega	Kui tahad ühineda suurte poistega, pead kõndima piiri peal.	et
+poiss	NOUN	poistest	Ent enamik kohalikke biitbände koosnes sõna otseses mõttes poistest.	et
+mõistma	VERB	mõistku	Aga ärgu teised ka mind hukka mõistku.	et
+mõistma	VERB	mõistsin	Olen üritanud klassi kohta märkmeid teha, aga siis mõistsin, et olen ka pastaka unustanud.	et
+igama	VERB	igavad	Ta arvab, et need on väga igavad.	et
+igama	VERB	igavat	Kas Gunnar tahab igavat tööd?	et
+silm	NOUN	silmi	Aga ma pole suutnud silmi sulgeda.	et
+silm	NOUN	silmaks	Need pilgud torgivad, salvavad, sulavad kokku üheks kiirgavaks silmaks.	et
+ait	NOUN	aidad	Kui ootamatult saabus nälg, avas isand oma aidad, et vaeseid toita.	et
+ait	NOUN	aitades	Hiljem hoiti teri aukudes või aitades.	et
+lahkuma	VERB	lahkuda	Bussid ei sõida enam ja sajad inimesed üritavad korraga lahkuda.	et
+lahkuma	VERB	lahkugu	Kes ei suuda aga üllatada, pangu pillid kotti ja lahkugu lavalt.	et
+tähendama	VERB	tähendanud	See oleks tähendanud pikka töölesõitu meie mõlema jaoks.	et
+tähendama	VERB	tähendaks	See tähendaks nende mõlema jaoks pikka töölesõitu.	et
+saatma	VERB	saadaksin	Mitu ameeriklaste põlvkonda te soovite, et ma saadaksin Afganistani kodusõda pidama?	et
+saatma	VERB	saatku	E-Eestis oleks nii ilus – saatku failid, need on neil nagunii olemas.	et
+toimuma	VERB	Toimus	Toimus paljugi, millest siin pikalt ei räägi.	et
+toimuma	VERB	Toimub	Toimub ka kombineeritud distsipliinide arvestus.	et
+töötama	VERB	töötasin	Aga ma töötasin palju, nii et mul polnud kunagi aega koristada.	et
+töötama	VERB	töötad	Samuti töötad justkui pimedalt, videos saad kohe pildi üle vaadata.	et
+ilm	NOUN	ilma	Tavaliselt vaatas ta välja, et kontrollida ilma.	et
+ilm	NOUN	ilmadest	See tuleb soojematest ilmadest ja pikematest päevadest.	et
+näitama	VERB	näidata	Ta tahab näidata oma pilte oma sõpradele.	et
+näitama	VERB	näitab	See trend on igal aastal olnud kasvav, mis näitab, et oleme õigel teel.	et
+õhtu	NOUN	Õhtust	Õhtust aega ei kasutanud keegi.	et
+õhtu	NOUN	Õhtuni	Õhtuni likvideerisid tulekahju tagajärgi päästekompanii ja vahipataljoni mehed.	et
+kutsuma	VERB	kutsunud	Ta oli mind hiljuti õhtusöögile kutsunud.	et
+kutsuma	VERB	kutsugu	Osatas mind, et kutsugu ma see Reeveli kass endale koju uksi polsterdama!	et
+kohtuma	VERB	kohtuta	Teiste kunstnikega ei kohtuta, sest nemad tulevad hiljem või on juba ära läinud.	et
+kohtuma	VERB	kohtusite	Kui palju sul oli valmis mõeldud enne, kui Luule ja Peetriga kohtusite?	et
+maja	NOUN	majja	Ta tõi oma poja täna meie majja, et saaksime temaga esimest korda kohtuda.	et
+maja	NOUN	majasid	Milliseid majasid on inimkonnale ellujäämiseks vaja?	et
+kolm	NUM	kolme	Allan tahtis tellida kolme erinevat rooga.	et
+kasutama	VERB	kasutagem	Olgem selle võimaluse eest tänulikud ja kasutagem seda.	et
+kasutama	VERB	kasutan	Ma kasutan arvutit palju.	et
+hetk	NOUN	hetkel	Sel hetkel oli mul hea meel olla vanem naine, kellel on täiskasvanud lapsed.	et
+hetk	NOUN	hetkega	Veelgi enam, ma saan tellida iga raamatu, mida ma tahan, hetkega interneti teel.	et
+abi	NOUN	Abid	Abid aitavad ette valmistada taustamaterjale, otsivad eelnõudest küsitavusi, aitavad ette valmistada muudatusettepanekuid.	et
+mängima	VERB	mängiti	Kas mängiti viite uut filmi?	et
+mängima	VERB	mängida	Talle meeldib arvutis mängida.	et
+õige	ADJ	õigetele	Kui midagi on tõesti halvasti või üle mõistuse, tuleb seda lihtsalt õigetele inimestele öelda.	et
+õige	ADJ	õigest	Kõige tähtsam oli saada õige suunaga ja õigest kohast minema.	et
+pan	NOUN	Panid	Panid liiga hästi kahjuks.	et
+terve	ADJ	terveteks	Kümme päeva möödus, köha läks üle ja Soome nakkushaigusõde kuulutas meid terveteks.	et
+terve	ADJ	tervetesse	See näitab,kuidas suhtututakse puudega inimestesse ja tervetesse inimestesse.	et
+mõte	NOUN	mõttelt	Ikka ja jälle, kui loen või kuulan luulet, taban end sellelt mõttelt.	et
+mõte	NOUN	mõteteks	Mõnikord ongi suurteks mõteteks tarvis palju ruumi.	et
+lubama	VERB	lubaksite	Kuna riigid liiguvad väljumiskavade suunas, oleksime tänulikud, kui lubaksite laevafirmadel võimalikult kiiresti uuesti tegutseda.	et
+lubama	VERB	Lubasin	Lubasin täpselt veerand tunni pärast tagasi olla ja oodata ooteruumis.	et
+viimane	ADJ	viimastel	Miks on autojagamine viimastel aastatel kasvanud?	et
+viimane	ADJ	viimaselt	Geerts suutis siiki sõitu jätkata ja viimaselt kohalt tõusis ta lõpuks üheksandaks.	et
+kaasama	VERB	kaasavad	Nad kaasavad tehnoloogia, teised kunstivormid ja teevad asju teistmoodi.	et
+kaasama	VERB	kaasataks	Sestap sooviks ta näha kordusuuringut, kuhu kaasataks rohkem erinevat tõugu neljajalgseid.	et
+vabandama	VERB	vabandate	Millega te ennast välja vabandate?	et
+vabandama	VERB	vabandasin	Tõstsin käed üles ja vabandasin.	et
+probleem	NOUN	probleemi	Ta loodab, et suudab selle probleemi lahendada.	et
+probleem	NOUN	probleeme	Ta on seda tööd väga nautinud, kuigi tal on ülemusega probleeme olnud.	et
+tunduma	VERB	tundusite	Seda on võitjatelt alati sümpaatne kuulda, aga te tundusite olevat täiesti siiras.	et
+tunduma	VERB	tundun	Kolleeg Robert Annus ütles, et tundun rahulikum kui eelnevatel päevadel.	et
+härra	NOUN	härral	Koalitsiooni läbirääkimised otsustavad, nii mitmelgi härral on siin tekkinud ambitsioone olla linnapea.	et
+härra	NOUN	härrale	Siis annavad härrale enesele peksa, vaat et narrivad tütregi ära.	et
+mäletama	VERB	mäletanud	Ta ei mäletanud hiljem, mida või kas üldse ta sel hetkel mõtles.	et
+mäletama	VERB	mäletaksid	Selleks, et oleks tunnistajaid, kes pärast mäletaksid, kuidas kõik juhtus.	et
+tund	NOUN	tunni	Poes ootasin sõpra terve tunni.	et
+tund	NOUN	tunnid	Kõik tema tunnid on üheksakümmend minutit pikad.	et
+poeg	NOUN	poega	Tal oli kaks poega ja tütar.	et
+poeg	NOUN	poja	Nad panevad oma poja kell kaheksa magama.	et
+viga	NOUN	vea	Ta muretseb, et ta vallandatakse, kui ta vea teeb.	et
+viga	NOUN	Vigade	Vigade tegemine valkude sünteesil on üks peamine haiguste tekkimise põhjus.	et
+kogu	NOUN	kokku	Kui ma seda teen saan palju raha kokku hoida.	et
+kogu	NOUN	Kogust	Nii on see olnud Asutavast Kogust saati.	et
+vana	ADJ	vanad	Aga need on väga vanad.	et
+vana	ADJ	Vanal	Ei olnud Vanal Hallil häda midagi.	et
+tohtima	VERB	tohtisin	Ja kuna luuletus oli läbi ja see lihtsalt juhtus, siis ma tohtisin seda teha.	et
+tohtima	VERB	tohtis	Nõukogude ajal olid muidugi lausa ametlikud kvoodid, kui palju teatud keeltest tõlkida tohtis.	et
+võimalus	NOUN	võimaluse	Sellest hoolimata leiab Kendra võimaluse võistelda.	et
+võimalus	NOUN	võimaluseni	Kuni sellise võimaluseni, et äkki näitlejaga juhtub midagi.	et
+pärima	VERB	päriks	Polnud kedagi, kes neid päriks.	et
+pärima	VERB	pärisite	Miks te siis palju pärisite, tolvanid?	et
+keegi	NOUN	kellegagi	Kas Martin elab kellegagi koos?	et
+keegi	NOUN	kellekski	Isegi siis, kui muutud kellekski teiseks.	et
+unustama	VERB	unustan	Mõnikord ma lihtsalt unustan selle võtta.	et
+unustama	VERB	unustaksite	Kuid võlgnen teile nii palju, et mul oleks väga kahju, kui mu unustaksite.	et
+parim	ADJ	parimais	Antud juhul on tähtis see, et siin kooris laulavad parimais aastaid Eesti mehed.	et
+parim	ADJ	parimat	Ma lahkusin majast ilma vihmavarjuta lootes parimat.	et
+üritama	VERB	üritanud	Sara oli üritanud terve hommiku hommikusööki teha.	et
+üritama	VERB	üritasin	Ma üritasin oma autot käivitada.	et
+sõitma	VERB	sõidan	Ma sõidan oma autoga tööle.	et
+sõitma	VERB	sõidab	Ta sõidab oma autoga tööle.	et
+enese	PRON	eneses	Vajab ta eneses selguse leidmiseks kogu loomingu paremiku nagu kuivava pesu ritta riputamist?	et
+enese	PRON	Enesest	Enesest ei rääkinud ta palju ning oli üsna kinnise loomuga.	et
+milline	PRON	millise	Mari saab tellida ükskõik millise raamatu, mida ta tahab hetkega.	et
+milline	PRON	millistele	Üha rohkem hakatakse kaklema selle pärast, kes ja millistele projektidele saab toetust.	et
+juht	NOUN	juhtu	Mida ta loodab, et ei juhtu?	et
+juht	NOUN	juhtusid	Tema kirjutas sellest saja-aastasest, kellega kõik maailma asjad juhtusid.	et
+lõpp	NOUN	lõpus	Ta kavatseb lõpetada selle aasta lõpus.	et
+lõpp	NOUN	Lõpuni	Lõpuni ei teadnud, kes võidab ja kogu aeg pidi mõtlema strateegiat.	et
+püüdma	VERB	püüaksite	Tom, kas te palun püüaksite selle kinni?	et
+püüdma	VERB	püüame	Meie nüüd, vaadates vana projekti, püüame viia nende unistuse ellu.	et
+sööma	VERB	söö	Ei, nad ei söö õhtusööki kell kuus.	et
+sööma	VERB	sööb	Meie poeg sööb koos meiega õhtusööki.	et
+magama	VERB	magaksin	Ma ei saaks ju kirjutada, kui ma magaksin!	et
+magama	VERB	magades	Ta veedab oma päevi mängides, süües ja magades.	et
+järgmine	ADJ	järgmisse	Vabu aegu sellesse ja järgmisse nädalasse on saada üle Eesti.	et
+järgmine	ADJ	järgmiste	Samas on järgmiste kuude kasvuootus kahanenud – see paistis eriti teravalt silma augustikuises küsitluses.	et
+hommik	NOUN	hommiku	Sara oli üritanud terve hommiku hommikusööki teha.	et
+hommik	NOUN	hommikusse	Iga jagu liigub ööst hommikusse või päevast öhe ja midagi sarnast toimub ka aastaaegadega.	et
+kaotama	VERB	kaotaksime	Meia kaotaksime raha, nemad kaotaksid raha, see ei ole väga tark.	et
+kaotama	VERB	Kaotavad	Kaotavad väärtust, kui neid saab liiga palju.	et
+vend	NOUN	vennast	Ta oli väga erinev oma vennast ja õest.	et
+vend	NOUN	vendi	Ja kui te üksnes vendi tervitate, mida erilist te siis teete?	et
+istuma	VERB	istun	Proovi tehes istun tihti sama laua taga, kus kunagi istus minu õpetaja.	et
+istuma	VERB	istutama	Just eile arutasime, et tomatitaime ei saa enam juulis istutama hakata.	et
+teine	NUM	teises	Kas teises korteris on mööbel olemas?	et
+teine	NUM	Teises	Teises korteris on mööbel.	et
+soovima	VERB	soovin	Täna hommikul, ma soovin, et mu ajakava oleks kergem.	et
+soovima	VERB	soovimas	Vaata galeriist, kes veel Levinile õnne soovimas käisid.	et
+linn	NOUN	linnal	Mis mõnel linnal juba oli olemas?	et
+linn	NOUN	linna	Kõigepealt läheb ta suurde linna.	et
+muretsema	VERB	muretseb	Ta muretseb, et ta vallandatakse, kui ta vea teeb.	et
+muretsema	VERB	muretsesite	Paksud inimesed vajavad dieeti, aga haruharva alustavad nad seda vabatahtlikult, muretsesite kord.	et
+kena	ADJ	kenam	Ning Jaanika oli arvanud, et ta on kõige kenam näitleja.	et
+kena	ADJ	Kenas	Kenas mustas õhtutualetis publiku ette ilmunud venelanna teenis tormilise aplausi.	et
+relv	NOUN	relvadest	Küll aga ei oska nad eristada toone, asjaolusid, rääkimata relvadest.	et
+relv	NOUN	relviks	Barrikaadidele, mida täis kõik tänavad, relviks granaat, nuga või ka paljad rusikad!	et
+kallis	ADJ	kallite	Ja meil endal on jälle oma kallite laste jaoks aega ja rõõmu ja jõudu.	et
+kallis	ADJ	kallistest	Te ütlesite, et neist kallistest palgasõduritest piisab.	et
+maksma	VERB	maksame	Me peame üleval aga tervet ruumi, maksame kommunaale, mis on suhteliselt kallid.	et
+maksma	VERB	maksan	On näiteks veidi naeruväärne, et elan Tallinna kesklinnas ja maksan aastas kaheksa eurot maamaksu.	et
+osa	NOUN	osis	Filmi muusika on kollektiivse kunsti osis, ta täidab kindlaid funktsioone.	et
+osa	NOUN	osadest	Impressionistlik viimane osa jäi oma stilistilise ja tundmusliku iseloomu tõttu kõigist osadest enim kõrva.	et
+selge	ADJ	selgest	Ühel päeval tabab naist aga nagu välk selgest taevast otsus rohkem tablette mitte süüa.	et
+selge	ADJ	Selget	Selget soovitust, kumba suunda eelistada, mul ometigi anda ei ole.	et
+minut	NOUN	minutit	Kõik tema tunnid on üheksakümmend minutit pikad.	et
+minut	NOUN	minutites	Nende õnnetuseks on see film rohkem kui kõvatamine pööretega minutites.	et
+täpne	ADJ	Täpse	Täpse olukorra kindlakstegemine on väga tähtis.	et
+lootma	VERB	loodad	Kui ise annad teste, siis loodad ikka, et see on negatiivne.	et
+lootma	VERB	loodan	Ma loodan, et Marile meeldib see kaelakee.	et
+juur	NOUN	juure	Või miks peab Mutionu elama sügaval kadakpõõsa juure all?	et
+juur	NOUN	juurtesse	Autor konstateerib nukralt, et nii see on, kuid asja juurtesse ta ei süvene.	et
+oskama	VERB	oska	Gunnar ei oska väga hästi süüa teha.	et
+oskama	VERB	Oskasin	Oskasin väga hästi puude otsas ronida.	et
+jalg	NOUN	jalgadega	Kergelt kaasa liikuvad käed aitavad jalgadega paremat rütmi leida.	et
+jalg	NOUN	jalgu	Õpetaja käsib tal jalgu sirutada.	et
+kutt	NOUN	kutis	Mida sa selles kutis üldse nägid?	et
+kutt	NOUN	kuttide	Kasvasin üles kuttide keskel, aga see olukord tuleb ümber mõelda.	et
+nädal	NOUN	nädalat	Ta ei pea kaks nädalat töötama.	et
+nädal	NOUN	nädalasse	Vabu aegu sellesse ja järgmisse nädalasse on saada üle Eesti.	et
+vähem	ADJ	vähemast	Ent piisab ka palju vähemast.	et
+vähem	ADJ	vähemal	Suures linnas inimene vähemal või rohkemal määral lahustub, muutub anonüümseks.	et
+üks	NOUN	ühel	Nad olid tahtnud ühel päeval kohtuda kuulsa inimesega.	et
+üks	NOUN	ühelt	Eerik oli palunud abi ühelt klassivennalt.	et
+esimene	ADJ	esimest	Toomas otsustas esimest korda Tai toitu süüa.	et
+esimene	ADJ	esimesse	Ma lähen oma esimesse tantsutundi.	et
+halb	ADJ	halvalt	Ma mängisin väga halvalt, aga samas oli tema ka igati tasemel.	et
+halb	ADJ	halvaks	Sisekliima oli väga halvaks muutunud, paljud inimesed töölt lahkunud.	et
+ehk	ADV	Ehket	Ehket eetris on küll vaikus, kuid stuudios mitte.	et
+raske	ADJ	raskeid	Elu on täis raskeid otsuseid.	et
+raske	ADJ	raskete	Esimesel profiaastal sai mulle selgeks, et ainult raskete treeningutega auhindu ei võida.	et
+meel	NOUN	meelis	Armastasin väga joonistada ning meelis teemaks olid näod, eriti ilusad naiste näod.	et
+meel	NOUN	meeltes	Luule ei kirjelda, luule käivitab midagi lugejate meeltes.	et
+ajama	VERB	ajab	Seega loeng ajab mind segadusse.	et
+ajama	VERB	ajamata	Eks seetõttu jäägi paljudel see rada läbi tallamata ja priske raha kokku ajamata.	et
+tõsi	NOUN	tõtt	Inimestega, kes ei karda sulle tõtt rääkida.	et
+tõsi	NOUN	tõega	Pärast kõiki neid aastaid seisame me silmitsi kurva tõega.	et
+elu	NOUN	elust	Suurema osa tema elust polnud elektroonilise raamatu ideed olemaski.	et
+elu	NOUN	Elud	Elud mööduvad, asjad kuhjuvad, üks mälestus ajab teist taga.	et
+ilus	ADJ	ilusatele	Ilu on ainus, osta seda ei saa, ja ilusatele inimestele on kõik lubatud.	et
+ilus	ADJ	ilusaid	Seal on palju ilusaid kingi.	et
+kusi	NOUN	Kust	Kust Siim pärit on?	et
+muu	INTJ	muid	Neil juhtudel pidime tegema muid korraldusi.	et
+muu	INTJ	muus	Kuuma eest võib vajadusel varjuda näiteks kaubanduskeskuses või mõnes muus konditsioneeritud avalikus ruumis.	et
+teade	NOUN	teadetega	Teate saab esitada ettevõtjaportaali kaudu analoogselt teiste teadetega äriregistrile.	et
+teade	NOUN	Teadet	Teadet ujusin koos Simonas Bilise, Andrei Žilkini ja Ben Proudiga.	et
+suurepärane	ADJ	suurepärastele	See on päris pikk aeg, mis lisaks suurepärastele emotsioonidele lõhub aga palju keha.	et
+suurepärane	ADJ	suurepärased	Mitte ainult eksport ei kasva, vaid ka teatud välisriikides on suurepärased varuosade tarnijad.	et
+uks	NOUN	ustel	See, et hoone sisemuses ja ustel domineerib vana hea veripunane, ei tee asja selgemaks.	et
+uks	NOUN	usteni	Inimkonnana astume uutele lävepakkudele iga päev ja seeläbi areneme ning jõuame järgmiste usteni.	et
+küsimus	NOUN	küsimusest	Et tüütust küsimusest lahti saada, nähvad midagi ja siis tuleb järgmine küsimus...	et
+küsimus	NOUN	küsimused	Ta küsib kaupluse müüjalt mõned küsimused.	et
+lugema	VERB	loen	Ma loen raamatut, kuid jään magama.	et
+lugema	VERB	loeb	Jane loeb raamatut, kuid jääb magama.	et
+muutuma	VERB	muutud	Isegi siis, kui muutud kellekski teiseks.	et
+muutuma	VERB	muutusin	Ma muutusin jälle närviliseks ning kärsituks.\n\n„Viige see alla!	et
+kirjutama	VERB	kirjutaks	Ma isegi tahaks, et mingid sellised kohad kirjutaks rohkem.	et
+kirjutama	VERB	Kirjutavad	Kirjutavad niimoodi nagu tuleb.	et
+öö	NOUN	ööni	Ja siis ma poole ööni tegutsen, magan kaua.	et
+öö	NOUN	öhe	Iga jagu liigub ööst hommikusse või päevast öhe ja midagi sarnast toimub ka aastaaegadega.	et
+peaksi	NOUN	Peaksid	Peaksid justkui arvustama kellegi elatud elu, tema iseenda tarbeks tehtud päevikumärkmeid, vanu armastuskirju.	et
+maa	NOUN	maas	Ta nägi kaks kuusekäbi maas.	et
+maa	NOUN	maaga	Kere kokkupuude maaga tekitas täiendavaid mõrasid muu hulgas vaagnaluus, selgroolülides ja koljus.	et
+võimalik	ADJ	võimalikeks	Kindlasti siin on veel arenguruumi järgmisteks võimalikeks uuteks pandeemiaks valmistumisel.	et
+võimalik	ADJ	Võimaliku	Võimaliku kahju ennetamine on alati tõhusam.	et
+kell	NOUN	kellaks	Neid saab kindlaks kellaks tellida või siis niimoodi nagu meil Bolti.	et
+esi	NOUN	eest	Teisest küljest, kui sa õpid veebis, saad õppida sama materjali palju väiksema summa eest.	et
+mõlemad	NOUN	mõlemaid	Ma pean arvatavasti neid mõlemaid proovima.	et
+mõlemad	NOUN	mõlemat	Kui ma proovin mõlemat, siis ma peaksin suutma otsustada.	et
+ilmne	ADJ	ilmsetel	Oma ilmsetel põhjustel on seda pimedat olukorda raske katsuda.	et
+ilmne	ADJ	ilmseid	Üks ilmseid mõjutajaid on arvatavasti hiljuti taas toimunud sõnamänguline Stencibility tänavakunstifestival.	et
+paistma	VERB	paistaksin	Kuidas ma selles paistaksin, Harry?	et
+paistma	VERB	paistis	Päike paistis terve päeva.	et
+tõeline	ADJ	tõelist	Näha ja katsuda saab tõelist võidusõiduratast ja selle juurde kuuluvat varustust.	et
+tõeline	ADJ	tõelistesse	Ma suhtun tõelistesse performaritesse väga romantiliselt, tunnen nendega hingesugulust ja püüan neilt midagi õppida.	et
+järgima	VERB	järgisite	Oleksin pidanud järgima oma instinkti teie suhtes, nagu teie järgisite oma.	et
+järgima	VERB	järgin	Ma järgin ohutusmeetmeid, aga tuleb välja, et sellest ei piisanud.	et
+haige	ADJ	haigetesse	Halvustava suhtumisega haigetesse inimestesse ei näita me muud kui enda kitsarinnalisust.	et
+haige	ADJ	Haigena	Haigena tööl käivad inimesed on viiruselevitajad nii tööl kui avalikus ruumis, näiteks ühistranspordis.	et
+rahu	NOUN	Rahule	Rahule pühamu püstitada ja rituaalidki luua.	et
+alustama	VERB	alustasin	Ma alustasin uut tööd eelmisel aastal.	et
+alustama	VERB	alustas	Jaanika alustas hiljuti uut tööd.	et
+nägu	NOUN	nägudele	Inimene on programmeeritud pöörama tähelepanu nägudele.	et
+nägu	NOUN	näota	Ja ajalehe õuduste rubriiki ta ju pääses, kuigi ilma nimeta ja, paraku!, näota.	et
+jooksma	VERB	joosta	Maara proovib joosta ja Emily tõstab raskusi.	et
+jooksma	VERB	Jooksete	Jooksete ja jätate haavatud maha!	et
+kuldama	VERB	Kullatud	Kullatud rist ja kuul peaksid särama Kullamaa kiriku tornis väga kaua.	et
+siga	ADJ	Seal	Seal on palju ilusaid kingi.	et
+liikuma	VERB	liigub	Tundub, et see liigub väga aeglaselt.	et
+liikuma	VERB	liikuda	Maanteel on liiga palju rahvast, et liikuda.	et
+ainus	ADJ	ainsaid	Nad on üks vähemusgrupp ja nad pole ainsaid.	et
+ainus	ADJ	Ainsal	Ainsal avatud restoranil ei olnud lepingut lennujaama vautšerisüsteemiga.	et
+nali	NOUN	naljas	Saad aru, et igas naljas on natuke tõde.	et
+nali	NOUN	Naljaks	Naljaks, et meil sinuga nii palju ühist on.	et
+käskima	VERB	käskis	Arst käskis mul selle asemel magada ja vett juua.	et
+käskima	VERB	käskisime	Me käskisime Venemaal neid laevu mitte saata.	et
+hull	ADJ	hullu	Midagi eriti hullu ei juhtu.	et
+hull	ADJ	hulluks	Tõestamaks endale, et ta ei ole hulluks läinud.	et
+kontrollima	VERB	kontrolliksite	Kas te kontrolliksite seda palun minu eest?	et
+kontrollima	VERB	kontrollida	Tavaliselt vaatas ta välja, et kontrollida ilma.	et
+vedama	VERB	veeta	Georgile meeldib ka raamatupoodides ja raamatukogudes aega veeta, et näha, millised raamatud on saadaval.	et
+vedama	VERB	vead	GP-skeemi sõitsime rahulikumalt ja galopis tulid sisse mõned vead.	et
+ostma	VERB	ostsin	Lõpuks ostsin halli ülikonna.	et
+ostma	VERB	ostmata	Jätmata raamatu ostmata, sest sellele on kriipsu tõmmanud tüüp, kellele lihtsalt ei meeldinud?	et
+anne	NOUN	andeks	Andke andeks, aga seda on mainitud ka infolehes otsese vastunäidustusena.	et
+anne	NOUN	annetega	Hiljem, nagu see noorte annetega sageli juhtub, muututakse tavalisemaks ja viisakamaks ja kõigile vastuvõetavamaks.	et
+meene	ADJ	meestest	Plokkvibu meestest võitis kadettide klassi kuuluv Robin Jäätma ja hõbemedali viis koju Kristjan Puusepp.	et
+meene	ADJ	Meestel	Meestel olid enesekaitseks ainult revolvrid ja väikesekaliibrilised püstolid paarisaja vintpüssi vastu.	et
+paar	NOUN	paari	Kas Liisa proovib jalga kahte paari?	et
+paar	NOUN	paarina	Pill ja Alfons Ra olid Eesti sportlastest järgnevad ning kvalifitseerusid kuuenda paarina ümberhüpetele.	et
+soov	NOUN	soovi	Inimesed saavad soovi korral lugeda oma telefonides, tahvelarvutites või spetsiaalsetes e-raamatu lugejates nagu Kindle.	et
+soov	NOUN	Soovid	Soovid paradiisi – saad paradiisi.	et
+mäng	NOUN	mängus	Pealtvaatajad olid mängus nii sees, et hõikasid meile rünnakul ette, kuhu peaksime lööma.	et
+mäng	NOUN	Mänguga	Mänguga võidakse minna kaasa ainult edu pärast, mitte tegelikult mängu nautides.	et
+seisma	VERB	seisan	Ma seisan salatileti juures Lõpuks ma lahkun poest.	et
+seisma	VERB	seisab	Ta seisab salatileti juures.	et
+lööma	VERB	löögu	Kellele meeldib, löögu kaasa!	et
+lööma	VERB	lööge	See erektsioon ei saanud, lööge või maha, olla loomulik.	et
+tegelema	VERB	tegeldaks	Kui inimeste uni on häiritud, siis nad tahavad, et selle probleemiga tegeldaks.	et
+tegelema	VERB	tegelemast	Vastasel korral võõrandab see noori teadusega tegelemast.	et
+proovima	VERB	proovib	Kõigepealt proovib ta süüa teha.	et
+proovima	VERB	proovin	Kõigepealt proovin süüa teha.	et
+tapp	NOUN	tapiga	Keelan saata mind tapiga kuhugi mujale kui Ukrainasse!	et
+tapp	NOUN	Tappa	Tappa aeg, ta surnuks lüüa!	et
+vale	ADJ	vales	Mõnikord suunas, kuhu tahame jõuda ja mõnikord ka vales suunas.	et
+vale	ADJ	valedeks	Meeskonnatöö oli hea, kuid mõned taktikalised otsused osutusid valedeks.	et
+tütar	NOUN	tütart	Ei, neil pole tütart, aga neil on poeg.	et
+tütar	NOUN	tütrel	Minu tütrel on ka palju sõpru.	et
+tõsine	ADJ	tõsisel	Kui karjääri jätkata, siis tõsisel, kõrgel tasemel.	et
+tõsine	ADJ	tõsised	Need on liiga tõsised sõnad, et tuua neid kuuldavale, eriti tõendeid esitamata.	et
+vastama	VERB	vastasin	Grupijuhina vastasin Gorbatšovile diplomaatiliselt, et Moskva Kesktelevisioon saatis.	et
+vastama	VERB	Vastatakse	Vastatakse, et ainult siis, kui ma ei tea, kes on mu lapse isa.	et
+õppima	VERB	õpi	Ei õpi, ei käi tööl.	et
+õppima	VERB	õpin	Teisest küljest, kui ma õpin internetis saan õppida sama materjali palju odavamalt.	et
+süda	NOUN	südamelt	Võinuks ju minna ja kõik südamelt ära öelda.	et
+süda	NOUN	südamest	Endrik Üksvärav ütleb, et otsus sel päeval Iisraelis Tormist laulda tuli neil sügavalt südamest.	et
+vaba	ADJ	vabades	Need otsused mõjutavad vabades riikides ka riigi kui terviku käekäiku.	et
+vaba	ADJ	Vabu	Vabu aegu sellesse ja järgmisse nädalasse on saada üle Eesti.	et
+piisav	ADJ	piisavalt	Adrian otsustas, et see on piisavalt hea.	et
+piisav	ADJ	piisavate	Nende enda riikides ei pruugi otra piisavate linnaste tootmiseks jätkuda.	et
+õde	NOUN	õest	Ta oli väga erinev oma vennast ja õest.	et
+õde	NOUN	õele	Sirje õele meeldib inimestega rääkida rohkem kui Sirjele.	et
+õnnelik	ADJ	õnnelikuna	Kas Markus tunneb end õnnelikuna?	et
+õnnelik	ADJ	õnnelikena	Ka enda inimeste tervete ja õnnelikena hoidmiseks.	et
+looma	VERB	looksin	Millest ma küll looksin, kui poleks ilu?	et
+looma	VERB	lõin	Mõned aastad tagasi lõin oma firma ja veidi pärast seda perekonna.	et
+tuba	NOUN	tubasid	See hakkas soojaks kütma tubasid, see laadis telefone, sõidutas autosid.	et
+tuba	NOUN	toaga	Mis turismitalu sa ikka mõne toaga elamises korraldad!	et
+kavatsema	VERB	kavatseb	Ta kavatseb lõpetada selle aasta lõpus.	et
+kavatsema	VERB	kavatsevad	Nad kavatsevad lõpetada selle aasta lõpus.	et
+otsustama	VERB	otsustasin	Ma otsustasin arsti juurde minna.	et
+otsustama	VERB	otsustan	Ma otsustan rohkem raha säästa.	et
+usaldama	VERB	usaldage	Ärge usaldage oma sõnu.	et
+usaldama	VERB	usaldaks	Ma ilmselt ei teekski filmi, kui ma lavastajat ei usaldaks.	et
+kool	NOUN	koolist	Ta peab oma lõunasöögi koolist ostma.	et
+kool	NOUN	koolita	Pepu, pepu, ilma õpilasteta ei oleks kooli ja ilma koolita ei oleks elu!	et
+kõrv	NOUN	kõrvadest	Nii palju minu kõrvadest.	et
+kõrv	NOUN	kõrvadeni	Tema nina ja suud katab nagu teistelgi siin fuajees tume riie, mis ulatub kõrvadeni.	et
+jooma	VERB	joonud	Ma leidsin, et on kasulik olla sõber nendega, kes ei joonud üldse.	et
+jooma	VERB	joo	Ei, Mike ei joo teed, ta joob kohvi.	et
+tulistama	VERB	tulistab	Lisaks tulistab ta rindu üht teda takistama tulnud kolleegi, kes sureb hiljem haiglas.	et
+tulistama	VERB	tulistasite	Mis relvadest te tulistasite Savisaare pildi pihta?	et
+lugu	NOUN	lugudele	Olen varemgi mitmetesse oma lauludesse pannud vihjeid nende lugudele.	et
+lugu	NOUN	loo	Tähendusega laulud räägivad loo.	et
+ükski	PRON	ühekski	Võõrsil saab kindlasti raskem olema, aga võidust väiksemaid eesmärke ei sea me ühekski kohtumiseks.	et
+ükski	PRON	ühestki	Geograafiline suurus ei tee ühestki maa-alast suurt riiki.	et
+vanem	ADJ	vanemad	Nende vanemad annavad neile mõned ideed.	et
+vanem	ADJ	vanemaks	Kuid vanemaks saades on see muutunud raskemaks.	et
+valima	VERB	valiks	Neile meeldiks, kui me valiks presidendiks inimese, kes selle jõuallika ohtu seaks.	et
+valima	VERB	valin	Homme valin parima istekohaga pileti, mis alles on.	et
+muutma	VERB	Muudavad	Kas paremad panused Muudavad lemmikud suuremaks.	et
+muutma	VERB	muudaksite	Kui oleksite võimupartei juht, kuidas Eesti maksusüsteemi muudaksite?	et
+viskama	VERB	visatagu	Ja kui keegi läheneb, siis ta visatagu kividega surnuks, olgu inimene või loom!	et
+viskama	VERB	viskamata	Siis jäid neljaks minutiks väravad mängus viskamata, tundeid oli aga platsil selle võrra rohkem.	et
+neli	NUM	nelja	Alagrupis on Melsungen nelja punktiga liider.	et
+neli	NUM	Nelja	Nelja päeva jooksul on väikses linnas meeletult etendusi, tullakse kohale kontsentreeritud ajaks ja ruumi.	et
+kartma	VERB	kardan	Aga ma kardan vett.	et
+kartma	VERB	kardeta	Kui teda enam ei kardeta ja väiksed tüdrukudki neid argumenteerides võidavad?	et
+pand	NOUN	panna	Ta ei tea, mida selga panna.	et
+pand	NOUN	Panna	Panna vastu kiusatusele looja nõrkuseid kuritarvitada.	et
+kaduma	VERB	kaoksite	Vaat, miks ma tahan, et kaoksite minema.	et
+kaduma	VERB	kaoksin	Trek-Segafredos on kõik palju suurem, kuid ma ei tunne, et kaoksin selles grupis ära.	et
+poi	NOUN	Poisid	Poisid püüdsid viimases hädas plehku panna, aga nad olid igast küljest sisse piiratud!	et
+poi	NOUN	Poisse	Poisse tassiti pool päeva mööda asutusi ja ülekuulamisi – Vaksali tänavalt Pagarisse ja tagasi.	et
+kandma	VERB	kandis	Kas ainult üks inimene kandis teda?	et
+kandma	VERB	kandsime	Me hoidsime ja kandsime teda kordamööda ja ma isegi aitasin tal korra mähkmeid vahetada.	et
+oma	ADJ	omas	Vanema poisi rühmast pool on vene lapsed, noorema omas on neid kaks kolmandikku.	et
+oma	ADJ	omad	Efektiivsusmeetmete rakendamine võtab muidugi ka oma aja ja sellega on omad kulutused.	et
+ring	NOUN	ringe	Publiku reaktsioon oli puhas rõõm, nad võtsid kätest kinni, hakkasid rituaalseid ringe moodustades tantsima.	et
+ring	NOUN	ringi	Vaatan oma riidekapis ringi.	et
+pääsema	VERB	pääsege	Vaadake, kuidas ma üritan laeva lõhkuda ja pääsege sellest.	et
+pääsema	VERB	pääsen	Loodetavasti pääsen ka finaali.	et
+jutt	NOUN	juttudeks	Oma asju olen ikka juttudeks nimetanud.	et
+jutt	NOUN	jutuna	Kõik, mis vanast usundist Balti riikides alles on jäänud, tuleb meieni vanaeide jutuna folkloristile.	et
+pakkuma	VERB	pakutav	Küsi igaks juhuks oma koostööpartneritelt, kas pakutav sissetulek võib sattuda vastuollu nende toimetulekumudeliga.	et
+pakkuma	VERB	pakuksin	Nende rahustamiseks pakuksin teist vaatenurka.	et
+number	NOUN	numbriteks	Kui inimene neid kilomeetreid omal nahal läbi ei tee, siis jäävadki kilomeetrid pelgalt numbriteks.	et
+number	NOUN	Numbreid	Numbreid ma ei tahaks välja käia.	et
+lähe	NOUN	lähte	Erik sai hea lähte ja juhtis sõitu kuni lõpuni.	et
+pere	NOUN	peredel	Neil on vanemad ja neil peredel peaksid, aga kas on, väärtused?	et
+pere	NOUN	perel	Lapsi, kelle perel on raske, käib nii munitsipaalhuvikoolides kui erahuvikoolides.	et
+tüüp	NOUN	tüüpidega	Et mis tüüpidega tegu, mida nad siis ikka omast peast kokku on kirjutanud.	et
+tüüp	NOUN	tüübiga	Aga kus sa sellega – tegemist on ühe õrnema tüübiga üleüldse.	et
+uurima	VERB	uurida	Ma arvasin, et kui ma saan magada, saan ma selle järgmisel päeval välja uurida.	et
+uurima	VERB	uurige	Minge ja uurige ümbrust, enne kui sisse astute.	et
+pilt	NOUN	pildilt	Varsti ei tunne mu vanavanavanemaid pildilt enam keegi ära.	et
+pilt	NOUN	pildid	Pärast reisi postitab ta kõik oma pildid internetti.	et
+suhe	NOUN	suhtes	Aga Roosi on kana suhtes allergiline.	et
+suhe	NOUN	suhteta	Uskuda saab ju mitut moodi, aga tegeliku suhteta jääb Jumal kaugeks ja ebamääraseks.	et
+proua	NOUN	prouale	Kumbki minu nimetatud põhjus prouale ei meeldinud.	et
+proua	NOUN	prouad	Mõned prouad asusid lauda koristama täpselt sama agaralt nagu olid hommikul seda katnud.	et
+sobima	VERB	sobida	Nende lahendus ei pruugi sobida sinule või sinu riigile.	et
+sobima	VERB	sobime	Me sobime Fernandoga väga hästi kokku.	et
+perekond	NOUN	perekondasid	Nii et saavutada töövõimalused ja teiseks aidata perekondasid.	et
+perekond	NOUN	perekondadega	Perekondade suurus ja väikelaste suremus oli võrreldav Soome perekondadega.	et
+nõu	NOUN	nõuga	Üksnes hea nõuga, kui seda juhtub olema.	et
+nõu	NOUN	nõud	Tema riided ja nõud on alati räpased.	et
+kapten	NOUN	kapteniks	Kas mängija suudab kapteniks olemise vastutusega hakkama saada?	et
+tavaline	ADJ	tavalisest	Kahjuks on tänavu nii, et ettevalmistustsükkel kestab tavalisest märksa vähem.	et
+tavaline	ADJ	tavalisega	Plaanitud tiraažid on tavalisega võrreldes väga palju suuremad.	et
+vihkama	VERB	vihkame	Mitte seepärast, et vihkame valet.	et
+vihkama	VERB	vihati	Valges Majas vihati teda.	et
+võitlema	VERB	võidelda	Meeskond on tugev, mängib hästi ja me suudame võidelda Eesti meistritiitli nimel.	et
+võitlema	VERB	Võitlen	Võitlen iga punkti pärast ja naudin atmosfääri, mängimist kõigi aegade parima vastu.	et
+jamama	VERB	jamab	Mis see Mikser veel presidendi valimiste pärast jamab.	et
+jamama	VERB	jamasin	Päev otsa jamasin gaasirulli ja karbussiga, kuid ei saanudki tsiklit korralikult käima.	et
+veri	NOUN	verre	Kui me sööme, siis seedimisel sisse söödud süsivesikud lagunevad glükoosiks ja see imendub verre.	et
+veri	NOUN	Vere	Vere liikumise suund soontes on Karli jaoks ainuke aus asi.	et
+selg	NOUN	selga	Ta ei tea, mida selga panna.	et
+selg	NOUN	Seljas	Seljas oli tal lilla põlvedeni mantel ja kaelas lilla sall.	et
+lendama	VERB	lendaks	Kui saaks, siis lendaks.	et
+lendama	VERB	lendan	Ma lendan täna Los Angelesse.	et
+koer	ADJ	koeril	Tihe kontakti suurte koererühmadega tähendab, et teie koeril on oht saada mingeid haigusi.	et
+koer	ADJ	koertest	Kõik luuletused raamatus räägivat eri tõugu koertest, aga on luuletus ka päris krantsist.	et
+aus	ADJ	ausal	Avalikus ruumis olgu arvamus põhjendatud ning ausal viisil lugejale ette kantud.	et
+aus	ADJ	ausatel	Mängijad konkureerivad üksteisega võidu nimel ausatel tingimustel.	et
+telefon	NOUN	telefonist	Nagu rott suhkrumasina ees, keeldub inimene telefonist lahkumast.	et
+telefon	NOUN	telefonid	Takso tellimisel annavad pidevalt kinnist tooni vähemalt viie ettevõtte telefonid.	et
+rahunema	VERB	rahunete	Jah, kui te rahunete maha, selgitan ma täpselt, mis juhtus.	et
+rahunema	VERB	rahuneksin	Kuidas sa saad ütelda, et ma maha rahuneksin?	et
+päästma	VERB	päästad	Arnold Rüütel ütles, et sa päästad meid välja, tuled meile peaministrikandidaadiks.	et
+päästma	VERB	Päästan	Päästan su kohe välja!	et
+pikk	ADJ	pika	Laar sai üle pika aja kirja täismängu.	et
+pikk	ADJ	pikki	Jesper teeb pikki lõunapause.	et
+armastus	NOUN	Armastuseks	Teda ei kutsuta küll ainult Pühaks Vaimuks, vaid ka Jumala Armastuseks ja Anniks.	et
+armastus	NOUN	armastuseta	Vargamäel valitseb külm identiteet — tööjõudu hoitakse hoolimatult ja ilma nähtava armastuseta.	et
+põhjus	NOUN	põhjusel	Sel põhjusel pidime mõtlema, kuidas me pärast õhtusööki koju saame.	et
+põhjus	NOUN	põhjuseid	Samuti ei saa välistada ka poliitilisi põhjuseid.	et
+raamat	NOUN	raamatul	Loomulikult ma tahan, et raamatul läheks hästi üle maailma.	et
+raamat	NOUN	raamatut	Jane loeb raamatut, kuid jääb magama.	et
+armas	ADJ	Armsaim	Armsaim inimene on mu lapselaps.	et
+armas	ADJ	Armsalt	Armsalt asjalik kõneleja suunab vaatajad enne etendust telefone vaikseks lülitama.	et
+lahe	ADJ	lahedal	Väga hea tunne oli kodus nii paljude inimeste ees ja nii lahedal üritusel võistelda.	et
+lahe	ADJ	lahedaks	Kogemust hindavad sõitjad siiski heaks ja võistlust ennast hoolimata rasketest tingimustest lahedaks.	et
+avama	VERB	avan	Ja kui oleme kokku leppinud ja käed löönud, siis avan kõik uksed.	et
+avama	VERB	avaksin	Kui hetkeks mõelda, siis ma ei arva, et ma võõra ees oma seifi avaksin.	et
+kaitsema	VERB	kaitstakse	Olen terve, minuga on kõik korras ja mind kaitstakse.	et
+kaitsema	VERB	kaitsesin	Mõne aasta pärast kaitsesin Oxfordis doktorikraadi ja töötasin Londonis kirjastuses Little, Brown.	et
+valetama	VERB	valetasin	Ma valetasin ja ma vabandan.	et
+valetama	VERB	valetate	Ma ei tea, kas te tahtlikult valetate või mis see teema on.	et
+võitma	VERB	võitku	Valimiskogus võitku see, kel rohkem hääli nendelt, kes oma hääle anda soovisid.	et
+võitma	VERB	Võidan	Võidan ja joon, joon ja võidan.	et
+täielik	ADJ	täielikul	Gröönimaa mandriliustike täielikul sulamisel tõuseks maailmere tase ligikaudu kuus meetrit.	et
+täielik	ADJ	Täielikku	Täielikku pühapiltide nn puhtust aga Luther ei taotlenud.	et
+suu	NOUN	suudesse	Toppige enda talenditutesse suudesse mu ema tehtud kooki!	et
+suu	NOUN	suuna	Venemaa püüab sedasi hoida enda pealetungi tempot Donetski suunal, vähendades Siverski suuna tähtsust.	et
+puhas	ADJ	puhtaid	Aga tal pole puhtaid sokke.	et
+puhas	ADJ	puhtast	Vahel käib mulle ka närvidele, kui näen, et inimesed esitavad küsimusi puhtast viisakusest.	et
+kauge	ADJ	kaugele	Aga ta ei saa väga kaugele sirutada.	et
+kauge	ADJ	Kaugele	Kaugele arenenud mälukaotuse tõttu saab ta igapäevaelus tuge perekonnalt ning viibib vahel hooldekodus.	et
+noor	ADJ	Noort	Noort inimest hoitakse lihtsalt reaalsusest eemal.	et
+noor	ADJ	Noortest	Noortest koosnevad meeskonnad lähevad kogu aeg paremaks.	et
+kukkuma	VERB	kukun	Ma püüan hüpata, aga kukun maha.	et
+kukkuma	VERB	kukub	Kelli üritab hüpata, kuid kukub maha.	et
+varastama	VERB	varastata	Niikaua, kui ei varastata, ei saa midagi hullu juhtuda.	et
+varastama	VERB	varastavad	Teine suurem grupp on narkomaanid, kes varastavad kaubanduskeskustest kõike, mida nad vähegi kätte saavad.	et
+tõusma	VERB	tõusevad	Langevad ja tõusevad hõbevalged lilled, sinised vihmapilve-õhupallid.	et
+tõusma	VERB	Tõuseme	Tõuseme hommikul, õhtul läheme magama.	et
+umme	NOUN	umbes	Rand oli umbes tunnise autosõidu kaugusel.	et
+mood	NOUN	moel	Inimeste heaolu mõjutab see mitmel moel.	et
+mood	NOUN	moeks	Vastutusest on moeks kirjutada( jällegi, kirjutada, mitte elada), aga väärtusetusest mitte.	et
+jooks	NOUN	jookse	Vahel on ka selliseid jookse, mis siin ikka.	et
+jooks	NOUN	jooksul	Viimaste aastate jooksul on autode ühiskasutus kasvanud, sest liiklus on aina halvemaks muutunud.	et
+jätkama	VERB	jätkasime	Ja pärast seda jätkasime kirjutamist.	et
+jätkama	VERB	Jätkad	Jätkad oma sugulaste tapmist, kellel sinu ees süüd ei ole.	et
+must	ADJ	musti	Ta näeb musti pükse.	et
+must	ADJ	mustad	Liisa küsib, kui palju need mustad kingad maksavad.	et
+palju	ADV	paljudes	Ta oli olnud paljudes filmides ja väga populaarne.	et
+palju	ADV	paljudele	Esmaspäeval pidi ta enne koosolekule minekut paljudele klientidele helistama.	et
+sõda	NOUN	Sõjale	Sõjale ei saa olla mingit õigustust!	et
+sõda	NOUN	Sõdu	Sõdu, mis on tekitanud potentsiaalseid põgenikke, on maailmas toimunud kogu aeg ka pärast maailmasõda.	et
+film	NOUN	filmi	Ta tahab minna filmi vaatama.	et
+film	NOUN	filmide	Ta vaatab internetist uute filmide nimekirja.	et
+abielluma	VERB	abielluks	Minule küll meeldiks, et kõik abielluks.	et
+abielluma	VERB	abiellun	Aga see on nats nagu mõelda, kas ma abiellun või jään igavesti üksi.	et
+hoolitsema	VERB	hoolitsete	Aga et oma mehe pärast muretsete ja tema eest hoolitsete, see on hea.	et
+hoolitsema	VERB	hoolitsemast	Et Venemaa harrastusteatriliikumisel oleksid head välissidemed, selle eest ei väsi Alla samuti hoolitsemast.	et
+uudis	NOUN	uudiseid	Ta lülitab raadio sisse, et kuulata uudiseid.	et
+uudis	NOUN	uudistel	Võib-olla hoian isegi uudistel rohkem silma peal kui otseselt mängudel.	et
+needma	VERB	nea	No rahune maha ja ära nea.	et
+needma	VERB	nead	Muud nead ei oska öelda, kiriku ajalugu on vaid vägivald ja veri.	et
+ots	NOUN	otsis	Iga kord kui ta lahkus, otsis ta kõigepealt oma ujumisriideid.	et
+ots	NOUN	otsadesse	Paneeli otsadesse tehakse alapinda vee-eraldusavad, mille kaudu eemaldub ehituse ajal õõnsustesse kogunev vesi.	et
+põgenema	VERB	Põgeneda	Põgeneda ei ole kuhugi.	et
+põgenema	VERB	Põgenege	Põgenege ometi halva haisu eest!	et
+kuningas	NOUN	kuningata	Ilma kuningata ei saa, aga koos kuningaga ka ei saa.	et
+kuningas	NOUN	kuningani	Üks sellistest juhtumitest jõudis ka kuningani.	et
+keerama	VERB	keerate	Miks te keerate tülile üha uusi ja uusi vinte peale?	et
+keerama	VERB	keeramata	Söömata, joomata, pesemata, külge keeramata ja muidu olematutes tingimustes, aga kogukonna toel – tulemuslikult.	et
+mure	ADJ	muredele	Luule Epner on neile muredele juba aastate eest Sirbi aastalõpuintervjuus tähelepanu juhtinud.	et
+proov	NOUN	proovid	Kui sa proovid mõlemat, siis peaksid olema võimeline otsustama.	et
+proov	NOUN	proovidel	Helilooja viibis Vilniuses proovidel ja salvestustel ning oli saalis ka kontserdil.	et
+nägemine	NOUN	nägemisega	Uue ajastu filmid eeldavad selle näite põhjal hea nägemisega inimesi.	et
+nägemine	NOUN	Nägemiseni	До свидания – Kohtumiseni( Nägemiseni; head aega).	et
+teenima	VERB	teenin	Küsimusi on palju, näiteks kas ma teenin piisavalt palju, et saada üldse laps?	et
+teenima	VERB	teeniksin	Sest teadsin, et kui vähegi raha teeniksin, võetaks see ära.	et
+rahvas	NOUN	rahvast	Maanteel on liiga palju rahvast, et liikuda.	et
+rahvas	NOUN	Rahvaga	Rahvaga suhtlus käib ja HRLi kavas selline asi tundub just kohatult omal kohal.	et
+lase	NOUN	lasete	Siis Maxima ütleb, et oot-oot, minul ei lasknud, aga Selveril lasete.	et
+lase	NOUN	Lasete	Lasete ennast ka tühistest asjadest kõigutada.	et
+huvi	NOUN	Huvide	Huvide konsensuse asemel tuleb rääkida huvide konfliktist.	et
+läheda	ADJ	lähedal	Siim on pärit Ameerika Ühendriikidest, nii et Kanada on väga lähedal.	et
+läheda	ADJ	Lähedalt	Lähedalt pole inimsilm aga kumbagi seirata saanud.	et
+kabu	NOUN	kaota	Ja nad ei kaota kaalu nii lihtsalt kui varem.	et
+kabu	NOUN	Kaota	Kaota riietusega aastaid ja tunne end mugavalt!	et
+loll	ADJ	lollil	Ja veel nii lollil ajal, kui olin sinisel lehel, laps kodus haige ka veel...	et
+loll	ADJ	lollideks	Aga olen väga pettunud ka USTA-s, ilmselgelt peavad nad meid lollideks.	et
+president	NOUN	Presidendil	Presidendil on vaieldamatult suur võim luua eliiti.	et
+president	NOUN	Presidendiga	Presidendiga abielus olles olid ka Ljudmila Putina ametlikes deklaratsioonides kajastatud küllaltki mõõdukas majanduslik seis.	et
+naljakas	ADJ	naljakana	Ja natuke naljakana ka.	et
+naljakas	ADJ	naljaka	Punkte jagatakse nii naljaka mõttekäigu kui ka õige vastuse eest.	et
+külg	NOUN	küljest	Teisest küljest, kui ma õpin internetis saan õppida sama materjali palju odavamalt.	et
+külg	NOUN	küljesse	Kohati tundus seda, eriti odapiste puhul küljesse, küll liiast olevat.	et
+arst	NOUN	arstile	Ta ütleb arstile, kuidas ta end tunneb.	et
+arst	NOUN	arstiks	Mu vend hakkab varsti arstiks õppima.	et
+olukord	NOUN	Olukordi	Olukordi, kus parim lahendus on olnud vaikimisi parandamine.	et
+olukord	NOUN	Olukordades	Olukordades ja valikutes, millesse poiss satub, võib näha paralleele Eesti endaga.	et
+ründama	VERB	ründad	Teise Euroopa riigi ründamisega ründad justkui iseennast.	et
+ründama	VERB	Ründavad	Ründavad demokraatia ja inimõiguste kaitsmise taha varjudes otseselt teiste riikide suveräänsust.	et
+loomulik	ADJ	loomulikus	Donaldi arvates on see signaal, et me jõuame millenigi, mis on loomulikus keeles sõnastamatu.	et
+loomulik	ADJ	Loomulikku	Loomulikku surma või õnnetuse tagajärjel hukkunud loomade puhul seda tavaliselt ei näe.	et
+murdma	VERB	murtakse	Pealegi n.ö. süsteemist pigem kukutakse kui murtakse välja.	et
+murdma	VERB	Murrab	Murrab sisse argipäev, vanad ja uued probleemid, hirmud, ihad, unelmad.	et
+lihtne	ADJ	lihtsalt	Ma olen lihtsalt õnnelik, et pileti saan.	et
+kõlama	VERB	Kõlan	Kõlan võib-olla mega ebaemalikult, aga ma olen vaid aus.	et
+õhk	NOUN	Õhku	Õhku on visatud, et korduva õppimise eest või eriala vahetamise eest tuleks ise maksta.	et
+endine	ADJ	endiselt	Milline näitleja on Sandra arvates endiselt ilusam kui Jaanika oma?	et
+endine	ADJ	endistesse	Postindustriaalsetes ühiskondades on nii paljud kunstikoolid kolinud endistesse tehastesse, et see on lausa tavapraktika.	et
+abikaasa	NOUN	abikaasale	Ta tegi ka endale ja oma abikaasale teed.	et
+abikaasa	NOUN	abikaasad	Aga ka seda, kui kõrgelt haritud ja seda ka kultuuri vallas olid mõlemad abikaasad.	et
+valik	NOUN	valikutest	Ka meie tegelased jutustavad oma õigetest ja valedest valikutest, andestamisest ja rahu tegemisest.	et
+valik	NOUN	valikult	Süžeeliinilt või portreteeritava valikult ei paku noorte tegijate looming midagi põrutavat.	et
+koha	NOUN	kohast	Kastre on saanud nime vana eestlaste kantsi järgi, see on n-ö kohast suurem nimi.	et
+koha	NOUN	Kohas	Kohas, kus olen end tavaliselt turvaliselt tundnud( küll mitte nii turvaliselt kui Genialistide klubis).	et
+voodi	NOUN	Voodis	Voodis olin need mittesobimise mõtted juba unustanud ja mõtlesin, et tema on see õige.	et
+voodi	NOUN	Voodist	Voodist tõuseb hoopis teise näoga poiss – suurem, arukam( kooli)-poiss.	et
+tubli	ADJ	tublid	Et ka koole teeksid tublid ja südamega töötavad inimesed.	et
+tubli	ADJ	tublidest	Oled üks nendest tublidest sportlastes, kes teeb ka tööd.	et
+suurem	ADJ	suuremaks	Signe ja Georg tahaksid osta uut kodu, sest nende kaks last kasvavad suuremaks.	et
+suurem	ADJ	suurema	Millist ideed ei eksisteerinudki suurema osa tema elust?	et
+semu	NOUN	semul	Tee peal tuleb kolmel töötul semul ka välja mõelda, kuidas elektroonikaostu finantseerida.	et
+maailm	ADV	Maailmas	Teatavasti kasvavad need üksnes Uues Maailmas.	et
+maailm	ADV	maailmalt	Täielik ja koheselt rakenduv kaubandusembargo on see, mida palub lääne maailmalt Ukraina valitsus.	et
+müüma	VERB	müüdud	Paljud piletid olid juba müüdud.	et
+müüma	VERB	Müüsin	Müüsin maha umbes kolm raamatut ja jäin ilmselt teistele alla.	et
+sama	ADV	samaga	Tahtsin samaga vastata, aga juba tõmmati ta tantsima.	et
+sama	ADV	samu	Nad kasutavad näiliselt samu asju, aga see pole see.	et
+pääsma	VERB	päästaks	Meid ei päästaks sel juhul mitte miski.	et
+meeskond	NOUN	Meeskondadele	Meeskondadele tuleb maksta veel tagantjärele ka möödunud hooajal teenitud tasu.	et
+hävitama	VERB	hävitaksite	Te hävitaksite riigi, sina ja sinusugused, kui saaksite.	et
+hävitama	VERB	hävitasid	Sellest, kuidas kaks aastat tagasi hävitasid masinad tuumarünnakus kolm miljardit inimest.	et
+riie	NOUN	riidesse	Ta üritab end tööks riidesse panna.	et
+riie	NOUN	riided	Aga Kaarli riided on väga vanad.	et
+tegu	NOUN	teol	Ometi on see nii, et igal liiklusohtlikul teol on varem või hiljem tagajärg.	et
+tegu	NOUN	teos	Iga teos on nagu löök naelapea pihta.	et
+valge	ADJ	valgesse	Äkki kutsutakse ta suurde valgesse majja, kus vahel aetakse väikesi tumedaid asju.	et
+valge	ADJ	valgeni	Valge näoga laps ja valge surilina viivad edasi kõige muu valgeni.	et
+kuus	NUM	Kuues	Kuues kord oldi vastamisi karikafinaalis, kus kahe tabamusega jäi peale Serviti.	et
+pagan	NOUN	Paganad	Paganad olid roojased ja nendega ühes lauas ei istutud.	et
+tervis	NOUN	Terviseks	Esmaspäeval alanud Tervise arengu instituudi vabariiklik alkokampaania “ Terviseks? ”.	et
+tervis	NOUN	Tervisega	Tervisega on probleeme ja see pärsib tema mobiilsust.	et
+õpetama	VERB	õpetaksite	Nüüd soovin, et teie mind õpetaksite.	et
+õpetama	VERB	õpetamata	Kas ilma õpetamata poleks jõudnud?	et
+kõne	NOUN	kõneta	Seekord aga lavastus ei kõneta.	et
+kõne	NOUN	Kõned	Kõned tulevad interneti kaudu ja neid numbreid on võimalik telefonis blokeerida.	et
+luba	NOUN	lubades	Irina Embrich kaotas oma minimatši kaheksa torkega, lubades vastased vaid kolme punkti kaugusele.	et
+luba	NOUN	Loaga	Loaga koos peaks Sutteri sõnul saama ka erandi, et mööda minna karmidest keskkonnanõuetest.	et
+imelik	ADJ	imelikult	Kehas oli nagu imelikult külm, kuid ta peopesad samal ajal suisa higistasid.	et
+imelik	ADJ	imelikud	Esiteks, eesti lugejate imelikud eelarvamused.	et
+süü	NOUN	Süüta	Näiteks laul “ Süüta mu lumi ”.	et
+süü	NOUN	süüd	Neiu tunnistas juhtunus oma süüd ning näitas kohtusaalis üles ka kahetsust.	et
+rikkuma	VERB	rikuksin	Küsimus on selles, kas ma rikuksin sel juhul seadust.	et
+rikkuma	VERB	rikkusite	Te rikkusite seda protseduuri – seega rikkusite seadust.	et
+keha	NOUN	kehaks	Eks ma käisin vahel ka mõnes punkbändis kehaks, aga päris omaks see ei saanud.	et
+keha	NOUN	kehas	Õhus olevad saasteosakesed ja äärmuslik kuumus rikuvad aga kehas ainete tasakaalu ära.	et
+kohutav	ADJ	kohutavatele	Mõtleme või kohutavatele kaadritele, kui lasteaiakasvataja on lapsed riietanud mundritesse ja istutanud tankidesse.	et
+kuuluma	VERB	kuulun	Mina kuulun kindlasti sellesse koolkonda, et kriis karastab ja siit minnakse tugevamalt edasi.	et
+kuuluma	VERB	kuulusite	Aga tegelikult kuulusite Corleone kuritegelikku organisatsiooni.	et
+miljon	NOUN	miljoneid	Tallink on Lääne sõnul investeerinud sadu miljoneid eurosid, et aasta ringi toimivat teenust pakkuda.	et
+eriline	ADJ	erilisi	Mul ei olnud mingeid erilisi huvisid, natuke huvitas mind jalgpall, natuke kino.	et
+eriline	ADJ	Erilisi	Erilisi raskusi valmistasid karistusvisked, kahe tiimi peale realiseeriti neid avapoolajal viiest vaid üks.	et
+ärkama	VERB	ärka	Sa ei ärka kunagi.	et
+ärkama	VERB	ärkasite	Kas alles nüüd ärkasite?	et
+peatama	VERB	peataksin	Kas tahad, et peataksin laeva?	et
+peatama	VERB	Peatan	Peatan kohtuotsuse ja võidan.	et
+vastus	NOUN	Vastuseta	Vastuseta on küsimused, et kuidas oli lennuk hooldatud, kuidas piloodid käitusid ja nii edasi.	et
+vastus	NOUN	Vastuseid	Vastuseid edastanud koolide arv on sama kui eelmisel nädalal.	et
+juhtima	VERB	juhtisin	Nendes on üks oluline vasturääkivus, millele ma tähelepanu juhtisin.	et
+juhtima	VERB	juhtisite	Teie juhtisite värske ühendvalla volikogu eelarve- ja majanduskomisjoni.	et
+püha	ADJ	pühal	Pead saama, sest teised räägivad sellest pühal häälel.	et
+püha	ADJ	pühades	Nii tundubki, et Maarja Magdaleena ei olnud kohustuslike ja pühades sidemetes.	et
+astuma	VERB	astute	Minge ja uurige ümbrust, enne kui sisse astute.	et
+astuma	VERB	astumas	Jaan Tootsi vigadest ja on astumas täpselt samasse ämbrisse.	et
+rahulik	ADJ	rahulikult	Vesi voolab jões rahulikult.	et
+rahulik	ADJ	rahulikuks	Varingu alla jäädes peaks jääma rahulikuks ning arvestama, et abi kohalejõudmine võtab aega.	et
+agent	NOUN	Agendi	Agendi kasulikkus sõltub positiivselt teadustuludest ja negatiivselt teadustööga seotud pingutusest ja kuludest.	et
+agent	NOUN	Agendil	Agendil puudub kindlaksmääratud põhipalk, üldjuhul on töötasuks teatud protsent müüdust.	et
+tegemine	NOUN	tegemisel	Nad aitavad üksteist kodutööde tegemisel.	et
+tegemine	NOUN	Tegemise	Tegemise käigus tekkivad pinged on aga vältimatud ka parimal juhul.	et
+tõmbama	VERB	tõmbaksite	Kuhu teie isiklikult tõmbaksite piiri, kui suurtes omavalitsustes tohiks valimisliite moodustada?	et
+tõmbama	VERB	tõmbasin	Kuna olin p.e.p.s., tõmbasin tabureti hooletu liigutusega laua alt välja.	et
+daam	NOUN	Daamidel	Daamidel on ikka eesõigus, džentelmenid ju järgivad seda põhimõtet.	et
+daam	NOUN	Daamide	Daamide kanda olid vaikelud, loodusmaalid ja portreed – teemad, mis peegeldasid naiste üldist elusfääri.	et
+oht	NOUN	Ohuks	Ohuks on, nagu öeldud, kultuuri kandjate arvu vähenemine ja ajas kahanev võime kultuuriloomesse investeerida.	et
+kasvama	VERB	kasvage	Minge pealegi tagasi ja kasvage suureks!	et
+kasvama	VERB	kasvasite	Milline oli keskkond, kus teie kasvasite?	et
+valuma	VERB	valutuks	Ja meie asi on tagada, et võimalikult paljudel perekondadel see võimalikult valutuks teha.	et
+preili	NOUN	preilit	Charlie, sa preilit oled näinud?	et
+preili	NOUN	preiliga	Rohkem ta preiliga kokku ei juhtunud, sest naine samahästi kui vältis teda.	et
+lennuk	NOUN	lennukitest	Üks lennukitest tulistas Briti lennuki lähistel olles välja raketi.	et
+tühi	ADJ	tühjadest	Ja ometi võib elamuse saada lihtsalt tühjadest teeradadest.	et
+tühi	ADJ	tühja	Eesti naine ei karda tööd, ennastsalgavalt unustab ta hilised öötunnid ja tühja kõhugi.	et
+seotud	ADJ	seotut	Vaatlen transporditeemasid – ehk siis liikumisviisidega seotut – kommete, tavade ja praktikate kaudu.	et
+jää	NOUN	jääd	Kui jääd paariks aastaks tööst kõrvale, on tagasi rongile hüpata raske.	et
+jää	NOUN	jääl	Filmi lõpus aga liiguvad samad kogud juba sulanud jääl mere poole.	et
+hing	NOUN	hingede	Laval polevat võitlust elu eest, vaid hingede püüdmine eri usulahkude vahel.	et
+hing	NOUN	hingest	Muusikat esitavad elavad inimesed siin ja praegu, kogu hingest, püüdmata reprodutseerida kunagi olnut.	et
+eelmine	ADJ	eelmisel	Adriani lemmiklauljal oli eelmisel kuul kontsert.	et
+riik	NOUN	riigist	Kas kliendid on pärit ühest riigist?	et
+riik	NOUN	riikidest	Kliendid on pärit paljudest riikidest.	et
+ettevaatlik	ADJ	ettevaatlikult	Töid tehakse ettevaatlikult, et võimalikult palju säästa olemasolevat katet ning mitte tekitada lisakahjusid.	et
+ettevaatlik	ADJ	ettevaatlikud	Mõlemad on algul ettevaatlikud, imestunud, valvsad, väheke murelikud.	et
+abielu	NOUN	abieluta	Oli olemas ka abieluta kooselu, millel oli teatav juriidiline tunnustus.	et
+abielu	NOUN	abieluga	Kuid kreeklased seostasid safranit ka abieluga.	et
+segama	VERB	segasite	Millest te selle kokku segasite?	et
+segama	VERB	segataks	Seal on tööl inimesed, kelle ülesandeks on jälgida, et kedagi ei segataks.	et
+asuma	VERB	asusime	Kõik näis loogiline ning me asusime heas usus asja uurima.	et
+asuma	VERB	asuge	Kehastuge Sherlock Holmes´ideks ja asuge jälgi ajama.	et
+võti	NOUN	Võtme	Võtme kahtluste korral kliendiga ühendust ja küsime, kas makse algatajaks on olnud ikka tema.	et
+toit	NOUN	Toitude	Toitude hinnad on lihtsalt täiesti madalad.	et
+toit	NOUN	Toidul	Toidul on väga suur roll keskkonnakriisi võimendamisel või siis vastupidi vähendamisel.	et
+isiklik	ADJ	Isiklikud	Isiklikud valikud on aga isiklikud, riik kord toetab neid oma poliitikaga ja kord mitte.	et
+isiklik	ADJ	Isiklikus	Isiklikus vaates võisid need kodud asuda nii maal kui ka linnas.	et
+kohama	VERB	Kohati	Kohati võib olla udu.	et
+seadma	VERB	seadnud	Ma tean, et inimesed on seadnud nende dokumentide ehtsuse kahtluse alla.	et
+seadma	VERB	seada	Taavi otsustab ööseks laagri üles seada.	et
+ruum	NOUN	ruumil	Ajal iseenesest puudub ju sisu, samuti nagu ruumil puuduks sisu, kui seal midagi poleks.	et
+ruum	NOUN	ruumiks	Ainukeseks suletud ruumiks finišis on riietumistelk ning seal on seetõttu ka kohustuslik maski kanda.	et
+lõbus	ADJ	lõbusat	Näiteks näeme lõbusat seltskonda lõkke ääres laulmas, saatjaks ühe tegelase kitarr.	et
+lõbus	ADJ	lõbusaks	Mitmetes osalenud koolides on sulgpall saanud nüüd kehalise kasvatuse tunni lõbusaks osaks.	et
+uskumatu	ADJ	Uskumatul	Uskumatul kombel rohkem väravaid pealinlased avapoolajal visata ei suutnud.	et
+lõikama	VERB	lõigatakse	Filmis pole see võimalik, sest see lõigatakse välja.	et
+lõikama	VERB	lõikan	Nii, et ma pesen teda tihti ja lõikan ta pikka räpast karva.	et
+põhi	NOUN	põhja	Ta arvab, et ta võis hoopis põhja poole minna.	et
+põhi	NOUN	põhjasid	Mida rohkem punased teda manasid ja põhjasid, seda omasemaks Päts meile muutus.	et
+saladus	NOUN	saladusse	Nende eest jääb kõik saladusse.	et
+saladus	NOUN	Saladust	Ent tõmbas tugeva tule eest käe tagasi … Saladust ei kõnetata.	et
+nimetama	VERB	nimetasime	Me nimetasime neid kultuuripolitseinikeks ja see tekitas meis tunde, et oleme osa millestki olulisest.	et
+nimetama	VERB	nimetagem	Kuid impressiooni juurde kuulub ka vaataja pilk, nimetagem seda maskiks.	et
+tulevik	NOUN	tulevikule	Olen keskendunud tervemale ja õnnelikumale tulevikule.	et
+tulevik	NOUN	tulevikuta	See on mehaaniliste kordumiste maailm – monotoonne ja tulevikuta.	et
+surm	NOUN	Surmal	Hingedepäeval saab süüdata virtuaalse küünla Surmal on igas elus oma osa.	et
+surm	NOUN	surmaks	Paljudes lugudes valmistutakse surmaks – põhjalikult ja südamega, kuid märkimisväärseid edusamme tegemata.	et
+lõppema	VERB	lõppeksid	Kas euroväärtuste vihkajad oleksid reaalselt õnnelikud, kui lõppeksid kõik põllumajandus- ja regionaaltoetused?	et
+lõppema	VERB	lõppedes	Täissaalid tervitavad meie lauljaid ja dirigent Kaspars Putniņšit kava lõppedes püsti seistes.	et
+tunnistama	VERB	Tunnistasid	Tunnistasid, et oleme head.	et
+tunnistama	VERB	Tunnistad	Tunnistad üldse nende osa?	et
+ohtlik	ADJ	ohtlikuga	Järelejäänud minutitega Arka millegi ohtlikuga hakkama ei suutnud saada.	et
+ohtlik	ADJ	ohtlikena	Mõlema puhul käsitatakse trellide ja rauduste taha paigutatud hingi kodustamatute, metsikute ja ohtlikena.	et
+tõstma	VERB	tõstad	Endalegi ootamatult tõstad hetke pärast tema peale häält, aga ta ei kuula.	et
+tõstma	VERB	tõstab	Maara proovib joosta ja Emily tõstab raskusi.	et
+märkama	VERB	märgake	Võtke aeg maha ning märgake seda armast ja kaunist enda ümber.	et
+märkama	VERB	märkad	Võib-olla juba märkad, kuidas ma ei ürita isegi mingeid kategooriaid tekitada.	et
+ase	NOUN	asemed	Lisaks on aja jooksul tühjaks jäänud tulekahjudes ja muudel põhjustel hävinud hoonete asemed.	et
+ase	NOUN	Asemel	Pahatahtlikkuse, vihkamise ja viha Asemel oleks meil armastus ja vendlus.	et
+puutuma	VERB	puutuv	Mina olen asjasse puutuv isik ja minu analüüs ei ole objektiivne.	et
+puutuma	VERB	puutuge	Ärge puutuge tundmatuid objekte.	et
+jõud	NOUN	jõududelt	Mure korral otsitakse endiselt tihti põhjust ja päästet seletamatutelt kõrgematelt jõududelt.	et
+jõud	NOUN	Jõust	Jõust, mis kasvatab meid keerukuste kiuste.	et
+paik	NOUN	paigalt	Üsna kindlasti oli kivi paigalt nihutanud maavärin.	et
+paik	NOUN	paigust	Konkursile saabus Eesti eri paigust sadu joonistusi ja fotosid.	et
+sattuma	VERB	satuks	Kohtades, kuhu muidu iga päev ei satuks.	et
+sattuma	VERB	satun	Kes teab, ehk satun seoses uue tööga Viljandissegi tagasi.	et
+idee	NOUN	ideid	Ka nad ei jõudnud oma ideid lõpuni viia.	et
+idee	NOUN	ideed	Nende vanemad annavad neile mõned ideed.	et
+otsus	NOUN	otsuseid	Elu on täis raskeid otsuseid.	et
+otsus	NOUN	Otsusele	Otsusele jõudsime päris kiiresti ja otsus oli üksmeelne.	et
+jagama	VERB	jagaksin	Aga üldiselt, hea meelega jagaksin teiste mänedžeridega kogemusi ja annaksin abi.	et
+jagama	VERB	Jagavad	Jagavad nippe, kuidas kellelgi õnnestub magama jääda.	et
+püsima	VERB	püsin	Viimased paarkümmend aastat püsin saarel paigal.	et
+püsima	VERB	Püsivat	Püsivat leevendust hommikul alkoholi tarbimine aga ei paku.	et
+värk	NOUN	värgi	Hiina ei küsi kogu sellise värgi pärast küsimusi.	et
+värk	NOUN	värgiga	Nad assotseerusid mulle mingi peoga või sellise värgiga ja ma lihtsalt kartsin inimesi.	et
+tänav	NOUN	Tänavalt	Tänavalt kostuv müra ei vähenenud, vaid tõusis.	et
+raisk	NOUN	raisal	Et mida sul, raisal siit veel vaja on?	et
+raisk	NOUN	raisata	Kas on mõtet sellele aega raisata?	et
+ülev	ADJ	üleval	Me peame üleval aga tervet ruumi, maksame kommunaale, mis on suhteliselt kallid.	et
+ülev	ADJ	Üleval	Üleval olev vesi ei pääse allapoole ning tihti ka mitte külgsuunas välja voolama.	et
+vang	NOUN	vangina	Xhaka isa pidi veetma kolm ja pool aastat Jugoslaavias poliitilise vangina.	et
+veed	NOUN	vett	Ma joon vett iga hommik.	et
+veed	NOUN	vette	Ta keetis potitäie vett ja pani vette kolm muna.	et
+hullem	ADJ	hullemana	Mõned harjusid hakkama saama ja hilisem aeg tuli seda hullemana pihku.	et
+hullem	ADJ	Hullemad	Hullemad on need, kellel koju nii kiire,et mõõdasoidul ei suuda isegi auto numbrit märgata.	et
+täht	NOUN	tähtedes	Ta elas edasi nii kirjutatud kui ka ette loetud tähtedes.	et
+täht	NOUN	tähega	Ja Jumala nime kipuvad nad meelsamini suure tähega kirjutama kui eestlased.	et
+jaa	ADV	Jaad	Jaad vahele,annad altkaemaksu ja asi korras.	et
+näide	NOUN	Näidete	Näidete esitamiseks võiks ümber kirjutada terve raamatu.	et
+üksteise	PRON	üksteiselt	Aina rohkem näen, kuidas meil kõigil on üksteiselt midagi õppida.	et
+üksteise	PRON	üksteist	Nad aitavad üksteist kodutööde tegemisel.	et
+issi	NOUN	issil	Ilmselt on siis issil arvutisõltuvus.	et
+issi	NOUN	Issile	Issile meeldiks seda raiuda, eks?	et
+komme	NOUN	kommete	Vaatlen transporditeemasid – ehk siis liikumisviisidega seotut – kommete, tavade ja praktikate kaudu.	et
+lõuna	NOUN	lõunaks	Kell on kaksteist ja on aeg lõunaks.	et
+lõuna	NOUN	Lõunasse	Võib-olla igatsevad paljud sakslased endiselt Saksa marka ja vaatavad, et raha läheb Lõunasse.	et
+kee	NOUN	keeta	Lõpuks otsustas ta mõne muna keeta.	et
+kee	NOUN	keel	Minu tütrele meeldivad inglise keel ja ajalugu.	et
+hoolima	VERB	hoolimata	Sellest hoolimata püüab ta positiivselt mõelda.	et
+hoolima	VERB	Hoolib	KE Hoolib! ja Töötab! musta raha saamise eest!	et
+sõna	NOUN	sõnad	Need on liiga tõsised sõnad, et tuua neid kuuldavale, eriti tõendeid esitamata.	et
+sõna	NOUN	Sõnaks	Piibel on neile olnud ja peab jääma tulevikus kaanest kaaneni Jumala Sõnaks.	et
+sekund	NOUN	sekunditeni	Usukumatu küll, aga järgmist Tapa väravat tuli oodata avapoolaja viimaste sekunditeni.	et
+sekund	NOUN	sekunditega	Muusika paneb massid sekunditega väga orgaaniliselt koos liikuma.	et
+kutsu	NOUN	Kutsuks	Kutsuks inimesi üles, kellel on mingil põhjusel eksam tegemata, sagedamini meie e-teenindust külastama.	et
+kutsu	NOUN	Kutsusid	Kutsusid mind väga populaarse asutuse – Inseneride Maja – tegevdirektoriks.	et
+rutt	NOUN	Rutte	Näiteks Hollandi peaminister Mark Rutte ütles, et ta ei istu Putiniga ühes lauas.	et
+rutt	NOUN	Rutu	Nukitsamehe kodutaluks oli Killaste talu ning nõiamaja ehitati Rutu mäe lähedale metsa.	et
+mõrv	NOUN	Mõrvast	Mõrvast on säilinud pealtnägijate tunnistused ja politsei raport.	et
+onu	NOUN	onudest	Üha enam toimuvad diskussioonid aga säärastest onudest eemal just noorema põlvkonna seas.	et
+onu	NOUN	onust	Amleth korraldab jõhkraid tapatalguid, tükeldades mõõgaga oma onust kasuisa ning põletades elusalt tema õukondlased.	et
+loom	NOUN	loomaga	Kuid seda kõike kõrvale jättes on tegu ikka sama tuhandete aastate eest elanud loomaga.	et
+loom	NOUN	loomus	See on inimese loomus ja jala käimine peaks tähendama vaba kooserdamist ja uitamist.	et
+juhtum	NOUN	Juhtumite	Juhtumite üksikasjadesse tungimise asemel on neid kirjeldatud põgusalt, teatava peatamatu fatalismi või inertsiga.	et
+tähelepanu	NOUN	tähelepanuga	Kindlasti on meil põhjust erilise tähelepanuga jälgida ka sisepoliitilisi arenguid Venemaal.	et
+tähelepanu	NOUN	tähelepanul	Kompositsioone seob läbiv pinge ning kujundiloogikat ainuomane jõud, mis tähelepanul uinuda ei lase.	et
+vangla	NOUN	vanglaid	Olen püüelnud selle poole, et mitte eales tunnistada lihtlabaseid truuduskombeid ja kivistunud tavade vanglaid.	et
+vesi	NOUN	veel	Aga Markusl on ikka veel igav ja ta on väsinud.	et
+imeline	ADJ	imelistes	Peatume jätkuvalt imelistes moodsates linnades.	et
+imeline	ADJ	Imelisi	Imelisi asju juhtub maailmas!	et
+kümme	NUM	kümne	Edukaimatel kuudel kasvas meie reisijate arv seal lausa kümne protsendi võrra kuus.	et
+mesi	NOUN	meel	Roosi´l on hea meel oma sõpra külastada.	et
+mesi	NOUN	Meega	Meega segatuna ravib südamehaigusi, neere, magu ja maksa.	et
+rõõm	NOUN	rõõmu	Sel hetkel tundsime rõõmu sellest, et olime täiskasvanud lastega vanemad.	et
+rõõm	NOUN	rõõmudega	Päris elude, murede ja rõõmudega.	et
+tugev	ADJ	tugevates	See on tugevates kogukondades tegutsevate ise hakkama saavate kodanike vaade maailmale.	et
+tugev	ADJ	tugevatena	Kas need liidud jätkavad tugevatena, sõltub kõigi liikmesriikide, sealhulgas Eesti aktiivsest panusest.	et
+jälgima	VERB	jälgiksite	Palun, et jälgiksite hügieenireegleid ja austaksite riigi ja linna otsuseid.	et
+jälgima	VERB	jälgitav	Jaoskonnas antud häälte lugemine on avalikult jälgitav ja tulemuse kujunemine seeläbi garanteeritult aus.	et
+näima	VERB	näida	See võib näida ja võib ka olla korruptiivne.	et
+näima	VERB	näisid	Kus vanemate mälestused vabast Eestist näisid muinasjutuna, mis kunagi ei täitu.	et
+pask	NOUN	pasad	Peded ja pasad, kõik risti jalus- katsu neist jagu saada.	et
+reegel	NOUN	reeglitest	Juttu oli nii reeglitest kui ka kohtumiste korralduslikust poolest.	et
+reegel	NOUN	reeglit	Ehk siin pole ühtset reeglit!	et
+peo	NOUN	peole	Leo sõber tahab, et ta tema peole läheks.	et
+meeldiv	ADJ	meeldivateks	Eestlasele meeldivateks spordialadeks on juba aegade algusest olnud jalgpall ja ralli.	et
+meeldiv	ADJ	meeldivaid	Mulle põhiprogrammi esilinastused ei istunud, isegi kui selles valikus leidus meeldivaid üllatusi.	et
+frank	NOUN	frankidega	Esikümme saab kaela rahakoti Shveitsi frankidega.	et
+frank	NOUN	frankidele	Seejärel kuulus Barcino roomlastele, lõunagootidele, araablastele ja frankidele.	et
+ühendus	NOUN	ühenduses	Ta ütleb, et see on parim viis ühenduses olla ning inimestele tõtt rääkida.	et
+ühendus	NOUN	ühendusi	Pigem neid igasuguseid ühendusi on riigikogus sadu, neid tehakse üleöö.	et
+d	NOUN	Ds	Selle linna järgi on nimetuse saanud keemiline element darmstadtium( Ds).	et
+ist	NOUN	istudes	Täna helistan ma oma klientidele, istudes samal ajal koosolekul.	et
+ist	NOUN	istu	Näiteks Hollandi peaminister Mark Rutte ütles, et ta ei istu Putiniga ühes lauas.	et
+hüppama	VERB	hüppaksime	Kuule, mis sa arvad, kui me hüppaksime minu autosse ja teeks väikse sõidu?	et
+hüppama	VERB	hüppad	Või see, kui hüppad vette – täielik jahutus.	et
+vihane	ADJ	Vihasena	Vihasena ei ole mõtet maha istuda ja kirjutama hakata.	et
+isand	NOUN	isandalt	Üks julgem nende hulgast söandab viimaks isandalt küsida, mis on selle jaheduse põhjuseks.	et
+isand	NOUN	isandatele	See tuletas isandatele nende antud vandeid meelde.	et
+korralik	ADJ	Korralikult	Korralikult koostatud äriprotsesside portfell annab konkurentsieelise ja aitab ettevõtetel olla uuendusteks paremini ette valmistunud.	et
+oluline	ADJ	olulise	See toob meid teise olulise paralleeli juurde, mis neid kaht teksti ühendab.	et
+oluline	ADJ	olulistele	Kui nad mõtlevad olulistele teemadele, siis selle kaudu teadvustavad nad erinevaid probleeme.	et
+saabuma	VERB	saabusite	Mäletate, te saabusite õhtuse rongiga.	et
+saabuma	VERB	saabute	Millal saabute esimest korda Eestisse?	et
+kolonel	NOUN	koloneliga	Sa arvad, et ma abiellun kunagi tulevikus koloneliga, kes jätab mu leseks?	et
+kolonel	NOUN	Kolonelil	Kolonelil olgu ikka pagunid alati õlgadel.	et
+kardama	VERB	kardab	Aga ta kardab vett.	et
+kardama	VERB	Kardavad	Kardavad naise vanemad, tema õde ja õemees.	et
+laud	NOUN	lauale	Lõpuks koristab ta oma laua ja paneb oma koolitööd lauale.	et
+laud	NOUN	laudadelt	Seoses sellega palun teil oma laudadelt ja sahtlitest olulised materjalid kaasa võtta.	et
+puuduma	VERB	puudusid	Enamik patsientidest eitas stenokardiat ning paljudel puudusid ka muud ravimid selle probleemi jaoks.	et
+puuduma	VERB	puudun	Ega keegi lärmi löö, kui puudun riigikogu istungitelt.	et
+kohv	NOUN	kohvi	Ta teeb hommikusööki ja joob kohvi.	et
+kohv	NOUN	kohvisse	Jätsin päevapealt teesse ja kohvisse magusa lisamata ja hakkasin poes toidupakendite silte lugema.	et
+vaenlane	NOUN	vaenlastelt	Agape ei eelda juba eos mingit vastutasu, – sõpradelt, abikaasalt ega vaenlastelt.	et
+vaenlane	NOUN	Vaenlasega	Vaenlasega sa ühte paati ei lähe, mine tea, mis seal merel võib muidu juhtuda.	et
+korraldama	VERB	korraldasin	Seega lisaks sellele, et olin noor pidutseja, korraldasin Stockholmis ka ise pidusid.	et
+korraldama	VERB	korraldamast	Kas tõesti langes lavastaja omaenda legendi lõksu ega suutnud end pidurdada järjekordseid pritsmestseene korraldamast.	et
+kuum	ADJ	kuuma	Jane võtab kuuma vanni.	et
+kuum	ADJ	Kuuma	Kuuma eest võib vajadusel varjuda näiteks kaubanduskeskuses või mõnes muus konditsioneeritud avalikus ruumis.	et
+eksima	VERB	eksivad	Kui nad kellegi arvates eksivad, siis on neil ka selleks õigus.	et
+eksima	VERB	eksite	Kui te arvate, et meid ei kritiseerita praegu, siis te eksite.	et
+boss	NOUN	Bossil	Bossil ei maksa oodata lasta.	et
+boss	NOUN	Bossile	Bossile peab kolm korda peale hüppama.	et
+vanduma	VERB	vandusin	Leidsin kotist dressipluusi, torkasin selga, läksin ja vandusin.	et
+vanduma	VERB	vannume	Märgiline, et juba ette vannume alla hääbumisele.	et
+sõnum	NOUN	sõnumitel	Ta ei vastanud telefonile, vaid lülitas mobiili välja ja lasi sõnumitel koguneda lauatelefoni automaatvastajasse.	et
+sõnum	NOUN	Sõnumit	Sõnumit toetati tippkohtumise erinevates aruteludes.	et
+kand	NOUN	kanna	Ei, Triinu ei kanna pükse.	et
+kand	NOUN	kanda	Jah, Triinu otsib oma riidekapist midagi, mida kanda.	et
+kinnitama	VERB	kinnitaksite	Kas oleksite nii lahke ja kinnitaksite kirja teel üle?	et
+kinnitama	VERB	kinnitamas	Samal ajal olid seadusandjad majas kinnitamas demokraat Joe Bideni valimisvõitu.	et
+võmm	NOUN	võmmide	Mõnikord ilmus kohale võmmide komando ja sealt oli igas suunas hea jooksu pista.	et
+võmm	NOUN	Võmme	Ära kiirust vähenda Võmme valgub siia nagu siirupit.	et
+planeet	NOUN	planeetideks	Seetõttu oleks alust nimetada neid planeetideks.	et
+planeet	NOUN	Planeedilt	Planeedilt tagasi kosmosesse peegeldatav valguse hulk oleks tavapärasest suurem paar tuhat aastat.	et
+rumal	ADJ	rumalaks	Truss ise aga ei soovinud ennustada, sest pidas seda rumalaks.	et
+rumal	ADJ	rumalat	Meedias kirjutati päris palju rumalat juttu.	et
+kohtumine	NOUN	kohtumisi	Tal on palju kohtumisi oma klientidega.	et
+kohtumine	NOUN	kohtumiste	Juttu oli nii reeglitest kui ka kohtumiste korralduslikust poolest.	et
+käituma	VERB	käitusin	Nad ütlesid, et tegutsesin valesti ja käitusin vägivaldselt.	et
+käituma	VERB	käituksite	Kas te oma rahakotiga niimoodi käituksite?	et
+vasak	ADJ	vasakut	Liigub käbedalt, peaaegu pooljoostes lava vasakut serva raamiva klaasveranda juurde.	et
+vasak	ADJ	Vasakus	Vasakus käes on üsna sügav haav aga see peaks kenasti ära paranema.	et
+igatsema	VERB	igatsetakse	Ta on kultuuriikoon, keda igatsetakse väga.	et
+igatsema	VERB	Igatsen	Igatsen elava muusika järele.	et
+tantsima	VERB	tantsime	Me ju ikkagi tantsime selleks, et tantsida.	et
+tantsima	VERB	tantsiks	Läheks laulaks kõigiga ja tantsiks peale.	et
+õhtusöök	NOUN	õhtusööki	Nad söövad koos õhtusööki kell seitse.	et
+õhtusöök	NOUN	õhtusöögi	Kas Ants teeb õhtusöögi?	et
+uhke	ADJ	uhkelt	Nii et tasub end kodus uhkelt riidesse panna.	et
+uhke	ADJ	uhkesse	Või mujale uhkesse kontorisse.	et
+algus	NOUN	algusi	Iseäranis iseloomustab see reportaažide algusi.	et
+algus	NOUN	Alguses	Alguses ma nautisin seda tööd väga, kuigi mul oli ülemusega probleeme.	et
+idioot	NOUN	idioodil	Arvad, et oleksin lasknud mõnel idioodil Beakyle brändit anda?	et
+idioot	NOUN	idiooti	Eriti hellitas ta pisikest idiooti.	et
+vahetama	VERB	vahetavad	Me leppisime kokku, et ametnikud vahetavad infot, sest on rida tehnilisi küsimus.	et
+vahetama	VERB	vahetada	Me hoidsime ja kandsime teda kordamööda ja ma isegi aitasin tal korra mähkmeid vahetada.	et
+peitma	VERB	peitsime	Saaki oli palju, tütred peitsime pärast metsa.	et
+peitma	VERB	peidate	Head ja heatahtlikud noored, kus siis teie end peidate?	et
+ehitama	VERB	ehitage	Tehke oma komsomolikoosolekuid, ehitage oma kommunismi, aga me ei käi üldse tööl!	et
+ehitama	VERB	ehitavad	Nemad on sellest regulatsioonist mööda läinud nii, et ehitavad majakese järelhaagise peale.	et
+tükk	NOUN	tükki	Aga pileteid oli jäänud ainult paar tükki.	et
+tükk	NOUN	tüki	Enne kui keegi suutis midagi öelda, võtsin kandikult teise tüki.	et
+plaanima	VERB	plaanisin	Mul ei olnud aga palju raha, nii et plaanisin minna kuhugi odavasse kohta.	et
+plaanima	VERB	Plaaniti	Plaaniti rajada terve kultuurikompleks, kuhu pidid kuuluma nii botaanika- kui loomaaed.	et
+pidu	NOUN	pidudel	Jakob ei käi aga paljudel pidudel.	et
+pidu	NOUN	pidusid	Seega lisaks sellele, et olin noor pidutseja, korraldasin Stockholmis ka ise pidusid.	et
+hind	NOUN	hinnast	See oli umbes pool teiste hinnast seega ta ostis selle.	et
+hind	NOUN	hinnalt	Ka rohujuuretasandil peavad sõidukid oma hinnalt olema kättesaadavad.	et
+sitt	ADJ	situks	Kindlasti kui seda kirjutas oli tal kärss nii krimpsus nagu situks korvpalli välja.	et
+sitt	ADJ	sitaks	Vaat niimoodi Ada nuttiski, sest ta oli sitaks väsinud.	et
+puu	NOUN	puudeta	Ehk puudega ja puudeta või erivajadusega ja erivajaduseta.	et
+puu	NOUN	puudeks	See klassifitseerus esimese astme elektrooniliseks puudeks.	et
+punane	ADJ	punase	Vastutustundetu punase langevarjuraketi kasutamine võib pikendada või koguni takistada abi saabumist tõelise abivajajani.	et
+punane	ADJ	punaseni	Maksimalistidel on aga ideaalne juhus lisada sellele toonile kõike, alates fuksiast kuni tulise punaseni.	et
+tark	ADJ	targas	Eriti just targa eesti rahva targas eesti keeles.	et
+tark	ADJ	tarka	Vähemalt huvid, suundumused, mida elus soovida, mida tarka ja kasulikku peale hakata?	et
+korter	NOUN	korterid	Miks neile ei meeldi korterid, mida nad vaatasid?	et
+korter	NOUN	korterisse	Ta tahab uude korterisse kolida.	et
+kindral	NOUN	Kindralid	Kindralid üldiselt teavad, mida nad räägivad, iseäranis riikliku julgeoleku küsimustes.	et
+info	NOUN	infoga	Tegemist oli peamiselt infoga, mis sisaldus suletud riiklikes andmebaasides.	et
+info	NOUN	Infoks	Infoks Lõhmusele – lehk tuleb ikka läbi ning haiseb kuradima vastikult ning kaugele!	et
+viis	NOUN	viise	Kuid nüüd on ka teisi viise, kuidas lugeda.	et
+viis	NOUN	viisidest	See on ka üks viisidest, kuidas saab hinnata ravimi annust ja õigekasutust.	et
+sõdur	NOUN	Sõdurite	Sõdurite seas möllanud koolera vastu võitlemine oli kriitiline teema, mis küttis kirgi mitmel pool.	et
+põlema	VERB	põleda	Ma tean, et põleda on valus.	et
+põlema	VERB	põlemata	Tema toolile ilmub äkitselt Meistri käsikiri, mis on terve, põlemata.	et
+ainuke	ADJ	Ainukeseks	Ainukeseks suletud ruumiks finišis on riietumistelk ning seal on seetõttu ka kohustuslik maski kanda.	et
+ainuke	ADJ	Ainukese	Ainukese selge pildina on meelde jäänud ronimine piazzale Michelangelole.	et
+pöörama	VERB	pööratav	Maailmas, kui peab hästi palju muutma, on Eesti küll näidanud, et oleme kiiresti pööratav.	et
+pöörama	VERB	Pöörasin	Pöörasin samuti pilgu kõrvale, vaatasin sinna, kuhu temagi, ja taipasin, et olin jälle eksinud.	et
+hingama	VERB	hingata	Hingad sisse ja hingad välja ainult selleks, et uuesti veel rohkem sisse hingata.	et
+lisama	VERB	lisan	Kes soovib, see meenutab, aga lisan ühe mõtlemapaneva fakti.	et
+lisama	VERB	lisada	Kui ma töötlen pärisinstrumente, võin ma lisada kirsiks tordile mingi uue sündisaundi.	et
+nina	NOUN	ninat	Aga selles vanuses ei saa ta ise veel ninat puhuda.	et
+nina	NOUN	ninas	See tohutu oht, et pulk võib ninas murduda, pole teda tabanud.	et
+laip	NOUN	laibal	Kas laibal on telos?	et
+laip	NOUN	Laipa	Laipa ma näha ei tahtnud.	et
+nõudma	VERB	nõudke	Ärge leppige sellega, vaid nõudke rohkemat.	et
+nõudma	VERB	nõudsite	Ehkki saite kohe alguses aru, et käitute valesti, jätkasite ikkagi ja nõudsite miljonit?	et
+emm	NOUN	Emmed	Emmed ei jookse teil enam järel ega pühi peput.	et
+jälitama	VERB	jälitab	Ehk pakub raamat inspiratsiooni mõnele otsijale, kes oma laulu jälitab.	et
+jälitama	VERB	jälitata	Aga minge Venemaale- seal ei jälitata kedagi, sest seal on võimul Keskerakonna koostööpartner.	et
+laulma	VERB	laulaks	Muidu ma neid teoseid ei laulaks.	et
+laulma	VERB	laulaksid	Serbia publik ootab väga, et mõned Horvaatia artistid tuleksid ja neile laulaksid.	et
+leppima	VERB	lepiksin	Ning kui ta seda ütleb, ma lepiksin sellega.	et
+leppima	VERB	leppisime	Me leppisime kokku, et ametnikud vahetavad infot, sest on rida tehnilisi küsimus.	et
+tõestama	VERB	tõestasite	No täna te, sotsid, tõestasite küll vägagi ilmekalt, kui naeruväärselt te oskate käituda.	et
+tõestama	VERB	tõestasime	Serviti on soosik, aga tõestasime poolfinaalis, et suudame pingetest edukalt jagu saada.	et
+nutma	VERB	nutnud	Tal olid pisikesed sõrmed ja varbad ning ta ei nutnud väga palju külastuse ajal.	et
+nutma	VERB	nutaksid	Tekkis tunne, nagu riiulid nutaksid.	et
+kiirustama	VERB	kiirustatud	See oli natuke kiirustatud võistlus, tehnilise koha pealt kindlasti mu hooaja halvim.	et
+kiirustama	VERB	kiirustasin	Kolmandal juhul kiirustasin institutsiooni tagant ja vastus tuli nelja nädala pärast.	et
+esitama	VERB	esitamata	Need on liiga tõsised sõnad, et tuua neid kuuldavale, eriti tõendeid esitamata.	et
+esitama	VERB	esitasid	Maria ja Paulus esitasid Uberist taksojuhile tellimuse.	et
+klient	NOUN	kliendid	Kas kliendid on pärit ühest riigist?	et
+klient	NOUN	klientidele	Ta teeb näljastele klientidele süüa.	et
+vari	NOUN	varjud	Mingid silmad, nurga, varjud.	et
+vari	NOUN	varjudest	Rünnaku puhul tuleb Venemaa varjudest valguse kätte tirida.	et
+veetma	VERB	veetmas	Kõik, kes siin tavaliselt aega veetmas käivad, püsivad täna toas.	et
+veetma	VERB	veedaksite	Kuidas te oma päeva veedaksite, kui selliseid teemasid üleval ei oleks?	et
+hool	NOUN	hoolis	Ta hoolis inimestest enda ümber ega tahtnud kellelegi haiget teha.	et
+hool	NOUN	hooleks	See on see pidepunkt, vooderdatud auk, kuhu pista oma muidu saatuse hooleks jäetud pea.	et
+normaalne	ADJ	normaalse	Öine kuumus võib rikkuda inimese normaalse unemustri.	et
+normaalne	ADJ	Normaalsed	Normaalsed, meeldivad, haritud inimesed.	et
+kaitsma	VERB	kaitsku	Austust riigi sümbolite vastu kaitsku seadus ja hea tava.	et
+kott	NOUN	kotte	Lisaks kümnetele politseinikele on meil avalikes kohtades sada korrakaitsjat, kes kontrollivad kotte.	et
+kott	NOUN	kotile	Paberkoti etapi jättis jaekett sisuliselt vahele, liikudes kohe kilekotilt riidest kotile.	et
+kujutama	VERB	kujutad	Seega oled sa hull, sa oled hüsteeriline, sa oled lumehelbeke, sa kujutad asju ette.	et
+kujutama	VERB	kujutatud	Igas piirkonnas oli kujutatud erinev valik elevante, kaelkirjakuid, jõehobusid, lõvisid ja sebrasid.	et
+ohver	NOUN	ohvriteks	Diktaatorite ohvriteks muutusid kõik nende riikide ja vastavalt nende poolt okupeeritud riikide elanikud.	et
+ohver	NOUN	ohvrilt	Kui röövitakse, siis ikkagi tavaliselt haaratakse ohvrilt pärast esimesi lööke asjad ja joostakse minema.	et
+tõdema	VERB	tõdenud	Rein Taagepera on tõdenud, et kongressil puudus tegevuskava.	et
+tõdema	VERB	Tõdeti	Tõdeti, et inimesed armastavad trammi ning sellele tuleks rohkem tähelepanu pöörata.	et
+liigutama	VERB	liigutasin	Võtsin keelega keti otsast kinni ja liigutasin, sellel oli tubaka maitse.	et
+liigutama	VERB	liigutata	Neid ümber ei tõsteta ega kuskile ei liigutata.	et
+vaev	NOUN	vaevata	Higi näis olevat suurepärane alguspunkt, kuna seda saab koguda naha pinnalt erilise vaevata.	et
+vaev	NOUN	vaevaga	Facebookis on mitmeid gruppe, mis on kõik lihtsa vaevaga leitavad.	et
+e	NOUN	Eta	Eta auto puhas püsiks, tuleks seda üle päeva pesema.	et
+ammuma	VERB	ammutama	Hakkasin ammutama kõike, mida popkultuur pakkus.	et
+süüdistama	VERB	süüdistamata	Asja tuleb sügavuti kriitiliselt analüüsida ja võimalikke vigu esile tuua ilma kedagi süüdistamata.	et
+süüdistama	VERB	süüdistan	Nii et ma süüdistan siinkohal stsenaristi.	et
+lõpp	ADV	lõpuna	Filosoofiaprofessori surm on selles suhtes loetav ka maailmaparandamise illusiooni lõpuna.	et
+lõpp	ADV	Lõputa	Lõputa ilusaid hetki sulle sinna kohvikusse, mis maailma lõpus.	et
+naerma	VERB	naersid	Võib-olla nad naersid minu üle.	et
+naerma	VERB	naerab	Ja tõesti- su laps nutab ja naerab samaaegselt.	et
+vanaema	NOUN	vanaemalt	Õppisin seda juba väiksena oma vanaemalt.	et
+vanaema	NOUN	vanaemaga	Ühes vanaemaga olid nad siis, vikatid käes, heinateolt kodu poole jooksnud.	et
+kasu	NOUN	kasuta	Ei, ta ei kasuta sularaha.	et
+kasu	NOUN	kasusid	Aga kaasneks ka kasusid.	et
+jälg	NOUN	jälgedelt	Ta tuli jälgedelt kõrvale juhtida.	et
+jälg	NOUN	jäljed	See on konkreetne füüsiline tegu, millest jäävad maha valuaisting ja füüsilised jäljed.	et
+kerge	ADJ	kergelt	Ja ta ei võta kaalus nii kergelt alla kui varem.	et
+kerge	ADJ	kerget	Tal pole pikka aega kerget graafikut olnud.	et
+nimekiri	NOUN	nimekirja	Ta vaatab internetist uute filmide nimekirja.	et
+nimekiri	NOUN	Nimekirjade	Nimekirjade ja programmide tegemine on kõikjal Eestis täies hoos.	et
+valmistama	VERB	valmistanud	Roosi sõber on valmistanud suure õhtusöögi.	et
+valmistama	VERB	Valmistan	Valmistan lastele kerge snäki ja loen veel läbi päeva jooksul tulnud dokumendid.	et
+parandama	VERB	parandate	Äkki parandate mu mälu?	et
+parandama	VERB	parandatav	Kusjuures eriti veel juhul, kui protsess on parandatav.	et
+vaene	ADJ	vaesel	Mees haarab nahkhiirest kinni ning rebib vaesel loomal hammastega pea otsast.	et
+vaene	ADJ	vaeselt	Küllap me kipume lugedes unustama, et Bullerby lastes elati tegelikult üsna vaeselt.	et
+tänane	ADJ	tänasele	Ma olen tänasele päevale mõelnud.	et
+tänane	ADJ	tänastes	Meie lavastuse tegijad toovad lavale Cervantese aegumatud tegelased tänastes seostes.	et
+suunama	VERB	suunasin	Kui hakkasin tantsukunstiga tegelema, suunasin kogu tähelepanu treenimisse ja tehnikate õppimisse.	et
+suunama	VERB	Suunati	Suunati vaba raha valge mehe kinnisvaraärisse.	et
+hoog	NOUN	Hooga	Hooga on probleeme kõigil, isegi meestel, mistõttu jäeti täna ära meeste lumelaua pargisõidu kvalifikatsioon.	et
+hoog	NOUN	Hoogu	Hoogu see siiski ei pidurdanud ja Korjus tõusis neljandaks, otse Robert Kubica tuulde.	et
+valitsus	NOUN	valitsustega	Ja inimesed koos oma demokraatlikult valitud valitsustega käituvad vastavalt.	et
+valitsus	NOUN	valitsustelt	Lisaks saadi valitsustelt litsentse piiratud ressursi ehk televisiooni või raadio lainepikkuste kasutamiseks.	et
+ast	NOUN	Astus	Astus Moskva konservatooriumisse, kõik professorid tahtsid teda endale.	et
+peatuma	VERB	peatudes	Tavaliselt korrigeerime oma hinnangut ankru suhtes liiga vähe, peatudes siis, kui hakkame endas kahtlema.	et
+peatuma	VERB	peatusite	Te peatusite oma kõnes või ülevaates selle väljatöötamiskavatsuse ja hea õigusloome ja normitehnika eeskirjal.	et
+andestama	VERB	andestataks	Seda enam, et Liliani käitumist meeste puhul ei andestataks.	et
+andestama	VERB	andestatud	Neile on andestatud väga palju väljaütlemisi ja palju kangemaidki.	et
+kalla	NOUN	kallad	Enne kui pasta potti kallad, lase vesi keema.	et
+kalla	NOUN	kallal	Me töötame projekti kallal, mis erineb täiesti minu senistest.	et
+tekitama	VERB	Tekitasin	Tekitasin teile vist probleeme.	et
+tekitama	VERB	Tekitad	Tekitad õnnetuse, siis ka vastutad rohkem!	et
+erinev	ADJ	erinevaid	Nad räägivad palju erinevaid keeli.	et
+erinev	ADJ	erinevate	Praegu tehakse palju koostööd, ka erinevate žanrite vahel.	et
+suurim	ADJ	suurimas	On loomulik, et ta tahab oma karjääri edendada suurimas võimalikus klubis.	et
+suurim	ADJ	suurimatel	Ja suurimatel võrgustikel on eelis väiksemate konkurentide ees.	et
+hulk	NOUN	hulgani	Teie saite hulgani tellimusi, mida aga teised ehitushaid ei saanud.	et
+hulk	NOUN	hulkadeks	Mis koondab inimesi hulkadeks?	et
+puhk	NOUN	puhkudel	Neil puhkudel pidime me tegema muid korraldusi.	et
+puhk	NOUN	Puhul	Puhul, kui teenindaja ostja vanuses kahtleb, pöördub ta ostja poole ja küsib dokumenti.	et
+liigud	NOUN	Liiguta	Liiguta mind, sest koosnen liigestest ja kõik liigesed vajavad eelkõige liikumist!	et
+suudlema	VERB	suudlen	Mida rohkem ma neid suudlen, seda vähem on nad kohal.	et
+suudlema	VERB	suudleksid	Kui mehed omavahel hoopis abielluksid ja avalikult suudleksid?	et
+huvitama	VERB	huvitad	Arvan, et sina huvitad teda.	et
+huvitama	VERB	huvitas	Mul ei olnud mingeid erilisi huvisid, natuke huvitas mind jalgpall, natuke kino.	et
+pime	ADJ	pimedalt	Samuti töötad justkui pimedalt, videos saad kohe pildi üle vaadata.	et
+pime	ADJ	pimedateks	Allilma jumalad teevad aga hante pimedateks või lonkuriteks, aga ka rikasteks või vaeseteks.	et
+mets	NOUN	metsaks	Aed on metsaks kasvanud, maja saanud uued peremehed ning paljud tekstiilid on hävinud.	et
+mets	NOUN	metsal	Samuti on metsal rekreatiivsed, keskkonnakaitselised ja sotsiaalsed ning identiteediga seotud väärtused.	et
+väsinud	ADJ	väsinum	Vahepeal tundsin end paremini, eile-täna olin jälle natuke väsinum, kurk oli imelik.	et
+väsinud	ADJ	Väsinuna	Väsinuna ja suurte kahetsustega võtsin suuna kodu poole, et mõni päev hiljem naasta.	et
+hotell	NOUN	hotellini	Kuni hotellini ei vaheta nad ühtki sõna.	et
+hotell	NOUN	Hotellile	Hotellile on pandud ikka vägev nimi.	et
+imema	VERB	imetama	Minu kõrvale pingile istus üks naine beebiga ja hakkas oma last imetama.	et
+imema	VERB	imetaks	Väike Herakles viidi Olümposele, et Hera teda imetaks.	et
+tunne	NOUN	tunded	Ma mõtlen, et võib-olla peaksin need tunded kirja panema.	et
+tunne	NOUN	tundena	Enamasti kirjeldatakse seda kahe inimese vahelise ilusa ja romantilise tundena.	et
+taevas	NOUN	taevani	Isegi fantasia tähendab siin pigem improvisatsiooni kui taevani ulatuvat poeesiat.	et
+taevas	NOUN	taevaks	Maailm aheneb ümberolevateks seinteks ning ülevalt paistvaks üheaegselt peibutavaks ja ähvardavaks taevaks.	et
+loobuma	VERB	loobuksin	See aga ei tähenda, et loobuksin.	et
+loobuma	VERB	loobuvad	Uuring tegi selgeks, millistest ravimitest loobuvad patsiendid kõrvaltoimete tõttu rohkem ja millest vähem.	et
+märk	NOUN	märki	Sõjavägi laseb samal ajal märki Tapa mõisa pihta.	et
+märk	NOUN	märgile	Igale märgile arvutatakse oma kaal, sest kõik märgid ei viita sama tugevalt Eestis elamisele.	et
+külm	ADJ	külmast	Mu keha vappus külmast.	et
+külm	ADJ	külmal	Suveturism kasvab ja energiatarve külmal perioodil väheneb.	et
+selgitama	VERB	Selgitas	Selgitas neile veel paar korda aga nad itsitasid taas ja taas trummi löömise peale.	et
+selgitama	VERB	Selgitad	Selgitad talle tema eksitust, aga kas see muudab rassisti käitumist?	et
+aken	NOUN	akende	Seepärast soovitab politsei lahtiste akende läheduses kindlasti lastel silma peal hoida.	et
+aken	NOUN	akent	Tuul veel takkajärgi – aina lõgistab mu paokile jäetud akent.	et
+võimatu	ADJ	võimatul	Ma arvan, et me tegime igal võimalikul ja võimatul juhul ettepaneku seda mängida.	et
+võimatu	ADJ	võimatuid	Karlsson suutis panna Väikevenna tegema kõiksugu võimatuid tempe.	et
+kõndima	VERB	kõnniksin	Nad juhatasid parasjagu veel üht meest ja ütlesid, et kõnniksin nende järel.	et
+kõndima	VERB	kõnnin	Ma kõnnin koju ja näen lemmikloomapoodi.	et
+ala	NOUN	alal	Millisel alal on õpilased spetsialiseerunud?	et
+ala	NOUN	Alu	Tema ning koolijuhataja preili Alu tegutsemise tulemusena tabataksegi kooli sattunud kaks petist.	et
+sünnipäev	NOUN	sünnipäeva	Mõnikord teadsime, et on raske keelduda teiste külalistega joomast, näiteks kui sõbrad tähistavad sünnipäeva.	et
+sünnipäev	NOUN	sünnipäevana	Vastupidi, seda on põhjust tähistada Rahvusarhiivi või pikemalt öeldes Eesti riikliku arhiivinduse sünnipäevana.	et
+täitma	VERB	täidaksin	Ma olen päris kindel, et tegelikult ma täidaksin lubaduse.	et
+täitma	VERB	täitmas	Nad pole siin lihtsalt täitmas kohti protokollis, vaid omavad olulist rolli meie koosseisus.	et
+palu	NOUN	Palus	Palus, et ma seda veel ei levitaks, sest see pidi peatselt Düsseldorfis välja tulema.	et
+piisama	VERB	Piisaks	Piisaks vaid inimestele piisava arvu faktide andmises ette söötmisest.	et
+piisama	VERB	Piisavat	Piisavat hoolsust järgimata on oht kahjustada demokraatliku riigi üht olulisemat väärtust, sõnavabadust.	et
+lukk	NOUN	lukule	Mugav lapsele selga panna tänu kahele pikale lukule.	et
+lukk	NOUN	Lukus	Lukus ukse avamiseks on vaja võtit.	et
+ülesanne	NOUN	Ülesannet	Ülesannet täites valivad sissid ise aja ja koha, millal vastast rünnata.	et
+ülesanne	NOUN	Ülesande	Ülesande täitmist edasi lükates ja kippudes hajameelsusest unustama, jääbki abipalve sel juhul paljudel täitmata.	et
+veider	ADJ	veidras	Puhkeb paanika, aga kogu selles veidras situatsioonis on annus absurdi.	et
+veider	ADJ	veidrat	Toonaste laste maailmapildi kujunemisel etendas lääne popkultuur üliolulist, ent nüüdse pilgu jaoks veidrat rolli.	et
+õlu	NOUN	õlles	Ka Allik on inimene, ka tema vajas päikest ja vitamiine, mida leidub õlles rohkesti.	et
+õlu	NOUN	õlleta	Populaarseimad paigad olid puhvet( sedakorda õlleta) ja koht, kus kuningaski jala käib.	et
+segadus	NOUN	segadusse	Nii et loeng ajas teda segadusse.	et
+segadus	NOUN	Segadust	Segadust ja tööd kui palju.	et
+lahke	ADJ	lahked	Lapsed on arukad ja head, täiskasvanud lahked ning arusaajad.	et
+lahke	ADJ	lahkeid	On leidunud lahkeid ja tänuväärseid sponsoreid, kes on mõne pika sõidu lihtsalt välja teinud.	et
+firma	NOUN	firmat	Kolm esimest firmat jõudsid lõpusirgele kolmekesi koos.	et
+kaamera	NOUN	kaamerast	Digitehnoloogiaga on üldine teadlikkus kaamerast aga meeletult kasvanud.	et
+kaamera	NOUN	kaameratega	Uuele kunstmuruväljakule paigaldatakse ka kaameratega treeningabisüsteem, mis võimaldab jooksvalt ja pidevalt analüüsida treeningtegevust.	et
+kasuma	VERB	Kasutud	Kasutud asjad on muidugi üksjagu oksüümoron, jaburus, vasturääkivus.	et
+sööm	NOUN	söömas	Viimasel ajal ma olen käinud palju sõpradega õhtust söömas.	et
+sööm	NOUN	söömast	See korra õnnestub, kui Mark tabatakse krõpse söömast.	et
+tuttav	ADJ	tuttavalt	Kui kogu eelnev sisukirjeldus kõlab seejuures tuttavalt, siis ilmselt põhjusel, et seda see ongi.	et
+toim	NOUN	toimes	Populaarkultuuri tegelik jõud võib paljus ikkagi olla just nimelt afektiivses toimes.	et
+toim	NOUN	Toimeta	Toimeta palju sa toimetad, kui luuleraamat on kehv, siis on kehv.	et
+auk	NOUN	aukudest	Olen süsteemi aukudest korduvalt läbi kukkunud.	et
+auk	NOUN	aukudes	See meetristes liivasoontes ja aukudes sõit on hoopis teine spordiala.	et
+tegutsema	VERB	tegutsemata	Jättes tegutsemata nüüd ja kohe, tuleb mingi aja pärast veel suurem sõda nagunii.	et
+tegutsema	VERB	tegutsete	Te märkate ja te ka tegutsete.	et
+teineteise	PRON	teineteiseni	Kuidas suhelda omavahel, jõuda teineteiseni.	et
+teineteise	PRON	teineteisest	Nad elasid pärast Peebu kolimist teineteisest liiga kaugel.	et
+kala	NOUN	Kalad	Kalad käitusid süsihappegaasiga rikastatud vees täpselt samamoodi, kui muutmata maailmamere vetes.	et
+järgnema	VERB	järgneksite	Kas te palun järgneksite mulle?	et
+järgnema	VERB	järgneksin	Ma ju järgneksin talle, kui see vaid aitaks meil kohale jõuda.	et
+teene	NOUN	teenetega	Paljud onupojapoliitikat ja teenetega kaubitsemist seni ära hoida aidanud seaduslikud hoovad on kadunud.	et
+saatus	NOUN	Saatusel	Ja mis plaanid on meiega suurimal lavastajal — Saatusel?	et
+saatus	NOUN	Saatust	Gibran mütologiseerib sümbolistlikus vaimus ka Elu ja Surma, Saatust ja Armastust.	et
+uni	NOUN	uned	On nagu uned ja ei ole ka.	et
+uni	NOUN	unes	Nüüd näis, nagu oleks ta lihtsalt rahutus unes viibinud.	et
+t	NOUN	t-ga	Kasutati ka ühe t-ga( vene keeles üldse ilma t-ta) varianti.	et
+külaline	NOUN	Külalist	Külalisi, kes ootavad Külalist.	et
+külaline	NOUN	külalise	Paraku ei saa sama öelda esietendusel laulnud külalise Kevin Ray kohta USAst.	et
+saar	NOUN	saart	Eraldatud saart maailmameres ei õnnestu Koomilisel Rüütlil oma teekaaslasele kinkida.	et
+kontor	NOUN	kontorisse	Siis pidi ta minema teise kontorisse, enne kui ta ülemusega lõunatas.	et
+kontor	NOUN	kontoritele	Liiga väikeste asjade puhul läheks asi menetlevatele kontoritele liialt keeruliseks.	et
+hobune	NOUN	hobuselt	Liiga palju hobuselt kohe tahta ei saa.	et
+hobune	NOUN	hobuseid	Siis on valimisplakatid juba tellitud või isegi trükitud ja hobuseid enam ei vahetata.	et
+värav	NOUN	väravaist	Iga kohalik teadis, et autosid selle tehase väravaist ei välju.	et
+värav	NOUN	väravaid	Esimesel poolajal väravaid ei löödud.	et
+kõrge	ADJ	kõrgelt	Aga ka seda, kui kõrgelt haritud ja seda ka kultuuri vallas olid mõlemad abikaasad.	et
+kõrge	ADJ	Kõrget	Kõrget kohta tal sõidu lõpuni siiski hoida ei õnnestunud ja finišisse jõudis Kullas kuuendana.	et
+reis	NOUN	reisid	Sa olid natuke mures, et reisid autodes, mida juhivad võõrad inimesed.	et
+reis	NOUN	reisi	Ta peab oma reisi uues riigis planeerima.	et
+kivi	NOUN	kivid	Lisaks tegid raja ohtlikuks kivid.	et
+kivi	NOUN	kivini	Kui filosoofi kivini ei jõua, siis mingisugusele saladusele lähemale küll.	et
+kingitus	NOUN	kingituse	Ta peab Marile kingituse ostma.	et
+kingitus	NOUN	Kingitusi	Kingitusi aga ei pakuta, vaid tuleb ise võidelda.	et
+tagumik	NOUN	tagumikku	Ehk oleks mu välja visanud ja jalaga tagumikku toksanud.	et
+tekkima	VERB	tekivad	Uued kohvikud tekivad suletute asemele.	et
+tekkima	VERB	Tekkib	Tekkib küsimus,millal nad lõhki lähevad oma piiritu ahnusega,meie põlvkond vist kahjuks seda ei näe.	et
+tuli	NOUN	tules	Tal on kogu aeg seitse rauda tules.	et
+tuli	NOUN	tuld	Kui selliseid on, antagu tuld!	et
+kuul	NOUN	kuulide	Elu, mida ohustab kauge ja enamasti nähtamatu vaenlane, mis avaldab ennast kuulide ja pommidena.	et
+kuul	NOUN	kuuliga	Paraku tegi Romppanen jämeda vea ja lõi soovitud kuuli sisse koos valge kuuliga.	et
+klass	NOUN	klassi	Olen üritanud klassi kohta märkmeid teha, aga siis mõistsin, et olen ka pastaka unustanud.	et
+klass	NOUN	klasse	Seetõttu peab ta valima sobiva arvu klasse, et täita oma kraadi nõudeid.	et
+ajalugu	NOUN	Ajaloost	Ajaloost pole teada ühtegi sellist juhtumit.	et
+ajalugu	NOUN	Ajalukku	Ajalukku vaadates on muidugi sedasi, et loodustaju hiilgeaeg jäi Euroopas põhiliselt kristluse-eelsesse aega.	et
+praegune	ADJ	praeguseni	Kuidas korrakaitsjad meid leidsid jääb praeguseni mulle mõistmatuks.	et
+praegune	ADJ	praegustelt	Ma olen kuulnud palju head BC Kalev/Cramo organisatsioonist nii praegustelt kui ka varasematelt mängijatelt.	et
+häda	NOUN	hädaga	Üksi olla kuidagi ei taha ja hädaga sobib kes iganes.	et
+häda	NOUN	hädasse	Aga kui see tõsi oli, miks see eksinud lambuke siis hädasse jätta?	et
+kaugune	ADJ	kaugustest	Ja maailma otsast, ida või põhja pool asuvaist tundmatutest kaugustest nähakse tulemas kohutavaid rahvahõime.	et
+kaugune	ADJ	kaugusse	Leegionärid jäid hauast lugupidavasse kaugusse ja surusid end üksteise vastu nagu lambakari.	et
+nahk	NOUN	nahkades	Viimasel peal olid siin haisvad nahkades poisid.	et
+nahk	NOUN	nahaga	Nagu alati, satuvad nad igasugusesse jamasse, kust nad lõpuks puhta nahaga pääsevad.	et
+mägi	NOUN	mäed	Ta ütleb, et see on jama, mäed klaustrofoobilised ja võidusõit ise armutu elajas.	et
+mägi	NOUN	mägedes	Taavi on kolm päeva mägedes matkanud.	et
+õnnestuma	VERB	õnnestuvat	Mustusemõistete kohaldamine tundub õnnestuvat ainult siis, kui oleme objektist sobivas kauguses.	et
+õnnestuma	VERB	õnnestu	Eraldatud saart maailmameres ei õnnestu Koomilisel Rüütlil oma teekaaslasele kinkida.	et
+king	NOUN	kingades	Kuivõrd sa tead juba kirjutades, kes mis kingades seisab?	et
+king	NOUN	kingad	Sinised kingad on liiga kitsad.	et
+advokaat	NOUN	advokaadita	Teda kuulati üle üksinda, ilma vanemate või advokaadita.	et
+täiuslik	ADJ	Täiuslikku	Täiuslikku nii dialoogi kui ka karakterite väljamängimise poolest.	et
+pool	ADP	poolteks	Siin on eri poolteks riik, omavalitsus, teenusepakkujad-ettevõtjad ning kõik me ise, inimesed.	et
+pool	ADP	pooltes	Neist pooltes olid osalised ka eestlased.	et
+maal	NOUN	maaliks	Ja Rita Grava ootab ikka veel Lausi lubaduse täitumist – et see teda maaliks.	et
+maal	NOUN	maalidest	Saame vaadata papüürosele tehtud visandeid ja ta räägib meile Hieronymus Boschist, renessansiajastu maalidest.	et
+kangelane	NOUN	kangelasel	Hollywoodi mudel rajaneb ühel kangelasel, telesarjadel seevastu on mitu kangelast ja tegevusliini.	et
+lükkama	VERB	lükkavad	Maksutõusud, eriti kui tegu on töötamise täiendava maksustamisega, lükkavad seda vastupidises suunas.	et
+lükkama	VERB	Lükka	Lükka või kauplus käima!	et
+kard	NOUN	karda	Inimestega, kes ei karda sulle tõtt rääkida.	et
+kate	NOUN	katted	Tuppa, millel on neli seina ja akendel katted ees.	et
+kate	NOUN	Katega	Ta reisib koos ühe hooraga- Suurnina Katega... aga ta pole ta kupeldaja.	et
+masin	NOUN	masinateks	Sinnamaani välja, et muutusime juba peaaegu ise masinateks.	et
+masin	NOUN	masinale	Õige pea saab selgeks, et küte sellele masinale on kadedus ja iseenese ebakindlus.	et
+bill	NOUN	Billiks	Abikaasa kutsus teda Billiks.	et
+bill	NOUN	Billiga	Hillary Clinton andis esmaspäeva õhtul valijameeste kogus hääle koos abikaasa Billiga.	et
+koletis	NOUN	koletised	Psühhiaatrid ei ole koletised, kes topivad lapsed kangeid ravimeid täis.	et
+koletis	NOUN	koletist	Loodetavasti norrakad teadsid toda koletist.	et
+hirm	NOUN	hirmul	Lapsed ongi alguses natukene hirmul, aga hirm läheb peagi mööda.	et
+hirm	NOUN	hirmud	Lehekülg lehekülje haaval avanevad nende karakterite minevikupained, hirmud ja lootused.	et
+sügav	ADJ	sügavalt	Endrik Üksvärav ütleb, et otsus sel päeval Iisraelis Tormist laulda tuli neil sügavalt südamest.	et
+sügav	ADJ	Sügava	Sügava mulje jättis ka meie karismaatiline noor dirigent Risto Joost, nagu kontserdijärgsetest vestluskatketest kuulsin.	et
+eesmärk	NOUN	eesmärgita	Aga mitte ilma eesmärgita.	et
+eesmärk	NOUN	Eesmärkidest	Eesmärkidest rääkides tahaksime ikka võita kõiki tiitleid, mida pakutakse.	et
+sein	NOUN	seinast	Teistel riikidel on magustoitude aga ka karastusjookide maksustamisega kogemusi seinast seina.	et
+sein	NOUN	seintest	Toona sai plaadist surnukehade hoidmiseks mõeldud kirstulaadse kivitsisterni üks seintest.	et
+peksma	VERB	peksime	Me peksime nende laipu ja määrisime neid nende enda verega.	et
+peksma	VERB	peksaksin	Ma peksaksin sul larhvi segi, aga Zarathustra ei luba.	et
+vabastama	VERB	vabastaksite	Ma palun, et te minu ja Linda vabastaksite,.	et
+vabastama	VERB	vabastamast	Pahatahtlikult käituvaid üürnikke, kes keelduvad ruume vabastamast, neid on.	et
+lahendama	VERB	lahendame	Kui lahendame ühe mure, läheb ka kõik muu ümber veidi kergemaks.	et
+lahendama	VERB	lahendada	Ta loodab, et suudab selle probleemi lahendada.	et
+lähem	ADJ	lähemaid	Nad on eestlaste lähemaid sugulasrahvaid ja liivi keel on eesti keelega sarnasemaid keeli.	et
+lähem	ADJ	Lähemal	Lähemal uurimisel selgub, et endiselt on müügil ka käsitsi ilmutamise kemikaalid ja fotopaberid.	et
+pood	NOUN	poes	Kas Karen näeb poes kassi?	et
+pood	NOUN	poodi	Kas Ants jääb poodi?	et
+seletama	VERB	seletad	Mis sa vanamees ka seletad!	et
+seletama	VERB	seletasid	Hädavaevu seletasid meie silmad valgeid surilinu hauapingil, enne kui meie silmad pimedusega harjusid.	et
+närv	NOUN	närvis	Ta on närvis ja mõtleb, mida osta.	et
+närv	NOUN	Närvide	Närvide tööga seotud geenid suuremad, kui mitmed teised valkude valmistamise eest vastutavad pärilikkusaine lõigud.	et
+avastama	VERB	avastanud	Mida on eriolukorras avastanud muuseumi juht ning sooviks teistmoodi teha täna ja tulevikus?	et
+avastama	VERB	avastasin	Kuid mõned aastad tagasi avastasin uusi lugemisviise.	et
+röövima	VERB	röövige	Kui tulite röövima, siis röövige.	et
+röövima	VERB	rööviksime	Mida te poisid eeldate, et me rahapaja raha rööviksime?	et
+süütu	ADJ	süütut	Mis on hullem – miljon süütut vangis või üks kurjategija vabaduses?	et
+süütu	ADJ	süütum	See tuleb veel rajum, ma loodan, a kas sootum ja süütum, seda ei tea.	et
+tõtt	NOUN	Tõttu	Tõttu, kus ta ennast vigastanud, kõik me saame teha, on murrab ta.	et
+vanaisa	NOUN	Vanaisal	Nimelt olnud Vanaisal suur ratas, mida ta vändaga ringi ajas.	et
+lootus	NOUN	lootuses	Võimalik, et Mölder tegi sellise ainuisikulise otsuse lootuses lunastada oma isiklikud prohmakad.	et
+päike	NOUN	päikeste	Ja ümber nende päikeste, on seal planeete?	et
+päike	NOUN	päikesel	Varsti tuleb päikesel nii suur purse, et see lööb kõik süsteemid välja.	et
+segane	ADJ	segasel	Maailm elab segasel perioodil.	et
+segane	ADJ	segase	Ka Vaba Lava edukäik leidis aset mõneti segase ja ebameeldiva vahejuhtumi tuules.	et
+ronima	VERB	roni	Ära siis roni teatrisse, raisk, kui sul pole raudsed närvid!	et
+ronima	VERB	ronimas	Mängisime sõda ja käisime kirikuaia kivimüüril ronimas ning raudväraval turnimas.	et
+võlg	NOUN	võlgadeta	Et saaks enneaegselt tulema ilma võlgadeta, ehk jääb ettevõtegi alles.	et
+võlg	NOUN	võlas	Varasemaid või võlas olevaid arveid koolil Montser Media OÜ-le ei ole.	et
+tõend	NOUN	tõendiga	Seda uurides ei saa aru, kas tegu on ühe või mitme tõendiga.	et
+tõend	NOUN	tõendeid	Need on liiga tõsised sõnad, et tuua neid kuuldavale, eriti tõendeid esitamata.	et
+kuju	NOUN	Kujude	Kujude seas on nii jumalaid kui deemoneid.	et
+kuju	NOUN	Kujuta	Kujuta ette, et sa oled keskealine poliitik!	et
+pulm	NOUN	pulmas	Presidendid annavad medaleid, teevad kalli ja käivad pulmas.	et
+pulm	NOUN	pulmadesse	Samuti kutsuti neid matustele ja pulmadesse ning ühtlasi peeti neid oskuslikeks laevaehitajateks.	et
+andmed	NOUN	Andmetele	Andmetele tuleb väärtus anda ning väärtuse loomisesse tuleb ka investeerida.	et
+ohutu	ADJ	ohutuid	Reaalsus on see, et ohutuid riike täna sisuliselt enam ei ole.	et
+sundima	VERB	sunnin	Vahel sunnin sõpru mu tekste kuulama ja oma arvamust avaldama.	et
+sundima	VERB	Sunnib	Sunnib asju rohkem läbi mõtlema kui muidu.	et
+vaim	NOUN	Vaimuta	Ilma Püha Vaimuta jääb see teadmine saamata, see kingitus avamata.	et
+vaim	NOUN	vaime	Seetõttu tuli allilma vaime austada ja neile ohverdada kala ja muud söögipoolist.	et
+minevik	NOUN	minevikul	Ma ütleks, et olen väga-väga uhke, aga ei saa minevikul pikemalt peatuda...	et
+minevik	NOUN	minevikuga	Levinud ettekujutuse kohaselt peaksid nad tegelema minevikuga.	et
+kaunis	ADJ	kaunite	Valged ja kaunite pitsidega.	et
+kaunis	ADJ	kaunistest	Rääkimata kaunistest naiselikest mustritest, mis alati esindatud on.	et
+sulgema	VERB	sulgeda	Aga ma pole suutnud silmi sulgeda.	et
+sulgema	VERB	suleme	Kui me samamoodi suleme järgmise kooli, kaotame järgmised medalid ja järgmised lapsed.	et
+hoiatama	VERB	hoiatasin	Ma hoiatasin, et paradoksid kerkivad.	et
+hoiatama	VERB	hoiatati	Teisigi hipitsejaid hoiatati kogunemisele ilmumast.	et
+nõustuma	VERB	nõustuge	Sest too kass, nõustuge, ei tule teie ellu mitte täiesti...	et
+nõustuma	VERB	nõustusime	Väljak muutus vihma tõttu libedaks, ent me mõlemad nõustusime edasi mängima.	et
+kael	NOUN	kaelasid	Sellepärast, et sinu vennalastel pole kaelasid.	et
+kael	NOUN	Kaelal	Kaelal olevat suurenenud lümfisõlme märkavad inimesed kiiresti ja pöörduvad arsti poole.	et
+arvestama	VERB	arvestamaks	Me oleme olnud paindlikud arvestamaks maailmas toimuvaid muutusi ja uuenenud vajadusi.	et
+arvestama	VERB	arvestaks	Ja et erakond edaspidi parempoolsete vaadetega rohkem arvestaks.	et
+arvuti	NOUN	arvutis	Talle meeldib arvutis mängida.	et
+arvuti	NOUN	arvutid	Millega arvutid hästi hakkama ei saa, sellega tulevad jällegi inimesed paremini toime.	et
+nautima	VERB	nautinud	Ta on seda tööd väga nautinud, kuigi tal on ülemusega probleeme olnud.	et
+nautima	VERB	nautisin	Alguses ma nautisin seda tööd väga, kuigi mul oli ülemusega probleeme.	et
+kuninganna	NOUN	kuningannaks	Mägede kuningannaks nimetab ta oma tõbe.	et
+kuninganna	NOUN	Kuningannaks	Kuningannaks kuulutati Juana, kuid tema tegelik võim jäi algusest peale vaidluse alla.	et
+teatama	VERB	Teatas	Teatas, et mingit Eesti riiki pole.	et
+teatama	VERB	Teatavad	Teatavad inimesed olid valitud sihtmärgiks, tungiti nende kodusse, neid ähvardati, rünnati ja mõnikord tapeti.	et
+püksid	NOUN	pükse	Ta näeb musti pükse.	et
+püksid	NOUN	püksist	Tõstab siis triiksärgi krae täiesti üles, nii et saba tuleb püksist välja.	et
+karm	ADJ	karmust	Nii mõnegi nimeka ülema iseloomustamisel nimetati tema inimlikkust, ausust, karmust, aga ka kaasavust.	et
+mainima	VERB	mainimas	Arvan, et kuulsin sind mainimas ühe daami nime.	et
+mainima	VERB	mainite	Te räägite, soovitate, mainite, mida veel tõlgitud pole ja mis on parasjagu tõlkimisel.	et
+õpetaja	NOUN	õpetajatele	Ma meeldin minu õpetajatele väga.	et
+õpetaja	NOUN	õpetajad	Oli loomulik, et õpetajad küsisid selle peale selgitusi vallast.	et
+kirik	NOUN	kirikult	Varsti võeti kirikult ära omandiõigused.	et
+kirik	NOUN	kirikutest	Viimasel juhul teostavad vähemalt mingid osad kirikutest ise religiooni populistlikku politiseerimist.	et
+vennas	NOUN	vennased	Siin on päeva esimene lonks, vennased.	et
+vennas	NOUN	vennaste	Klubi lugu kulgeb paralleelselt vennaste omavahelise läbisaamisega.	et
+kolima	VERB	kolida	Ta tahab uude korterisse kolida.	et
+kolima	VERB	kolimast	Ühe korteri omanik keeldus ümber kolimast.	et
+miss	NOUN	Misse	Misse nott oli, ma ei saand kunagi teada.	et
+alg	NOUN	algust	Kui palju aega on Martinil enne töö algust?	et
+pau	INTJ	Paul	Mariah and Paul are stranded at the park.	et
+sinine	ADJ	sinised	Kas sinised kingad on mugavad?	et
+sinine	ADJ	siniselt	Ainult telefoniekraan Arno sõrmede vahel helendab siniselt.	et
+politseinik	NOUN	politseinikele	Lisaks kümnetele politseinikele on meil avalikes kohtades sada korrakaitsjat, kes kontrollivad kotte.	et
+politseinik	NOUN	politseinikku	Peagi naasiski mees maja juurde, sihtides üht politseinikku relvataolisest esemest.	et
+väitma	VERB	väidame	Mille alusel väidame, et iga laps otsustab ise, kuis toimida?	et
+väitma	VERB	väitsin	Minagi väitsin, et esimestel aastatel on see tõesti nii.	et
+vajalik	ADJ	Vajalikke	Vajalikke biomaterjale tootev tööstus on Venemaal tagasihoidlik.	et
+soovitama	VERB	soovitage	Kui märkate, et sõber või kolleeg on väsinud, siis kahtlemata soovitage talle rohkem magada.	et
+soovitama	VERB	soovitada	Selliste ambitsioonide puhul võiks järgmiseks korraks soovitada kellegi kõrvalseisja kureerivat pilku.	et
+sitapea	NOUN	sitapeaga	Kõige hullem asi on jääda sitapeaga üksi.	et
+sitapea	NOUN	sitapeadega	Koos maailma kõige rohkem pinges olevate sitapeadega.	et
+leitnant	NOUN	leitnandiga	Vahest võid mängida reamehega, kuid mitte leitnandiga.	et
+leitnant	NOUN	leitnandiks	Just tema oleks kindral Othello pidanud ülendama lipnikust leitnandiks Cassio asemel.	et
+langema	VERB	langesite	Te langesite Venemaa eest, kodumaa nimel,.	et
+langema	VERB	langemas	Küll on Covidi-koormus EMO-des kergelt langemas.	et
+rong	NOUN	rongiga	Ta otsustab rongiga tööle minna.	et
+rong	NOUN	rongide	Ta kontrollib hoopis rongide sõiduplaani.	et
+kahtlema	VERB	kahtles	Aga nüüd ta kahtles.	et
+kahtlema	VERB	kahtled	Jõuadki sinna, aga peale tuleb kohutav tunne, et kahtled kõiges.	et
+partner	NOUN	Partnerit	Partnerit ei tohi survestada tegema midagi, mida ta teha ei taha.	et
+partner	NOUN	Partneriks	Partneriks olemine tähendab iseenda avaldamist teise kaudu.	et
+keeruline	ADJ	keerulised	Ministeeriumid osutavad veel, et takistavaks asjaoluks on keerulised ning sageli muutuvad riigihangete korraldamise reeglid.	et
+keeruline	ADJ	Keerulist	Keerulist mõttevoogu on raske lavastada nii, et see rahva saali tooks.	et
+kurb	ADJ	kurvaks	Aga ei, kahjuks ei ja see teeb väga kurvaks.	et
+kurb	ADJ	kurvast	Jääme ilma oma kurvast tulevikust, kui kõik nii agressiivselt ette ära manatakse!	et
+tasuma	VERB	Tasun	Tasun heldelt neile, kes kujutavad mind tõeliselt ja puhtalt.	et
+tapmine	NOUN	tapmises	Smuuli näidendi tekstis räägitakse Saare-nimelisest valla täitevkomitee esimehest, kelle tapmises Lea Trahteri Eskot süüdistab.	et
+tapmine	NOUN	Tapmised	Tapmised, tulistamised ja autode/garaažide põletamised ei häiri juba ammu Rootsi politseid.	et
+mõistus	NOUN	mõistuseks	Jah, toimis reaalsusprintsiip või see, mida Kant praktiliseks mõistuseks pidas.	et
+mitu	NOUN	mitmetesse	Olen varemgi mitmetesse oma lauludesse pannud vihjeid nende lugudele.	et
+mitu	NOUN	Mitmeks	Mitmeks päevaks kõik jõustruktuurid hõivatud, muu jääb tegemata.	et
+pesema	VERB	pese	Ei, ema ei pese koera.	et
+pesema	VERB	pesta	Ta võiks proovida neid pesta.	et
+puudutama	VERB	puudutage	Ja ta õpetas, et kui lähete oma emale või isale külla, siis puudutage teda.	et
+puudutama	VERB	puudutan	Ma ei taha, et asi, mida ma ärgates esimesena puudutan, oleks plast!	et
+rünnak	NOUN	rünnakuni	Oluline on ka kuni rünnakuni kannatlik olla, siin on meil palju arenguruumi.	et
+rünnak	NOUN	Rünnakul	Rünnakul leidsime omad käigud kenasti üles tänu enesekindlamale palli hoidmisele.	et
+ilmuma	VERB	ilmumast	Teisigi hipitsejaid hoiatati kogunemisele ilmumast.	et
+ilmuma	VERB	Ilmun	Ilmun teile veel korra või paar, kuid eelistaksin teie neurofüsioloogilist maatriksit mitte solkida.	et
+ühinema	VERB	ühineksite	Ma tahan, et te kuulaksite teadlasi, ja ma tahan, et te ühineksite teaduse taha.	et
+ühinema	VERB	ühinesime	Veelgi enam, me ühinesime ja astusime vaenlasele väärikalt vastu.	et
+kaart	NOUN	kaardil	Ta oleks pidanud läände minema, aga ta ei tunne kaardil midagi ära.	et
+kaart	NOUN	kaardita	See on kaos, kuid mitte ilma kaardita.	et
+sündima	VERB	sünnitama	Samas, seni kuni naist ei sunnita sünnitama, võib ta alati valida n-ö mehelikuma elutee.	et
+sündima	VERB	Sündis	Sündis Narvas, ema oli eestlane, isa inglane.	et
+kõht	NOUN	kõhu	Inimene tunneb võib-olla kõhu või neeruvalu, aga valu põhjust ei leita.	et
+kõht	NOUN	kõhuni	Pingil istudes võetakse käest kinni, koos ilmutakse kaadrisse, särgid poole kõhuni lahti jne.	et
+side	NOUN	sidemel	Kogu meie projekt põhineb koostööl ja omavahelisel sidemel.	et
+side	NOUN	sidemeteks	Mõned neist esmakohtumistest võivad viia suhtluseni, mis areneb ajapikku nõrkadeks või isegi tugevateks sidemeteks.	et
+usk	NOUN	usuks	Kas nad üldse usuks teda?	et
+usk	NOUN	usus	Kõik näis loogiline ning me asusime heas usus asja uurima.	et
+kõva	ADJ	kõvadest	Tahan vajuda aina sügavamale ja sügavamale, kaugele pinnast ja selle kõvadest eraldiseisvatest faktidest.	et
+kõva	ADJ	Kõvade	Kõvade kaantega raamatust, mille kaanel ujuvad kilud.	et
+tõlkima	VERB	tõlgitaks	Kui paljusid nende teostest saame lugeda või loeksime, kui need tõlgitaks?	et
+tõlkima	VERB	tõlkida	Ega neid olegi lihtne lavakeelde tõlkida.	et
+kaks	NOUN	kaht	See toob meid teise olulise paralleeli juurde, mis neid kaht teksti ühendab.	et
+kaks	NOUN	kahte	Kas Liisa proovib jalga kahte paari?	et
+operatsioon	NOUN	operatsioonini	Isegi igateisipäevased kohtumised peaminister Viktor Tshernomõrdiniga on kuni operatsioonini ära jäetud.	et
+operatsioon	NOUN	Operatsiooniga	Operatsiooniga kaasnevad muutused ei ole ainult füüsilised, vaid põhjustavad ka vastuolulisi tundeid.	et
+armee	NOUN	armeesse	Ma saan ainult kinnitada, et jah, kauaoodatud relv on jõudnud Ukraina armeesse.	et
+armee	NOUN	armees	Tema isa oli võidelnud Judenitši armees ja ema olnud Peterburi Maria teatri näitleja.	et

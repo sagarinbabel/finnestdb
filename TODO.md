@@ -337,7 +337,10 @@ Snapshot of capabilities currently shipped on main, organized by area.
 - Per-deck comprehension prediction (`GET /api/decks/{id}/comprehension`,
   `comprehension_pct` on deck list)
 - Cold-start "Top 1000" FI/ET official starter decks (`cmd/seedcolddeck`,
-  operator-seeded at deploy time)
+  operator-seeded at deploy time); starter cards now carry curated corpus
+  example sentences via `cmd/pickexamples` +
+  `testdata/starter-examples/{fi,et}-examples-v1.tsv` (attach with
+  `seedcolddeck -examples`)
 
 ### Data and infrastructure
 
