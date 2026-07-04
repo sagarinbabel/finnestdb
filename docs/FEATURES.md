@@ -103,10 +103,15 @@ For each parsed text, the app shows:
 - grammar labels when enrichment inferred them
 - example sentences and token counts
 - row-level Known / Ignore and correction actions for logged-in users
+- a **coverage reveal** above the table (shipped 2026-07-04): for signed-in
+  learners, "You already know X% of this text" plus a projection "Learn the top
+  N words → Y%"; for anonymous visitors, the frequency framing "The N most
+  frequent words carry Z% of it". X/Y/Z reuse the saved-deck comprehension
+  token-mass formula (known-or-ignored counts as covered) — see USER_FLOWS §2.
 
-Automatic known/new labelling, comprehension estimates, and leverage-based
-ordering are planned product work, but are not part of the current Inspect
-result.
+Beyond the coverage reveal, automatic known/new labelling across the table and
+leverage-based row ordering remain planned product work, not part of the
+current Inspect result.
 
 ## Words With Multiple Senses
 

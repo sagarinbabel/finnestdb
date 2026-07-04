@@ -699,6 +699,13 @@
                 <button id="results-back" class="btn btn-link">← Back</button>
                 <h2 id="results-title">Results</h2>
             </div>
+            <!-- Post-parse coverage reveal (aha moment #1). Self-contained:
+                 one render function (renderCoverageReveal) + one CSS block
+                 (.coverage-reveal). A queued reading-surface redesign will
+                 re-home this; keep it a movable unit. Numbers are filled in
+                 by JS from the parse response — the empty container renders
+                 nothing until then. -->
+            <section id="coverage-reveal" class="coverage-reveal hidden" aria-live="polite"></section>
             <div class="results-split">
             <aside class="results-chapter-nav hidden" id="results-chapter-nav" aria-label="Filter results by chapter"></aside>
             <div class="results-body">

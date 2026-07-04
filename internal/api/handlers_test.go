@@ -724,6 +724,92 @@ func TestHandleParseHydratesLemmaStateForAuthenticatedUser(t *testing.T) {
 	}
 }
 
+// TestHandleParseCarriesCoverageRevealInputs pins the contract the post-parse
+// coverage reveal (aha #1) depends on: /api/parse must return, per word, the
+// token Count and the LearningState ('known'/'ignored'/empty) so the client can
+// compute token-weighted coverage the SAME way store.DeckComprehension does —
+// a token position counts as covered when its (lemma, pos) is known OR ignored,
+// weighted by token mass. If this contract regresses (Count dropped, ignored no
+// longer surfaced), the reveal would fabricate or mis-state the "% you already
+// know" figure, so this test guards the numbers, not the animation.
+func TestHandleParseCarriesCoverageRevealInputs(t *testing.T) {
+	api := newTestAPI(t)
+	api.analyze = func(_ *store.DB, lang, _, parser string) (*parsecore.ParseResult, error) {
+		if parser == "" {
+			parser = "custom"
+		}
+		// Distinct token masses so the coverage arithmetic can't accidentally
+		// pass on equal weights: known=3, ignored=1, unknown=6 → total 10.
+		return &parsecore.ParseResult{
+			Lang:            lang,
+			Parser:          parser,
+			TotalTokens:     10,
+			ParseDurationNs: 11_000_000,
+			Words: []parsecore.WordEntry{
+				{Lemma: "kissa", POS: "NOUN", Forms: []string{"kissa"}, Count: 3},
+				{Lemma: "nimi", POS: "PROPN", Forms: []string{"Nimi"}, Count: 1},
+				{Lemma: "juosta", POS: "VERB", Forms: []string{"juoksen"}, Count: 6},
+			},
+		}, nil
+	}
+	mux := newTestMux(t, api)
+	cookies := loginAndReturnCookies(t, mux, "reveal-inputs@example.com")
+
+	mark := func(body string) {
+		req := httptest.NewRequest(http.MethodPost, "/api/lemma-state", strings.NewReader(body))
+		for _, c := range cookies {
+			req.AddCookie(c)
+		}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("lemma-state %s: status=%d body=%q", body, rec.Code, rec.Body.String())
+		}
+	}
+	// kissa known; nimi ignored (proper name) — both count as covered mass.
+	mark(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"known"}`)
+	mark(`{"lang":"FI","lemma":"nimi","pos":"PROPN","status":"ignored"}`)
+
+	parseReq := httptest.NewRequest(http.MethodPost, "/api/parse", strings.NewReader(`{"lang":"FI","text":"kissa Nimi juoksen","parser":"custom"}`))
+	for _, c := range cookies {
+		parseReq.AddCookie(c)
+	}
+	parseRec := httptest.NewRecorder()
+	mux.ServeHTTP(parseRec, parseReq)
+	if parseRec.Code != http.StatusOK {
+		t.Fatalf("parse status=%d body=%q", parseRec.Code, parseRec.Body.String())
+	}
+
+	var resp ParseResponse
+	if err := json.Unmarshal(parseRec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	// Reproduce the client's token-mass coverage formula from the wire fields.
+	var total, covered int
+	for _, w := range resp.Words {
+		if w.Count <= 0 {
+			t.Fatalf("word %s/%s has non-positive Count %d; reveal weights by Count", w.Lemma, w.POS, w.Count)
+		}
+		total += w.Count
+		if w.LearningState == "known" || w.LearningState == "ignored" {
+			covered += w.Count
+		}
+	}
+	if total != 10 {
+		t.Fatalf("total token mass = %d, want 10", total)
+	}
+	// known(3) + ignored(1) = 4 of 10 = 40%. Ignored MUST count as covered,
+	// matching DeckComprehension's "ignore means don't-study, still covered".
+	if covered != 4 {
+		t.Fatalf("covered token mass = %d, want 4 (known 3 + ignored 1)", covered)
+	}
+	pct := covered * 100 / total
+	if pct != 40 {
+		t.Fatalf("token-weighted coverage = %d%%, want 40%%", pct)
+	}
+}
+
 // TestHandleParseExpandsHomonyms verifies that the import overview's words
 // list is dict-expanded the same way handleCreateDeck expands tokens, so the
 // unique-lemma count in the import overview matches the deck's unique count.
