@@ -262,6 +262,50 @@ Until `cmd/ambiguityeval` lands, the evidence table in §3–§5 above is the
 reference baseline (produced by a throwaway harness over these exact gold files,
 parser `2026.05.15a`, 2026-07-04).
 
+**Runner shipped 2026-07-04.** `cmd/ambiguityeval` and `make compare-ambiguity`
+(via `scripts/compare-ambiguity.sh`) are implemented as specified above. A real
+run against the production DB + FST tables, parser `2026.05.15a`, measured:
+
+- **FI**: selection accuracy 34/48 = 70.8%; candidate inclusion 35/48 = 72.9%.
+- **ET**: selection accuracy 6/13 = 46.2%; candidate inclusion 13/13 = 100.0%.
+
+Candidate inclusion on both languages matches the §3/§5 evidence table exactly.
+Selection accuracy is lower by 2 FI cases and 1 ET case than the numbers in §3/
+§5, and the runner is the reference now — the throwaway harness that produced
+those numbers is not. Root-caused to two distinct things, not a shared bug in
+the metric math:
+
+1. **Sentence-initial casing (2 of the 3 divergent cases, a runner-convention
+   gap, not a parser bug).** The occurrence lookup matches the gold `surface`
+   string against `parsecore.TokenResult.Form` exactly (the same convention
+   `internal/eval.findOccurrence` uses for the headline gold sets, which have
+   the identical gap on sentence-initial words, e.g. `fi-manual-v1.json`'s
+   `Näyttelijäjulkkisten`/`näyttelijäjulkkisten`). `fi-amb-sain-2` ("Sain
+   kirjeen postissa.") and `et-amb-pea-2` ("Pea kinni see lubadus.") both put
+   the target surface sentence-initially with a lowercase gold `surface`; the
+   parser's actual pick is correct in both cases (`saada/VERB`, `pidama/VERB`)
+   but the exact-match lookup can't find the capitalized `Sain`/`Pea` token, so
+   the case is scored as an unresolved pick. Not fixed here — it would mean
+   changing the shared occurrence-matching convention, out of this runner's
+   scope, and the two affected gold entries could instead be reworded to avoid
+   sentence-initial position in a follow-up.
+2. **`fi-amb-kayda-2` is a genuine, newly-discovered miss, independent of (1).**
+   ("Lääkärikäynti kesti tunnin.") The target surface is found correctly
+   (case matches — it's not affected by the casing gap), but
+   `store.BatchLookupAllForms("lääkärikäynti", "FI", "custom")` returns no
+   candidates at all, and the parser's compound-split rule resolves it to its
+   own lemma `lääkärikäynti` rather than either expected sense (`käydä/VERB`,
+   `käynti/NOUN`). This is the same category of candidate-set gap as the
+   headline `kuusi`/`tuli`/`voi` cross-POS cases, just on a compound rather
+   than a bare homograph, and the ad-hoc harness that produced the original
+   §3 table apparently didn't catch it. Left as-is per instructions not to
+   tune the runner to match the old numbers — this is a real finding about
+   the candidate API gap, not a regression to explain away.
+
+No FI or ET class meets the §4 threshold on this run (unchanged from §3/§5's
+conclusion): every class is either below N=4, below 100% candidate inclusion,
+or below 90% selection accuracy.
+
 ## What we measure
 
 Per dataset, per parser, on **non-PUNCT tokens** that the gold answer marks for

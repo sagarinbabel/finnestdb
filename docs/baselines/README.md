@@ -36,6 +36,15 @@ Full examples:
 2026-05-07k-T1118Z-et.md                 ← cross-language ET summary
 ```
 
+The same convention applies to `cmd/ambiguityeval` / `make compare-ambiguity`
+reports (see [`PARSER_EVAL_METHODOLOGY.md` §"Ambiguity and meaning-check
+calibration"](../PARSER_EVAL_METHODOLOGY.md#ambiguity-and-meaning-check-calibration)):
+a frozen ambiguity baseline follows `<dataset>` = `fi-ambiguity` / `et-ambiguity`,
+e.g. `2026-07-04a-T0730Z-fi-ambiguity.json.gz`, so it sits alongside the headline
+baselines under the same append-only discipline. As of this doc, no ambiguity
+baseline has been frozen yet — `make compare-ambiguity` runs are ad hoc until a
+maintainer runs the formal freeze step.
+
 **Append-only at the baseline-ID level.** Older baseline IDs are never
 renamed or removed from the history. Raw per-dataset JSON reports are stored as
 `.json.gz` so the repo does not carry hundreds of thousands of pretty-printed

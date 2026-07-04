@@ -10,6 +10,35 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-07-04 — `cmd/ambiguityeval` + `make compare-ambiguity` shipped
+
+Implemented the runner specced earlier the same day in
+[`PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) §Ambiguity and
+meaning-check calibration: `cmd/ambiguityeval` loads a `slice:"ambiguity"` gold
+file, runs `parsecore.Analyze(...,"custom")` for the pick and
+`store.BatchLookupAllForms` for the candidate set per target token, and reports
+candidate-inclusion, selection-accuracy, and proxy-stratified accuracy keyed by
+`ambiguity_class`, plus which classes clear the §4 threshold rule. Wired into
+`make compare-ambiguity` via `scripts/compare-ambiguity.sh`, which discovers
+`testdata/parser-eval/*-ambiguity/*.json` and writes a dated JSON report under
+`reports/parser-eval/`, parallel to `scripts/parser-comparison{,-et}.sh`.
+
+Ran it for real against the production DB + FST tables (parser `2026.05.15a`):
+**FI selection 34/48 = 70.8%, candidate inclusion 35/48 = 72.9%; ET selection
+6/13 = 46.2%, candidate inclusion 13/13 = 100.0%.** Candidate inclusion matches
+the spec's hand-verified baseline exactly on both languages. Selection is lower
+by 2 FI cases and 1 ET case; root-caused (not tuned away) in
+`PARSER_EVAL_METHODOLOGY.md`'s "Runner shipped" note: two are a sentence-initial
+casing gap in the exact-`Form`-match occurrence lookup shared with
+`internal/eval.findOccurrence` (the parser's pick is actually correct in both),
+and one (`fi-amb-kayda-2`, the compound `lääkärikäynti`) is a genuine,
+newly-discovered candidate-set gap — the same failure category as the headline
+`kuusi`/`tuli`/`voi` cases, just via compound-splitting instead of a bare
+cross-POS homograph. No FI or ET class meets the threshold rule on this run.
+`docs/baselines/README.md` documents the `fi-ambiguity`/`et-ambiguity` dataset
+suffix for a future frozen baseline; no baseline is frozen by this change — that
+stays a maintainer action per `PARSER_EVAL_METHODOLOGY.md` §6.
+
 ## 2026-07-04 — Ambiguity eval slice specced + verified FI/ET gold cases
 
 Wrote the Finnish-first ambiguity eval slice spec (the measurement foundation the
