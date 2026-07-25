@@ -31,9 +31,9 @@ internet ── Caddy (TLS, edge body cap, security headers)
   (7 daily + 4 weekly) budget roughly 12× the compressed backup size. Check
   with `du -sh finnestdb.db` and one trial run of `scripts/backup-db.sh`.
 - `sqlite3` CLI (used by the backup script's online `.backup`).
-- Build toolchain (Go ≥ 1.25.11 and Rust stable) on the host, or build the
+- Build toolchain (Go ≥ 1.25.12 and Rust stable) on the host, or build the
   artifacts elsewhere on a matching platform and copy them.
-- Go **1.25.11 or newer is a security requirement**, not a preference - older
+- Go **1.25.12 or newer is a security requirement**, not a preference - older
   toolchains have reachable stdlib vulnerabilities (see the 2026-06-03
   verification report).
 
@@ -161,8 +161,32 @@ app port to the proxy host only.
 
 Use [`deploy/Caddyfile`](../deploy/Caddyfile): Caddy provisions TLS
 automatically, caps request bodies at the edge, and adds HSTS,
-`X-Content-Type-Options`, `X-Frame-Options`, and a referrer policy. Point the
-domain's A/AAAA records at the host and set the real domain in the file.
+`X-Content-Type-Options`, `X-Frame-Options`, a referrer policy, and a CSP that
+allows the bundled app, the Google Fonts requests used by `index.html`, and
+the opt-in local AnkiConnect service at `http://127.0.0.1:8765`.
+The tracked site name is `finne.st`; install this exact file on the host rather
+than maintaining a divergent copy.
+
+### Public edge controls
+
+Caddy on a single VPS is not a WAF. Before a public launch, put `finne.st`
+behind an edge provider with WAF and rate-limiting support (the recommended
+setup is Cloudflare with **Full (strict)** TLS):
+
+1. Preserve the existing mail MX/SPF records, then proxy only the web A/AAAA
+   records through the provider.
+2. Restrict inbound 80/443 on the VPS firewall to the provider's published IP
+   ranges. Keep SSH limited to the operator allowlist.
+3. Add separate edge rate rules for `POST /api/parse`, `POST /api/auth/login`,
+   `POST /api/auth/register`, and `POST /api/parse/feedback`. Keep the app's
+   own per-IP and per-account limits as the second layer.
+4. Install `deploy/Caddyfile`, then run `caddy validate --config
+   /etc/caddy/Caddyfile` and `systemctl reload caddy`. Confirm its headers are
+   present on both `/` and `/api/health` before considering the rollout live.
+
+The Caddy site block writes JSON access logs to its service output. Those logs
+include request status and duration but not bodies, so they can support abuse
+and latency alerts without retaining pasted text.
 
 ## Asset versioning (cache-busting)
 
@@ -278,6 +302,12 @@ go build -o bin/loadtest ./cmd/loadtest
   a cron'd `journalctl -u finnestdb --since -10min -p err` that mails/pings on
   output. Rejected-request rate-limit logs are in the same stream for abuse
   review.
+
+- **Access and capacity alerts**: alert from the Caddy JSON access log when
+  5xx responses exceed 2% for five minutes, parse p95 exceeds five seconds for
+  ten minutes, or 429/503 responses remain elevated. Alert from host monitoring
+  when CPU, memory, or disk remains above 80%. Route all alerts to a monitored
+  operator destination and test each alert before public launch.
 - **Timer health**: `systemctl list-timers finnestdb-*` in the same cron;
   alert if a timer's last run failed (`systemctl is-failed finnestdb-backup`).
 - **Disk**: alert at 80% - the DB, WAL, and backups all grow.

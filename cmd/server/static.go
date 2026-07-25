@@ -100,10 +100,11 @@ func (h *staticHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Everything else (fonts, images, other files): keep the prior policy of not
-	// caching so local UI iteration never shows stale assets.
-	w.Header().Set("Cache-Control", "no-store")
-	h.fs.ServeHTTP(w, r)
+	// The web directory also contains TypeScript source, tests, and package
+	// metadata needed only to build and verify the frontend. Never expose those
+	// development artifacts from the production server. Add new public assets to
+	// the versioned set above deliberately rather than serving the directory.
+	http.NotFound(w, r)
 }
 
 // serveIndex reads index.html, stamps the current asset hashes into the app.js /
