@@ -95,8 +95,7 @@ test('anonymous user sees landing page, not the workbench', async ({ page }) => 
   await page.goto('/');
 
   await expect(page.locator('#landing-page')).toHaveClass(/active/);
-  // Ported prototype hero: "Paste your Suomi or Eesti. Lift the words out."
-  await expect(page.locator('.hero-title')).toContainText(/Lift the words out/i);
+  await expect(page.locator('.hero-title')).toHaveText('Learn in Context');
   await expect(page.locator('#admin-workbench-page')).not.toHaveClass(/active/);
 
   // No admin terminology in the public surface
