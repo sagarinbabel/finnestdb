@@ -17,26 +17,57 @@ async function mockAnonMe(page: Page, anonMax = 300000): Promise<void> {
   });
 }
 
-test('hero reads the exact ported wording with italic-blue Suomi / Eesti', async ({ page }) => {
+test('landing copy explains contextual learning and reveals native language names on hover', async ({ page }) => {
   await mockAnonMe(page);
   await page.goto('/');
 
   const hero = page.locator('.hero-title.hero-h');
-  await expect(hero).toContainText('Paste your');
-  await expect(hero).toContainText('Suomi');
-  await expect(hero).toContainText('Eesti');
-  await expect(hero).toContainText('Lift the words out');
-  // Suomi/Eesti are the italic-accent <em>s from the prototype.
-  await expect(hero.locator('em')).toHaveText(['Suomi', 'Eesti']);
+  await expect(hero).toHaveText('Learn in Context');
 
-  // Owner-override subtitle verbatim, plus the quieter sign-in parenthetical.
   const sub = page.locator('.hero-subtitle.hero-sub');
   await expect(sub).toContainText(
-    'Drop in any Finnish or Estonian text - news, a chapter, a conversation. Learn it in context. Enjoy reading the article smoothly.',
+    'Drop in any Finnish or Estonian text - news, a chapter, or a conversation. FinnEst will split the text into words. It will tell you what words to learn to improve your understanding of the text. Learn them on FinnEst or flashcard app of choice. Enjoy reading & watch your vocabulary & comprehension grow!',
   );
   await expect(sub.locator('.hero-sub-quiet')).toHaveText(
     '(sign in to export, create, sync and review your flashcards)',
   );
+
+  // The English words remain readable by default, then reveal their native
+  // names in the landing display face when a pointer passes over them.
+  for (const [english, native] of [['Finnish', 'Suomi'], ['Estonian', 'Eesti']]) {
+    const word = page.locator(`.language-reveal[data-native="${native}"]`);
+    await expect(word).toHaveText(english);
+    await word.hover();
+    await expect.poll(() => word.evaluate((el) => getComputedStyle(el, '::after').opacity)).toBe('1');
+    await expect.poll(() => word.evaluate((el) => getComputedStyle(el, '::after').content)).toBe(`"${native}"`);
+    const nativeStyle = await word.evaluate((el) => {
+      const pseudo = getComputedStyle(el, '::after');
+      const headline = document.querySelector('.landing-wrap .hero-title.hero-h');
+      const activeLanguage = document.querySelector('.landing-wrap .btn-radio-option.is-active');
+      if (!headline || !activeLanguage) throw new Error('landing typography controls are missing');
+      return {
+        accent: getComputedStyle(activeLanguage).backgroundColor,
+        color: pseudo.color,
+        headlineFamily: getComputedStyle(headline).fontFamily,
+        fontFamily: pseudo.fontFamily,
+        fontStyle: pseudo.fontStyle,
+      };
+    });
+    expect(nativeStyle.fontFamily).toBe(nativeStyle.headlineFamily);
+    expect(nativeStyle.fontStyle).toBe('italic');
+    expect(nativeStyle.color).toBe(nativeStyle.accent);
+  }
+
+  // The sign-in note is now a second paragraph line in the same typography,
+  // rather than a smaller, muted sans-serif aside.
+  const typography = await sub.evaluate((el) => {
+    const quiet = el.querySelector('.hero-sub-quiet')!;
+    const parent = getComputedStyle(el);
+    const note = getComputedStyle(quiet);
+    return [parent.fontFamily, parent.fontSize, parent.fontWeight, parent.lineHeight]
+      .map((value, index) => [value, [note.fontFamily, note.fontSize, note.fontWeight, note.lineHeight][index]]);
+  });
+  expect(typography.every(([parent, note]) => parent === note)).toBeTruthy();
 });
 
 test('eyebrow states the truthful anonymous demo promise with a pulse dot', async ({ page }) => {

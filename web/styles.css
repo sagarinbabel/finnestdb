@@ -5242,10 +5242,39 @@ h2 {
 .landing-wrap .hero-sub-quiet {
     display: block;
     margin-top: 10px;
-    font-size: 14px;
-    color: var(--text-secondary);
-    opacity: 0.8;
-    font-family: var(--font-sans);
+    font: inherit;
+    color: inherit;
+    opacity: 1;
+}
+.landing-wrap .language-reveal {
+    position: relative;
+    display: inline-block;
+    white-space: nowrap;
+    transition: color 140ms ease;
+}
+.landing-wrap .language-reveal::after {
+    content: attr(data-native);
+    position: absolute;
+    inset: 0 auto auto 0;
+    color: var(--accent);
+    font-family: var(--font-disp);
+    font-style: italic;
+    font-weight: inherit;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(0.12em);
+    transition: opacity 140ms ease, transform 140ms ease;
+}
+.landing-wrap .language-reveal:hover {
+    color: transparent;
+}
+.landing-wrap .language-reveal:hover::after {
+    opacity: 1;
+    transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+    .landing-wrap .language-reveal,
+    .landing-wrap .language-reveal::after { transition: none; }
 }
 
 /* Paste box - soft radius, focus ring, birch-lined left edge under aalto. */

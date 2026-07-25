@@ -116,11 +116,12 @@ Yellow nodes are anonymous-only. Dashed-border nodes are not yet built (opt-out 
 
 Status: shipped 2026-07-04. Re-skinned 2026-07-04 to the Claude Design "Aalto
 edition" prototype (`design/aalto-landing.jsx`): the landing now leads with the
-serif hero **"Paste your _Suomi_ or _Eesti_. Lift the words out."**, a truthful
+serif hero **"Learn in Context"**. Hovering _Finnish_ and _Estonian_ reveals
+their italic-blue native names, _Suomi_ and _Eesti_. It has a truthful
 eyebrow (`FREE · NO ACCOUNT · NO HISTORY SAVED` with a live pulse dot), the
 birch-lined paste box, the "or try →" demo chips, a three-cell freemium band
 (i. parse free / ii. copy or download / iii. save decks · sign in), and the
-Aalto decorations (vertical wordmark, drifting Savoy-vase silhouette, colophon).
+Aalto decoration (drifting Savoy-vase silhouette).
 The Aalto skin (`data-skin="aalto"`, Paimio light) is now the product's default
 face; the Ink skin stays selectable in the theme picker, and saved user choices
 are always honored (only the fallback default changed - one line in

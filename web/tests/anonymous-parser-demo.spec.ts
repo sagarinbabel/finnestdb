@@ -46,8 +46,8 @@ test('anonymous landing shows a parse form with the demo cap in the counter', as
   await expect(page.locator('#landing-text')).toBeVisible();
   // Counter reflects the server-surfaced anonymous cap, not the 1.5M signed-in one.
   await expect(page.locator('#landing-char-count')).toContainText('/ 300,000');
-  // Ported prototype hero + freemium band render around the form.
-  await expect(page.locator('.hero-title')).toContainText(/Lift the words out/i);
+  // The contextual-learning hero + freemium band render around the form.
+  await expect(page.locator('.hero-title')).toHaveText('Learn in Context');
   await expect(page.locator('.freemium-strip')).toBeVisible();
 });
 
