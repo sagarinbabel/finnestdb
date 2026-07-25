@@ -233,6 +233,159 @@
                 </p>
             </section>
 
+            <!-- ── Why pre-learning works ────────────────────────────────────
+                 The argument for the product, carried by our own measurement
+                 rather than a claim: the frequency-coverage curves from
+                 docs/FREQUENCY_BASELINES.md "Coverage curves" (2026-05-07
+                 baseline; OpenSubtitles 2018 vs UD treebank word tokens, FI and
+                 ET). Each register is drawn as a band spanning the FI and ET
+                 measurements, which is also the honest reading of that table:
+                 register moves the curve far more than language does. Numbers
+                 are hardcoded because the baselines are frozen artifacts - if
+                 docs/FREQUENCY_BASELINES.md is remeasured, update the paths,
+                 the callouts, and the <details> table together.
+                 Register must stay named next to any percentage here (see that
+                 doc's "Don't promise a fixed comprehension % at a fixed form
+                 count without specifying the register"). -->
+            <section class="about-why">
+                <h2>Why pre-learning works</h2>
+                <p class="about-why-lede">
+                    Vocabulary is front-loaded. A small set of very common word forms carries most of
+                    what you will meet, and then the curve flattens into a long tail. We measured how
+                    far that gets you in both languages:
+                </p>
+
+                <figure class="cov-fig">
+                    <div class="cov-frame">
+                        <p class="cov-title">Share of a text covered by the most frequent word forms</p>
+                        <div class="cov-chart-scroll">
+                        <svg class="cov-chart" viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg"
+                             role="img" aria-labelledby="cov-svg-title cov-svg-desc">
+                            <title id="cov-svg-title">Coverage curves for Finnish and Estonian</title>
+                            <desc id="cov-svg-desc">Knowing the top 1,000 word forms covers 65 to 73 percent of
+                                subtitle dialogue but only 40 to 43 percent of news and literature. Both curves
+                                flatten after that: the top 10,000 forms reach 88 to 92 percent of dialogue and 69
+                                to 71 percent of written text. Each band spans the Finnish and Estonian
+                                measurements. Exact figures are in the table below the chart.</desc>
+
+                            <g class="cov-grid">
+                                <path d="M78 30H730M78 95H730M78 160H730M78 225H730"></path>
+                            </g>
+                            <path class="cov-axis" d="M78 290H730"></path>
+
+                            <g class="cov-ylab">
+                                <text x="68" y="34">100%</text>
+                                <text x="68" y="99">75</text>
+                                <text x="68" y="164">50</text>
+                                <text x="68" y="229">25</text>
+                                <text x="68" y="294">0</text>
+                            </g>
+
+                            <!-- Dialogue / subtitles: OpenSubtitles 2018, ET upper edge, FI lower. -->
+                            <path class="cov-band cov-spoken" d="M78 172.7 L305.9 119.7 L404 100.5 L502.1 83.3 L631.9 63.5 L730 51.1 L730 60.4 L631.9 76.8 L502.1 100.7 L404 120.5 L305.9 142.1 L78 192.5 Z"></path>
+                            <path class="cov-edge cov-spoken-edge" d="M78 172.7 L305.9 119.7 L404 100.5 L502.1 83.3 L631.9 63.5 L730 51.1"></path>
+                            <path class="cov-edge cov-spoken-edge" d="M78 192.5 L305.9 142.1 L404 120.5 L502.1 100.7 L631.9 76.8 L730 60.4"></path>
+
+                            <!-- News / literature: UD treebank word tokens, ET upper edge, FI lower. -->
+                            <path class="cov-band cov-written" d="M78 231 L305.9 196.1 L404 178.5 L502.1 158.4 L631.9 129.3 L730 106.2 L730 111.1 L631.9 136.3 L502.1 166 L404 185.7 L305.9 203.2 L78 235.7 Z"></path>
+                            <path class="cov-edge cov-written-edge" d="M78 231 L305.9 196.1 L404 178.5 L502.1 158.4 L631.9 129.3 L730 106.2"></path>
+                            <path class="cov-edge cov-written-edge" d="M78 235.7 L305.9 203.2 L404 185.7 L502.1 166 L631.9 136.3 L730 111.1"></path>
+
+                            <!-- The top-1,000 read-off, the number the whole argument turns on. -->
+                            <path class="cov-marker" d="M404 290V92"></path>
+                            <text class="cov-marker-lab" x="404" y="84">top 1,000 forms</text>
+                            <rect class="cov-plate" x="412" y="101" width="62" height="19" rx="4"></rect>
+                            <text class="cov-value" x="418" y="114">65-73%</text>
+                            <rect class="cov-plate" x="412" y="173" width="62" height="19" rx="4"></rect>
+                            <text class="cov-value" x="418" y="186">40-43%</text>
+
+                            <g class="cov-direct">
+                                <path class="cov-edge cov-spoken-edge" d="M556 40H572"></path>
+                                <text x="578" y="44">Dialogue &amp; subtitles</text>
+                                <path class="cov-edge cov-written-edge" d="M556 96H572"></path>
+                                <text x="578" y="100">News &amp; literature</text>
+                            </g>
+
+                            <g class="cov-xlab">
+                                <text x="78" y="308">100</text>
+                                <text x="305.9" y="308">500</text>
+                                <text x="404" y="308">1k</text>
+                                <text x="502.1" y="308">2k</text>
+                                <text x="631.9" y="308">5k</text>
+                                <text x="730" y="308">10k</text>
+                            </g>
+                            <text class="cov-axis-title" x="404" y="338">word forms you know, most frequent first</text>
+                        </svg>
+                        </div>
+                        <ul class="cov-legend">
+                            <li><span class="cov-key cov-key-spoken"></span>Dialogue &amp; subtitles</li>
+                            <li><span class="cov-key cov-key-written"></span>News &amp; literature</li>
+                            <li class="cov-legend-note">each band spans the Finnish and Estonian measurements</li>
+                        </ul>
+                    </div>
+                    <figcaption>
+                        Our own 2026 baseline measurement, over inflected forms rather than dictionary
+                        headwords - because forms are what you actually have to recognize while reading.
+                        Dialogue is OpenSubtitles; written text is the Finnish and Estonian UD treebanks.
+                    </figcaption>
+                    <details class="cov-data">
+                        <summary>See the numbers</summary>
+                        <div class="cov-data-scroll">
+                            <table>
+                                <caption>Share of running text covered by the top N word forms</caption>
+                                <thead>
+                                    <tr><th scope="col">Text</th><th scope="col">100</th><th scope="col">500</th><th scope="col">1,000</th><th scope="col">2,000</th><th scope="col">5,000</th><th scope="col">10,000</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><th scope="row">Finnish · subtitles</th><td>37.5%</td><td>56.9%</td><td>65.2%</td><td>72.8%</td><td>82.0%</td><td>88.3%</td></tr>
+                                    <tr><th scope="row">Estonian · subtitles</th><td>45.1%</td><td>65.5%</td><td>72.9%</td><td>79.5%</td><td>87.1%</td><td>91.9%</td></tr>
+                                    <tr><th scope="row">Finnish · written</th><td>20.9%</td><td>33.4%</td><td>40.1%</td><td>47.7%</td><td>59.1%</td><td>68.8%</td></tr>
+                                    <tr><th scope="row">Estonian · written</th><td>22.7%</td><td>36.1%</td><td>42.9%</td><td>50.6%</td><td>61.8%</td><td>70.7%</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                </figure>
+
+                <p class="about-why-read">
+                    Two things fall out of this. The head of the curve is worth learning from any
+                    list - a thousand forms is a few weeks of work and it buys you most of the dialogue
+                    in a film. Past that the curve flattens, and <em>which</em> of the next nine thousand
+                    forms matter depends entirely on what you are reading: the same 1,000 forms cover
+                    65-73% of subtitles but only 40-43% of news and literature. Register moves the line
+                    further than the language does.
+                </p>
+                <p class="about-why-read">
+                    That flat stretch is where FinnEst works. Instead of pushing you further down a
+                    generic list, it takes the text you actually want to read and tells you which words
+                    in <em>that</em> text are worth learning first - so the long tail becomes a few dozen
+                    words that pay off now, not nine thousand that might.
+                </p>
+
+                <ul class="why-points">
+                    <li>
+                        <h3>Your text picks the words</h3>
+                        <p>FinnEst counts every form in what you pasted and ranks candidates by how much
+                            of that text each one unlocks. "Learn the top 10 words &rarr; 62%" is a
+                            measurement of your text, not a generic estimate.</p>
+                    </li>
+                    <li>
+                        <h3>You always know where you stand</h3>
+                        <p>Every parse opens with how much of the text you already know, every deck
+                            carries its own comprehension figure, and curated texts show your coverage
+                            before you open them.</p>
+                    </li>
+                    <li>
+                        <h3>It compounds</h3>
+                        <p>Known words belong to you, not to a deck, so each new text is scored against
+                            everything you have learned so far. Delete a deck and you keep the
+                            vocabulary. The text that started at 40% is the one you come back to at 70%.</p>
+                    </li>
+                </ul>
+            </section>
+
+            <h2 class="about-how-heading">How it works</h2>
+
             <!-- The four steps are drawn as a flow rather than a stack of cards.
                  Each station keeps its heading and copy (the about-page
                  Playwright assertions read .about-steps text) and gains a small
