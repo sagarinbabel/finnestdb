@@ -2505,40 +2505,278 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     max-width: 36rem;
     margin: 0 auto;
 }
-.about-steps {
-    display: grid;
-    gap: 1.25rem;
+/* ── About · "how it works" flow diagram ────────────────────────
+   The four steps read left-to-right as a flow of stations, each with
+   a small SVG specimen (paste sheet, parsed word chips, deck stack,
+   read-and-measure surface), chevron connectors in the grid gaps, and
+   a dashed return bracket underneath for the loop back to step 1.
+   Everything is token-driven so it holds under both skins (ink /
+   aalto) and both modes; the specimens carry no text of their own
+   beyond the illustrative word forms.
+   ------------------------------------------------------------------ */
+.about-steps.about-flow {
+    --flow-gap: 34px;
     margin-bottom: 3rem;
 }
-.about-step {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.5rem 1.5rem 1.5rem 4.5rem;
-    position: relative;
+.flow-track {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0 var(--flow-gap);
 }
-.about-step-num {
-    position: absolute;
-    left: 1.25rem;
-    top: 1.25rem;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 50%;
-    background: var(--accent);
-    color: #fff;
+.flow-station {
     display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Specimen frame. Sits slightly off the page ground so the four
+   stations read as one row of exhibits. */
+.flow-art {
+    position: relative;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md, 12px);
+}
+.flow-art svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+/* Connectors live in the grid gap, centred on the specimen frames:
+   a hairline across the gap plus an accent chevron at its middle. */
+.flow-station:not(:last-child) .flow-art::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 100%;
+    width: var(--flow-gap);
+    border-top: 1px dashed var(--border);
+    transform: translateY(-50%);
+}
+.flow-station:not(:last-child) .flow-art::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: calc(100% + (var(--flow-gap) / 2));
+    width: 6px;
+    height: 6px;
+    border-top: 1.5px solid var(--accent);
+    border-right: 1.5px solid var(--accent);
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.flow-copy h3 {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    margin: 0 0 6px;
+    font-family: var(--font-disp, inherit);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+}
+.flow-copy p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 13.5px;
+    line-height: 1.55;
+}
+.flow-num {
+    flex: none;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
+    width: 21px;
+    height: 21px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--bg-primary);
+    font-family: var(--font-mono, inherit);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    transform: translateY(2px);
 }
-.about-step h3 {
-    margin: 0 0 0.4rem;
-    font-size: 1.1rem;
+
+/* Return path: a dashed bracket dropping out of the row, running back
+   under it, and pointing up into step 1 again. */
+.flow-return {
+    position: relative;
+    height: 42px;
+    margin: 24px 0 0;
+    border: 1px dashed var(--border);
+    border-top: 0;
+    border-radius: 0 0 var(--r-lg, 22px) var(--r-lg, 22px);
 }
-.about-step p {
+.flow-return::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 6px;
+    height: 6px;
+    border-top: 1.5px solid var(--accent);
+    border-left: 1.5px solid var(--accent);
+    transform: translate(-50%, -1px) rotate(45deg);
+}
+.flow-return span {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translate(-50%, 50%);
+    padding: 0 12px;
+    background: var(--bg-primary);
+    font-family: var(--font-mono, inherit);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--text-secondary);
-    margin: 0;
-    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+/* ── Specimen internals ──
+   Shared vocabulary: .fl-line is body text, .fl-sheet / .fl-chip /
+   .fl-card-face are paper, and word colouring reuses the POS tag
+   tokens and the reading surface's known / learning / new tokens. */
+.flow-art text {
+    font-family: var(--font-sans, inherit);
+    font-size: 12px;
+    fill: var(--text-primary);
+}
+.flow-art .fl-line rect {
+    fill: var(--text-primary);
+    opacity: 0.16;
+}
+.flow-art .fl-sheet,
+.flow-art .fl-chip rect,
+.flow-art .fl-card-face {
+    fill: var(--bg-primary);
+    stroke: var(--border);
+    stroke-width: 1;
+}
+.flow-art .fl-birch {
+    fill: var(--birch, var(--bg-tertiary));
+}
+.flow-art .fl-grain {
+    fill: none;
+    stroke: var(--text-primary);
+    stroke-width: 1;
+    opacity: 0.14;
+}
+.flow-art .fl-caret {
+    fill: var(--accent);
+}
+.flow-art .fl-pos-verb { fill: var(--pos-verb); }
+.flow-art .fl-pos-noun { fill: var(--pos-noun); }
+.flow-art .fl-pos-adv  { fill: var(--pos-adv); }
+.flow-art .fl-surface text { font-weight: 500; }
+.flow-art .fl-arrow text { fill: var(--text-secondary); }
+.flow-art .fl-lemma text {
+    font-family: var(--font-disp, inherit);
+    font-size: 13px;
+}
+.flow-art .fl-count text {
+    font-family: var(--font-mono, inherit);
+    font-size: 10.5px;
+    fill: var(--text-secondary);
+    text-anchor: end;
+}
+.flow-art .fl-card-back,
+.flow-art .fl-card-mid {
+    fill: var(--bg-tertiary);
+    stroke: var(--border);
+    stroke-width: 1;
+}
+.flow-art .fl-card-back { opacity: 0.6; }
+.flow-art .fl-card-lemma {
+    font-family: var(--font-disp, inherit);
+    font-size: 17px;
+}
+.flow-art .fl-card-gloss {
+    font-size: 11px;
+    fill: var(--text-secondary);
+}
+.flow-art .fl-grade rect {
+    fill: var(--text-primary);
+    opacity: 0.14;
+}
+.flow-art .fl-grade rect.is-picked {
+    fill: var(--accent);
+    opacity: 1;
+}
+.flow-art .fl-tok-known rect {
+    fill: var(--known, var(--success));
+    opacity: 0.8;
+}
+.flow-art .fl-tok-learning rect { fill: var(--learning, var(--warning)); }
+.flow-art .fl-tok-new rect { fill: var(--new, var(--accent)); }
+.flow-art .fl-ring-track,
+.flow-art .fl-ring-fill {
+    fill: none;
+    stroke-width: 7;
+}
+.flow-art .fl-ring-track { stroke: var(--border); }
+.flow-art .fl-ring-fill { stroke: var(--known, var(--success)); }
+.flow-art .fl-ring-label {
+    font-family: var(--font-mono, inherit);
+    font-size: 12px;
+    font-weight: 600;
+    text-anchor: middle;
+}
+.flow-art .fl-ring-cap {
+    font-family: var(--font-mono, inherit);
+    font-size: 8.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    fill: var(--text-secondary);
+    text-anchor: middle;
+}
+
+/* Two-up: connectors stay inside a row, so only odd stations keep one
+   (the wrap between rows is carried by reading order). */
+@media (max-width: 1040px) {
+    .about-steps.about-flow { --flow-gap: 28px; }
+    .flow-track {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 32px var(--flow-gap);
+    }
+    .flow-station:nth-child(2n) .flow-art::before,
+    .flow-station:nth-child(2n) .flow-art::after {
+        display: none;
+    }
+}
+
+/* Single column: the flow turns vertical and the chevrons point down. */
+@media (max-width: 620px) {
+    .flow-track {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 30px;
+    }
+    .flow-station .flow-art::before,
+    .flow-station .flow-art::after {
+        display: none;
+    }
+    .flow-station:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: -21px;
+        width: 6px;
+        height: 6px;
+        border-right: 1.5px solid var(--accent);
+        border-bottom: 1.5px solid var(--accent);
+        transform: translateX(-50%) rotate(45deg);
+    }
+    .flow-station { position: relative; }
+    .flow-return { height: 32px; margin-top: 20px; }
+    .flow-return span { font-size: 10px; padding: 0 8px; }
 }
 
 /* ── Sign-in ────────────────────────────────────────────────── */
@@ -4227,8 +4465,7 @@ a {
 
 .value-grid,
 .dashboard-stats,
-.dashboard-actions,
-.about-steps {
+.dashboard-actions {
     gap: 1px;
     background: var(--border);
     border: 1px solid var(--border);
@@ -4239,7 +4476,6 @@ a {
 .value-card,
 .stat-card,
 .action-card,
-.about-step,
 .signin-card,
 .placeholder-card,
 .review-card,
@@ -4660,15 +4896,13 @@ a {
 }
 
 .value-card h3,
-.action-card h3,
-.about-step h3 {
+.action-card h3 {
     color: var(--text-primary);
     font-size: 15px;
 }
 
 .value-card p,
 .action-card p,
-.about-step p,
 .dashboard-lede,
 .decks-lede,
 .review-lede,
@@ -5086,7 +5320,6 @@ h2 {
 [data-skin="aalto"] .value-grid,
 [data-skin="aalto"] .dashboard-stats,
 [data-skin="aalto"] .dashboard-actions,
-[data-skin="aalto"] .about-steps,
 [data-skin="aalto"] .data-table {
     border-radius: var(--r-md);
 }

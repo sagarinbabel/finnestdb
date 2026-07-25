@@ -233,27 +233,154 @@
                 </p>
             </section>
 
-            <section class="about-steps">
-                <div class="about-step">
-                    <span class="about-step-num">1</span>
-                    <h3>Paste a text</h3>
-                    <p>Drop in a paragraph, an article, or a chapter in Finnish or Estonian - or, once you sign in, upload a whole EPUB.</p>
-                </div>
-                <div class="about-step">
-                    <span class="about-step-num">2</span>
-                    <h3>Parse the words</h3>
-                    <p>See every word in the text with its dictionary form, meaning, and how often it appears, so you know exactly what to learn before you read.</p>
-                </div>
-                <div class="about-step">
-                    <span class="about-step-num">3</span>
-                    <h3>Save a deck</h3>
-                    <p>Turn the text's vocabulary into review cards tied back to the source, and review them with spaced repetition in real example sentences.</p>
-                </div>
-                <div class="about-step">
-                    <span class="about-step-num">4</span>
-                    <h3>Read it, and measure how you're doing</h3>
-                    <p>Go back and read the text with its words in hand. Known-word and due-review counts update as you go, and each deck shows how much of it you already understand.</p>
-                </div>
+            <!-- The four steps are drawn as a flow rather than a stack of cards.
+                 Each station keeps its heading and copy (the about-page
+                 Playwright assertions read .about-steps text) and gains a small
+                 specimen drawn from the app's own visual language: the
+                 birch-lined paste box, POS-tinted word chips, a stacked deck
+                 with the FSRS grade row, and the reading surface's
+                 known/learning/new token colors. The specimens are aria-hidden
+                 decoration - the text stays the accessible content. The dashed
+                 bracket underneath is the return path: step 4 hands the next
+                 text back to step 1. Word examples are the same sentence used as
+                 the landing paste-box placeholder. -->
+            <section class="about-steps about-flow" aria-label="How FinnEst works, in four steps">
+                <ol class="flow-track">
+                    <li class="flow-station">
+                        <div class="flow-art">
+                            <svg viewBox="0 0 260 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <clipPath id="flow-sheet-clip"><rect x="18" y="12" width="224" height="116" rx="12"></rect></clipPath>
+                                <rect class="fl-sheet" x="18.5" y="12.5" width="223" height="115" rx="12"></rect>
+                                <g clip-path="url(#flow-sheet-clip)">
+                                    <rect class="fl-birch" x="18" y="12" width="22" height="116"></rect>
+                                    <g class="fl-grain">
+                                        <path d="M25 26v34M25 70v46M31 18v52M31 80v38M36 34v30M36 74v40"></path>
+                                    </g>
+                                </g>
+                                <g class="fl-line">
+                                    <rect x="54" y="32" width="170" height="7" rx="3.5"></rect>
+                                    <rect x="54" y="51" width="152" height="7" rx="3.5"></rect>
+                                    <rect x="54" y="70" width="174" height="7" rx="3.5"></rect>
+                                    <rect x="54" y="89" width="64" height="7" rx="3.5"></rect>
+                                </g>
+                                <rect class="fl-caret" x="124" y="86" width="2" height="13" rx="1"></rect>
+                            </svg>
+                        </div>
+                        <div class="flow-copy">
+                            <h3><span class="flow-num" aria-hidden="true">1</span>Paste a text</h3>
+                            <p>Drop in a paragraph, an article, or a chapter in Finnish or Estonian - or, once you sign in, upload a whole EPUB.</p>
+                        </div>
+                    </li>
+                    <li class="flow-station">
+                        <div class="flow-art">
+                            <svg viewBox="0 0 260 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <g class="fl-chip">
+                                    <rect x="18.5" y="12.5" width="223" height="34" rx="10"></rect>
+                                    <rect x="18.5" y="53.5" width="223" height="34" rx="10"></rect>
+                                    <rect x="18.5" y="94.5" width="223" height="34" rx="10"></rect>
+                                </g>
+                                <circle class="fl-pos-verb" cx="36" cy="30" r="4"></circle>
+                                <circle class="fl-pos-noun" cx="36" cy="71" r="4"></circle>
+                                <circle class="fl-pos-adv" cx="36" cy="112" r="4"></circle>
+                                <g class="fl-surface">
+                                    <text x="50" y="34">menin</text>
+                                    <text x="50" y="75">pankkiin</text>
+                                    <text x="50" y="116">kiinni</text>
+                                </g>
+                                <g class="fl-arrow">
+                                    <text x="102" y="34">&#8594;</text>
+                                    <text x="118" y="75">&#8594;</text>
+                                    <text x="98" y="116">&#8594;</text>
+                                </g>
+                                <g class="fl-lemma">
+                                    <text x="120" y="34">mennä</text>
+                                    <text x="136" y="75">pankki</text>
+                                    <text x="116" y="116">kiinni</text>
+                                </g>
+                                <g class="fl-count">
+                                    <text x="228" y="34">3&#215;</text>
+                                    <text x="228" y="75">2&#215;</text>
+                                    <text x="228" y="116">1&#215;</text>
+                                </g>
+                            </svg>
+                        </div>
+                        <div class="flow-copy">
+                            <h3><span class="flow-num" aria-hidden="true">2</span>Parse the words</h3>
+                            <p>See every word in the text with its dictionary form, meaning, and how often it appears, so you know exactly what to learn before you read.</p>
+                        </div>
+                    </li>
+                    <li class="flow-station">
+                        <div class="flow-art">
+                            <svg viewBox="0 0 260 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <rect class="fl-card-back" x="46" y="18" width="168" height="104" rx="12" transform="rotate(-4 130 70)"></rect>
+                                <rect class="fl-card-mid" x="46" y="18" width="168" height="104" rx="12" transform="rotate(3.5 130 70)"></rect>
+                                <rect class="fl-card-face" x="46.5" y="18.5" width="167" height="103" rx="12"></rect>
+                                <text class="fl-card-lemma" x="66" y="50">mennä</text>
+                                <text class="fl-card-gloss" x="66" y="68">to go &#183; verb</text>
+                                <g class="fl-line">
+                                    <rect x="66" y="78" width="112" height="5" rx="2.5"></rect>
+                                    <rect x="66" y="88" width="82" height="5" rx="2.5"></rect>
+                                </g>
+                                <g class="fl-grade">
+                                    <rect x="66" y="102" width="26" height="9" rx="4.5"></rect>
+                                    <rect x="96" y="102" width="26" height="9" rx="4.5"></rect>
+                                    <rect class="is-picked" x="126" y="102" width="26" height="9" rx="4.5"></rect>
+                                    <rect x="156" y="102" width="26" height="9" rx="4.5"></rect>
+                                </g>
+                            </svg>
+                        </div>
+                        <div class="flow-copy">
+                            <h3><span class="flow-num" aria-hidden="true">3</span>Save a deck</h3>
+                            <p>Turn the text's vocabulary into review cards tied back to the source, and review them with spaced repetition in real example sentences.</p>
+                        </div>
+                    </li>
+                    <li class="flow-station">
+                        <div class="flow-art">
+                            <svg viewBox="0 0 260 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <g class="fl-line">
+                                    <rect x="18" y="14" width="34" height="7" rx="3.5"></rect>
+                                    <rect x="80" y="14" width="26" height="7" rx="3.5"></rect>
+                                    <rect x="110" y="14" width="18" height="7" rx="3.5"></rect>
+                                    <rect x="18" y="34" width="30" height="7" rx="3.5"></rect>
+                                    <rect x="86" y="34" width="22" height="7" rx="3.5"></rect>
+                                    <rect x="112" y="34" width="16" height="7" rx="3.5"></rect>
+                                    <rect x="18" y="54" width="22" height="7" rx="3.5"></rect>
+                                    <rect x="76" y="54" width="30" height="7" rx="3.5"></rect>
+                                    <rect x="110" y="54" width="18" height="7" rx="3.5"></rect>
+                                    <rect x="18" y="74" width="38" height="7" rx="3.5"></rect>
+                                    <rect x="110" y="74" width="18" height="7" rx="3.5"></rect>
+                                    <rect x="18" y="94" width="26" height="7" rx="3.5"></rect>
+                                    <rect x="108" y="94" width="20" height="7" rx="3.5"></rect>
+                                    <rect x="18" y="114" width="42" height="7" rx="3.5"></rect>
+                                </g>
+                                <g class="fl-tok-known">
+                                    <rect x="56" y="14" width="20" height="7" rx="3.5"></rect>
+                                    <rect x="52" y="34" width="30" height="7" rx="3.5"></rect>
+                                    <rect x="60" y="74" width="46" height="7" rx="3.5"></rect>
+                                    <rect x="48" y="94" width="28" height="7" rx="3.5"></rect>
+                                    <rect x="64" y="114" width="20" height="7" rx="3.5"></rect>
+                                </g>
+                                <g class="fl-tok-learning">
+                                    <rect x="44" y="54" width="28" height="7" rx="3.5"></rect>
+                                </g>
+                                <g class="fl-tok-new">
+                                    <rect x="80" y="94" width="24" height="7" rx="3.5"></rect>
+                                </g>
+                                <g transform="rotate(-90 198 62)">
+                                    <circle class="fl-ring-track" cx="198" cy="62" r="24"></circle>
+                                    <circle class="fl-ring-fill" cx="198" cy="62" r="24" stroke-dasharray="124 151" stroke-linecap="round"></circle>
+                                </g>
+                                <text class="fl-ring-label" x="198" y="67">82%</text>
+                                <text class="fl-ring-cap" x="198" y="103">understood</text>
+                            </svg>
+                        </div>
+                        <div class="flow-copy">
+                            <h3><span class="flow-num" aria-hidden="true">4</span>Read it, and measure how you're doing</h3>
+                            <p>Go back and read the text with its words in hand. Known-word and due-review counts update as you go, and each deck shows how much of it you already understand.</p>
+                        </div>
+                    </li>
+                </ol>
+                <p class="flow-return"><span>then bring the next text</span></p>
             </section>
 
             <section class="landing-cta-section">
