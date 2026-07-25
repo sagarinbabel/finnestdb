@@ -10,7 +10,7 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
-## 2026-07-04 — Docs: anonymous cap default corrected to 300,000 characters
+## 2026-07-04 - Docs: anonymous cap default corrected to 300,000 characters
 
 The runtime default for `FINNESTDB_ANON_MAX_CHARS` was raised from 20,000 to
 300,000 characters (commit 7bff399) shortly after the anonymous demo shipped,
@@ -21,15 +21,15 @@ time and are intentionally unchanged. The load-test progress note in
 `TODO.md` now also records that the 300,000 default has not itself been
 load-tested yet.
 
-- Modified: [`FEATURES.md`](FEATURES.md) — Anonymous Parser Demo cap default.
-- Modified: [`USER_FLOWS.md`](USER_FLOWS.md) — anonymous cap default.
-- Modified: [`CONTEXT.md`](../CONTEXT.md) — Anonymous Parser Demo vocabulary
+- Modified: [`FEATURES.md`](FEATURES.md) - Anonymous Parser Demo cap default.
+- Modified: [`USER_FLOWS.md`](USER_FLOWS.md) - anonymous cap default.
+- Modified: [`CONTEXT.md`](../CONTEXT.md) - Anonymous Parser Demo vocabulary
   entry.
-- Modified: [`TODO.md`](../TODO.md) — demo/abuse-control bullets and the
+- Modified: [`TODO.md`](../TODO.md) - demo/abuse-control bullets and the
   load-test progress note.
-- Modified: `web/app.ts` — stale fallback-comment default (the code constant
+- Modified: `web/app.ts` - stale fallback-comment default (the code constant
   was already 300,000).
-## 2026-07-04 — First-experience RC pack completed: zero pending journeys
+## 2026-07-04 - First-experience RC pack completed: zero pending journeys
 
 Follows up the "First-experience RC pack skeleton" entry below: every
 journey the skeleton marked `automation:"pending"` now has real automated
@@ -38,14 +38,14 @@ catalog, ambiguity meanings panel, known-word import) shipped earlier the
 same day. `make first-experience-rc` now runs the full 18-case manifest with
 zero pending skips.
 
-- Modified: `testdata/first-experience-rc/manifest.json` — flipped
+- Modified: `testdata/first-experience-rc/manifest.json` - flipped
   `fi/et-anonymous-demo`, `fi/et-known-word-import`, and `et-parser-feedback`
   from `automation:"pending"` to `automation:"playwright"` with honest
   `expect` blocks (including a new `known_lemma_pos` field for the
   known-word-import cases). Added cross-reference notes to the
   `ambiguity-homograph` cases pointing at their new Playwright UI-level
   coverage. No case remains `automation:"pending"`.
-- Modified: `web/tests/first-experience-rc.spec.ts` — implemented one
+- Modified: `web/tests/first-experience-rc.spec.ts` - implemented one
   Playwright journey pass per newly-flipped case, reusing existing spec
   conventions rather than duplicating their detailed coverage:
   - `anonymous-demo` (FI+ET): unsigned paste on the landing form using the
@@ -65,15 +65,15 @@ zero pending skips.
     the journey's homograph pair, opens the "Multiple possible meanings"
     panel, and asserts >=2 candidates plus the flag-only "None of these
     looks right" escape. Deliberately does not grade which candidate is
-    correct — that is the Go runner's `lemma_pos` assertions and the eval
+    correct - that is the Go runner's `lemma_pos` assertions and the eval
     slice's job (`PARSER_EVAL_METHODOLOGY.md`).
-- Modified: `docs/GO_LIVE_CHECKLIST.md` and `TODO.md` — recorded the
+- Modified: `docs/GO_LIVE_CHECKLIST.md` and `TODO.md` - recorded the
   completed automated-coverage state; the manual product walkthrough and the
   go/no-go call remain the outstanding human step.
 - `cmd/firstexperiencerc` (the Go runner) is unchanged: no manifest field it
   parses changed shape, only which cases carry `automation:"playwright"`.
 
-## 2026-07-04 — Landing: port the Claude Design "Aalto edition" prototype
+## 2026-07-04 - Landing: port the Claude Design "Aalto edition" prototype
 
 Re-skinned the anonymous landing to the Claude Design prototype
 (`design/aalto-landing.jsx`) after the owner's verdict that "nothing has been
@@ -89,7 +89,7 @@ wordmark, a slowly drifting Savoy-vase silhouette that respects
 
 - **Aalto is now the default skin.** A first-time visitor with no saved choice
   lands on `data-skin="aalto"` · Paimio light; the Ink skin stays selectable in
-  the picker and saved choices are honored (only the fallback default flipped —
+  the picker and saved choices are honored (only the fallback default flipped -
   one line in `readThemeSkin`/`readThemeMode` reverts it).
 - **Anonymous demo texts:** new stateless `GET /api/demo/text/{id}` endpoint
   serves a fixed allowlist of three curated, license-clean embedded fixtures
@@ -107,7 +107,7 @@ wordmark, a slowly drifting Savoy-vase silhouette that respects
   freemium band, demo-chip loading, anon CSV export, 375 px cleanliness) and Go
   tests pinning the demo-text allowlist endpoint.
 
-## 2026-07-04 — Reading surface: text-first results with tap-to-mark words
+## 2026-07-04 - Reading surface: text-first results with tap-to-mark words
 
 Inverted the `/results` page into a **text-first** experience (aha moment #2,
 "the living text"). The page now opens on a **Read** tab that renders the source
@@ -141,7 +141,7 @@ the existing lemma table with unchanged behavior; the tab choice persists in
 - Docs touched: [`FEATURES.md`](FEATURES.md) "How You Learn" step 2,
   [`USER_FLOWS.md`](USER_FLOWS.md) §2, [`CONTEXT.md`](../CONTEXT.md).
 
-## 2026-07-04 — Post-parse coverage reveal (aha moment #1)
+## 2026-07-04 - Post-parse coverage reveal (aha moment #1)
 
 Added an **animated coverage reveal** above the Inspect/anonymous results table:
 the first thing a learner feels after a parse. For signed-in learners it counts
@@ -151,7 +151,7 @@ words in this text carry **Z%** of it" (projection-from-zero, doubling as the
 sign-up hook the existing ribbon follows).
 
 - **Number source:** all figures reuse the saved-deck comprehension token-mass
-  formula (`store.DeckComprehension`) — a token position counts as covered when
+  formula (`store.DeckComprehension`) - a token position counts as covered when
   its (lemma, pos) is **known OR ignored**, weighted by occurrence count. The
   projection ranks the parse's unknown lemmas by token mass exactly as
   `DeckComprehension`'s top-unlocks SQL does. Computed client-side from the
@@ -171,7 +171,7 @@ sign-up hook the existing ribbon follows).
   as covered); `web/tests/coverage-reveal.spec.ts` asserts the signed-in and
   anonymous reveals render plausible numbers, the count-up settles on the
   API-derived value, and the reduced-motion path collapses instantly.
-## 2026-07-04 — Smart display titles for pasted-text parses and decks
+## 2026-07-04 - Smart display titles for pasted-text parses and decks
 
 Raw pastes used to get a useless deck-name default (`"Finnish: <first 48
 chars>"`) or a raw 240-char `source_preview` dump in History. Added
@@ -190,30 +190,30 @@ a curated catalog text, without an LLM call per paste.
   Table-driven tests in
   [`internal/store/titles_test.go`](../internal/store/titles_test.go) pin the
   59/60/61-char boundary and Finnish/Estonian diacritics.
-- **Deck save** (`POST /api/decks`): a blank `title` no longer 400s — the
+- **Deck save** (`POST /api/decks`): a blank `title` no longer 400s - the
   server derives one from `text`/`lang` via the same rule, so the API
   contract stays honest for non-browser callers
   ([`internal/api/handlers.go`](../internal/api/handlers.go) `handleCreateDeck`).
   The save modal still prefills the suggestion client-side (a TS port of
   `DeriveTitle` in [`web/app.ts`](../web/app.ts)) so the learner sees and can
-  edit it before saving — the server-side derivation is the fallback for a
+  edit it before saving - the server-side derivation is the fallback for a
   cleared/omitted field, not the primary UX path.
 - **Parse-session History**: `parse_sessions` has no title column, so
   `ListUserParseSessions` derives a `title` field at read time from a
   newline-preserving head of `source_text`, alongside the existing flattened
   `source_preview` (kept for other consumers). History rows now show the
   derived title instead of the raw truncated preview. Parse-session titles
-  are derived-only for alpha — no rename plumbing; deck rename already
+  are derived-only for alpha - no rename plumbing; deck rename already
   existed and still works.
 - **Docs modified:** [`USER_FLOWS.md`](USER_FLOWS.md) §5 (Parse, signed-in)
   now points at the shipped History behavior instead of only the proposed
   spec.
-## 2026-07-04 — Aalto skin (Paimio / Sanatorium) as an opt-in second skin
+## 2026-07-04 - Aalto skin (Paimio / Sanatorium) as an opt-in second skin
 
 Added a second visual **skin** alongside the default INK/PAPER "Ink" look:
 **Aalto**, an Alvar-Aalto-inspired skin whose light mode is **Paimio** (warm
 birch-cream paper, soft Nordic blue) and dark mode is **Sanatorium** (deep
-blue-black ground). Theming is now two-dimensional — skin (`data-skin`:
+blue-black ground). Theming is now two-dimensional - skin (`data-skin`:
 `ink` | `aalto`) crossed with mode (`data-theme`: `light` | `dark`), both on
 the root element. The old single 🌓 toggle is replaced by a nav **theme
 picker** offering Ink · Light / Ink · Dark / Aalto · Paimio / Aalto ·
@@ -228,7 +228,7 @@ prototype pointer in [`DESIGN_AI_PROMPTS.md`](DESIGN_AI_PROMPTS.md) ("Aalto
 skin"). CSS-first skin, no layout/markup restructuring beyond the picker
 control; both skins verified at 375 px with no horizontal overflow.
 
-## 2026-07-04 — FSRS enabled by default after staging validation
+## 2026-07-04 - FSRS enabled by default after staging validation
 
 Made **FSRS the default review scheduler** after the documented staging gate came
 back green. The `FINNESTDB_FSRS_ENABLED` flag flips from opt-IN to **opt-OUT**:
@@ -241,7 +241,7 @@ default.
   temp DBs (the shared `finnestdb.db` is never written): seeded-history
   validation across new/learning/mature/legacy/NULL shapes, 1k-card lazy-migration
   scale check, a rollback round trip, and a read-only real-DB smoke (4031 sampled
-  real cards, 0 corrupt). All green — see the report below.
+  real cards, 0 corrupt). All green - see the report below.
 - **Report added:** [`launch-readiness/2026-07-04-fsrs-validation.md`](launch-readiness/2026-07-04-fsrs-validation.md)
   records each drill's result in tables (interval ordering per button, monotonic
   stability growth, real-DB shape distribution).
@@ -261,7 +261,7 @@ Rollback remains a single flag flip (`FINNESTDB_FSRS_ENABLED=0` + restart), no
 data migration; FSRS and step state coexist in `card_state.fsrs_json` via the
 version discriminator, and FSRS-touched cards keep their earned progress on
 rollback.
-## 2026-07-04 — Starter-deck cards carry curated corpus example sentences
+## 2026-07-04 - Starter-deck cards carry curated corpus example sentences
 
 The cold-start "Top N words" official starter deck now attaches a real corpus
 example sentence to each card instead of showing only the bare headword form.
@@ -269,7 +269,7 @@ example sentence to each card instead of showing only the bare headword form.
 - **New tool `cmd/pickexamples`:** for each lemma in seedcolddeck's Top-N
   ranking (shared via the new `internal/starterdeck` package), it indexes
   candidate sentences from the corpus pipeline's per-surface-form example index
-  (`wordlist_user_friendly.tsv`'s `example_ref_id`) — not a 66M-line text scan —
+  (`wordlist_user_friendly.tsv`'s `example_ref_id`) - not a 66M-line text scan -
   then fetches just the needed sentences in one streamed pass over
   `sentences_user_friendly.tsv`. Both passes are bounded-memory streaming scans;
   a full FI/ET run is ~20s at ~1.1 GB RSS.
@@ -289,13 +289,13 @@ example sentence to each card instead of showing only the bare headword form.
   sentence. The example reaches the review payload through the existing
   deck-sentence mechanism. See
   [`srs-deck-spec.md`](srs-deck-spec.md) "Example sentence policy".
-## 2026-07-04 — Learner-facing copy sells the pre-learn proposition
+## 2026-07-04 - Learner-facing copy sells the pre-learn proposition
 
 Rewrote the persuasion copy across every learner-facing surface (landing hero,
 subtitle, value grid, anonymous results ribbon, About page, landing/About CTAs,
 sign-in lede, and the landing "sign in" link) to lead with the pre-learn
-promise — paste any text, see every word with its meaning and inflected-form
-frequency, and learn it before you read — instead of flat "sign in to save your
+promise - paste any text, see every word with its meaning and inflected-form
+frequency, and learn it before you read - instead of flat "sign in to save your
 work" framing. Value-grid cards now describe the learner outcome (pre-learn →
 read smoothly → remember in context → know how much you'll understand). The
 comprehension prediction is presented honestly (per-deck "how much of this text
@@ -304,8 +304,8 @@ and truthful about ephemerality. No layout or feature changes; grill-settled
 functional strings (meaning-check copy, quarantine copy, privacy footer) are
 unchanged. Updated [`USER_FLOWS.md`](USER_FLOWS.md) §1/§2 mock copy to mirror the
 shipped UI and the Playwright copy assertions that pin these strings. Copy pass
-only — no product behavior changed.
-## 2026-07-04 — 375px results-table layout repaired
+only - no product behavior changed.
+## 2026-07-04 - 375px results-table layout repaired
 
 Fixed BROKEN mobile layouts found in a 375x812 audit of every learner surface
 (landing, results, signup, dashboard, embedded catalog, Inspect, decks,
@@ -316,7 +316,7 @@ was left alone per [`FEATURES.md`](FEATURES.md) Mobile Direction's usable-at-375
 - **Results table (`web/styles.css` `@media (max-width: 600px)`):** `.col-actions`
   carried a desktop `min-width: 13rem` (208px) that, combined with the fixed
   `.col-lemma`/`.col-count` widths, pushed the row past 500px even after
-  `.col-def`/`.col-grammar` were hidden — so the Known/Ignore/Suggest-fix
+  `.col-def`/`.col-grammar` were hidden - so the Known/Ignore/Suggest-fix
   controls (`.word-pill-known`, `.word-icon-ignore`, `.correction-btn`) were
   scrolled off the right edge by default on every results/deck-detail view.
   Narrowed `.col-row`/`.col-lemma`/`.col-count`/`.col-actions` at the existing
@@ -332,13 +332,13 @@ was left alone per [`FEATURES.md`](FEATURES.md) Mobile Direction's usable-at-375
   meaning" / "Study this meaning" / "Not sure" stay on-screen and easier to tap.
 - **Left cosmetic-only, unfixed:** the embedded-catalog "Read this text" cards
   (`.catalog-card`) are dense/cramped at 375px (tight tag row, wrapped
-  long titles) but remain readable and tappable — no BROKEN classification.
+  long titles) but remain readable and tappable - no BROKEN classification.
   A dedicated reading-surface redesign is tracked separately; this audit's
   before/after evidence is attached to that follow-up.
 
 No new breakpoints were introduced; both fixes reuse the existing "Mobile
 (375 px) tweaks" `@media (max-width: 600px)` block in `web/styles.css`.
-## 2026-07-04 — First manual test-run fixes: logo case, due-count semantics, sentence chip
+## 2026-07-04 - First manual test-run fixes: logo case, due-count semantics, sentence chip
 
 Four fixes from the owner's first manual test of the app.
 
@@ -349,16 +349,16 @@ Four fixes from the owner's first manual test of the app.
   CSS `content`, overriding the real DOM text with `font-size: 0`. Changed
   the injected content to `"FinnEst"` to match [CONTEXT.md "Product
   Name"](../CONTEXT.md) and grill Q53. Titles, About-page copy, and Sign-in
-  already said `FinnEst` correctly — only the CSS injection was wrong.
+  already said `FinnEst` correctly - only the CSS injection was wrong.
   Added a Playwright assertion on the logo's rendered `::before` content.
 - **Dashboard due-count semantics (deliberate change):** `CountDueCards` and
-  `GetUserDeckStats`'s `due_count` treated `card_state.next_due IS NULL` —
-  the default for a card that has never been introduced — as "due now". A
+  `GetUserDeckStats`'s `due_count` treated `card_state.next_due IS NULL` -
+  the default for a card that has never been introduced - as "due now". A
   fresh account adding the two Top-1000 starter decks immediately saw "Due
   to review: 2,000" even though none of those cards had ever been shown to
   the learner (the correctly-gated "New words today" tile showed 20).
   "Due" now additionally requires `introduced_at IS NOT NULL OR
-  last_answer_at IS NOT NULL` — the same "introduced" predicate
+  last_answer_at IS NOT NULL` - the same "introduced" predicate
   `CardsInReview` already used. Never-introduced cards now surface only
   through the existing `new_capacity_today` / "New words today" tile; no
   new dashboard tile was added. `GetNextReviewCard`'s new/due pooling and
@@ -382,7 +382,7 @@ Four fixes from the owner's first manual test of the app.
   19/20 filtering: `finnestdb.db`'s `forms` table has every inflected form
   of noun `ase` (aseen, aseita, aseessa, ...) except the bare nominative
   self-mapping row `ase→ase/NOUN`, while `ase→asea/VERB` is the only row
-  keyed by that surface — so the ranker never had a competing candidate to
+  keyed by that surface - so the ranker never had a competing candidate to
   prefer. `dict_metadata` shows the live FI import ran 2026-03-13; the
   on-disk `kaikki.org-dictionary-Finnish.jsonl.gz` is dated 2026-05-07 and
   does contain the missing nominative-singular form tag for `ase`. Logged
@@ -391,20 +391,20 @@ Four fixes from the owner's first manual test of the app.
   reseed + re-freeze-baseline exit condition, per instruction not to
   work around a data-staleness issue in ranking code.
 
-## 2026-07-04 — Multiple possible meanings flow shipped (Ambiguous meaning flow gate)
+## 2026-07-04 - Multiple possible meanings flow shipped (Ambiguous meaning flow gate)
 
 Shipped the learner-facing **Multiple Possible Meanings** flow, closing the
 "Ambiguous meaning flow" public-alpha gate as the alpha default. Per
 [`PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) §4 no ambiguity class
 qualifies for the single confident Meaning Check on the v1 slice, so only the
-Multiple-possible-meanings branch is built — no confidence is presented.
+Multiple-possible-meanings branch is built - no confidence is presented.
 
 - **Metadata delivery:** `/api/parse` enriches signed-in responses with a
   top-level `ambiguous_surfaces` list (surface, first-occurrence example,
   candidate meanings). Chosen inline over a lazy per-row endpoint after measuring
   a large parse: ~18–20% of unique surfaces are ambiguous and candidate metadata
   adds ~200 bytes per ambiguous row (~18% payload growth, bounded by ambiguity
-  rate, not token count) — cheaper than a round-trip-per-expansion that would
+  rate, not token count) - cheaper than a round-trip-per-expansion that would
   re-resolve the same candidates. New `store.SurfaceCandidates` is the single
   source of truth (FST-merged inclusion via `MergeFSTReadings`, quarantine-filtered
   through the new `QuarantinedSenseFilter`, glossed). Anonymous parses are
@@ -414,7 +414,7 @@ Multiple-possible-meanings branch is built — no confidence is presented.
   **I know this meaning** (records `(lemma,pos)` known, excludes from pending
   deck), **Study this meaning** ("Creates a review card when you save."), and
   **Not sure** (conservative = study). **None of these looks right** opens the
-  flag-only correction path with surface/context prefilled — parser feedback,
+  flag-only correction path with surface/context prefilled - parser feedback,
   never a study/known action.
 - **Explicit FST-sense deck save:** an explicitly selected FST-only sense creates
   its card on save via a narrow, validated bypass of PR #269's dict-only deck
@@ -429,7 +429,7 @@ Docs: [`USER_FLOWS.md`](USER_FLOWS.md) §5, [`srs-deck-spec.md`](srs-deck-spec.m
 ambiguous-imports, [`CONTEXT.md`](../CONTEXT.md) Multiple Possible Meanings,
 [`TODO.md`](../TODO.md) Ambiguous meaning flow gate.
 
-## 2026-07-04 — FI candidate-inclusion gap closed (FST-merged ambiguity candidate set)
+## 2026-07-04 - FI candidate-inclusion gap closed (FST-merged ambiguity candidate set)
 
 Merged FST-known homograph readings into the ambiguity / meaning-check
 candidate set so cross-POS second senses become offerable. kaikki's `forms`
@@ -443,14 +443,14 @@ analyzer emission order preserved. `cmd/ambiguityeval` now measures this merged
 set. FI ambiguity **candidate inclusion 72.9% → 95.8%**; selection accuracy
 unchanged at 70.8%; FI + ET headline baselines byte-stable. The deck / import
 expansion path keeps the dict-only `BatchLookupAllForms`, so learner-facing deck
-word counts are unchanged (deliberate gating — see
+word counts are unchanged (deliberate gating - see
 [`FEATURES.md`](FEATURES.md) multi-lemma and
 [`srs-deck-spec.md`](srs-deck-spec.md)). Parser stamp `2026.05.15a` →
 `2026.05.15b` ([`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) §2026-05-15b,
 [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md),
 [`PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) §Ambiguity).
 
-## 2026-07-04 — `cmd/ambiguityeval` + `make compare-ambiguity` shipped
+## 2026-07-04 - `cmd/ambiguityeval` + `make compare-ambiguity` shipped
 
 Implemented the runner specced earlier the same day in
 [`PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) §Ambiguity and
@@ -472,19 +472,19 @@ by 2 FI cases and 1 ET case; root-caused (not tuned away) in
 casing gap in the exact-`Form`-match occurrence lookup shared with
 `internal/eval.findOccurrence` (the parser's pick is actually correct in both),
 and one (`fi-amb-kayda-2`, the compound `lääkärikäynti`) is a genuine,
-newly-discovered candidate-set gap — the same failure category as the headline
+newly-discovered candidate-set gap - the same failure category as the headline
 `kuusi`/`tuli`/`voi` cases, just via compound-splitting instead of a bare
 cross-POS homograph. No FI or ET class meets the threshold rule on this run.
 `docs/baselines/README.md` documents the `fi-ambiguity`/`et-ambiguity` dataset
-suffix for a future frozen baseline; no baseline is frozen by this change — that
+suffix for a future frozen baseline; no baseline is frozen by this change - that
 stays a maintainer action per `PARSER_EVAL_METHODOLOGY.md` §6.
 
-## 2026-07-04 — Ambiguity eval slice specced + verified FI/ET gold cases
+## 2026-07-04 - Ambiguity eval slice specced + verified FI/ET gold cases
 
 Wrote the Finnish-first ambiguity eval slice spec (the measurement foundation the
 "Ambiguous meaning flow" gate depends on) as an expansion of
 [`PARSER_EVAL_METHODOLOGY.md`](PARSER_EVAL_METHODOLOGY.md) §Ambiguity and
-meaning-check calibration — no new planning doc (Decision 24 / Q60). Covers what
+meaning-check calibration - no new planning doc (Decision 24 / Q60). Covers what
 is measured (candidate inclusion, selection accuracy, calibration), an honest
 confidence *proxy* (there is no numeric confidence today; the `custom` ranking is
 a stable sort over discrete signals), the minimal gold-format extension, the
@@ -497,7 +497,7 @@ Committed verified gold data under `testdata/parser-eval/fi-ambiguity/`:
 6 classes) + `README.md`. Baseline against the real DB + full FST tables (parser
 `2026.05.15a`): **FI selection 75.0% / candidate inclusion 72.9%; ET selection
 53.8% / candidate inclusion 100%.** Headline finding recorded in
-[`TODO.md`](../TODO.md): FI and ET fail *differently* — FI's blocker is candidate
+[`TODO.md`](../TODO.md): FI and ET fail *differently* - FI's blocker is candidate
 inclusion (kaikki `forms` stores one reading per cross-POS homograph, so
 `kuusi`/`tuli`/`voi` second sense is absent from the candidate API though the FST
 knows it), ET's blocker is selection ranking (Ekilex supplies all candidates but
@@ -508,15 +508,15 @@ Sequenced implementation tasks (build `cmd/ambiguityeval`, `make
 compare-ambiguity`, close the FI candidate gap, expand + freeze) added under the
 existing ambiguity items in `TODO.md`.
 
-## 2026-07-04 — FI catalog fully human-reviewed; article-genre calibration signal
+## 2026-07-04 - FI catalog fully human-reviewed; article-genre calibration signal
 
 Sagar reviewed the replacement Wikipedia sauna article: easy-medium, overriding
 the model's medium-hard. All three FI texts now carry approved reviews. Second
-consecutive two-band overrate on an everyday-topic article — recorded in the
+consecutive two-band overrate on an everyday-topic article - recorded in the
 difficulty-model calibration notes (`GO_LIVE_CHECKLIST.md`): familiar concrete
 topics read easier than the lexical/structural signals suggest.
 
-## 2026-07-04 — Catalog texts moved to real published sources
+## 2026-07-04 - Catalog texts moved to real published sources
 
 A naturalness review of the agent-written "sauna" article found it stilted, so
 the four machine-written catalog texts were replaced with real published,
@@ -526,7 +526,7 @@ agent-authored content is a last resort requiring explicit owner approval.
 
 - Replaced: `fi-sauna-article` (FI Wikipedia "Sauna", CC BY-SA 4.0),
   `et-tallinn-vanalinn-article` (ET Wikipedia "Tallinna vanalinn", CC BY-SA
-  4.0), and — replacing the two remaining ET originals — `et-mesipuu-poem`
+  4.0), and - replacing the two remaining ET originals - `et-mesipuu-poem`
   ("Ta lendab mesipuu poole", Juhan Liiv, d. 1913, public domain, from
   Estonian Wikisource) and `et-linnu-keel-story` ("Linnu keel" folk tale from
   Juhan Kunder's *Eesti muinasjutud* 1885, d. 1888, public domain). The ET set
@@ -541,17 +541,17 @@ agent-authored content is a last resort requiring explicit owner approval.
   [`../TODO.md`](../TODO.md) catalog gate, [`../CONTEXT.md`](../CONTEXT.md)
   Embedded Text entry.
 
-## 2026-07-04 — Five-level catalog difficulty + FI human review recorded
+## 2026-07-04 - Five-level catalog difficulty + FI human review recorded
 
 The first human difficulty review (Sagar, FI, 3 texts) found every text on a
 bucket boundary and one model-vs-human ordering inversion, so the Global
 Difficulty scale is now five-level with a human-override mechanism.
 
-- Added: `internal/catalog/reviews.json` — reviewer sign-offs (reviewer, date,
+- Added: `internal/catalog/reviews.json` - reviewer sign-offs (reviewer, date,
   note, optional difficulty override) merged by `cmd/gencatalog`; approved
   entries carry `difficulty_review: "approved"` + reviewer metadata, and the
   model's verdict is preserved in `difficulty_computed`.
-- Modified: `internal/catalog/difficulty.go` — four cut points (0.29 / 0.39 /
+- Modified: `internal/catalog/difficulty.go` - four cut points (0.29 / 0.39 /
   0.53 / 0.63) yielding easy / easy-medium / medium / medium-hard / hard;
   thresholds re-pinned in `difficulty_test.go`; calibration notes in
   [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md).
@@ -559,7 +559,7 @@ Difficulty scale is now five-level with a human-override mechanism.
   medium-hard (model: hard), Hiiri-Pekka medium-hard (model: medium). ET
   entries remain `pending` for an Estonian reviewer.
 
-## 2026-07-04 — Overnight launch-gate run (PRs #250–#259)
+## 2026-07-04 - Overnight launch-gate run (PRs #250–#259)
 
 Ten PRs merged in one overnight run, closing or advancing most public-alpha
 gates: grill-docs promotion, FOR_MICHAEL guide, FI/ET parity audit, flag-only
@@ -568,12 +568,12 @@ quarantine, parser backpressure + load test, embedded catalog, and the
 surface-card identity migration with narrow FSRS behind a flag.
 
 - Added: [`launch-readiness/2026-07-04-overnight-report.md`](launch-readiness/2026-07-04-overnight-report.md)
-  — the consolidated report and go-live handoff (gate status, human actions).
-- Modified: `TODO.md` "Public alpha gates" — twelve gates ticked with evidence
+  - the consolidated report and go-live handoff (gate status, human actions).
+- Modified: `TODO.md` "Public alpha gates" - twelve gates ticked with evidence
   pointers; open gates annotated with shipped-tonight progress and exact
   remaining steps.
 
-## 2026-07-04 — Surface-form review-card identity + narrow FSRS behind a flag
+## 2026-07-04 - Surface-form review-card identity + narrow FSRS behind a flag
 
 Implements the review-readiness launch gate (Decision 23). Review cards move
 from `(user_id, lang, lemma, pos)` to `(user_id, lang, surface_norm, lemma,
@@ -597,17 +597,17 @@ step+interval → conservative Review-state seed), and a flag rollback keeps
 FSRS-touched cards answerable through the step scheduler without losing
 progress.
 
-- Modified: [`srs-deck-spec.md`](srs-deck-spec.md) — card identity + narrow FSRS
+- Modified: [`srs-deck-spec.md`](srs-deck-spec.md) - card identity + narrow FSRS
   marked implemented (flag off by default); documents the `fsrs_json` versioning
   and lazy-migration derivation; Open decisions sense-key resolution recorded.
-- Modified: [`DEPLOYMENT.md`](DEPLOYMENT.md) — `FINNESTDB_FSRS_ENABLED` env var +
+- Modified: [`DEPLOYMENT.md`](DEPLOYMENT.md) - `FINNESTDB_FSRS_ENABLED` env var +
   "FSRS scheduler rollout" (staging-first with seeded histories, then flip).
-- Modified: [`CONTEXT.md`](CONTEXT.md) — **Card** term updated to the implemented
+- Modified: [`CONTEXT.md`](CONTEXT.md) - **Card** term updated to the implemented
   surface-form key.
 - Related: [`DECISIONS.md`](DECISIONS.md) Decision 23 (surface-first learner
   model + narrow FSRS).
 
-## 2026-07-04 — Embedded text catalog mechanism shipped
+## 2026-07-04 - Embedded text catalog mechanism shipped
 
 Shipped the curated Embedded Text catalog mechanism for signed-in cold start
 (TODO.md gate "Curated embedded text catalog"; USER_FLOWS.md §4; DECISIONS 23
@@ -624,12 +624,12 @@ signed-in endpoints `GET /api/catalog` (metadata + coverage) and
 `GET /api/catalog/{id}/text` (lazy full text) back dashboard and Inspect
 cold-start empty states. Initial coverage is honest, not the full 36-text
 matrix: 3 FI texts (Gutenberg public-domain poem + short story, one original
-CC0 article; medium/hard) and 3 ET texts (original CC0; easy/medium) —
+CC0 article; medium/hard) and 3 ET texts (original CC0; easy/medium) -
 Estonian Gutenberg material was effectively unavailable, so ET ships original
 CC0 texts. Every entry ships `difficulty_review: "pending"`; the full matrix
 and human sanity-check remain open and the gate stays unchecked. See
 `docs/USER_FLOWS.md` §4, `CONTEXT.md` "Embedded Catalog", `TODO.md`.
-## 2026-07-04 — Parser backpressure and launch load test
+## 2026-07-04 - Parser backpressure and launch load test
 
 Implements the parser concurrency/backpressure and load-test bullets of the
 "1,000-concurrent-user launch target" gate. A new counting semaphore in
@@ -648,26 +648,26 @@ the production-size local DB) confirm the shedding mechanism and that
 deck/review reads stay unaffected under full saturation; production-host
 re-validation remains before the launch gate can close.
 
-- Added: `internal/api/parser_limiter.go` — the semaphore, wired into
+- Added: `internal/api/parser_limiter.go` - the semaphore, wired into
   `HandleParse` and `handleCreateDeck`.
-- Added: `internal/api/parser_limiter_test.go` — saturation/shedding/timeout/
+- Added: `internal/api/parser_limiter_test.go` - saturation/shedding/timeout/
   non-parse-bypass unit and handler-level tests.
-- Modified: `internal/api/rate_limit.go` — `allowLimiter`'s 429 now sets
+- Modified: `internal/api/rate_limit.go` - `allowLimiter`'s 429 now sets
   `Retry-After: 60`.
-- Added: `cmd/loadtest` — the load-test tool.
+- Added: `cmd/loadtest` - the load-test tool.
 - Added: [`launch-readiness/2026-07-04-load-test.md`](launch-readiness/2026-07-04-load-test.md)
-  — method, hardware caveat, stage results, shedding evidence, anonymous-cap
+  - method, hardware caveat, stage results, shedding evidence, anonymous-cap
   recheck, recommended production env values, and the production-host re-run
   instruction.
 - Modified: [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) "Capacity and
-  Graceful Degradation" — shipped items checked off with evidence links;
+  Graceful Degradation" - shipped items checked off with evidence links;
   production-host re-run and monitoring wiring left open.
-- Modified: [`DEPLOYMENT.md`](DEPLOYMENT.md) — `FINNESTDB_PARSER_MAX_CONCURRENCY`
+- Modified: [`DEPLOYMENT.md`](DEPLOYMENT.md) - `FINNESTDB_PARSER_MAX_CONCURRENCY`
   and `FINNESTDB_PARSER_QUEUE_TIMEOUT_MS` added to the environment-variable
   table; load-test usage and a parser-saturation monitoring note added.
-- Modified: [`../TODO.md`](../TODO.md) — both 1,000-concurrent-user bullets
+- Modified: [`../TODO.md`](../TODO.md) - both 1,000-concurrent-user bullets
   get progress notes; neither is ticked (production-host run remains).
-## 2026-07-04 — Correction issues + admin-only quarantine (Phase 1c)
+## 2026-07-04 - Correction issues + admin-only quarantine (Phase 1c)
 
 Ships the global correction-issue ledger and admin-only faulty-content
 quarantine (public-alpha gate). New `correction_issues` table plus
@@ -677,29 +677,29 @@ issue by a `(lang, parser, norm_surface, lemma, pos)` scope fingerprint and
 recomputes report/distinct-reporter counts; a report against a `fixed` issue
 reopens it. Admins classify an issue (one of `parser_issue`, `bad_card_content`,
 `source_extraction_issue`, `not_sure`), then **Quarantine now** (required
-reason) suppresses matching content globally — review and new-card queues, deck
+reason) suppresses matching content globally - review and new-card queues, deck
 word/due/new-card counts, and `DeckComprehension` coverage/unlocks all exclude
-it — while `review_log` history stays untouched. Restore is a status flip that
+it - while `review_log` history stays untouched. Restore is a status flip that
 returns content with `card_state` intact. A `threshold_candidate` badge appears
 at ≥3 distinct reporters but never auto-quarantines. One combined admin queue;
 no separate Issues page.
 
-- Modified: [`PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md) — "Global
+- Modified: [`PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md) - "Global
   correction issue ledger", "Report-to-quarantine workflow", "Alpha admin
   classification", "Admin triage", the intro paragraph, and the current-vs-target
   table row moved from target-tense to shipped.
-- Modified: [`FEATURES.md`](FEATURES.md) "What We Store During Alpha" —
+- Modified: [`FEATURES.md`](FEATURES.md) "What We Store During Alpha" -
   quarantine bullet notes restore preserves scheduler state.
-- Modified: [`../TODO.md`](../TODO.md) — Phase 1c ticked; "Parser feedback alpha
+- Modified: [`../TODO.md`](../TODO.md) - Phase 1c ticked; "Parser feedback alpha
   gate" and "Quarantine behavior" public-alpha bullets ticked with shipped notes.
-- Modified: [`../CONTEXT.md`](../CONTEXT.md) — Correction Issue, Faulty Content
+- Modified: [`../CONTEXT.md`](../CONTEXT.md) - Correction Issue, Faulty Content
   Quarantine, Trusted Quarantine Threshold, and Emergency Quarantine updated to
   shipped phrasing.
-- Modified: [`srs-deck-spec.md`](srs-deck-spec.md) — coverage/quarantine and
+- Modified: [`srs-deck-spec.md`](srs-deck-spec.md) - coverage/quarantine and
   restore paragraphs moved to shipped tense.
 - Cross-reference: [`DECISIONS.md`](DECISIONS.md) Decision 25.
 
-## 2026-07-04 — Anonymous parser demo shipped
+## 2026-07-04 - Anonymous parser demo shipped
 
 The public-alpha anonymous parser demo landed: the landing page now carries a
 paste-first parse form (FI/ET selector, char counter, Parse button) that calls
@@ -710,19 +710,19 @@ dismiss-per-session sign-up ribbon and a privacy footer. A new
 `FINNESTDB_ANON_MAX_CHARS` cap (default 20,000) is enforced server-side before
 parser work and surfaced to the client via `/api/me`.
 
-- Modified: [`USER_FLOWS.md`](USER_FLOWS.md) §1/§2 — status flipped to shipped;
+- Modified: [`USER_FLOWS.md`](USER_FLOWS.md) §1/§2 - status flipped to shipped;
   cap/ribbon/footer behavior documented.
-- Modified: [`FEATURES.md`](FEATURES.md) — Anonymous Parser Demo section shipped
+- Modified: [`FEATURES.md`](FEATURES.md) - Anonymous Parser Demo section shipped
   phrasing plus the cap details.
-- Modified: [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) "Abuse Controls" —
+- Modified: [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) "Abuse Controls" -
   anon-cap bullet marked shipped-with-default.
-- Modified: [`DEPLOYMENT.md`](DEPLOYMENT.md) — `FINNESTDB_ANON_MAX_CHARS` added
+- Modified: [`DEPLOYMENT.md`](DEPLOYMENT.md) - `FINNESTDB_ANON_MAX_CHARS` added
   to the environment-variable table.
-- Modified: [`../TODO.md`](../TODO.md) "Public alpha gates" — Anonymous parser
+- Modified: [`../TODO.md`](../TODO.md) "Public alpha gates" - Anonymous parser
   demo gate ticked with a shipped note; remaining work is load-test cap tuning.
-- Modified: [`../CONTEXT.md`](../CONTEXT.md) — Anonymous Parser Demo term updated
+- Modified: [`../CONTEXT.md`](../CONTEXT.md) - Anonymous Parser Demo term updated
   to shipped phrasing.
-## 2026-07-04 — Flag-only parser feedback (Phase 1b)
+## 2026-07-04 - Flag-only parser feedback (Phase 1b)
 
 Documents the public-alpha flag-only feedback path: signed-in learners can
 report "this analysis looks wrong" without proposing a fix. Schema adds
@@ -731,16 +731,16 @@ report "this analysis looks wrong" without proposing a fix. Schema adds
 lexical override until an admin supplies a concrete lemma/POS, converting it into
 a normal parser-identity correction.
 
-- Modified: [`PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md) — schema field
+- Modified: [`PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md) - schema field
   list, the "current implementation" paragraph, and the current-vs-target table
   (feedback type, schema/API, admin triage, acceptance behavior).
-- Modified: [`FEATURES.md`](FEATURES.md) "What We Store During Alpha" — mentions
+- Modified: [`FEATURES.md`](FEATURES.md) "What We Store During Alpha" - mentions
   flag-only reports.
-- Modified: [`TODO.md`](../TODO.md) — Phase 1b ticked with a shipped note; the
+- Modified: [`TODO.md`](../TODO.md) - Phase 1b ticked with a shipped note; the
   "Parser feedback alpha gate" bullet gets a progress note.
-- Modified: [`../CONTEXT.md`](../CONTEXT.md) "Flag-Only Parser Feedback" — updated
+- Modified: [`../CONTEXT.md`](../CONTEXT.md) "Flag-Only Parser Feedback" - updated
   from planned to shipped.
-## 2026-07-04 — First-experience RC pack skeleton
+## 2026-07-04 - First-experience RC pack skeleton
 
 Ships the checked-in, repeatable release-candidate pack described in
 `GO_LIVE_CHECKLIST.md` "First-experience quality check" and `CONTEXT.md`
@@ -748,25 +748,25 @@ Ships the checked-in, repeatable release-candidate pack described in
 and a Playwright spec that both consume it, so the launch gate cannot drift
 across separate case lists.
 
-- Added: `testdata/first-experience-rc/manifest.json` — 18 cases covering
+- Added: `testdata/first-experience-rc/manifest.json` - 18 cases covering
   all 8 first-experience journeys (anonymous-demo, embedded-text,
   own-text-inspect, deck-save, first-review, known-word-import,
   ambiguity-homograph, parser-feedback) with explicit FI and ET cases for
   every journey, plus short self-written fixture `.txt` files in the same
   directory, including the `kuusi`/`tuli`/`voi` homograph fixtures from
   `PARSER_EVAL_METHODOLOGY.md` "Ambiguity and meaning-check calibration".
-- Added: `cmd/firstexperiencerc` — loads the manifest and runs every
+- Added: `cmd/firstexperiencerc` - loads the manifest and runs every
   `automation:"parser"` case through the real custom-mode parser pipeline
   (`internal/parsecore`), printing PASS/FAIL/SKIP-pending/MANUAL and a
   summary; exits nonzero only on an automated FAIL.
-- Added: `web/tests/first-experience-rc.spec.ts` — generates one Playwright
+- Added: `web/tests/first-experience-rc.spec.ts` - generates one Playwright
   test per `automation:"playwright"` manifest case (with `test.skip` stubs
   for everything else), reusing the existing Inspect/save-deck/review and
   parser-feedback correction-submit patterns from `parse-results.spec.ts`.
-- Added: `make first-experience-rc` — runs the Go runner, then the RC
+- Added: `make first-experience-rc` - runs the Go runner, then the RC
   Playwright spec, then points at the manual walkthrough instructions in
   `GO_LIVE_CHECKLIST.md` (no separate walkthrough doc).
-- Modified: `GO_LIVE_CHECKLIST.md` and `TODO.md` — record which journeys are
+- Modified: `GO_LIVE_CHECKLIST.md` and `TODO.md` - record which journeys are
   automated today (embedded-text, own-text-inspect, ambiguity-homograph via
   the Go runner; deck-save, first-review, and FI parser-feedback via
   Playwright) versus still pending (anonymous-demo FI+ET, known-word-import
@@ -774,19 +774,19 @@ across separate case lists.
 - This is a skeleton per Q58/Q60: it is expected to gain automated coverage
   (not fixture text) as the pending journeys land, not to be treated as the
   final pass/fail launch gate yet.
-## 2026-07-04 — FI/ET equal-status parity audit
+## 2026-07-04 - FI/ET equal-status parity audit
 
 Journey-first audit of the public-alpha "Equal-Status Alpha Gate" from
 [`CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md#equal-status-alpha-gate),
 run against a live server and the production-size local DB.
 
 - Added: [`launch-readiness/2026-07-04-fi-et-parity-audit.md`](launch-readiness/2026-07-04-fi-et-parity-audit.md)
-  — per-journey FI/ET evidence table (anonymous parse, signed-in Inspect,
+  - per-journey FI/ET evidence table (anonymous parse, signed-in Inspect,
   deck save/detail/review, known-word import, parser feedback, admin queue,
   data readiness, eval baselines, tests, embedded catalog, starter decks),
   classified alpha-blocking / language-specific / post-alpha, plus a cleanup
   appendix of every row the audit wrote to the shared DB.
-- Modified: [`../TODO.md`](../TODO.md) — added ledger row `PARITY-1` (official
+- Modified: [`../TODO.md`](../TODO.md) - added ledger row `PARITY-1` (official
   "Top 1000" starter decks absent from the DB for both languages despite a
   prior "shipped, verified end-to-end" claim) and appended an audit-run note
   under the "FI/ET equal-status parity audit" gate bullet.
@@ -795,7 +795,7 @@ run against a live server and the production-size local DB.
   (starter decks never seeded in this DB), not a code or design asymmetry
   between the two languages.
 
-## 2026-05-15 — FI manual-card trap promotions
+## 2026-05-15 - FI manual-card trap promotions
 
 Documents the parser-stamp bump for promoting recent manual Finnish card
 fixes into source-agnostic parser behavior: `sanoin` resolves as
@@ -803,32 +803,32 @@ fixes into source-agnostic parser behavior: `sanoin` resolves as
 capitalized `Norjan` as the genitive of `Norja`.
 
 - Added: [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) entry
-  `2026-05-15a` — records the behavior changes, source-agnostic
+  `2026-05-15a` - records the behavior changes, source-agnostic
   rationale, and focused verification command.
 - Modified: [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) and
-  [`TODO.md`](../TODO.md) — current parser behavior tag is
+  [`TODO.md`](../TODO.md) - current parser behavior tag is
   `2026.05.15a`. The latest frozen baseline remains
   `parser-baseline-2026-05-12-b-T1606Z`; a new freeze is still needed
   for headline aggregate numbers.
 
-## 2026-05-15 — Source-agnostic correction taxonomy
+## 2026-05-15 - Source-agnostic correction taxonomy
 
 Documents how learner-reported card and parser fixes should land in FinEstDB
 without tying the workflow to any one source corpus or Anki. The new taxonomy
 keeps Finnish and Estonian correction content separate while sharing the same
 admin workflow, target model, and overlay categories.
 
-- Added: [`CORRECTION_TAXONOMY.md`](CORRECTION_TAXONOMY.md) — learning targets
+- Added: [`CORRECTION_TAXONOMY.md`](CORRECTION_TAXONOMY.md) - learning targets
   can be lemma, surface, phrase, or proper-name entries; accepted fixes are
   classified as parser identity, meaning cue, contextual sense, phrase boundary,
   example quality, or card presentation.
-- Modified: [`PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md) — admin
+- Modified: [`PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md) - admin
   acceptance should classify feedback before writeback, because many
   learner-visible bad cards are not parser-identity bugs.
-- Modified: [`INDEX.md`](INDEX.md) and [`TODO.md`](../TODO.md) — add the new
+- Modified: [`INDEX.md`](INDEX.md) and [`TODO.md`](../TODO.md) - add the new
   correction taxonomy to canonical navigation and open implementation work.
 
-## 2026-05-13 — ET review follow-ups parser stamp (PR #205)
+## 2026-05-13 - ET review follow-ups parser stamp (PR #205)
 
 Documents the parser-stamp bump for the PR #205 follow-ups that landed
 on top of the `2026.05.12d` source-backed ET cleanup. The behavior
@@ -837,28 +837,28 @@ ET verb dictionary-form check, explicit `TA` lex-overlay bypass) but
 narrow; each is pinned by a unit test.
 
 - Added: [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) entry
-  `2026-05-12e` — records the parser stamp bump, the three behavior
+  `2026-05-12e` - records the parser stamp bump, the three behavior
   changes, and the verification commands.
 - Modified: [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) and
-  [`TODO.md`](../TODO.md) — current parser behavior tag is
+  [`TODO.md`](../TODO.md) - current parser behavior tag is
   `2026.05.12e`. The latest frozen baseline remains
   `parser-baseline-2026-05-12-b-T1606Z`; a new freeze is still needed
   for the combined `2026.05.12e` state.
 
-## 2026-05-12 — ET verb-inflection bias baseline merge
+## 2026-05-12 - ET verb-inflection bias baseline merge
 
 Documents the PR #203 merge resolution after the source-backed ET learner
 cleanup landed first on `main`.
 
-- Modified: [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) — keeps the
+- Modified: [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) - keeps the
   `2026-05-12b-T1606Z` baseline as historical evidence and adds
   `2026.05.12d` as the combined current parser stamp.
 - Modified: [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) and
-  [`TODO.md`](../TODO.md) — update the current parser behavior tag to
+  [`TODO.md`](../TODO.md) - update the current parser behavior tag to
   `2026.05.12d` while noting that a new freeze is needed for combined
   headline numbers.
 
-## 2026-05-12 — Source-backed ET learner cleanup
+## 2026-05-12 - Source-backed ET learner cleanup
 
 Documents the follow-up parser/importer change from the Sõnaveeb/Ekilex
 audit of high-frequency Estonian learner rows. The fix keeps source
@@ -866,7 +866,7 @@ claims tied to the reduced Ekilex artifacts or Sõnaveeb pages, but stops
 letting source-side long-tail translations and duplicate morphology rows
 become misleading learner primaries.
 
-- Added: [`DECISIONS.md`](DECISIONS.md) Decision 22 — why ET learner
+- Added: [`DECISIONS.md`](DECISIONS.md) Decision 22 - why ET learner
   corrections stay deterministic, source-audited, and small: exact
   capitalization for special dictionary lemmas, invariant closed-class
   morphology cleanup, basic-mode direct-dict source filtering, ET verb
@@ -874,32 +874,32 @@ become misleading learner primaries.
   DBs, and curated overrides only for high-frequency rows with verified
   bad learner primaries.
 - Added: [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) entry
-  2026-05-12c — records the parser stamp bump, changed behavior, and
+  2026-05-12c - records the parser stamp bump, changed behavior, and
   focused verification commands.
 - Modified: [`FST_LEMMATIZER.md`](FST_LEMMATIZER.md) "Store-level
-  candidate merge" section — documents the ET overlay additions and
+  candidate merge" section - documents the ET overlay additions and
   the dictionary-side special-capitalization / invariant-FEATS guards.
-- Modified: [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) — updates
+- Modified: [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) - updates
   the current parser dated tag to `2026.05.12c`.
-- Modified: [`INDEX.md`](INDEX.md) and [`TODO.md`](../TODO.md) —
+- Modified: [`INDEX.md`](INDEX.md) and [`TODO.md`](../TODO.md) -
   refresh the current decision count and parser behavior stamp after
   Decision 22.
 
-## 2026-05-12 — Documentation state refresh
+## 2026-05-12 - Documentation state refresh
 
 Refreshes the living status docs after reviewing the last 20 merged PRs
 on `main` (#176, #177, #179-#181, and #183-#197).
 
-- Modified: [`docs/INDEX.md`](INDEX.md) and [`TODO.md`](../TODO.md) —
+- Modified: [`docs/INDEX.md`](INDEX.md) and [`TODO.md`](../TODO.md) -
   corrected the decisions count, current parser-v2 status, recent upload
   support, and open-PR snapshot.
-- Modified: [`corpus_pipeline/v2plan.md`](../corpus_pipeline/v2plan.md) —
+- Modified: [`corpus_pipeline/v2plan.md`](../corpus_pipeline/v2plan.md) -
   removed duplicate superseded v2.4-v2.8 follow-up blocks so the roadmap
   no longer reports the same work as both done and not started.
 - Modified historical docs and reports to replace stale local Markdown links
   with valid file links or plain local-only paths.
 
-## 2026-05-12 — Deck/parse low-value dict-alternative filter (PR #185)
+## 2026-05-12 - Deck/parse low-value dict-alternative filter (PR #185)
 
 Records the deck/parse expansion change in PR
 [#185](https://github.com/sagarinbabel/finnestdb/pull/185): when a surface
@@ -909,26 +909,26 @@ when a lexical-base alternative exists. Form-of detection is structural
 (`candidate.Lemma == form`, single-clause gloss with `<allowed morphology>
 of <single-word target>`), so common lexical glosses whose body text
 happens to mention grammatical terms (`vana/ADJ`, `oma/ADJ`, `mennä/VERB`)
-are not affected. Unresolved/gap surfaces — every candidate gloss empty,
-or no lexical-base alternative — are preserved as-is.
+are not affected. Unresolved/gap surfaces - every candidate gloss empty,
+or no lexical-base alternative - are preserved as-is.
 
-- Added: [`docs/DECISIONS.md`](DECISIONS.md) §Decision 19 — context,
+- Added: [`docs/DECISIONS.md`](DECISIONS.md) §Decision 19 - context,
   structural detector, and false-positive reasoning behind the filter.
 
-## 2026-05-12 — Analyser-quality learnings from yle_subs (PR #183)
+## 2026-05-12 - Analyser-quality learnings from yle_subs (PR #183)
 
 Documents the parser/dict/ingest changes shipped in PR
-[#183](https://github.com/sagarinbabel/finnestdb/pull/183) — five
+[#183](https://github.com/sagarinbabel/finnestdb/pull/183) - five
 runtime fixes that pull learner-quality corrections from
 `yle_subs` back into finnestdb's parser and dict layer.
 
-- Added: [`DECISIONS.md`](DECISIONS.md) Decision 20 — why the
+- Added: [`DECISIONS.md`](DECISIONS.md) Decision 20 - why the
   lexical-overlay short-circuit runs at Step 0 of
   `BatchLookupForms` (not inside `Lemmatize`), why it's
   custom-mode-only, and why the bad-lemma blocklist is two-tiered
   (never-legitimate fragments + (surface, lemma) pairs).
 - Added: [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) entry
-  2026-05-12a — describes the parser-behavior bundle
+  2026-05-12a - describes the parser-behavior bundle
   (lexadverbs overlay, `NormalizeMaInfinitive`, MA-infinitive
   ranking bias, bad-lemma blocklist, structural-gloss filter at
   kaikki ingest, `BatchLookupSenses` API, FI+ET analyser-traps
@@ -937,49 +937,49 @@ runtime fixes that pull learner-quality corrections from
   measurement against the new #183 gold sets (FI custom
   lemma=95.2%, ET 100%).
 - Modified: [`FST_LEMMATIZER.md`](FST_LEMMATIZER.md) "Store-level
-  candidate merge" section — documents the new Step 0
+  candidate merge" section - documents the new Step 0
   lex-overlay short-circuit, the MA-infinitive ranking bias, the
   two-tier bad-lemma filter, and the documented residual on
   `tarjoamaan` pending FST table regeneration with MA-infinitive
   surfaces.
 
-## 2026-05-09 — Architecture and corpus documentation audit
+## 2026-05-09 - Architecture and corpus documentation audit
 
 Refreshes the living docs after the corpus pipeline and baseline-compression
 PRs landed, while leaving historical reports and frozen baselines
 append-only.
 
-- Modified: [`ARCHITECTURE.md`](../ARCHITECTURE.md) — updated the current
+- Modified: [`ARCHITECTURE.md`](../ARCHITECTURE.md) - updated the current
   product surface, Mermaid diagram, layer responsibilities, data flows,
   localdata/FST boundaries, and near-term direction to include the corpus
   pipeline.
-- Modified: [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) —
+- Modified: [`corpus_pipeline/docs/CORPUS_PIPELINE.md`](../corpus_pipeline/docs/CORPUS_PIPELINE.md) -
   replaced stale future-work wording with built-vs-deferred status, refreshed
   profile guidance, and corrected FST-table troubleshooting.
 - Modified: [`corpus_pipeline/docs/PR_ROADMAP.md`](../corpus_pipeline/docs/PR_ROADMAP.md),
   [`corpus_pipeline/v2plan.md`](../corpus_pipeline/v2plan.md), and
-  [`corpus_pipeline/Makefile`](../corpus_pipeline/Makefile) — aligned roadmap
+  [`corpus_pipeline/Makefile`](../corpus_pipeline/Makefile) - aligned roadmap
   statuses and profile help text with the landed corpus PRs.
-- Modified: [`docs/FST_LEMMATIZER.md`](FST_LEMMATIZER.md) — documented the
+- Modified: [`docs/FST_LEMMATIZER.md`](FST_LEMMATIZER.md) - documented the
   ET generated-table command and remaining production-promotion conditions.
 - Modified: [`docs/INDEX.md`](INDEX.md), [`README.md`](../README.md),
-  [`TODO.md`](../TODO.md), and [`finnestdb-prd-alpha.md`](../finnestdb-prd-alpha.md) —
+  [`TODO.md`](../TODO.md), and [`finnestdb-prd-alpha.md`](../finnestdb-prd-alpha.md) -
   refreshed canonical navigation, PR state, and the historical PRD's
   implementation snapshot.
-- Added: [`docs/qa-reports/2026-05-08T2229Z-doc-architecture-corpus-audit.md`](qa-reports/2026-05-08T2229Z-doc-architecture-corpus-audit.md) —
+- Added: [`docs/qa-reports/2026-05-08T2229Z-doc-architecture-corpus-audit.md`](qa-reports/2026-05-08T2229Z-doc-architecture-corpus-audit.md) -
   timestamped full-doc audit and Git/GitHub branch-state report.
 
-## 2026-05-09 — Typographic quote tokenization docs (PR #171)
+## 2026-05-09 - Typographic quote tokenization docs (PR #171)
 
 Documents the current Rust parser contract after PR
 [#171](https://github.com/sagarinbabel/finnestdb/pull/171): leading/trailing
 punctuation cleanup includes common typographic quote marks, and opening
 punctuation labels are part of sentence-text spacing reconstruction.
 
-- Modified: [`README.md`](../README.md) — clarified the known-limitations
+- Modified: [`README.md`](../README.md) - clarified the known-limitations
   summary for tokenizer punctuation and opening-quote spacing behavior.
 
-## 2026-05-07 — Voikko `[P4]` Voice + participle field cleanup (PR #158)
+## 2026-05-07 - Voikko `[P4]` Voice + participle field cleanup (PR #158)
 
 Closes the Voice accuracy gap flagged in the parser audit (FI custom
 5.3% vs omorfi 89.7% on fi-ftb) by fixing two specific bugs in
@@ -995,7 +995,7 @@ and [#155](https://github.com/sagarinbabel/finnestdb/pull/155):
 2. **`applyParticiple` clears finite-only fields.** Defense-in-depth:
    when `[R*]` wins, Mood/Tense/Person are reset so a participle
    never composes contradictory FEATS like `Tense=Past|VerbForm=Part`
-   — UD encodes the past/present distinction in `PartForm=`, not
+   - UD encodes the past/present distinction in `PartForm=`, not
    `Tense=`.
 
 The shared Voice/VerbForm plumbing (Analysis fields, `applyParticiple`
@@ -1004,19 +1004,19 @@ extraction) all landed in PRs #154 and #155; PR #158 fills in the two
 Voikko-specific gaps those PRs left open.
 
 The `[E*]` tags were investigated as a possible voice signal and found
-to encode connegative status (Ef=false, Et=true, Eb=both) — confirmed
+to encode connegative status (Ef=false, Et=true, Eb=both) - confirmed
 from libvoikko's `FinnishVfstAnalyzer.cpp::parseBasicAttributes`.
 Documented in the voikkomap header. Not projected to UD because the
 runtime already gets `Connegative=Yes` from the orthogonal `[Cn]` tag.
 
-- Modified: [`docs/FST_LEMMATIZER.md`](FST_LEMMATIZER.md) — new
+- Modified: [`docs/FST_LEMMATIZER.md`](FST_LEMMATIZER.md) - new
   "Voikko Voice extraction" subsection covering the `[P*]` Voice
   derivation and participle field cleanup; updated stale 5-param
   `Compose` reference.
-- Modified: [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) — new
+- Modified: [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) - new
   entry for PR #158.
 
-## 2026-05-07 — Baseline filename convention + freeze-baseline script
+## 2026-05-07 - Baseline filename convention + freeze-baseline script
 
 Standardizes the baseline filename convention so every baseline has a
 **date AND time** stamp and the `docs/baselines/` directory stays
@@ -1028,11 +1028,11 @@ Canonical form going forward:
 docs/baselines/YYYY-MM-DD<rev>-T<HHMM>Z-<dataset>.<ext>
 ```
 
-— matching the `2026-05-07k-T1118Z-fi-core.json` logical baseline name
+- matching the `2026-05-07k-T1118Z-fi-core.json` logical baseline name
 introduced with the [#140](https://github.com/sagarinbabel/finnestdb/pull/140)
 baseline. Raw JSON files are now stored with a `.gz` suffix to keep repository
 line counts manageable. Older tagged-style files
-(`2026-05-06-final-*`, `2026-05-07-feats-rich-*`, etc.) are left as-is —
+(`2026-05-06-final-*`, `2026-05-07-feats-rich-*`, etc.) are left as-is -
 renaming them would break PR/commit cross-references the
 [#141](https://github.com/sagarinbabel/finnestdb/pull/141) append-only history section was meant to
 preserve.
@@ -1042,7 +1042,7 @@ preserve.
   from `parsecore.ParserVersion`, derives the date + UTC HHMM, and
   compresses per-dataset JSONs and copies cross-language summaries from
   `reports/parser-eval/` into `docs/baselines/` under the canonical
-  name. **Refuses to overwrite** an existing target file — append-only
+  name. **Refuses to overwrite** an existing target file - append-only
   is enforced mechanically, not just by convention. Override the
   parser-version letter with `-rev <letter>` for the rare case of
   freezing a measurement made before a same-day version bump.
@@ -1054,7 +1054,7 @@ preserve.
   replaces the manual `cp` recipe with a one-line `scripts/freeze-baseline.sh "$RUN_TS"`
   invocation.
 
-## 2026-05-07 — Newcomer experience: `make doctor` + setup symmetry
+## 2026-05-07 - Newcomer experience: `make doctor` + setup symmetry
 
 Closes the gap between "the docs say setup is one command" and "the
 parser silently runs in degraded mode because something didn't fetch".
@@ -1085,11 +1085,11 @@ parser silently runs in degraded mode because something didn't fetch".
 - New `BackfillLegacyKaikkiProvenance` migration in
   [`internal/store/db.go`](../internal/store/db.go) labels FI/ET rows
   that legacy importers left with empty `source` / `source_priority=0`
-  as `(source='kaikki', source_priority=10)`. Idempotent — runs every
+  as `(source='kaikki', source_priority=10)`. Idempotent - runs every
   startup but matches no rows once applied. Surfaced as a WARN in
   `make doctor` until a server start has run the migration.
 
-## 2026-05-07 PM — Park autoresearch as post-live idea
+## 2026-05-07 PM - Park autoresearch as post-live idea
 
 Clarifies that autoresearch is an idea parking lot for after the app is shipped
 and live, not active roadmap work.
@@ -1104,7 +1104,7 @@ and live, not active roadmap work.
   [`docs/FEATURES.md`](FEATURES.md), and [`docs/DECISIONS.md`](DECISIONS.md)
   so autoresearch reads as deferred post-live exploration.
 
-## 2026-05-07 PM — Docs restructure + LLM-friendly navigation
+## 2026-05-07 PM - Docs restructure + LLM-friendly navigation
 
 Restructures the spine docs so a reader (human or LLM) can answer
 "what's shipped, what's next, what's open, why" without cross-doc
@@ -1138,10 +1138,10 @@ detective work.
   expanded to enumerate every gitignored runtime artifact.
 
 **See also:** DECISIONS.md Decisions 17 (ESTONIAN_LEXICAL_PLAN consolidation)
-and 18 (IMPLEMENTATION.md split) — both also record the 2026-05-07 AM PR #135
+and 18 (IMPLEMENTATION.md split) - both also record the 2026-05-07 AM PR #135
 that did the first round of doc consolidation.
 
-## 2026-05-07 AM — Doc parity sweep + 07k baseline freeze (PR #135)
+## 2026-05-07 AM - Doc parity sweep + 07k baseline freeze (PR #135)
 
 Doc-parity sweep driven by an audit of all spine docs against the day's
 PRs (#127–#134). Plus the `2026-05-07k-T0944Z` baseline freeze
@@ -1179,7 +1179,7 @@ PRs (#127–#134). Plus the `2026-05-07k-T0944Z` baseline freeze
 **See also:** DECISIONS.md Decisions 16, 17, 18 (the three doc/code
 decisions this PR enforced).
 
-## 2026-05-07 — Single-folder data root + ET UD gold materialized
+## 2026-05-07 - Single-folder data root + ET UD gold materialized
 
 Consolidates every gitignored runtime data artifact under
 [`localdata/`](../localdata/) so a single tarball captures the entire
@@ -1216,7 +1216,7 @@ not yet generated on the user's machine.
   table updated with the new path strings; Estonian-EWT train count
   corrected (5,375 actual vs. 5,380 documented).
 - Local gold available after this PR + a `make import-ud-gold` run:
-  ~37k FI cases / 339k FI tokens, ~37.9k ET cases / 437k ET tokens —
+  ~37k FI cases / 339k FI tokens, ~37.9k ET cases / 437k ET tokens -
   ~7.5× the cases and ~8.5× the tokens previously visible in `git`.
 
 **Why now:** the previous layout had three gitignored data roots
@@ -1225,7 +1225,7 @@ not yet generated on the user's machine.
 required either three separate archives or a custom recipe that knew
 the carve-outs. Consolidating to one root removes the foot-gun.
 
-## 2026-05-07 — Runtime docs parity pass
+## 2026-05-07 - Runtime docs parity pass
 
 Aligns user-facing docs with the E2E behavior report in
 [`docs/qa-reports/2026-05-06-e2e-doc-behavior-report.md`](qa-reports/2026-05-06-e2e-doc-behavior-report.md).
@@ -1238,7 +1238,7 @@ Aligns user-facing docs with the E2E behavior report in
   development behavior, and frames multi-candidate deck cards as
   dictionary-coverage dependent rather than guaranteed for the `joon` example.
 
-## 2026-05-06c — UD treebank gold expansion (Plan C / PR 1)
+## 2026-05-06c - UD treebank gold expansion (Plan C / PR 1)
 
 Lifts the parser-eval gold set from ~166 cases to ~14k cases (committed
 FI) / ~22k cases (FI committed + ET local) by ingesting the published
@@ -1257,7 +1257,7 @@ Universal Dependencies treebanks for Finnish and Estonian.
   import-ud-gold-et`, `make import-ud-gold` (both).
 - New committed FI gold (CC BY / CC BY-SA): ~9.8k cases / ~86k tokens
   across UD-Finnish-TDT/FTB/PUD/OOD test+dev splits.
-- New local-only ET gold (CC BY-NC-SA — gitignored under
+- New local-only ET gold (CC BY-NC-SA - gitignored under
   `testdata/parser-eval/et/gold/ud-et-*.json`): ~8k cases / ~115k
   tokens across UD-Estonian-EDT/EWT test+dev.
 - Train splits go under `testdata/parser-eval/{fi,et}/gold-train/`
@@ -1277,13 +1277,13 @@ et-manual-v1. Any number computed on a 22-case set is one bad sentence
 away from a 4.5pp swing. UD gives us train/dev/test splits with
 human-checked morphology; we pay nothing to use them.
 
-**FST migration link:** still on the roadmap — see PRs
+**FST migration link:** still on the roadmap - see PRs
 [#106](https://github.com/sagarinbabel/finnestdb/pull/106) /
 [#107](https://github.com/sagarinbabel/finnestdb/pull/107). The expanded
 gold makes that migration's regression checks meaningful (a 3pp lemma
 gain on 22 cases is noise; on 86k tokens it's signal).
 
-## 2026-05-06b — Eval harness parity + grammar-label stopgap
+## 2026-05-06b - Eval harness parity + grammar-label stopgap
 
 Two changes to the parser-evaluation pipeline, plus a recorded decision on
 how *not* to fix grammar accuracy.
@@ -1293,7 +1293,7 @@ how *not* to fix grammar accuracy.
   *requires* omorfi for Finnish; [`scripts/parser-comparison-et.sh`](../scripts/parser-comparison-et.sh)
   requires estnltk/Vabamorf for Estonian. Both fail with `exit 2` and a
   setup hint when the analyzer is missing. A `--allow-missing-baseline`
-  flag remains for ad-hoc local experiments — committed reports must
+  flag remains for ad-hoc local experiments - committed reports must
   include the analyzer column.
   - Why: dict-only basic/custom numbers were being read in isolation,
     masking that grammar accuracy was 0% across all FI and ET datasets in
@@ -1309,7 +1309,7 @@ how *not* to fix grammar accuracy.
   `grammar_label` was empty on every direct hit, which is why grammar
   accuracy was structurally 0%. Stopgap; will be removed once the FST
   runtime in [`pkg/lemmatizer-fi-et/`](../pkg/lemmatizer-fi-et/) emits
-  FEATS for direct hits — see PRs
+  FEATS for direct hits - see PRs
   [#106](https://github.com/sagarinbabel/finnestdb/pull/106) /
   [#107](https://github.com/sagarinbabel/finnestdb/pull/107).
 - **Recorded the decision not to extend the suffix table.**
@@ -1319,7 +1319,7 @@ how *not* to fix grammar accuracy.
   runtime is. TODO items #15 (ternary compounds) and #16 (consonant
   gradation) are gated behind the FST migration as a result.
 
-## 2026-05-07 — 3-column comparison reports + bootstrap CIs (Plan C / PR 2)
+## 2026-05-07 - 3-column comparison reports + bootstrap CIs (Plan C / PR 2)
 
 Restructures `cmd/parser-compare` so committed comparison reports answer the
 right question by default: "did *our* parser regress against the analyzer
@@ -1333,7 +1333,7 @@ bootstrap CIs so 22-case noise can no longer be misread as signal.
   analyzer)`. Without `-baseline-dir` the legacy table is the only output
   (back-compat).
 - Added `-bootstrap N` flag (default 1000). Each accuracy cell shows
-  `82.3% ±0.4` — half the 95% case-level bootstrap CI width. Set
+  `82.3% ±0.4` - half the 95% case-level bootstrap CI width. Set
   `-bootstrap 0` to disable. Deterministic seed by default so committed
   reports diff cleanly.
 - Added `-main-parser` flag (default `custom`) to control which parser is
@@ -1351,14 +1351,14 @@ gold + always-present analyzer columns. The remaining gap was the report
 structure itself: today's reports compare basic-vs-custom head-to-head, but
 the meaningful comparison is custom-prev vs custom-now (did we improve)
 against the analyzer (how far is the upper bound). Bootstrap CIs make it
-honest — a 2.2pp gain on 22 cases stops being headline-worthy.
+honest - a 2.2pp gain on 22 cases stops being headline-worthy.
 
 **Generated-table migration link:** future production FI/ET morphology
 tables will reuse the same `-baseline-dir` machinery. Gold case files
 already carry a `feats` field after PR #113, so the per-attribute
 extension is purely on the report side.
 
-## 2026-05-07 — Gutenberg-FI silver corpus scraper (Plan C / PR 3)
+## 2026-05-07 - Gutenberg-FI silver corpus scraper (Plan C / PR 3)
 
 First silver-tier corpus source. Scrapes public-domain Finnish books from
 Project Gutenberg (https://www.gutenberg.org/ebooks/search/?query=l.fi),
@@ -1382,7 +1382,7 @@ strips PG boilerplate, saves cleaned text + a JSONL manifest under
   count per book.
 - Added Makefile target `make scrape-gutenberg-fi` (overridable
   `TARGET_TOKENS=N`).
-- Idempotent — already-fetched books are skipped on re-run.
+- Idempotent - already-fetched books are skipped on re-run.
 
 **Why now:** with ~900k UD gold tokens and ~500k Gutenberg silver
 tokens, we're at the corpus scale where bootstrap CIs from Plan C / PR 2
@@ -1400,7 +1400,7 @@ production generated morphology tables as one half of the agreement
 filter. Omorfi via the Python adapter remains the other FI comparison
 path.
 
-## 2026-05-06 — Numeric-hyphen tokenization (FI + ET)
+## 2026-05-06 - Numeric-hyphen tokenization (FI + ET)
 
 Surfaced by manual testing on Estonian text containing `65-aastane`. The
 shared Rust tokenizer at [`parser/src/lib.rs`](../parser/src/lib.rs) was
@@ -1410,7 +1410,7 @@ had the identical bug (the tokenizer ignores its `_lang` parameter).
 
 Following [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md) on
 shared error categories and shared-pipeline investments, the fix is four
-tokenizer-only rules (R1–R4) — no per-language rule tables.
+tokenizer-only rules (R1–R4) - no per-language rule tables.
 
 - Added [`docs/qa-reports/2026-05-06-numeric-hyphen-tokenization.md`](qa-reports/2026-05-06-numeric-hyphen-tokenization.md):
   bug repro, root cause, R1–R4 with worked examples in both languages,
@@ -1420,7 +1420,7 @@ tokenizer-only rules (R1–R4) — no per-language rule tables.
   numeric-hyphen handling lives in the shared tokenizer rather than in
   language-specific rule tables.
 
-## 2026-05-06 — Lexical pipelines: ET ships, FI plan locks
+## 2026-05-06 - Lexical pipelines: ET ships, FI plan locks
 
 Locks the dictionary layer as multi-source with row-level provenance and
 priority, ships the Estonian source-data pipeline end-to-end, and stages
@@ -1479,7 +1479,7 @@ Locked decisions captured in this round of docs:
   single pick is only used when the dict is silent. Migration handled by
   `EnsureMultiLemmaSchema` / `rebuildIfLegacyKey` in `internal/store/db.go`.
 
-## 2026-05-01 — Architecture diagram and subsystem versioning
+## 2026-05-01 - Architecture diagram and subsystem versioning
 
 Separates architecture visibility from subsystem behavior tracking.
 
@@ -1491,14 +1491,14 @@ Separates architecture visibility from subsystem behavior tracking.
 - Updated [`docs/architecture.md`](architecture.md) to point to the canonical
   architecture and subsystem-versioning docs.
 
-## 2026-04-29 — Consumer alpha execution plan
+## 2026-04-29 - Consumer alpha execution plan
 
 Locks the alpha as a consumer language-learning product with
 Finnish/Estonian parity, an admin-only parser workbench, a logged-in
 correction loop, and dual evaluation tracks.
 
 - Appended the execution plan to [`TODO.md`](../TODO.md) under the
-  "2026-04-29 — Consumer alpha execution plan" section.
+  "2026-04-29 - Consumer alpha execution plan" section.
 - Added [`docs/FEATURES.md`](FEATURES.md): user-perspective product
   description, learn-before-reading framing, leverage/comprehension
   concept, mobile direction, and the technology differentiators as

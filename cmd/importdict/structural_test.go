@@ -51,8 +51,8 @@ func TestIsStructuralGloss(t *testing.T) {
 		"to go",
 		"barely, hardly, scarcely",
 		"on top of",
-		"",   // empty must not be treated as structural — separate skip path
-		"  ", // whitespace-only — same
+		"",   // empty must not be treated as structural - separate skip path
+		"  ", // whitespace-only - same
 	}
 	for _, g := range meaningful {
 		if isStructuralGloss(g) {

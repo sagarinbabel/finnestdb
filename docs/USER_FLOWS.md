@@ -1,4 +1,4 @@
-# FinnEst — Consumer User Flows
+# FinnEst - Consumer User Flows
 
 _Created 2026-05-07 from a working session. Captures the consumer-alpha
 user journey at the screen level, calls out where it diverges from
@@ -22,7 +22,7 @@ catalog should ship as fast checked-in metadata plus lazy-loaded text fixtures:
 load the catalog quickly, and load the full text only when the learner chooses
 it.
 
-Domain: **finne.st** (registered; not serving the app until go-live — do not
+Domain: **finne.st** (registered; not serving the app until go-live - do not
 test against it, run a local server instead).
 
 ## Map of the flow
@@ -102,7 +102,7 @@ In words:
    embedded catalog, or import known words. A fourth path shipped 2026-07-02:
    add the "Top 1000" official starter deck (operator-seeded from the
    OpenSubtitles baseline via `cmd/seedcolddeck`).
-5. **Cross-cutting correction**: from any results row or review card, the `✎ Wrong?` icon opens a modal with two paths (flag-only or propose-fix) — see §10 below.
+5. **Cross-cutting correction**: from any results row or review card, the `✎ Wrong?` icon opens a modal with two paths (flag-only or propose-fix) - see §10 below.
 6. **Sign-up bridge**: anonymous results can show sign-in/sign-up CTAs for
    saving, decks, review, known-word state, imports, feedback, and history.
    Anonymous parses are ephemeral; nothing durable is stored until sign-up and
@@ -123,7 +123,7 @@ birch-lined paste box, the "or try →" demo chips, a three-cell freemium band
 Aalto decorations (vertical wordmark, drifting Savoy-vase silhouette, colophon).
 The Aalto skin (`data-skin="aalto"`, Paimio light) is now the product's default
 face; the Ink skin stays selectable in the theme picker, and saved user choices
-are always honored (only the fallback default changed — one line in
+are always honored (only the fallback default changed - one line in
 `readThemeSkin`/`readThemeMode` reverts it).
 
 Anonymous users can paste text, parse it, get a word list, and explore rows
@@ -135,7 +135,7 @@ the anonymous cap surfaced by `/api/me` `anon_max_chars`, Parse button with a
 - **Demo chips** ("or try →") load three curated, license-clean embedded texts
   served anonymously: `FI · article` (Sauna), `FI · story` (Hiiri-Pekka), and
   `ET · story` (Linnu keel). They come from a fixed allowlist exposed via
-  `GET /api/demo/text/{id}` — a stateless, unauthenticated endpoint restricted
+  `GET /api/demo/text/{id}` - a stateless, unauthenticated endpoint restricted
   to those three ids (the full `/api/catalog` surface stays signed-in only, and
   any id outside the allowlist 404s, so the private catalog can't be enumerated).
   Clicking a chip fills the paste box, sets the FI/ET selector to the text's
@@ -144,7 +144,7 @@ the anonymous cap surfaced by `/api/me` `anon_max_chars`, Parse button with a
   the results view to everyone, anonymous included: **Copy list** (tab-separated
   lemma/POS/definition) and **Download CSV** are generated entirely client-side
   from the parse response already in memory, so they honor the anonymous
-  ephemeral guarantee — no server round-trip, nothing stored. Everything else
+  ephemeral guarantee - no server round-trip, nothing stored. Everything else
   (save/deck/review/known-state/corrections) stays sign-in gated.
 - The prototype's "Ephemeral OFF" toggle is deliberately **not** ported to the
   anonymous landing: anonymous parses are always ephemeral, so a toggle would be
@@ -158,13 +158,13 @@ the anonymous cap surfaced by `/api/me` `anon_max_chars`, Parse button with a
 │      Read what you love in Finnish or Estonian.               │
 │      Learn its words first.                                    │
 │      Paste any text. See every word, what it means, and how    │
-│      often it shows up — so you learn it before you read.      │
+│      often it shows up - so you learn it before you read.      │
 │                                                                │
 │      ┌────────────────────────────────────────────────────┐    │
 │      │ Language: [● Auto-detect  ○ FI  ○ ET]              │    │
 │      │                                                    │    │
 │      │ ┌─────────────────────────────────────────────┐    │    │
-│      │ │ Paste a paragraph, an article, lyrics —     │    │    │
+│      │ │ Paste a paragraph, an article, lyrics -     │    │    │
 │      │ │ anything in Finnish or Estonian.            │    │    │
 │      │ │                                             │    │    │
 │      │ │                                             │    │    │
@@ -204,7 +204,7 @@ the anonymous cap surfaced by `/api/me` `anon_max_chars`, Parse button with a
 - Anonymous parse runs **ephemerally**: nothing is stored server-side,
   no parse_session row, no IP retained beyond rate-limit window.
 - Empty state below the box invites: _"Don't have text handy? [Try a
-  Finnish news headline] [Try an Estonian children's poem]"_ — both are
+  Finnish news headline] [Try an Estonian children's poem]"_ - both are
   hardcoded sample texts.
 
 **Open questions**
@@ -216,7 +216,7 @@ the anonymous cap surfaced by `/api/me` `anon_max_chars`, Parse button with a
 ### 2. Inline results (anonymous)
 
 **Read / Words tabs (shipped 2026-07-04, reading surface).** The `/results` page
-is text-first. It opens on a **Read** tab — the *living text*: the source text
+is text-first. It opens on a **Read** tab - the *living text*: the source text
 rendered with paragraph structure preserved, in reading typography, where every
 parsed word is a tappable span colored by its learner state. A second **Words**
 tab holds the lemma table described below (its behavior is unchanged). The tab
@@ -224,10 +224,10 @@ choice is remembered in `localStorage`. There is no Read tab in the saved-deck
 context (a saved deck carries no raw source text to render); the deck view shows
 the Words table alone with its tab bar hidden.
 
-- **Coloring.** `--new` (a word with no card and not known — the words worth
+- **Coloring.** `--new` (a word with no card and not known - the words worth
   learning) gets a soft accent underline; `--learning` (a word selected to study
   in this parse) gets a highlighted tint; `--known` renders quiet/low-emphasis;
-  **ignored words render neutral (uncolored)** — the least-noisy treatment for a
+  **ignored words render neutral (uncolored)** - the least-noisy treatment for a
   word the learner has deliberately suppressed. Coloring updates live when a
   word's state changes from any surface (table, popover), through the same
   `currentLemmaState` / `selectedSenses` model the table uses. Unparsed tokens
@@ -238,7 +238,7 @@ the Words table alone with its tab bar hidden.
   deck-save selection with the same copy as the chip flow ("Creates a review
   card when you save."). For an **ambiguous surface** the popover shows the same
   **Multiple possible meanings** candidate list + per-candidate actions + "None
-  of these looks right" flag-only escape as the Words-tab chip — the same code,
+  of these looks right" flag-only escape as the Words-tab chip - the same code,
   not a reimplementation. One popover at a time; ESC / tap-outside closes; it is
   keyboard-focusable. On a 375px viewport the popover becomes a scrollable bottom
   sheet with ≥44px tap targets.
@@ -297,7 +297,7 @@ correction entry points, status column) are hidden via `data-role-show`.
 - Privacy footer near the table: _"This parse wasn't saved. Create an account
   to save it as a deck or use learner features."_
 
-**Coverage reveal (aha moment #1)** — shipped 2026-07-04. Above the word table,
+**Coverage reveal (aha moment #1)** - shipped 2026-07-04. Above the word table,
 a single animated panel opens the results moment. It is the first thing a
 learner feels after a parse:
 
@@ -307,7 +307,7 @@ learner feels after a parse:
   buys a materially bigger jump). A two-segment bar animates from the known
   level X up to the projected level Y as a preview.
 - Anonymous: no known state exists, so the honest framing is projection-from-
-  zero — **"The N most frequent words in this text carry Z% of it"**. Same
+  zero - **"The N most frequent words in this text carry Z% of it"**. Same
   visual, different copy; the existing sign-up ribbon follows it as the hook.
 - Numbers reuse the exact token-mass formula of saved-deck comprehension
   (`store.DeckComprehension`): a token counts as covered when its (lemma, pos)
@@ -347,14 +347,14 @@ Google for Android) is a later wrapper concern.
 ```
 
 **Account schema delta**
-- Add `first_name` (required, string) — used to greet the user
+- Add `first_name` (required, string) - used to greet the user
   ("Welcome back, Sagar"). Last name is NOT required for alpha; ID is
   the existing `users.id`. Email stays unique per account.
 - Add `auth_provider` (`password` | `google`) and `auth_provider_uid`
   (NULL for password, Google `sub` for Google).
 - Anonymous parses from the same browser session can be **carried
   forward**: after sign-up, last-N anonymous parses (held in
-  `sessionStorage`, scoped to the tab — *not* `localStorage`, which
+  `sessionStorage`, scoped to the tab - *not* `localStorage`, which
   would survive browser restarts and contradict the
   anonymous-is-ephemeral promise) are POSTed to
   `/api/parse/import-anonymous`, re-parsed server-side, and saved as
@@ -365,7 +365,7 @@ Google for Android) is a later wrapper concern.
   - **Shipped 2026-07-04 (view carry-forward).** The last anonymous parse
     (source text + response + active Read/Words tab) is held in
     `sessionStorage` (`finnestdb:lastParse:v1`), tab-scoped as above. After
-    sign-in or account creation — and after a mid-results session re-auth — the
+    sign-in or account creation - and after a mid-results session re-auth - the
     user returns to the **results view** with that parse intact (the remembered
     tab, defaulting to Read), instead of being dropped on the dashboard. On
     return the parse re-renders against the now-authenticated state: learner
@@ -400,7 +400,7 @@ direction is to preserve known surface forms as first-class evidence.
 │  ┌────────────────────────────────────────────────────────┐    │
 │  │  Read a new text   →   Parse Finnish or Estonian text  │    │
 │  ├────────────────────────────────────────────────────────┤    │
-│  │  Review due words  →   0 due — start by parsing a text │    │
+│  │  Review due words  →   0 due - start by parsing a text │    │
 │  ├────────────────────────────────────────────────────────┤    │
 │  │  Your decks       →   0 decks                          │    │
 │  └────────────────────────────────────────────────────────┘    │
@@ -420,7 +420,7 @@ cold-start section (shown when the learner has no decks) and the Inspect empty
 state render a catalog picker backed by `GET /api/catalog`. Picking a text
 lazy-loads its full content (`GET /api/catalog/{id}/text`) into the Inspect
 textarea, then the normal parse→deck flow takes over. Each card shows genre,
-Global Difficulty, length, and — when the learner has known-word data —
+Global Difficulty, length, and - when the learner has known-word data -
 "≈N% words you know" (Personalized Text Fit); with no known words it prompts
 import. Initial coverage is honest (3 FI + 3 ET, ≥2 genres and ≥2 buckets each),
 not the full 36-text matrix, and difficulty labels are computed but not yet
@@ -449,16 +449,16 @@ Same UX as the anonymous landing, **plus**:
   server`** (irreversible, with confirmation).
   Shipped 2026-07-04 as the current History page: rows show a title derived
   deterministically from the source text's first clause/sentence
-  (`store.DeriveTitle` — trims markdown/quote artifacts, cuts at a
+  (`store.DeriveTitle` - trims markdown/quote artifacts, cuts at a
   sentence/clause boundary under 60 chars, falls back to first words for
   degenerate input or a language-named default for empty text). Parse-session
-  titles are **derived-only for alpha**, not independently editable — deck
+  titles are **derived-only for alpha**, not independently editable - deck
   titles are (rename already exists), and a saved deck's title starts from
   the same derivation when the save modal's title field is left blank. The
   `[ ... ]` menu (`Open results`, `Add to existing deck`) and inline rename for
   parse sessions remain future work.
 - A persistent **privacy chip** under the textarea: _"Not saved until
-  deck/feedback. [Details]"_ — `Details` opens the parse-history/deletion page
+  deck/feedback. [Details]"_ - `Details` opens the parse-history/deletion page
   once that page exists.
 
 ### 6. Results (signed-in) → Save / Add-to-existing
@@ -495,7 +495,7 @@ Same table; the deltas are below the table:
   sentence, the candidate meanings, and per-candidate **I know this meaning** /
   **Study this meaning** / **Not sure** plus a **None of these looks right**
   flag-only escape. The single confident **Meaning check** variant below is
-  threshold-gated future work — no ambiguity class qualifies on the v1 eval slice
+  threshold-gated future work - no ambiguity class qualifies on the v1 eval slice
   (`docs/PARSER_EVAL_METHODOLOGY.md` §4), so it is deliberately not built and no
   confidence is presented. Signed-in only; the anonymous demo stays read-only.
 - If a parsed word matches an ambiguous imported known surface, the results row
@@ -549,7 +549,7 @@ Same table; the deltas are below the table:
 
 The `⋯` per-deck menu has: `Rename`, `Open detail`, `Review`, `Export
 CSV`, `Delete deck` (with "this won't unlearn the words you've already
-mastered" confirmation copy — true because cards are global).
+mastered" confirmation copy - true because cards are global).
 
 ### 8. Deck detail
 
@@ -587,7 +587,7 @@ calling out for the consumer alpha:
 
 1. The deck filter at the top should be **"All decks · FI"** /
    **"All decks · ET"** by default for users with multi-language decks,
-   not "All decks" mixed — switching language mid-stream is jarring.
+   not "All decks" mixed - switching language mid-stream is jarring.
 2. The four FSRS buttons stay (`Again / Hard / Good / Easy`), but alpha should
    first migrate review identity to surface-form cards, then replace the
    hand-rolled scheduler in `internal/store/db.go` with `go-fsrs` per
@@ -606,13 +606,13 @@ calling out for the consumer alpha:
    **None of these looks right** opens parser feedback; it is only for cases
    where the app's analysis appears wrong.
 5. Every card surface gets the **inline correction affordance** (see
-   §10 below) — corrections shouldn't require leaving the review flow.
+   §10 below) - corrections shouldn't require leaving the review flow.
 6. Globally quarantined content is skipped quietly. The learner should not see a
    scary "this card was wrong" interruption in review; admins see the full
    correction issue history.
 7. Due counts and review queues exclude globally quarantined content.
 
-### 10. Correction flow — recommended design
+### 10. Correction flow - recommended design
 
 The user asked: modal? button? inline? Existing implementation
 (`web/index.html` lines 553–603) is a full modal triggered by an
@@ -643,7 +643,7 @@ flowchart LR
 ```
 
 Yellow indicates the new "flag-only" path that captures users who
-notice a wrong parse but can't articulate the fix — signal we're
+notice a wrong parse but can't articulate the fix - signal we're
 losing today.
 
 ```
@@ -678,7 +678,7 @@ losing today.
   if they don't know the answer (e.g. native speakers can flag "this
   feels wrong" without articulating the fix). Adding the
   "I-don't-know-the-right-answer" path captures signal we're currently
-  losing — and admins can triage flag-only feedback as "review with
+  losing - and admins can triage flag-only feedback as "review with
   Omorfi/EstNLTK and propose a fix."
 - The **✎ icon as the entry point** (instead of a fully-rendered
   button column) keeps the row dense. It's discoverable on hover/focus
@@ -689,7 +689,7 @@ losing today.
   base-form input is pre-populated with the surface form (lowercase),
   not the current lemma, because if the parser was wrong the current
   lemma is the wrong starting point.
-- The same modal is reused on **review cards** — there's a small
+- The same modal is reused on **review cards** - there's a small
   "Wrong?" link below the meaning on the back of the card.
 
 **Backend impact**
@@ -708,7 +708,7 @@ losing today.
 
 **Out of scope for alpha**
 - Anonymous corrections (already deferred per `FEATURES.md`).
-- Inline-edit-in-place ("just type the correct lemma into the row" —
+- Inline-edit-in-place ("just type the correct lemma into the row" -
   feels good but conflates display state with edit state and breaks
   the table sort).
 
@@ -717,14 +717,14 @@ losing today.
 The dictation emphasized privacy. This is what we should put in front
 of the user, in priority order:
 
-1. **Inspect parses are ephemeral until saved or submitted as feedback** —
+1. **Inspect parses are ephemeral until saved or submitted as feedback** -
    communicated below the textarea and in the post-parse ribbon: _"Your text
    was not saved. Save as a deck or submit feedback to retain source context."_
-2. **Stored deck/feedback context has deletion and retention controls** — the
+2. **Stored deck/feedback context has deletion and retention controls** - the
    History page lets users delete retained source context immediately, and raw
    retained source text is purged after 30 days while deck and feedback records
    remain.
-4. **No external model training** — repeat in the privacy footer and
+4. **No external model training** - repeat in the privacy footer and
    privacy page (already in `FEATURES.md`).
 5. **What we share with admins**: only the parses you submit
    corrections on, and only the surface form + your suggestion. Make
@@ -737,7 +737,7 @@ ways out, in increasing engineering cost:
 
 1. **Own-text and embedded-catalog buttons** in the signed-in dashboard empty
    state and Inspect empty state (cheapest, ship now).
-   Current state (2026-07-04): shipped as the mechanism — the dashboard
+   Current state (2026-07-04): shipped as the mechanism - the dashboard
    cold-start section and Inspect empty state render an embedded-catalog picker
    (`GET /api/catalog`); picking a text lazy-loads it (`GET /api/catalog/{id}/text`)
    into the Inspect textarea. Metadata, computed difficulty, precomputed lemma
@@ -770,7 +770,7 @@ ways out, in increasing engineering cost:
      from lemma-backed state; target behavior should preserve known surface
      forms and derive coverage from those claims. If no known-word data exists,
      prompt import rather than hiding personalization forever.
-2. **Known-word import**. Already in the codebase — just make it
+2. **Known-word import**. Already in the codebase - just make it
    findable from the dashboard empty state, not buried in the Decks
    page. After import, summarize ambiguous items plainly: "31 imported forms
    have more than one possible meaning. We'll confirm those when they appear in
@@ -897,7 +897,7 @@ to find them:
   vocabulary evidence.
 - Deck rename.
 - "Review all" cross-deck via `Review` page with no deck filter.
-- Correction modal (heavy version — needs the lighter flow above).
+- Correction modal (heavy version - needs the lighter flow above).
 - Light/dark theme.
 
 ## Out of scope (recorded so it doesn't leak in)
@@ -906,6 +906,6 @@ to find them:
 - User-to-user deck sharing or a public catalog.
 - Streaks, badges, social features.
 - Pronunciation / TTS.
-- Speech-input review (LLM judges fluency — flagged in
+- Speech-input review (LLM judges fluency - flagged in
   `docs/ideas.md` Phase 5).
 - A user-facing parser workbench (admin-only by design).

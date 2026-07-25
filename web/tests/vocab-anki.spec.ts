@@ -238,11 +238,11 @@ test.describe('pure helpers', () => {
           { Front: ['kissa', 'koira', 'auto'], Notes: ['a cat that meows', 'the dog runs'] },
           'FI',
         ),
-        // No samples for any field — fall back to the first field.
+        // No samples for any field - fall back to the first field.
         emptySamplesFallsBackToFirst: f(['Front', 'Back'], { Front: [], Back: [] }, 'FI'),
         // No fields at all.
         emptyFieldsReturnsEmpty: f([], {}, 'FI'),
-        // English-only deck with "Word" — universal vocab term wins.
+        // English-only deck with "Word" - universal vocab term wins.
         universalWordHint: f(
           ['Word', 'Definition'],
           { Word: ['cat', 'dog'], Definition: ['a small carnivorous mammal'] },
@@ -493,7 +493,7 @@ test.describe('vocab page', () => {
 
     // Tooltip text lives on the button as data-tooltip; portal tooltip system
     // surfaces it on hover, but the data attribute itself is what we need to
-    // guarantee — the wording is the contract.
+    // guarantee - the wording is the contract.
     await expect(deleteBtn).toHaveAttribute('data-tooltip', /confirm deletion/i);
 
     // Click → confirmation dialog must appear, with a danger-styled confirm.
@@ -532,7 +532,7 @@ test.describe('vocab page', () => {
     });
     await page.goto('/#/vocab');
     await page.locator('#vocab-delete-all').click();
-    // No confirm dialog should pop, no DELETE should fire — there's nothing
+    // No confirm dialog should pop, no DELETE should fire - there's nothing
     // to delete.
     await expect(page.locator('#dialog-modal')).toHaveClass(/hidden/);
     expect(deleteCalled).toBe(false);
@@ -609,8 +609,8 @@ const SAMPLE_DECKS = [
 ];
 
 // Two note types in the sampled notes:
-//   - "ETBasic" with fields ["Sõna", "Tähendus", "Lause"] — sõna single-word
-//   - "Basic"   with fields ["Front", "Back"]            — Front single-word
+//   - "ETBasic" with fields ["Sõna", "Tähendus", "Lause"] - sõna single-word
+//   - "Basic"   with fields ["Front", "Back"]            - Front single-word
 const NOTES_INFO: Record<number, {
   noteId: number;
   modelName: string;
@@ -755,7 +755,7 @@ test.describe('Anki import popup', () => {
     await page.getByRole('button', { name: 'Cancel' }).click();
     await expect(page.locator('#anki-import-modal')).toHaveClass(/hidden/);
 
-    // Open again — the filter and the selected deck should be restored.
+    // Open again - the filter and the selected deck should be restored.
     await page.getByRole('button', { name: 'Connect to Anki' }).click();
     await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
     await expect(page.locator('#anki-import-filter')).toHaveValue('a1');
@@ -771,7 +771,7 @@ test.describe('Anki import popup', () => {
     await page.getByRole('button', { name: 'Connect to Anki' }).click();
     await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
 
-    // Pick the ET A1 parent — covers ETBasic notes. Then A2 — covers Basic.
+    // Pick the ET A1 parent - covers ETBasic notes. Then A2 - covers Basic.
     await page.locator('[data-deck-toggle="Estonian"]').click();
     await page.locator('[data-deck-check="Estonian::A1"]').check();
     await page.locator('[data-deck-check="Estonian::A2"]').check();
@@ -878,7 +878,7 @@ test.describe('Anki import popup', () => {
     const modalZ = await page.locator('#anki-import-modal').evaluate(el => Number(window.getComputedStyle(el).zIndex || '0'));
     expect(menuZ).toBeGreaterThan(modalZ);
 
-    // 3. Menu is actually visible — `toBeVisible` checks that its bounding box
+    // 3. Menu is actually visible - `toBeVisible` checks that its bounding box
     // has nonzero size and isn't clipped to nothing.
     await expect(lastMenu).toBeVisible();
 
@@ -920,7 +920,7 @@ test.describe('Anki import popup', () => {
         fields: { Word: { value: `word${i}`, order: 0 }, Note: { value: `meaning ${i}`, order: 1 } },
       };
     }
-    // The rare model lives at index 30 — well past the 25-note cap.
+    // The rare model lives at index 30 - well past the 25-note cap.
     notesInfo[noteIds[NOTES - 1]] = {
       noteId: noteIds[NOTES - 1],
       modelName: 'RareModel',
@@ -932,7 +932,7 @@ test.describe('Anki import popup', () => {
     await mockAnkiConnect(page, {
       version: () => 6,
       deckNames: () => ['DeckWithRareModel'],
-      // The query is `deck:"<name>"` — order matters for the regression: the
+      // The query is `deck:"<name>"` - order matters for the regression: the
       // rare model must come last so a head-sample misses it.
       findNotes: () => noteIds,
       notesInfo: (params) => ((params.notes as number[]) || []).map(id => notesInfo[id]).filter(Boolean),
@@ -951,7 +951,7 @@ test.describe('Anki import popup', () => {
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
 
-    // Both models render — including the one buried at the end of the deck.
+    // Both models render - including the one buried at the end of the deck.
     await expect(page.locator('[data-field-picker="BulkModel"]')).toBeVisible();
     await expect(page.locator('[data-field-picker="RareModel"]')).toBeVisible();
     await expect(page.locator('#anki-import-field-summary')).toContainText('2 card types found');
@@ -973,7 +973,7 @@ test.describe('Anki import popup', () => {
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
 
     // Picker defaulted to "Sõna" for ETBasic. With include-new OFF (the
-    // default), the new note (102 = "auto") is excluded — estimate counts
+    // default), the new note (102 = "auto") is excluded - estimate counts
     // 2 notes / 2 words.
     const estimate = page.locator('#anki-import-estimate');
     await expect(estimate).toContainText('2 notes');
@@ -993,7 +993,7 @@ test.describe('Anki import popup', () => {
 
   test('estimate does not double-count new cards as also "skipped"', async ({ page }) => {
     // Note 102 ("auto") is the only new note. With toggle OFF it must show up
-    // exactly once — under "1 new card excluded" — not also as "(1 skipped)".
+    // exactly once - under "1 new card excluded" - not also as "(1 skipped)".
     const newIds = new Set<number>([102]);
     await mockMe(page, 'user', { activeLanguage: 'ET' });
     await mockKnownWordsEmpty(page);
@@ -1013,7 +1013,7 @@ test.describe('Anki import popup', () => {
     await expect(estimate).toContainText('1 new card excluded');
     // The old wording included a parenthetical "(N skipped)" that conflated
     // toggle exclusions with empty-field skips. The new copy says
-    // "with empty or skipped field" only when that's actually the reason —
+    // "with empty or skipped field" only when that's actually the reason -
     // here there are no field-empty notes, so this phrase must NOT appear.
     await expect(estimate).not.toContainText(/skipped/);
     await expect(estimate).not.toContainText(/empty or skipped field/);
@@ -1021,7 +1021,7 @@ test.describe('Anki import popup', () => {
 
   test('estimate reports field-empty skips separately from new-card exclusions', async ({ page }) => {
     // Mix: one new note (102 "auto"), one studied note with an empty Word
-    // field. Toggle OFF must report both, with separate counts and labels —
+    // field. Toggle OFF must report both, with separate counts and labels -
     // 1 new card excluded AND 1 note with empty/skipped field.
     const newIds = new Set<number>([102]);
     const customNotes: Record<number, { noteId: number; modelName: string; fields: Record<string, { value: string; order: number }> }> = {
@@ -1117,7 +1117,7 @@ test.describe('Anki import popup', () => {
     await page.locator('[data-deck-check="Estonian::A1"]').check();
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
-    // Default toggle OFF — "auto" is new and should be excluded.
+    // Default toggle OFF - "auto" is new and should be excluded.
     await page.getByRole('button', { name: 'Import', exact: true }).click();
     await expect.poll(() => importBody).not.toBeNull();
     expect(new Set(importBody!.words)).toEqual(new Set(['kassi', 'koer']));
@@ -1260,7 +1260,7 @@ test.describe('Anki import popup', () => {
   test('clicking the field-picker toggle opens its menu (incl. model names with spaces/parens)', async ({ page }) => {
     // Anki ships built-in models like "Basic (and reversed card)" whose names
     // contain spaces and parentheses. Earlier the toggle handler looked the
-    // picker up via a CSS attribute selector with CSS.escape — that emits
+    // picker up via a CSS attribute selector with CSS.escape - that emits
     // backslash-escapes that the browser then matches literally, so the
     // selector silently returned nothing and the menu never opened.
     const fancyModel = 'Basic (and reversed card)';
@@ -1304,7 +1304,7 @@ test.describe('Anki import popup', () => {
     await toggle.click();
     await expect(menu).toHaveClass(/hidden/);
 
-    // Open again and pick an option — menu closes, toggle label updates.
+    // Open again and pick an option - menu closes, toggle label updates.
     await toggle.click();
     await expect(menu).not.toHaveClass(/hidden/);
     await page.locator(`[data-field-option="${fancyModel}"][data-field-value="Back"]`).click();
@@ -1367,7 +1367,7 @@ test.describe('Anki import popup', () => {
     // The ellipsis entry is dropped during cleanup → 6 distinct surface forms
     // out of 7 notes. The "notes" count reports notes that contributed a
     // non-empty field value pre-cleanup (all 7 here, since "… all" is a
-    // non-empty string), so notes=7 / words=6 — the cleanup happens between.
+    // non-empty string), so notes=7 / words=6 - the cleanup happens between.
     await expect(page.locator('#anki-import-estimate')).toContainText('7 notes');
     await expect(page.locator('#anki-import-estimate')).toContainText('6 words');
 
@@ -1472,7 +1472,7 @@ test.describe('Anki import popup', () => {
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
 
-    // Open Settings — Replace off by default, preserve-manual sub-option
+    // Open Settings - Replace off by default, preserve-manual sub-option
     // collapsed (not .expanded).
     await page.locator('#anki-import-open-settings').click();
     const preserveWrap = page.locator('#anki-settings-preserve-manual-wrap');
@@ -1516,7 +1516,7 @@ test.describe('Anki import popup', () => {
     await page.locator('[data-deck-toggle="Estonian"]').click();
     await page.locator('[data-deck-check="Estonian::A1"]').check();
     await page.getByRole('button', { name: 'Continue' }).click();
-    // Enable replace, then uncheck preserve-manual — both via Settings.
+    // Enable replace, then uncheck preserve-manual - both via Settings.
     await page.locator('#anki-import-open-settings').click();
     await page.locator('#anki-settings-replace-mode').check();
     await page.locator('#anki-settings-preserve-manual').uncheck();
@@ -1729,12 +1729,12 @@ test.describe('Anki import popup', () => {
     await expect(page.locator('#anki-import-done-actions')).not.toHaveClass(/hidden/);
     await page.locator('#anki-import-done').click();
 
-    // Re-open and re-import — no confirmation dialog this time.
+    // Re-open and re-import - no confirmation dialog this time.
     await page.getByRole('button', { name: 'Connect to Anki' }).click();
     await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
     await page.getByRole('button', { name: 'Continue' }).click();
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
-    // Replace mode is still on from the saved prefs — verify via Settings.
+    // Replace mode is still on from the saved prefs - verify via Settings.
     await page.locator('#anki-import-open-settings').click();
     await expect(page.locator('#anki-settings-replace-mode')).toBeChecked();
     await page.locator('#anki-settings-modal-done').click();
@@ -1841,7 +1841,7 @@ test.describe('Anki import popup', () => {
     await page.reload();
     await page.locator('#vocab-anki-sync').click();
 
-    // Sync stops on the field-picker stage — both ETBasic and the new
+    // Sync stops on the field-picker stage - both ETBasic and the new
     // "Brand New" model are visible so the user can review.
     await expect(page.locator('#anki-import-stage-fields')).not.toHaveClass(/hidden/);
     await expect(page.locator('#anki-import-stage-running')).toHaveClass(/hidden/);
@@ -1907,7 +1907,7 @@ test.describe('Anki import popup', () => {
     await expect(confirmBtn).toHaveText('Sync and replace');
     await expect(confirmBtn).toBeEnabled();
 
-    // Modal still hasn't shown — we're waiting for the user.
+    // Modal still hasn't shown - we're waiting for the user.
     await expect(page.locator('#anki-import-modal')).toHaveClass(/hidden/);
 
     // Confirm → modal opens at running stage, PUT fires with scope=anki.
@@ -1979,7 +1979,7 @@ test.describe('Anki import popup', () => {
     await page.reload();
     await page.locator('#vocab-anki-sync').click();
 
-    // Dialog visible, status spinner showing. Confirm is disabled — clicking
+    // Dialog visible, status spinner showing. Confirm is disabled - clicking
     // it shouldn't fire anything.
     const dialog = page.locator('#dialog-modal');
     await expect(dialog).not.toHaveClass(/hidden/);
@@ -2056,7 +2056,7 @@ test.describe('Anki import popup', () => {
   test('Sync without a confirm dialog opens the import modal immediately at the loading stage', async ({ page }) => {
     // Slow AnkiConnect so we can observe the "loading" window between
     // click and discovery completion. The user's complaint was "no
-    // response until the check completes" — this test pins down that the
+    // response until the check completes" - this test pins down that the
     // modal IS visible during the check when no confirm dialog is shown.
     const baseMocks = baselineAnkiMocks();
     await mockMe(page, 'user', { activeLanguage: 'ET' });
@@ -2090,7 +2090,7 @@ test.describe('Anki import popup', () => {
     await expect(page.locator('#anki-import-modal')).not.toHaveClass(/hidden/);
     await expect(page.locator('#anki-import-stage-loading')).not.toHaveClass(/hidden/);
     await expect(page.locator('#anki-import-loading-msg')).toContainText(/Syncing from Anki/i);
-    // No confirm dialog needed here — replace mode is off.
+    // No confirm dialog needed here - replace mode is off.
     await expect(page.locator('#dialog-modal')).toHaveClass(/hidden/);
   });
 
@@ -2151,7 +2151,7 @@ test.describe('Anki import popup', () => {
     await expect(page.locator('#anki-settings-modal')).toHaveClass(/hidden/);
 
     // 1b. Escape still works when focus is on a control INSIDE the popup
-    //     (the realistic case — the user just toggled a setting). The
+    //     (the realistic case - the user just toggled a setting). The
     //     document-level keydown listener must catch it regardless of
     //     which form control holds focus.
     await page.locator('#vocab-anki-settings').click();
@@ -2198,7 +2198,7 @@ test.describe('Anki import popup', () => {
     await page.locator('#anki-settings-modal-close').click();
     await expect(page.locator('#anki-settings-modal')).toHaveClass(/hidden/);
 
-    // Walk into the import modal's step 2 and open Settings from THERE —
+    // Walk into the import modal's step 2 and open Settings from THERE -
     // it should reflect the replace-mode value just set on the vocab page.
     await page.getByRole('button', { name: 'Connect to Anki' }).click();
     await expect(page.locator('#anki-import-stage-decks')).not.toHaveClass(/hidden/);
@@ -2224,7 +2224,7 @@ test.describe('Anki import popup', () => {
     await mockMe(page, 'user', { activeLanguage: 'ET' });
     await mockKnownWordsEmpty(page);
     await page.goto('/#/vocab');
-    // Open settings — checkbox is unchecked by default.
+    // Open settings - checkbox is unchecked by default.
     await page.locator('#vocab-anki-settings').click();
     const cb = page.locator('#anki-settings-skip-confirm');
     await expect(cb).not.toBeChecked();
@@ -2253,7 +2253,7 @@ test.describe('Anki import popup', () => {
     // The refreshed new/suspended hints.
     await expect(modal).toContainText("New cards (cards you haven't studied yet) aren't imported by default.");
     await expect(modal).toContainText("Suspended cards aren't imported by default.");
-    // The old "Off by default — …" preamble style is gone (only the two
+    // The old "Off by default - …" preamble style is gone (only the two
     // explicit new/suspended hints mention "by default" now).
     await expect(modal).not.toContainText(/Off by default/i);
     await expect(modal).not.toContainText(/On by default/i);
@@ -2461,7 +2461,7 @@ test.describe('Anki import popup', () => {
     expect(importBody!.lang).toBe('ET');
     // ETBasic→Sõna gives [kassi, koer, auto]; Basic→Front gives [maja, raamat].
     // Order isn't asserted because the deck iteration order is implementation
-    // detail — we just need the set to be right and deduped.
+    // detail - we just need the set to be right and deduped.
     expect(new Set(importBody!.words)).toEqual(new Set(['kassi', 'koer', 'auto', 'maja', 'raamat']));
   });
 

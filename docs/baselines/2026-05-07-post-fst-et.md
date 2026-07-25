@@ -1,4 +1,4 @@
-# Estonian parser comparison — 2026-05-07j
+# Estonian parser comparison - 2026-05-07j
 
 **Run date:** 2026-05-07 · **Branch:** `main` · **Commit:** [`42e95d9`](https://github.com/sagarinbabel/finnestdb/commit/42e95d9) · **Parser code last touched in:** PR [#109](https://github.com/sagarinbabel/finnestdb/pull/109) ([`da37ae9`](https://github.com/sagarinbabel/finnestdb/commit/da37ae9), case-suffix grammar-label stopgap, bilingual) · **Methodology:** [`../PARSER_EVAL_METHODOLOGY.md`](../PARSER_EVAL_METHODOLOGY.md)
 
@@ -33,10 +33,10 @@
 > The bulk Ekilex import ([#78](https://github.com/sagarinbabel/finnestdb/pull/78))
 > is *not* loaded in this DB. The latent ET FEATS lift via Ekilex `morph_code`
 > ([`2febc31`](https://github.com/sagarinbabel/finnestdb/commit/2febc31)) is therefore
-> muted — see [`docs/LEARNINGS.md`](../LEARNINGS.md) for the projected ~95% ET
+> muted - see [`docs/LEARNINGS.md`](../LEARNINGS.md) for the projected ~95% ET
 > grammar accuracy with the bulk drop active.
 
-## Headline numbers — custom vs. estnltk (Vabamorf)
+## Headline numbers - custom vs. estnltk (Vabamorf)
 
 All figures are percentages. **Bold = winner of that cell.**
 
@@ -64,7 +64,7 @@ Positive Δ = estnltk is ahead; negative = custom is ahead.
   disambiguation that estnltk's Vabamorf has and custom's dict ranker doesn't.
 - **The headroom path forward** is the Ekilex `morph_code → FEATS` migration
   (in flight). Per [`../LEARNINGS.md`](../LEARNINGS.md), this is projected to
-  lift ET grammar from 19.6% → ~95% in one PR — closes the gap to estnltk
+  lift ET grammar from 19.6% → ~95% in one PR - closes the gap to estnltk
   almost entirely without requiring an FST step.
 
 ## Net effect vs `2026-05-06-final-et*` (custom parser)
@@ -77,7 +77,7 @@ Positive Δ = estnltk is ahead; negative = custom is ahead.
 `et-grammar` grammar accuracy reflects PR #109's case-suffix `GrammarLabel`
 stopgap (reproducible from public code). `et-manual` regressions track the
 FST-table coverage gap (smoke `et_min.json` vs. maintainer-local full
-Giellalt-derived table) — they are not regressions in the parser code. The
+Giellalt-derived table) - they are not regressions in the parser code. The
 `et-manual` grammar drop (16.7 → 0.0) is the same effect: the FINAL baseline
 saw a label from the local-full FST table; the smoke table doesn't have those
 forms, and the case-suffix stopgap doesn't fire on the v1 manual cases either
@@ -91,7 +91,7 @@ and so the derived gold JSON is gitignored under `localdata/parser-eval/et/gold/
 (after the PR [#131](https://github.com/sagarinbabel/finnestdb/pull/131)
 consolidation). Anyone with local UD-ET clones can reproduce ET UD numbers by
 running `make import-ud-gold-et` to populate that directory, then re-running
-`make compare-parsers-et` — the comparison script auto-discovers gold sets
+`make compare-parsers-et` - the comparison script auto-discovers gold sets
 from both `testdata/` and `localdata/`, so no extra flags needed. See
 [`../PARSER_EVAL_METHODOLOGY.md`](../PARSER_EVAL_METHODOLOGY.md) for the full plan.
 

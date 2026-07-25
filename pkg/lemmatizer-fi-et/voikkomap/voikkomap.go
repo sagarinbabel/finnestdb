@@ -24,7 +24,7 @@
 //   - [R*]              participle/derivation → VerbForm=Part + PartForm,
 //                       and Voice=Pass for TU/TAVA passive participles;
 //                       see applyParticiple for the per-tag mapping
-//   - [E*]              connegative (Ef=false, Et=true, Eb=both) — parsed
+//   - [E*]              connegative (Ef=false, Et=true, Eb=both) - parsed
 //                       but not projected to UD; the runtime gets
 //                       Connegative=Yes from [Cn] instead
 //   - [B*]              compound boundary (ignored)
@@ -51,8 +51,8 @@ type Analysis struct {
 	PronType     string // "Dem" / "Int" / "Rel" / "Ind" / "Prs" / "Rfl" / "Rcp" or empty
 	PartForm     string // "Pres" / "Past" / "Agt" / "Neg" or empty (Finnish-specific)
 	InfForm      string // "1" / "2" / "3" / "5" or empty (Finnish-specific)
-	PersonPsor   string // "1" / "2" / "3" or empty — Person[psor]
-	NumberPsor   string // "Sing" / "Plur" or empty — Number[psor]
+	PersonPsor   string // "1" / "2" / "3" or empty - Person[psor]
+	NumberPsor   string // "Sing" / "Plur" or empty - Number[psor]
 	Clitic       string // "Ko" / "Han" / "Pa" / "Kaan" / "Ka" / "Kin" / "S" or empty
 	NumType      string // "Card" / "Ord" or empty
 	Connegative  string // "Yes" or empty
@@ -129,7 +129,7 @@ func Parse(fstOutput string) Analysis {
 					a.Tense = tense
 				}
 			case strings.HasPrefix(tag, "P"):
-				// Voikko's [P4] is the Finnish "passive" / 4th person —
+				// Voikko's [P4] is the Finnish "passive" / 4th person -
 				// it's a voice signal, not a UD Person value (UD Person
 				// is 1/2/3). Map P4 to Voice=Pass and leave Person empty.
 				// P1-P3 are normal UD persons and imply Voice=Act.
@@ -159,7 +159,7 @@ func Parse(fstOutput string) Analysis {
 		i++
 	}
 	if insideXp {
-		// FSTOUTPUT ended without closing [X] — take what we have
+		// FSTOUTPUT ended without closing [X] - take what we have
 		lemmaBuilder.WriteString(fstOutput[xpStart:])
 	}
 
@@ -204,7 +204,7 @@ func classToUPOS(body string) string {
 	case "l":
 		return "ADJ" // laatusana
 	case "nl":
-		return "NOUN" // nimisana_laatusana — context-dependent; default NOUN
+		return "NOUN" // nimisana_laatusana - context-dependent; default NOUN
 	case "h":
 		return "INTJ" // huudahdussana
 	case "ee", "es", "ep", "em":
@@ -212,7 +212,7 @@ func classToUPOS(body string) string {
 	case "t":
 		return "VERB" // teonsana
 	case "a":
-		return "NOUN" // lyhenne (abbreviation) — default to NOUN; X is also defensible
+		return "NOUN" // lyhenne (abbreviation) - default to NOUN; X is also defensible
 	case "s":
 		return "ADV" // seikkasana
 	case "u", "ur":
@@ -220,7 +220,7 @@ func classToUPOS(body string) string {
 	case "r":
 		return "PRON" // asemosana
 	case "c":
-		return "CCONJ" // sidesana — could also be SCONJ; default CCONJ
+		return "CCONJ" // sidesana - could also be SCONJ; default CCONJ
 	case "d":
 		return "ADP" // suhdesana
 	case "k":
@@ -266,7 +266,7 @@ func sijamuotoToLabel(body string) string {
 	case "ak":
 		return "accusative"
 	case "sti":
-		return "" // kerrontosti — no UD case; treated as adverb suffix
+		return "" // kerrontosti - no UD case; treated as adverb suffix
 	}
 	return ""
 }
@@ -323,11 +323,11 @@ func infFormFromMood(body string) string {
 	return ""
 }
 
-// applyParticiple handles [R*] tags — Voikko's participle/derivation
+// applyParticiple handles [R*] tags - Voikko's participle/derivation
 // family. Sets VerbForm, PartForm, and Voice where the tag implies
 // active vs. passive. Clears finite-only fields (Mood, Tense, Person)
 // because participles take VerbForm=Part and the past/present
-// distinction is carried by PartForm, not Tense — see UD-Finnish.
+// distinction is carried by PartForm, not Tense - see UD-Finnish.
 // Real Voikko readings don't normally co-emit T*/A*/P* with R*, so this
 // is defense-in-depth against contradictory FEATS like
 // Mood=Ind|VerbForm=Part or Tense=Past|VerbForm=Part.
@@ -367,7 +367,7 @@ func applyParticiple(a *Analysis, body string) {
 	}
 }
 
-// applyComparison handles [C*] tags — degree of comparison AND
+// applyComparison handles [C*] tags - degree of comparison AND
 // connegative. In Voikko FSTOUTPUT, [Cc]=comparative, [Cs]=superlative,
 // [Cn]=connegative. Positive degree is unmarked (no tag emitted).
 func applyComparison(a *Analysis, body string) {

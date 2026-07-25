@@ -101,7 +101,7 @@ function ParseView() {
       <div className="page-head">
         <div>
           <h1 className="disp">Parse inspector</h1>
-          <div className="sub mono">parse · resolve · inspect — Finnish & Estonian</div>
+          <div className="sub mono">parse · resolve · inspect - Finnish & Estonian</div>
         </div>
         <div className="actions row gap-8">
           <Segmented
@@ -129,7 +129,7 @@ function ParseView() {
 
       {/* Body */}
       <div className="page-body" style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20, padding: "20px 32px 60px" }}>
-        {/* LEFT — input + results */}
+        {/* LEFT - input + results */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
           {showText && (
             <div className="panel">
@@ -264,7 +264,7 @@ function ParseView() {
           </div>
         </div>
 
-        {/* RIGHT — inspector */}
+        {/* RIGHT - inspector */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <WordInspector word={selectedWord} sentences={parsed.sentences} />
           <ParseStatsPanel parsed={parsed} />

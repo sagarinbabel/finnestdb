@@ -6,7 +6,7 @@ import (
 )
 
 // TestPercentileBoundaries proves the percentile helper picks the right
-// index at both ends — an off-by-one here would silently misreport p95/p99
+// index at both ends - an off-by-one here would silently misreport p95/p99
 // in every report this tool produces, which is the entire point of the tool.
 func TestPercentileBoundaries(t *testing.T) {
 	sorted := []time.Duration{

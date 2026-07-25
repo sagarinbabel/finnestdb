@@ -1,4 +1,4 @@
-// Sample data drawn from finnestdb docs — Finnish/Estonian text + parse outputs
+// Sample data drawn from finnestdb docs - Finnish/Estonian text + parse outputs
 // This is mock data shaped like what the real parsecore would return.
 
 const FI_TEXT_1 = `Toissapäivänä menin pankkiin. Osoittautui, että se oli kiinni.
@@ -16,7 +16,7 @@ uut romaani, mille autor on tundmatu. Õhtul jõin kohvi
 ja lugesin kuni keskööni. Tallinna vanalinn on alati
 ilus, eriti sügiseti kui lehed langevad.`;
 
-// Parse result for FI_TEXT_1 — modeled on parsecore output shape
+// Parse result for FI_TEXT_1 - modeled on parsecore output shape
 const SAMPLE_PARSE_FI = {
   text: FI_TEXT_1,
   language: "FI",
@@ -72,7 +72,7 @@ const SAMPLE_PARSE_FI = {
       lemma: "leuka rintaan ja kohti uusia pettymyksiä", pos: "MWE", forms: ["leuka rintaan…"],
       gloss: "chin up and onwards to new disappointments (idiom)",
       grammar: "Multi-word expression", count: 1, sentence_id: 2, status: "new", leverage: 4,
-      morph: [{ stem: "[idiom]", suffix: "", note: "5-token MWE — PMI 8.4" }]
+      morph: [{ stem: "[idiom]", suffix: "", note: "5-token MWE - PMI 8.4" }]
     },
     {
       lemma: "kirja", pos: "NOUN", forms: ["Kirjassani"], gloss: "book",
@@ -92,9 +92,9 @@ const SAMPLE_PARSE_FI = {
       gloss: "airport bus",
       grammar: "Compound (3-part)", count: 1, sentence_id: 3, status: "new", leverage: 2,
       morph: [
-        { stem: "lento", suffix: "", note: "compound part 1 — flight" },
-        { stem: "kenttä", suffix: "", note: "compound part 2 — field" },
-        { stem: "bussi", suffix: "", note: "compound part 3 — bus" }
+        { stem: "lento", suffix: "", note: "compound part 1 - flight" },
+        { stem: "kenttä", suffix: "", note: "compound part 2 - field" },
+        { stem: "bussi", suffix: "", note: "compound part 3 - bus" }
       ]
     },
     {
@@ -107,14 +107,14 @@ const SAMPLE_PARSE_FI = {
       gloss: "eight in the morning",
       grammar: "Ablative sg", count: 1, sentence_id: 3, status: "new", leverage: 3,
       morph: [
-        { stem: "aamu", suffix: "", note: "compound — morning" },
+        { stem: "aamu", suffix: "", note: "compound - morning" },
         { stem: "kahdeksa", suffix: "lta", note: "ablative case" }
       ]
     },
     {
       lemma: "kauppa", pos: "NOUN", forms: ["Kaupassa"], gloss: "shop, store",
       grammar: "Inessive sg", count: 1, sentence_id: 4, status: "learning", leverage: 54,
-      morph: [{ stem: "kaupa", suffix: "ssa", note: "inessive — gradation pp→p" }]
+      morph: [{ stem: "kaupa", suffix: "ssa", note: "inessive - gradation pp→p" }]
     },
     {
       lemma: "myydä", pos: "VERB", forms: ["myydään"], gloss: "to sell",
@@ -155,7 +155,7 @@ const SAMPLE_PARSE_FI = {
 const SAMPLE_DECKS = [
   {
     id: "d-fi-konsta",
-    title: "Konsta Punkkinen — vol I",
+    title: "Konsta Punkkinen - vol I",
     lang: "FI",
     source: "Pasted text · 47k chars",
     created: "2026-04-12",
@@ -170,7 +170,7 @@ const SAMPLE_DECKS = [
   },
   {
     id: "d-fi-news",
-    title: "Yle Uutiset — Apr 26",
+    title: "Yle Uutiset - Apr 26",
     lang: "FI",
     source: "URL · yle.fi/news",
     created: "2026-04-26",
@@ -185,7 +185,7 @@ const SAMPLE_DECKS = [
   },
   {
     id: "d-et-postimees",
-    title: "Postimees — kolm artiklit",
+    title: "Postimees - kolm artiklit",
     lang: "ET",
     source: "Pasted text · 12k chars",
     created: "2026-04-21",
@@ -200,7 +200,7 @@ const SAMPLE_DECKS = [
   },
   {
     id: "d-fi-tove",
-    title: "Tove Jansson — Muumipeikko",
+    title: "Tove Jansson - Muumipeikko",
     lang: "FI",
     source: "EPUB · muumipeikko.epub",
     created: "2026-03-30",
@@ -230,7 +230,7 @@ const SAMPLE_DECKS = [
   },
 ];
 
-// Cross-deck leverage — same lemma showing up in multiple decks
+// Cross-deck leverage - same lemma showing up in multiple decks
 const LEVERAGE_RANK = [
   { lemma: "olla",       pos: "VERB", gloss: "to be",                tokens: 1240, decks: ["d-fi-konsta","d-fi-news","d-fi-tove"], unlock: 0.041, status: "known" },
   { lemma: "tehdä",      pos: "VERB", gloss: "to do, make",           tokens: 612,  decks: ["d-fi-konsta","d-fi-news","d-fi-tove"], unlock: 0.018, status: "learning" },
@@ -260,7 +260,7 @@ const TODAY_QUEUE = {
   retention_30d: 0.918,
 };
 
-// Sparkline data — last 30 days of known-word count
+// Sparkline data - last 30 days of known-word count
 const KNOWN_SERIES = [820, 832, 845, 851, 866, 880, 891, 904, 922, 938, 945, 961, 974, 988, 1002, 1015, 1031, 1042, 1056, 1071, 1083, 1098, 1112, 1129, 1148, 1162, 1183, 1198, 1216, 1234];
 
 window.FED_DATA = {

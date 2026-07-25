@@ -1,6 +1,6 @@
 // cmd/extractcorpus walks discovered sources and dispatches each to a
 // format-specific extractor that produces text.txt (prose) or poems.jsonl
-// (poetry) plus documents.jsonl. Idempotent — skip when text.txt is newer
+// (poetry) plus documents.jsonl. Idempotent - skip when text.txt is newer
 // than raw inputs.
 //
 // Usage:

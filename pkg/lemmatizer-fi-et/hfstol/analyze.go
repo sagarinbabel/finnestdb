@@ -146,7 +146,7 @@ func (st *analysisState) tryEpsilonTransitions(inputPos, outputPos int, i uint32
 		in, out, target := st.t.transition(i)
 		if in == 0 {
 			// epsilon transition. Skip if we've already entered `target`
-			// at this input position with the current flag state — this
+			// at this input position with the current flag state - this
 			// is the cycle protection HFST uses (traversal_states).
 			key := st.epsilonVisitKey(target)
 			if _, seen := st.visitedEpsilon[key]; seen {

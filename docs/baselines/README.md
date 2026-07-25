@@ -5,8 +5,8 @@ This directory contains **frozen baseline measurements** from
 the parser had at a given date so we can detect regressions or measure
 improvements over time.
 
-For the cross-measurement narrative — what changed between dates and
-why — see [`../PARSER_EVOLUTION.md`](../PARSER_EVOLUTION.md). This
+For the cross-measurement narrative - what changed between dates and
+why - see [`../PARSER_EVOLUTION.md`](../PARSER_EVOLUTION.md). This
 directory is the data; that doc is the story.
 
 ## Filename convention
@@ -24,7 +24,7 @@ Field-by-field:
 | `YYYY-MM-DD` | UTC date of the comparison-script run-start (`scripts/parser-comparison.sh`'s `RUN_TS`) | `2026-05-07` |
 | `<rev>` | The single-letter parser-version stamp at measurement time, from [`internal/parsecore/parsecore.go`](../../internal/parsecore/parsecore.go)'s `ParserVersion` (e.g. `2026.05.07k` → `k`). Bumped manually when the *parser* changes; the time component disambiguates same-`<rev>` re-measures. | `k` |
 | `-T<HHMM>Z-` | UTC hour+minute of run-start, dashes around | `-T1118Z-` |
-| `<dataset>` | Gold-set name. For per-dataset JSONs: the slug derived from the input file basename ([`scripts/parser-comparison.sh`](../../scripts/parser-comparison.sh) post-PR [#146](https://github.com/sagarinbabel/finnestdb/pull/146) — earlier the JSON `name` field was used and v1/v2 collided). For cross-language summaries: `fi` or `et`. | `fi-grammar`, `ud-fi-tdt-test`, `fi`, `et` |
+| `<dataset>` | Gold-set name. For per-dataset JSONs: the slug derived from the input file basename ([`scripts/parser-comparison.sh`](../../scripts/parser-comparison.sh) post-PR [#146](https://github.com/sagarinbabel/finnestdb/pull/146) - earlier the JSON `name` field was used and v1/v2 collided). For cross-language summaries: `fi` or `et`. | `fi-grammar`, `ud-fi-tdt-test`, `fi`, `et` |
 | `<ext>` | `.json.gz` for the raw `cmd/parsertest` reports; `.md` for the cross-language wide-format summaries | `.json.gz` / `.md` |
 
 Full examples:
@@ -42,7 +42,7 @@ calibration"](../PARSER_EVAL_METHODOLOGY.md#ambiguity-and-meaning-check-calibrat
 a frozen ambiguity baseline follows `<dataset>` = `fi-ambiguity` / `et-ambiguity`,
 e.g. `2026-07-04a-T0730Z-fi-ambiguity.json.gz`, so it sits alongside the headline
 baselines under the same append-only discipline. As of this doc, no ambiguity
-baseline has been frozen yet — `make compare-ambiguity` runs are ad hoc until a
+baseline has been frozen yet - `make compare-ambiguity` runs are ad hoc until a
 maintainer runs the formal freeze step.
 
 **Append-only at the baseline-ID level.** Older baseline IDs are never
@@ -54,7 +54,7 @@ are left as-is apart from the `.gz` compression suffix. The cross-reference of
 every baseline ID is maintained in [`SYSTEM_VERSIONING.md` § Parser evaluation baseline history](../SYSTEM_VERSIONING.md), which is also append-only ([#141](https://github.com/sagarinbabel/finnestdb/pull/141)).
 
 **Why time, not just date.** Multiple baselines on the same day at the same
-parser-version `<rev>` happen routinely — first measure pre-change, second
+parser-version `<rev>` happen routinely - first measure pre-change, second
 post-change, third after a fix. Without `T<HHMM>Z` they'd collide on
 filename and the freeze step would silently overwrite (the same class of bug
 as the v1/v2 dataset slug collision). With it, every freeze is uniquely
@@ -84,7 +84,7 @@ The keys you care about are under `summary.<parser>`:
 | `expected_tokens` | Total annotated tokens in the dataset |
 | `lemma_accuracy`  | Fraction with correct lemma |
 | `pos_accuracy`    | Fraction with correct POS |
-| `lemma_pos_accuracy` | Fraction where lemma AND POS *both* match — the dictionary-entry attachment metric. First-class for language-learning quality (entries are keyed by `(lemma, POS)`). Added 2026-05-07; baselines older than that have this field at 0 in JSON, but `cmd/parser-compare` recomputes it from per-case data when comparing against an older baseline directory. See [`../PARSER_EVAL_METHODOLOGY.md`](../PARSER_EVAL_METHODOLOGY.md) for the framing |
+| `lemma_pos_accuracy` | Fraction where lemma AND POS *both* match - the dictionary-entry attachment metric. First-class for language-learning quality (entries are keyed by `(lemma, POS)`). Added 2026-05-07; baselines older than that have this field at 0 in JSON, but `cmd/parser-compare` recomputes it from per-case data when comparing against an older baseline directory. See [`../PARSER_EVAL_METHODOLOGY.md`](../PARSER_EVAL_METHODOLOGY.md) for the framing |
 | `grammar_accuracy`| Fraction with correct grammar_label (only counts cases where gold has a label) |
 | `full_accuracy`   | Fraction with all of lemma + POS + grammar + every gold FEATS attribute correct |
 | `resolved_coverage` | Fraction of input tokens the parser resolved to a dictionary entry |
@@ -95,7 +95,7 @@ The keys you care about are under `summary.<parser>`:
 | `avg_*_ms` timing fields | Average analyzer, form lookup, gloss lookup, sentence resolution, and word enrichment time per case (sub-ms float) |
 
 The per-case raw samples live under `cases[].duration_ms[<parser>].samples_ns`
-as `int64` nanoseconds — those are what the summary `_ms` floats are
+as `int64` nanoseconds - those are what the summary `_ms` floats are
 derived from. Older baselines (pre-PR #103) used a `samples` field in
 integer milliseconds; reading the unit off the field name is the
 forward-compatible way to interpret these.
@@ -152,11 +152,11 @@ explicitly asks for an older historical point.
 
 Earlier **2026-05-07** sets remain useful historical references:
 
-- **`2026-05-07-post-fst-*`** (j) — pre-FEATS-data state. The
+- **`2026-05-07-post-fst-*`** (j) - pre-FEATS-data state. The
   `feats_attributes` arrays in these reports are empty because the manual gold
   sets had no FEATS to score against; the FEATS comparison in
   `internal/eval/eval.go` is a no-op when gold has no FEATS.
-- **`2026-05-07-feats-rich-*`** (k) — first baseline where every committed gold
+- **`2026-05-07-feats-rich-*`** (k) - first baseline where every committed gold
   set carries UD FEATS and the per-FEATS-attribute table fires for all parsers.
   See [`2026-05-07-feats-rich.md`](2026-05-07-feats-rich.md) for the
   methodology and the omorfi/estnltk reference numbers.

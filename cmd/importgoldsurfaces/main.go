@@ -56,7 +56,7 @@ func main() {
 			log.Fatalf("glob %s: %v", pattern, err)
 		}
 		if len(files) == 0 {
-			log.Printf("warning: no gold files under %s — %s guard data will be empty", pattern, lang)
+			log.Printf("warning: no gold files under %s - %s guard data will be empty", pattern, lang)
 		}
 
 		rows, datasets, err := aggregateGoldSurfaces(files, lang)
@@ -87,7 +87,7 @@ func aggregateGoldSurfaces(files []string, lang string) ([]store.GoldSurface, in
 			return nil, 0, fmt.Errorf("parse %s: %w", path, err)
 		}
 		if !strings.EqualFold(gf.Language, lang) {
-			log.Printf("warning: %s declares language %q, expected %s — skipped", path, gf.Language, lang)
+			log.Printf("warning: %s declares language %q, expected %s - skipped", path, gf.Language, lang)
 			continue
 		}
 		datasets++

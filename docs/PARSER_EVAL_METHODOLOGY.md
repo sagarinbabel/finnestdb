@@ -3,11 +3,11 @@
 How `make compare-parsers` / `make compare-parsers-et` actually work, what the
 numbers mean, and how to reproduce a baseline on a fresh machine. Companion to:
 
-- [`PARSER_EVAL_DATASETS.md`](PARSER_EVAL_DATASETS.md) — how the gold sets were curated and what to add
-- [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) — date-stamped trend of frozen baselines
-- [`baselines/README.md`](baselines/README.md) — the JSON report field schema
-- [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) — `parser-vN` and `parser-baseline-YYYY-MM-DD-N` conventions
-- [`OMORFI_ADAPTER.md`](OMORFI_ADAPTER.md) — Finnish external analyzer adapter
+- [`PARSER_EVAL_DATASETS.md`](PARSER_EVAL_DATASETS.md) - how the gold sets were curated and what to add
+- [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) - date-stamped trend of frozen baselines
+- [`baselines/README.md`](baselines/README.md) - the JSON report field schema
+- [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) - `parser-vN` and `parser-baseline-YYYY-MM-DD-N` conventions
+- [`OMORFI_ADAPTER.md`](OMORFI_ADAPTER.md) - Finnish external analyzer adapter
 
 This doc is about **the process**: what to run, what input it consumes, what
 output it produces, and how to read that output.
@@ -17,12 +17,12 @@ output it produces, and how to read that output.
 For a language-learning tool, the parser has two jobs that matter equally to a
 learner reading text:
 
-1. **Dictionary-entry attachment** — given an inflected surface form, which
+1. **Dictionary-entry attachment** - given an inflected surface form, which
    dictionary headword should this learner be sent to? (`pankkiin → pankki /
    NOUN / "bank"`). This is what makes the click-to-define UX work at all.
-2. **Grammatical analysis** — what *did* this form become in this sentence,
+2. **Grammatical analysis** - what *did* this form become in this sentence,
    and why? (`pankkiin = pankki in the illative singular`). This is what makes
-   the parser educational — it explains, not just translates.
+   the parser educational - it explains, not just translates.
 
 Treat these as peer metrics, not as a primary plus a footnote. A parser that
 attaches `pankkiin` to `pankki` but cannot say it is illative singular is
@@ -31,7 +31,7 @@ the wrong lemma is also incomplete. The product goal is the joint result.
 
 The two outputs also feed back into each other: morphological evidence (case,
 number, tense, person, mood) helps disambiguate between otherwise plausible
-lemma/POS candidates — Finnish `kuusi` is `NOUN` ("spruce") in inessive but
+lemma/POS candidates - Finnish `kuusi` is `NOUN` ("spruce") in inessive but
 `NUM` ("six") in nominative, and the FEATS in context decide which dictionary
 entry is right. So the FST/FEATS work is not ornamental; it is part of making
 attachment more accurate too.
@@ -44,7 +44,7 @@ both reported; "Full" stays as the all-correct ceiling.
 Product meaning checks need a narrower measurement than headline parser
 accuracy: can the parser choose the intended dictionary entry for an ambiguous
 surface in sentence context? This section is the spec for the **ambiguity eval
-slice** — the measurement foundation the "Ambiguous meaning flow" launch gate
+slice** - the measurement foundation the "Ambiguous meaning flow" launch gate
 (see [`TODO.md`](../TODO.md)) is blocked on. It is implementation-ready: an agent
 can start from here cold.
 
@@ -53,34 +53,34 @@ The `custom` parser today emits exactly **one** `(lemma, POS)` pick per surface
 however, wants to branch between a single **Meaning Check** and **Multiple
 possible meanings** (see [`CONTEXT.md`](../CONTEXT.md)). This slice measures
 whether that branch can be made safely, per ambiguity class, from deterministic
-eval — not from an invented confidence number.
+eval - not from an invented confidence number.
 
 #### 1. What is measured
 
 On the *target token* of each case (the ambiguous surface, marked `target: true`
 in gold), three metrics:
 
-1. **Candidate inclusion** — is the contextually-correct `(lemma, POS)` present
+1. **Candidate inclusion** - is the contextually-correct `(lemma, POS)` present
    in the candidate set the product can offer for this surface? The candidate
-   set is `store.BatchLookupAllForms(form, lang, "custom")` — the exact
+   set is `store.BatchLookupAllForms(form, lang, "custom")` - the exact
    dict-candidate list that powers Multi-Lemma Surface expansion
    (`internal/api/handlers.go::expandTokenLemmas`). If the correct sense is not
    in this set, the product literally cannot show it, so **Multiple possible
    meanings** is impossible and even a correct single pick is unverifiable.
-2. **Selection accuracy** — does the parser's single top pick
+2. **Selection accuracy** - does the parser's single top pick
    (`parsecore.Analyze(..., "custom")`) match the contextually-correct
    `(lemma, POS)`? This is the gate metric: the single **Meaning Check** UI is
    only safe when selection is reliable on the class.
-3. **Calibration (confidence proxy)** — see below. Because there is no numeric
+3. **Calibration (confidence proxy)** - see below. Because there is no numeric
    confidence, calibration is measured against a *structural proxy* and reported
    as "when the proxy says high-confidence, how often is selection right?"
 
 FEATS is recorded where applicable (as in the main gold sets) but is not part of
-the gate — the meaning branch is a lemma/POS-sense decision, not a case decision.
+the gate - the meaning branch is a lemma/POS-sense decision, not a case decision.
 External analyzers (`omorfi` FI, `estnltk` ET) stay available as the reference
 upper bound, exactly as in the headline eval.
 
-#### Confidence proxy (there is no numeric confidence today — stated honestly)
+#### Confidence proxy (there is no numeric confidence today - stated honestly)
 
 The `custom` ranking (`internal/store/dict.go::pickBestResolutionCandidate` +
 `mergeAndRankDictFSTCandidates`) is a `sort.SliceStable` over **discrete,
@@ -90,17 +90,17 @@ produces an *ordering*, not a probability. So we do **not** claim a confidence
 number. Instead the slice starts with a **structural proxy** built only from
 signals that already exist:
 
-- **`single`** — the candidate set (`BatchLookupAllForms`) has exactly one
+- **`single`** - the candidate set (`BatchLookupAllForms`) has exactly one
   `(lemma, POS)` for the surface → treated as high-confidence.
-- **`multi`** — two or more distinct `(lemma, POS)` candidates → low-confidence
+- **`multi`** - two or more distinct `(lemma, POS)` candidates → low-confidence
   by default; the parser is choosing among genuine homographs.
-- **`dict_fst_agree`** — the winning pick was corroborated by both a dictionary
+- **`dict_fst_agree`** - the winning pick was corroborated by both a dictionary
   row and an FST analysis (`Source` contains `dict` and an `fst_*` tag) →
   raises confidence within the `multi` bucket.
 
 The slice reports selection accuracy *stratified by proxy bucket*. That table is
 what tells us whether `single` is actually a trustworthy high-confidence signal
-(it may not be — see the baseline, where FI `single` includes cross-POS
+(it may not be - see the baseline, where FI `single` includes cross-POS
 homographs whose second sense is missing from the dict). If and when a real
 numeric confidence lands, this proxy is replaced and the same slice re-measures
 it; the gate rule (below) is written against *measured* accuracy per class, so it
@@ -156,14 +156,14 @@ Baseline below is **actual `custom`-mode output** on the production DB + full FS
 tables (`localdata/lemmatizer-fi-et/tables/`, 243 MB FI / 75 MB ET), parser
 version `2026.05.15a`, measured 2026-07-04. "cand set" is the raw
 `BatchLookupAllForms` result; "pick" is the single `Analyze` result. This table
-IS the evidence section — the formal baseline freeze is left to the maintainer
+IS the evidence section - the formal baseline freeze is left to the maintainer
 (see §6).
 
 | class | sel. acc | candidate set the product can offer | failure mode |
 |---|---|---|---|
-| kuusi | 2/4 | `kuusi/NUM` only | **NOUN "spruce" absent from dict forms** — FST knows it, candidate API doesn't merge FST |
-| tuli | 2/4 | `tulla/VERB` only | **NOUN "fire" absent from dict forms** — same gap |
-| voi | 2/4 | `voi/NOUN` only | **VERB "voida" absent from dict forms** — same gap |
+| kuusi | 2/4 | `kuusi/NUM` only | **NOUN "spruce" absent from dict forms** - FST knows it, candidate API doesn't merge FST |
+| tuli | 2/4 | `tulla/VERB` only | **NOUN "fire" absent from dict forms** - same gap |
+| voi | 2/4 | `voi/NOUN` only | **VERB "voida" absent from dict forms** - same gap |
 | alusta | 0/2 | `alus/NOUN` only | wrong single reading; neither `alku` (ela) nor `alusta` (chassis) reachable |
 | palaa | 0/2 | `pala/NOUN` only | picks noun `pala` (par) over both verb readings |
 | sanoi | 1/2 | `sanoa/VERB` (lex-overlay) | overlay forces VERB; `sanoin` "with words" (`sana` NOUN instr.) unreachable |
@@ -173,12 +173,12 @@ IS the evidence section — the formal baseline freeze is left to the maintainer
 **FI headline: selection accuracy 36/48 = 75.0%; candidate inclusion 35/48 =
 72.9%.**
 
-The dominant FI failure is not bad ranking — it is that **kaikki.org's `forms`
+The dominant FI failure is not bad ranking - it is that **kaikki.org's `forms`
 table stores only one reading per surface for the classic cross-POS homographs**,
 so the second sense never enters `BatchLookupAllForms` at all. The FST *does*
 return both readings (verified: `kuusi` → NOUN+NUM, `tuli` → NOUN+VERB, `voi` →
 NOUN+VERB+INTJ), but the candidate API is dict-only. So for FI, **candidate
-inclusion is the blocker before selection** — the product can't even honestly
+inclusion is the blocker before selection** - the product can't even honestly
 show "Multiple possible meanings" for `kuusi`/`tuli`/`voi` today.
 
 #### 4. Threshold → UI rule
@@ -193,21 +193,21 @@ The gate operates **per ambiguity class**, using the slice's per-class numbers:
 
 Rationale for the numbers:
 
-- **selection ≥ 90%** — the single check asserts one meaning as intended; below
+- **selection ≥ 90%** - the single check asserts one meaning as intended; below
   ~90% the learner is corrected against a wrong sense often enough to erode the
   First-Experience trust bar. Deliberately strict for alpha; can loosen with a
   real confidence signal that lets low-confidence *within* a passing class fall
   through to the multi-UI.
-- **candidate inclusion = 100%** — if the correct sense can be missing from the
+- **candidate inclusion = 100%** - if the correct sense can be missing from the
   candidate set (the FI kaikki gap), the multi-UI would omit the right answer,
   which is worse than asking. A class that can't even enumerate its senses is not
   eligible for *either* confident UI until the candidate set is fixed.
-- **N ≥ 4, ≥ 2/sense** — two sentences per sense is the floor for the accuracy
+- **N ≥ 4, ≥ 2/sense** - two sentences per sense is the floor for the accuracy
   number to mean anything; a class with one sentence per sense can hit 100% by
   luck.
 
 Applied to today's baseline: the 14 control classes at 2/2 do **not** yet
-qualify (N < 4 per class) — they need their case count raised before they can be
+qualify (N < 4 per class) - they need their case count raised before they can be
 promoted, which is exactly the point of the "expand case counts" discipline. The
 cross-POS classes (`kuusi`/`tuli`/`voi`) fail candidate inclusion outright and
 must stay on **Multiple possible meanings** regardless of selection until the
@@ -229,7 +229,7 @@ classes) baseline:
 100.0%.**
 
 The inversion is the finding: **Ekilex populates the full candidate set** (ET
-candidate inclusion is perfect — `tee` → both NOUN and `tegema/VERB`; `pea` →
+candidate inclusion is perfect - `tee` → both NOUN and `tegema/VERB`; `pea` →
 five candidates), but the parser's single pick prefers the VERB reading on
 cross-POS collisions and mis-selects on `tee`, `viis`, `sai`, `pea`. So ET's
 blocker is **selection ranking**, while FI's blocker is **candidate inclusion**.
@@ -271,7 +271,7 @@ run against the production DB + FST tables, parser `2026.05.15a`, measured:
 
 Candidate inclusion on both languages matches the §3/§5 evidence table exactly.
 Selection accuracy is lower by 2 FI cases and 1 ET case than the numbers in §3/
-§5, and the runner is the reference now — the throwaway harness that produced
+§5, and the runner is the reference now - the throwaway harness that produced
 those numbers is not. Root-caused to two distinct things, not a shared bug in
 the metric math:
 
@@ -285,13 +285,13 @@ the metric math:
    the target surface sentence-initially with a lowercase gold `surface`; the
    parser's actual pick is correct in both cases (`saada/VERB`, `pidama/VERB`)
    but the exact-match lookup can't find the capitalized `Sain`/`Pea` token, so
-   the case is scored as an unresolved pick. Not fixed here — it would mean
+   the case is scored as an unresolved pick. Not fixed here - it would mean
    changing the shared occurrence-matching convention, out of this runner's
    scope, and the two affected gold entries could instead be reworded to avoid
    sentence-initial position in a follow-up.
 2. **`fi-amb-kayda-2` is a genuine, newly-discovered miss, independent of (1).**
    ("Lääkärikäynti kesti tunnin.") The target surface is found correctly
-   (case matches — it's not affected by the casing gap), but
+   (case matches - it's not affected by the casing gap), but
    `store.BatchLookupAllForms("lääkärikäynti", "FI", "custom")` returns no
    candidates at all, and the parser's compound-split rule resolves it to its
    own lemma `lääkärikäynti` rather than either expected sense (`käydä/VERB`,
@@ -299,7 +299,7 @@ the metric math:
    headline `kuusi`/`tuli`/`voi` cross-POS cases, just on a compound rather
    than a bare homograph, and the ad-hoc harness that produced the original
    §3 table apparently didn't catch it. Left as-is per instructions not to
-   tune the runner to match the old numbers — this is a real finding about
+   tune the runner to match the old numbers - this is a real finding about
    the candidate API gap, not a regression to explain away.
 
 No FI or ET class meets the §4 threshold on this run (unchanged from §3/§5's
@@ -317,12 +317,12 @@ DB + FST tables:
 
 - **FI**: candidate inclusion **35/48 → 46/48 (72.9% → 95.8%)**; selection
   accuracy **34/48 = 70.8% (unchanged)**. This is an *inclusion* change, not a
-  ranking change — the single-pick `parsecore.Analyze` path is untouched, so
+  ranking change - the single-pick `parsecore.Analyze` path is untouched, so
   the FI + ET headline baselines are byte-stable on all accuracy columns.
 - Classes now at 100% inclusion: `kuusi`, `tuli`, `voi`, `palaa`, `alusta`
   (`tie` reaches 2/2). The two remaining FI misses are `sanoin` (the FST emits
   only the `sanoa/VERB` reading, so `sana/NOUN` "with words" stays unreachable)
-  and `lääkärikäynti` (a compound the FST returns no analysis for) — both
+  and `lääkärikäynti` (a compound the FST returns no analysis for) - both
   genuinely outside the FST-merge mechanism and deliberately *not* special-cased.
 - The proxy-stratified table now populates the `multi` and `dict_fst_agree`
   buckets (previously every FI target was `single` because the candidate set
@@ -344,8 +344,8 @@ evaluation:
 |---|---|---|
 | **Lemma accuracy** | attachment (component) | Fraction of evaluated tokens where the parser's lemma matches gold |
 | **POS accuracy** | attachment (component) | Fraction where Universal POS matches gold |
-| **Lemma+POS accuracy** | attachment (joint, **first-class**) | Fraction where lemma AND POS *both* match — the actual "did this surface form land on the right dictionary entry?" metric, since entries are keyed by `(lemma, POS)`. Watch this over `Lemma accuracy` alone, especially on languages with `NOUN`/`NUM`/`PROPN` homographs |
-| **Grammar accuracy** | grammar (single attribute, **first-class**) | Fraction where `grammar_label` matches gold (only on tokens where gold *has* a label — e.g. case-name for nouns) |
+| **Lemma+POS accuracy** | attachment (joint, **first-class**) | Fraction where lemma AND POS *both* match - the actual "did this surface form land on the right dictionary entry?" metric, since entries are keyed by `(lemma, POS)`. Watch this over `Lemma accuracy` alone, especially on languages with `NOUN`/`NUM`/`PROPN` homographs |
+| **Grammar accuracy** | grammar (single attribute, **first-class**) | Fraction where `grammar_label` matches gold (only on tokens where gold *has* a label - e.g. case-name for nouns) |
 | **Per-FEATS-attribute accuracy** | grammar (full UD FEATS) | One row per UD FEATS attribute (Case, Number, Tense, Mood, Person, VerbForm, Voice, …); accuracy on the gold subset that supplied that attribute. Landed 2026-05-07k |
 | **Full accuracy** | joint ceiling | Fraction where lemma AND POS AND grammar AND every gold FEATS attribute match. Useful as a single "everything correct" headline, but movement should be diagnosed against the two first-class metrics, not used to mask which side is slipping |
 | **Resolved coverage** | reach | Fraction of input tokens the parser resolved to a dictionary entry (not "unknown") |
@@ -362,9 +362,9 @@ Schema details: [`baselines/README.md`](baselines/README.md).
 ### Stratified breakdown (`-stratified`)
 
 Even Lemma+POS hides structural variation. On UD-FTB-test the `custom` parser
-scores 71.4% lemma overall — but that splits into ~80% open-class, ~54%
+scores 71.4% lemma overall - but that splits into ~80% open-class, ~54%
 closed-class, ~62% PROPN, ~93% NUM (see [`LEARNINGS.md`](LEARNINGS.md)
-§2026-05-07 — UD-TDT for the original observation). A regression in any one
+§2026-05-07 - UD-TDT for the original observation). A regression in any one
 slice (PROPN dropping from 60% → 30%) can be invisible in the rolled-up
 number when the dominant slice (open-class NOUN/VERB) hasn't moved.
 
@@ -372,10 +372,10 @@ Pass `-stratified` to `cmd/parsertest` to attach a three-axis breakdown to
 each parser summary in the JSON report and write a `<run>.stratified.md`
 sidecar:
 
-1. **UPOS bucket** — `open` (NOUN/VERB/ADJ/ADV), `closed` (DET/PRON/CCONJ/...),
+1. **UPOS bucket** - `open` (NOUN/VERB/ADJ/ADV), `closed` (DET/PRON/CCONJ/...),
    `propn`, `num`, `punct`, `other`.
-2. **OOV** — `in-dict` (parser resolved the surface) vs `oov` (didn't).
-3. **Compoundness** — `compound` (surface contains a hyphen, or parser used
+2. **OOV** - `in-dict` (parser resolved the surface) vs `oov` (didn't).
+3. **Compoundness** - `compound` (surface contains a hyphen, or parser used
    the compound-split rule) vs `simple`.
 
 `cmd/parser-compare -stratified` prints the same tables alongside the
@@ -400,29 +400,29 @@ dict-only numbers (basic / custom) are never read in isolation.
 A baseline is a frozen measurement of `custom` (and the analyzers) on a
 specific git commit, against a specific dictionary state, against a specific
 gold set. It includes the raw JSON reports under [`baselines/`](baselines/) and
-a markdown summary. The cross-baseline narrative — what changed and why —
+a markdown summary. The cross-baseline narrative - what changed and why -
 lives in [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md).
 
 A baseline is reproducible only if all three inputs are reproducible:
 
-1. **Code** — pinned to a git commit.
-2. **Dictionary** — the SQLite DB, populated by the importers under `cmd/import*/`
+1. **Code** - pinned to a git commit.
+2. **Dictionary** - the SQLite DB, populated by the importers under `cmd/import*/`
    and Make targets like `make import-dict-fi-recommended`. Different sources
    loaded → different `(forms, lemmas)` tables → different numbers. The
    per-baseline summary records which sources were active at measurement time.
-3. **FST tables** — by [`ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md), upstream
+3. **FST tables** - by [`ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md), upstream
    transducer blobs aren't vendored. After PR [#128](https://github.com/sagarinbabel/finnestdb/pull/128),
    the runtime disk-loads two-role JSON tables:
-   - **Test fixtures (committed):** `testdata/lemmatizer/{fi,et}_min.json` —
+   - **Test fixtures (committed):** `testdata/lemmatizer/{fi,et}_min.json` -
      12-form smoke covers exactly the words exercised by lemmatizer unit
      tests. Used in tests; not the production lookup.
    - **Production tables (gitignored):** `localdata/lemmatizer-fi-et/tables/`
-     — populated locally via `make gen-lemmatizer-tables-fi VFST_PATH=…`
+     - populated locally via `make gen-lemmatizer-tables-fi VFST_PATH=…`
      against an upstream Voikko `mor.vfst` (or equivalent for ET). The runtime
      calls `lemmatizer.New()` which loads from this directory by default
      (override with `LEMMATIZER_TABLES_DIR`).
    Maintainer machines with locally-regenerated production tables get
-   FST-stage lifts that fresh clones do not — **the main reason the
+   FST-stage lifts that fresh clones do not - **the main reason the
    2026-05-06i FINAL baseline is not reproducible from a fresh clone** (see
    PARSER_EVOLUTION.md §2026-05-07j).
 
@@ -505,7 +505,7 @@ bash scripts/parser-comparison-et.sh -o reports/parser-eval/$(date +%Y-%m-%d)-et
 
 Default discovery: every `.json` or `.json.gz` dataset under
 `testdata/parser-eval/{fi,et}/gold/` and `localdata/parser-eval/{fi,et}/gold/`
-not matching `-dev-v` (held-out test discipline — dev sets are for per-commit
+not matching `-dev-v` (held-out test discipline - dev sets are for per-commit
 "watch" eval, not committed baselines). Each dataset gets its own JSON report
 under `reports/parser-eval/${RUN_TS}-${name}.json`. The markdown summary
 aggregates them.
@@ -527,7 +527,7 @@ filename:
 docs/baselines/YYYY-MM-DD<rev>-T<HHMM>Z-<dataset>.<ext>
 ```
 
-— for example `docs/baselines/2026-05-07k-T1118Z-fi-core.json.gz`. **Append-only**:
+- for example `docs/baselines/2026-05-07k-T1118Z-fi-core.json.gz`. **Append-only**:
 the script refuses to overwrite existing targets, so older baselines stay
 referenceable forever (cross-references like "see `2026-05-06-final-fi-core`"
 in old PR descriptions remain valid). Filename spec, examples, and rationale:
@@ -556,9 +556,9 @@ Full schema: [`baselines/README.md`](baselines/README.md).
 
 Test sets and dev sets are split:
 
-- `gold/<name>-test-v*.json[.gz]` — committed baselines run on these. They are the headline.
-- `gold/<name>-dev-v*.json[.gz]` — committed baselines **skip** these (filtered by the comparison scripts via `grep -v -- '-dev-v'`, and by `make eval` via the same case match). Use them for per-commit "watch" eval — either `make eval-watch` (test + dev sweep) or `cmd/parsertest -dataset <dev-set>` explicitly — so test-set numbers stay honest.
-- `gold-train/` — UD train splits, gitignored regardless of license. Used only for OOV/coverage analysis, never for accuracy claims.
+- `gold/<name>-test-v*.json[.gz]` - committed baselines run on these. They are the headline.
+- `gold/<name>-dev-v*.json[.gz]` - committed baselines **skip** these (filtered by the comparison scripts via `grep -v -- '-dev-v'`, and by `make eval` via the same case match). Use them for per-commit "watch" eval - either `make eval-watch` (test + dev sweep) or `cmd/parsertest -dataset <dev-set>` explicitly - so test-set numbers stay honest.
+- `gold-train/` - UD train splits, gitignored regardless of license. Used only for OOV/coverage analysis, never for accuracy claims.
 
 Don't tune against test sets. If you find yourself iterating on a fix until
 test-set numbers move, you've crossed into overfitting; switch to dev for the
@@ -567,8 +567,8 @@ iteration loop, then re-run test for the final number.
 ## Plan: expand case counts
 
 The smaller curated sets (~50–80 cases) flatter the parser. Real-world text is
-much messier — proper nouns, foreign words, hyphenated compounds, numerals,
-informal punctuation — which is why
+much messier - proper nouns, foreign words, hyphenated compounds, numerals,
+informal punctuation - which is why
 [`LEARNINGS.md` §2026-05-07](LEARNINGS.md) documents the gap between curated
 fi-grammar (97% lemma) and ud-fi-tdt-test (53% lemma).
 
@@ -577,19 +577,19 @@ in committed baselines, so headline numbers reflect real-world hardness.
 
 | Lang | Curated (today) | Held-out UD test (today) | Plan |
 |---|---:|---:|---|
-| FI | 4 sets, 112 cases | 4 sets, 6,527 cases (`ftb` 1867, `ood` 2106, `pud` 1000, `tdt` 1554) | Always run all 8 in committed baselines. With omorfi at ~400 ms/case, full 4-UD pass takes ~70 min — acceptable for a baseline freeze |
+| FI | 4 sets, 112 cases | 4 sets, 6,527 cases (`ftb` 1867, `ood` 2106, `pud` 1000, `tdt` 1554) | Always run all 8 in committed baselines. With omorfi at ~400 ms/case, full 4-UD pass takes ~70 min - acceptable for a baseline freeze |
 | ET | 2 sets, 54 cases | 0 (CC BY-NC-SA gitignored under `localdata/parser-eval/et/gold/`) | `make import-ud-gold-et` materializes `ud-et-edt-test-v1.json` and `ud-et-ewt-test-v1.json` into `localdata/parser-eval/et/gold/` (per PR [#131](https://github.com/sagarinbabel/finnestdb/pull/131) consolidation). The comparison scripts auto-discover gold sets from both `testdata/parser-eval/<lang>/gold/` and `localdata/parser-eval/<lang>/gold/`, so a local-only UD-ET freeze runs through `make compare-parsers-et` with no extra flags. We don't commit the resulting JSONs to public git but each maintainer can freeze their own local extended baseline. Estimated ~30 min for the analyzer pass |
 
 Open follow-ups (not blockers):
 
 - **Stratify the eval report by token category.** A 53% headline on UD-TDT hides 90%+ open-class accuracy buried under maybe 20% on proper nouns and numerals. [`LEARNINGS.md` §2026-05-07](LEARNINGS.md) sketches the per-attribute eval that would surface this.
-- **~~Per-feature attribute eval~~ — landed 2026-05-07k.** Both gold and parser now carry FEATS end-to-end; the comparison script emits a per-attribute table, e.g. `Case 99.2% / Number 100% / Mood 100% / Tense 100% / Person 100% / VerbForm 100% / Voice 100%` for omorfi on `fi-grammar-v1`. See [`baselines/2026-05-07-feats-rich.md`](baselines/2026-05-07-feats-rich.md) for the methodology and the runbook for re-importing the live DB so `custom` picks up FEATS too.
+- **~~Per-feature attribute eval~~ - landed 2026-05-07k.** Both gold and parser now carry FEATS end-to-end; the comparison script emits a per-attribute table, e.g. `Case 99.2% / Number 100% / Mood 100% / Tense 100% / Person 100% / VerbForm 100% / Voice 100%` for omorfi on `fi-grammar-v1`. See [`baselines/2026-05-07-feats-rich.md`](baselines/2026-05-07-feats-rich.md) for the methodology and the runbook for re-importing the live DB so `custom` picks up FEATS too.
 - **Silver-tier corpora.** [`cmd/scrapegutenberg`](../cmd/scrapegutenberg/main.go) builds a 500k-token Gutenberg silver-tier corpus for OOV/coverage measurement via `make scrape-gutenberg-fi`. Not yet wired into the eval comparison.
 - **Versioning reconciliation.** [`SYSTEM_VERSIONING.md`](SYSTEM_VERSIONING.md) proposes `parser-baseline-YYYY-MM-DD-N`; [`PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) uses `YYYY-MM-DDx` (lowercase letter). Pick one and update both docs.
 
 ## Common pitfalls
 
-**Filename collision on `fi-manual` v1/v2 — fixed 2026-05-07.** Both gold sets
+**Filename collision on `fi-manual` v1/v2 - fixed 2026-05-07.** Both gold sets
 have `dataset.name == "fi-manual"`. Pre-fix, the comparison script slugified
 the JSON `name` field, so two datasets collapsed to one report path and v2
 overwrote v1 silently. The same collision reached `make eval` because
@@ -600,7 +600,7 @@ slug from the input filename via `EvaluateOptions.RunIDSlug`, so
 `fi-manual-v1.json` and `fi-manual-v2.json` produce distinct report files
 through every code path.
 
-**`omorfi` adapter dispatch on macOS arm64 — fixed 2026-05-07.**
+**`omorfi` adapter dispatch on macOS arm64 - fixed 2026-05-07.**
 `scripts/parser-comparison.sh` now mirrors the EstNLTK side: when
 `.venv/bin/python` and `scripts/omorfi_adapter_example.py` both exist,
 `FINNESTDB_OMORFI_CMD` is auto-constructed. `internal/evalparsers`

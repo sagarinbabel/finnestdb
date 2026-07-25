@@ -70,7 +70,7 @@ func DefaultReportPath(rootDir string, report *Report) string {
 // task's reporting convention.
 func PrintTable(w io.Writer, report *Report) {
 	for _, ds := range report.Datasets {
-		fmt.Fprintf(w, "## %s (%s, %s) — %d cases\n\n", ds.Name, ds.Language, ds.SourceFile, ds.CaseCount)
+		fmt.Fprintf(w, "## %s (%s, %s) - %d cases\n\n", ds.Name, ds.Language, ds.SourceFile, ds.CaseCount)
 		fmt.Fprintf(w, "Headline: selection accuracy %d/%d = %.1f%%; candidate inclusion %d/%d = %.1f%%\n\n",
 			ds.Overall.SelectionCorrect, ds.Overall.N, ds.Overall.SelectionAccuracy()*100,
 			ds.Overall.CandidateIncludedCount, ds.Overall.N, ds.Overall.CandidateInclusionRate()*100,

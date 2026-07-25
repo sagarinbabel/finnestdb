@@ -260,7 +260,7 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 	// and the example-ref columns. The wordlist writer JOINs against this
 	// table once per output (canonical and user-friendly) instead of doing
 	// per-surface SELECTs. After the INSERT loop we run a single
-	// UPDATE…FROM to fill in example_final_id from tmp_sentence_id —
+	// UPDATE…FROM to fill in example_final_id from tmp_sentence_id -
 	// hash-join, not a correlated subquery, so it's O(N) on 18M surfaces.
 	progress("phase4-scratch", fmt.Sprintf("step 5b: populating tmp_surface_order (%d surfaces)", len(s.surfaces)))
 	if _, err := s.scratch.Exec(`DELETE FROM tmp_surface_order`); err != nil {
@@ -386,7 +386,7 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 	}
 	progress("phase4-scratch", fmt.Sprintf("  wordlist.tsv: %d rows", wlRowCount))
 
-	// User-friendly wordlist — same JOIN against tmp_surface_order, but
+	// User-friendly wordlist - same JOIN against tmp_surface_order, but
 	// with a learner-facing surface ordering + per-row budget cap.
 	if err := s.writeUserFriendlyWordlistFromScratch(
 		filepath.Join(derived, "wordlist_user_friendly.tsv"),
@@ -394,7 +394,7 @@ func (s *state) phase4WriteScratch(derived string, runStart time.Time) error {
 		return err
 	}
 
-	// Mining TSVs (sort + write — same logic as in-memory path)
+	// Mining TSVs (sort + write - same logic as in-memory path)
 	miningDir := filepath.Join(derived, "mining")
 	miningWriter := func(name string, surfaces []wordlistRow) error {
 		return writeTSV(filepath.Join(miningDir, name),
@@ -631,7 +631,7 @@ func (s *state) writeQAReportScratch(path string, runStart time.Time, sentencesU
 	return writeJSON(path, report)
 }
 
-// streamWriteTSV is a streaming version of writeTSV — the yield function
+// streamWriteTSV is a streaming version of writeTSV - the yield function
 // pulls rows from a SQL cursor and writes them directly without buffering.
 func streamWriteTSV(path string, header []string, stream func(yield func([]string)) error) error {
 	f, err := os.Create(path)

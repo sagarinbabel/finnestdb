@@ -91,12 +91,12 @@ func main() {
 // the analyser's emission order.
 //
 // Order is significant. Both Voikko's VFST and Giellalt's HFST OL emit
-// analyses in a fixed, priority-encoding sequence — surface-compatible /
+// analyses in a fixed, priority-encoding sequence - surface-compatible /
 // nominative readings tend to come first. Downstream consumers
 // (`internal/store::mergeAndRankDictFSTCandidates`, FST-only lookup)
 // treat the first analysis on ties as the highest-priority reading and
 // use it to enrich same-lemma dict candidates. Sorting the slice here
-// (e.g. by GrammarLabel) silently reorders cases — for ET, "maja"'s
+// (e.g. by GrammarLabel) silently reorders cases - for ET, "maja"'s
 // genitive/nominative/partitive readings get realphabetised so genitive
 // wins on ties, marking nominative base forms as genitive. Preserve
 // analyser order; reproducibility comes from FST determinism, not from
@@ -120,7 +120,7 @@ func analyzeWord(ana analyzer, parse parseLine, word string) []voikkomap.Analysi
 // openBackend resolves the language-specific analyser and parser. ET
 // uses Giellalt's HFST optimised-lookup analyser and giellaltmap; FI
 // uses Voikko's mor.vfst and voikkomap. The two backends are mutually
-// exclusive — supplying the wrong flag for the chosen language is a
+// exclusive - supplying the wrong flag for the chosen language is a
 // hard error so a misconfigured run fails fast instead of silently
 // emitting an empty table.
 func openBackend(lang, vfstPath, hfstolPath string) (analyzer, parseLine, error) {

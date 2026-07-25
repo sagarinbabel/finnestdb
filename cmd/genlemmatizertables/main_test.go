@@ -76,8 +76,8 @@ func TestOpenBackend_FlagValidation(t *testing.T) {
 // realphabetised cases on multi-reading ET surface forms. With the
 // analyser emitting "maja" in priority order Nom→Gen→Par, the alphabetic
 // sort reordered to Gen→Nom→Par, and downstream merging
-// (internal/store::mergeAndRankDictFSTCandidates) — which treats the
-// first analysis on ties as priority — would mark nominative base forms
+// (internal/store::mergeAndRankDictFSTCandidates) - which treats the
+// first analysis on ties as priority - would mark nominative base forms
 // like "maja" as genitive. analyzeWord must preserve analyser order;
 // reproducibility comes from FST determinism, not re-sorting.
 func TestAnalyzeWord_PreservesAnalyserOrder(t *testing.T) {
@@ -93,7 +93,7 @@ func TestAnalyzeWord_PreservesAnalyserOrder(t *testing.T) {
 	}
 	for i, a := range got {
 		if a.GrammarLabel != wantCases[i] {
-			t.Errorf("position %d: GrammarLabel=%q, want %q (case order shuffled — reintroduced sort regression?)", i, a.GrammarLabel, wantCases[i])
+			t.Errorf("position %d: GrammarLabel=%q, want %q (case order shuffled - reintroduced sort regression?)", i, a.GrammarLabel, wantCases[i])
 		}
 	}
 }

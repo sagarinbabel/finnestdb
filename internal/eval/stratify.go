@@ -5,14 +5,14 @@ package eval
 // ~20% PROPN/NUM. Without stratification a regression in one slice (e.g. PROPN
 // dropping from 60% → 30%) can be invisible in the rolled-up number when the
 // dominant slice (open-class NOUN/VERB) hasn't moved. See
-// docs/LEARNINGS.md §2026-05-07 — UD-TDT.
+// docs/LEARNINGS.md §2026-05-07 - UD-TDT.
 //
 // Three independent axes, computed from the existing per-token comparisons
 // already stored in CaseReport.Comparisons:
 //
-//  1. UPOS bucket — open/closed/propn/num/punct/other on the gold POS.
-//  2. OOV — in-dict (parser resolved the surface) vs oov (didn't).
-//  3. Compoundness — surface contains a hyphen, or parser flagged it as a
+//  1. UPOS bucket - open/closed/propn/num/punct/other on the gold POS.
+//  2. OOV - in-dict (parser resolved the surface) vs oov (didn't).
+//  3. Compoundness - surface contains a hyphen, or parser flagged it as a
 //     compound split. Simple = neither.
 //
 // Stratification is opt-in: cmd/parsertest -stratified attaches it to each
@@ -88,7 +88,7 @@ func oovBucket(cmp TokenCompare) string {
 
 // compoundBucket flags the surface as compound when it contains a hyphen
 // ("EU-puhejohtaja", "B1-tase") or when the parser's compound-split rule was
-// the resolution source. This is intentionally the cheap version — a future
+// the resolution source. This is intentionally the cheap version - a future
 // pass could call into the FST to recognise compounds whose halves don't
 // touch a hyphen, but the current heuristic catches every category we
 // currently regress on.
@@ -114,7 +114,7 @@ var compoundBucketOrder = []string{"compound", "simple"}
 
 // ComputeStratification walks one parser's comparisons across all cases and
 // returns the three-axis breakdown. The argument is the slice of cases from
-// a Report — works on freshly-evaluated reports and historical baseline
+// a Report - works on freshly-evaluated reports and historical baseline
 // JSONs alike.
 //
 // Returns nil if the report has zero comparisons for the parser, so callers
@@ -182,7 +182,7 @@ func incrementBucket(buckets map[string]*stratCounters, name string, cmp TokenCo
 // rows in a deterministic order. Empty buckets (zero expected tokens) are
 // omitted so a dataset without PROPN/NUM doesn't print a row of zeros that
 // invites the wrong reading. Buckets not in the canonical order are
-// appended alphabetically — defensive guard for future POS tags.
+// appended alphabetically - defensive guard for future POS tags.
 func finalizeBuckets(buckets map[string]*stratCounters, order []string) []StratifiedMetric {
 	out := make([]StratifiedMetric, 0, len(buckets))
 	seen := make(map[string]bool, len(order))

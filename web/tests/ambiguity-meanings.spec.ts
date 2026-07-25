@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
 // Multiple possible meanings flow (ambiguous surfaces). The parse mock returns
-// the `kuusi` homograph with two senses — NUM "six" (dict) and NOUN "spruce"
-// (FST-only) — exactly the shape /api/parse produces for a signed-in learner.
+// the `kuusi` homograph with two senses - NUM "six" (dict) and NOUN "spruce"
+// (FST-only) - exactly the shape /api/parse produces for a signed-in learner.
 
 async function mockUser(page: Page): Promise<void> {
   await page.route('**/api/me', async (route) => {
@@ -75,7 +75,7 @@ test('ambiguous row shows the chip, expands to candidates and sentence context',
   const chip = page.locator('.ambiguity-chip').first();
   await expect(chip).toContainText('Multiple possible meanings');
 
-  // Collapsed by default — no panel yet.
+  // Collapsed by default - no panel yet.
   await expect(page.locator('.ambiguity-panel')).toHaveCount(0);
 
   await chip.click();
@@ -166,7 +166,7 @@ test('none-of-these opens the flag-only correction modal prefilled for the surfa
   // It is parser feedback: flag-only path is selected and proposed fields hidden.
   await expect(page.locator('#correction-mode-flag')).toBeChecked();
   await expect(page.locator('#correction-proposed-fields')).toBeHidden();
-  // The propose path is disabled — this is never a proposed correction.
+  // The propose path is disabled - this is never a proposed correction.
   await expect(page.locator('#correction-mode-propose')).toBeDisabled();
 
   // Submitting sends a flag-only report for the kuusi surface.

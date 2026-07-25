@@ -278,7 +278,7 @@ func TestHandleParseReturnsJSONResponse(t *testing.T) {
 // TestHandleParseAnonymousCapRejectsOversizedTextBeforeAnalyze proves the
 // stricter anonymous text-size cap is enforced before any parser work: an
 // unauthenticated request over the cap gets a 400 naming the limit, and
-// analyze never runs. This is a launch-gate abuse control — if it silently
+// analyze never runs. This is a launch-gate abuse control - if it silently
 // stopped enforcing, anonymous visitors could hammer the parser with
 // signed-in-sized (1.5M) payloads.
 func TestHandleParseAnonymousCapRejectsOversizedTextBeforeAnalyze(t *testing.T) {
@@ -322,7 +322,7 @@ func TestHandleParseAnonymousCapRejectsOversizedTextBeforeAnalyze(t *testing.T) 
 }
 
 // TestHandleParseAnonymousCapAllowsAtLimit confirms a request exactly at the
-// cap is accepted (boundary check — off-by-one here would either over- or
+// cap is accepted (boundary check - off-by-one here would either over- or
 // under-restrict every anonymous parse).
 func TestHandleParseAnonymousCapAllowsAtLimit(t *testing.T) {
 	api := newTestAPI(t)
@@ -500,7 +500,7 @@ func TestHandleParseChaptersPayloadReturnsPerChapterWordsAndState(t *testing.T) 
 		t.Fatalf("len(chapters)=%d want 2", len(resp.Chapters))
 	}
 	// Per-chapter Words must be populated by the handler's per-chapter
-	// expansion pass — the mock doesn't pre-fill Words on Chapters[].
+	// expansion pass - the mock doesn't pre-fill Words on Chapters[].
 	if len(resp.Chapters[0].Words) == 0 {
 		t.Fatalf("chapter 0 has no Words; handler should re-aggregate per chapter")
 	}
@@ -649,7 +649,7 @@ func TestHandleParseDoesNotPersistForAuthenticatedUser(t *testing.T) {
 	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	// /api/parse is no longer persisting — feedback flow lazily creates the
+	// /api/parse is no longer persisting - feedback flow lazily creates the
 	// parse_session at submit time, deck save creates one too. A bare parse
 	// press should leave parse_sessions untouched.
 	if resp.ParseID != nil {
@@ -727,7 +727,7 @@ func TestHandleParseHydratesLemmaStateForAuthenticatedUser(t *testing.T) {
 // TestHandleParseCarriesCoverageRevealInputs pins the contract the post-parse
 // coverage reveal (aha #1) depends on: /api/parse must return, per word, the
 // token Count and the LearningState ('known'/'ignored'/empty) so the client can
-// compute token-weighted coverage the SAME way store.DeckComprehension does —
+// compute token-weighted coverage the SAME way store.DeckComprehension does -
 // a token position counts as covered when its (lemma, pos) is known OR ignored,
 // weighted by token mass. If this contract regresses (Count dropped, ignored no
 // longer surfaced), the reveal would fabricate or mis-state the "% you already
@@ -766,7 +766,7 @@ func TestHandleParseCarriesCoverageRevealInputs(t *testing.T) {
 			t.Fatalf("lemma-state %s: status=%d body=%q", body, rec.Code, rec.Body.String())
 		}
 	}
-	// kissa known; nimi ignored (proper name) — both count as covered mass.
+	// kissa known; nimi ignored (proper name) - both count as covered mass.
 	mark(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":"known"}`)
 	mark(`{"lang":"FI","lemma":"nimi","pos":"PROPN","status":"ignored"}`)
 
@@ -810,10 +810,9 @@ func TestHandleParseCarriesCoverageRevealInputs(t *testing.T) {
 	}
 }
 
-// TestHandleParseExpandsHomonyms verifies that the import overview's words
-// list is dict-expanded the same way handleCreateDeck expands tokens, so the
-// unique-lemma count in the import overview matches the deck's unique count.
-func TestHandleParseExpandsHomonyms(t *testing.T) {
+// TestHandleParseUsesParserChoiceForAmbiguousSurface proves that a raw
+// dictionary homonym does not silently add an unrelated learner-facing row.
+func TestHandleParseUsesParserChoiceForAmbiguousSurface(t *testing.T) {
 	api := newTestAPI(t)
 	if err := api.store.UpsertLemma("joon", "NOUN", "line", "ET"); err != nil {
 		t.Fatalf("UpsertLemma joon: %v", err)
@@ -867,28 +866,15 @@ func TestHandleParseExpandsHomonyms(t *testing.T) {
 	if err := json.NewDecoder(bytes.NewReader(rec.Body.Bytes())).Decode(&resp); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	// Parser produced 3 entries (mina, jooma, vesi). After expansion the
-	// dict-known homonym joon/NOUN appears too — total 4, matching what the
-	// deck would have.
-	if len(resp.Words) != 4 {
-		t.Fatalf("len(words)=%d want 4 (mina, jooma, vesi, joon-noun): %+v", len(resp.Words), resp.Words)
+	if len(resp.Words) != 3 {
+		t.Fatalf("len(words)=%d want 3 parser-selected lemmas: %+v", len(resp.Words), resp.Words)
 	}
 	byKey := map[string]parsecore.WordEntry{}
 	for _, w := range resp.Words {
 		byKey[w.Lemma+"/"+w.POS] = w
 	}
-	joonNoun, ok := byKey["joon/NOUN"]
-	if !ok {
-		t.Fatalf("joon/NOUN missing from expanded words: %+v", resp.Words)
-	}
-	if joonNoun.Gloss != "line" {
-		t.Errorf("joon/NOUN gloss=%q want line", joonNoun.Gloss)
-	}
-	if len(joonNoun.Forms) != 1 || joonNoun.Forms[0] != "joon" {
-		t.Errorf("joon/NOUN forms=%v want [joon]", joonNoun.Forms)
-	}
-	if joonNoun.Count != 1 {
-		t.Errorf("joon/NOUN count=%d want 1", joonNoun.Count)
+	if _, ok := byKey["joon/NOUN"]; ok {
+		t.Fatalf("unexpected joon/NOUN alternate in parser-selected words: %+v", resp.Words)
 	}
 
 	// Order contract matches parsecore.enrichWords / GetDeckDetails: count
@@ -1404,7 +1390,7 @@ func TestFilterLowValueAlternativesSuppressesDefinitionFallbackAndAcronymHomonym
 	assertOnlyCandidate("ja", "ja", "CCONJ")
 }
 
-func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
+func TestExpandParsedWordsKeepsParserSelectedPOS(t *testing.T) {
 	api := newTestAPI(t)
 	parsed := &parsecore.ParseResult{
 		Lang: "ET",
@@ -1425,14 +1411,11 @@ func TestExpandParsedWordsOrdersSameLemmaByPOS(t *testing.T) {
 	}
 
 	got := api.expandParsedWords(parsed, dict, nil, nil)
-	if len(got) != 2 {
-		t.Fatalf("len=%d want 2: %+v", len(got), got)
+	if len(got) != 1 {
+		t.Fatalf("len=%d want 1 parser-selected word: %+v", len(got), got)
 	}
 	if got[0].Lemma != "joon" || got[0].POS != "NOUN" {
 		t.Fatalf("first=%s/%s want joon/NOUN: %+v", got[0].Lemma, got[0].POS, got)
-	}
-	if got[1].Lemma != "joon" || got[1].POS != "VERB" {
-		t.Fatalf("second=%s/%s want joon/VERB: %+v", got[1].Lemma, got[1].POS, got)
 	}
 }
 
@@ -1463,7 +1446,7 @@ func TestExpandParsedWordsUsesPreloadedGlosses(t *testing.T) {
 	}
 }
 
-func TestExpandParsedWordsDoesNotCopyGrammarOntoMixedFormExpansion(t *testing.T) {
+func TestExpandParsedWordsKeepsGrammarOnParserSelectedForm(t *testing.T) {
 	api := newTestAPI(t)
 	parsed := &parsecore.ParseResult{
 		Lang: "ET",
@@ -1489,18 +1472,18 @@ func TestExpandParsedWordsDoesNotCopyGrammarOntoMixedFormExpansion(t *testing.T)
 	}
 
 	got := api.expandParsedWords(parsed, dict, nil, nil)
-	var expanded *parsecore.WordEntry
+	var selected *parsecore.WordEntry
 	for i := range got {
 		if got[i].Lemma == "me" && got[i].POS == "PRON" {
-			expanded = &got[i]
+			selected = &got[i]
 			break
 		}
 	}
-	if expanded == nil {
-		t.Fatalf("me/PRON missing from expanded words: %+v", got)
+	if selected == nil {
+		t.Fatalf("me/PRON missing from parser-selected words: %+v", got)
 	}
-	if expanded.GrammarLabel != "" || expanded.Feats != "" {
-		t.Fatalf("expanded grammar=(%q,%q), want empty because forms=%v mix cases", expanded.GrammarLabel, expanded.Feats, expanded.Forms)
+	if selected.GrammarLabel != "allative" || selected.Feats != "Case=All|Number=Plur" {
+		t.Fatalf("selected grammar=(%q,%q), want allative for forms=%v", selected.GrammarLabel, selected.Feats, selected.Forms)
 	}
 }
 
@@ -2165,7 +2148,7 @@ func TestKnownWordsDeleteAll(t *testing.T) {
 		t.Fatalf("FI after wipe=%d want 0 (%+v)", len(fiList.KnownWords), fiList.KnownWords)
 	}
 
-	// ET is untouched — the wipe is language-scoped.
+	// ET is untouched - the wipe is language-scoped.
 	etReq := httptest.NewRequest(http.MethodGet, "/api/known-words?lang=ET", nil)
 	for _, c := range cookies {
 		etReq.AddCookie(c)
@@ -2263,7 +2246,7 @@ func TestKnownWordsReplaceDiffs(t *testing.T) {
 		t.Fatalf("unresolved=%v want [juoksen-no-such-form]", resp.Unresolved)
 	}
 
-	// Verify state via GET — FI is now exactly {kissa, kala}.
+	// Verify state via GET - FI is now exactly {kissa, kala}.
 	got := listKnownWordsForLang(t, mux, cookies, "FI")
 	if !got["kissa/NOUN"] || !got["kala/NOUN"] || len(got) != 2 {
 		t.Fatalf("FI list after replace=%v want {kissa/NOUN, kala/NOUN}", got)
@@ -2296,7 +2279,7 @@ func TestKnownWordsReplaceDiffs(t *testing.T) {
 		t.Fatalf("clear removed=%d want 2", len(clearResp.Removed))
 	}
 
-	// Missing words key (not just empty array) is a 400 — keeps clients
+	// Missing words key (not just empty array) is a 400 - keeps clients
 	// from accidentally clearing on a malformed payload.
 	bad := httptest.NewRequest(http.MethodPut, "/api/known-words", strings.NewReader(`{"lang":"FI"}`))
 	for _, c := range cookies {
@@ -2813,7 +2796,7 @@ func TestKnownWordsImportReturnsUnresolvedWithoutCreatingRows(t *testing.T) {
 	mux := newTestMux(t, api)
 	cookies := loginAndReturnCookies(t, mux, "unknown@example.com")
 
-	// "qwerty123" and "asdfg" are deliberately unresolvable — neither in the
+	// "qwerty123" and "asdfg" are deliberately unresolvable - neither in the
 	// dictionary nor in Voikko's FST. (The earlier inputs "tuntematon" and
 	// "mysteeri" both resolve via the VFST step now: tuntematon → tuntea/ADJ,
 	// mysteeri → mysteeri/NOUN.)
@@ -3040,15 +3023,15 @@ func TestCreateDeckDerivesTitleWhenBlank(t *testing.T) {
 }
 
 // TestClearLemmaStateEnsuresCardWhenDeckSkippedSeeding covers both ways a
-// deck-create can skip ensureCard for a lemma — the lemma was already known,
-// or already ignored — and verifies that clearing the state via /api/lemma-state
+// deck-create can skip ensureCard for a lemma - the lemma was already known,
+// or already ignored - and verifies that clearing the state via /api/lemma-state
 // seeds a card so the lemma becomes reviewable. Both paths share the same
 // ClearLemmaState body, but parallel coverage guards against a future
 // regression that would split them.
 func TestClearLemmaStateEnsuresCardWhenDeckSkippedSeeding(t *testing.T) {
 	cases := []struct {
 		name        string
-		preState    string // "known" or "ignored" — applied before deck create
+		preState    string // "known" or "ignored" - applied before deck create
 		emailSuffix string
 	}{
 		{name: "known", preState: "known", emailSuffix: "known"},
@@ -3120,7 +3103,7 @@ func TestClearLemmaStateEnsuresCardWhenDeckSkippedSeeding(t *testing.T) {
 				t.Fatalf("pre-clear card_count=%d want 1", cardCount)
 			}
 
-			// Clear via the API — the user "marks as unknown" / "stops ignoring".
+			// Clear via the API - the user "marks as unknown" / "stops ignoring".
 			clearReq := httptest.NewRequest(http.MethodPost, "/api/lemma-state",
 				strings.NewReader(`{"lang":"FI","lemma":"kissa","pos":"NOUN","status":""}`))
 			for _, cookie := range cookies {
@@ -3145,11 +3128,10 @@ func TestClearLemmaStateEnsuresCardWhenDeckSkippedSeeding(t *testing.T) {
 	}
 }
 
-// TestCreateDeckExpandsAmbiguousTokenIntoMultipleCards verifies the
-// multi-lemma model: when the dict knows that "joon" is both noun and 1Sg of
-// jooma, a single occurrence in the source text creates one card per
-// candidate. Both lemmas register against the deck's word count.
-func TestCreateDeckExpandsAmbiguousTokenIntoMultipleCards(t *testing.T) {
+// TestCreateDeckUsesParserChoiceForAmbiguousToken verifies that one source
+// token creates one default card. Learners can add an alternate sense only
+// through the explicit SelectedSenses flow.
+func TestCreateDeckUsesParserChoiceForAmbiguousToken(t *testing.T) {
 	api := newTestAPI(t)
 	if err := api.store.UpsertLemma("joon", "NOUN", "line", "ET"); err != nil {
 		t.Fatalf("UpsertLemma joon: %v", err)
@@ -3166,9 +3148,7 @@ func TestCreateDeckExpandsAmbiguousTokenIntoMultipleCards(t *testing.T) {
 		}
 	}
 
-	// Parser picks ONE lemma for the ambiguous "joon" — which one doesn't
-	// matter: the deck-ingest layer re-queries the dict and emits all
-	// candidates regardless of the parser's pick.
+	// Parser picks the verbal sense of the ambiguous surface "joon".
 	api.analyze = func(_ *store.DB, lang, text, parser string) (*parsecore.ParseResult, error) {
 		return &parsecore.ParseResult{
 			Lang: lang,
@@ -3205,19 +3185,16 @@ func TestCreateDeckExpandsAmbiguousTokenIntoMultipleCards(t *testing.T) {
 		t.Fatal("expected authenticated user")
 	}
 
-	// Cards: mina (PRON), joon (NOUN) and jooma (VERB) for the ambiguous
-	// token, plus vesi (NOUN) — 4 total. PUNCT is dropped.
+	// Cards: mina (PRON), jooma (VERB), and vesi (NOUN). PUNCT is dropped.
 	cardCount, err := api.store.CountCards(auth.UserID, "ET")
 	if err != nil {
 		t.Fatalf("CountCards: %v", err)
 	}
-	if cardCount != 4 {
-		t.Fatalf("card_count=%d want 4 (mina, joon-noun, jooma-verb, vesi)", cardCount)
+	if cardCount != 3 {
+		t.Fatalf("card_count=%d want 3 parser-selected cards", cardCount)
 	}
 
-	// Deck stats: Unique counts distinct (lemma, pos) pairs across the deck's
-	// occurrences. Both joon/NOUN and jooma/VERB should be present even
-	// though only one surface "joon" appeared.
+	// Deck stats count the parser-selected (lemma, pos) pairs, one per token.
 	stats, err := api.store.GetUserDeckStats(auth.UserID)
 	if err != nil {
 		t.Fatalf("GetUserDeckStats: %v", err)
@@ -3225,8 +3202,8 @@ func TestCreateDeckExpandsAmbiguousTokenIntoMultipleCards(t *testing.T) {
 	if len(stats) != 1 {
 		t.Fatalf("got %d deck stats rows, want 1", len(stats))
 	}
-	if stats[0].Unique != 4 {
-		t.Errorf("Unique=%d want 4 (mina, joon-noun, jooma-verb, vesi)", stats[0].Unique)
+	if stats[0].Unique != 3 {
+		t.Errorf("Unique=%d want 3 parser-selected lemmas", stats[0].Unique)
 	}
 }
 
@@ -3462,23 +3439,20 @@ func TestCreateDeckSilentDictKeepsParserPick(t *testing.T) {
 	}
 }
 
-func TestExpandTokenLemmasUsesDictCandidatesWhenPresent(t *testing.T) {
+func TestExpandTokenLemmasKeepsParserPickWhenDictHasManyCandidates(t *testing.T) {
 	dict := map[string][]store.FormResolution{
-		"joon": {{Lemma: "joon", POS: "NOUN", Source: "dict"}, {Lemma: "jooma", POS: "VERB", Source: "dict"}},
+		"sa": {
+			{Lemma: "mina", POS: "PRON", Source: "dict"},
+			{Lemma: "nemad", POS: "PRON", Source: "dict"},
+			{Lemma: "sa", POS: "PRON", Source: "dict"},
+			{Lemma: "sina", POS: "NOUN", Source: "dict"},
+			{Lemma: "sina", POS: "PRON", Source: "dict"},
+			{Lemma: "teie", POS: "PRON", Source: "dict"},
+		},
 	}
-	got := expandTokenLemmas(parsecore.TokenResult{Form: "joon", Lemma: "jooma", POS: "VERB"}, dict)
-	if len(got) != 2 {
-		t.Fatalf("len(got)=%d want 2: %+v", len(got), got)
-	}
-	want := map[tokenLemma]bool{{Lemma: "joon", POS: "NOUN"}: true, {Lemma: "jooma", POS: "VERB"}: true}
-	for _, tl := range got {
-		if !want[tl] {
-			t.Errorf("unexpected expansion %+v", tl)
-		}
-		delete(want, tl)
-	}
-	if len(want) != 0 {
-		t.Errorf("missing expansions: %+v", want)
+	got := expandTokenLemmas(parsecore.TokenResult{Form: "sa", Lemma: "sa", POS: "PRON"}, dict)
+	if len(got) != 1 || got[0] != (tokenLemma{Lemma: "sa", POS: "PRON"}) {
+		t.Fatalf("got %+v, want only parser-selected sa/PRON", got)
 	}
 }
 
@@ -3966,7 +3940,7 @@ func TestPublicDeckLifecycleAdminCreateAndSubscribe(t *testing.T) {
 	}
 
 	// Admin (the owner) also sees their own deck in the catalog so they can
-	// verify what other users will see — but marked as is_owner so the UI
+	// verify what other users will see - but marked as is_owner so the UI
 	// can suppress the subscribe button.
 	adminCatalogReq := httptest.NewRequest(http.MethodGet, "/api/decks/public", nil)
 	for _, cookie := range adminCookies {
@@ -4103,7 +4077,7 @@ func TestPublicDeckLifecycleAdminCreateAndSubscribe(t *testing.T) {
 // unpublishes an official deck, learners who had already added it to their
 // studying list keep working access. Without grandfathering, GetUserDeckStats
 // still listed the deck (via the subscription join) while GetDeckDetails
-// 404'd on click — a "ghost row" bug. See review item #1.
+// 404'd on click - a "ghost row" bug. See review item #1.
 func TestUnpublishGrandfathersExistingSubscribers(t *testing.T) {
 	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
 
@@ -4180,7 +4154,7 @@ func TestUnpublishGrandfathersExistingSubscribers(t *testing.T) {
 	}
 
 	// Grandfathered learner still sees the deck in their listing AND can
-	// open the detail page (used to 404 — listing/detail disagreed).
+	// open the detail page (used to 404 - listing/detail disagreed).
 	listReq := httptest.NewRequest(http.MethodGet, "/api/decks", nil)
 	for _, c := range learnerCookies {
 		listReq.AddCookie(c)
@@ -4298,7 +4272,7 @@ func TestDeckPatchNonOwnerWithTitleAndIsPublic(t *testing.T) {
 		t.Fatalf("title=%q want 'Private'", detail.Title)
 	}
 
-	// Admin can still patch just is_public on the non-owned deck — the
+	// Admin can still patch just is_public on the non-owned deck - the
 	// pre-check only blocks combined PATCHes that include a title.
 	patchPublicReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/decks/%d", created.DeckID), strings.NewReader(`{"is_public":true}`))
 	for _, c := range adminCookies {
@@ -4373,7 +4347,7 @@ func TestDeckPatchTogglesIsPublicAdminOnly(t *testing.T) {
 		t.Fatal("deck is_public should still be false after 403")
 	}
 
-	// Admin publishes the deck (admin doesn't own it — that's fine).
+	// Admin publishes the deck (admin doesn't own it - that's fine).
 	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
 	patchByAdminReq := httptest.NewRequest(http.MethodPatch, fmt.Sprintf("/api/decks/%d", created.DeckID), strings.NewReader(`{"is_public":true}`))
 	for _, cookie := range adminCookies {
@@ -5579,7 +5553,7 @@ func TestAdminCorrectionIssuesQuarantineFlow(t *testing.T) {
 
 	issueID := seedIssueViaFeedback(t, api, learner.ID, "FI", "koira", "koira", "NOUN")
 
-	// List issues (GET) — the issue is present and untriaged.
+	// List issues (GET) - the issue is present and untriaged.
 	req := httptest.NewRequest(http.MethodGet, "/api/admin/correction-issues", nil)
 	req = requestWithCookies(req, adminCookies)
 	rec := httptest.NewRecorder()

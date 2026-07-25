@@ -18,7 +18,7 @@ func TestCappedTSVWriter_TabFieldEncodesCorrectly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	// Field with embedded tab — csv should quote-wrap it.
+	// Field with embedded tab - csv should quote-wrap it.
 	if !w.Write([]string{"1", "hello\tworld"}) {
 		t.Fatalf("write rejected unexpectedly")
 	}
@@ -43,7 +43,7 @@ func TestCappedTSVWriter_TabFieldEncodesCorrectly(t *testing.T) {
 	r.FieldsPerRecord = 2
 	rows, err := r.ReadAll()
 	if err != nil {
-		t.Fatalf("readback parse: %v — TSV malformed", err)
+		t.Fatalf("readback parse: %v - TSV malformed", err)
 	}
 	if len(rows) != 3 {
 		t.Errorf("expected 3 rows (header + 2), got %d", len(rows))

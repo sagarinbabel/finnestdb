@@ -7,20 +7,20 @@ re-invent the type/colour system, and respects our actual user flows._
 
 The current design source of truth is:
 
-- [`web/index.html`](../web/index.html) — the live shell, all real
+- [`web/index.html`](../web/index.html) - the live shell, all real
   pages (anonymous landing, sign-in, dashboard, inspect, decks,
   review, admin surfaces), and the correction modal.
-- [`web/styles.css`](../web/styles.css) — design tokens and component
+- [`web/styles.css`](../web/styles.css) - design tokens and component
   styles. **Heads-up:** `web/styles.css` defines an early hex-based
   `:root` block at the top, then later (line ~2339) overrides those
   same tokens with the **Design v2 OKLCH** values for both default
   and `[data-theme="light"]`. The OKLCH block wins. The token table
-  below is the *effective* one — match that, not the early hex.
-- [`design/claude-design/finnest-prototype.html (formerly mockup.html, removed 2026-07-04)`](../design/claude-design/finnest-prototype.html (formerly mockup.html, removed 2026-07-04)) — older, single-file design mockup
+  below is the *effective* one - match that, not the early hex.
+- [`design/claude-design/finnest-prototype.html (formerly mockup.html, removed 2026-07-04)`](../design/claude-design/finnest-prototype.html (formerly mockup.html, removed 2026-07-04)) - older, single-file design mockup
   kept around for reference but **not** the current visual direction.
-- [`docs/USER_FLOWS.md`](USER_FLOWS.md) — screen-by-screen behaviour
+- [`docs/USER_FLOWS.md`](USER_FLOWS.md) - screen-by-screen behaviour
   spec.
-- [`design/`](../design/) — checked-in design directions: HTML
+- [`design/`](../design/) - checked-in design directions: HTML
   prototypes (`finnest v2.html`, `flow-diagram.html`,
   `wireframe-clickthrough.html`, …) and JSX views (`v2-*.jsx`,
   `view-*.jsx`). The Design v2 OKLCH values in `web/styles.css` come
@@ -36,14 +36,14 @@ prompt.
 ```
 You are designing screens for FinnEst (finne.st), a consumer
 language-learning web app for Finnish and Estonian readers. Users
-paste real text — articles, lyrics, book chapters — and the app
+paste real text - articles, lyrics, book chapters - and the app
 returns dictionary-backed lemmas, definitions, examples, token
 counts, and review cards built from the words in their source.
 
 DESIGN CONSTRAINTS, NON-NEGOTIABLE:
 
 1. The app is a single responsive web app. Mobile is a first-class
-   surface — every screen must work at 375 px wide and look
+   surface - every screen must work at 375 px wide and look
    intentional, not like a desktop layout that collapsed.
 
 2. Light and dark themes both ship. Use CSS variables for every color.
@@ -56,7 +56,7 @@ DESIGN CONSTRAINTS, NON-NEGOTIABLE:
    - Code / form data / morphology labels: 'IBM Plex Mono', monospace.
    Do not introduce additional families.
 
-4. Color tokens (CSS vars — DO NOT recolour). Default is the dark INK
+4. Color tokens (CSS vars - DO NOT recolour). Default is the dark INK
    theme; `[data-theme="light"]` is the PAPER override. Values are
    OKLCH because the live tokens in `web/styles.css` are OKLCH from
    line ~2339; the hex block earlier in that file is overridden.
@@ -80,7 +80,7 @@ DESIGN CONSTRAINTS, NON-NEGOTIABLE:
 
 5. Spacing scale: 0.25 / 0.5 / 0.75 / 1 / 1.5 / 2 / 3 rem.
    Border radius: 4 px (inputs/buttons), 8 px (cards), full (pills).
-   Shadows: only on cards and modals — never on flat surfaces.
+   Shadows: only on cards and modals - never on flat surfaces.
 
 6. Components already exist; reuse them. Do not redesign:
    - Top nav (`.global-nav`, `.nav-link`, `.nav-mobile-overlay`).
@@ -90,7 +90,7 @@ DESIGN CONSTRAINTS, NON-NEGOTIABLE:
      labels.
    - Coverage gauge: `.coverage-gauge` with `.coverage-gauge-bar` and
      `.coverage-gauge-fill` (semantic class `high` / `medium` / `low`
-     — `medium`, not `mid`; the runtime in `web/app.ts` uses
+     - `medium`, not `mid`; the runtime in `web/app.ts` uses
      `medium`).
    - Word table: `.word-table`, sortable headers `.sort-btn`, POS
      filter chips `.pos-filter-chip`, language pills `.results-pill`.
@@ -101,7 +101,7 @@ DESIGN CONSTRAINTS, NON-NEGOTIABLE:
 7. Voice and tone: plainspoken, never gamified. The product is for
    adult learners who already read in their L1 and want to read in
    Finnish or Estonian. No streaks, no badges, no XP, no fire emojis.
-   "Review" is the verb — never "Practice" or "Learn".
+   "Review" is the verb - never "Practice" or "Learn".
 
 8. Accessibility: every interactive element keyboard-focusable;
    label every input; aria-live on result regions and toasts; honour
@@ -134,10 +134,10 @@ persisted in `localStorage` (`skin` = `ink` | `aalto`, crossed with
 `theme` = `light` | `dark`). Both apply on the root element as
 `data-skin` × `data-theme`.
 
-- **Ink** (default) — the INK/PAPER OKLCH system documented in the
+- **Ink** (default) - the INK/PAPER OKLCH system documented in the
   System block above (Fraunces + IBM Plex Sans/Mono, vermillion
   accent). Provenance: `design/` Design v2 direction.
-- **Aalto** — an Alvar-Aalto-inspired second skin. Light mode is
+- **Aalto** - an Alvar-Aalto-inspired second skin. Light mode is
   **Paimio** (warm birch-cream paper, soft Nordic blue), dark mode is
   **Sanatorium** (deep blue-black ground, smoked-oak birch). Fonts are
   Newsreader (display serif, optical sizing, italics) + Inter Tight
@@ -171,7 +171,7 @@ The word-status tokens `--known` / `--learning` / `--new` are defined
 under **both** skins (the reading surface consumes them); the ink-skin
 values are chosen from that skin's palette. The prototype's `data-aalto="bold"`
 variant (visible birch panels, vase silhouette, vertical AALTO wordmark)
-is **not** wired into the app — it's a decorative direction to prompt
+is **not** wired into the app - it's a decorative direction to prompt
 from, not shipped chrome.
 
 When prompting a design AI for an Aalto screen, cite
@@ -190,7 +190,7 @@ block, then the screen block, then any sample data the tool needs.
 Design the anonymous landing for finne.st.
 
 The page IS the parse tool. There is no separate "marketing landing"
-above the fold — the value prop is "paste text, get vocabulary," so
+above the fold - the value prop is "paste text, get vocabulary," so
 the textarea is the hero.
 
 Layout, top to bottom:
@@ -200,7 +200,7 @@ Layout, top to bottom:
    what you love."), a one-line subtitle, then immediately the parse
    form.
 3. Parse form is a single card (background `var(--card-bg)`, 8px
-   radius, shadow). Note `--card-bg` is a CSS variable, not a class —
+   radius, shadow). Note `--card-bg` is a CSS variable, not a class -
    the actual card classes in the codebase are `.signin-card`,
    `.action-card`, and `.placeholder-card`; pattern-match on whichever
    is closest, or a plain `<section>` with the variable applied:
@@ -215,7 +215,7 @@ Layout, top to bottom:
      with the selector, with a one-click "Switch to Finnish" button.
    - Primary "Parse text →" button right-aligned.
 4. Two sample-text buttons under the form: "Try a Finnish news
-   headline" / "Try an Estonian children's poem" — clicking populates
+   headline" / "Try an Estonian children's poem" - clicking populates
    the textarea.
 5. Footer with three links: How it works / Privacy / About.
 
@@ -238,15 +238,15 @@ signed-in users, with conditional UI for each.
 Required regions, top to bottom:
 1. Back button (top-left) and the deck title (or "Results" for an
    unsaved parse).
-2. Coverage gauge — reuse `.coverage-gauge`. Width animates from 0 on
+2. Coverage gauge - reuse `.coverage-gauge`. Width animates from 0 on
    mount.
 3. Sign-up ribbon, ANONYMOUS ONLY: a single-row card with a sparkle
    icon, headline "Want to remember these words?", body "Sign up free
-   to turn this list into a review deck — we'll teach you the words
+   to turn this list into a review deck - we'll teach you the words
    you don't know in 5 min/day", and two buttons (Create account /
    Later). Dismissable for the session.
 4. Meta strip: "287 unique words · Custom parser · 342ms".
-5. POS filter chips (`.pos-filter-chip`) — sticky on scroll on mobile.
+5. POS filter chips (`.pos-filter-chip`) - sticky on scroll on mobile.
 6. Word table (`.word-table`) with columns:
    #  Form  Definition  Count  Status
    - Form column shows surface form, with a small POS chip in the
@@ -278,7 +278,7 @@ selection bar, "Add to existing deck" radio inside the save panel.
 ```
 Redesign the correction modal in `web/index.html` lines 553–603 to
 add a "flag-only" path. The current modal forces the user to provide
-a corrected lemma and POS — losing signal from users who notice a
+a corrected lemma and POS - losing signal from users who notice a
 parse is wrong but don't know the right answer.
 
 New shape:
@@ -291,7 +291,7 @@ New shape:
 - Selecting the second radio reveals the existing fields (proposed
   lemma, POS, grammar label, notes).
 - The proposed-lemma input pre-fills with the SURFACE FORM lowercased,
-  not the current lemma — if the parser was wrong, its lemma is the
+  not the current lemma - if the parser was wrong, its lemma is the
   wrong starting point.
 - Footer: Cancel / Send.
 
@@ -309,7 +309,7 @@ prefers-reduced-motion.
 Redesign the auth screen at `#/signin` to add Google OAuth alongside
 email+password. Tabs at the top: "Sign in" / "Create account".
 
-Top: a single Google button — full-width on mobile, max 360px on
+Top: a single Google button - full-width on mobile, max 360px on
 desktop, "Continue with Google" with the standard G logo.
 
 Below: a horizontal rule with "or with email" centred.
@@ -329,7 +329,7 @@ Google button, the divider, and the First-name field.
 ### Dashboard (signed-in landing)
 
 ```
-Redesign the dashboard at `#/dashboard`. The app is hash-routed —
+Redesign the dashboard at `#/dashboard`. The app is hash-routed -
 generated links MUST use the hash form (`#/dashboard`, `#/inspect` for
 parse, `#/decks`, `#/review`, `#/signin`, `#/`). Bare paths like
 `/parse` will leave the SPA or 404.
@@ -340,12 +340,12 @@ left off, or read something new."
 Stats row: three stat cards in a responsive grid (3 cols desktop, 1
 col mobile). Each card has a label (small caps, text-secondary) and
 a value (very large, accent color). Stats: Words known (split
-"FI / ET"), Due to review, New today (formatted "0 / 20" — N learned
+"FI / ET"), Due to review, New today (formatted "0 / 20" - N learned
 of cap).
 
-Action grid: three large clickable cards (`.action-card`) — Read a
+Action grid: three large clickable cards (`.action-card`) - Read a
 new text / Review due words / Your decks. Each shows count or hint
-inline ("0 due — start by parsing a text").
+inline ("0 due - start by parsing a text").
 
 Recent decks: list of up to 5 most-recently-touched decks. Each row
 shows title (Fraunces), language pill (FI/ET in --pos-noun/--pos-adj
@@ -355,9 +355,9 @@ EMPTY STATE (zero decks, zero parses): replace the recent-decks list
 with a card titled "Just getting started?" listing three options:
 "Paste a text" (link to `#/inspect`), "Import known words" (link to
 `#/decks` known-words section), "Start with the top 1000 Finnish
-words" (link to `#/decks/top-1000-fi` — note this route is **new**
+words" (link to `#/decks/top-1000-fi` - note this route is **new**
 and does not exist yet, gated on the seed-deck research project). The
-third one is gated on a feature flag —
+third one is gated on a feature flag -
 hide if the seed deck doesn't exist for the user's preferred lang.
 
 Reference the existing `#dashboard-page` block in `web/index.html`
@@ -387,7 +387,7 @@ Review → button.
 
 Below that, the "Known words" panel (collapsed accordion by default).
 Reference the existing `.known-words-panel` in `web/index.html` lines
-300–327 — keep its language selector, import textarea, and unresolved
+300–327 - keep its language selector, import textarea, and unresolved
 list. Just present it under a heading instead of the current
 always-expanded layout.
 ```
@@ -413,7 +413,7 @@ status per row.
 
 The comprehension projection numbers come from
 `GET /api/decks/:id/comprehension` (already on the TODO list).
-Render placeholder values "—" while the request is in flight; do not
+Render placeholder values "-" while the request is in flight; do not
 animate from 0%.
 ```
 
@@ -446,7 +446,7 @@ puistossa." with the target form highlighted. Card back: lemma
 
 ### v0.dev
 
-v0 likes Tailwind by default — disable it for these prompts. In v0:
+v0 likes Tailwind by default - disable it for these prompts. In v0:
 "Generate without Tailwind, plain CSS modules referencing CSS vars."
 Drop the System block in chat first; it stays in scope across
 follow-ups.
@@ -457,7 +457,7 @@ Lovable is good at flow/state but tends to over-add features. Prefix
 each per-screen prompt with: "Implement EXACTLY the elements listed
 below. Do not add a hero image, testimonials, FAQ, or pricing."
 
-Lovable's React output uses inline styles freely — that's fine; we'll
+Lovable's React output uses inline styles freely - that's fine; we'll
 extract to `web/styles.css` on review.
 
 ### Bolt.new
@@ -503,7 +503,7 @@ Before merging anything from a design AI:
 2. Resize to 375 px and check every screen renders without horizontal
    scroll.
 3. Toggle dark mode and check every colour comes from CSS vars.
-4. Tab through the page — every interactive element must focus
+4. Tab through the page - every interactive element must focus
    visibly.
 5. Run the Playwright suite that covers landing, sign-in, parse,
    deck save, and review:
@@ -512,7 +512,7 @@ Before merging anything from a design AI:
    cd web && npx playwright test
    ```
 
-   `web/package.json` doesn't define a `test` script — run Playwright
+   `web/package.json` doesn't define a `test` script - run Playwright
    directly via the local install. The suite in `web/tests/` boots
    the Go server itself (see `web/playwright.config.ts`) so make sure
    port 8081 is free.

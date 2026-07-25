@@ -224,7 +224,7 @@ func TestParseSanalista_MultiClassSanaluokka(t *testing.T) {
 
 func TestParseSanalista_EmptyTaivutusPreservedAsEmpty(t *testing.T) {
 	// Compound nouns like "aaltoallas" have no inflection class in
-	// Kotus. The parser must still emit the entry — the writer skips
+	// Kotus. The parser must still emit the entry - the writer skips
 	// the paradigm-class write but still inserts the dictionary row.
 	tsv := "Hakusana\tHomonymia\tSanaluokka\tTaivutustiedot\n" +
 		"aaltoallas\t\tsubstantiivi\t\n"
@@ -558,7 +558,7 @@ func TestWriteKotusEntries_ScopesUpdatesByCurrentRowsWordClasses(t *testing.T) {
 	//   aika  2  adjektiivi, adverbi        99
 	//
 	// Pre-imports row 1 first (NOUN with class 9-D). When row 2 hits,
-	// the writer must NOT touch the NOUN row's paradigm — it must
+	// the writer must NOT touch the NOUN row's paradigm - it must
 	// insert ADJ + ADV at class 99 instead.
 	db := newTestDB(t)
 	if _, err := db.Exec(
@@ -609,7 +609,7 @@ func TestWriteKotusEntries_ScopesUpdatesByCurrentRowsWordClasses(t *testing.T) {
 func TestWriteKotusEntries_KuurataInsertsBothNounAndVerb(t *testing.T) {
 	// Real homonym: kuurata appears as substantiivi (no class) then
 	// verbi (class 73). Processing in TSV order must insert NOUN
-	// (with NULL paradigm) AND VERB (with class 73) — the writer
+	// (with NULL paradigm) AND VERB (with class 73) - the writer
 	// must not let the second row's "exists check" find the unrelated
 	// NOUN and skip the VERB insert.
 	db := newTestDB(t)

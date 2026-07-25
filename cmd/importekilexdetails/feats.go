@@ -12,12 +12,12 @@ import "strings"
 // Coverage philosophy:
 //
 //   - Map every code that has clear UD FEATS equivalents.
-//   - Aditive (Adt) folds to Case=Ill — UD-EDT does the same.
-//   - The trailing "_" variant on Ind*Pr*Ps_ is a positive-form marker —
+//   - Aditive (Adt) folds to Case=Ill - UD-EDT does the same.
+//   - The trailing "_" variant on Ind*Pr*Ps_ is a positive-form marker -
 //     drop it before lookup; the base code carries the same FEATS.
 //   - Negative variants (suffix N or Neg) append Polarity=Neg to the
 //     base form's FEATS.
-//   - Idiom (ID) and unknown (??) return empty — we
+//   - Idiom (ID) and unknown (??) return empty - we
 //     don't claim FEATS we can't defend.
 //
 // The mapping vocabulary (Case=Ine|Number=Sing etc.) matches UD-Estonian
@@ -27,14 +27,14 @@ func ekilexMorphToFeats(code string) string {
 	if code == "" {
 		return ""
 	}
-	// Strip a trailing "_" — Ekilex uses this as a "positive" marker on
+	// Strip a trailing "_" - Ekilex uses this as a "positive" marker on
 	// some codes (IndPrPs_, IndPrIps_) where the bare form already
 	// implies the same.
 	code = strings.TrimSuffix(code, "_")
 
 	// Negative-polarity variants: <base>N or <base>Neg.
 	//   * The "N" suffix is the older Ekilex convention (e.g. IndPrSg1N)
-	//     but it never appears in our distribution that way — only
+	//     but it never appears in our distribution that way - only
 	//     IndPrPsN / IndPrIpsN-style "personal class + N" exist.
 	//   * "Neg" is used by participles only: PtsPtIpsNeg, PtsPtPsNeg.
 	negPolarity := false
@@ -87,19 +87,19 @@ func appendFeat(feats, kv string) string {
 //	                          IndIpf{Sg1,Sg2,Sg3,Pl1,Pl2,Pl3} past active
 //	                          IndPrPs / IndPrIps                present pass/imp
 //	                          IndIpfPs / IndIpfIps              past pass/imp
-//	Conditional / quotative / imperative: Knd*, Kvt*, Imp* — same shape
+//	Conditional / quotative / imperative: Knd*, Kvt*, Imp* - same shape
 //	Non-finite: Inf (-da infinitive), Sup (-ma supine), Ger (-des converb)
 //	Participles: PtsPr{Ps,Ips} present active/passive
 //	             PtsPt{Ps,Ips} past active/passive
 //	Supine + case: SupAb / SupEl / SupIn / SupTr / SupIps
-//	Idiomatic: ID — left empty
+//	Idiomatic: ID - left empty
 var ekilexBaseFeats = map[string]string{
 	// ── Nominal ─────────────────────────────────────────────────────────
 	"SgN":   "Case=Nom|Number=Sing",
 	"SgG":   "Case=Gen|Number=Sing",
 	"SgP":   "Case=Par|Number=Sing",
 	"SgIll": "Case=Ill|Number=Sing",
-	"SgAdt": "Case=Ill|Number=Sing", // aditive — UD folds into illative
+	"SgAdt": "Case=Ill|Number=Sing", // aditive - UD folds into illative
 	"SgIn":  "Case=Ine|Number=Sing",
 	"SgEl":  "Case=Ela|Number=Sing",
 	"SgAll": "Case=All|Number=Sing",
@@ -127,7 +127,7 @@ var ekilexBaseFeats = map[string]string{
 	"PlKom": "Case=Com|Number=Plur",
 	"PlTer": "Case=Ter|Number=Plur",
 
-	// ── Indicative finite — present active ──────────────────────────────
+	// ── Indicative finite - present active ──────────────────────────────
 	"IndPrSg1": "Mood=Ind|Number=Sing|Person=1|Tense=Pres|VerbForm=Fin|Voice=Act",
 	"IndPrSg2": "Mood=Ind|Number=Sing|Person=2|Tense=Pres|VerbForm=Fin|Voice=Act",
 	"IndPrSg3": "Mood=Ind|Number=Sing|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act",
@@ -135,7 +135,7 @@ var ekilexBaseFeats = map[string]string{
 	"IndPrPl2": "Mood=Ind|Number=Plur|Person=2|Tense=Pres|VerbForm=Fin|Voice=Act",
 	"IndPrPl3": "Mood=Ind|Number=Plur|Person=3|Tense=Pres|VerbForm=Fin|Voice=Act",
 
-	// ── Indicative finite — past (imperfect) active ─────────────────────
+	// ── Indicative finite - past (imperfect) active ─────────────────────
 	"IndIpfSg1": "Mood=Ind|Number=Sing|Person=1|Tense=Past|VerbForm=Fin|Voice=Act",
 	"IndIpfSg2": "Mood=Ind|Number=Sing|Person=2|Tense=Past|VerbForm=Fin|Voice=Act",
 	"IndIpfSg3": "Mood=Ind|Number=Sing|Person=3|Tense=Past|VerbForm=Fin|Voice=Act",
@@ -143,7 +143,7 @@ var ekilexBaseFeats = map[string]string{
 	"IndIpfPl2": "Mood=Ind|Number=Plur|Person=2|Tense=Past|VerbForm=Fin|Voice=Act",
 	"IndIpfPl3": "Mood=Ind|Number=Plur|Person=3|Tense=Past|VerbForm=Fin|Voice=Act",
 
-	// ── Indicative — personal/impersonal forms ──────────────────────────
+	// ── Indicative - personal/impersonal forms ──────────────────────────
 	"IndPrPs":   "Mood=Ind|Tense=Pres|VerbForm=Fin|Voice=Act",
 	"IndPrIps":  "Mood=Ind|Tense=Pres|VerbForm=Fin|Voice=Pass",
 	"IndIpfPs":  "Mood=Ind|Tense=Past|VerbForm=Fin|Voice=Act",
@@ -197,6 +197,6 @@ var ekilexBaseFeats = map[string]string{
 	"SupIps": "Case=Ill|VerbForm=Sup|Voice=Pass",
 
 	// ── Empty / placeholders ────────────────────────────────────────────
-	// "ID" (idiom) and "??" (unknown) deliberately absent — returning ""
+	// "ID" (idiom) and "??" (unknown) deliberately absent - returning ""
 	// for these is the right behavior.
 }

@@ -31,7 +31,7 @@ when it has multiple analyses.
 | `example_ref_id` | ID in `sentences.tsv` or `poems.tsv`. |
 
 `example_text` was previously the 20th column but was removed on
-2026-05-09 — at full FI scale it accounted for the majority of
+2026-05-09 - at full FI scale it accounted for the majority of
 `wordlist.tsv` size for information already available elsewhere.
 Reconstruct example bodies by joining `example_ref_id` against
 `sentences.tsv.id` when `example_ref_type=sentence`, or against
@@ -59,7 +59,7 @@ Source coupling matters: `cmd/importekilexdetails` can upgrade an
 existing kaikki lemma to `source='ekilex'` while preserving the older
 kaikki gloss (the empty-gloss guard). The user-friendly export then
 correctly returns the matching ekilex translation, not the preserved
-kaikki gloss — same answer the server's read path returns.
+kaikki gloss - same answer the server's read path returns.
 
 | Column | Meaning |
 |---|---|

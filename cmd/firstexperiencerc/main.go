@@ -11,7 +11,7 @@
 // which runs this binary and then that spec back to back). Cases with
 // automation "manual" point at the manual walkthrough instructions in
 // docs/GO_LIVE_CHECKLIST.md. Cases with automation "pending" mark a journey
-// that does not have automated or manual coverage wired up yet — this is
+// that does not have automated or manual coverage wired up yet - this is
 // expected for a skeleton pack and is not a run failure.
 //
 // Exit code is nonzero only when an automated ("parser") case fails its

@@ -1,5 +1,5 @@
 // cmd/scrapegutenberg fetches Finnish-language books from Project Gutenberg
-// (gutenberg.org) for use as a silver-tier corpus. Plan C / PR 3 — see
+// (gutenberg.org) for use as a silver-tier corpus. Plan C / PR 3 - see
 // docs/CHANGELOG.md.
 //
 // Source: https://www.gutenberg.org/ebooks/search/?query=l.fi
@@ -25,7 +25,7 @@
 //     The cache-epub URL is UTF-8; the -0/-8 URLs are ISO-8859-1.
 //  3. Strip the Project Gutenberg header (above "*** START OF") and footer
 //     (below "*** END OF"). Strip transcriber notes if present.
-//  4. Detect language with a heuristic — if not Finnish, skip. (The search
+//  4. Detect language with a heuristic - if not Finnish, skip. (The search
 //     filter usually keeps this clean, but English-language commentary
 //     books that mention Finnish do leak into the result set.)
 //  5. Save the cleaned text under -out/<id>.txt and append a manifest
@@ -34,8 +34,8 @@
 //     books made the cut.
 //  6. Stop when the cumulative token count crosses -target-tokens.
 //
-// The scraper is polite — 1.5s delay between requests, single connection,
-// transparent User-Agent. Re-runs are idempotent — the manifest is checked
+// The scraper is polite - 1.5s delay between requests, single connection,
+// transparent User-Agent. Re-runs are idempotent - the manifest is checked
 // first and already-fetched IDs are skipped.
 //
 // Tokens are approximated by whitespace splitting (good enough for the
@@ -66,7 +66,7 @@ const (
 	requestDelay      = 1500 * time.Millisecond
 	requestTimeout    = 30 * time.Second
 	searchPageSize    = 25 // Gutenberg returns 25 results per page
-	maxSearchPages    = 60 // 60 × 25 = 1500 candidate IDs — plenty for ~500k tokens
+	maxSearchPages    = 60 // 60 × 25 = 1500 candidate IDs - plenty for ~500k tokens
 	maxBookSize       = 5 * 1024 * 1024
 	startMarkerPrefix = "*** START OF"
 	endMarkerPrefix   = "*** END OF"
@@ -101,7 +101,7 @@ func main() {
 	log.Printf("manifest already has %d books / %d tokens; need %d more",
 		len(already), cumulativeTokens, max(0, *targetTokens-cumulativeTokens))
 	if cumulativeTokens >= *targetTokens {
-		log.Printf("target already met — exiting")
+		log.Printf("target already met - exiting")
 		return
 	}
 
@@ -354,7 +354,7 @@ type bookMeta struct {
 
 // parseGutenbergText splits a downloaded text into header-derived metadata
 // and the cleaned body (between START and END markers). Errors out if the
-// markers are missing — we'd rather skip the book than ship Gutenberg
+// markers are missing - we'd rather skip the book than ship Gutenberg
 // boilerplate as silver corpus content.
 func parseGutenbergText(text string) (bookMeta, string, error) {
 	var meta bookMeta
@@ -424,13 +424,13 @@ func isLeadingGutenbergMetadataLine(line string) bool {
 	return false
 }
 
-// looksFinnish is a coarse "is this Finnish?" check — counts how often the
+// looksFinnish is a coarse "is this Finnish?" check - counts how often the
 // most common Finnish-only characters and tokens appear. Calibrated against
 // English/Swedish noise that bleeds into the search results when an
 // English-authored book includes the Finnish language code in its metadata.
 func looksFinnish(text string) bool {
 	if len(text) < 2000 {
-		// Short text — skip the heuristic; the search filter has already
+		// Short text - skip the heuristic; the search filter has already
 		// done its job for these.
 		return true
 	}

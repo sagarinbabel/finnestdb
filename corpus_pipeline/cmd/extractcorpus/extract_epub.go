@@ -17,9 +17,9 @@ import (
 
 // extractEPUB walks <dir>/raw/*.epub, extracts plain text from each book's
 // XHTML content, and writes:
-//   - <dir>/per-book/<slug>.txt — one text per book (handy for reading)
-//   - <dir>/text.txt — concatenated, one paragraph per line, blank line = book boundary
-//   - <dir>/documents.jsonl — one record per book
+//   - <dir>/per-book/<slug>.txt - one text per book (handy for reading)
+//   - <dir>/text.txt - concatenated, one paragraph per line, blank line = book boundary
+//   - <dir>/documents.jsonl - one record per book
 //
 // Idempotent unless force is true: reuses books whose per-book/<slug>.txt
 // already exists and is non-empty.
@@ -155,7 +155,7 @@ func extractEPUBBook(epubPath string) (string, error) {
 }
 
 // stripXHTML removes XML/HTML tags and decodes the most common entities.
-// Block-level tags become paragraph breaks. Pragmatic — not a full HTML
+// Block-level tags become paragraph breaks. Pragmatic - not a full HTML
 // parser, but good enough for corpus ingestion.
 var (
 	// Style/script content must be removed entirely (the text inside is CSS/JS, not prose).
@@ -188,7 +188,7 @@ func stripXHTML(s string) string {
 		"&nbsp;", " ",
 		"&#160;", " ",
 		"&hellip;", "…",
-		"&mdash;", "—",
+		"&mdash;", "-",
 		"&ndash;", "–",
 		"&rsquo;", "'",
 		"&lsquo;", "'",

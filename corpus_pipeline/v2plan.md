@@ -1,4 +1,4 @@
-# Corpus pipeline — v2 follow-ups + v1 handoff notes
+# Corpus pipeline - v2 follow-ups + v1 handoff notes
 
 This file is the durable record of what's done, what's deferred, and the
 trigger conditions for picking each item back up. Per the plan (v1plan.md
@@ -6,22 +6,22 @@ trigger conditions for picking each item back up. Per the plan (v1plan.md
 `corpus_pipeline/v2plan.md` so Codex, Claude, and human reviewers can share the
 same roadmap. Runtime corpus data stays local-only under `localdata/`.
 
-## v1 status snapshot — 2026-05-08 (updated 2026-05-12)
+## v1 status snapshot - 2026-05-08 (updated 2026-05-12)
 
 ### What landed in this session
 
 **Core pipeline (all green):**
-- ✅ Module skeleton at `corpus_pipeline/` — module path `finnestdb/corpus_pipeline`, replace directive validates, smoke-test imports `finnestdb/internal/parserffi` and runs.
-- ✅ `internal/cli` — preflight (FST + dict), lang code normalization, roots resolver
-- ✅ `internal/sources` — manifest discovery
-- ✅ `internal/fetcher` — HTTP downloader with sha256 sidecars, idempotent
-- ✅ `cmd/fetchcorpus` — registry-driven; FI registry has 4 OPUS sources, ET has 4. ~200 MB fetched in 19 s.
+- ✅ Module skeleton at `corpus_pipeline/` - module path `finnestdb/corpus_pipeline`, replace directive validates, smoke-test imports `finnestdb/internal/parserffi` and runs.
+- ✅ `internal/cli` - preflight (FST + dict), lang code normalization, roots resolver
+- ✅ `internal/sources` - manifest discovery
+- ✅ `internal/fetcher` - HTTP downloader with sha256 sidecars, idempotent
+- ✅ `cmd/fetchcorpus` - registry-driven; FI registry has 4 OPUS sources, ET has 4. ~200 MB fetched in 19 s.
 - ✅ `cmd/extractcorpus` with extractors: `fixture`, `text`, `md_lingq_parallel`, `epub` (pure-Go zip+XHTML, 230 EPUBs → 176 MB text in 14 s), `gz` (OPUS .txt.gz with pseudo-doc grouping)
-- ✅ `cmd/aggregatecorpus` — 4-phase in-memory aggregator: phase 1 parserffi tokenize + dedup, phase 2 parsecore.Analyze + Lemmatizer.Lemmatize multi-analysis, phase 3 mining outputs (5 TSVs initial), phase 4 deterministic ID assignment + writers.
-- ✅ `cmd/corpusverify` — preflight + hard/soft gates + fixture probes (FI Talossa→talo/Ine, ET joon→jooma/VERB+joon/NOUN), error_report.txt + error-history.jsonl on fail.
-- ✅ `cmd/corpuspromote` — chains extract→aggregate→verify, updates promotion-state.json.
+- ✅ `cmd/aggregatecorpus` - 4-phase in-memory aggregator: phase 1 parserffi tokenize + dedup, phase 2 parsecore.Analyze + Lemmatizer.Lemmatize multi-analysis, phase 3 mining outputs (5 TSVs initial), phase 4 deterministic ID assignment + writers.
+- ✅ `cmd/corpusverify` - preflight + hard/soft gates + fixture probes (FI Talossa→talo/Ine, ET joon→jooma/VERB+joon/NOUN), error_report.txt + error-history.jsonl on fail.
+- ✅ `cmd/corpuspromote` - chains extract→aggregate→verify, updates promotion-state.json.
 - ✅ Makefile with all targets: fetch/extract/aggregate/verify/promote (-fi/-et/both), bootstrap-tarball (3-way split), corpus-cache-clear.
-- ✅ `docs/CORPUS_PIPELINE.md` — operator manual with quick reference, profiles, repair loop, troubleshooting.
+- ✅ `docs/CORPUS_PIPELINE.md` - operator manual with quick reference, profiles, repair loop, troubleshooting.
 
 **Reorg done:**
 - ✅ 230 FI EPUBs → `fi-corpus/epub/raw/` (with manifest.json kind=prose format=epub)
@@ -36,7 +36,7 @@ same roadmap. Runtime corpus data stays local-only under `localdata/`.
 - FI opus-tatoeba alone: 5.4 MB → 145K sentences, 84K surfaces, 0% unresolved, 7K ambiguous, 20 s wall clock
 - FI pilot full aggregate (7 sources, ~550 MB): in progress at session-end, see v2plan.md§"Pilot status" below
 
-### Full results — FI ✅ (54 min wall clock with -scratch + docs-count fix, all 14 sources)
+### Full results - FI ✅ (54 min wall clock with -scratch + docs-count fix, all 14 sources)
 
 ```
 14 sources: fixture, manual, epub, gutenberg, opus-tatoeba, opus-bible,
@@ -68,7 +68,7 @@ Mining outputs:
   high-frequency-ambiguous.tsv:       2.1 MB
 ```
 
-### (Earlier) Pilot results — FI ✅ (5m 15s wall clock — pre-expanded set)
+### (Earlier) Pilot results - FI ✅ (5m 15s wall clock - pre-expanded set)
 
 ```sh
 $ make aggregate-corpus-fi    # 7 sources, 550 MB extracted text
@@ -89,11 +89,11 @@ Output sizes:
 - Top FI surfaces: `ja` (1.9M), `on` (881K, multi-analysis), `oli` (513K),
   `ei` (405K, multi-analysis VERB+AUX), `että` (403K), `tai` (382K)
 
-**The in-memory aggregator handled 550 MB without OOM** — peak RSS was
+**The in-memory aggregator handled 550 MB without OOM** - peak RSS was
 ~12 GB. v2.4 (SQLite scratch + concurrent workers) is NOT urgent yet;
 trigger remains "when full corpus aggregation OOMs."
 
-### Pilot results — ET (initial 6 sources, 4m 14s)
+### Pilot results - ET (initial 6 sources, 4m 14s)
 
 ```
 6 sources: fixture, lingq-parallel, 4 OPUS small
@@ -103,10 +103,10 @@ unresolved_rate:    0.0036%
 wordlist.tsv:       704 MB
 ```
 
-### Expanded results — ET (13 sources, 11 min)
+### Expanded results - ET (13 sources, 11 min)
 
 ```
-13 sources: above + 6 more OPUS + hf-err-newsroom (registry only — not yet fetched)
+13 sources: above + 6 more OPUS + hf-err-newsroom (registry only - not yet fetched)
 sentences_unique:   4,037,716
 unique_surfaces:    3,352,756
 total_tokens:       96,090,602
@@ -115,7 +115,7 @@ unresolved_rate:    0.0018%
 wordlist.tsv:       1.46 GB
 ```
 
-### Enriched results — ET (vabamorf, ~7 min)
+### Enriched results - ET (vabamorf, ~7 min)
 
 ```
 external_analyzer:        vabamorf (via estnltk.vabamorf.morf)
@@ -197,27 +197,27 @@ The detailed PR sequence lives in
 exists, what generated artifacts change, and how downstream code reconstructs
 any denormalized data that is removed.
 
-Status update — 2026-05-09:
+Status update - 2026-05-09:
 
-1. **Meaning sources research** — DONE via PR #173. Keep adding new
+1. **Meaning sources research** - DONE via PR #173. Keep adding new
    timestamped coverage reports for future meaning-source changes.
-2. **Canonical cleanup + user-friendly wordlist** — DONE via PR #174.
+2. **Canonical cleanup + user-friendly wordlist** - DONE via PR #174.
    Canonical exports keep example refs; `wordlist_user_friendly.tsv`
    carries meaning, parsed morphology, counts, provenance, parser/FST
    fingerprints, and example refs.
-3. **Sentence export + EPUB extraction cleanup** — DONE via PR #170.
+3. **Sentence export + EPUB extraction cleanup** - DONE via PR #170.
    `sentences_user_friendly.tsv` exists as the filtered sentence bank.
-4. **Later: interlinear glossing prototype** — still parked. Items 2 and 3
+4. **Later: interlinear glossing prototype** - still parked. Items 2 and 3
    are complete, so this can be picked up when the app needs morphology-aware
    learner explanations beyond lemma + meaning.
 
-## Deferred to v2 — with triggers
+## Deferred to v2 - with triggers
 
 The hard work below didn't ship in this session. Each item has a **trigger
 condition** that should make a future session pick it up. Until a trigger
 fires, the item stays parked.
 
-### v2.1 — ✅ DONE 2026-05-08
+### v2.1 - ✅ DONE 2026-05-08
 
 230 FI EPUBs moved to `fi-corpus/epub/raw/`. 49 .txt files in
 `manual/raw/` (28 originals + 20 from old text/final + 1 Pintaremontti).
@@ -226,7 +226,7 @@ consolidated into `manual/aux/{raw_html,old_text_versions,clean_archive,lists,me
 `manifest.json` written for both `epub/` and `manual/`. ET LingQ md
 files → `et-corpus/lingq-parallel/raw/`.
 
-### v2.2 — ✅ PARTIALLY DONE 2026-05-08 (expanded later in session)
+### v2.2 - ✅ PARTIALLY DONE 2026-05-08 (expanded later in session)
 
 Done:
 - `internal/fetcher/fetcher.go` (~100 LoC HTTP downloader with sha256
@@ -265,7 +265,7 @@ Still deferred (was originally ~25 sources per language):
 - **Effort**: ~2 hours per ~5 sources (mostly URL verification +
   registry entries; existing `extract_gz.go` handles all OPUS sources).
 
-### v2.3 — Format extractors — ✅ MOSTLY DONE 2026-05-08
+### v2.3 - Format extractors - ✅ MOSTLY DONE 2026-05-08
 
 - **Status**: ✅ DONE: `fixture`, `text`, `md_lingq_parallel`,
   `epub` (pure-Go zip+XHTML, 230 EPUBs → 176 MB in 14 s),
@@ -278,8 +278,8 @@ Still deferred (was originally ~25 sources per language):
   `riigikogu` (delegates to html for v1; specialize later),
   `erab` (delegates to skvr for v1),
   `eeva` (delegates to html for v1).
-- **Stubbed**: `vrt` (Yle Kielipankki — needs zip+VRT-format walker, not in active source list),
-  `wiki` (MediaWiki XML — relies on OPUS-Wikipedia .txt.gz instead which uses `gz`).
+- **Stubbed**: `vrt` (Yle Kielipankki - needs zip+VRT-format walker, not in active source list),
+  `wiki` (MediaWiki XML - relies on OPUS-Wikipedia .txt.gz instead which uses `gz`).
   Both stubs return nil (no error) so the pipeline keeps working when registry includes them.
 - **Remaining specialized extractors**: `vrt` (Yle Kielipankki) and
   `wiki` (MediaWiki XML). The other formats in the original list now have
@@ -287,7 +287,7 @@ Still deferred (was originally ~25 sources per language):
 - **Trigger**: Each individual extractor's trigger is "we want this
   source ingested." Easy to do one-at-a-time.
 
-#### v2.3 follow-up — extract_gz refinement (known issue)
+#### v2.3 follow-up - extract_gz refinement (known issue)
 
 - **Status**: Working but produces some monster sentences when input
   lines lack standard sentence-ending punctuation (e.g. EU legal
@@ -305,7 +305,7 @@ Still deferred (was originally ~25 sources per language):
   warnings flag suspicious very_long sentence rates above thresholds
   the pilot/full runs care about.
 
-### v2.4 — `cmd/aggregatecorpus` scale features — ✅ WIRED + TESTED 2026-05-08
+### v2.4 - `cmd/aggregatecorpus` scale features - ✅ WIRED + TESTED 2026-05-08
 
 `-scratch` flag wires SQLite scratch DB for sentences + occurrences +
 documents (surfaces stay in-memory). Per-source flush in phase 1
@@ -315,9 +315,9 @@ which was the WAL-write bottleneck at scale).
 
 Empirical bottlenecks fixed during this work (all live in
 learnings-from-the-first-run.md):
-1. **Per-surface `docsProse map[string]struct{}`** — replaced with
+1. **Per-surface `docsProse map[string]struct{}`** - replaced with
    counter + last-seen-doc-id. Saved ~7 GB RSS at 3M surfaces (L29).
-2. **9.5M individual UPDATE statements** to set final_id — replaced
+2. **9.5M individual UPDATE statements** to set final_id - replaced
    with bulk-load of `(hash, text)` into a Go map and write-time
    resolution via in-memory hash→id (L38).
 
@@ -325,7 +325,7 @@ Tested: FI fixture + smoke (sub-second), FI full-scratch (~14 min in
 flight at session-end-2 with 6.99M sentences flushed; will finish
 phase 2/4 and produce wordlist).
 
-### v2.5 — Mining: parser-disagreements + internal-consensus — ✅ DONE 2026-05-08
+### v2.5 - Mining: parser-disagreements + internal-consensus - ✅ DONE 2026-05-08
 
 Phase 2 of `cmd/aggregatecorpus` now also calls `parsecore.Analyze(... "basic")`
 alongside the `"custom"` call, captures both choices, and:
@@ -335,7 +335,7 @@ alongside the `"custom"` call, captures both choices, and:
   custom + FST top hit all agree on (lemma, pos)
 Both sorted by surface_count_prose desc.
 
-### v2.6 — `cmd/enrichcorpus` — ✅ DONE 2026-05-08 (graceful skip, untested at scale)
+### v2.6 - `cmd/enrichcorpus` - ✅ DONE 2026-05-08 (graceful skip, untested at scale)
 
 `cmd/enrichcorpus -lang fi|et` runs.
 - FI: looks for `omorfi-disamb-cmdline` on PATH (or `FINNESTDB_OMORFI_CMD`).
@@ -346,10 +346,10 @@ Both sorted by surface_count_prose desc.
   isn't available. Exit 0 so promotion ladder stays green.
 
 Tested: graceful-skip path (omorfi + estnltk both missing on this machine).
-**Not tested**: actual enrichment with installed analyzer — requires
+**Not tested**: actual enrichment with installed analyzer - requires
 `brew install omorfi` (FI) or `pip install estnltk` (ET).
 
-### v2.7 — `cmd/epubdeck` — ✅ DONE 2026-05-08
+### v2.7 - `cmd/epubdeck` - ✅ DONE 2026-05-08
 
 Per-book wordlist extractor. Reads `localdata/{lang}-corpus/epub/per-book/<slug>.txt`
 (produced by extract_epub), runs aggregator-style parserffi tokenize +
@@ -359,12 +359,12 @@ example_text per row.
 
 Tested: 1 book ("Kostaja" by Alastair Reynolds) → 5.4 MB deck in 9 seconds.
 Top entries reveal real ambiguity (`on` → olla VERB / `kuin` → mistakenly
-NOUN-instrumental). Standalone — doesn't pollute main wordlist.
+NOUN-instrumental). Standalone - doesn't pollute main wordlist.
 
 `make epub-deck-fi EPUB=<filename>` runs one specific book; without
 `EPUB=` runs all 230.
 
-### v2.8 — Gutenberg scraper — ✅ DONE 2026-05-08 (Makefile delegation)
+### v2.8 - Gutenberg scraper - ✅ DONE 2026-05-08 (Makefile delegation)
 
 Main repo's `cmd/scrapegutenberg/main.go` already supports `-lang fi|et`.
 Added Makefile targets `scrape-gutenberg-fi` / `scrape-gutenberg-et` that
@@ -372,7 +372,7 @@ invoke it with `-out localdata/{lang}-corpus/gutenberg/raw/` and
 `-manifest localdata/{lang}-corpus/gutenberg/manifest.jsonl`. No new Go
 code. Honors the cleanliness invariant.
 
-### v2.9 — Pilot + full profile runs
+### v2.9 - Pilot + full profile runs
 
 - **Status**: Profiles exist as concepts; only smoke runs end-to-end.
 - **Missing**: `cmd/corpuspromote` doesn't yet drive the fetcher with
@@ -381,7 +381,7 @@ code. Honors the cleanliness invariant.
 - **Trigger**: Once enough format extractors exist that pilot has
   meaningful coverage (~3-5 sources per language minimum).
 
-### v2.10 — Bootstrap tarball (3-way split)
+### v2.10 - Bootstrap tarball (3-way split)
 
 - **Status**: Not started.
 - **Missing**: `make bootstrap-tarball` target that produces
@@ -389,16 +389,16 @@ code. Honors the cleanliness invariant.
 - **Effort**: ~30 minutes (just tar invocations).
 - **Trigger**: User wants to hand off the corpus to another machine.
 
-### v2.11 — Operator doc `docs/CORPUS_PIPELINE.md`
+### v2.11 - Operator doc `docs/CORPUS_PIPELINE.md`
 
-- **Status**: Stub only (this file). The full operator doc — table of
+- **Status**: Stub only (this file). The full operator doc - table of
   every make target with what/when/wall-clock/outputs, plus
-  troubleshooting playbook — is not written.
+  troubleshooting playbook - is not written.
 - **Effort**: ~1.5 hours.
 - **Trigger**: When someone other than the original implementer needs
   to operate the pipeline.
 
-### v2.12 — ET corpus parity — ⚠️ PARTIALLY DONE 2026-05-08
+### v2.12 - ET corpus parity - ⚠️ PARTIALLY DONE 2026-05-08
 
 Done:
 - ✅ HF err-newsroom (TalTechNLP/err-newsroom train.json.gz, 169 MB)
@@ -446,7 +446,7 @@ After every session, `git status --porcelain` from the repo root should show
 **no unintended deltas outside `corpus_pipeline/` or `localdata/`** vs. the
 pre-session snapshot.
 Pre-existing unrelated state (e.g. `design/*.jsx` untracked files) is
-fine — only the delta matters.
+fine - only the delta matters.
 
 The `corpus_pipeline/` folder is tracked source. Everything under
 `localdata/{fi,et}-corpus/` is gitignored and stays purely local.

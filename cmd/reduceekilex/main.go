@@ -3,7 +3,7 @@
 //
 //   - details-compact.jsonl: one line per word_id with lemma, morphology
 //     metadata, datasets, and per-meaning definitions/usages/translations
-//     (Estonian + English). Reconstruction is lossy by design — see the
+//     (Estonian + English). Reconstruction is lossy by design - see the
 //     dropped fields list in the README for what was excluded.
 //
 //   - forms.tsv: one row per inflected form (lemma, form, morph_code).
@@ -225,7 +225,7 @@ func reduce(raw rawWordDetails) (compactWord, []formRow) {
 			}
 		}
 		// drop entirely empty meanings (lexemes that contributed nothing
-		// after filtering — common for ety / cross-dictionary placeholder
+		// after filtering - common for ety / cross-dictionary placeholder
 		// lexemes that only carry foreign-language synonyms)
 		if isEmptyMeaning(m) {
 			continue

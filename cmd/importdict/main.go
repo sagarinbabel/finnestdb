@@ -117,7 +117,7 @@ const upsertLemmaSQL = `INSERT INTO lemmas (lemma, pos, gloss, lang, source, sou
 	WHERE lemmas.source_priority <= excluded.source_priority`
 
 // upsertFormSQL writes a form row including UD FEATS. The conflict update
-// refreshes feats too — re-importing the same source after the FEATS mapper
+// refreshes feats too - re-importing the same source after the FEATS mapper
 // learns a new tag (or kaikki upstream flips a tag) propagates the change
 // instead of silently keeping the old NULL.
 //
@@ -137,7 +137,7 @@ const upsertFormSQL = `INSERT INTO forms (form, lemma, pos, lang, source, source
 // translations table. PK (lemma, pos, lang, target_lang, sense_idx, source)
 // lets multiple sources coexist (kaikki + Ekilex translations for the same
 // headword don't overwrite each other). On conflict within the SAME source
-// — i.e. re-running an import after upstream gloss text changed — the
+// - i.e. re-running an import after upstream gloss text changed - the
 // `text` column is refreshed; without this, kaikki dumps with edited
 // glosses would silently keep the old text. target_lang is hard-coded to
 // 'EN' because both FI and ET dumps from kaikki.org are en.wiktionary
@@ -469,19 +469,19 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 
 	// Wipe this source's existing translations for this language before
 	// importing. Without this, an entry whose senses[] shrunk upstream
-	// would leave its old sense_idx rows stranded — the upsert below
+	// would leave its old sense_idx rows stranded - the upsert below
 	// refreshes rows that still exist but never deletes ones that
 	// disappeared. Scoped by (lang, source) so other sources' rows
 	// (e.g. ekilex translations once PR 4 ships) are preserved across
 	// a kaikki rerun. Lemmas/forms don't need analogous cleanup because
-	// their PKs are stable — kaikki always emits the same canonical
+	// their PKs are stable - kaikki always emits the same canonical
 	// headword + form rows for an entry, only sense lists drift.
 	//
 	// Inside the first batch's transaction so a failure before the first
 	// commit (e.g. truncated stream, reader error before any entry is
 	// processed) rolls the delete back along with any partial inserts.
 	// Without this, a stream failure would leave the dictionary with no
-	// translations for this source — strictly worse than the pre-import
+	// translations for this source - strictly worse than the pre-import
 	// state the import was supposed to refresh.
 	if _, err := tx.Exec(`DELETE FROM translations WHERE lang = ? AND source = ?`, dbLang, source.Name); err != nil {
 		tx.Rollback()
@@ -552,7 +552,7 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 		// Wiktionary "form-of" restatements (e.g. "partitive singular of
 		// vuosi") in favour of the first real meaning gloss. The full
 		// senses[].glosses[] data is also written to the translations
-		// table below — lemmas.gloss is the denormalised "primary
+		// table below - lemmas.gloss is the denormalised "primary
 		// translation" cache for the existing UI's fast paths.
 		flatGlosses := make([][]string, len(entry.Senses))
 		for i, s := range entry.Senses {
@@ -566,7 +566,7 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 		}
 
 		// Insert each gloss as a translation row. sense_idx is a flat
-		// counter across (sense, gloss) pairs — preserves order, gives
+		// counter across (sense, gloss) pairs - preserves order, gives
 		// each row a unique sense_idx so the PK doesn't conflict within
 		// the same source. We deliberately don't preserve "which glosses
 		// belong to the same sense" structure; if that becomes useful
@@ -599,7 +599,7 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 
 		// Insert the canonical form → lemma mapping (lemma maps to itself).
 		// Lemma form gets Reflex=Yes for known reflexive pronoun headwords;
-		// no other FEATS — kaikki doesn't tag the headword itself, and the
+		// no other FEATS - kaikki doesn't tag the headword itself, and the
 		// dictionary form has no inflectional context.
 		lemmaFeats := withReflex("", entry.Word, pos)
 		stmtForm.Exec(entry.Word, entry.Word, pos, dbLang, source.Name, source.Priority, lemmaFeats)
@@ -650,7 +650,7 @@ func importJSONL(db *sql.DB, r io.Reader, dbLang string, source importSourceConf
 // each form row whose feats column is NULL, computing FEATS from the
 // kaikki Tags via kaikkiTagsToFeats. Rows already populated (e.g. by an
 // earlier importdict run that already had the FEATS mapper, or by the
-// Ekilex pipeline for ET) are left untouched — the WHERE feats IS NULL
+// Ekilex pipeline for ET) are left untouched - the WHERE feats IS NULL
 // guard is in the UPDATE statement.
 //
 // Returns (rowsUpdated, formsScanned, error).
@@ -767,7 +767,7 @@ func applyCustomGlosses(db *sql.DB, filePath, dbLang string) (int, error) {
 	r.TrimLeadingSpace = true
 
 	// Skip header row if present.
-	// An empty file (or one with only comments) is not an error — 0 overrides.
+	// An empty file (or one with only comments) is not an error - 0 overrides.
 	header, err := r.Read()
 	if err == io.EOF {
 		return 0, nil
@@ -779,7 +779,7 @@ func applyCustomGlosses(db *sql.DB, filePath, dbLang string) (int, error) {
 	if strings.EqualFold(header[0], "word") || strings.EqualFold(header[0], "lemma") {
 		// header row consumed; proceed to data rows
 	} else {
-		// Not a header — process this row as data.
+		// Not a header - process this row as data.
 		if len(header) >= 4 {
 			pos := normalizePos(header[1])
 			db.Exec(upsertLemmaSQL,

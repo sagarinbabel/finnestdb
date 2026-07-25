@@ -22,7 +22,7 @@ const rareFormRankThreshold = 6000
 // lowercased surface form. When freqRanks is nil, MeanFrequencyRank is set to
 // -1 (the "no baseline" sentinel the difficulty model redistributes weight
 // around) and RareFormRate is computed structurally as the unresolved rate's
-// companion is not — instead RareFormRate is left at 0 so it does not
+// companion is not - instead RareFormRate is left at 0 so it does not
 // double-count with the unresolved signal.
 func computeMetrics(res *parsecore.ParseResult, freqRanks map[string]int) catalog.Metrics {
 	m := catalog.Metrics{
@@ -94,7 +94,7 @@ func computeMetrics(res *parsecore.ParseResult, freqRanks map[string]int) catalo
 
 	// Round the derived metric fields BEFORE scoring so the stored Score is
 	// exactly what BucketFromMetrics recomputes from the checked-in (rounded)
-	// metrics — otherwise a re-derivation from the JSON would drift in the
+	// metrics - otherwise a re-derivation from the JSON would drift in the
 	// last digit and break the reproducibility guarantee.
 	m.UnresolvedRate = round4(m.UnresolvedRate)
 	m.UniqueFormRatio = round4(m.UniqueFormRatio)

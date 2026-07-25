@@ -59,13 +59,13 @@ oikein lautamiehen kanssa ja kovistellut häntä ihmisten narraamisesta.
 Tapahtui, että eräänä huhtikuun aamuna Aholan renki tuli heinästä ja
 sanoi, että ladolla oli käynyt varkaita.
 
-— Etköhän liene ereyksessä, sanoi isäntä. Pekka lienee hakenut
+- Etköhän liene ereyksessä, sanoi isäntä. Pekka lienee hakenut
 kevätheiniä. Mistä ne nyt rosvot!
 
-— Mutta nämä olivat ison miehen jäljet, väitti renki. Ei Pekka kykene
+- Mutta nämä olivat ison miehen jäljet, väitti renki. Ei Pekka kykene
 niin pitkään astumaan.
 
-— Vai olivat askelten välit pitkät. Sitten se on saattanut hyvinkin
+- Vai olivat askelten välit pitkät. Sitten se on saattanut hyvinkin
 olla varas. Mene hakemaan lautamies ja pari isäntää tänne niin
 lähdetään syynille.
 
@@ -76,10 +76,10 @@ muodosta ja suuruudesta, samoinkuin kelkkahäkin jalaksienkin jättämistä
 jäljistä. Mutta jonkun matkaa kulettua alkoivat askelet lyhetä. Silloin
 sanoi jo toinen syynimies:
 
-— Palataan takaisin! Näkeehän tämän jo nyt, etteivät nämä ole mitään
+- Palataan takaisin! Näkeehän tämän jo nyt, etteivät nämä ole mitään
 rosvon jälkiä! Hiiri-Pekan askelet.
 
-— Ei! Käydään haukkumassa sitä hunsvottia, kun kehtaa vielä pettää
+- Ei! Käydään haukkumassa sitä hunsvottia, kun kehtaa vielä pettää
 ihmisiä, sanoi Aholan isäntä itse.
 
 Niin he menivät. Silloin sen Pekan oli kuultava, että pitää kulkea
@@ -97,10 +97,10 @@ hän ei ollut muuta hoksannut, oli hän harpponut pitempään kuin lyhyet
 säärensä olisivat oikeastaan myöntäneet, siinä tarkoituksessa, että
 epäluulot eivät lankeaisi ainakaan häneen, matalaan mieheen.
 
-— No, tämähän se juuri osoittaa, sanoi toinen isännistä, että siinä on
+- No, tämähän se juuri osoittaa, sanoi toinen isännistä, että siinä on
 epärehellisyyden vikaa...
 
-— Jospa se otti tämän opikseen.
+- Jospa se otti tämän opikseen.
 
 Eikä siinä kylässä sen jälkeen varkauksista kuultu. Jos Hiiri-Pekka
 kulkikin yöllisillä, hiljaisilla verotusretkillään, niin hän teki sen

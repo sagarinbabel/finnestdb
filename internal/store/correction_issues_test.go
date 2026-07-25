@@ -267,7 +267,7 @@ func TestRestorePreservesSchedulerState(t *testing.T) {
 		t.Fatalf("RecordReviewAnswer kissa: %v", err)
 	}
 
-	// Restore koira: its scheduler state must be exactly what it was — quarantine
+	// Restore koira: its scheduler state must be exactly what it was - quarantine
 	// pauses circulation, it does not reset memory.
 	if err := db.RestoreCorrectionIssue(issueID, admin.ID, "fixed"); err != nil {
 		t.Fatalf("restore: %v", err)

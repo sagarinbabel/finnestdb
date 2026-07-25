@@ -5,7 +5,7 @@ const { useState: useStateMs, useEffect: useEffectMs, useRef: useRefMs } = React
 // SHARED HOOKS / PRIMITIVES
 // ════════════════════════════════════════════════════════════════════════════
 
-// Phased word-by-word parsing animation — drives the wordlist reveal.
+// Phased word-by-word parsing animation - drives the wordlist reveal.
 function useStaggerReveal(count, { delay = 80, startDelay = 200, deps = [] } = {}) {
   const [revealed, setRevealed] = useStateMs(0);
   useEffectMs(() => {
@@ -32,7 +32,7 @@ function PulseDot({ size = 6, color = "currentColor" }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// SWIPE REVIEW CARD — used by all three platforms
+// SWIPE REVIEW CARD - used by all three platforms
 // ════════════════════════════════════════════════════════════════════════════
 
 function SwipeReviewCard({ tone = "web", width = 340, height = 540 }) {

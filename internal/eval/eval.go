@@ -89,7 +89,7 @@ type ParserSummary struct {
 	POSAccuracy    float64 `json:"pos_accuracy"`
 	// LemmaPOSAccuracy is the joint "did the surface form attach to the right
 	// dictionary entry?" metric: fraction of evaluated tokens where lemma AND
-	// POS both match gold. Dictionary entries are keyed by (lemma, POS) — a
+	// POS both match gold. Dictionary entries are keyed by (lemma, POS) - a
 	// homograph like Finnish "kuusi" (NOUN spruce vs NUM six) only routes to
 	// the right entry when both fields land. Tracked alongside LemmaAccuracy
 	// because LemmaAccuracy alone overstates attachment when POS is wrong on
@@ -559,7 +559,7 @@ func compareCase(c DatasetCase, parsed *parsecore.ParseResult) []TokenCompare {
 		// featsFullMatch defaults true when gold has no FEATS, so older
 		// gold sets that only specify lemma/POS/grammar_label keep the
 		// pre-FEATS Full semantics. When gold supplies FEATS, every
-		// expected attribute must match for Full to hold — otherwise a
+		// expected attribute must match for Full to hold - otherwise a
 		// Number/Tense/Mood divergence (which the case-only Grammar
 		// metric can't see) would keep Full inflated.
 		featsFullMatch := true
@@ -586,7 +586,7 @@ func compareCase(c DatasetCase, parsed *parsecore.ParseResult) []TokenCompare {
 
 // parseFeats splits a UD FEATS string ("Case=Ine|Number=Sing") into a
 // map[attribute]value. Returns an empty map for empty input. Malformed
-// segments (no '=' or empty key/value) are skipped silently — gold sets
+// segments (no '=' or empty key/value) are skipped silently - gold sets
 // occasionally contain such entries during authoring and a strict parse
 // would fail the whole eval over a typo.
 func parseFeats(s string) map[string]string {

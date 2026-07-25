@@ -1,6 +1,6 @@
 package main
 
-// ET source registry — v1 minimal: 4 verified OPUS sources for pilot.
+// ET source registry - v1 minimal: 4 verified OPUS sources for pilot.
 var sourcesET = []Source{
 	{
 		Slug:     "opus-tatoeba",
@@ -118,7 +118,7 @@ var sourcesET = []Source{
 		URL:      "https://object.pouta.csc.fi/OPUS-DocHPLT/v3/mono/et.txt.gz",
 		Filename: "et.txt.gz",
 		License:  "CC0 (HPLT)",
-		Notes:    "DocHPLT v3 — biggest single ET corpus, ~5.07 GB compressed",
+		Notes:    "DocHPLT v3 - biggest single ET corpus, ~5.07 GB compressed",
 	},
 	{
 		Slug: "opus-ccmatrix", Lang: "et", Kind: "prose", Format: "gz",

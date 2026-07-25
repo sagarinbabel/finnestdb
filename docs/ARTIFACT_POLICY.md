@@ -41,7 +41,7 @@ This guarantees:
 - A fresh `setup-local.sh` run leaves the working tree with `git status`
   empty (only `localdata/` and `finnestdb.db` change, both gitignored).
 - The data ledger in [`docs/data_enhancement.md`](data_enhancement.md)
-  has a single root path to track per source — no scattered exceptions.
+  has a single root path to track per source - no scattered exceptions.
 
 When adding a new corpus or generator, write to a subdirectory of
 `localdata/` from day one. Do NOT introduce a sibling like `data/`
@@ -57,13 +57,13 @@ or `corpora/`.
 - **License / attribution text** for upstream sources (for auditability),
   in directories like `pkg/lemmatizer-fi-et/data/{fi,et}/LICENSE-*.txt`.
 - **Tiny, hand-authored test fixtures** under `testdata/`. These must be
-  unquestionably ours — never extracts from upstream content. Golden files
+  unquestionably ours - never extracts from upstream content. Golden files
   for parser/reducer tests are fine; full grammar baselines are fine
   (they're our measurement output, not third-party content).
 - **Eval baseline reports** under [`docs/baselines/`](baselines/). These
   are our measurement output (`cmd/parsertest` → `.json.gz`, plus markdown
   summaries). They're frozen per-PR for regression detection without keeping
-  pretty-printed raw JSON as hundreds of thousands of docs lines — see
+  pretty-printed raw JSON as hundreds of thousands of docs lines - see
   [`docs/PARSER_EVOLUTION.md`](PARSER_EVOLUTION.md) for the cross-PR
   narrative.
 
@@ -84,7 +84,7 @@ steps require an `EKILEX_API_KEY`.
 For sharing the populated state with a teammate (e.g. so they can skip a
 multi-hour Ekilex scrape), zip up `localdata/` and `finnestdb.db` and
 deliver them out of band; both are gitignored and the receiver drops them
-in place. In production this goes away — the server hosts the populated
+in place. In production this goes away - the server hosts the populated
 DB and the repo carries no runtime data.
 
 ## Why "tracked factual tables" are now forbidden too
@@ -93,7 +93,7 @@ Earlier versions of this policy allowed offline-generated factual tables
 (JSON/TSV with derived lemma/UD-features) to be committed since they were
 "plain data, not blobs". Tightened on 2026-05-07 because:
 
-- They are still upstream content, just reshaped — same redistribution
+- They are still upstream content, just reshaped - same redistribution
   question on a smaller scale.
 - They rot when the upstream analyser version changes; tracking them
   hides the rot behind a green CI.
@@ -119,4 +119,4 @@ runtime composer prefers the persisted field; older table snapshots
 without `Feats` still load and recompose on the fly, so the policy
 doesn't force regeneration. When a maintainer regenerates against
 their local upstream analyser, the new `Feats` field falls out for
-free — `genlemmatizertables` doesn't need a new flag.
+free - `genlemmatizertables` doesn't need a new flag.

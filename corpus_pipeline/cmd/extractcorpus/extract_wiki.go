@@ -23,7 +23,7 @@ import (
 // surface noise in a real dump: {{templates}}, [[links]], <ref>...</ref>,
 // File/Image/Category links, HTML tags, tables, headings, list markers,
 // and HTML entities. It is intentionally not a faithful MediaWiki parser
-// (those are vastly more complex) — just enough to leave clean prose
+// (those are vastly more complex) - just enough to leave clean prose
 // paragraphs that parserffi can tokenize sensibly.
 func extractWiki(dir string, m sources.Manifest) error {
 	rawDir := filepath.Join(dir, "raw")
@@ -212,7 +212,7 @@ func extractWikiStream(rc io.Reader, slug, rawPath string, textW *bufio.Writer, 
 	return articlesKept, articlesSkipped, nil
 }
 
-// MediaWiki markup stripping. Order matters — strip nested constructs
+// MediaWiki markup stripping. Order matters - strip nested constructs
 // (templates, refs) before splitting on lines.
 
 var (

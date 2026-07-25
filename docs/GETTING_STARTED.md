@@ -206,7 +206,7 @@ finnestdb/
 **"Database error":**
 - Check file permissions for the database file
 - On a fresh clone only: deleting `finnestdb.db` and restarting creates a new
-  empty database. Never do this to a populated multi-GB database — that is the
+  empty database. Never do this to a populated multi-GB database - that is the
   real dictionary. Small ~100 KB `finnestdb.db` files are auto-created stubs.
 
 **"Parse error":**
@@ -249,13 +249,13 @@ This is an alpha implementation with the following limitations:
 ### Next Steps
 
 Current direction: start from [`../TODO.md` "LLM handoff read
-order"](../TODO.md#llm-handoff-read-order) — it points at the public-alpha
+order"](../TODO.md#llm-handoff-read-order) - it points at the public-alpha
 gates, launch issue ledger, go/no-go rubric, and implementation specs.
 
 ## Support
 
 For issues or questions, please check:
-- [`INDEX.md`](INDEX.md) — the documentation map ([`FOR_MICHAEL.md`](FOR_MICHAEL.md) for the question-routing table)
+- [`INDEX.md`](INDEX.md) - the documentation map ([`FOR_MICHAEL.md`](FOR_MICHAEL.md) for the question-routing table)
 - Server logs for detailed error messages
 - Browser console for frontend errors
 

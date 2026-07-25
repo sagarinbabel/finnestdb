@@ -9,7 +9,7 @@ import (
 // The checked-in catalog is a shipped product artifact, so these tests guard
 // its integrity: every entry must resolve to a readable fixture, expose
 // non-empty license provenance (license discipline), and carry an approved
-// human review if and only if reviews.json signed it off — no entry may claim
+// human review if and only if reviews.json signed it off - no entry may claim
 // a sign-off it did not get, and none may hide one it did.
 
 // reviewedIDs returns the set of entry ids that reviews.json signs off on. The

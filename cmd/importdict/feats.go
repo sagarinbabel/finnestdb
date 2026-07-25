@@ -9,18 +9,18 @@ import "strings"
 // kaikki tags are lowercase English words: ["illative","singular"],
 // ["comparative"], ["first-person","present","indicative","singular"], etc.
 // The vocabulary is small and stable across both Finnish and Estonian
-// extracts — they share the same Wiktionary tag dictionary.
+// extracts - they share the same Wiktionary tag dictionary.
 //
 // Coverage philosophy mirrors cmd/importekilexdetails::ekilexMorphToFeats:
 //   - Map every tag with a clear UD FEATS equivalent.
 //   - Use upos to disambiguate where the same tag has different meanings
 //     across categories (e.g. "passive" on a verb is Voice=Pass; on an
-//     adjective participle it stays Voice=Pass too — same here).
-//   - Polarity is NOT inferred — Polarity=Neg in FI/ET is a sentence-level
+//     adjective participle it stays Voice=Pass too - same here).
+//   - Polarity is NOT inferred - Polarity=Neg in FI/ET is a sentence-level
 //     signal driven by the auxiliary "ei" particle, not a per-form lookup.
 //     Adapter pipelines (omorfi, estnltk) emit it from full-sentence context;
 //     dict layer correctly leaves it empty.
-//   - Empty result is a fine signal — caller stores NULL, and FST/adapter
+//   - Empty result is a fine signal - caller stores NULL, and FST/adapter
 //     paths can still backfill at parse time.
 //
 // Reflexive pronouns are recognized lexically by the caller via
@@ -85,7 +85,7 @@ func joinSortedFeats(pairs map[string]string) string {
 	for k := range pairs {
 		keys = append(keys, k)
 	}
-	// Cheap insertion sort — len is at most ~8.
+	// Cheap insertion sort - len is at most ~8.
 	for i := 1; i < len(keys); i++ {
 		for j := i; j > 0 && keys[j-1] > keys[j]; j-- {
 			keys[j-1], keys[j] = keys[j], keys[j-1]
@@ -189,7 +189,7 @@ var kaikkiPronTypeTags = map[string]string{
 }
 
 // kaikkiReflexiveLemmas is the static set of FI/ET reflexive-pronoun
-// lemmas. Reflex=Yes is lemma-level, not per-form-tag — kaikki doesn't
+// lemmas. Reflex=Yes is lemma-level, not per-form-tag - kaikki doesn't
 // emit a "reflexive" tag on individual forms, so we identify them by
 // headword. Caller passes the lemma; if it matches, append Reflex=Yes
 // to whatever the tags produced.
@@ -198,7 +198,7 @@ var kaikkiPronTypeTags = map[string]string{
 // separately. The lemma is "itse"; case-marked forms of "itse" inherit
 // reflexivity through standard inflection.
 //
-// Estonian: enese / enda — both are dictionary lemmas of the same
+// Estonian: enese / enda - both are dictionary lemmas of the same
 // reflexive paradigm (one suppletive lemma family).
 var kaikkiReflexiveLemmas = map[string]bool{
 	"itse":  true, // FI

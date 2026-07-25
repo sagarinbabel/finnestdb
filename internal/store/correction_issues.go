@@ -99,7 +99,7 @@ func normalizeIssueSurface(surface string) string {
 //
 // reportedAt is passed in (rather than read from the row) so the caller can use
 // the same timestamp it stamped on the feedback row. The reporter's user id is
-// not needed here — distinct_reporter_count is recomputed from the linked
+// not needed here - distinct_reporter_count is recomputed from the linked
 // parse_feedback rows by recountIssue after the row is linked.
 func groupFeedbackIntoIssue(tx *sql.Tx, lang, parser, surface, lemma, pos string, reportedAt time.Time) (int64, error) {
 	lang = strings.TrimSpace(lang)
@@ -335,7 +335,7 @@ func (d *DB) TriageCorrectionIssue(issueID int64, alphaClass, adminNote string) 
 // the issue quarantined so its scoped content is suppressed globally. It
 // requires a prior alpha class (ErrIssueNeedsClass) and a non-empty reason
 // (ErrQuarantineReasonRequired). Suppression is applied by the review/new-card
-// and stats queries filtering on quarantined issues — see
+// and stats queries filtering on quarantined issues - see
 // suppressedCardPredicate / suppressedOccurrencePredicate.
 func (d *DB) QuarantineCorrectionIssue(issueID, adminUserID int64, reason string) error {
 	reason = strings.TrimSpace(reason)
@@ -410,13 +410,13 @@ func errIfNoRows(res sql.Result) error {
 //
 //   - Card scope: an issue with a concrete (lemma, pos) suppresses the review
 //     card and occurrences of that (lang, lemma, pos). This is the parser-
-//     identity scope — the analysis said "kissa/NOUN" and that identity is bad.
+//     identity scope - the analysis said "kissa/NOUN" and that identity is bad.
 //     Because review cards are now surface-form-in-context, one (lemma, pos)
 //     issue suppresses every surface card sharing that sense.
 //   - Surface scope: an issue with empty lemma/pos (flag-only / surface-only)
 //     suppresses occurrences of that (lang, normalized surface). Review cards
 //     now carry surface_norm, so a surface-only issue also suppresses cards
-//     whose surface matches — regardless of their sense — matching the
+//     whose surface matches - regardless of their sense - matching the
 //     occurrence-scope semantics.
 //
 // Only status = 'quarantined' issues suppress. open/fixed/reopened do not.

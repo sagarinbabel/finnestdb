@@ -4,8 +4,8 @@
 //
 // The specs file holds only human-authored provenance metadata (id, language,
 // title, author, genre, source URL, corpus source, license, attribution,
-// fixture filename, import date). Everything computed — difficulty, the raw
-// difficulty metrics, the (lemma, pos) + count list, text length, word count —
+// fixture filename, import date). Everything computed - difficulty, the raw
+// difficulty metrics, the (lemma, pos) + count list, text length, word count -
 // is derived here by parsing each fixture through the REAL custom-mode
 // pipeline (internal/parsecore) and applying the deterministic difficulty
 // model in internal/catalog. The checked-in catalog.json must be exactly what
@@ -47,7 +47,7 @@ import (
 )
 
 // spec is one human-authored catalog source entry. Computed fields are NOT in
-// the spec — they are derived from the fixture at generation time.
+// the spec - they are derived from the fixture at generation time.
 type spec struct {
 	ID           string `json:"id"`
 	Language     string `json:"language"` // "fi" | "et"
@@ -95,7 +95,7 @@ func run(specsPath, dataDir, dbPath, freqDir, out, reviewsPath string, check boo
 	}
 	defer db.Close()
 
-	// Load frequency baselines per language once. Missing files are fine —
+	// Load frequency baselines per language once. Missing files are fine -
 	// difficulty falls back to the no-baseline path and logs it.
 	freqByLang := map[string]map[string]int{}
 	for _, lang := range []string{"fi", "et"} {
@@ -260,7 +260,7 @@ type reviewsFile struct {
 	Reviews map[string]review `json:"reviews"`
 }
 
-// loadReviews reads the human review file. A missing file is not an error —
+// loadReviews reads the human review file. A missing file is not an error -
 // it simply means every entry stays "pending".
 func loadReviews(path string) (map[string]review, error) {
 	raw, err := os.ReadFile(path)

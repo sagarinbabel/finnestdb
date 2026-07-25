@@ -9,7 +9,7 @@
 //     existing 150k-key FST coverage.
 //
 //  2. Every distinct surface in `forms` whose suffix matches a Finnish
-//     non-finite paradigm slot — MA-infinitive case forms (5 slots),
+//     non-finite paradigm slot - MA-infinitive case forms (5 slots),
 //     E-infinitive inessive, and 4th-infinitive minen-noun. Kaikki
 //     ships these inflected surfaces but mostly tags them as the
 //     verb headword in `forms`; running them through Voikko gives a
@@ -124,7 +124,7 @@ func main() {
 }
 
 // collectDictLemmas inserts every distinct lowercase lemma in
-// forms.lang=lang into out. Lemmas are the citation forms — for
+// forms.lang=lang into out. Lemmas are the citation forms - for
 // Finnish that's the 1st-infinitive for verbs, nominative for nouns,
 // etc. They're what the previous wordlist sourced from, so keeping
 // them preserves the existing FST table's headword coverage.
@@ -185,7 +185,7 @@ var nonFiniteSuffixGlobs = []string{
 // matching a non-finite suffix pattern into out. Voikko at table-gen
 // time discards any surface it can't analyse, so over-matching here
 // (e.g. compound nouns ending in `-massa` like `betonimassa`) is
-// safe — they survive as legitimate noun readings.
+// safe - they survive as legitimate noun readings.
 func collectNonFiniteSurfaces(db *sql.DB, lang string, out map[string]struct{}) (int, error) {
 	// Build one disjunctive WHERE clause so we do a single table scan.
 	parts := make([]string, len(nonFiniteSuffixGlobs))
@@ -221,7 +221,7 @@ func collectNonFiniteSurfaces(db *sql.DB, lang string, out map[string]struct{}) 
 }
 
 // synthesizeAInfLong inserts lemma+suffix for every (verb lemma, A-inf
-// long suffix) pair. The synthesis is mechanical — Voikko will reject
+// long suffix) pair. The synthesis is mechanical - Voikko will reject
 // any non-Finnish or invalid combinations at table-generation time, so
 // over-generating here is safe.
 func synthesizeAInfLong(db *sql.DB, lang string, out map[string]struct{}) (int, error) {

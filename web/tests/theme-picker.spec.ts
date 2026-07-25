@@ -94,7 +94,7 @@ test('theme choice persists across a reload', async ({ page }) => {
 test('switching back to Ink · Light applies and persists', async ({ page }) => {
   await mockAnonMe(page);
   await page.goto('/');
-  // Start on aalto, then switch back — proves the picker is not one-way.
+  // Start on aalto, then switch back - proves the picker is not one-way.
   await openPicker(page);
   await page.locator('.theme-option[data-skin="aalto"][data-mode="dark"]').click();
   await openPicker(page);

@@ -2,7 +2,7 @@
 # Online backup of the FinEstDB SQLite database.
 #
 # Uses sqlite3's .backup (the online backup API), which is safe against a live
-# WAL-mode database — never cp/rsync the raw file while the server is running,
+# WAL-mode database - never cp/rsync the raw file while the server is running,
 # that races the WAL and can produce a corrupt copy.
 #
 # The database holds BOTH the rebuildable dictionary and the unrebuildable

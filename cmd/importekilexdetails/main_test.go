@@ -128,9 +128,9 @@ func TestChooseCasing(t *testing.T) {
 		{"Calvinism", "calvinism", "Calvinism"},
 		{"calvinism", "Calvinism", "Calvinism"},
 		{"Turbot", "turbot", "Turbot"},
-		// Two title-case forms — lexicographic tiebreak.
+		// Two title-case forms - lexicographic tiebreak.
 		{"Calvinism", "CALVINISM", "CALVINISM"},
-		// Two lowercase forms — lexicographic tiebreak.
+		// Two lowercase forms - lexicographic tiebreak.
 		{"line", "Line", "Line"},
 		{"line", "lyne", "line"},
 		// Empty edge case: "" never has uppercase, the other wins.
@@ -145,7 +145,7 @@ func TestChooseCasing(t *testing.T) {
 }
 
 func TestLemmaPOSMap_CaseTiebreakDeterministic(t *testing.T) {
-	// Same dedup result regardless of input order — guards against
+	// Same dedup result regardless of input order - guards against
 	// last-write-wins regressions.
 	a := lemmaPOSMap{}
 	a.add("kalvados", "NOUN", []string{"calvados", "Calvados"}, nil)
@@ -171,13 +171,13 @@ func TestImporter_EndToEnd_HandlesHomonymsAndEmptyGlossGuard(t *testing.T) {
 	defDir := filepath.Join(tmp, "definitions")
 	formsDir := filepath.Join(tmp, "forms")
 	if err := writeAll(defDir, "j.jsonl",
-		// jooma#1 — verb (drink), with EN translations
+		// jooma#1 - verb (drink), with EN translations
 		`{"word_id":1,"lemma":"jooma","homonym_nr":1,"word_class":"verb","meanings":[{"pos":["v"],"translations_en":["drink"]}]}`+"\n"+
-			// jooma#2 — noun (drinking party), Estonian def only, no EN translations
+			// jooma#2 - noun (drinking party), Estonian def only, no EN translations
 			`{"word_id":2,"lemma":"jooma","homonym_nr":2,"word_class":"noomen","meanings":[{"pos":["s"],"definitions_et":["joomine"]}]}`+"\n"+
-			// joon — noun (line), with EN translations
+			// joon - noun (line), with EN translations
 			`{"word_id":3,"lemma":"joon","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["line","stripe"]}]}`+"\n"+
-			// invariant — falls through wordClassFallback
+			// invariant - falls through wordClassFallback
 			`{"word_id":4,"lemma":"24/7","homonym_nr":1,"word_class":"muutumatu","meanings":[{"pos":["adv"],"translations_en":["all the time"]}]}`+"\n",
 	); err != nil {
 		t.Fatalf("write definitions: %v", err)
@@ -209,7 +209,7 @@ func TestImporter_EndToEnd_HandlesHomonymsAndEmptyGlossGuard(t *testing.T) {
 		t.Fatalf("schema: %v", err)
 	}
 
-	// Pre-existing kaikki gloss for jooma/NOUN — must NOT be overwritten by
+	// Pre-existing kaikki gloss for jooma/NOUN - must NOT be overwritten by
 	// Ekilex's empty-gloss case (jooma#2 has only ET definitions, no EN).
 	if _, err := db.Exec(`INSERT INTO lemmas (lemma, pos, gloss, lang) VALUES ('jooma', 'NOUN', 'kaikki gloss for noun', 'ET')`); err != nil {
 		t.Fatalf("seed kaikki: %v", err)
@@ -255,7 +255,7 @@ func TestImporter_EndToEnd_HandlesHomonymsAndEmptyGlossGuard(t *testing.T) {
 		t.Errorf("empty-gloss guard failed: jooma NOUN gloss = %q, want kaikki preserved", nounGloss)
 	}
 
-	// "joon" form maps to BOTH joon/NOUN and jooma/VERB — the homonym case.
+	// "joon" form maps to BOTH joon/NOUN and jooma/VERB - the homonym case.
 	rows, err := db.Query(`SELECT lemma, pos FROM forms WHERE form='joon' AND lang='ET' ORDER BY lemma, pos`)
 	if err != nil {
 		t.Fatalf("query joon forms: %v", err)
@@ -275,12 +275,12 @@ func TestImporter_EndToEnd_HandlesHomonymsAndEmptyGlossGuard(t *testing.T) {
 	}
 
 	// jooma's verbal form (Sup, which makes "jooma") must NOT be attributed
-	// to NOUN — that's the morph-class disambiguation.
+	// to NOUN - that's the morph-class disambiguation.
 	var nounSup int
 	if err := db.QueryRow(`SELECT COUNT(*) FROM forms WHERE form='jooma' AND lemma='jooma' AND pos='NOUN' AND lang='ET'`).Scan(&nounSup); err != nil {
 		t.Fatalf("query jooma noun jooma: %v", err)
 	}
-	// SgN of jooma is "jooma" (nominal) — that should be present as NOUN.
+	// SgN of jooma is "jooma" (nominal) - that should be present as NOUN.
 	if nounSup != 1 {
 		t.Errorf("jooma SgN row missing under NOUN: count=%d", nounSup)
 	}
@@ -441,7 +441,7 @@ func TestImporter_RunsMultiLemmaMigration(t *testing.T) {
 	}
 	defer db.Close()
 
-	// Create the LEGACY single-lemma schema explicitly — what cmd/importdict
+	// Create the LEGACY single-lemma schema explicitly - what cmd/importdict
 	// would have left behind on a finnestdb.db built before PR #77.
 	if _, err := db.Exec(`
 		CREATE TABLE lemmas (
@@ -491,7 +491,7 @@ func TestImporter_ReportsActualRowsInserted(t *testing.T) {
 	defDir := filepath.Join(tmp, "definitions")
 	formsDir := filepath.Join(tmp, "forms")
 	if err := writeAll(defDir, "k.jsonl",
-		// Two homonym entries that collapse to a single (kass, NOUN) row —
+		// Two homonym entries that collapse to a single (kass, NOUN) row -
 		// only one row is actually written.
 		`{"word_id":1,"lemma":"kass","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["cat"]}]}`+"\n"+
 			`{"word_id":2,"lemma":"kass","homonym_nr":2,"word_class":"noomen","meanings":[{"pos":["s"],"translations_en":["pussy"]}]}`+"\n",
@@ -501,7 +501,7 @@ func TestImporter_ReportsActualRowsInserted(t *testing.T) {
 	if err := writeAll(formsDir, "k.tsv",
 		"lemma\tform\tmorph_code\n"+
 			// Same canonical form emitted twice (e.g. PtsPtIps + PtsPtIpsNeg
-			// often share a surface) — should still INSERT only once.
+			// often share a surface) - should still INSERT only once.
 			"kass\tkassi\tSgG\n"+
 			"kass\tkassi\tSgP\n"+
 			"kass\tkass\tSgN\n",
@@ -543,7 +543,7 @@ func TestImporter_ReportsActualRowsInserted(t *testing.T) {
 }
 
 // TestAggregateDefinitions_TracksBadLines guards against silently swallowing
-// JSONL parse errors — a counter and capped sample collection surface
+// JSONL parse errors - a counter and capped sample collection surface
 // upstream schema drift in the run summary instead of failing quietly.
 func TestAggregateDefinitions_TracksBadLines(t *testing.T) {
 	tmp := t.TempDir()
@@ -698,7 +698,7 @@ func TestImporter_UpgradesSourceOnConflictWhenAtLeastAsAuthoritative(t *testing.
 		t.Fatalf("schema: %v", err)
 	}
 
-	// Pre-seed a kaikki-tagged row (priority 10) — should be upgraded.
+	// Pre-seed a kaikki-tagged row (priority 10) - should be upgraded.
 	if _, err := db.Exec(
 		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
 		 VALUES ('koer', 'NOUN', 'kaikki-gloss', 'ET', 'kaikki', 10)`,
@@ -712,7 +712,7 @@ func TestImporter_UpgradesSourceOnConflictWhenAtLeastAsAuthoritative(t *testing.
 		t.Fatalf("seed kaikki form: %v", err)
 	}
 
-	// Pre-seed a custom-overrides row (priority 100) — must NOT be downgraded.
+	// Pre-seed a custom-overrides row (priority 100) - must NOT be downgraded.
 	if _, err := db.Exec(
 		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
 		 VALUES ('override', 'NOUN', 'custom-gloss', 'ET', 'custom_overrides', 100)`,
@@ -1077,7 +1077,7 @@ func TestWriteTranslations_PreservesOtherSourcesTranslations(t *testing.T) {
 }
 
 // TestJoinTranslationData_FallsBackToETDefinition guards the new fallback
-// path — when no EN translations are present for a (lemma, pos), the gloss
+// path - when no EN translations are present for a (lemma, pos), the gloss
 // column gets a `[ET] `-prefixed Estonian definition instead of an empty
 // string. The user-friendly wordlist export depends on this so its
 // `meaning` column is non-empty for the ~4.6% of ET tokens that ekilex
@@ -1095,7 +1095,7 @@ func TestJoinTranslationData_FallsBackToETDefinition(t *testing.T) {
 }
 
 // TestJoinTranslationData_PrefersENTranslationOverETDefinition guards
-// against the fallback firing when an EN translation IS available — the
+// against the fallback firing when an EN translation IS available - the
 // user-friendly path only wants `[ET] ` glosses as a last resort.
 func TestJoinTranslationData_PrefersENTranslationOverETDefinition(t *testing.T) {
 	tmp := lemmaPOSMap{}
@@ -1133,7 +1133,7 @@ func TestJoinTranslationData_TruncatesLongETDefinition(t *testing.T) {
 }
 
 // TestWriteDefinitions_BasicWrite guards the new definitions-table writer
-// path — every Estonian-language definition lands as one row per sense,
+// path - every Estonian-language definition lands as one row per sense,
 // in the order they arrive from the JSONL.
 func TestWriteDefinitions_BasicWrite(t *testing.T) {
 	tmp := t.TempDir()
@@ -1552,7 +1552,7 @@ func TestWriteLemmas_RefreshesETFallbackOnReimport(t *testing.T) {
 
 // TestAggregateDefinitions_EntryWithoutMeaningsUsesWordClass guards the
 // entry-level word_class fallback for entries that arrive with zero
-// resolvable meanings — real Ekilex carries ~19k such fallback-importable
+// resolvable meanings - real Ekilex carries ~19k such fallback-importable
 // lemmas (e.g. verbs like alajahtuma) whose definitions live in a paired
 // entry while forms still need a target (lemma, pos) to attach to. Without
 // this fallback the form-import path drops every form for the lemma.
@@ -1566,7 +1566,7 @@ func TestAggregateDefinitions_EntryWithoutMeaningsUsesWordClass(t *testing.T) {
 			// Should still use the per-meaning fallback (already covered) and
 			// land on NOUN.
 			`{"word_id":2,"lemma":"weirdpos","homonym_nr":1,"word_class":"noomen","meanings":[{"pos":["WEIRD"]}]}`+"\n"+
-			// Entry with no meanings AND no resolvable word_class — should
+			// Entry with no meanings AND no resolvable word_class - should
 			// be counted as noPOS, not silently dropped without a counter.
 			`{"word_id":3,"lemma":"unknown","homonym_nr":1,"word_class":"alien","meanings":[]}`+"\n",
 	); err != nil {
@@ -1584,7 +1584,7 @@ func TestAggregateDefinitions_EntryWithoutMeaningsUsesWordClass(t *testing.T) {
 		t.Errorf("expected NOUN entry for weirdpos via per-meaning fallback")
 	}
 	if _, ok := lemmaPOS["unknown"]; ok {
-		t.Errorf("unknown should not have an entry — word_class is unmappable")
+		t.Errorf("unknown should not have an entry - word_class is unmappable")
 	}
 	if stats.noPOS != 1 {
 		t.Errorf("noPOS = %d, want 1 (the unknown/alien entry)", stats.noPOS)
@@ -1765,7 +1765,7 @@ func TestWriteLemmas_ClearsEkilexGlossWhenUpstreamWentEmpty(t *testing.T) {
 	tmp := t.TempDir()
 	defDir := filepath.Join(tmp, "definitions")
 	if err := writeAll(defDir, "g.jsonl",
-		// Empty meanings + verb word_class — exercises the word_class
+		// Empty meanings + verb word_class - exercises the word_class
 		// fallback path where joinTranslationData returns "".
 		`{"word_id":1,"lemma":"ghost","homonym_nr":1,"word_class":"verb","meanings":[]}`+"\n",
 	); err != nil {
@@ -1871,8 +1871,8 @@ func TestWriteLemmas_DoesNotClearNonEkilexGlossOnEmptyReimport(t *testing.T) {
 // first Ekilex import. The pre-INSERT refresh is keyed on source='ekilex'
 // so it skips rows with any other source; the INSERT path only upgrades
 // source/priority, leaving the gloss untouched. Same-source reimports
-// (after the upgrade) DO refresh — the trade-off price for keeping
-// translations and lemmas.gloss consistent — but that's a different test.
+// (after the upgrade) DO refresh - the trade-off price for keeping
+// translations and lemmas.gloss consistent - but that's a different test.
 func TestWriteLemmas_PreservesKaikkiGlossOnFirstEkilexImport(t *testing.T) {
 	tmp := t.TempDir()
 	defDir := filepath.Join(tmp, "definitions")

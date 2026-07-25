@@ -334,7 +334,7 @@ func TestGetNextReviewCardRespectsDailyNewCardLimit(t *testing.T) {
 // must NOT report those cards as "due to review". Before this fix,
 // CountDueCards treated next_due IS NULL (the default for a brand-new
 // card_state row) as due, so two Top-1000 starter decks made a fresh account
-// show "Due to review: 2,000" — cards that were never introduced, alongside
+// show "Due to review: 2,000" - cards that were never introduced, alongside
 // the correctly-gated "New words today" count. Due now requires the card to
 // have review history (introduced_at or last_answer_at set); GetUserDeckStats
 // due_count and GetNextReviewCard's new/due pooling behavior are unaffected.
@@ -472,7 +472,7 @@ func TestReviewLogAndActivity(t *testing.T) {
 		total += day.Count
 	}
 	if total != 2 {
-		t.Fatalf("total activity=%d want 2 — another user's or day's rows leaked in", total)
+		t.Fatalf("total activity=%d want 2 - another user's or day's rows leaked in", total)
 	}
 
 	// Isolation: the other user sees nothing.
@@ -973,7 +973,7 @@ func TestAcceptedGrammarCorrectionCarriesFeats(t *testing.T) {
 		t.Fatalf("read override feats: %v", err)
 	}
 	if feats != "Case=Ine" {
-		t.Fatalf("override feats=%q want Case=Ine — grammar corrections must reach FEATS, not just the label", feats)
+		t.Fatalf("override feats=%q want Case=Ine - grammar corrections must reach FEATS, not just the label", feats)
 	}
 }
 
@@ -1024,7 +1024,7 @@ func TestGoldConflictBlocksAcceptance(t *testing.T) {
 		t.Fatalf("read status: %v", err)
 	}
 	if status != "submitted" {
-		t.Fatalf("status=%q want submitted — a refused acceptance must roll back entirely", status)
+		t.Fatalf("status=%q want submitted - a refused acceptance must roll back entirely", status)
 	}
 	var overrides int
 	if err := db.db.QueryRow(
@@ -1037,7 +1037,7 @@ func TestGoldConflictBlocksAcceptance(t *testing.T) {
 		t.Fatalf("override rows=%d want 0 after refused acceptance", overrides)
 	}
 
-	// Rejecting the same feedback is fine — the guard only gates acceptance.
+	// Rejecting the same feedback is fine - the guard only gates acceptance.
 	if err := db.ReviewParseFeedback(conflictID, admin.ID, "rejected", "gold disagrees", nil); err != nil {
 		t.Fatalf("reject after conflict: %v", err)
 	}
@@ -1222,7 +1222,7 @@ func TestAcceptedFlagOnlyFeedbackWritesNoOverride(t *testing.T) {
 	}
 
 	// Accepting a flag-only report records the decision but MUST NOT write a
-	// custom_overrides lexical row — the report carries no parser identity to
+	// custom_overrides lexical row - the report carries no parser identity to
 	// commit to the lexicon.
 	if err := db.ReviewParseFeedback(flagID, admin.ID, "accepted", "confirmed wrong", nil); err != nil {
 		t.Fatalf("ReviewParseFeedback flag-only accept: %v", err)
@@ -1238,13 +1238,13 @@ func TestAcceptedFlagOnlyFeedbackWritesNoOverride(t *testing.T) {
 		`SELECT COUNT(*) FROM forms WHERE source = ? AND source_priority = ?`,
 		SourceCustomOverrides, CustomOverridesSourcePriority)
 	if overrides != 0 {
-		t.Fatalf("form override rows=%d want 0 — flag-only acceptance must not touch the lexicon", overrides)
+		t.Fatalf("form override rows=%d want 0 - flag-only acceptance must not touch the lexicon", overrides)
 	}
 	lemmaOverrides := countRows(t, db,
 		`SELECT COUNT(*) FROM lemmas WHERE source = ? AND source_priority = ?`,
 		SourceCustomOverrides, CustomOverridesSourcePriority)
 	if lemmaOverrides != 0 {
-		t.Fatalf("lemma override rows=%d want 0 — flag-only acceptance must not touch the lexicon", lemmaOverrides)
+		t.Fatalf("lemma override rows=%d want 0 - flag-only acceptance must not touch the lexicon", lemmaOverrides)
 	}
 	// It must also not leak into the gold-candidate promotion path.
 	candidates, err := db.ListGoldCandidates("")
@@ -1252,7 +1252,7 @@ func TestAcceptedFlagOnlyFeedbackWritesNoOverride(t *testing.T) {
 		t.Fatalf("ListGoldCandidates: %v", err)
 	}
 	if len(candidates) != 0 {
-		t.Fatalf("gold candidates=%+v want none — flag-only reports must not promote gold cases", candidates)
+		t.Fatalf("gold candidates=%+v want none - flag-only reports must not promote gold cases", candidates)
 	}
 }
 
@@ -1624,7 +1624,7 @@ func TestDeckComprehension(t *testing.T) {
 		t.Fatalf("CreateDeckWithSentences: %v", err)
 	}
 
-	// Baseline: nothing known — zero coverage, unlocks ranked by token mass.
+	// Baseline: nothing known - zero coverage, unlocks ranked by token mass.
 	stats, err := db.DeckComprehension(user.ID, deckID, 10)
 	if err != nil {
 		t.Fatalf("DeckComprehension baseline: %v", err)
@@ -1663,7 +1663,7 @@ func TestDeckComprehension(t *testing.T) {
 		t.Fatalf("top unlock=%+v want nähdä with 2 tokens", stats.TopUnlocks[0])
 	}
 	// juo/NOUN still appears as an unlock candidate only through positions
-	// that remain uncovered — its only position is covered by juoda, so it
+	// that remain uncovered - its only position is covered by juoda, so it
 	// must NOT be listed.
 	for _, unlock := range stats.TopUnlocks {
 		if unlock.Lemma == "juo" {
@@ -1687,7 +1687,7 @@ func TestDeckComprehension(t *testing.T) {
 
 	// Phase 1c behavior change (deliberate): a quarantined (lemma, pos) drops
 	// out of comprehension entirely. "nähdä" occupied two token positions
-	// (S2 t1 and S3 t0); quarantining it removes both from TotalTokens — a
+	// (S2 t1 and S3 t0); quarantining it removes both from TotalTokens - a
 	// quarantined item is out of circulation, so it is neither covered nor an
 	// unlock, and it no longer inflates the deck's token mass. CoveredTokens
 	// stays 4 (the covered positions did not include nähdä).

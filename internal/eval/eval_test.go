@@ -229,7 +229,7 @@ func fakeAnalyzerResult(text string) map[string]any {
 }
 
 func TestResolveRunIDSlug_OptionWinsAndDistinguishesSameNameFiles(t *testing.T) {
-	// Both gold files carry name="fi-manual" by historical accident — they
+	// Both gold files carry name="fi-manual" by historical accident - they
 	// must not collide in the default report path.
 	ds := &Dataset{Name: "fi-manual"}
 
@@ -405,7 +405,7 @@ func TestSummaryAccumulator_FullAndCoverage(t *testing.T) {
 // reading "dictionary entry attachment" as the marginal product of
 // LemmaAccuracy and POSAccuracy. With one token having (lemma=ok, POS=wrong)
 // and another (lemma=wrong, POS=ok), each marginal is 50% but joint
-// attachment is 0% — there is no token where both fields match. A learner
+// attachment is 0% - there is no token where both fields match. A learner
 // would land on the right dictionary entry zero times, even though both
 // marginals look mediocre-but-passable.
 func TestSummaryAccumulator_LemmaPOSIsJoint(t *testing.T) {

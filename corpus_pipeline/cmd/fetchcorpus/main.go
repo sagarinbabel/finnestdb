@@ -60,7 +60,7 @@ func main() {
 
 	for _, src := range registry {
 		if src.URL == "" {
-			fmt.Fprintf(os.Stderr, "[fetch %s] %s: folder-driven (no URL) — skipped\n", langLower, src.Slug)
+			fmt.Fprintf(os.Stderr, "[fetch %s] %s: folder-driven (no URL) - skipped\n", langLower, src.Slug)
 			continue
 		}
 		dir := sources.SourceDir(roots.DataRoot, langLower, src.Slug)

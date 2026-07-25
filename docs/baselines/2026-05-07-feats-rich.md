@@ -1,4 +1,4 @@
-# 2026-05-07 — FEATS-rich gold + dict + adapters end-to-end
+# 2026-05-07 - FEATS-rich gold + dict + adapters end-to-end
 
 **Parser version stamp**: `2026.05.07k` (`parsecore.ParserVersion` to be bumped on land)
 
@@ -37,7 +37,7 @@ The eval framework's per-FEATS-attribute table in [`cmd/parser-compare/main.go`]
 | fi-manual-v1 | 22 | 81.4 | 85.7 | 6.7 | 0.0 | 91.2 |
 | fi-manual-v2 | 4 | 88.9 | 100.0 | 33.3 | 11.1 | 100.0 |
 
-The `Full` column is now correctly gated on FEATS-equality too, hence the drop from `2026-05-07j` (where `Full` ignored FEATS). The lemma/POS/grammar columns are unchanged from the prior baseline's custom-parser numbers — the parser's resolution behavior didn't change in this entry; the eval just has more to compare against.
+The `Full` column is now correctly gated on FEATS-equality too, hence the drop from `2026-05-07j` (where `Full` ignored FEATS). The lemma/POS/grammar columns are unchanged from the prior baseline's custom-parser numbers - the parser's resolution behavior didn't change in this entry; the eval just has more to compare against.
 
 ## Headline ET numbers (custom parser)
 
@@ -46,7 +46,7 @@ The `Full` column is now correctly gated on FEATS-equality too, hence the drop f
 | et-grammar | 50 | 88.6 | 96.2 | 19.6 | 0.0 | 98.9 |
 | et-manual | 4 | 77.8 | 77.8 | 0.0 | 0.0 | 91.7 |
 
-## Per-FEATS-attribute accuracy — the new metric
+## Per-FEATS-attribute accuracy - the new metric
 
 Every committed FI/ET baseline now reports per-attribute accuracy across the 13 FI / 7 ET FEATS attributes the gold sets carry. Headline view:
 
@@ -61,21 +61,21 @@ Every committed FI/ET baseline now reports per-attribute accuracy across the 13 
 | Person | 3 | 100.0% | 24 | 100.0% | 1 | 100.0% |
 | VerbForm | 3 | 100.0% | 28 | 100.0% | 1 | 100.0% |
 | Voice | 3 | 100.0% | 28 | 100.0% | 1 | 100.0% |
-| Degree | 3 | 100.0% | 13 | 100.0% | — | — |
+| Degree | 3 | 100.0% | 13 | 100.0% | - | - |
 | Number[psor] | 1 | 100.0% | 8 | 100.0% | 3 | 100.0% |
 | Person[psor] | 1 | 100.0% | 14 | 100.0% | 3 | 100.0% |
-| PronType / PartForm / InfForm / Style | 1–2 each | 100.0% | 1–4 each | 100.0% | — | — |
+| PronType / PartForm / InfForm / Style | 1–2 each | 100.0% | 1–4 each | 100.0% | - | - |
 
-omorfi scores ≥99% on every FEATS attribute on every dataset — expected, since the gold was seeded from omorfi's own analysis with the gold's existing `grammar_label` as the Case anchor (deterministic overwrite).
+omorfi scores ≥99% on every FEATS attribute on every dataset - expected, since the gold was seeded from omorfi's own analysis with the gold's existing `grammar_label` as the Case anchor (deterministic overwrite).
 
-`basic` and `custom` score 0% on every FEATS attribute because the live SQLite DB this measurement runs against doesn't yet carry FEATS — it was imported before Stage 1 of this PR's kaikki tag mapper landed, so `forms.feats IS NULL` for all 27.2M rows. To populate, re-run import:
+`basic` and `custom` score 0% on every FEATS attribute because the live SQLite DB this measurement runs against doesn't yet carry FEATS - it was imported before Stage 1 of this PR's kaikki tag mapper landed, so `forms.feats IS NULL` for all 27.2M rows. To populate, re-run import:
 ```bash
 go run ./cmd/importdict -lang fi -reimport -db finnestdb.db -file localdata/kaikki.org-fi.jsonl.gz
 # Or, with no DB downtime:
 go run ./cmd/importdict -lang fi -backfill-feats -db finnestdb.db -file localdata/kaikki.org-fi.jsonl.gz
 ```
 
-After re-import, `custom` will pick up FEATS via the dict layer and `featsFromFSTAnalysis` will compose runtime FEATS for FST-resolved forms — both paths exist and are unit-tested ([`internal/store/dict_test.go::TestCaseSuffixStrip_Inessive`](../../internal/store/dict_test.go), [`cmd/importdict/feats_test.go::TestImportJSONL_WritesFeats`](../../cmd/importdict/feats_test.go)). The next baseline (`2026-05-07l` or later) will measure the post-import state.
+After re-import, `custom` will pick up FEATS via the dict layer and `featsFromFSTAnalysis` will compose runtime FEATS for FST-resolved forms - both paths exist and are unit-tested ([`internal/store/dict_test.go::TestCaseSuffixStrip_Inessive`](../../internal/store/dict_test.go), [`cmd/importdict/feats_test.go::TestImportJSONL_WritesFeats`](../../cmd/importdict/feats_test.go)). The next baseline (`2026-05-07l` or later) will measure the post-import state.
 
 ### ET per-attribute (estnltk vs custom)
 
@@ -89,7 +89,7 @@ After re-import, `custom` will pick up FEATS via the dict layer and `featsFromFS
 | VerbForm | 25 | 100.0% | 1 | 100.0% |
 | Voice | 24 | 100.0% | 1 | 100.0% |
 
-estnltk Case at 94.1% on et-grammar reflects 3 case-disagreement edge cases the seeding pass surfaced in the `.diff.md` files — Estonian "õuna" / "kirja" can analyse as Gen or Par; gold's grammar_label said partitive, estnltk's per-token reading said genitive without sentence context. Gold won, surfaced in the report, and the user-visible diff documents the disagreement.
+estnltk Case at 94.1% on et-grammar reflects 3 case-disagreement edge cases the seeding pass surfaced in the `.diff.md` files - Estonian "õuna" / "kirja" can analyse as Gen or Par; gold's grammar_label said partitive, estnltk's per-token reading said genitive without sentence context. Gold won, surfaced in the report, and the user-visible diff documents the disagreement.
 
 ## Pipeline diagram (new state)
 
@@ -112,6 +112,6 @@ estnltk Case at 94.1% on et-grammar reflects 3 case-disagreement edge cases the 
 
 ## Open issues this surfaced
 
-- **Live DB lacks FEATS**: the production DB at `finnestdb.db` was last imported on 2026-05-05, before any of the FEATS mappers. Until re-import, the `custom` parser can't show FEATS in its output. The kaikki source JSONLs aren't on this machine — `make import-dict-fi` would need to re-fetch from kaikki.org first. Captured as runbook above.
+- **Live DB lacks FEATS**: the production DB at `finnestdb.db` was last imported on 2026-05-05, before any of the FEATS mappers. Until re-import, the `custom` parser can't show FEATS in its output. The kaikki source JSONLs aren't on this machine - `make import-dict-fi` would need to re-fetch from kaikki.org first. Captured as runbook above.
 - **The fi-manual-v1/v2 collision was still open at this baseline**: `parser-comparison.sh` slugified `dataset.name` and overwrote v1's report with v2's, so this baseline worked around it by re-running v1 explicitly with `-out`. Later scripts slug from the input file basename, so this is historical context rather than current open work.
-- **OOV compound nouns in fi-manual-v1** got Case= via the suffix-strip fallback in `cmd/enrichgoldfeats`, but Number= is not inferred — surface alone can't disambiguate Sg vs Pl for unanalysed compounds. Marked in [`fi-manual-v1.diff.md`](../../testdata/parser-eval/fi/gold/fi-manual-v1.diff.md) (16 tokens). A maintainer with FI fluency can manually disambiguate; for now the FEATS column is honestly empty for those rare tokens.
+- **OOV compound nouns in fi-manual-v1** got Case= via the suffix-strip fallback in `cmd/enrichgoldfeats`, but Number= is not inferred - surface alone can't disambiguate Sg vs Pl for unanalysed compounds. Marked in [`fi-manual-v1.diff.md`](../../testdata/parser-eval/fi/gold/fi-manual-v1.diff.md) (16 tokens). A maintainer with FI fluency can manually disambiguate; for now the FEATS column is honestly empty for those rare tokens.

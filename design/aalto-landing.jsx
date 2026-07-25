@@ -16,7 +16,7 @@ function detectLanguage(text) {
   return { lang: null, confidence: 0 };
 }
 
-// Savoy-vase silhouette — Aalto's signature 1936 form, rendered as svg
+// Savoy-vase silhouette - Aalto's signature 1936 form, rendered as svg
 function SavoyVase(props) {
   return (
     <svg viewBox="0 0 220 320" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
@@ -157,13 +157,13 @@ function LandingView({ onCreateDeck, onOpenWord, aaltoMode }) {
   // ─── PASTE LANDING ───
   return (
     <div className="landing-wrap">
-      {/* Vertical AALTO mark — only renders in bolder variant via CSS */}
+      {/* Vertical AALTO mark - only renders in bolder variant via CSS */}
       <div className="aalto-mark" aria-hidden="true">
         <span className="vlabel">Alvar Aalto · Paimio · 1933</span>
         <div className="vstrip" />
       </div>
 
-      {/* Savoy-vase silhouette — bolder variant only */}
+      {/* Savoy-vase silhouette - bolder variant only */}
       <SavoyVase className="vase-svg" aria-hidden="true" />
 
       <div className="hero-eyebrow">
@@ -176,7 +176,7 @@ function LandingView({ onCreateDeck, onOpenWord, aaltoMode }) {
       </h1>
 
       <p className="hero-sub">
-        Drop in any Finnish or Estonian text — news, a chapter, a conversation.
+        Drop in any Finnish or Estonian text - news, a chapter, a conversation.
         Get every lemma, its forms, and a clean definition. Export, or sign in to
         keep a deck and review with FSRS.
       </p>
@@ -224,7 +224,7 @@ function LandingView({ onCreateDeck, onOpenWord, aaltoMode }) {
         <div className="freemium-cell">
           <div className="freemium-num">ii.</div>
           <div className="freemium-h">Copy or download</div>
-          <div className="freemium-p">Word list as plain text or CSV — drop straight into Anki, a spreadsheet, or your tool of choice.</div>
+          <div className="freemium-p">Word list as plain text or CSV - drop straight into Anki, a spreadsheet, or your tool of choice.</div>
         </div>
         <div className="freemium-cell">
           <div className="freemium-num">iii.</div>
@@ -234,7 +234,7 @@ function LandingView({ onCreateDeck, onOpenWord, aaltoMode }) {
       </div>
 
       <div className="colophon">
-        <span>Suomi · Eesti — humanist, restrained, blue.</span>
+        <span>Suomi · Eesti - humanist, restrained, blue.</span>
         <span className="swatches">
           <span className="sw w" title="paper" />
           <span className="sw b" title="Nordic blue" />

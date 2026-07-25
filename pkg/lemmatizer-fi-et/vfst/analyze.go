@@ -57,7 +57,7 @@ func (cfg *configuration) growStacksIfNeeded(needed int) {
 
 // Analyze returns every morphological analysis of input that the FST
 // recognises. Each analysis is the concatenation of the output symbols
-// along one accepting path — for the libvoikko Finnish FST that's a
+// along one accepting path - for the libvoikko Finnish FST that's a
 // string like "[Ln][Ica][Xp]talo[X]talo[Sn][Ny]". Returns nil if the
 // input is not in the alphabet or has no accepted analysis.
 func (t *Transducer) Analyze(input string) []string {
@@ -163,7 +163,7 @@ func (t *Transducer) next(cfg *configuration) (string, bool, bool) {
 			continue
 		}
 
-		// no further transitions in this state — backtrack
+		// no further transitions in this state - backtrack
 		if cfg.stackDepth == 0 {
 			return "", false, false
 		}

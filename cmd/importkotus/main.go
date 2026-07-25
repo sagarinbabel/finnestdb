@@ -15,7 +15,7 @@
 //	    -file data/kotus/nykysuomensanalista2024.txt
 //
 // File format (confirmed against the 2024 distribution; PR 3.1's earlier
-// XML guess turned out wrong — Kotus ships the modern sanalista as a
+// XML guess turned out wrong - Kotus ships the modern sanalista as a
 // header-prefixed TSV):
 //
 //	Hakusana    Homonymia    Sanaluokka                       Taivutustiedot
@@ -29,20 +29,20 @@
 //
 // Field layout:
 //
-//	Hakusana       — the headword (one entry, possibly with a leading "‑"
+//	Hakusana       - the headword (one entry, possibly with a leading "‑"
 //	                 for derivational suffixes; the parser preserves these
 //	                 in their original form).
-//	Homonymia      — empty or "1".."4" for words that share a surface
+//	Homonymia      - empty or "1".."4" for words that share a surface
 //	                 form but differ in meaning. Our schema collapses
 //	                 multiple homonyms of the same (lemma, pos) onto one
 //	                 row; the writer logs whichever paradigm_class arrived
 //	                 last for that key.
-//	Sanaluokka     — Finnish word-class label. Comma-separated when one
+//	Sanaluokka     - Finnish word-class label. Comma-separated when one
 //	                 headword is multi-class (e.g. "adjektiivi,
 //	                 substantiivi" for sininen). Plus-separated forms
 //	                 like "adverbi + kieltoverbi" are leaf-classed by the
 //	                 first part. Maps to UPOS via wordClassMap below.
-//	Taivutustiedot — Inflection class number, optionally followed by
+//	Taivutustiedot - Inflection class number, optionally followed by
 //	                 *<gradation-letter> (e.g. "1", "38", "1*I", "41*A").
 //	                 Empty for compound nouns and other entries Kotus
 //	                 doesn't taivutus-classify; those still get a
@@ -60,7 +60,7 @@
 //	set when Taivutustiedot is non-empty (NULL otherwise).
 //
 //	Multi-class entries (e.g. sininen as ADJ+NOUN) write/upgrade once per
-//	UPOS — both rows get paradigm_class.
+//	UPOS - both rows get paradigm_class.
 package main
 
 import (
@@ -94,7 +94,7 @@ type kotusEntry struct {
 	Homonym        string   // Homonymia ("" or "1".."4")
 	WordClasses    []string // raw Finnish names, possibly multiple per entry
 	InflectionType string   // numeric portion of Taivutustiedot
-	Gradation      string   // gradation letter after "*" — "" if absent
+	Gradation      string   // gradation letter after "*" - "" if absent
 }
 
 // ParadigmClass formats Taivutustiedot for the lemmas.paradigm_class
@@ -115,7 +115,7 @@ func (e kotusEntry) ParadigmClass() string {
 // wordClassMap maps Kotus's Finnish Sanaluokka labels to UPOS. Coverage
 // is based on the unique values seen in the 2024 distribution. When the
 // label is one we don't recognise the writer skips inserting a new row
-// (existing rows are still upgraded with paradigm_class — that path
+// (existing rows are still upgraded with paradigm_class - that path
 // doesn't depend on POS inference).
 var wordClassMap = map[string]string{
 	"substantiivi":        "NOUN",
@@ -138,7 +138,7 @@ var wordClassMap = map[string]string{
 // mapWordClass picks a UPOS for a single Kotus class label. Returns the
 // UPOS and true on success; "X" and false if the label is unknown.
 // Plus-separated compounds like "adverbi + kieltoverbi" are leaf-classed
-// by the first segment — the second is typically a co-occurrence
+// by the first segment - the second is typically a co-occurrence
 // annotation, not the head class.
 func mapWordClass(s string) (string, bool) {
 	s = strings.TrimSpace(s)
@@ -154,12 +154,12 @@ func mapWordClass(s string) (string, bool) {
 // parseTaivutus splits Taivutustiedot into (inflection-type, gradation).
 // Handles four patterns seen in the 2024 distribution:
 //
-//	"38"           → ("38", "")            — single class, no gradation
-//	"1*I"          → ("1", "I")            — single class with gradation
-//	"73, (77)"     → ("73", "")            — primary 73 + parenthesized alt
-//	"72*D, 74*D"   → ("72", "D")           — primary 72*D + alt 74*D
-//	"(9)"          → ("9", "")             — sole class wrapped in parens
-//	""             → ("", "")              — no class (compound)
+//	"38"           → ("38", "")            - single class, no gradation
+//	"1*I"          → ("1", "I")            - single class with gradation
+//	"73, (77)"     → ("73", "")            - primary 73 + parenthesized alt
+//	"72*D, 74*D"   → ("72", "D")           - primary 72*D + alt 74*D
+//	"(9)"          → ("9", "")             - sole class wrapped in parens
+//	""             → ("", "")              - no class (compound)
 //
 // 152 rows in the 2024 dump have comma-separated alternatives. We
 // take the first entry as the primary (parens stripped) and drop the
@@ -188,7 +188,7 @@ func parseTaivutus(s string) (string, string) {
 
 // streamSanalista reads the TSV row-by-row and invokes fn for each
 // non-header non-empty data row. fn returning an error stops the stream
-// and surfaces the error to the caller — the surrounding transaction
+// and surfaces the error to the caller - the surrounding transaction
 // is what makes that an atomic abort. Memory stays O(1) regardless of
 // input size, which matters at 100k+ rows.
 //
@@ -198,7 +198,7 @@ func parseTaivutus(s string) (string, string) {
 // since the file's first line is exactly that.
 func streamSanalista(r io.Reader, fn func(kotusEntry) error) (int, error) {
 	scanner := bufio.NewScanner(r)
-	// 256KB max line — well above anything seen in the 2024 dump.
+	// 256KB max line - well above anything seen in the 2024 dump.
 	scanner.Buffer(make([]byte, 64*1024), 256*1024)
 
 	skipped := 0
@@ -277,13 +277,13 @@ func (w *kotusWriter) write(e kotusEntry) error {
 	}
 
 	// Map the current row's Sanaluokka labels to a deduplicated UPOS
-	// set. Updates and inserts are scoped to THIS list — any existing
+	// set. Updates and inserts are scoped to THIS list - any existing
 	// row at a POS the current row doesn't claim is left untouched.
 	//
 	// Why scoped: the TSV often has the same headword on multiple
 	// rows with different Sanaluokka (`aika` row 1 NOUN, row 2 ADJ+ADV;
 	// `kuurata` row 1 NOUN row 2 VERB; `piilevä` row 1 ADJ row 2 NOUN).
-	// An "update every existing POS" approach corrupts adjacent rows —
+	// An "update every existing POS" approach corrupts adjacent rows -
 	// e.g. row 2 of `aika` would clobber the NOUN paradigm with the
 	// ADJ row's class, and never insert the actual ADJ/ADV rows.
 	uposSet := map[string]bool{}
@@ -307,7 +307,7 @@ func (w *kotusWriter) write(e kotusEntry) error {
 
 	for _, pos := range poses {
 		// Existence check (Scan into NullString just to avoid an
-		// "unused result" lint; the value is unused — only the
+		// "unused result" lint; the value is unused - only the
 		// presence/absence of the row matters here).
 		var dummy sql.NullString
 		err := w.stmtCheckPOS.QueryRow(e.Headword, pos).Scan(&dummy)
@@ -325,7 +325,7 @@ func (w *kotusWriter) write(e kotusEntry) error {
 			return fmt.Errorf("check pos %q %s: %w", e.Headword, pos, err)
 		}
 		// Row exists at this POS. Only UPDATE paradigm_class when the
-		// current row HAS one — otherwise we'd nullify a previously
+		// current row HAS one - otherwise we'd nullify a previously
 		// imported class (`piilevä` row 2 has empty Taivutustiedot
 		// and would clobber row 1's class 10 with NULL).
 		if paradigm == "" {
@@ -394,7 +394,7 @@ func newKotusWriter(tx *sql.Tx, stats *importStats) (*kotusWriter, error) {
 		return nil, err
 	}
 	// Existence check scoped by (lemma, pos). Returning paradigm_class
-	// is incidental — the callback only cares whether the row exists.
+	// is incidental - the callback only cares whether the row exists.
 	stmtCheckPOS, err := tx.Prepare(
 		`SELECT paradigm_class FROM lemmas WHERE lemma = ? AND pos = ? AND lang = 'FI'`,
 	)

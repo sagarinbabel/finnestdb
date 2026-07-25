@@ -1,7 +1,7 @@
 // Command exportgoldcandidates renders pending correction-loop Phase-3
 // promotions (gold_candidates rows) as gold-case JSON fragments for manual
 // review. A human decides which fragments enter the committed gold sets under
-// testdata/parser-eval/*/gold — auto-committing eval cases would let the
+// testdata/parser-eval/*/gold - auto-committing eval cases would let the
 // thing being evaluated write its own exam.
 //
 // Usage:

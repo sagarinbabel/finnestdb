@@ -1,23 +1,23 @@
-# Corpus acquisition pipeline — fetch, extract, aggregate, mine
+# Corpus acquisition pipeline - fetch, extract, aggregate, mine
 
 ## Context
 
 `finnestdb` is a JPDB-clone for Finnish/Estonian. The product needs a broad,
 register-diverse corpus to:
 
-1. **Improve parser quality** — surface OOV words, expose dictionary gaps,
+1. **Improve parser quality** - surface OOV words, expose dictionary gaps,
    feed mining workflows that flag candidates for hand-labeled gold and
    high-confidence silver. Today: parser eval lives on ~37K FI / ~437K ET
    UD-gold tokens. Goal: ~10 GB per language, plus a stream of mined
    parser-improvement candidates.
-2. **Build a giant inflected-form word list** — every unique surface form
+2. **Build a giant inflected-form word list** - every unique surface form
    across all corpus, deduplicated, with POS / lemma / case / mood / FEATS /
    counts. Surface-form frequency table is the core v1 deliverable for the
    "JPDB word list" feature. Today: doesn't exist.
-3. **Build a sentence bank** — every sentence from every source with
+3. **Build a sentence bank** - every sentence from every source with
    document/sentence-index provenance, available as flashcard-context
    fodder. Today: doesn't exist.
-4. **Keep poetry separate** — preserved with line breaks, source-tagged,
+4. **Keep poetry separate** - preserved with line breaks, source-tagged,
    for distinct learning-UX experiments. Today: doesn't exist.
 
 Existing state: `localdata/fi-corpus/` has 22 MB of hand-pasted articles in
@@ -27,9 +27,9 @@ bootstrap rule. There's no end-to-end fetch/extract/aggregate pipeline.
 
 Local-only by policy: per [`docs/ARTIFACT_POLICY.md`](../docs/ARTIFACT_POLICY.md),
 nothing in `localdata/` ships in the app or in git. Licensing is tracked
-for hygiene but not gated — no commercial/noncommercial allowlists.
+for hygiene but not gated - no commercial/noncommercial allowlists.
 
-## Language conventions — FI and ET are first-class
+## Language conventions - FI and ET are first-class
 
 Every command and Makefile target has three variants, no exceptions:
 
@@ -62,7 +62,7 @@ known ambiguities per language:
 
 After the pipeline runs, `localdata/{fi,et}-corpus/_derived/` contains:
 
-### Family A — App data exports (3 TSVs)
+### Family A - App data exports (3 TSVs)
 
 | File | Purpose |
 |---|---|
@@ -70,51 +70,51 @@ After the pipeline runs, `localdata/{fi,et}-corpus/_derived/` contains:
 | `sentences.tsv` | Sentence bank, deduped across sources, with document/sentence-index provenance. |
 | `poems.tsv` | Poetry, line breaks preserved (JSON-escaped), source-tagged. |
 
-### Family B — Parser-improvement mining (5 initial TSVs + enrichment-only silver TSV + report)
+### Family B - Parser-improvement mining (5 initial TSVs + enrichment-only silver TSV + report)
 
 | File | Purpose |
 |---|---|
 | `mining/unresolved.tsv` | High-frequency surfaces the parser couldn't resolve, **prose-first**. Sorted by `surface_count_prose` desc, then `surface_count_total` desc. Feeds dictionary expansion. |
 | `mining/parser-disagreements.tsv` | Surfaces where `basic` and `custom` modes disagree. Reuses `cmd/corpusmine` logic. |
 | `mining/high-frequency-ambiguous.tsv` | High-frequency surfaces with ≥2 FST analyses. Candidates for hand-labeled gold. |
-| `mining/poetry-unresolved.tsv` | Subset of unresolved where poetry count dominates — archaisms, dialect, folk-poetry formulas. Kept separate from main unresolved.tsv so prose-focused parser work isn't noisy. |
-| `mining/internal-consensus-candidates.tsv` | Surfaces where `basic` ⊕ `custom` ⊕ FST top hit all agree. NOT silver — basic and custom share dictionary plumbing, so this isn't independent enough. Useful prioritization signal only. |
-| `mining/silver-candidates.tsv` | **Silver file policy** (canonical wording, used everywhere): `silver-candidates.tsv` is absent before `cmd/enrichcorpus` runs. The verifier accepts either absent OR header-only as valid initial state. `cmd/aggregatecorpus` **never writes it** — only `cmd/enrichcorpus` does, after parser_choice agrees with external analyzer (omorfi/estnltk). |
-| `qa-report.json` | Per-run snapshot — parser version, source row counts, token counts, unique surface count, unresolved rate, ambiguous-surface count, license mix, top unresolved/disagreement examples. |
+| `mining/poetry-unresolved.tsv` | Subset of unresolved where poetry count dominates - archaisms, dialect, folk-poetry formulas. Kept separate from main unresolved.tsv so prose-focused parser work isn't noisy. |
+| `mining/internal-consensus-candidates.tsv` | Surfaces where `basic` ⊕ `custom` ⊕ FST top hit all agree. NOT silver - basic and custom share dictionary plumbing, so this isn't independent enough. Useful prioritization signal only. |
+| `mining/silver-candidates.tsv` | **Silver file policy** (canonical wording, used everywhere): `silver-candidates.tsv` is absent before `cmd/enrichcorpus` runs. The verifier accepts either absent OR header-only as valid initial state. `cmd/aggregatecorpus` **never writes it** - only `cmd/enrichcorpus` does, after parser_choice agrees with external analyzer (omorfi/estnltk). |
+| `qa-report.json` | Per-run snapshot - parser version, source row counts, token counts, unique surface count, unresolved rate, ambiguous-surface count, license mix, top unresolved/disagreement examples. |
 
-### Family C — Provenance sidecars
+### Family C - Provenance sidecars
 
 | File | Purpose |
 |---|---|
 | `manifest.tsv` | Per-source bytes / lines / sentences / tokens / license / fetch URL / fetched_utc / sha256. |
-| `documents.tsv` | Per-document_id mapping — source, doc_id, title, author, raw_path, extracted_path. Used by sentences/poems to resolve `document_id`. |
-| `sentence_occurrences.tsv` | Full provenance — every (sentence_id, source, document_id, sentence_ix, quality_flags) tuple. Lets sentences.tsv stay text-only and dedup-clean while preserving "where exactly did this sentence come from?". |
+| `documents.tsv` | Per-document_id mapping - source, doc_id, title, author, raw_path, extracted_path. Used by sentences/poems to resolve `document_id`. |
+| `sentence_occurrences.tsv` | Full provenance - every (sentence_id, source, document_id, sentence_ix, quality_flags) tuple. Lets sentences.tsv stay text-only and dedup-clean while preserving "where exactly did this sentence come from?". |
 | `build_metadata.json` | Pipeline version, parser version, FST table version, dict fingerprint, run start/end, host, cli args. |
 
-### Family D — Promotion gates and error tracking
+### Family D - Promotion gates and error tracking
 
 | File | Purpose |
 |---|---|
 | `qa-gate.json` | Machine-readable hard/soft gate results from `cmd/corpusverify`. Hard failures cause nonzero exit; soft warnings logged. |
 | `promotion-state.json` | Tracks which profile (smoke/pilot/full) last passed verification per language. Updated by `cmd/corpuspromote`. |
 | `errors/error-history.jsonl` | Append-only error log. Each entry: `{utc, profile, stage, error_class, message, detail, file_refs}`. Never overwritten. |
-| `errors/repaired.jsonl` | Append-only repair log. Each entry: `{utc, fix_id, error_class, original_error_utc, fix_description, git_head_sha?}`. `fix_id` is mandatory; `git_head_sha` is optional (only present if the fix landed as a local commit — which is rare in this no-PR workflow). Lets the pipeline know "this error was already addressed, watch for regression." |
+| `errors/repaired.jsonl` | Append-only repair log. Each entry: `{utc, fix_id, error_class, original_error_utc, fix_description, git_head_sha?}`. `fix_id` is mandatory; `git_head_sha` is optional (only present if the fix landed as a local commit - which is rare in this no-PR workflow). Lets the pipeline know "this error was already addressed, watch for regression." |
 
 ### Plus per-source files
 
-- `localdata/{fi,et}-corpus/<source>/raw/` — verbatim downloaded files (with `.sha256` sidecars)
-- For **prose** sources: `localdata/{fi,et}-corpus/<source>/text.txt` — extracted plain text (one paragraph per line, empty lines = doc boundaries)
-- For **poetry** sources: `localdata/{fi,et}-corpus/<source>/poems.jsonl` — one JSON object per poem, line breaks preserved as escaped `\n` (not paragraph-normalized)
-- `localdata/{fi,et}-corpus/<source>/manifest.json` — per-source metadata (slug, kind=prose|poetry, license, format, format_version)
-- `localdata/{fi,et}-corpus/<source>/documents.jsonl` — per-document metadata (id, title, author, raw_path, byte offsets)
+- `localdata/{fi,et}-corpus/<source>/raw/` - verbatim downloaded files (with `.sha256` sidecars)
+- For **prose** sources: `localdata/{fi,et}-corpus/<source>/text.txt` - extracted plain text (one paragraph per line, empty lines = doc boundaries)
+- For **poetry** sources: `localdata/{fi,et}-corpus/<source>/poems.jsonl` - one JSON object per poem, line breaks preserved as escaped `\n` (not paragraph-normalized)
+- `localdata/{fi,et}-corpus/<source>/manifest.json` - per-source metadata (slug, kind=prose|poetry, license, format, format_version)
+- `localdata/{fi,et}-corpus/<source>/documents.jsonl` - per-document metadata (id, title, author, raw_path, byte offsets)
 
 ### Plus bootstrap tarball
 
-- `finnestdb-bootstrap-{code,fi,et}.tgz` — 3-way split tarball (see Stage 4)
+- `finnestdb-bootstrap-{code,fi,et}.tgz` - 3-way split tarball (see Stage 4)
 
-## Pipeline — seven sequential stages
+## Pipeline - seven sequential stages
 
-### Stage 1 — `cmd/fetchcorpus`
+### Stage 1 - `cmd/fetchcorpus`
 
 Downloads all sources to `localdata/{fi,et}-corpus/<source>/raw/`. Writes
 `<source>/manifest.json` with metadata. Idempotent (checks SHA256, skips
@@ -124,10 +124,10 @@ if matches). Single binary with `-lang fi|et`, `-source <name>`, `-force`,
 **Duplicates** the ~30-line `downloadFile()` pattern from main repo's
 `cmd/fetchfrequency/main.go` into `corpus_pipeline/internal/fetcher/`
 so we don't modify main repo's tracked files. (Yes, this is intentional
-DRY-violation in service of the cleanliness rule — main repo's
+DRY-violation in service of the cleanliness rule - main repo's
 `cmd/fetchfrequency` is left untouched.)
 
-### Stage 2 — `cmd/extractcorpus`
+### Stage 2 - `cmd/extractcorpus`
 
 For each `<source>/raw/`, dispatches to a format-specific extractor.
 **Output depends on whether the source is prose or poetry:**
@@ -135,11 +135,11 @@ For each `<source>/raw/`, dispatches to a format-specific extractor.
 - **Prose sources** (`kind: prose` in manifest.json): writes
   `<source>/text.txt` (one paragraph per line, empty lines mark
   document boundaries) + `<source>/documents.jsonl`.
-- **Poetry sources** (`kind: poetry` — SKVR, runosto, ERAB, **eeva-poetry** (only the curated poetry subset of EEVA),
+- **Poetry sources** (`kind: poetry` - SKVR, runosto, ERAB, **eeva-poetry** (only the curated poetry subset of EEVA),
   hand-curated Gutenberg poetry IDs): writes `<source>/poems.jsonl`
   with one JSON object per poem, line breaks **escaped** (`\n` literal,
   preserved through JSON encoding). NO paragraph-normalized text.txt
-  for poetry sources — line breaks are part of the data.
+  for poetry sources - line breaks are part of the data.
 
 Phase 1 of aggregator only reads `text.txt` from prose sources;
 phase 1 reads `poems.jsonl` from poetry sources and routes them
@@ -158,7 +158,7 @@ Format extractors needed:
 | SKVR XML | SKVR folk poems | XML parse → poem records (kind=poetry → routed to poems.tsv in Stage 3) |
 | HTML scrape | runosto.net (FI poetry), infopankki, selkouutiset, **Riigikogu stenograms (ET parl)**, **eeva-prose / eeva-poetry (ET old literature, split by document type)** | Polite scrape (~1.5s delay), copying `cmd/scrapegutenberg` rate-limiter pattern. EEVA scraper inspects each document's metadata tags to route prose vs poetry into the right source folder. |
 | HuggingFace dataset | **TalTechNLP/err-newsroom (ET news)** | Pull via HuggingFace Hub Python lib OR direct parquet download. Parse parquet/jsonl, extract `heading + lead-in + text` columns. |
-| ERAB export | **ERAB regilaulud (ET poetry)** | TXT/XML export interface — parse song records (these are poetry, route to poems.tsv via `kind: poetry` in manifest.json) |
+| ERAB export | **ERAB regilaulud (ET poetry)** | TXT/XML export interface - parse song records (these are poetry, route to poems.tsv via `kind: poetry` in manifest.json) |
 | Markdown (LingQ parallel) | **lingq-parallel (ET)** | Parse `.md`, recognize ENG/EST blocks, extract Estonian-only sentences, drop English equivalents. New extractor `extract_md.go`. |
 
 Each extractor emits **quality flags** per paragraph/sentence: `has_url`,
@@ -166,24 +166,24 @@ Each extractor emits **quality flags** per paragraph/sentence: `has_url`,
 These propagate into `sentences.tsv` and let the QA report detect
 contamination.
 
-Dispatch is per-source — the source's `manifest.json` declares `format`.
+Dispatch is per-source - the source's `manifest.json` declares `format`.
 
-### Stage 3 — `cmd/aggregatecorpus`
+### Stage 3 - `cmd/aggregatecorpus`
 
 (Naming note: "phases" inside a single aggregate run, vs. the separate
-"v2 enrichment pass" run via `cmd/enrichcorpus` later — see Stage 5.)
+"v2 enrichment pass" run via `cmd/enrichcorpus` later - see Stage 5.)
 
 **Four-phase architecture (correctness fix from review)**:
 
 **Phase 1: Surface counting + sentence dedup (parserffi-tokenized, SQLite-backed)**
 
 Walks every `<source>/text.txt`, calls
-`internal/parserffi.AnalyzeText(langUpper, paragraph)` directly — **NOT
+`internal/parserffi.AnalyzeText(langUpper, paragraph)` directly - **NOT
 `parsecore.Analyze`**. parsecore does dictionary lookup + gloss
 enrichment + has `MaxTextChars = 300_000`; that's wasteful for phase-1
 counting and would chunk paragraphs unnecessarily. parserffi
 (internal/parserffi/bindings.go:35) is the raw Rust-FFI
-tokenizer/sentence-splitter without enrichment — exactly what phase 1
+tokenizer/sentence-splitter without enrichment - exactly what phase 1
 needs.
 
 **Sentence text reconstruction note**: `parserffi.Sentence` returns
@@ -191,7 +191,7 @@ needs.
 `tmp_sentences.text` we must reconstruct the sentence string from the
 token list. Copy the reconstruction logic from
 `internal/parsecore.toParsedSentences` (which already does this
-correctly for the runtime parser path — handles whitespace, joins
+correctly for the runtime parser path - handles whitespace, joins
 tokens correctly across punctuation). Hash the reconstructed text for
 dedup; same hash function as parsecore uses for sentence keys, so the
 sentence bank stays consistent with what the app emits.
@@ -206,7 +206,7 @@ For each sentence and token it returns:
   source, document_id, sentence_ix, quality_flags)`.
 - For **poetry** sources, ingest `<source>/poems.jsonl` into `tmp_poems`
   (preserving full poems with line breaks). **Also tokenize the poem
-  text via `parserffi.AnalyzeText`** to feed surface counts — we don't
+  text via `parserffi.AnalyzeText`** to feed surface counts - we don't
   ignore the words. The crucial difference: poem-derived counts go
   into a *separate column* (`surface_count_poetry`) rather than mixing
   into the prose default. This honors goal #2 ("every unique surface
@@ -220,7 +220,7 @@ For each sentence and token it returns:
 `localdata/{lang}-corpus/_derived/_scratch.db` so 50-80M sentences and
 ~5M unique surfaces don't have to fit in RAM. The scratch DB is
 deleted after phase 4 writers complete (or kept with `-keep-scratch`
-for debugging). It is NOT a canonical artifact — TSVs are.
+for debugging). It is NOT a canonical artifact - TSVs are.
 
 Output of phase 1: SQLite tables `tmp_surface_counts`,
 `tmp_sentences`, `tmp_sentence_occurrences`, `tmp_poems`.
@@ -245,7 +245,7 @@ For each unique surface in `tmp_surface_counts`:
     when parser_choice matches FST top hit, you get one row with
     `analysis_sources="parser_choice;fst"`, not two rows. Avoids the
     "same analysis duplicated" smell the review flagged.
-- Pick one example **key** for the surface (NOT a final ID — those
+- Pick one example **key** for the surface (NOT a final ID - those
   don't exist yet):
   - If the surface has prose occurrences → store
     `example_sentence_hash` = the content-hash of the first prose
@@ -270,28 +270,28 @@ Output of phase 2: wordlist rows (collapsed per (surface, lemma, pos, feats)).
 
 Same phase-2 loop also emits:
 
-- `mining/unresolved.tsv` — surfaces with no FST hit AND no dict hit,
+- `mining/unresolved.tsv` - surfaces with no FST hit AND no dict hit,
   **prose-first sort**: `surface_count_prose` desc, then
   `surface_count_total` desc. **Includes register breakdown columns**
-  (`surface_count_prose`, `surface_count_poetry`) — a surface
+  (`surface_count_prose`, `surface_count_poetry`) - a surface
   unresolved in poetry but rare in prose may be archaic/dialectal,
   while one unresolved in prose is a modern dictionary gap. The
   distinction matters for parser improvement priorities.
-- `mining/poetry-unresolved.tsv` — subset of unresolved surfaces meeting
+- `mining/poetry-unresolved.tsv` - subset of unresolved surfaces meeting
   the poetry-dominant threshold (`surface_count_poetry >= 10 AND
   surface_count_poetry >= 5 * max(surface_count_prose, 1)`).
   Curated separately so parser-improvement
   workflows targeting modern Finnish/Estonian don't get noise from
-  Kalevala archaisms or regilaul formulas (and vice versa — folk-poetry
+  Kalevala archaisms or regilaul formulas (and vice versa - folk-poetry
   research can target this file specifically).
-- `mining/high-frequency-ambiguous.tsv` — surfaces with ≥2 FST
+- `mining/high-frequency-ambiguous.tsv` - surfaces with ≥2 FST
   analyses, sorted by `surface_count_prose` desc (prose-first because
   ambiguity in modern usage is the parser-improvement priority).
-- `mining/parser-disagreements.tsv` — surfaces where `basic` and
+- `mining/parser-disagreements.tsv` - surfaces where `basic` and
   `custom` modes produce different chosen analyses. Sort by
   `surface_count_prose` desc.
-- `mining/internal-consensus-candidates.tsv` — emit row when `basic`
-  agrees with `custom` agrees with FST top hit. **NOT silver** —
+- `mining/internal-consensus-candidates.tsv` - emit row when `basic`
+  agrees with `custom` agrees with FST top hit. **NOT silver** -
   basic and custom share dictionary plumbing, so they're not
   independent. True silver requires external-analyzer agreement
   (omorfi/estnltk), which only `cmd/enrichcorpus` adds.
@@ -315,25 +315,25 @@ So `sentences.tsv.id=1` is always the sentence whose first occurrence
 sentence_ix, hash)`. Re-running aggregation on identical inputs
 produces identical sentence IDs. (Hard gate verifies this.)
 
-Writers — **strict ordering**, because example keys must resolve to
+Writers - **strict ordering**, because example keys must resolve to
 final IDs:
 
-1. `sentences.tsv` — sorted by deterministic id asc (assigns final IDs).
-2. `poems.tsv` — sorted by source, title (assigns final poem IDs).
-3. `documents.tsv`, `manifest.tsv` — provenance sidecars.
-4. `sentence_occurrences.tsv` — sorted by sentence_id asc, then source asc.
-5. **Resolve example keys** — walk wordlist and mining tables, look up
+1. `sentences.tsv` - sorted by deterministic id asc (assigns final IDs).
+2. `poems.tsv` - sorted by source, title (assigns final poem IDs).
+3. `documents.tsv`, `manifest.tsv` - provenance sidecars.
+4. `sentence_occurrences.tsv` - sorted by sentence_id asc, then source asc.
+5. **Resolve example keys** - walk wordlist and mining tables, look up
    each surface's `example_sentence_hash` → final `sentences.tsv.id`
    (or `example_poem_key` → `poems.tsv.id`), populate
    `example_ref_type` / `example_ref_id` / `example_text`.
-6. `wordlist.tsv` — sorted by `surface_count_prose` desc, then
+6. `wordlist.tsv` - sorted by `surface_count_prose` desc, then
    `surface_count_total` desc, then surface asc, then `analysis_rank`
    asc.
 7. All 5 mining TSVs.
-8. `build_metadata.json`, `qa-report.json` — last so they reflect final
+8. `build_metadata.json`, `qa-report.json` - last so they reflect final
    row counts.
 
-**Concurrency model — single SQLite writer**
+**Concurrency model - single SQLite writer**
 
 SQLite + concurrent goroutines requires care. The model:
 
@@ -343,7 +343,7 @@ SQLite + concurrent goroutines requires care. The model:
   sentence_ix, quality_flags)` rows over a buffered channel.
 - **One** SQLite-writer goroutine drains the channel and does batched
   inserts inside a single `BEGIN ... COMMIT` per ~10K rows. WAL mode
-  enabled. No `sync.Map` — SQLite is the single source of truth for
+  enabled. No `sync.Map` - SQLite is the single source of truth for
   cross-source aggregation in phase 1.
 - **Phase 2**: M enrichment-worker goroutines (one per CPU core) pull
   unique surfaces from `tmp_surface_counts` (read-only) and call
@@ -358,7 +358,7 @@ Writer: `encoding/csv` with `w.Comma = '\t'`, copying the pattern from
 csv package handles tab-in-content escaping correctly (rare but possible),
 which is the safety belt for "TSV is fine as long as you use the library."
 
-### Stage 4 — `make bootstrap-tarball` (split into 3)
+### Stage 4 - `make bootstrap-tarball` (split into 3)
 
 ```sh
 make bootstrap-tarball
@@ -368,15 +368,15 @@ make bootstrap-tarball
 #   finnestdb-bootstrap-et.tgz     ~25-40 GB (localdata/et-corpus/)
 ```
 
-3 tarballs, not 1 — total ~50-80 GB compressed is impractical as a
+3 tarballs, not 1 - total ~50-80 GB compressed is impractical as a
 single file. The user (or teammate) can pull just one if they only
 need one language.
 
 The split is documented in `corpus_pipeline/docs/CORPUS_PIPELINE.md`
-(local doc, NOT main repo's `docs/ARTIFACT_POLICY.md` — that file
+(local doc, NOT main repo's `docs/ARTIFACT_POLICY.md` - that file
 stays untouched per cleanliness rule).
 
-### Stage 5 — `cmd/enrichcorpus` (built in v1, run on demand later)
+### Stage 5 - `cmd/enrichcorpus` (built in v1, run on demand later)
 
 **Built now, not run during the initial pipeline.** Sits ready for the
 user to run whenever they want richer FEATS:
@@ -406,7 +406,7 @@ surface, emits `_derived/wordlist-enriched.tsv` with extra columns:
 external analyzer (omorfi or estnltk) get appended to
 `mining/silver-candidates.tsv` (a separate file from
 `internal-consensus-candidates.tsv`). This is the only path to a real
-silver tier — anti-circular discipline.
+silver tier - anti-circular discipline.
 
 Resumable: writes its own cache at `_derived/cache/external-analyses.tsv`
 keyed by `(surface, lang, analyzer_version)`. If it dies halfway, re-run
@@ -415,7 +415,7 @@ picks up where it left off.
 Independent of the main pipeline. Doesn't touch sentences.tsv or
 poems.tsv. Doesn't gate anything else. Runs on user's schedule.
 
-### Stage 6 — `cmd/corpusverify` (promotion gate)
+### Stage 6 - `cmd/corpusverify` (promotion gate)
 
 Runs after every aggregate. Reads the derived TSVs, applies hard and
 soft gates, writes `_derived/qa-gate.json`, exits nonzero on hard
@@ -431,7 +431,7 @@ make corpus-verify-fi PROFILE=smoke    # or pilot, full
   build_metadata.json, qa-report.json, all 5 initial mining TSVs:
   unresolved.tsv, poetry-unresolved.tsv, parser-disagreements.tsv,
   high-frequency-ambiguous.tsv, internal-consensus-candidates.tsv.
-  silver-candidates.tsv must be absent or header-only —
+  silver-candidates.tsv must be absent or header-only -
   `cmd/aggregatecorpus` never writes it; only `cmd/enrichcorpus` does
   (Silver file policy in Family B above).
 - All TSVs parse with `encoding/csv`, `Comma='\t'`.
@@ -447,16 +447,16 @@ make corpus-verify-fi PROFILE=smoke    # or pilot, full
   `surface_count_prose`, `surface_count_poetry`, `surface_count_total`.
 - `sentences.tsv` has no raw newlines inside text.
 - `poems.tsv` preserves line breaks as escaped `\n`.
-- **FST tables present** for both languages — missing FST tables is
+- **FST tables present** for both languages - missing FST tables is
   a HARD smoke failure (the entire ambiguity-enumeration story
   collapses without them). Verifier checks
   `localdata/lemmatizer-fi-et/tables/fi_min.json` and
   `localdata/lemmatizer-fi-et/tables/et_min.json` (the actual paths used
-  by this project — see `pkg/lemmatizer-fi-et` runtime), or
+  by this project - see `pkg/lemmatizer-fi-et` runtime), or
   `LEMMATIZER_TABLES_DIR` env var override if set. Non-empty file size
   required (the smoke fixtures are 12-form mini-tables; full tables are
   much larger).
-- **Rust parser shared library present** — `parser/target/release/libparser*`
+- **Rust parser shared library present** - `parser/target/release/libparser*`
   must exist. `internal/parserffi` links against this at runtime; if
   missing, every `parserffi.AnalyzeText` call fails. The verifier's
   preflight runs `make parser` from main repo if the library is
@@ -481,7 +481,7 @@ make corpus-verify-fi PROFILE=smoke    # or pilot, full
   bug or runaway dump).
 - Language-ID contamination above threshold.
 
-### Stage 7 — `cmd/corpuspromote` (3-tier promotion ladder)
+### Stage 7 - `cmd/corpuspromote` (3-tier promotion ladder)
 
 Simplified from the reviewer's 5-level ladder. Three profiles:
 
@@ -504,7 +504,7 @@ Stops on the first hard-gate failure. Records state in
 
 When any hard gate fails, the runner appends to:
 
-- `_derived/errors/error-history.jsonl` — one JSON object per error,
+- `_derived/errors/error-history.jsonl` - one JSON object per error,
   appended forever:
   ```json
   {"utc": "2026-05-08T08:31:00Z", "profile": "pilot", "stage": "verify",
@@ -512,7 +512,7 @@ When any hard gate fails, the runner appends to:
    "message": "42 orphan example_sentence_id references",
    "detail": ["12345", "67890", "..."], "file_refs": ["wordlist.tsv:line 1234"]}
   ```
-- `_derived/errors/error_report.txt` — human-readable summary of the
+- `_derived/errors/error_report.txt` - human-readable summary of the
   most recent failure + suggested next steps. Overwritten each run
   (history is in the JSONL).
 
@@ -527,8 +527,8 @@ When a fix lands, append to `_derived/errors/repaired.jsonl`:
  "git_head_sha": "abc123def"}
 ```
 
-`fix_id` is mandatory (durable identifier — works even with no commits).
-`git_head_sha` is **optional** — included if the fix was a local commit
+`fix_id` is mandatory (durable identifier - works even with no commits).
+`git_head_sha` is **optional** - included if the fix was a local commit
 on some branch, omitted if the fix was just a file edit (which is the
 common case for this no-PR workflow).
 
@@ -540,18 +540,18 @@ silent reverts and pipeline drift.
 Both files are append-only. Never overwritten. Ship in bootstrap
 tarball.
 
-## Incremental updates — adding sources after the initial run
+## Incremental updates - adding sources after the initial run
 
 The pipeline is designed to be re-run safely. When you add new sources
 (EPUBs, a new scrape, an updated dump), the workflow is:
 
-### EPUB workflow — three named make commands
+### EPUB workflow - three named make commands
 
 The `epub` source is **folder-driven, not URL-driven**: its
-`manifest.json` declares `format: epub` with no download URL — so
+`manifest.json` declares `format: epub` with no download URL - so
 `cmd/fetchcorpus` skips it. Three Makefile targets handle the rest:
 
-#### `make epub-to-text` — just extract EPUBs to plain text
+#### `make epub-to-text` - just extract EPUBs to plain text
 
 ```sh
 make epub-to-text          # both languages
@@ -562,17 +562,17 @@ make epub-to-text-et
 Walks `localdata/{lang}-corpus/epub/raw/*.epub`, shells out to
 `pandoc -f epub -t plain` per file, writes:
 
-- `localdata/{lang}-corpus/epub/text.txt` — concatenated, one paragraph
+- `localdata/{lang}-corpus/epub/text.txt` - concatenated, one paragraph
   per line, empty lines = book boundaries (used by aggregate)
-- `localdata/{lang}-corpus/epub/per-book/<slug>.txt` — one file per
+- `localdata/{lang}-corpus/epub/per-book/<slug>.txt` - one file per
   book, plain text, full content (handy for reading separately)
-- `localdata/{lang}-corpus/epub/documents.jsonl` — per-book metadata
+- `localdata/{lang}-corpus/epub/documents.jsonl` - per-book metadata
 
 Idempotent (skips books whose mtime + size match the manifest).
-Standalone — useful if you just want plain-text versions of your EPUBs
+Standalone - useful if you just want plain-text versions of your EPUBs
 for some other reason. Doesn't touch wordlist/sentences/poems.
 
-#### `make add-epub` — fold EPUBs into the giant corpus
+#### `make add-epub` - fold EPUBs into the giant corpus
 
 ```sh
 make add-epub              # both languages
@@ -589,7 +589,7 @@ clock: ~5-15 minutes (vs. ~6 hours from scratch).
 This is the one to run when you want EPUBs to "be part of the giant
 list."
 
-#### `make epub-deck` — strip an EPUB into a per-book word list
+#### `make epub-deck` - strip an EPUB into a per-book word list
 
 ```sh
 make epub-deck                                # all books in epub/raw/, both langs
@@ -606,7 +606,7 @@ localdata/{lang}-corpus/epub/decks/<book-slug>.tsv
 
 Same column shape as the main wordlist.tsv (surface, surface_count_prose, surface_count_poetry, surface_count_total,
 lemma, pos, feats, …) but counts are scoped to that one book. Useful
-as a flashcard-deck source — you can manually import a single book's
+as a flashcard-deck source - you can manually import a single book's
 vocab into Anki / the app, or drop it somewhere else.
 
 This is independent of `add-epub`. You can run `epub-deck` without
@@ -629,7 +629,7 @@ new directory just shows up.
 
 ### Surface enrichment cache
 
-`_derived/cache/surface-analyses.tsv` — maps `(surface, lang,
+`_derived/cache/surface-analyses.tsv` - maps `(surface, lang,
 parser_version, fst_tables_sha, dict_fingerprint)` to its enriched rows. Phase 2 reads
 this on every run; cache hits skip the parser call entirely. New
 sources only pay the parser cost for surfaces that are genuinely new
@@ -678,8 +678,8 @@ localdata/
 │   ├── opus-eubookshop/
 │   ├── opus-ecb/
 │   ├── opus-emea/
-│   ├── skvr/                       # poetry — kind=poetry
-│   ├── runosto/                    # poetry — kind=poetry
+│   ├── skvr/                       # poetry - kind=poetry
+│   ├── runosto/                    # poetry - kind=poetry
 │   ├── frequency-words/
 │   ├── selkouutiset/
 │   ├── opus-bible/
@@ -726,9 +726,9 @@ localdata/
     ├── opus-tatoeba/
     ├── hf-err-newsroom/                       # HuggingFace ERR news 2016-2022
     ├── riigikogu-stenograms/                  # ET parliamentary
-    ├── erab-regilaulud/                       # ET folk poetry — kind=poetry
+    ├── erab-regilaulud/                       # ET folk poetry - kind=poetry
     ├── eeva-prose/                            # EEVA older literature, prose
-    ├── eeva-poetry/                           # EEVA older literature, poetry — kind=poetry
+    ├── eeva-poetry/                           # EEVA older literature, poetry - kind=poetry
     ├── lingq-parallel/                        # 2 LingQ ENG_EST parallel-text .md files
     ├── epub/                                  # folder-driven, populated when user drops EPUBs
     └── _derived/
@@ -757,21 +757,21 @@ arkanen  0                    87                    87                   0      
 - One row per **distinct** `(surface, lemma, pos, feats)`. Collapses
   duplicate analyses where parser_choice and FST agree.
 - **Three count columns**:
-  - `surface_count_prose` — occurrences from `kind: prose` sources
+  - `surface_count_prose` - occurrences from `kind: prose` sources
     (news, subtitles, parliament, encyclopedia, web, EPUBs, etc.)
-  - `surface_count_poetry` — occurrences from `kind: poetry` sources
+  - `surface_count_poetry` - occurrences from `kind: poetry` sources
     (SKVR, runosto, ERAB, eeva-poetry)
   - `surface_count_total` = sum of both
 - All three repeat across rows for the same surface. **Don't sum
-  across rows — that double-counts.**
+  across rows - that double-counts.**
 - `doc_count_prose` / `doc_count_poetry` = distinct doc counts per register.
 - `source_counts_json` = per-source breakdown across both registers.
 - **Default sort: `surface_count_prose` desc, then `surface_count_total`
   desc, then surface asc, then `analysis_rank` asc.** Poetry counts
-  visible but not rank-dominant — a rare archaic refrain repeated 200
+  visible but not rank-dominant - a rare archaic refrain repeated 200
   times in folk songs won't outrank a common modern prose word. The
   `mieleni` example above (Kalevala-famous "mieleni minun tekevi" line)
-  has high poetry count but low prose count — appears far down in
+  has high poetry count but low prose count - appears far down in
   the prose-default ranking, where it belongs for learners reading
   modern text.
 - `analysis_sources` = `;`-joined list (`parser_choice`, `fst`, future:
@@ -783,7 +783,7 @@ arkanen  0                    87                    87                   0      
   `sentence`; poetry-only surfaces (where `surface_count_prose=0`)
   get `poem` pointing into `poems.tsv`. Avoids dangling references.
 - `example_ref_id` is the primary key of the chosen table.
-- `example_text` is the literal text excerpt (denormalized — saves the
+- `example_text` is the literal text excerpt (denormalized - saves the
   consumer a join, and survives if sentences/poems IDs ever shift).
 - Empty cells = `""`, not `-`.
 
@@ -812,7 +812,7 @@ sentence_id  source                document_id              sentence_ix  quality
 4            wikipedia             wikipedia:Helsinki       128          mostly_digits;has_url
 ```
 
-- One row per (sentence_id × source × document × position) — many-to-one with sentences.tsv.
+- One row per (sentence_id × source × document × position) - many-to-one with sentences.tsv.
 - Lets you grab adjacent sentences from the same document, debug
   extractor bugs, sample by source for QA.
 - `quality_flags` is `;`-joined (`has_url`, `has_email`, `mostly_digits`,
@@ -857,7 +857,7 @@ surface  surface_count_prose  surface_count_poetry  agreed_lemma  agreed_pos  ag
 talossa  3201                 8                     talo          NOUN        Case=Ine|Number=Sing                                  sentence          67890            omorfi
 ```
 
-**Poetry-dominant threshold for `mining/poetry-unresolved.tsv`** —
+**Poetry-dominant threshold for `mining/poetry-unresolved.tsv`** -
 hard rule, not vibes:
 
 ```
@@ -950,24 +950,24 @@ skvr:I.1.1               skvr             Kalevala-XI   trad         localdata/f
 | Tier | Source | Use | File |
 |---|---|---|---|
 | **Gold** | Human-labeled or trusted upstream (UD treebanks, hand-authored cases, parser-feedback fix-ups) | Gates parser changes. **Not produced by this pipeline.** | `testdata/parser-eval/{fi,et}/gold/` (committed) and `localdata/parser-eval/{fi,et}/gold/` (NC-licensed UD) |
-| **Silver** | External-analyzer agreement: parser_choice agrees with omorfi (FI) or estnltk (ET) | Real silver — independent enough to support regression smoke tests and bootstrapping. | `_derived/mining/silver-candidates.tsv` (only populated by `cmd/enrichcorpus`) |
+| **Silver** | External-analyzer agreement: parser_choice agrees with omorfi (FI) or estnltk (ET) | Real silver - independent enough to support regression smoke tests and bootstrapping. | `_derived/mining/silver-candidates.tsv` (only populated by `cmd/enrichcorpus`) |
 | **Internal consensus** | basic ⊕ custom ⊕ FST top hit all agree | Useful signal but not independent (basic and custom share dictionary plumbing). Treat as priority hints, not correctness claims. | `_derived/mining/internal-consensus-candidates.tsv` |
 | **Bronze / mining** | Raw corpus signals (unresolved, parser-disagreements, high-frequency-ambiguous) | Prioritization, not correctness claims. | `_derived/mining/*.tsv` |
 
 **Critical anti-circularity rule:** the v1 initial run populates
 `internal-consensus-candidates.tsv`, NOT `silver-candidates.tsv`. The
 basic and custom parsers share too much dictionary plumbing to count as
-independent — internal consensus is a useful signal, not a silver label.
+independent - internal consensus is a useful signal, not a silver label.
 True silver only appears after `cmd/enrichcorpus` runs (omorfi or
 estnltk = independent analyzer). Don't claim parser accuracy against
 internal-consensus data.
 
-## Source list — v1 hard commitment (verified, point-in-time sizes)
+## Source list - v1 hard commitment (verified, point-in-time sizes)
 
 **This is the v1 commitment.** Every source listed below WILL be
 fetched. Sources outside this list are out of scope for v1 (added in
 a follow-up if/when the user requests them). Sizes were taken from the
-OPUS API and Kielipankki HEAD probes during prior research turn — they
+OPUS API and Kielipankki HEAD probes during prior research turn - they
 are point-in-time snapshots; the fetcher re-verifies via HEAD at run
 time and updates `manifest.tsv` with actual byte counts.
 
@@ -1026,29 +1026,29 @@ time and updates `manifest.tsv` with actual byte counts.
 | OPUS Bible et | religious | ~12 MB | txt.gz |
 | OPUS Tatoeba et | conv | ~8 MB | txt.gz |
 | Gutenberg et | literary | ~5 MB | scrape (1 book today) |
-| **HF TalTechNLP/err-newsroom** | **news (broadcaster)** | **173 MB** | **HuggingFace dataset (parquet/jsonl)** — 187,187 ERR articles 2016-2022 |
+| **HF TalTechNLP/err-newsroom** | **news (broadcaster)** | **173 MB** | **HuggingFace dataset (parquet/jsonl)** - 187,187 ERR articles 2016-2022 |
 | **Riigikogu stenograms** | **parliamentary** | **~200-500 MB est** | **HTML scrape of sitting-by-sitting index, polite (~1.5s delay)** |
-| **ERAB (Eesti regilaulude andmebaas)** | **poetry (folk)** | **~100-200 MB** | **TXT/XML export from web interface (CLARIN ACA NC — local-only OK per policy)** — 92K regilaul texts + 6K newer rhymed folk songs. v1 = public web export. v2 = contact for full corpus. |
+| **ERAB (Eesti regilaulude andmebaas)** | **poetry (folk)** | **~100-200 MB** | **TXT/XML export from web interface (CLARIN ACA NC - local-only OK per policy)** - 92K regilaul texts + 6K newer rhymed folk songs. v1 = public web export. v2 = contact for full corpus. |
 | **eeva-prose** (EEVA prose subset) | **literary (older)** | **~50-100 MB est** | **HTML scrape, prose only** |
-| **eeva-poetry** (EEVA poetry subset) | **poetry (literary)** | **~20-50 MB est** | **HTML scrape, curated poetry-tagged documents only — line breaks preserved, routed to poems.tsv** |
+| **eeva-poetry** (EEVA poetry subset) | **poetry (literary)** | **~20-50 MB est** | **HTML scrape, curated poetry-tagged documents only - line breaks preserved, routed to poems.tsv** |
 
-### ET parity status — closed vs. still open
+### ET parity status - closed vs. still open
 
 After these additions, the previous gaps are mostly closed:
 
 | Gap | FI has | ET v1 has (after these adds) | Status |
 |---|---|---|---|
 | Parliamentary | Eduskunta CSV (619 MB), Europarl ET (~80 MB) | **Riigikogu stenograms (~200-500 MB) + Europarl ET** | ✅ **Closed** |
-| Public-broadcaster news | Yle Kielipankki s-vrt (4.8 GB) | **HF TalTechNLP/err-newsroom (173 MB) + Leipzig (~1.1 GB) + Wikipedia (~280 MB)** | ⚠️ **Partial** — total ~1.5 GB vs. FI's 4.8 GB; v2 could scrape uudised.err.ee / kultuur.err.ee / arhiiv.err.ee for more |
+| Public-broadcaster news | Yle Kielipankki s-vrt (4.8 GB) | **HF TalTechNLP/err-newsroom (173 MB) + Leipzig (~1.1 GB) + Wikipedia (~280 MB)** | ⚠️ **Partial** - total ~1.5 GB vs. FI's 4.8 GB; v2 could scrape uudised.err.ee / kultuur.err.ee / arhiiv.err.ee for more |
 | Poetry | SKVR folk (99 MB), runosto.net literary | **ERAB regilaul (~100-200 MB) + eeva-poetry (~20-50 MB)** + eeva-prose for non-poetry old literature | ✅ **Closed** |
 
 The v1 ET corpus now has solid register coverage. v2 gap-closing
 narrows to: more ERR portals (currently scraping the HF static dump
 only), full ERAB corpus via CLARIN academic contact, and modern
-authored Estonian poetry (luuletus.ee / Luuleleid — license-messy,
+authored Estonian poetry (luuletus.ee / Luuleleid - license-messy,
 needs case-by-case research).
 
-## Critical files to create — ALL UNDER `corpus_pipeline/`
+## Critical files to create - ALL UNDER `corpus_pipeline/`
 
 Every path below is **relative to `corpus_pipeline/`** unless
 explicitly noted. Nothing tracked by git is modified.
@@ -1079,12 +1079,12 @@ explicitly noted. Nothing tracked by git is modified.
 | `cmd/corpusverify/gates.go` | **create** | Hard/soft gate definitions + per-profile thresholds |
 | `cmd/corpuspromote/main.go` | **create** | Runs smoke → pilot → full ladder |
 | `cmd/scrapegutenberg-corpus/main.go` | **create** | Local re-impl of Gutenberg scraper supporting both FI and ET. Starts from main repo's `cmd/scrapegutenberg/main.go` as a copy, adds ET search support. |
-| `internal/fetcher/fetcher.go` | **create** | Duplicate ~30-line `downloadFile()` from main repo's `cmd/fetchfrequency/main.go`. (Don't lift — keep main untouched. Intentional DRY-violation.) |
+| `internal/fetcher/fetcher.go` | **create** | Duplicate ~30-line `downloadFile()` from main repo's `cmd/fetchfrequency/main.go`. (Don't lift - keep main untouched. Intentional DRY-violation.) |
 | `internal/parserglue/parserglue.go` | **create** | Thin wrapper around `parsecore.Analyze` exposing only what aggregator needs. |
 | `scripts/estnltk-batch.py` | **create** | Python entry point. Loads estnltk once, reads surfaces from stdin, writes JSON analyses to stdout. |
 | `testdata/corpus-fixtures/fi/` | **create** | Hand-authored FI fixture for smoke gate. |
 | `testdata/corpus-fixtures/et/` | **create** | Hand-authored ET fixture for smoke gate. |
-| `docs/CORPUS_PIPELINE.md` | **create** | Operator doc — table of every make target with what it does, when to run, wall clock, outputs. |
+| `docs/CORPUS_PIPELINE.md` | **create** | Operator doc - table of every make target with what it does, when to run, wall clock, outputs. |
 | `v1plan.md` | **create** | Copy of this plan, durable local record. |
 | `v2plan.md` | **create** | 12 v2 follow-up items with `Why deferred / Effort / Trigger`. |
 | `notes/` | **create** | Empty folder for operator notes / error-report autopsies. |
@@ -1099,7 +1099,7 @@ explicitly noted. Nothing tracked by git is modified.
 | ~~Modify `TODO.md`~~ | **NOT MODIFIED** | v2 items live at `corpus_pipeline/v2plan.md`. |
 | `localdata/fi-corpus/` | **reorg** | Move existing folders into per-source layout. `localdata/` is gitignored, so reorganizing within it doesn't show in `git status`. |
 
-## Decisions taken (current — supersedes any earlier text)
+## Decisions taken (current - supersedes any earlier text)
 
 1. **Multi-analysis enumeration uses existing `Lemmatizer.Lemmatize`.**
    No new API. `pkg/lemmatizer-fi-et.Lemmatize(lang, word) []Analysis`
@@ -1123,7 +1123,7 @@ explicitly noted. Nothing tracked by git is modified.
    analysis from parser_choice + FST top hit becomes one row with
    `analysis_sources="parser_choice;fst"`, not two rows. Different
    analyses (verb vs. noun reading of "tulen") stay as separate rows.
-   `surface_count_prose`, `surface_count_poetry`, and `surface_count_total` all repeat across rows for the same surface — column
+   `surface_count_prose`, `surface_count_poetry`, and `surface_count_total` all repeat across rows for the same surface - column
    name makes this clear.
 
 6. **`document_id` and `sentence_ix` preserved end-to-end** via
@@ -1132,11 +1132,11 @@ explicitly noted. Nothing tracked by git is modified.
    resolves through these (sentence rows for prose-first surfaces,
    poem rows for poetry-only surfaces).
 
-7. **Source-tagged poetry only — no auto-detection in v1.** Routing
+7. **Source-tagged poetry only - no auto-detection in v1.** Routing
    happens via `<source>/manifest.json` `kind: poetry`. SKVR, runosto,
    ERAB, **eeva-poetry**, hand-curated Gutenberg poetry IDs go to
    `poems.tsv`. **eeva-prose** stays prose (older Estonian literature
-   that isn't poetry — the EEVA extractor inspects per-document
+   that isn't poetry - the EEVA extractor inspects per-document
    metadata to route).
 
 8. **Phase 1 uses `internal/parserffi.AnalyzeText` (NOT
@@ -1158,7 +1158,7 @@ explicitly noted. Nothing tracked by git is modified.
     `cmd/aggregatecorpus` never writes it.
 
 11. **Mining outputs are first-class.** `_derived/mining/` ships in v1
-    alongside app exports — the corpus serves both the word-list /
+    alongside app exports - the corpus serves both the word-list /
     sentence-bank features and the parser-improvement loop.
 
 12. **Bootstrap split into 3 tarballs.** `finnestdb-bootstrap-{code,fi,et}.tgz`.
@@ -1188,7 +1188,7 @@ explicitly noted. Nothing tracked by git is modified.
     `make add-epub` (extract + fold into giant list), `make epub-deck`
     (per-book wordlist, standalone). All built in v1.
 
-18. **Promotion ladder: 3 tiers** — smoke (fixture, ~2 min), pilot
+18. **Promotion ladder: 3 tiers** - smoke (fixture, ~2 min), pilot
     (~500 MB/lang, ~30-60 min), full (everything, ~10-12 hrs). Each
     gate is `cmd/corpusverify`; promotion is `cmd/corpuspromote`.
 
@@ -1213,12 +1213,12 @@ explicitly noted. Nothing tracked by git is modified.
       `lemmatizer.NewFromDir(tablesDir)` explicitly, not `New()`.
     - Verifier preflight asserts `<resolved tablesDir>/fi_min.json` and
       `et_min.json` exist and non-empty (or whatever filenames the
-      runtime expects — `lemmatizer.NewFromDir` will error if they're
+      runtime expects - `lemmatizer.NewFromDir` will error if they're
       wrong, which is the actual ground truth).
 
 21. **Phase-2 example keys are stable hashes, not final IDs.**
     Phase 4 is where deterministic `sentences.tsv.id` and `poems.tsv.id`
-    are assigned. Phase 2 cannot write `example_ref_id` yet — the IDs
+    are assigned. Phase 2 cannot write `example_ref_id` yet - the IDs
     don't exist. The fix:
     - Phase 2 stores `example_sentence_hash` (for prose-first surfaces)
       or `example_poem_key = (source, document_id)` (for poetry-only
@@ -1237,7 +1237,7 @@ explicitly noted. Nothing tracked by git is modified.
     `parser-comparison.sh`). Internal calls into `parsecore.Analyze`,
     `store.DB`, and `lemmatizer` expect `FI|ET` (uppercase, matches the
     runtime API). The fix: each command does ONE normalization at
-    startup — `langUpper := strings.ToUpper(lang)` — and uses
+    startup - `langUpper := strings.ToUpper(lang)` - and uses
     `lang` (lowercase) for filesystem paths/TSV column values, `langUpper`
     for parser/FST calls. No mixing the two later.
 
@@ -1245,7 +1245,7 @@ explicitly noted. Nothing tracked by git is modified.
     depends on the main repo's `finnestdb.db`. Commands run from
     `corpus_pipeline/`, so a default DB path would point at
     the wrong place. Worse, `store.NewDB` will silently initialize a
-    fresh empty database if handed a bad path — which means parser
+    fresh empty database if handed a bad path - which means parser
     runs would succeed against an empty dict and emit catastrophically
     bad results without erroring. The fix:
     - At command startup, compute
@@ -1253,7 +1253,7 @@ explicitly noted. Nothing tracked by git is modified.
     - Every command takes a `-db <path>` flag with default
       `filepath.Join(repoRoot, "finnestdb.db")`.
     - **Before** calling `store.NewDB`, the command asserts (using
-      the actual schema — no `dict` table exists, the real dictionary
+      the actual schema - no `dict` table exists, the real dictionary
       tables are `forms`, `lemmas`, `dict_metadata`):
       (a) DB file exists and is non-empty.
       (b) Required tables exist: `forms`, `lemmas`, `dict_metadata`.
@@ -1269,7 +1269,7 @@ explicitly noted. Nothing tracked by git is modified.
     - `build_metadata.json` records `db_path` (absolute) AND
       `dict_fingerprint` so re-runs can detect "wait, the DB changed
       under us."
-    - This is also a hard smoke gate — verifier rejects runs against
+    - This is also a hard smoke gate - verifier rejects runs against
       empty/wrong-DB before any expensive parsing happens.
 
 ## Verification plan
@@ -1290,7 +1290,7 @@ full 20 GB run:
    initial mining TSVs (unresolved, poetry-unresolved,
    parser-disagreements, high-frequency-ambiguous,
    internal-consensus-candidates). `silver-candidates.tsv` is
-   absent (or header-only) — initial aggregator never writes it; only
+   absent (or header-only) - initial aggregator never writes it; only
    `cmd/enrichcorpus` does.
 4. Spot-check ambiguity: `awk -F'\t' '$1=="tulen"' wordlist.tsv` → expect
    ≥2 rows (verb + noun analyses), one with `is_parser_choice=1`.
@@ -1299,7 +1299,7 @@ full 20 GB run:
 6. **Spot-check anti-circularity**: `wc -l mining/internal-consensus-candidates.tsv`
    should be < wordlist row count (consensus requires agreement, so
    proper subset). `mining/silver-candidates.tsv` must be **absent or
-   header-only** per the Silver file policy — `cmd/aggregatecorpus`
+   header-only** per the Silver file policy - `cmd/aggregatecorpus`
    never writes it; only `cmd/enrichcorpus` does.
 7. Repeat 1-6 for ET with `opus-tatoeba`.
 8. `make bootstrap-tarball` → 3 tarballs exist:
@@ -1323,9 +1323,9 @@ Final verification:
 - `wc -l _derived/poems.tsv` → expect 5K–50K rows (SKVR has ~85K poems)
 - `du -sh localdata/{fi,et}-corpus` → ~25-30 GB each (raw + extracted text + sentence_occurrences + scratch.db before deletion)
 - `du -sh finnestdb-bootstrap-*.tgz` → likely **3 split tarballs**:
-  - `finnestdb-bootstrap-code.tgz` — just `finnestdb.db` + small derived files (~2 GB)
-  - `finnestdb-bootstrap-fi.tgz` — `localdata/fi-corpus/` (~25-40 GB)
-  - `finnestdb-bootstrap-et.tgz` — `localdata/et-corpus/` (~25-40 GB)
+  - `finnestdb-bootstrap-code.tgz` - just `finnestdb.db` + small derived files (~2 GB)
+  - `finnestdb-bootstrap-fi.tgz` - `localdata/fi-corpus/` (~25-40 GB)
+  - `finnestdb-bootstrap-et.tgz` - `localdata/et-corpus/` (~25-40 GB)
 - `jq '.totals.unresolved_rate_prose' _derived/qa-report.json` → expect
   <0.10 (else flag for parser improvement)
 - `jq '.totals.unresolved_rate_poetry' _derived/qa-report.json` → expect
@@ -1334,7 +1334,7 @@ Final verification:
 - `jq '.hard_failures' _derived/qa-gate.json` → expect `[]` (empty)
 - `wc -l _derived/sentence_occurrences.tsv` → ≥ `wc -l _derived/sentences.tsv` (occurrences ≥ unique sentences)
 
-## Cleanliness rule — zero impact on the main repo
+## Cleanliness rule - zero impact on the main repo
 
 **Hard constraint: nothing modifies tracked files, nothing creates new
 untracked files outside `localdata/`.** No commits, no future-PR
@@ -1351,10 +1351,10 @@ this workstream is more precisely:
 > state is ignored.
 
 A `git status` snapshot before the v1 build is captured and compared
-against the post-build snapshot — any *delta* outside `localdata/` is
+against the post-build snapshot - any *delta* outside `localdata/` is
 a bug.
 
-**Everything lives in `corpus_pipeline/`** — under the
+**Everything lives in `corpus_pipeline/`** - under the
 already-gitignored `localdata/` umbrella. This includes:
 
 - The plan docs (v1plan.md, v2plan.md, notes/)
@@ -1379,7 +1379,7 @@ require finnestdb v0.0.0
 replace finnestdb => ..
 ```
 
-**Why this exact module path**: Go's `internal/` visibility rule —
+**Why this exact module path**: Go's `internal/` visibility rule -
 `x/y/internal/z` is importable only from packages whose import path
 starts with `x/y/`. So `finnestdb/internal/parsecore` is importable
 from any `finnestdb/...` package. Our module path
@@ -1395,8 +1395,8 @@ Then commands import `finnestdb/internal/parsecore`,
 
 **Operate from the main repo's localdata, not the worktree.**
 Worktrees have separate gitignored `localdata/` per worktree (the
-worktree's localdata is mostly empty). The user's actual data —
-including the 230 FI EPUBs found 2026-05-08 — lives at
+worktree's localdata is mostly empty). The user's actual data -
+including the 230 FI EPUBs found 2026-05-08 - lives at
 `/Users/sagar/Downloads/projects/finnestdb/localdata/`. Place
 `corpus_pipeline/` there. Execution happens from the main repo path.
 
@@ -1417,14 +1417,14 @@ repo" → now "duplicate locally" or "write our own"):
 | Edit `docs/data_enhancement.md`, `docs/ARTIFACT_POLICY.md` | Skip. Keep `docs/CORPUS_PIPELINE.md` local at `corpus_pipeline/docs/CORPUS_PIPELINE.md`. |
 | Edit `scripts/setup-local.sh` | Skip. Corpus pipeline is invoked manually, not from setup-local. |
 | Edit `TODO.md` | Skip. v2 items live in `corpus_pipeline/v2plan.md`. |
-| Reorg existing `localdata/fi-corpus/` (move folders) | This still happens — but `localdata/` is already gitignored, so reorganizing within it doesn't show in `git status`. Safe. |
+| Reorg existing `localdata/fi-corpus/` (move folders) | This still happens - but `localdata/` is already gitignored, so reorganizing within it doesn't show in `git status`. Safe. |
 
 **Result**: After the entire build is done, `git status` shows nothing
 new. The corpus pipeline is invisible to git. Deleting it = `rm -rf
 corpus_pipeline/` (and reclaim 80 GB by also `rm -rf
 localdata/{fi,et}-corpus/`).
 
-## v2 follow-ups — where they live, how they get done
+## v2 follow-ups - where they live, how they get done
 
 **All local. No PRs. No GitHub.** The whole pipeline is local-only by
 explicit user policy.
@@ -1432,24 +1432,24 @@ explicit user policy.
 **Plan & tracking docs folder**: `corpus_pipeline/` (the same
 folder as everything else):
 
-- `corpus_pipeline/v1plan.md` — copy of this plan, kept with
+- `corpus_pipeline/v1plan.md` - copy of this plan, kept with
   the project so future-you can read it without digging through
   `~/.claude/plans/`.
-- `corpus_pipeline/v2plan.md` — v2 follow-up tracker (the
+- `corpus_pipeline/v2plan.md` - v2 follow-up tracker (the
   table below, expanded with `Why deferred / Effort / Trigger` blocks).
-- `corpus_pipeline/notes/` — any operator notes,
+- `corpus_pipeline/notes/` - any operator notes,
   troubleshooting recipes, error-report autopsies you accumulate.
 
 **v2 item structure** in `v2plan.md`:
 
 ```markdown
-- [ ] **<title>** — one-line summary
-  - **Why deferred:** <reason — usually scope or scale or unverified>
+- [ ] **<title>** - one-line summary
+  - **Why deferred:** <reason - usually scope or scale or unverified>
   - **Effort:** <hrs estimate>
   - **Trigger:** <condition that means "do this now">
 ```
 
-The trigger is the operative part — without it, v2 lists rot.
+The trigger is the operative part - without it, v2 lists rot.
 
 **How items get done**: when a trigger fires, you (or Claude) just open
 `v2plan.md`, pick the item, write code locally. No PR, no review
@@ -1459,20 +1459,20 @@ ceremony. Tick the checkbox when done; record what shipped.
 
 | # | Item | Why deferred | Effort | Trigger |
 |---|---|---|---|---|
-| 1 | omorfi/estnltk persistent server — replace per-batch subprocess with a long-lived gRPC/HTTP server | v1 batch adapter works for ~1-day runs; server is overkill until we re-enrich frequently | ~6 hrs | `make enrich-corpus` is being run >1×/month and the subprocess startup dominates |
+| 1 | omorfi/estnltk persistent server - replace per-batch subprocess with a long-lived gRPC/HTTP server | v1 batch adapter works for ~1-day runs; server is overkill until we re-enrich frequently | ~6 hrs | `make enrich-corpus` is being run >1×/month and the subprocess startup dominates |
 | 2 | SQLite mirror as canonical (reviewer's full schema: corpus_sources, corpus_documents, corpus_sentences, corpus_poems, surface_counts, surface_analyses) | TSVs work for "more for inspiration"; SQLite needed when query patterns demand it | ~8 hrs | App needs runtime queries against corpus data (e.g. "show all Essive forms for talo sorted by frequency") |
 | 3 | Sentence-bank UI integration (surface sentences as flashcard context) | UI work, separate workstream | ~16 hrs | Flashcard MVP exists and needs example sentences |
 | 4 | Register tagging (auto-classify each sentence: conversational / news / parl / literary) | Useful but not blocking; needs a classifier | ~8 hrs | Comprehension-coverage curve UX needs per-register splits |
 | 5 | Sentence-level minhash dedup across registers | v1 dedups exact matches only | ~6 hrs | OpenSubtitles or similar is dominating frequency in a way that hurts learners |
-| 6 | Incremental refresh — `make corpus-refresh` only re-fetches sources whose HEAD changed | v1 is full re-fetch on demand | ~4 hrs | Re-fetch wall clock is too long to repeat |
-| 7 | Auto-poetry-detection heuristic — capture poetry quoted in prose sources | v1 routes by source manifest only | ~6 hrs | We notice prose corpora have meaningful poetry content (Wikipedia, Gutenberg) being mis-routed |
-| 8 | Quality scoring per source — language-ID confidence + encoding cleanliness, auto-demote low-quality sources | v1 reports quality flags but doesn't act on them | ~8 hrs | One source's contamination shows up disproportionately in mining outputs |
-| 9 | Living pipeline — scheduled refresh, drift detection, alert on URL 404 | v1 is manual-trigger only | ~12 hrs | We commit to running this routinely instead of one-shot |
-| 10 | **Expand ET coverage further** — full ERAB corpus via CLARIN academic contact; scrape additional ERR portals (uudised, kultuur, arhiiv); modern authored ET poetry (luuletus.ee / Luuleleid case-by-case license review) | v1 closes parl + folk-poetry gaps and adds 173 MB of ERR news; broadcaster total still 1/3 of FI's Yle, modern poetry still missing | ~10 hrs | ET frequency curves show register imbalance still hurting users after v1 ships, OR comprehension data motivates more ET news depth |
-| 11 | Token-level analysis provenance — `token_occurrences.tsv` mapping every token to (sentence_id, ix, analysis_id) | v1 keeps example_sentence_id only — sufficient for "show me in context" but not full provenance | ~6 hrs | We need to train a model or compute statistics that require token-by-token provenance |
+| 6 | Incremental refresh - `make corpus-refresh` only re-fetches sources whose HEAD changed | v1 is full re-fetch on demand | ~4 hrs | Re-fetch wall clock is too long to repeat |
+| 7 | Auto-poetry-detection heuristic - capture poetry quoted in prose sources | v1 routes by source manifest only | ~6 hrs | We notice prose corpora have meaningful poetry content (Wikipedia, Gutenberg) being mis-routed |
+| 8 | Quality scoring per source - language-ID confidence + encoding cleanliness, auto-demote low-quality sources | v1 reports quality flags but doesn't act on them | ~8 hrs | One source's contamination shows up disproportionately in mining outputs |
+| 9 | Living pipeline - scheduled refresh, drift detection, alert on URL 404 | v1 is manual-trigger only | ~12 hrs | We commit to running this routinely instead of one-shot |
+| 10 | **Expand ET coverage further** - full ERAB corpus via CLARIN academic contact; scrape additional ERR portals (uudised, kultuur, arhiiv); modern authored ET poetry (luuletus.ee / Luuleleid case-by-case license review) | v1 closes parl + folk-poetry gaps and adds 173 MB of ERR news; broadcaster total still 1/3 of FI's Yle, modern poetry still missing | ~10 hrs | ET frequency curves show register imbalance still hurting users after v1 ships, OR comprehension data motivates more ET news depth |
+| 11 | Token-level analysis provenance - `token_occurrences.tsv` mapping every token to (sentence_id, ix, analysis_id) | v1 keeps example_sentence_id only - sufficient for "show me in context" but not full provenance | ~6 hrs | We need to train a model or compute statistics that require token-by-token provenance |
 | 12 | Local model training (compound segmentation, parser tie-breaker) | Needs the corpus first | ~40 hrs | After v1 ships and we can reason about model quality vs. parser quality |
 
-`corpus_pipeline/v2plan.md` is canonical — this table in the
+`corpus_pipeline/v2plan.md` is canonical - this table in the
 plan is just a snapshot. The v1 build's last step writes these entries
 to `v2plan.md` (with the structured `Why deferred / Effort / Trigger`
 blocks). After that, the plan file in `~/.claude/plans/` is throwaway;
@@ -1505,7 +1505,7 @@ loop:
 ```
 
 Concrete behaviors:
-- **Read the error before fixing.** Don't blindly re-run — the
+- **Read the error before fixing.** Don't blindly re-run - the
   error_report.txt + qa-gate.json tell me what failed and where.
 - **Watch the soft-gate warnings too.** Even if hard gates pass, soft
   warnings (URL contamination, very-long sentences, single-source
@@ -1513,7 +1513,7 @@ Concrete behaviors:
   to the next profile.
 - **Track repeated errors.** If the same error_class appears in
   error-history.jsonl across multiple runs without a corresponding
-  repaired.jsonl entry between them, that's a regression — flag it
+  repaired.jsonl entry between them, that's a regression - flag it
   loudly in the QA report.
 - **Use Monitor for long-running profiles.** For pilot (~30-60 min) and
   full (~10-12 hrs), I attach a Monitor to the make process so I get
@@ -1523,9 +1523,9 @@ This is execution discipline, not pipeline code. The pipeline emits
 the artifacts; I (or future-me, or another Claude session) interpret
 and act on them.
 
-## Existing data on disk — re-audited 2026-05-08
+## Existing data on disk - re-audited 2026-05-08
 
-(Earlier I said "0 EPUBs found" — that was wrong. My `find` ran from
+(Earlier I said "0 EPUBs found" - that was wrong. My `find` ran from
 the worktree which has its own gitignored `localdata/`. The main repo
 has substantial existing data.)
 
@@ -1535,14 +1535,14 @@ What IS on disk in the main repo (`/Users/sagar/Downloads/projects/finnestdb/loc
 |---|---|---|
 | `localdata/fi-corpus/manual/` | **230 FI EPUBs** (Witcher 8 books, Antti Tuomainen crime, Tove Jansson Muumi, Lars Kepler, Lee Child Jack Reacher, Robin Hobb, Hugh Howey, Andy Weir, Alastair Reynolds, lots more) **+ 27 hand-pasted `.txt` files** (articles, book excerpts, Harry Potter translation, Murakami parallel text) **+ misc** | **Reorg splits this**: EPUBs → `fi-corpus/epub/raw/`. `.txt` files stay → `fi-corpus/manual/raw/`. The first full run processes BOTH (EPUBs via `pandoc`, txt via passthrough). |
 | `localdata/fi-corpus/raw/` | Original HTML scrapes from earlier work | Move into `manual/raw/` (provenance). |
-| `localdata/fi-corpus/text/final/` | 20 extracted text files (~119K words) | Already cleaned — fold into `manual/text.txt`. |
+| `localdata/fi-corpus/text/final/` | 20 extracted text files (~119K words) | Already cleaned - fold into `manual/text.txt`. |
 | `localdata/fi-corpus/lists/` | URL selection lists | Archive into `manual/lists/`. |
 | `localdata/fi-corpus/meta/manifest-final.tsv` | Existing manifest of 20 hand-curated articles | Seed `documents.jsonl` for manual source. |
 | `localdata/fi-corpus/clean/` | Whatever's there | Audit during reorg. |
-| `localdata/et-corpus/` | **2 Estonian `.md` files** (`LingQ 1-30 ENG_EST.md`, `LingQ 31-60 ENG_EST.md`) — parallel-text language-learning material | Reorg moves them → `et-corpus/lingq-parallel/raw/`. New extractor needed: `extract_md.go` that strips Markdown structure and Estonian-only sentences (drop English equivalents). |
+| `localdata/et-corpus/` | **2 Estonian `.md` files** (`LingQ 1-30 ENG_EST.md`, `LingQ 31-60 ENG_EST.md`) - parallel-text language-learning material | Reorg moves them → `et-corpus/lingq-parallel/raw/`. New extractor needed: `extract_md.go` that strips Markdown structure and Estonian-only sentences (drop English equivalents). |
 
 **The first full run includes the 230 FI EPUBs and 2 ET md files
-automatically** — they're discovered by walking
+automatically** - they're discovered by walking
 `localdata/{lang}-corpus/*/manifest.json`, no source-list edit needed.
 EPUB extraction wall clock: ~30-60 min for 230 books via pandoc.
 
@@ -1555,7 +1555,7 @@ All work happens inside `corpus_pipeline/`. Main repo work
 tree stays clean throughout.
 
 1. **Preflight**: from main repo root, ensure `make parser` has run
-   recently — verify `parser/target/release/libparser.{dylib,so}`
+   recently - verify `parser/target/release/libparser.{dylib,so}`
    exists and is non-empty. If missing, run `make parser`. Failure here
    means parserffi can't link, so smoke gate would fail anyway. Catch
    it before scaffolding (~5 min, or up to ~5 min for cold cargo build).
@@ -1570,7 +1570,7 @@ tree stays clean throughout.
    Run via `go run ./cmd/_smoke/` (~15 min). De-risks both the module
    path AND the Rust FFI link.
 4. **Reorg existing `localdata/{fi,et}-corpus/`** to per-source layout
-   (~1 hr — bigger now that we know about 230 EPUBs + 2 ET md files):
+   (~1 hr - bigger now that we know about 230 EPUBs + 2 ET md files):
    - Audit (absolute path) `find /path/to/main/localdata -iname "*.epub"`
      → 230 FI EPUBs in `fi-corpus/manual/`. Move them to
      `fi-corpus/epub/raw/` and write `epub/manifest.json` with
@@ -1594,7 +1594,7 @@ tree stays clean throughout.
    from a copy of main repo's scraper, add `-lang et` (~1 hr).
 6. **Inline `internal/fetcher/fetcher.go`** (~20 min, ~30 LoC).
 7. **Build `cmd/fetchcorpus` + source registries** (~3 hrs).
-8. **Build `cmd/extractcorpus` + 13 format extractors + quality flags** (~7.5 hrs — VRT, gz, Leipzig tar, MediaWiki XML, CSV, EPUB, SKVR XML, generic HTML scrape, HuggingFace, Riigikogu, ERAB, EEVA-prose/poetry split, Markdown LingQ).
+8. **Build `cmd/extractcorpus` + 13 format extractors + quality flags** (~7.5 hrs - VRT, gz, Leipzig tar, MediaWiki XML, CSV, EPUB, SKVR XML, generic HTML scrape, HuggingFace, Riigikogu, ERAB, EEVA-prose/poetry split, Markdown LingQ).
 9. **Build `cmd/aggregatecorpus` (4 phases + cache + SQLite scratch + deterministic ID assignment)** (~7 hrs).
 10. **Build `cmd/epubdeck`** (~2 hrs).
 11. **Build `cmd/enrichcorpus` with persistent batch adapters** (~7 hrs).
@@ -1608,17 +1608,17 @@ tree stays clean throughout.
     --porcelain` before step 1, snapshot it again after step 17. The
     diff must be empty for paths outside `localdata/`. Pre-existing
     unrelated state (e.g. `design/*` untracked from prior work)
-    is irrelevant — only the *delta* matters (~5 min sanity check).
-19. **Run smoke profile** (`cd corpus_pipeline && make corpus-promote-fi corpus-promote-et` with PROFILE=smoke) — must pass before any real fetch. Includes the FST-tables + Rust-parser preflight.
-20. **Run pilot profile** (PROFILE=pilot, ~500 MB/lang) — must pass before full run.
-21. **Run full pipeline** (`make corpus-promote`) — wall clock ~10-12 hours. Full run includes the 230 FI EPUBs + 2 ET LingQ md files automatically (discovered by walking `*/manifest.json`). Monitor + auto-recover loop on hard-gate failures.
-22. **Verify incremental EPUB workflow** — drop one fresh EPUB into
+    is irrelevant - only the *delta* matters (~5 min sanity check).
+19. **Run smoke profile** (`cd corpus_pipeline && make corpus-promote-fi corpus-promote-et` with PROFILE=smoke) - must pass before any real fetch. Includes the FST-tables + Rust-parser preflight.
+20. **Run pilot profile** (PROFILE=pilot, ~500 MB/lang) - must pass before full run.
+21. **Run full pipeline** (`make corpus-promote`) - wall clock ~10-12 hours. Full run includes the 230 FI EPUBs + 2 ET LingQ md files automatically (discovered by walking `*/manifest.json`). Monitor + auto-recover loop on hard-gate failures.
+22. **Verify incremental EPUB workflow** - drop one fresh EPUB into
     `localdata/fi-corpus/epub/raw/`, run `make add-epub-fi`, confirm
     only the new book's surfaces enrich (cache-hit count is high).
     Test `make epub-deck-fi` on that one file. Repeat for ET if any
     EPUBs available there.
 23. **Smoke-test `cmd/enrichcorpus`** on a 100-surface slice (don't
-    run the full 24-hour pass — confirm batch adapter starts up,
+    run the full 24-hour pass - confirm batch adapter starts up,
     speaks the protocol, writes a sane wordlist-enriched.tsv slice).
 24. **Final delta check vs. pre-build snapshot**: `git status
     --porcelain` diff outside `localdata/` must be empty. Pre-existing

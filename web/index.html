@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FinnEst — parse Finnish &amp; Estonian</title>
+    <title>FinnEst - parse Finnish &amp; Estonian</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500;1,6..72,600&family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -42,7 +42,7 @@
             <div class="nav-actions">
                 <div class="nav-lang-dropdown" data-role-show="user admin">
                     <button type="button" id="nav-language-toggle" class="nav-lang-toggle" aria-haspopup="listbox" aria-expanded="false" aria-label="Active language">
-                        <span id="nav-language-current" class="nav-lang-current">—</span>
+                        <span id="nav-language-current" class="nav-lang-current">-</span>
                         <span class="nav-lang-caret" aria-hidden="true"></span>
                     </button>
                     <ul id="nav-language-menu" class="nav-lang-menu hidden" role="listbox" aria-labelledby="nav-language-toggle"></ul>
@@ -132,9 +132,9 @@
     <!-- ==================== ANONYMOUS LANDING ==================== -->
     <!-- Ported from the Claude Design "Aalto edition" prototype
          (design/aalto-landing.jsx + design/claude-design/finnest-prototype.html).
-         The prototype's [data-aalto="bold"] decorations (vertical wordmark, vase
-         silhouette, birch-lined paste box, blue freemium band) become the
-         landing's default look, keyed off [data-skin="aalto"] in styles.css.
+         The prototype's vase silhouette, birch-lined paste box, and blue
+         freemium band become the landing's default look, keyed off
+         [data-skin="aalto"] in styles.css.
          The paste form keeps its functional ids (landing-form / landing-text /
          landing-char-count / landing-lang / landing-lang-warning /
          landing-lang-switch / landing-submit) so the existing parse wiring is
@@ -142,13 +142,7 @@
     <div id="landing-page" class="page" data-role-show="anon loading">
         <main class="landing-main">
           <div class="landing-wrap">
-            <!-- Vertical AALTO wordmark — decoration, aalto skin + wide only. -->
-            <div class="aalto-mark" aria-hidden="true">
-                <span class="vlabel">Alvar Aalto · Paimio · 1933</span>
-                <div class="vstrip"></div>
-            </div>
-
-            <!-- Savoy-vase silhouette — decoration, aalto skin + wide only. Given
+            <!-- Savoy-vase silhouette - decoration, aalto skin + wide only. Given
                  a slow ambient drift in styles.css (respects reduced-motion). -->
             <svg class="vase-svg" viewBox="0 0 220 320" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M 30 12 C 50 28, 60 60, 78 90 C 92 116, 56 142, 70 178 C 82 208, 122 198, 138 226 C 152 250, 110 270, 130 296 C 142 312, 180 308, 200 308 L 200 320 L 30 320 Z" fill="currentColor" opacity="0.85"></path>
@@ -165,7 +159,7 @@
             </h1>
 
             <p class="hero-subtitle hero-sub">
-                Drop in any Finnish or Estonian text — news, a chapter, a conversation.
+                Drop in any Finnish or Estonian text - news, a chapter, a conversation.
                 Learn it in context. Enjoy reading the article smoothly.
                 <span class="hero-sub-quiet">(sign in to export, create, sync and review your flashcards)</span>
             </p>
@@ -211,7 +205,7 @@
                 <div class="freemium-cell">
                     <div class="freemium-num">ii.</div>
                     <div class="freemium-h">Copy or download</div>
-                    <div class="freemium-p">Word list as plain text or CSV — drop straight into Anki, a spreadsheet, or your tool of choice.</div>
+                    <div class="freemium-p">Word list as plain text or CSV - drop straight into Anki, a spreadsheet, or your tool of choice.</div>
                 </div>
                 <div class="freemium-cell">
                     <div class="freemium-num">iii.</div>
@@ -220,15 +214,6 @@
                 </div>
             </div>
 
-            <div class="colophon">
-                <span>Suomi · Eesti — humanist, restrained, blue.</span>
-                <span class="swatches" aria-hidden="true">
-                    <span class="sw w" title="paper"></span>
-                    <span class="sw b" title="Nordic blue"></span>
-                    <span class="sw k" title="ink"></span>
-                    <span class="sw r" title="birch"></span>
-                </span>
-            </div>
           </div>
         </main>
     </div>
@@ -241,7 +226,7 @@
                 <p class="about-lede">
                     Most apps hand you a generic word list and hope it matches your reading. FinnEst
                     works the other way around: you bring the text you want to read, and FinnEst helps
-                    you pre-learn its words first — so the reading itself is enjoyable instead of a
+                    you pre-learn its words first - so the reading itself is enjoyable instead of a
                     dictionary-lookup grind.
                 </p>
             </section>
@@ -250,7 +235,7 @@
                 <div class="about-step">
                     <span class="about-step-num">1</span>
                     <h3>Paste a text</h3>
-                    <p>Drop in a paragraph, an article, or a chapter in Finnish or Estonian — or, once you sign in, upload a whole EPUB.</p>
+                    <p>Drop in a paragraph, an article, or a chapter in Finnish or Estonian - or, once you sign in, upload a whole EPUB.</p>
                 </div>
                 <div class="about-step">
                     <span class="about-step-num">2</span>
@@ -312,23 +297,23 @@
             <section class="dashboard-stats">
                 <div class="stat-card">
                     <span class="stat-label">Words known</span>
-                    <span class="stat-value" id="stat-known">—</span>
+                    <span class="stat-value" id="stat-known">-</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-label">Due to review</span>
-                    <span class="stat-value" id="stat-due">—</span>
+                    <span class="stat-value" id="stat-due">-</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-label">New words today</span>
-                    <span class="stat-value" id="stat-new-capacity">—</span>
+                    <span class="stat-value" id="stat-new-capacity">-</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-label">Cards in review</span>
-                    <span class="stat-value" id="stat-cards-in-review">—</span>
+                    <span class="stat-value" id="stat-cards-in-review">-</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-label">Reviews today</span>
-                    <span class="stat-value" id="stat-reviews-today">—</span>
+                    <span class="stat-value" id="stat-reviews-today">-</span>
                 </div>
             </section>
 
@@ -366,7 +351,7 @@
             <section class="dashboard-decks">
                 <h2>Recent decks</h2>
                 <div id="dashboard-decks-list" class="dashboard-decks-list">
-                    <p class="empty-state">No decks yet — paste some text under <a href="#/inspect">Parse</a>, or add a <a href="#/decks/official">Top 1000 starter deck</a>.</p>
+                    <p class="empty-state">No decks yet - paste some text under <a href="#/inspect">Parse</a>, or add a <a href="#/decks/official">Top 1000 starter deck</a>.</p>
                 </div>
             </section>
         </main>
@@ -414,7 +399,7 @@
                             name="text"
                             rows="10"
                             maxlength="1500000"
-                            placeholder="Paste a paragraph, an article, lyrics — or drop a file below."
+                            placeholder="Paste a paragraph, an article, lyrics - or drop a file below."
                             required
                         ></textarea>
                         <ol class="dropzone-chapters hidden" id="inspect-chapters" aria-label="Loaded book chapters"></ol>
@@ -478,11 +463,11 @@
             <section class="vocab-stats">
                 <div class="stat-card">
                     <span class="stat-label">Known words (total)</span>
-                    <span class="stat-value" id="vocab-stat-total">—</span>
+                    <span class="stat-value" id="vocab-stat-total">-</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-label">Known <span id="vocab-stat-lang-name">Finnish</span></span>
-                    <span class="stat-value" id="vocab-stat-lang">—</span>
+                    <span class="stat-value" id="vocab-stat-lang">-</span>
                 </div>
             </section>
 
@@ -553,7 +538,7 @@
         <main class="languages-main">
             <section class="languages-header">
                 <h1>Languages</h1>
-                <p class="languages-lede">Choose which languages you're learning. Decks, review, and Parse default to your active language — switch it from the dropdown in the top bar.</p>
+                <p class="languages-lede">Choose which languages you're learning. Decks, review, and Parse default to your active language - switch it from the dropdown in the top bar.</p>
             </section>
             <section id="languages-list" class="languages-list" aria-live="polite"></section>
             <p class="languages-note">More languages will be added as we expand the dictionary.</p>
@@ -603,15 +588,15 @@
             <section id="review-card" class="review-card hidden" aria-live="polite">
                 <div id="review-card-front" class="review-card-front">
                     <span id="review-card-mode" class="results-pill">Sentence card</span>
-                    <p id="review-card-front-text" class="review-front-text">—</p>
+                    <p id="review-card-front-text" class="review-front-text">-</p>
                 </div>
                 <div class="review-card-back">
                     <div id="review-card-example" class="review-example hidden"></div>
-                    <h2 id="review-card-surface">—</h2>
-                    <p id="review-card-lemma" class="review-lemma">—</p>
+                    <h2 id="review-card-surface">-</h2>
+                    <p id="review-card-lemma" class="review-lemma">-</p>
                     <span id="review-card-pos" class="review-pos hidden"></span>
                     <p id="review-card-homograph" class="review-homograph hidden"></p>
-                    <p id="review-card-meaning" class="review-meaning">—</p>
+                    <p id="review-card-meaning" class="review-meaning">-</p>
                     <div id="review-card-decks" class="review-decks"></div>
                 </div>
                 <div class="review-actions">
@@ -639,7 +624,7 @@
         <main class="parse-main">
             <section class="parse-form-section">
                 <h2>Parse Text</h2>
-                <p class="parse-description">Internal parser tooling — compare basic vs. custom parser, inspect compound and case analysis.</p>
+                <p class="parse-description">Internal parser tooling - compare basic vs. custom parser, inspect compound and case analysis.</p>
 
                 <form id="parse-form">
                     <div class="form-group">
@@ -659,7 +644,7 @@
                                 name="text"
                                 rows="12"
                                 maxlength="1500000"
-                                placeholder="Paste your Finnish or Estonian text here — or drop a file below."
+                                placeholder="Paste your Finnish or Estonian text here - or drop a file below."
                                 required
                             ></textarea>
                             <ol class="dropzone-chapters hidden" id="parse-chapters" aria-label="Loaded book chapters"></ol>
@@ -681,7 +666,7 @@
                     <div class="parse-buttons">
                         <button type="submit" class="btn btn-primary btn-parse" id="parse-btn-custom" data-parser="custom">
                             Custom Parser
-                            <span class="parser-hint">Recommended — includes compound + case analysis</span>
+                            <span class="parser-hint">Recommended - includes compound + case analysis</span>
                         </button>
                         <button type="submit" class="btn btn-outline btn-parse" id="parse-btn-basic" data-parser="basic">
                             Basic Parser
@@ -819,7 +804,7 @@
                 <!-- Word-list export. Available to everyone, including anonymous
                      visitors (landing freemium cell ii: "Copy or download").
                      Generated client-side from the parse response already in
-                     memory — no server round-trip, nothing stored. Hidden in
+                     memory - no server round-trip, nothing stored. Hidden in
                      deck context (no ephemeral word list to export). -->
                 <div id="results-export" class="results-export hidden">
                     <button type="button" id="results-copy-list" class="btn btn-sm">Copy list</button>
@@ -922,18 +907,18 @@
         <div class="modal-card" role="document">
             <button type="button" class="modal-close" id="correction-modal-close" aria-label="Close">×</button>
             <h3 id="correction-modal-title">Report a problem</h3>
-            <p class="modal-lede">Something look wrong with this word? Flag it, or tell us the right analysis — either way helps us improve the parser.</p>
-            <p class="modal-hint hidden" id="correction-auth-hint">Sign in to send corrections — anonymous parses can't be tied back to a parse run.</p>
+            <p class="modal-lede">Something look wrong with this word? Flag it, or tell us the right analysis - either way helps us improve the parser.</p>
+            <p class="modal-hint hidden" id="correction-auth-hint">Sign in to send corrections - anonymous parses can't be tied back to a parse run.</p>
             <form id="correction-form">
                 <div class="form-group">
                     <label>Current analysis</label>
-                    <p class="modal-readonly" id="correction-lemma">—</p>
+                    <p class="modal-readonly" id="correction-lemma">-</p>
                 </div>
                 <fieldset class="form-group correction-mode">
                     <legend>What would you like to do?</legend>
                     <label class="correction-mode-option">
                         <input type="radio" name="correction_mode" value="flag" id="correction-mode-flag" checked />
-                        <span>This is wrong — I don't know the right answer</span>
+                        <span>This is wrong - I don't know the right answer</span>
                     </label>
                     <label class="correction-mode-option">
                         <input type="radio" name="correction_mode" value="propose" id="correction-mode-propose" />
@@ -1094,7 +1079,7 @@
 
             <!-- Step 1: pick decks -->
             <div class="anki-import-stage hidden" id="anki-import-stage-decks">
-                <p class="modal-lede">Pick the decks you want to import vocabulary from. Sub-decks are nested under their parents — selecting a parent imports everything beneath it.</p>
+                <p class="modal-lede">Pick the decks you want to import vocabulary from. Sub-decks are nested under their parents - selecting a parent imports everything beneath it.</p>
                 <div class="anki-import-toolbar">
                     <input type="search" id="anki-import-filter" class="anki-import-filter" placeholder="Filter decks…" autocomplete="off" />
                     <button type="button" id="anki-import-clear-filter" class="btn btn-link btn-sm">Clear</button>

@@ -1,8 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
 // Post-parse coverage reveal (aha moment #1). These specs assert the NUMBERS
-// the reveal settles on — derived from the mocked parse response with the same
-// token-mass formula the server uses for saved-deck comprehension — and the
+// the reveal settles on - derived from the mocked parse response with the same
+// token-mass formula the server uses for saved-deck comprehension - and the
 // reduced-motion collapse. They assert final text, never animation frames.
 
 const finnishText = 'Menin pankkiin eilen ja ostin hyvää leipää. Kissa nukkui täällä.';
@@ -62,7 +62,7 @@ async function mockUserParse(page: Page): Promise<void> {
 // Anonymous parse: no learning_state exists, so coverage starts at zero and the
 // reveal projects from frequency. 15 unknown words totalling 50 tokens; the top
 // 10 by count carry 45 (a five-tail of count-1 words falls outside the top 10),
-// so the reveal states the 10 most frequent carry exactly 90% — no hedge.
+// so the reveal states the 10 most frequent carry exactly 90% - no hedge.
 async function mockAnonParse(page: Page): Promise<void> {
   const counts = [10, 8, 6, 5, 4, 3, 3, 2, 2, 2, 1, 1, 1, 1, 1];
   const words = counts.map((count, i) => ({
@@ -150,7 +150,7 @@ test('anonymous reveal frames coverage from frequency, not known state', async (
   // Frequency framing: the 10 most frequent words carry 90%.
   await expect(reveal.locator('.coverage-reveal-headline')).toContainText('10 most frequent words');
   await expect(reveal.locator('.coverage-reveal-headline')).toContainText('90%');
-  // No "you already know" claim — there is no known state for an anon visitor.
+  // No "you already know" claim - there is no known state for an anon visitor.
   await expect(reveal.locator('.coverage-reveal-headline')).not.toContainText('already know');
 
   // Count-up settles on 90%.
@@ -176,7 +176,7 @@ test('reduced-motion collapses the reveal to its final value instantly', async (
 
   const reveal = page.locator('#coverage-reveal');
   await expect(reveal).toBeVisible();
-  // With reduced motion the figure is final on first paint — assert directly,
+  // With reduced motion the figure is final on first paint - assert directly,
   // no polling window needed. The headline figure is the known share (50%).
   await expect(reveal.locator('#coverage-reveal-figure')).toHaveText('50%');
   // Bar segments are at their final widths (known 50% + gain 50% → 100%).

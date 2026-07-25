@@ -41,7 +41,7 @@ var httpClient = &http.Client{
 		IdleConnTimeout:       90 * time.Second,
 		ForceAttemptHTTP2:     true,
 	},
-	// No total Timeout — multi-GB downloads regularly exceed minutes.
+	// No total Timeout - multi-GB downloads regularly exceed minutes.
 }
 
 // Download writes urlStr to outPath atomically. Idempotent: if outPath

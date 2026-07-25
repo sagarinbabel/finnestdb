@@ -1,4 +1,4 @@
-# Finnish parser comparison — 2026-05-07j
+# Finnish parser comparison - 2026-05-07j
 
 **Run date:** 2026-05-07 · **Branch:** `main` · **Commit:** [`42e95d9`](https://github.com/sagarinbabel/finnestdb/commit/42e95d9) · **Parser code last touched in:** PR [#109](https://github.com/sagarinbabel/finnestdb/pull/109) ([`da37ae9`](https://github.com/sagarinbabel/finnestdb/commit/da37ae9), case-suffix grammar-label stopgap) · **Methodology:** [`../PARSER_EVAL_METHODOLOGY.md`](../PARSER_EVAL_METHODOLOGY.md)
 
@@ -32,12 +32,12 @@
 > |---|---:|---:|---|
 > | FI | 26,826,071 | 259,145 | kaikki.org Finnish |
 
-## Headline numbers — custom vs. omorfi (Helsinki HFST)
+## Headline numbers - custom vs. omorfi (Helsinki HFST)
 
 All figures are percentages. **Bold = winner of that cell.** Curated sets are
 hand-built to exercise specific parser features; UD test sets are real-world
 treebanks (proper nouns, foreign words, hyphenated compounds, numerals,
-informal punctuation) — the "in the wild" reading.
+informal punctuation) - the "in the wild" reading.
 
 | Dataset | Cases | Tokens | Lemma custom | Lemma omorfi | POS custom | POS omorfi | Gram custom | Gram omorfi | Full custom | Full omorfi | Cov custom | Cov omorfi |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -69,10 +69,10 @@ Positive Δ = omorfi is ahead; negative = custom is ahead.
 
 **Reading**
 
-- **The curated-set picture (lemma/POS)** is misleadingly favourable. On `fi-grammar` and `fi-manual-v1` custom *beats* omorfi by 1–9pp lemma — but those sets are hand-built to exercise dictionary-friendly cases.
-- **The UD picture is the realistic one.** Across **6,527 cases / 61,549 evaluated tokens** custom runs **9–12pp behind omorfi on lemma**, **5–9pp behind on POS**, and **55–60pp behind on grammar**. UD treebanks cover proper nouns, foreign words, hyphenated compounds, numerals, informal punctuation — the long tail the dictionary doesn't have a clean answer for. The headline LEARNINGS finding ([§2026-05-07](../LEARNINGS.md)) "real-world lemma is 53–60%, not 97%" is reproduced and now under continuous measurement.
+- **The curated-set picture (lemma/POS)** is misleadingly favourable. On `fi-grammar` and `fi-manual-v1` custom *beats* omorfi by 1–9pp lemma - but those sets are hand-built to exercise dictionary-friendly cases.
+- **The UD picture is the realistic one.** Across **6,527 cases / 61,549 evaluated tokens** custom runs **9–12pp behind omorfi on lemma**, **5–9pp behind on POS**, and **55–60pp behind on grammar**. UD treebanks cover proper nouns, foreign words, hyphenated compounds, numerals, informal punctuation - the long tail the dictionary doesn't have a clean answer for. The headline LEARNINGS finding ([§2026-05-07](../LEARNINGS.md)) "real-world lemma is 53–60%, not 97%" is reproduced and now under continuous measurement.
 - **Grammar gap is the dominant gap.** Across every dataset (curated and UD), the omorfi grammar lead is 40–73pp. PR #109's case-suffix stopgap moved 0→20–60% but omorfi sits at 77–100%. The remaining gap is what the FEATS migration (in flight) + the FST runtime (once tables aren't smoke-only) need to close.
-- **Coverage is close.** Custom is within 1–2pp of omorfi on coverage on every UD set — the dictionary catches *some* lemma for ~90% of UD tokens; the question is whether it's the *right* lemma. That's the lemma-disambiguation gap, not a coverage gap.
+- **Coverage is close.** Custom is within 1–2pp of omorfi on coverage on every UD set - the dictionary catches *some* lemma for ~90% of UD tokens; the question is whether it's the *right* lemma. That's the lemma-disambiguation gap, not a coverage gap.
 
 ## Net effect vs `2026-05-06-final-fi*` (custom parser)
 
@@ -84,9 +84,9 @@ Positive Δ = omorfi is ahead; negative = custom is ahead.
 | fi-manual-v2 | +0.0 | +0.0 | **+33.3** | +11.1 | +0.0 |
 
 The grammar/full lifts come from PR #109's case-suffix `GrammarLabel` stopgap
-attached additively after dict Step 1 — reproducible from the public repo. The
+attached additively after dict Step 1 - reproducible from the public repo. The
 lemma/coverage drops on `fi-core` and `fi-manual-v1` track the FST-table
-coverage gap (smoke fixture vs. maintainer-local full table) — they are not
+coverage gap (smoke fixture vs. maintainer-local full table) - they are not
 regressions in the parser code.
 
 ## Reproduction
@@ -107,7 +107,7 @@ The bundled `parser-comparison.sh` discovers every `testdata/parser-eval/fi/gold
 not matching `-dev-v` (held-out test discipline). With omorfi at ~400 ms/case
 the four UD test sets together take ~50 min for a single timed pass. The
 committed UD JSON reports (`docs/baselines/2026-05-07-post-fst-ud-fi-*-test.json.gz`)
-are summary-stripped — `cases[]` per-case detail is omitted to keep file sizes
+are summary-stripped - `cases[]` per-case detail is omitted to keep file sizes
 proportional to the existing curated baselines (~250 KB instead of ~35 MB).
 Re-running locally produces the full `cases[]` array; `dataset.case_count` and
 `summary.<parser>.expected_tokens` retain the case/token counts.

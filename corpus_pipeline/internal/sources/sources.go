@@ -18,7 +18,7 @@ type Manifest struct {
 	Format  string `json:"format"`            // "text", "epub", "vrt", "gz", "leipzig", "wiki", "csv", "skvr", "html", "huggingface", "riigikogu", "erab", "eeva", "md_lingq_parallel", "fixture"
 	License string `json:"license,omitempty"` // SPDX-ish identifier or upstream-name
 	URL     string `json:"url_source,omitempty"`
-	Lang    string `json:"lang,omitempty"`     // "fi" or "et" — usually inferred from parent dir
+	Lang    string `json:"lang,omitempty"`     // "fi" or "et" - usually inferred from parent dir
 	Notes   string `json:"notes,omitempty"`
 }
 

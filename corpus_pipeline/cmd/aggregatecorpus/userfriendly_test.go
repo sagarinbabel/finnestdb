@@ -74,7 +74,7 @@ func TestParseUDFeats(t *testing.T) {
 			},
 		},
 		{
-			name:  "empty value (defensive — drop)",
+			name:  "empty value (defensive - drop)",
 			input: "Case=|Number=Sing",
 			want: map[string]string{
 				"Number": "Sing",
@@ -103,7 +103,7 @@ func TestUserFriendlyWordlistFilenameStable(t *testing.T) {
 
 // TestUserFriendlyWordlistPath sanity-checks the path-helper. Worth
 // keeping because the helper is exported as a sibling of the filename
-// constant — if either grows a typo, this catches it.
+// constant - if either grows a typo, this catches it.
 func TestUserFriendlyWordlistPath(t *testing.T) {
 	got := userFriendlyWordlistPath("/tmp/derived")
 	want := "/tmp/derived/wordlist_user_friendly.tsv"
@@ -125,7 +125,7 @@ func TestWriteUserFriendlyWordlist_SchemaAndMorphologySplit(t *testing.T) {
 	out := filepath.Join(tmp, "uf.tsv")
 
 	// State fixture: in-memory wordlistRows + surfaces. We bypass
-	// state.dictDB by injecting a stub resolver — the writer logic uses
+	// state.dictDB by injecting a stub resolver - the writer logic uses
 	// dictDB only inside writeUserFriendlyWordlist, which calls
 	// BatchLookupGlosses; we test the inner writer
 	// (writeUserFriendlyWordlistWithExampleResolver) directly with the
@@ -172,7 +172,7 @@ func TestWriteUserFriendlyWordlist_SchemaAndMorphologySplit(t *testing.T) {
 	glossesStub := map[string]string{
 		"talo|NOUN":  "house",
 		"tulla|VERB": "to come",
-		// juoda/VERB intentionally absent — exercises empty-gloss path.
+		// juoda/VERB intentionally absent - exercises empty-gloss path.
 	}
 	resolveExample := func(ss *surfaceStats) (string, string) { return "", "" }
 
@@ -278,7 +278,7 @@ func TestWriteUserFriendlyWordlist_SchemaAndMorphologySplit(t *testing.T) {
 		t.Errorf("verb meaning: got %q", colV("meaning"))
 	}
 
-	// Participle row — VerbForm=Part, Voice=Pass; meaning empty (juoda not in stub).
+	// Participle row - VerbForm=Part, Voice=Pass; meaning empty (juoda not in stub).
 	part := strings.Split(lines[3], "\t")
 	colP := func(name string) string {
 		for i, h := range header {
@@ -367,7 +367,7 @@ func TestBulkLoadGlosses_TranslationsFirst(t *testing.T) {
 
 	// Lemma 3: translations rows exist for a stale source that doesn't
 	// match the lemma's source. The JOIN on l2.source = t.source
-	// excludes them — falls through to lemmas.gloss.
+	// excludes them - falls through to lemmas.gloss.
 	if _, err := db.Exec(`
 		INSERT INTO lemmas VALUES ('kala', 'NOUN', 'fish', 'ET', 'ekilex', 20);
 		INSERT INTO translations VALUES
@@ -376,8 +376,8 @@ func TestBulkLoadGlosses_TranslationsFirst(t *testing.T) {
 		t.Fatalf("seed kala: %v", err)
 	}
 
-	// Lemma 4: translations row matches but text is empty — COALESCE
-	// must skip it and return lemmas.gloss instead. (Defensive — the
+	// Lemma 4: translations row matches but text is empty - COALESCE
+	// must skip it and return lemmas.gloss instead. (Defensive - the
 	// importer doesn't write empty text rows, but the read path
 	// shouldn't depend on that invariant.)
 	if _, err := db.Exec(`
@@ -400,13 +400,13 @@ func TestBulkLoadGlosses_TranslationsFirst(t *testing.T) {
 		{"kass", "NOUN", "cat", "no translations row → lemmas.gloss"},
 		{"kala", "NOUN", "fish", "stale-source translation rejected → lemmas.gloss"},
 		// kuu: translation row exists but text is empty. The COALESCE
-		// expression treats '' as falsy via the WHERE filter — so the
+		// expression treats '' as falsy via the WHERE filter - so the
 		// row picks the translation_pick text='' first, then falls
 		// through to lemmas.gloss. Actually: COALESCE('', 'moon')
 		// returns '' since '' is non-NULL. So the row is filtered out
 		// by the WHERE clause (COALESCE(...) != ''). That mirrors
 		// BatchLookupGlosses, which has the same `gloss != ""` filter
-		// in its caller loop. Document this — kuu is absent from the
+		// in its caller loop. Document this - kuu is absent from the
 		// returned map.
 		{"kuu", "NOUN", "", "empty translation text + WHERE != '' filter → row excluded"},
 	}

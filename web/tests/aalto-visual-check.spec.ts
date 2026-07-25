@@ -4,7 +4,7 @@ async function mockAnonMe(page: Page) {
     body: JSON.stringify({ authenticated:false, user:null, anon_max_chars:300000 }) }));
 }
 // The theme picker lives in .nav-actions, which (like the rest of the desktop
-// nav) collapses under the hamburger at <=760px — pre-existing behaviour the
+// nav) collapses under the hamburger at <=760px - pre-existing behaviour the
 // old single toggle shared. To verify the *skin rendering* at mobile width we
 // seed the persisted choice directly and reload, exactly as a returning user
 // who set the theme on desktop would experience it.

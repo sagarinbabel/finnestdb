@@ -8,7 +8,7 @@ package eval
 //
 // Design choice: each axis is its own H2 with one row per (dataset, parser,
 // bucket). Aggregating across datasets would obscure the very thing
-// stratification exists to surface — that PROPN regresses on UD-TDT but not
+// stratification exists to surface - that PROPN regresses on UD-TDT but not
 // on fi-grammar, for example.
 
 import (
@@ -23,7 +23,7 @@ import (
 // from its own freshly-evaluated Report.
 //
 // Label disambiguates rows when multiple reports share the same
-// (dataset, parser) — e.g. before/after comparisons or runs from two
+// (dataset, parser) - e.g. before/after comparisons or runs from two
 // different commits. When set on any input, the renderer emits an extra
 // "Run" column carrying the label. Leave empty when only one report per
 // (dataset, parser) is being rendered (the parsertest sidecar case) and
@@ -149,7 +149,7 @@ func SortedStratifiedInputsByDatasetParser(inputs []StratifiedReportInput) []Str
 // timestamp prefix from RunID (e.g. "20260507T122013Z" from
 // "20260507T122013Z-fi-grammar"), the full RunID, or the generated_at
 // timestamp re-rendered without colons. Returns "" only when every option
-// is empty — callers should treat that as "label this report as best you
+// is empty - callers should treat that as "label this report as best you
 // can but don't crash."
 func ReportShortLabel(r *Report) string {
 	if r == nil {

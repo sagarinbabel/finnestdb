@@ -18,8 +18,8 @@
 // (see cmd/pickexamples and testdata/starter-examples/) is supplied via
 // -examples, the card shows a real corpus sentence containing an inflected
 // form of the lemma, with the target form stored as the highlighted
-// occurrence. Lemmas with no curated example — and every lemma when -examples
-// is omitted — fall back to a one-token sentence whose text is the lemma's
+// occurrence. Lemmas with no curated example - and every lemma when -examples
+// is omitted - fall back to a one-token sentence whose text is the lemma's
 // most frequent surface form, so deck detail and review cards still render.
 //
 // Re-running this tool for a language creates a second official deck with the
@@ -115,7 +115,7 @@ func main() {
 		log.Printf("warning: only %d of %d requested lemmas resolved from %s", len(entries), *top, *source)
 	}
 	if len(entries) == 0 {
-		log.Fatal("no lemmas resolved — is the dictionary imported for this language?")
+		log.Fatal("no lemmas resolved - is the dictionary imported for this language?")
 	}
 
 	// Optional curated corpus examples keyed by (lemma, pos). Missing file or
@@ -155,7 +155,7 @@ type officialDeckStore interface {
 // DeleteDeck, the same occurrence/sentences/subscriptions/deck-row teardown
 // the deck-management UI uses) so the reseed below creates a clean
 // replacement instead of a duplicate. Without replace, a same-title deck only
-// produces a loud warning — the historical behavior — so an operator who
+// produces a loud warning - the historical behavior - so an operator who
 // forgets the flag is told immediately rather than discovering the duplicate
 // later. ownerEmail is only used for the warning message.
 func handleExistingOfficialDeck(db officialDeckStore, ownerID int64, title, lang, ownerEmail string, replace bool) error {
@@ -173,7 +173,7 @@ func handleExistingOfficialDeck(db officialDeckStore, ownerID int64, title, lang
 			"or delete it by hand.", title, lang, existingDeckID, ownerEmail)
 		return nil
 	case errors.Is(err, sql.ErrNoRows):
-		return nil // No prior deck — normal first run.
+		return nil // No prior deck - normal first run.
 	default:
 		return fmt.Errorf("look up existing official deck %q: %w", title, err)
 	}

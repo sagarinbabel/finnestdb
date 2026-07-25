@@ -11,7 +11,7 @@ import (
 // parser and returns one CaseResult per case, in gold-file order. For each
 // case it runs parsecore.Analyze for the single pick and
 // store.BatchLookupAllFormsWithOptions (MergeFSTReadings) for the candidate
-// set on the target surface — the dict candidates the Multi-Lemma Surface
+// set on the target surface - the dict candidates the Multi-Lemma Surface
 // expansion offers, plus the FST-known homograph readings kaikki's `forms`
 // table omits, which is the candidate set the "Multiple possible meanings"
 // meaning-check UI needs (see PARSER_EVAL_METHODOLOGY.md §Ambiguity).

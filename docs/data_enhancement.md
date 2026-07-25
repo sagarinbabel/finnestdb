@@ -7,7 +7,7 @@ file as the single place to record:
 - **what** the corpus is (one-line description),
 - **where** it came from (canonical URL or upstream repo),
 - **license** (and whether the derived artefact can be committed),
-- **size** (cases / tokens / files / bytes — whichever applies),
+- **size** (cases / tokens / files / bytes - whichever applies),
 - **when** it was added or last refreshed (ISO date),
 - **how** it lives in the tree (committed path vs. gitignored localdata path),
 - **how to regenerate** it (script or `make` target).
@@ -18,7 +18,7 @@ locally-cached corpus has fallen behind upstream.
 
 Sizes are measured directly with `grep -c '"id":' / '"surface":'` on
 the JSON outputs, or `wc -c` / `du -sh` on raw files. They are point-in-time
-and approximate — re-run the count if you need fresh numbers.
+and approximate - re-run the count if you need fresh numbers.
 
 > **License compatibility rule** (per
 > [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md)): public-domain and
@@ -38,7 +38,7 @@ under [`localdata/parser-eval/{fi,et}/{gold,gold-train}/`](../localdata/)
 per the single-folder bootstrap rule introduced 2026-05-07. Both
 locations are auto-discovered by `scripts/parser-comparison{,-et}.sh`.
 
-### 1a. Finnish — committed
+### 1a. Finnish - committed
 
 | Dataset | Source | License | Cases | Tokens | Path | Added | Last refreshed |
 |---|---|---|---:|---:|---|---|---|
@@ -51,7 +51,7 @@ locations are auto-discovered by `scripts/parser-comparison{,-et}.sh`.
 | `ud-fi-ftb-dev-v1` | UD\_Finnish-FTB (FinnTreeBank, Helsinki) | CC BY 4.0 | 1,875 | 13,536 | `testdata/parser-eval/fi/gold/ud-fi-ftb-dev-v1.json.gz` | 2026-05-06 (PR #113) | 2026-05-07 |
 | `ud-fi-ftb-test-v1` | UD\_Finnish-FTB | CC BY 4.0 | 1,867 | 13,973 | `testdata/parser-eval/fi/gold/ud-fi-ftb-test-v1.json.gz` | 2026-05-06 (PR #113) | 2026-05-07 |
 | `ud-fi-pud-test-v1` | UD\_Finnish-PUD (Parallel UD test set) | CC BY-SA 3.0 | 1,000 | 13,474 | `testdata/parser-eval/fi/gold/ud-fi-pud-test-v1.json.gz` | 2026-05-06 (PR #113) | 2026-05-07 |
-| `ud-fi-ood-test-v1` | UD\_Finnish-OOD (out-of-domain — poetry/dialogue) | CC BY-SA 4.0 | 2,106 | 16,151 | `testdata/parser-eval/fi/gold/ud-fi-ood-test-v1.json.gz` | 2026-05-06 (PR #113) | 2026-05-07 |
+| `ud-fi-ood-test-v1` | UD\_Finnish-OOD (out-of-domain - poetry/dialogue) | CC BY-SA 4.0 | 2,106 | 16,151 | `testdata/parser-eval/fi/gold/ud-fi-ood-test-v1.json.gz` | 2026-05-06 (PR #113) | 2026-05-07 |
 | **FI gold subtotal (committed)** | | | **9,872** | **90,928** | | | |
 
 Re-pull on 2026-05-07 produced byte-identical outputs to what's already
@@ -69,7 +69,7 @@ compounds where the surface alone can't disambiguate Number=. The UD-
 imported gold sets already carried FEATS via [`cmd/importud`](../cmd/importud/main.go)
 since their original 2026-05-06 import.
 
-### 1b. Finnish — local-only train splits (gitignored)
+### 1b. Finnish - local-only train splits (gitignored)
 
 UD train splits are 12k–15k cases each. They live under
 `localdata/parser-eval/fi/gold-train/` so headline
@@ -82,7 +82,7 @@ files. Used for OOV/coverage analysis with explicit `-dataset` flags.
 | `ud-fi-ftb-train-v1` | UD\_Finnish-FTB | CC BY 4.0 | 14,972 | 109,445 | `localdata/parser-eval/fi/gold-train/ud-fi-ftb-train-v1.json` | 2026-05-07 | 2026-05-07 |
 | **FI train subtotal (local-only)** | | | **27,176** | **248,145** | | | |
 
-### 1c. Estonian — committed
+### 1c. Estonian - committed
 
 | Dataset | Source | License | Cases | Tokens | Path | Added | Last refreshed |
 |---|---|---|---:|---:|---|---|---|
@@ -90,7 +90,7 @@ files. Used for OOV/coverage analysis with explicit `-dataset` flags.
 | `et-manual-v1` | hand-authored, project | (project) | 4 | 9 | `testdata/parser-eval/et/gold/et-manual-v1.json` | early (pre-Plan-C) | 2026-05-07 (UD FEATS via `cmd/enrichgoldfeats`) |
 | **ET gold subtotal (committed)** | | | **54** | **114** | | | |
 
-### 1d. Estonian — local-only (gitignored due to **CC BY-NC-SA**)
+### 1d. Estonian - local-only (gitignored due to **CC BY-NC-SA**)
 
 Both Estonian UD treebanks ship under CC BY-NC-SA 4.0. The license's
 non-commercial clause is incompatible with redistribution from a
@@ -149,7 +149,7 @@ safe and idempotent.
 Bulk source data used by `cmd/importdict`, `cmd/importekilex*`, and
 `cmd/importkotus` to populate `finnestdb.db` (lemmas, forms, source
 attribution). Per [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md) all of
-these stay in [`localdata/`](../localdata/) (gitignored) — generator
+these stay in [`localdata/`](../localdata/) (gitignored) - generator
 code is committed; data is fetched fresh.
 
 | Dataset | Lang | Source | License | Local size | Path | Notes |
@@ -178,13 +178,13 @@ text and silver-tagged outputs stay in `localdata/` regardless of license.
 |---|---|---|---|---:|---|---|---|
 | Gutenberg-FI silver | FI | https://www.gutenberg.org/ebooks/search/?query=l.fi | public domain (US) | ~511,000 | `localdata/silver-fi/` (gitignored) | 2026-05-07 (PR #115) | committed scraper, raw text local-only |
 | `fi-corpus` (HS / IS / YLE / IL home + articles) | FI | various FI news sites | site terms-of-use; non-redistributable | ~21 sources | `localdata/fi-corpus/` (gitignored) | (project) | hand-curated test material; not for redistribution |
-| Gutenberg-FI poetry (runosto.net) | FI | https://www.runosto.net/ | public domain (FI) | ~195,000 (target) | `localdata/silver-fi-runosto/` (gitignored) | — | proposed (closed PR #122); revive on a fresh branch if adversarial-poetry coverage is wanted |
-| Gutenberg-ET silver | ET | https://www.gutenberg.org/ebooks/search/?query=l.et | public domain (US) | — (target ~250k) | `localdata/silver-et/` (gitignored) | — | not yet fetched; same scraper, `-lang et` |
+| Gutenberg-FI poetry (runosto.net) | FI | https://www.runosto.net/ | public domain (FI) | ~195,000 (target) | `localdata/silver-fi-runosto/` (gitignored) | - | proposed (closed PR #122); revive on a fresh branch if adversarial-poetry coverage is wanted |
+| Gutenberg-ET silver | ET | https://www.gutenberg.org/ebooks/search/?query=l.et | public domain (US) | - (target ~250k) | `localdata/silver-et/` (gitignored) | - | not yet fetched; same scraper, `-lang et` |
 
 ### How to regenerate
 
 ```sh
-# Gutenberg-FI silver — 14 books, ~511k tokens, ~3 min wall-clock with
+# Gutenberg-FI silver - 14 books, ~511k tokens, ~3 min wall-clock with
 # 1.5 s polite delay between requests. Idempotent; re-runs append to
 # the manifest and skip already-fetched IDs.
 make scrape-gutenberg-fi
@@ -211,7 +211,7 @@ treebank repos, ~50 MB each. After the 2026-05-07 import:
 | UD\_Estonian-EWT | CC BY-NC-SA 4.0 | (in cache) |
 | **`localdata/ud-cache/` total** | | **~97 MB** |
 
-These are intermediate caches — derived gold JSON is what's actually
+These are intermediate caches - derived gold JSON is what's actually
 consumed by the eval. A periodic `git -C localdata/ud-cache/<repo>
 pull` will pick up upstream fixes; re-import after pulling.
 
@@ -236,7 +236,7 @@ license attribution live in
 | `UD_Estonian-EDT-forms-words` | UD\_Estonian-EDT, PUNCT/SYM filtered | **CC BY-NC-SA 4.0** | 73,040 unique | `localdata/frequency/et/UD_Estonian-EDT-forms-words.tsv` | 2026-05-07 | 2026-05-07 |
 | `UD_Estonian-EDT-lemmas` | UD\_Estonian-EDT (col 3) | **CC BY-NC-SA 4.0** | 36,324 unique | `localdata/frequency/et/UD_Estonian-EDT-lemmas.tsv` | 2026-05-07 | 2026-05-07 |
 
-The ET-EDT-derived files are CC BY-NC-SA — non-commercial only. Stays
+The ET-EDT-derived files are CC BY-NC-SA - non-commercial only. Stays
 in `localdata/` per the license-compatibility rule. Watch this if the
 project ever monetizes.
 
@@ -248,7 +248,7 @@ make fetch-frequency-baselines
 go run ./cmd/fetchfrequency
 ```
 
-Idempotent — re-running with no upstream change produces byte-identical
+Idempotent - re-running with no upstream change produces byte-identical
 files.
 
 ---
@@ -258,13 +258,13 @@ files.
 Things that would expand the corpus further and were considered during
 this pass but **not** done:
 
-- **ET Gutenberg silver** — same scraper as FI, just `-lang et`. Useful
+- **ET Gutenberg silver** - same scraper as FI, just `-lang et`. Useful
   to balance the FI silver tier and unblock per-language silver tagging.
-- **runosto.net poetry-FI** — adversarial domain (verse, archaic forms);
+- **runosto.net poetry-FI** - adversarial domain (verse, archaic forms);
   revives closed PR #122. Estimated ~195k tokens.
-- **kaikki.org ET dump** — Wiktionary-derived alt-forms for ET. Same
+- **kaikki.org ET dump** - Wiktionary-derived alt-forms for ET. Same
   pipeline as kaikki-FI; would feed the dict tier rather than gold/silver.
-- **UD\_Estonian-PUD** — listed in the user message as a potential
+- **UD\_Estonian-PUD** - listed in the user message as a potential
   source, but no `UD_Estonian-PUD` repo exists in the
   UniversalDependencies GitHub org as of 2026-05-07. Skipped. (PUD only
   exists for ~20 languages including FI; ET is not in that set.)

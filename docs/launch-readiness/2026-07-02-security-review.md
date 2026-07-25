@@ -1,4 +1,4 @@
-# Security Review (FIN-27) — 2026-07-02
+# Security Review (FIN-27) - 2026-07-02
 
 Scope: repository-wide review of the go-live security surface, per the FIN-27
 scope from the 2026-06-03 verification report: auth/session behavior, role
@@ -8,7 +8,7 @@ abuse. Reviewed at the tip of the launch PR stack (#240–#247).
 
 Reviewer: Claude (Fable 5), working session with the repo and a live local
 server against the production-size DB. This satisfies the *content* of FIN-27;
-it is not the external "Codex Security" tool run — if that specific workflow
+it is not the external "Codex Security" tool run - if that specific workflow
 is still wanted, it remains a separate authorization.
 
 ## Verified controls (spot-checked in code and/or exercised live)
@@ -33,7 +33,7 @@ is still wanted, it remains a separate authorization.
 
 ## Findings
 
-### S2 — Dev artifacts would be publicly served from the web root (fixed)
+### S2 - Dev artifacts would be publicly served from the web root (fixed)
 
 `cmd/server` serves everything under `web/` with a plain file server. The
 deployment runbook's original `rsync -a web/` would have shipped
@@ -43,7 +43,7 @@ rsync now excludes dev artifacts. Residual risk on a careless manual deploy is
 noted in the runbook comment. Post-alpha hardening option: an explicit
 allowlist file server.
 
-### S3 — No Content-Security-Policy (accepted for alpha)
+### S3 - No Content-Security-Policy (accepted for alpha)
 
 The app relies on escaping discipline (audited above) plus the proxy-level
 `X-Content-Type-Options`/`X-Frame-Options`/HSTS headers from the shipped
@@ -52,22 +52,22 @@ script with no third-party embeds, a strict CSP would be cheap insurance
 against any future escaping slip. Recommended post-alpha:
 `default-src 'self'` + `style-src 'self' 'unsafe-inline'`.
 
-### S4 — Registration reveals account existence (accepted for alpha)
+### S4 - Registration reveals account existence (accepted for alpha)
 
 `POST /api/auth/register` returns 409 "Email already registered", enabling
 enumeration. It is rate-limited per IP and per email, which bounds bulk
 enumeration. Acceptable for alpha; revisit if abuse appears in the rejected-
 request logs.
 
-### S5 — Admin bootstrap depends on pre-registration discipline (mitigated)
+### S5 - Admin bootstrap depends on pre-registration discipline (mitigated)
 
 `FINNESTDB_ADMIN_EMAILS` grants admin to whoever first registers a listed
 address, and emails are unverified. Mitigation shipped in #241: operator
 pre-registration via `cmd/resetpassword -create` is a documented, gating step
 in both the checklist and the runbook. The durable fix is email verification
-or an explicit admin-invite flow — post-alpha.
+or an explicit admin-invite flow - post-alpha.
 
-### S6 — Operator password reset prints the password to stdout (accepted)
+### S6 - Operator password reset prints the password to stdout (accepted)
 
 `cmd/resetpassword` prints the generated password; on a shared host that can
 land in shell history/scrollback. It is an operator tool run over SSH by the
@@ -77,7 +77,7 @@ deploy owner; guidance to deliver over a trusted channel is in the checklist.
 
 - No email verification / self-service password reset (operator procedure
   documented instead).
-- Anonymous `/api/parse` stays enabled by product decision — ephemeral,
+- Anonymous `/api/parse` stays enabled by product decision - ephemeral,
   rate-limited, size-capped; CPU exposure bounded by the measured ~4s
   worst-case parse and the per-IP window.
 - Single-host SQLite: availability (not integrity) depends on one machine;

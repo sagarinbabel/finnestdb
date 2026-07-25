@@ -1,4 +1,4 @@
-# Build artifacts (root-only — leading slash so `importdict` ignores the
+# Build artifacts (root-only - leading slash so `importdict` ignores the
 # binary at `./importdict` but NOT `cmd/importdict/` source files).
 /finnestdb
 /finnestdb.exe
@@ -97,7 +97,7 @@ localdata/
 
 # Legacy data/ paths (pre-2026-05-07) are kept here as belt-and-braces in
 # case a stale workflow still writes to them. New code MUST write to
-# localdata/ instead — there is no second data root.
+# localdata/ instead - there is no second data root.
 data/
 # Exception: the Embedded Text catalog embeds checked-in metadata + fixtures
 # from internal/catalog/data/ via go:embed. This is tracked package data, not a

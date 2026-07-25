@@ -210,7 +210,7 @@ test('admin Publish click sends PATCH with is_public:true', async ({ page }) => 
 
   const row = page.locator('.deck-list-item').first();
   await row.locator('[data-toggle-public]').click();
-  // Site's standard confirm modal — admin must affirm before the call fires.
+  // Site's standard confirm modal - admin must affirm before the call fires.
   await page.locator('#dialog-modal-confirm').click();
 
   await expect.poll(() => patchPayloads.length).toBeGreaterThan(0);

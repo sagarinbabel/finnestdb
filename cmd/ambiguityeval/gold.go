@@ -104,7 +104,7 @@ func LoadDataset(path string) (*Dataset, error) {
 }
 
 // targetToken returns the single token marked target: true in a case.
-// Exactly one is required — the slice is defined around one scored target
+// Exactly one is required - the slice is defined around one scored target
 // per sentence (see the methodology doc and gold README).
 func targetToken(c Case) (Token, error) {
 	var found *Token

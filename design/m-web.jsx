@@ -2,7 +2,7 @@
 const { useState: useStateMw, useEffect: useEffectMw } = React;
 
 // ════════════════════════════════════════════════════════════════════════════
-// MOBILE WEB — clean PWA-style, no native chrome
+// MOBILE WEB - clean PWA-style, no native chrome
 // Frame is just a phone-shaped container; the "browser" is the actual web app.
 // ════════════════════════════════════════════════════════════════════════════
 
@@ -105,7 +105,7 @@ function MWLanding() {
           Paste your Finnish<br/>or Estonian text.
         </div>
         <div style={{ fontSize: 13, color: "#6B7280", lineHeight: 1.45, marginBottom: 16 }}>
-          Get the words, meanings, grammar — all parsed against a real dictionary.
+          Get the words, meanings, grammar - all parsed against a real dictionary.
         </div>
 
         {/* Paste area */}

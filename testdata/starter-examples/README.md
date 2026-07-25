@@ -42,8 +42,8 @@ rerun on the same corpus yields the same file.
 Owner decision (2026-07-04): starter-deck cards must carry example sentences,
 and individual sentences drawn from the project's local licensed corpora are an
 acceptable source for this. The sensible boundary is that these are **single
-sentences used as dictionary-style usage examples** — the same way a dictionary
-quotes one line to illustrate a word — and never bulk reproduction of the
+sentences used as dictionary-style usage examples** - the same way a dictionary
+quotes one line to illustrate a word - and never bulk reproduction of the
 underlying corpus text. Each row records its `source_corpus` so provenance
 travels with the sentence. This artifact intentionally caps at one to two
 sentences per starter word; it is not, and must not become, a channel for

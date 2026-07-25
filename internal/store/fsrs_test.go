@@ -46,7 +46,7 @@ func TestFSRSEnabledDefaultsOnOptOut(t *testing.T) {
 
 // TestFSRSScheduleAllRatingsNewCard pins deterministic FSRS scheduling for all
 // four ratings on a brand-new card (NULL state) at a fixed now. It asserts the
-// FSRS ordering invariant — Again < Hard < Good < Easy in next due — and that
+// FSRS ordering invariant - Again < Hard < Good < Easy in next due - and that
 // the persisted payload is the versioned FSRS envelope.
 func TestFSRSScheduleAllRatingsNewCard(t *testing.T) {
 	dues := map[string]time.Time{}
@@ -124,7 +124,7 @@ func TestFSRSScheduleSeenCard(t *testing.T) {
 
 // TestFSRSLazyDerivationLegacyState proves that a card with a legacy step
 // payload + prior review is lazily seeded into a Review-state FSRS card on
-// first FSRS rating, using the observed interval as stability — without
+// first FSRS rating, using the observed interval as stability - without
 // pretending FSRS-quality history.
 func TestFSRSLazyDerivationLegacyState(t *testing.T) {
 	lastAnswer := fsrsNow.Add(-7 * 24 * time.Hour)
@@ -263,7 +263,7 @@ func TestFSRSRollbackToStepScheduler(t *testing.T) {
 	if err := json.Unmarshal([]byte(rawAfter), &sched); err != nil {
 		t.Fatalf("rollback payload is not a step schedule: %s (%v)", rawAfter, err)
 	}
-	// The interval was a couple of days, so the derived step should be > 0 —
+	// The interval was a couple of days, so the derived step should be > 0 -
 	// progress is not thrown away on rollback.
 	if sched.Step == 0 {
 		t.Fatalf("rollback snapped step to 0, losing FSRS-earned progress: %+v", sched)

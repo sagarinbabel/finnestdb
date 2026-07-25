@@ -50,12 +50,12 @@ The script:
 
 `cmd/parser-compare` produces two tables:
 
-1. **Per-row metrics** — lemma, POS, grammar, full, coverage,
+1. **Per-row metrics** - lemma, POS, grammar, full, coverage,
    average per-case latency for each (dataset, parser) cell.
-2. **Head-to-head deltas** — every parser after the first is
+2. **Head-to-head deltas** - every parser after the first is
    shown as `Δ` against the first parser in points.
 
-Look for cells where omorfi is well ahead of custom — those are
+Look for cells where omorfi is well ahead of custom - those are
 specific weaknesses to target with new rules in
 `internal/parserules/`.
 
@@ -70,7 +70,7 @@ See `docs/DECISIONS.md` for the rationale (speed, deployability,
 licensing, customisability). The comparison here is a quality
 benchmark, not a deprecation plan.
 
-## Internals — how the auto-discovery works
+## Internals - how the auto-discovery works
 
 | Layer | Lookup |
 |---|---|

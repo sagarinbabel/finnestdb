@@ -76,7 +76,7 @@ type DashboardData struct {
 	KnownCount int `json:"known_count"`
 	// DueCount is cards that were already introduced (have review history)
 	// and are due now. It excludes never-introduced cards, which show up in
-	// NewCapacityToday instead — otherwise a fresh account adding starter
+	// NewCapacityToday instead - otherwise a fresh account adding starter
 	// decks reports thousands "due" before the learner has ever seen them.
 	DueCount         int `json:"due_count"`
 	NewCapacityToday int `json:"new_capacity_today"`
@@ -117,7 +117,7 @@ type MeResponse struct {
 // list/filter views and the Inspect/Known-Words defaults. `Stats` carries
 // vocab counts the Languages page renders next to each row; the key is the
 // language code (e.g. "FI"). Languages with no decks/known words may be
-// absent from the map — treat as zero.
+// absent from the map - treat as zero.
 type UserLanguages struct {
 	Learning []string                 `json:"learning"`
 	Active   string                   `json:"active"`
@@ -174,14 +174,11 @@ type CreateDeckRequest struct {
 	Text     string `json:"text"`
 	IsPublic bool   `json:"is_public,omitempty"`
 	// SelectedSenses carries meanings the learner explicitly chose to study from
-	// the "Multiple possible meanings" flow. Its only job is the deliberate,
-	// narrow bypass of PR #269's dict-only deck expansion: an FST-only homograph
-	// sense (e.g. kuusi/NOUN spruce) is normally filtered out of automatic deck
-	// expansion, but an explicit learner "Study this meaning" choice overrides
-	// that low-value filter and MUST create the card. Dict senses in this list
-	// are harmless no-ops (already emitted by expandTokenLemmas). Each entry is
-	// validated against the server-side candidate set before injection so a
-	// crafted request can't inject an unsupported (lemma, pos).
+	// the "Multiple possible meanings" flow. Automatic deck creation records
+	// only the parser-selected sense, so an explicit "Study this meaning" choice
+	// is the only way to add another supported candidate. Each entry is validated
+	// against the server-side candidate set before injection so a crafted request
+	// cannot inject an unsupported (lemma, pos).
 	SelectedSenses []SelectedSense `json:"selected_senses,omitempty"`
 }
 
@@ -364,7 +361,7 @@ type CardFront struct {
 }
 
 type CardBack struct {
-	// Surface is the surface form the card represents — the primary review
+	// Surface is the surface form the card represents - the primary review
 	// identity. Lemma/POS/meaning are supporting sense metadata.
 	Surface string `json:"surface,omitempty"`
 	Lemma   string `json:"lemma"`
@@ -1062,44 +1059,18 @@ func collectSurfaceForms(sentences []parsecore.SentenceResult) []string {
 	return out
 }
 
-// expandTokenLemmas resolves a single parsed token to one or more (lemma, pos)
-// pairs. Direct dict candidates are used for homonym expansion only when they
-// include the parser's selected lemma/POS; otherwise the parser pick stays
-// authoritative. This preserves custom parser corrections such as lexical
-// overlays and FST wins while still expanding genuine dict-known ambiguity.
-// PUNCT tokens and empty lemmas are dropped — callers should not write
-// occurrence rows for them.
-func expandTokenLemmas(token parsecore.TokenResult, dict map[string][]store.FormResolution) []tokenLemma {
+// expandTokenLemmas resolves a parsed token to its selected (lemma, pos) pair.
+// Dictionary alternatives are not expanded automatically: a raw surface can
+// have many inflectional or dictionary candidates, and turning all of them
+// into learner-facing words makes one token look like many unrelated words.
+// The explicit Multiple possible meanings flow is the only route that adds a
+// learner-selected alternate sense. PUNCT tokens and empty lemmas are dropped
+// so callers do not write occurrence rows for them.
+func expandTokenLemmas(token parsecore.TokenResult, _ map[string][]store.FormResolution) []tokenLemma {
 	if token.POS == "PUNCT" {
 		return nil
 	}
 	parserPick, hasParserPick := parserTokenLemma(token)
-	if hasParserPick && token.Source == "lex-overlay" {
-		return []tokenLemma{parserPick}
-	}
-
-	if cands, ok := dict[token.Form]; ok && len(cands) > 0 {
-		out := make([]tokenLemma, 0, len(cands))
-		seen := make(map[tokenLemma]struct{}, len(cands))
-		hasParserCandidate := false
-		for _, c := range cands {
-			if c.Lemma == "" || c.POS == "" {
-				continue
-			}
-			tl := tokenLemma{Lemma: c.Lemma, POS: c.POS}
-			if hasParserPick && tl == parserPick {
-				hasParserCandidate = true
-			}
-			if _, dup := seen[tl]; dup {
-				continue
-			}
-			seen[tl] = struct{}{}
-			out = append(out, tl)
-		}
-		if len(out) > 0 && (!hasParserPick || hasParserCandidate) {
-			return out
-		}
-	}
 	if hasParserPick {
 		return []tokenLemma{parserPick}
 	}
@@ -1330,27 +1301,24 @@ func hasCheckedLemmaKey(checked map[store.LemmaKey]struct{}, key store.LemmaKey)
 	return ok
 }
 
-// expandParsedWords reapplies the same parser-gated homonym expansion that
-// handleCreateDeck runs, producing one WordEntry per safe (lemma, pos)
-// candidate for each token. The result mirrors the (lemma, pos) shape of the
-// deck the user would get if they saved this parse, so the import overview's
-// unique-lemma count agrees with the deck's unique count.
+// expandParsedWords reapplies the parser-selected-token rule used by
+// handleCreateDeck, producing one WordEntry per parsed token lemma. The result
+// mirrors the deck's default (lemma, pos) shape, so the import overview and a
+// subsequently saved deck agree on the unique-lemma count.
 //
 // For (lemma, pos) entries the parser also picked, GrammarLabel,
 // ExampleSentence, and Gloss are inherited from the parser's WordEntry. For
-// homonym alternatives the parser didn't pick, GrammarLabel stays empty;
 // ExampleSentence and Gloss are derived from the first matching token's
-// sentence and a dictionary lookup respectively.
+// sentence and a dictionary lookup when the parser did not provide a gloss.
 func (a *API) expandParsedWords(parsed *parsecore.ParseResult, dict map[string][]store.FormResolution, glosses map[store.LemmaKey]string, checkedGlossKeys map[store.LemmaKey]struct{}) []parsecore.WordEntry {
 	return a.expandSentencesToWords(parsed.Sentences, parsed.Words, parsed.Lang, dict, glosses, checkedGlossKeys)
 }
 
-// expandSentencesToWords is the sentence-scoped core of expandParsedWords:
-// the parser-gated homonym expansion is run over an arbitrary sentence slice
-// (whole-book or one chapter) using the same dict and gloss maps so per-
-// chapter Words match what the whole-book view would have shown for the same
-// (lemma, pos) pair. parserWords is consulted for grammar labels, feats, and
-// example sentences when the parser already produced an entry for that key.
+// expandSentencesToWords is the sentence-scoped core of expandParsedWords.
+// It runs over an arbitrary sentence slice (whole book or one chapter) so each
+// view preserves the same parser-selected (lemma, pos) pairs. parserWords is
+// consulted for grammar labels, feats, and example sentences when the parser
+// already produced an entry for that key.
 func (a *API) expandSentencesToWords(sentences []parsecore.SentenceResult, parserWords []parsecore.WordEntry, lang string, dict map[string][]store.FormResolution, glosses map[store.LemmaKey]string, checkedGlossKeys map[store.LemmaKey]struct{}) []parsecore.WordEntry {
 	type aggKey struct {
 		lemma string
@@ -1495,7 +1463,7 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 	}
 
 	// The save modal prefills a suggested title client-side, but a blank
-	// title must still produce a good deck name — e.g. a scripted API caller,
+	// title must still produce a good deck name - e.g. a scripted API caller,
 	// or a user who clears the field. Derive the same way History derives its
 	// display titles so raw pastes look as good as a deliberately-named deck.
 	title := strings.TrimSpace(req.Title)
@@ -1526,13 +1494,9 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 		return
 	}
 
-	// Multi-lemma expansion: when the dictionary has multiple (lemma, pos)
-	// candidates for a surface form (e.g. ET "joon" = noun "line" or 1Sg of
-	// "jooma"), emit one DeckTokenInput per safe candidate so each genuine
-	// homonym becomes its own card and contributes to the deck's word count.
-	// Raw dict candidates are allowed to expand the token only when they still
-	// contain the parser's selected lemma/POS, so custom parser protections do
-	// not get overwritten during deck ingest.
+	// Deck ingest keeps one parser-selected lemma per source token. Dictionary
+	// alternatives are offered only through SelectedSenses, after the learner
+	// explicitly chooses a meaning; they must never silently create extra cards.
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
 	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang, "custom")
 	dictCandidates, _, _ = a.filterLowValueDictAlternatives(dictCandidates, req.Lang)
@@ -1559,7 +1523,7 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 	// Explicit "Study this meaning" selections from the Multiple-possible-meanings
 	// flow: inject the chosen senses that dict-only expansion dropped. This is the
 	// one deliberate bypass of PR #269's low-value filter (see SelectedSense), and
-	// it is narrow — only senses the learner explicitly picked AND that the
+	// it is narrow - only senses the learner explicitly picked AND that the
 	// server-side ambiguity candidate set actually supports get a card.
 	a.injectSelectedSenses(sentences, req.Lang, req.SelectedSenses)
 
@@ -1578,12 +1542,10 @@ func (a *API) handleCreateDeck(w http.ResponseWriter, r *http.Request, auth *Aut
 }
 
 // injectSelectedSenses mutates sentences in place, adding a DeckTokenInput for
-// each learner-selected sense on every token whose surface matches — but only
+// each learner-selected sense on every token whose surface matches - but only
 // for senses the server-side ambiguity candidate set actually supports, and only
 // where that (lemma, pos) is not already emitted for the token. This is the
-// deliberate, minimal bypass of the dict-only deck expansion: an FST-only
-// homograph sense the learner explicitly chose to study gets its card; dict
-// senses already emitted are no-ops.
+// deliberate, explicit path for adding an alternate homograph sense to a deck.
 func (a *API) injectSelectedSenses(sentences []store.DeckSentenceInput, lang string, selected []SelectedSense) {
 	if len(selected) == 0 {
 		return
@@ -1736,7 +1698,7 @@ func (a *API) HandleDeckByID(w http.ResponseWriter, r *http.Request) {
 			if !owns {
 				// Distinguish "deck doesn't exist" from "you're not the
 				// owner" only when the visibility flag isn't also being
-				// changed — otherwise we'd leak existence to a non-owner
+				// changed - otherwise we'd leak existence to a non-owner
 				// admin.
 				if req.IsPublic == nil {
 					http.Error(w, "Deck not found", http.StatusNotFound)
@@ -1876,7 +1838,7 @@ func (a *API) handleGetDeck(w http.ResponseWriter, auth *AuthContext, deckID int
 // handleDeckSubscribe handles POST/DELETE /api/decks/:id/subscribe. POST adds
 // an official deck to the user's studying list and seeds cards for each
 // (lemma, pos) the user has not already marked known/ignored. DELETE removes
-// the subscription but leaves seeded cards in place — matching how deleting
+// the subscription but leaves seeded cards in place - matching how deleting
 // an owned deck preserves global learning state.
 // handleDeckComprehension serves GET /api/decks/{id}/comprehension: the
 // user's token-weighted coverage of the deck plus the top-10 uncovered
@@ -1982,7 +1944,7 @@ func (a *API) handleKnownWordsReplace(w http.ResponseWriter, r *http.Request, au
 		http.Error(w, "Language must be FI or ET", http.StatusBadRequest)
 		return
 	}
-	// Unlike POST, an empty words list is meaningful here — it means "clear
+	// Unlike POST, an empty words list is meaningful here - it means "clear
 	// this language's vocabulary". We still require the field to be present
 	// (decoded JSON), but len==0 is allowed.
 	if req.Words == nil {
@@ -2045,7 +2007,7 @@ func (a *API) handleKnownWordsImport(w http.ResponseWriter, r *http.Request, aut
 		return
 	}
 
-	// Count ambiguous imports for the summary line. Resolution stays lazy — no
+	// Count ambiguous imports for the summary line. Resolution stays lazy - no
 	// upfront disambiguation flow (srs-deck-spec.md). Errors are non-fatal: the
 	// import already succeeded; a count failure just omits the summary detail.
 	needsConfirm := 0
@@ -2476,7 +2438,7 @@ type ParseResponse struct {
 	Stats           parsecore.ParseStats `json:"stats"`
 	Words           []WordEntry          `json:"words"`
 	// Chapters is only populated when the request was a chapters payload
-	// (EPUB import flow). Each entry's Words list is independently usable —
+	// (EPUB import flow). Each entry's Words list is independently usable -
 	// the client can swap the displayed words to a chapter's Words without
 	// another /api/parse round-trip.
 	Chapters []ChapterResponse `json:"chapters,omitempty"`
@@ -2490,7 +2452,7 @@ type ParseResponse struct {
 
 // AmbiguousSurface is one surface with multiple supported meanings, delivered
 // inline with the parse (measured overhead ~200 bytes per ambiguous row,
-// bounded by the ambiguity rate ~18-20% of unique surfaces — cheaper than a
+// bounded by the ambiguity rate ~18-20% of unique surfaces - cheaper than a
 // per-row lazy endpoint that would re-resolve the same candidates and add a
 // round-trip per expansion). The chip attaches to any results row whose forms
 // include Surface; expanding it shows Example plus the candidate list. Per
@@ -2530,7 +2492,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	hasText := len(req.Text) > 0
 	hasChapters := len(req.Chapters) > 0
 	if hasText == hasChapters {
-		// Reject both empty and both populated — the latter is an ambiguous
+		// Reject both empty and both populated - the latter is an ambiguous
 		// payload that earlier code would have silently dropped one half of.
 		if !hasText && !hasChapters {
 			http.Error(w, "Text or chapters is required", http.StatusBadRequest)
@@ -2590,9 +2552,9 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Apply the same parser-gated homonym expansion that handleCreateDeck runs,
-	// so the import overview's unique-lemma count matches the count of the
-	// deck the user gets when saving. See expandSentencesToWords for details.
+	// Keep the parse overview aligned with deck creation: one parser-selected
+	// lemma per source token. Explicitly selected ambiguity senses are the only
+	// deliberate exception when saving a deck. See expandSentencesToWords.
 	uniqueForms := collectSurfaceForms(parsed.Sentences)
 	dictCandidates := a.store.BatchLookupAllForms(uniqueForms, req.Lang, parsed.Parser)
 	dictCandidates, dictGlosses, checkedGlossKeys := a.filterLowValueDictAlternatives(dictCandidates, req.Lang)
@@ -2605,10 +2567,9 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	}
 	parsed.Words = a.expandSentencesToWords(parsed.Sentences, parserWords, parsed.Lang, dictCandidates, dictGlosses, checkedGlossKeys)
 
-	// Per-chapter Words go through the same homonym-expansion pipeline so
-	// switching to a chapter view doesn't surface a different (lemma, pos)
-	// set than the whole-book view would for the same tokens. dictCandidates
-	// and the already-merged gloss map are reused across all chapters.
+	// Per-chapter Words use the same parser-selected-token rule so switching to
+	// a chapter view cannot surface a different (lemma, pos) set for the same
+	// tokens. dictCandidates and the already-merged gloss map are reused.
 	if hasChapters {
 		for i := range parsed.Chapters {
 			chSentences := chapterSentenceSubset(parsed.Sentences, i)
@@ -2618,7 +2579,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// /api/parse no longer creates a parse_sessions row. Persistence is
-	// deferred until the user does something durable with the parse — saves
+	// deferred until the user does something durable with the parse - saves
 	// it as a deck (handleCreateDeck creates the row) or submits feedback
 	// (handleParseFeedback creates one lazily from inline source_text).
 	// This matches the "return data, persist on save" model so a user who
@@ -2637,7 +2598,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, ParseResponse{
 		Lang: parsed.Lang,
-		// ParseID is intentionally nil — /api/parse no longer persists.
+		// ParseID is intentionally nil - /api/parse no longer persists.
 		TotalTokens:       parsed.TotalTokens,
 		ParseDurationMs:   float64(parsed.ParseDurationNs) / 1e6,
 		Stats:             parsed.Stats,
@@ -2650,7 +2611,7 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 // ambiguousSurfacesFor resolves the ambiguity candidate set for the parse's
 // unique surfaces and pairs each ambiguous surface with the first sentence it
 // appears in (context for the meaning check). Sorted by surface for a stable
-// wire order. Errors are logged and swallowed — ambiguity metadata is additive;
+// wire order. Errors are logged and swallowed - ambiguity metadata is additive;
 // a lookup failure must not drop the parse result the learner just spent compute
 // on (same posture as applyLemmaStatesInPlace).
 func (a *API) ambiguousSurfacesFor(uniqueForms []string, lang string, sentences []parsecore.SentenceResult) []AmbiguousSurface {
@@ -2722,7 +2683,7 @@ func chapterSentenceSubset(sentences []parsecore.SentenceResult, idx int) []pars
 // applyLemmaStatesInPlace fills LearningState on each WordEntry from the
 // user's per-(lemma, pos) state map. A single BatchLemmaStates call per slice
 // keeps the per-chapter passes cheap relative to the original 41-request
-// architecture they replace. Errors are logged and swallowed — the lemma
+// architecture they replace. Errors are logged and swallowed - the lemma
 // state is decorative, not load-bearing, and an error path here would
 // otherwise mask the parse result the user just spent compute on.
 func applyLemmaStatesInPlace(db *store.DB, userID int64, lang string, words []parsecore.WordEntry) {
@@ -3246,7 +3207,7 @@ func decodeJSONRequest(w http.ResponseWriter, r *http.Request, dst any) bool {
 
 // HandleHealth is the deployment liveness/readiness probe: 200 with a JSON
 // body when the process is up and the database answers a trivial query, 503
-// otherwise. Unauthenticated by design — it must never expose data beyond
+// otherwise. Unauthenticated by design - it must never expose data beyond
 // up/down, because uptime monitors hit it anonymously.
 func (a *API) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -3294,7 +3255,7 @@ func (a *API) SetupRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/catalog", a.HandleCatalog)
 	mux.HandleFunc("/api/catalog/", a.HandleCatalogText)
 
-	// Anonymous landing demo texts — a fixed allowlist of embedded texts
+	// Anonymous landing demo texts - a fixed allowlist of embedded texts
 	// exposed without auth to back the landing "or try →" demo chips.
 	mux.HandleFunc("/api/demo/text/", a.HandleDemoText)
 

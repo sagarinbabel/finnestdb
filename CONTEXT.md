@@ -77,7 +77,7 @@ Finnish or Estonian text supplied by a learner for parsing, deck creation, or fe
 _Avoid_: corpus, document
 
 **Embedded Text**:
-A curated Finnish or Estonian text offered to signed-in learners who do not yet have their own source text ready. Prefer a complete coherent text from the redistributable subset of the corpus when license and size allow it; the UI may show a preview excerpt, but the product action should load the selected text itself. Texts must come from real published, redistributable sources (public domain or CC; Gutenberg, Wikisource, Wikipedia) — agent-authored text is a last resort requiring explicit owner approval, adopted 2026-07-04 after a machine-written article read as stilted.
+A curated Finnish or Estonian text offered to signed-in learners who do not yet have their own source text ready. Prefer a complete coherent text from the redistributable subset of the corpus when license and size allow it; the UI may show a preview excerpt, but the product action should load the selected text itself. Texts must come from real published, redistributable sources (public domain or CC; Gutenberg, Wikisource, Wikipedia) - agent-authored text is a last resort requiring explicit owner approval, adopted 2026-07-04 after a machine-written article read as stilted.
 _Avoid_: fixture, seed deck, corpus row, agent-written prose by default
 
 **Embedded Catalog**:
@@ -122,7 +122,7 @@ A public deck published by an admin and visible in the official-decks tab.
 _Avoid_: shared catalog deck, public list
 
 **Card**:
-A learner-level review item: a surface-form-in-context card, where the learner reviews the exact form they encountered or chose and lemma/POS/dictionary evidence is supporting metadata. Current implementation (2026-07-04): `cards` are keyed by `(user, language, surface_norm, lemma, POS)` — the normalized surface joins the key, with `(lemma, POS)` as the sense discriminator so homographs are distinct sense cards, not collapsed. FSRS memory (the default scheduler as of 2026-07-04; `FINNESTDB_FSRS_ENABLED` is the opt-out rollback lever) attaches to this surface-card id.
+A learner-level review item: a surface-form-in-context card, where the learner reviews the exact form they encountered or chose and lemma/POS/dictionary evidence is supporting metadata. Current implementation (2026-07-04): `cards` are keyed by `(user, language, surface_norm, lemma, POS)` - the normalized surface joins the key, with `(lemma, POS)` as the sense discriminator so homographs are distinct sense cards, not collapsed. FSRS memory (the default scheduler as of 2026-07-04; `FINNESTDB_FSRS_ENABLED` is the opt-out rollback lever) attaches to this surface-card id.
 _Avoid_: deck word, flashcard copy
 
 **Surface Form**:
@@ -196,7 +196,7 @@ An admin-approved suppression state for a known-bad deck occurrence or review ca
 _Avoid_: deleting history, silently retconning reviews
 
 **Trusted Quarantine Threshold**:
-A future deterministic rule that could promote a global **Correction Issue** from reported to quarantined without manual review, usually based on multiple distinct authenticated reports against the same scoped issue. For alpha, the system collects the evidence — a `threshold_candidate` flag appears at ≥3 distinct reporters — but never auto-quarantines.
+A future deterministic rule that could promote a global **Correction Issue** from reported to quarantined without manual review, usually based on multiple distinct authenticated reports against the same scoped issue. For alpha, the system collects the evidence - a `threshold_candidate` flag appears at ≥3 distinct reporters - but never auto-quarantines.
 _Avoid_: one-click mob voting
 
 **Emergency Quarantine**:
@@ -237,7 +237,7 @@ As of 2026-07-04 it is the **rollback fallback**, not the runtime default: FSRS
 (`go-fsrs/v3`) now runs the Again/Hard/Good/Easy buttons by default, and the step
 scheduler is only used when `FINNESTDB_FSRS_ENABLED` is explicitly set off.
 _Avoid_: calling the step scheduler "FSRS", or calling FSRS the "Alpha Step
-Scheduler" — they are distinct schedulers sharing one state column.
+Scheduler" - they are distinct schedulers sharing one state column.
 
 ## Relationships
 

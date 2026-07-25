@@ -26,7 +26,7 @@ rewriting old reports.
 
 ### 1. Meaning Sources Research
 
-**Status:** DONE — merged as PR #173
+**Status:** DONE - merged as PR #173
 (`claude/meaning-sources-research`). This remains here as the rationale
 record for the user-friendly wordlist dependency.
 
@@ -52,7 +52,7 @@ dated report rather than rewriting those results.
 
 ### 2. Canonical Cleanup + User-Friendly Wordlist
 
-**Status:** DONE — merged as PR #174 (`claude/user-friendly-wordlist`).
+**Status:** DONE - merged as PR #174 (`claude/user-friendly-wordlist`).
 
 **Why:** `example_text` repeats sentence or poem text on millions of wordlist
 rows, bloating canonical files. Meanwhile `wordlist.tsv` is parser evidence, not
@@ -80,10 +80,10 @@ and example refs.
 
 ### 3. Sentence Export + EPUB Extraction Cleanup
 
-**Status:** DONE — merged as PR #170 (`codex/sentence-export-epub-cleanup`).
+**Status:** DONE - merged as PR #170 (`codex/sentence-export-epub-cleanup`).
 
 **Why:** canonical `sentences.tsv` keeps every deduped sentence-like unit the
-extractor emitted — including navigation pages, title pages, ISBN markers, and
+extractor emitted - including navigation pages, title pages, ISBN markers, and
 other EPUB residue. Better extraction and a filtered user-facing export are
 coupled: improving `extract_epub` reduces junk at the source, and the
 user-friendly sentence export catches whatever remains.

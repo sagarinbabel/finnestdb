@@ -3,13 +3,13 @@
 > **Historical pre-implementation analysis (March 2026).** This document
 > explores tradeoffs and recommends an architecture (Postgres backend,
 > Python parser service, etc.) that the project **did not adopt**. The
-> shipping architecture is Rust + Go + SQLite — see
+> shipping architecture is Rust + Go + SQLite - see
 > [`ARCHITECTURE.md`](ARCHITECTURE.md) for the actual current state and
 > [`docs/DECISIONS.md`](docs/DECISIONS.md) Decision 1 for why we built a
 > custom parser instead of using Omorfi directly. Specific technology
 > recommendations in this file (Postgres, Python service, "no Rust",
 > etc.) are obsolete and should not be trusted as guidance. Kept here
-> for historical context — what we considered and what we chose against.
+> for historical context - what we considered and what we chose against.
 
 ## Parser Implementation: Challenges & Solutions
 

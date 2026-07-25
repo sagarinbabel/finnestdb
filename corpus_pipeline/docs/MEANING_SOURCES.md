@@ -4,7 +4,7 @@ This document catalogues the lexical sources finnestdb consults for lemma
 meanings, the license under each, and the strategy for combining them so the
 user-friendly wordlist export ships with the highest possible gloss coverage.
 
-It satisfies item 1 of `corpus_pipeline/docs/PR_ROADMAP.md` — meaning-sources
+It satisfies item 1 of `corpus_pipeline/docs/PR_ROADMAP.md` - meaning-sources
 research, the prerequisite for the user-friendly wordlist work.
 
 ## Coverage Baseline (before this PR)
@@ -27,7 +27,7 @@ Lemma-table view (independent of corpus weighting):
 | ET   | ekilex       | 178,032    |  67,367    |  37.84%  |
 | ET   | kaikki       | 176,199    |   6,207    |   3.52%  |
 
-The FI gap is "lemma not in any dictionary" — 21% of tokens come from compounds,
+The FI gap is "lemma not in any dictionary" - 21% of tokens come from compounds,
 proper nouns, neologisms, and FST-generated analyses for surfaces the
 dictionary does not list. No existing source fixes that bucket.
 
@@ -49,7 +49,7 @@ populating gloss), and 21.4% of tokens are not in the dictionary at all. The
   `forms[].form/tags`, `pos`, `word`, `lang_code`. ~250 MB compressed for FI;
   ~5 MB for ET (English Wiktionary has limited Estonian coverage).
 - **Status**: Imported. FI gives 100% gloss coverage on 259k lemmas. ET gives
-  ~13k entries — mostly characters, inflected-form pages, and a thin headword
+  ~13k entries - mostly characters, inflected-form pages, and a thin headword
   list. Drives `lemmas.gloss` and `translations` (target_lang=EN).
 - **Importer**: `cmd/importdict` (`make import-kaikki-fi` / `import-kaikki-et`).
 - **Source priority**: 10. Lower than ekilex (20) for ET so EKI wins when both
@@ -59,7 +59,7 @@ populating gloss), and 21.4% of tokens are not in the dictionary at all. The
 
 - **URL**: <https://ekilex.ee/api/public_word/eki>.
 - **License**: Estonian Language Institute (EKI) public Ekilex export.
-  Permissive — redistribution allowed with attribution. The JSON public_word
+  Permissive - redistribution allowed with attribution. The JSON public_word
   endpoint is a thin headword list without senses; the underlying EKI sources
   carry their own licenses (EKSS = CC BY-SA 4.0, ÕS = CC BY-SA 4.0, IATE =
   EUPL).
@@ -72,7 +72,7 @@ populating gloss), and 21.4% of tokens are not in the dictionary at all. The
 ### Ekilex bulk reduction (`reduceekilex` → `definitions/`, `forms/`)
 
 - **URL**: <https://ekilex.ee/dataset/eki> (bulk dump).
-- **License**: Same as Ekilex public_word — CC BY-SA derivatives apply per
+- **License**: Same as Ekilex public_word - CC BY-SA derivatives apply per
   underlying dataset. Stays local-only by default; redistributable with
   attribution per EKI terms.
 - **Format**: After running `cmd/reduceekilex`, the data lands as
@@ -92,7 +92,7 @@ populating gloss), and 21.4% of tokens are not in the dictionary at all. The
 - **License**: CC BY 4.0.
 - **Format**: XML headword list with Kotus paradigm classes.
 - **Status**: Imported. Fills `lemmas.paradigm_class` for FI. Carries no gloss
-  data — paradigm-only.
+  data - paradigm-only.
 - **Importer**: `cmd/importkotus` (`make import-kotus-paradigms`).
 
 ### Considered but not adopted
@@ -100,7 +100,7 @@ populating gloss), and 21.4% of tokens are not in the dictionary at all. The
 - **EKI Sõnaveeb scrape** (<https://sonaveeb.ee>): the user-facing aggregator
   surfaces additional EKI dictionaries (ÕS 2018, EKSS, IATE, etc.). The
   underlying datasets are accessible through Ekilex bulk; scraping the website
-  duplicates work and may violate EKI's terms. Skip — get the same data
+  duplicates work and may violate EKI's terms. Skip - get the same data
   through Ekilex.
 - **fi.wiktionary.org dump** (Finnish-language definitions for Finnish
   headwords): would give Finnish-language glosses, not English. Useful for
@@ -116,29 +116,29 @@ populating gloss), and 21.4% of tokens are not in the dictionary at all. The
 ## Strategy: Combine sources, don't pick one
 
 The wordlist exporter joins on `(lemma, pos, lang)` against `lemmas.gloss`. The
-gloss is denormalized — one string per `(lemma, pos)` — so the importer is
+gloss is denormalized - one string per `(lemma, pos)` - so the importer is
 where source-combination happens. The chain runs in source-priority order, so
 each later import refines earlier ones without erasing them:
 
-1. `cmd/importdict -lang fi -source-key kaikki` — FI Wiktionary glosses
+1. `cmd/importdict -lang fi -source-key kaikki` - FI Wiktionary glosses
    (priority 10). Saturates FI.
-2. `cmd/importdict -lang et -source-key kaikki` — ET Wiktionary glosses
+2. `cmd/importdict -lang et -source-key kaikki` - ET Wiktionary glosses
    (priority 10). Thin coverage, but fills the few entries that are in EN
    Wiktionary but not Ekilex.
-3. `cmd/importekilex` — ET headword stubs (priority 20). Adds POS=X rows for
+3. `cmd/importekilex` - ET headword stubs (priority 20). Adds POS=X rows for
    headwords the bulk drop misses.
-4. `cmd/importekilexdetails` — ET Ekilex bulk (priority 20). The current path
+4. `cmd/importekilexdetails` - ET Ekilex bulk (priority 20). The current path
    joins EN translations into `lemmas.gloss`. **This PR extends it** to also
    write Estonian-language definitions into the `definitions` table (which is
    currently empty in production), and to fall back to the first
    `definitions_et` entry as a `[ET]`-prefixed gloss when no EN translation
    exists for a `(lemma, pos)`.
-5. `cmd/importkotus` — FI paradigm classes (independent of gloss).
+5. `cmd/importkotus` - FI paradigm classes (independent of gloss).
 
 After this PR, the `(lemma, pos)` rows that previously had no gloss because
 ekilex provided only `definitions_et` will gain a fallback gloss prefixed with
 `[ET]`. The prefix marks the gloss as Estonian-language so the wordlist export
-(item 2) can render it differently — a cue to the learner that they're reading
+(item 2) can render it differently - a cue to the learner that they're reading
 a definition in the source language, not an English translation.
 
 ## Out of scope (track for future)

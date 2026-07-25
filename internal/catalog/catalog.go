@@ -7,7 +7,7 @@
 // Metadata loads eagerly; full text is served lazily from the embedded
 // fixture only when a learner selects a text. Each entry carries a precomputed
 // (lemma, pos) list so per-learner known-token coverage is a cheap set
-// intersection against user_known_lemmas at request time — no re-parse needed.
+// intersection against user_known_lemmas at request time - no re-parse needed.
 //
 // The catalog is regenerated deterministically by cmd/gencatalog. The
 // checked-in catalog.json must be exactly what the generator emits; do not

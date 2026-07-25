@@ -2,7 +2,7 @@
 
 Review of the FinnEst `design/` folder. Files checked into the repo are
 referenced as `design/<name>`; files marked **(local only)** exist in the
-working copy but are not committed — they were reviewed from the design
+working copy but are not committed - they were reviewed from the design
 bundle delivered separately.
 
 **Checked in:** `wireframe-clickthrough.html`, `flow-diagram.html`,
@@ -17,12 +17,12 @@ bundle delivered separately.
 
 ---
 
-## branding.html — The FinnEst mark (local only)
+## branding.html - The FinnEst mark (local only)
 
 ### Strengths
 
 - **Superscript-as-lemma-tag is the core insight.** The `fi`/`et` superscripts
-  read exactly like the morphological annotations the parser produces — the
+  read exactly like the morphological annotations the parser produces - the
   wordmark literally *is* the product. Teaches what the tool does in a single
   glance.
 
@@ -34,7 +34,7 @@ bundle delivered separately.
   guidance that separates a real brand guide from a mood board.
 
 - **Split-tile app icon (F|E)** is recognizable at small sizes. The ink/birch
-  warm variant is the most distinctive — doesn't depend on knowing which blue
+  warm variant is the most distinctive - doesn't depend on knowing which blue
   is which.
 
 ### Issues to address
@@ -63,22 +63,22 @@ bundle delivered separately.
 
 ---
 
-## finnest aalto.html — App design system (local only)
+## finnest aalto.html - App design system (local only)
 
 ### Strengths
 
 - **Two-intensity system** (`data-aalto` restrained vs bold) is smart product
   thinking. Ship restrained, dial up Aalto-ness later without redesigning.
 
-- **Birch wood-grain in pure CSS** — layered `repeating-linear-gradient` +
+- **Birch wood-grain in pure CSS** - layered `repeating-linear-gradient` +
   `radial-gradient` is impressive. Dark-mode smoked oak variant is a nice
   touch.
 
 - **Role token system** (`--bg`, `--bg-deep`, `--bg-raise`, `--bg-hover`)
   abstracts light/dark cleanly. Adding a third theme would be straightforward.
 
-- **Vocabulary status colors** — known (sage), learning (warm wheat), new
-  (blue) — are semantically clear AND colorblind-safe (differ in lightness,
+- **Vocabulary status colors** - known (sage), learning (warm wheat), new
+  (blue) - are semantically clear AND colorblind-safe (differ in lightness,
   not just hue).
 
 - **Paste box in Newsreader at 20px** is a bold serif-for-input choice that
@@ -113,7 +113,7 @@ bundle delivered separately.
 
 ---
 
-## finnest prototype.html — Clickable prototype (local only)
+## finnest prototype.html - Clickable prototype (local only)
 
 Interactive prototype adds flows on top of the Aalto design system:
 SignupRibbon, SaveAsModal, CorrectionModal, ColdStart, KnownWordsImport,
@@ -128,10 +128,10 @@ EphemeralToggle, ReviewDoneCard. Wired via proto-app.jsx + proto-screens.jsx
 
 - **CorrectionModal** has a smart two-path design: "I don't know the answer"
   (flag-only) vs "Right answer is…" (propose lemma + POS + grammar + notes).
-  Flag-only is the recommended path, which is correct — most users won't know
+  Flag-only is the recommended path, which is correct - most users won't know
   the right answer but can still signal a problem.
 
-- **SignupRibbon** for anonymous users is well-placed — appears above results
+- **SignupRibbon** for anonymous users is well-placed - appears above results
   after a parse, not before. The user gets value first, then sees the save
   prompt. Good funnel design.
 
@@ -139,13 +139,13 @@ EphemeralToggle, ReviewDoneCard. Wired via proto-app.jsx + proto-screens.jsx
   ephemeral, Aalto intensity, theme) makes the prototype self-documenting for
   stakeholder walkthroughs.
 
-### Missing flows — TODO
+### Missing flows - TODO
 
 See consolidated TODO list at the end of this document.
 
 ---
 
-## wireframe-clickthrough.html — Alternate design direction
+## wireframe-clickthrough.html - Alternate design direction
 
 Self-contained HTML/CSS/vanilla JS clickthrough (80KB, no React). Represents a
 distinctly different design direction from the Aalto prototype: dark-first INK
@@ -157,25 +157,25 @@ hash-based routing with `data-go` click delegation.
 - **Comprehension projection on Deck Detail is exactly what was missing from
   the Aalto prototype.** Shows "current → if you learn top N words → target %"
   with three concrete tiers (20, 50, 100 words). This is the core motivation
-  loop — port this pattern back to the Aalto leverage page.
+  loop - port this pattern back to the Aalto leverage page.
 
 - **Coverage bar per deck** ("71% · based on your 1,204 known FI words")
   anchors the user's position before showing what they could gain. Much
   stronger than the Aalto prototype's "+14% across all decks" which lacks a
   baseline.
 
-- **Mobile responsive breakpoints** (`@media max-width: 720px`) — the only
+- **Mobile responsive breakpoints** (`@media max-width: 720px`) - the only
   file in the design folder that actually has them. Stacks grid layouts,
   resizes the paste box, and hides the topnav behind a burger.
 
-- **Distinct FI/ET colors** — FI as cyan (`oklch(0.78 0.13 200)`) and ET as
+- **Distinct FI/ET colors** - FI as cyan (`oklch(0.78 0.13 200)`) and ET as
   magenta (`oklch(0.74 0.16 320)`). These hue-differentiated tags are better
   than the Aalto approach of collapsing both into one `--blue`, and better than
   the branding hex blues because they work in both light and dark mode via
   OKLCH lightness adjustment.
 
 - **Flowstrip UI** across the top with 11 labeled screens + keyboard nav
-  (← →) + hotspot toggle. Excellent for stakeholder walkthroughs — shows all
+  (← →) + hotspot toggle. Excellent for stakeholder walkthroughs - shows all
   flows in linear order without needing to discover them.
 
 - **Correction modal** with both flag-only and propose-answer paths matches
@@ -213,7 +213,7 @@ hash-based routing with `data-go` click delegation.
 
 ---
 
-## View components (view-*.jsx) — Modular screen implementations
+## View components (view-*.jsx) - Modular screen implementations
 
 Five standalone React components (`view-parse.jsx`, `view-library.jsx`,
 `view-deck.jsx`, `view-leverage.jsx`, `view-review.jsx`) extracted from
@@ -227,15 +227,15 @@ the app shells. These are the most production-ready pieces in the folder.
   should be the canonical reference.
 
 - **view-leverage.jsx has a proper scope filter** (All decks / Active only /
-  Finnish / Estonian) — partially addresses the "filter by deck" TODO from the
+  Finnish / Estonian) - partially addresses the "filter by deck" TODO from the
   prototype review. The four scope options are a good start; adding per-deck
   filtering would complete it.
 
-- **Leverage table has per-row deck presence indicators** — colored squares
+- **Leverage table has per-row deck presence indicators** - colored squares
   showing which of the user's 5 decks contain each word. Smart information
   density.
 
-- **view-parse.jsx** (19KB) is the most complete parse UI — text input with
+- **view-parse.jsx** (19KB) is the most complete parse UI - text input with
   language auto-detect, word filtering by status/MWE, sort by order/leverage/
   alpha, selected-word detail panel, and sentence highlighting.
 
@@ -251,7 +251,7 @@ the app shells. These are the most production-ready pieces in the folder.
    queue" in the header, but neither specifies which deck the words go into.
    Need: "Create deck from top N" or "Add to [deck name]" with a deck picker.
 
-3. **view-review.jsx** has FSRS card rendering but no correction affordance —
+3. **view-review.jsx** has FSRS card rendering but no correction affordance -
    the "✎ Wrong?" button only exists in proto-screens.jsx as a DOM injection.
    Should be built into the review component natively.
 
@@ -281,7 +281,7 @@ Landing, Wordlist, Review. Components in `m-shared.jsx` and `m-web.jsx`.
 
 2. **No shared responsive strategy.** The mobile prototype is a completely
    separate codebase from the desktop views. The wireframe-clickthrough.html
-   already has `@media` breakpoints that handle mobile layout — those should be
+   already has `@media` breakpoints that handle mobile layout - those should be
    the canonical responsive approach, not a parallel mobile app.
 
 3. **design-canvas.jsx** (31KB) is a Figma-like inspection framework used only
@@ -312,7 +312,7 @@ Newsreader serif warmth, two-intensity system). Recommended convergence:
 
 1. **Token system:** Use the wireframe's OKLCH token structure (it already has
    paper/ink variants) but adopt the Aalto role names (`--bg-raise`, `--bg-deep`).
-   Both already use these — just align the values.
+   Both already use these - just align the values.
 
 2. **FI/ET colors:** Use the wireframe's hue-differentiated approach (cyan FI,
    magenta ET in OKLCH) rather than the branding hex blues. They're more
@@ -335,11 +335,11 @@ Newsreader serif warmth, two-intensity system). Recommended convergence:
 
 1. **Commit to the superscript lockup in the app topbar.** The `Finn^fi Est^et`
    mark is the strongest design element in the system. The branding guide
-   section 04 shows it in the topbar at 26px — use it. The current app topbar
+   section 04 shows it in the topbar at 26px - use it. The current app topbar
    shows `finnest.` in italic serif, which wastes the brand's best asset.
 
 2. **Unify flag blues.** The branding guide defines Finnish blue (#003580) and
-   Estonian blue (#0072CE) as distinct colors. The app should use both — not
+   Estonian blue (#0072CE) as distinct colors. The app should use both - not
    collapse them into one `--blue`. This matters especially on the leverage
    page where FI and ET deck tiles are shown side by side. The wireframe's
    OKLCH hue-differentiated colors (cyan FI, magenta ET) are the best
@@ -347,7 +347,7 @@ Newsreader serif warmth, two-intensity system). Recommended convergence:
 
 3. **Correction flow is the highest-priority gap.** The prototype has the
    modal but no backend flow. For a language tool, user corrections are the
-   primary quality signal — this needs a complete round-trip: submit → triage
+   primary quality signal - this needs a complete round-trip: submit → triage
    → accept/reject → notify user → update parse data.
 
 4. **Port comprehension projection to the leverage page.** The DeckView
@@ -365,7 +365,7 @@ Newsreader serif warmth, two-intensity system). Recommended convergence:
 
 All open items collected from the reviews above, grouped by priority.
 
-### P0 — Core user flows (missing or broken)
+### P0 - Core user flows (missing or broken)
 
 1. **Leverage → word list → study deck (end-to-end).** The comprehension
    projection says "Learn 20 words → 81%" but the user can't see *which* 20
@@ -374,13 +374,13 @@ All open items collected from the reviews above, grouped by priority.
    a. **Deck Detail or Leverage page** shows the projection: "You know 62%.
       Learn these 20 words → 81%." The "these 20 words" text is a link /
       expandable section.
-   b. **Clicking it reveals the ranked word list** — the actual 20 lemmas,
+   b. **Clicking it reveals the ranked word list** - the actual 20 lemmas,
       with gloss, POS, frequency bar, and a checkbox per row (all checked by
       default). The user can uncheck words they don't want or adjust the
       target % slider to grow/shrink the list.
    c. **"Create study deck" button** at the bottom of the list. Opens
       SaveAsModal with the selected words pre-populated. Deck name defaults
-      to something like "Kalevala ch.1 — top 20 leverage words".
+      to something like "Kalevala ch.1 - top 20 leverage words".
    d. **Deck appears in the Decks view**, tagged as a leverage-derived deck
       (e.g. a small ⚡ badge). User can start reviewing immediately.
    e. **As the user learns words from the leverage deck**, the comprehension
@@ -409,20 +409,20 @@ All open items collected from the reviews above, grouped by priority.
      menu. Show submission status (pending / accepted / rejected) as a badge
      or inline in the parse results where the user flagged it.
 
-3. **Leverage page — deck filter + comprehension projection.** The leverage
+3. **Leverage page - deck filter + comprehension projection.** The leverage
    page (view-leverage.jsx, v2-leverage.jsx) shows words ranked across all
    decks with "+14% comprehension gain" but no baseline. Missing:
-   - **Deck filter / selector** — let the user pick a single deck (or "all
+   - **Deck filter / selector** - let the user pick a single deck (or "all
      decks") and see leverage ranked within that scope. view-leverage.jsx has
      a scope filter (All/Active/Finnish/Estonian) but not per-deck.
    - **Now → target projection** (same as view-deck.jsx has): "You know 62%
      of *Kalevala ch.1*. Learn these 15 words → 78%."
-   - **Goal threshold slider** — user sets target % (default 85%), list shows
+   - **Goal threshold slider** - user sets target % (default 85%), list shows
      exactly how many words to learn. The word list below updates live.
-   - **"Create study deck" CTA** — bundles the leverage words into a new FSRS
+   - **"Create study deck" CTA** - bundles the leverage words into a new FSRS
      deck (see P0 item 1 above).
 
-### P1 — Design system convergence
+### P1 - Design system convergence
 
 4. **Unify wireframe and Aalto token systems.** Two parallel CSS architectures
    (wireframe OKLCH + Aalto hex/OKLCH hybrid) that don't share code. Pick one
@@ -451,7 +451,7 @@ All open items collected from the reviews above, grouped by priority.
    Recommendation: use the wireframe's breakpoints as canonical; retire the
    separate mobile prototype.
 
-### P2 — Component gaps
+### P2 - Component gaps
 
 9. **"✎ Wrong?" button should be native to view-review.jsx.** Currently only
    exists as a DOM injection in proto-screens.jsx via setInterval polling.
@@ -466,7 +466,7 @@ All open items collected from the reviews above, grouped by priority.
     Start, Sign-in. If staying with the responsive-breakpoint strategy (P1
     item 8), these are covered by the desktop views collapsing.
 
-### P3 — Polish / brand guide gaps
+### P3 - Polish / brand guide gaps
 
 12. **Branding: `.lockup .book` styled but never shown.** Either add artboard
     or remove dead CSS.

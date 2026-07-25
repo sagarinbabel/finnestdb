@@ -18,9 +18,9 @@
 //
 // Adapters are resolved from the same env vars as the eval parser adapters:
 //
-//	FINNESTDB_OMORFI_CMD   — full command, e.g.
+//	FINNESTDB_OMORFI_CMD   - full command, e.g.
 //	                          "$(pwd)/.venv/bin/python $(pwd)/scripts/omorfi_adapter_example.py"
-//	FINNESTDB_ESTNLTK_CMD  — same shape; if unset, tool auto-discovers
+//	FINNESTDB_ESTNLTK_CMD  - same shape; if unset, tool auto-discovers
 //	                          .venv/bin/python next to the repo root.
 //
 // The diff report flags tokens where:
@@ -29,7 +29,7 @@
 //   - the gold token wasn't found in the adapter's tokenisation.
 //
 // The user reviews the .diff.md and edits the gold .json directly for
-// any corrections — this tool is the seeding pass, not the final say.
+// any corrections - this tool is the seeding pass, not the final say.
 package main
 
 import (
@@ -198,7 +198,7 @@ func enrichOne(inPath, outPath, lang, diffPath string) error {
 			if anchorCase != "" && anchorCase != "Nom" {
 				if adapterCase := caseFromAdapterFeats(adapter.Feats); adapterCase != "" && adapterCase != anchorCase {
 					diffs = append(diffs, diffRow{c.ID, gt.Surface, "case-disagreement",
-						fmt.Sprintf("adapter said Case=%s; gold grammar_label=%s (Case=%s) — gold wins", adapterCase, anchorLabel, anchorCase)})
+						fmt.Sprintf("adapter said Case=%s; gold grammar_label=%s (Case=%s) - gold wins", adapterCase, anchorLabel, anchorCase)})
 				}
 			}
 			if merged == "" {
@@ -314,7 +314,7 @@ func mergeFeats(adapterFeats map[string]any, anchorCase string) string {
 	if anchorCase != "" && anchorCase != "Nom" {
 		pairs["Case"] = anchorCase
 	} else if anchorCase == "Nom" {
-		// Gold says nominative — UD convention is to leave Case unset.
+		// Gold says nominative - UD convention is to leave Case unset.
 		delete(pairs, "Case")
 	}
 	if len(pairs) == 0 {
@@ -363,9 +363,9 @@ func stringifyFeatsValue(v any) string {
 
 func writeDiff(path, name, version string, rows []diffRow) error {
 	var b strings.Builder
-	fmt.Fprintf(&b, "# enrichgoldfeats diff — %s %s\n\n", name, version)
+	fmt.Fprintf(&b, "# enrichgoldfeats diff - %s %s\n\n", name, version)
 	if len(rows) == 0 {
-		fmt.Fprintln(&b, "No issues — every gold token received FEATS from the adapter (with gold's Case anchor where applicable).")
+		fmt.Fprintln(&b, "No issues - every gold token received FEATS from the adapter (with gold's Case anchor where applicable).")
 		return os.WriteFile(path, []byte(b.String()), 0o644)
 	}
 	fmt.Fprintf(&b, "%d token(s) need a manual look:\n\n", len(rows))

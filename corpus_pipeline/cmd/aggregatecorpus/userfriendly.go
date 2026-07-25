@@ -11,10 +11,10 @@ import (
 	"finnestdb/internal/store"
 )
 
-// User-friendly wordlist export — item 2 of corpus_pipeline/docs/PR_ROADMAP.md.
+// User-friendly wordlist export - item 2 of corpus_pipeline/docs/PR_ROADMAP.md.
 //
 // Goal: a derived TSV that a learner-facing UI can consume directly. The
-// canonical wordlist.tsv is parser evidence — one row per analysis with
+// canonical wordlist.tsv is parser evidence - one row per analysis with
 // raw FEATS strings and provenance fields. The user-friendly export adds:
 //
 //   - meaning: lemmas.gloss (from the dict DB), so each row has a human-
@@ -32,7 +32,7 @@ import (
 // when the parser was uncertain.
 
 // userFriendlyExampleResolver returns the (example_ref_type, example_ref_id)
-// pair for a surface. Two implementations — the in-memory state has direct
+// pair for a surface. Two implementations - the in-memory state has direct
 // access to s.sentences; the scratch path resolves via the hashToID map
 // built during phase 4. Both code paths reuse the same writer.
 type userFriendlyExampleResolver func(ss *surfaceStats) (refType, refID string)
@@ -43,7 +43,7 @@ func (s *state) writeUserFriendlyWordlist(path string) error {
 	return s.writeUserFriendlyWordlistWithExampleResolver(path, s.exampleRefFor)
 }
 
-// writeUserFriendlyWordlistWithExampleResolver is the shared writer body —
+// writeUserFriendlyWordlistWithExampleResolver is the shared writer body -
 // the only difference between in-memory and scratch modes is how
 // (sentence-hash → sentence-id) resolves, which the resolver closure
 // captures.
@@ -56,15 +56,15 @@ func (s *state) writeUserFriendlyWordlist(path string) error {
 // populated so build_metadata.json + qa-report.json can show whether
 // the cap actually constrained the export.
 //
-// Note this writer re-sorts a *copy* of the wordlist row indices — it
+// Note this writer re-sorts a *copy* of the wordlist row indices - it
 // doesn't mutate s.wordlistRows. The canonical wordlist.tsv has its own
 // sort (descending prose count) that the caller has already applied;
 // this learner-facing export wants a different ordering, and changing
 // s.wordlistRows would corrupt any subsequent mining writers that
 // consume it.
 //
-// Meanings come from a single bulk SELECT against `lemmas` — see
-// bulkLoadGlosses below — so per-row gloss lookup is a hash hit, not a
+// Meanings come from a single bulk SELECT against `lemmas` - see
+// bulkLoadGlosses below - so per-row gloss lookup is a hash hit, not a
 // SQL round-trip. Critical at FI-full scale where the wordlist has
 // ~5M rows.
 func (s *state) writeUserFriendlyWordlistWithExampleResolver(
@@ -142,7 +142,7 @@ func (s *state) writeUserFriendlyWordlistWithExampleResolver(
 			exType, exID,
 		}
 		if !w.Write(row) {
-			break // budget hit; stop walking — remaining rows wouldn't fit either
+			break // budget hit; stop walking - remaining rows wouldn't fit either
 		}
 	}
 	bytes, capHit, err := w.Close()
@@ -175,21 +175,21 @@ func (s *state) writeUserFriendlyWordlistWithExampleResolver(
 // to 'ekilex' without overwriting an older kaikki gloss (the empty-gloss
 // guard preserves richer existing text). When that happens, lemmas.gloss
 // is still the kaikki text but the canonical read path returns the
-// ekilex translation instead — and the user-friendly export must agree.
+// ekilex translation instead - and the user-friendly export must agree.
 //
 // Why bulk vs. per-key: store.BatchLookupGlosses is a "batch" only by
-// API shape — internally it issues one prepared QueryRow per LemmaKey.
+// API shape - internally it issues one prepared QueryRow per LemmaKey.
 // At FI-full scale (~5M wordlist rows, ~260k distinct dict rows) that
 // is ~260k SQL calls in phase 4. The query below runs once and
 // LEFT JOINs a CTE that picks the top-priority translation per
 // (lemma, pos, lang). One scan, one Go map allocation, no per-row SQL.
 //
-// The connection is opened read-only (mode=ro) — not immutable. The
+// The connection is opened read-only (mode=ro) - not immutable. The
 // importers run finnestdb.db in WAL mode, and SQLite's immutable flag
 // makes the connection ignore the WAL file entirely. With another
 // connection still open (state.dictDB) the WAL has not necessarily
 // been checkpointed, so an immutable handle here would read a stale
-// snapshot — including, in the worst case, missing committed tables.
+// snapshot - including, in the worst case, missing committed tables.
 // Plain mode=ro reads the WAL like any other reader, which is what we
 // want.
 func bulkLoadGlosses(dbPath, langUpper string) (map[store.LemmaKey]string, error) {

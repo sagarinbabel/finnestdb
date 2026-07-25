@@ -105,7 +105,7 @@ func TestKaikkiTagsToFeats_AdjectiveDegree(t *testing.T) {
 		{[]string{"comparative"}, "ADJ", "Degree=Cmp"},
 		{[]string{"superlative"}, "ADJ", "Degree=Sup"},
 		{[]string{"positive"}, "ADJ", "Degree=Pos"},
-		// Degree gated to ADJ/ADV — same tag on a verb does nothing.
+		// Degree gated to ADJ/ADV - same tag on a verb does nothing.
 		{[]string{"comparative"}, "VERB", ""},
 		// Degree composes with case on inflected adjectives.
 		{
@@ -133,7 +133,7 @@ func TestKaikkiTagsToFeats_PronType(t *testing.T) {
 		{[]string{"relative"}, "PRON", "PronType=Rel"},
 		{[]string{"personal"}, "PRON", "PronType=Prs"},
 		{[]string{"personal-pronoun"}, "PRON", "PronType=Prs"},
-		// PronType is gated to PRON — DETs and others stay clean.
+		// PronType is gated to PRON - DETs and others stay clean.
 		{[]string{"demonstrative"}, "DET", ""},
 	}
 	for _, tc := range cases {
@@ -154,7 +154,7 @@ func TestKaikkiTagsToFeats_EmptyAndUnknown(t *testing.T) {
 	if got := kaikkiTagsToFeats([]string{"unknown-tag", "another-mystery"}, "NOUN"); got != "" {
 		t.Errorf("unknown tags: got %q, want empty", got)
 	}
-	// Possessive marker is NOT translated to FEATS — caller filters it
+	// Possessive marker is NOT translated to FEATS - caller filters it
 	// at hasPossessiveTag time before reaching the mapper.
 	if got := kaikkiTagsToFeats([]string{"possessive", "singular", "first-person"}, "NOUN"); got != "Number=Sing|Person=1" {
 		t.Errorf("possessive: got %q, want %q", got, "Number=Sing|Person=1")
@@ -185,7 +185,7 @@ func TestWithReflex(t *testing.T) {
 		{"", "Itse", "PRON", "Reflex=Yes"}, // case-insensitive lemma match
 		{"", "enese", "PRON", "Reflex=Yes"},
 		{"", "enda", "PRON", "Reflex=Yes"},
-		// Non-PRON: same lemma string is left alone — Reflex= is per-pronoun.
+		// Non-PRON: same lemma string is left alone - Reflex= is per-pronoun.
 		{"Case=Ine", "itse", "ADV", "Case=Ine"},
 		// Unknown lemma: no change.
 		{"Case=Ine", "talo", "PRON", "Case=Ine"},

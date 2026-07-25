@@ -75,7 +75,7 @@ No `.vfst`, `.hfstol`, or `.hfst` files are committed.
   HFST optimised-lookup analyser via `pkg/lemmatizer-fi-et/hfstol` and
   normalises tags through `pkg/lemmatizer-fi-et/giellaltmap`.
 
-Both branches emit the same JSON shape — a `map[string][]Analysis` keyed
+Both branches emit the same JSON shape - a `map[string][]Analysis` keyed
 by surface form, where `Analysis` is `voikkomap.Analysis` (the runtime's
 shared structured type). The wrappers in
 [`Makefile`](../Makefile) are `make gen-lemmatizer-tables-fi
@@ -122,7 +122,7 @@ Until then, the current runtime is a scaffold with smoke fixtures.
 **2026-05-07k status**: smoke fixtures regenerated with the new `Feats`
 field on every analysis (composed by `pkg/lemmatizer-fi-et/udfeats`).
 Future regenerations of the production tables pick up the field
-automatically — no flag, no schema migration. The runtime composer at
+automatically - no flag, no schema migration. The runtime composer at
 [`internal/store::featsFromFSTAnalysis`](../internal/store/dict.go)
 prefers the persisted field, so once production tables ship the
 parser will short-circuit the on-the-fly composition for direct hits.

@@ -1,4 +1,4 @@
-_Current as of 2026-07-03 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
+_Current as of 2026-07-03 - see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
 # Cross-Language Strategy: Finnish and Estonian
 
@@ -99,7 +99,7 @@ compare our `basic` and `custom` parsers against:
 
 These adapters live behind a common interface so the comparison
 reports look identical structurally for FI and ET. The benchmark
-itself is not "the answer" — it is a reference signal, the same way
+itself is not "the answer" - it is a reference signal, the same way
 gold datasets are a reference signal.
 
 ### Error taxonomy
@@ -177,7 +177,7 @@ infrastructure, not shared linguistic content.
    categories matter most overall.
 4. We invest in the parts of the pipeline that affect that category
    (e.g., the compound splitter, the morphology analyzer harness, the
-   feature tagger) — and the investment is shared.
+   feature tagger) - and the investment is shared.
 5. Each language's specific rules are then updated independently
    inside that shared mechanism.
 
@@ -190,7 +190,7 @@ _Added 2026-05-07._
 
 This section records empirical observations about where Finnish and
 Estonian diverge in measurable ways. These are not novel findings in
-linguistics — register variation in token-frequency distributions and
+linguistics - register variation in token-frequency distributions and
 the influence of inflectional richness on Zipfian decay are
 well-studied. They are recorded here because (a) the specific
 measurements on our specific corpora are useful project artifacts, and
@@ -224,16 +224,16 @@ gap is small but reproduces across both corpus sources we have, despite
 opposite corpus-size relationships:
 
 - OpenSubtitles ET has ~half the tokens of OpenSubtitles FI (smaller
-  corpus, shorter long tail — would inflate ET's top-N coverage).
+  corpus, shorter long tail - would inflate ET's top-N coverage).
 - UD-Estonian-EDT has ~2× the tokens of UD-Finnish-TDT (larger corpus,
-  longer long tail — would deflate ET's top-N coverage).
+  longer long tail - would deflate ET's top-N coverage).
 
 The gap appears in both directions of the size confound, so at least
 part of it is genuine. A plausible linguistic explanation is that
 Estonian morphology is marginally less elaborate than Finnish (no vowel
 harmony, weakened/limited consonant gradation, 14 cases vs 15), which
 would compress the Zipfian tail of distinct forms slightly. But the
-measurement is preliminary — see
+measurement is preliminary - see
 [`TODO.md` "Re-test FI vs ET top-N coverage with corpus-size-comparable
 data"](../TODO.md) for the size-matched re-measurement we should
 do before committing to the linguistic interpretation.
@@ -263,13 +263,13 @@ do before committing to the linguistic interpretation.
 Register variation in token-coverage curves is documented in:
 
 - Sinclair, J. (1991). *Corpus, Concordance, Collocation.* Oxford
-  University Press — early work establishing register effects on
+  University Press - early work establishing register effects on
   frequency distributions.
 - Biber, D. (1993). "Representativeness in Corpus Design." *Literary
-  and Linguistic Computing* — register sampling and frequency
+  and Linguistic Computing* - register sampling and frequency
   estimation.
 - Zipf, G. K. (1949). *Human Behavior and the Principle of Least
-  Effort.* — the underlying distributional law.
+  Effort.* - the underlying distributional law.
 
 The contribution of this measurement is **specific numbers on FI and
 ET inflected-form coverage from these specific corpora using this
@@ -293,10 +293,10 @@ the other. We do not ship one language while waiting for the other.
 
 ## See Also
 
-- [`docs/FEATURES.md`](FEATURES.md) — product framing
-- [`docs/baselines/`](baselines/) — frozen evaluation reports
-- [`docs/PARSER_EVAL_DATASETS.md`](PARSER_EVAL_DATASETS.md) — gold
+- [`docs/FEATURES.md`](FEATURES.md) - product framing
+- [`docs/baselines/`](baselines/) - frozen evaluation reports
+- [`docs/PARSER_EVAL_DATASETS.md`](PARSER_EVAL_DATASETS.md) - gold
   dataset structure
-- [`docs/OMORFI_COMPARISON.md`](OMORFI_COMPARISON.md) — Finnish
+- [`docs/OMORFI_COMPARISON.md`](OMORFI_COMPARISON.md) - Finnish
   external benchmark methodology
-- [`TODO.md`](../TODO.md) — execution plan and open work
+- [`TODO.md`](../TODO.md) - execution plan and open work

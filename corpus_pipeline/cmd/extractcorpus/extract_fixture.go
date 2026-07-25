@@ -18,7 +18,7 @@ type docRecord struct {
 	ByteOffset  int64  `json:"byte_offset"`
 }
 
-// extractFixture is the simplest extractor — passthrough. Reads each
+// extractFixture is the simplest extractor - passthrough. Reads each
 // raw/*.txt file and concatenates non-empty lines into text.txt with
 // blank-line document boundaries. One document per raw file.
 func extractFixture(dir string, m sources.Manifest) error {

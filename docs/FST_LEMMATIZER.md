@@ -25,7 +25,7 @@ See also:
   `localdata/lemmatizer-fi-et/tables/`. Per-language coverage is
   independent: a deployment that has only `fi_min.json` works for FI
   and returns no analyses for ET.
-- `NewFromDir(dir string)` — explicit-path constructor used by tests
+- `NewFromDir(dir string)` - explicit-path constructor used by tests
   (against [`testdata/lemmatizer/`](../testdata/lemmatizer/)) and by
   callers that don't want to touch env.
 - Offline reader/parser packages for upstream analyser formats:
@@ -43,7 +43,7 @@ See also:
   wordlist until a production ET wordlist is chosen.
 
 Test fixtures under [`testdata/lemmatizer/`](../testdata/lemmatizer/)
-are hand-authored and intentionally tiny — they cover the words used
+are hand-authored and intentionally tiny - they cover the words used
 by `pkg/lemmatizer-fi-et/lemmatizer_test.go` and nothing else. They
 are **not** production tables; they are the unit-test ground truth.
 
@@ -64,7 +64,7 @@ Not allowed in git:
 - `mor.vfst`, `analyser-gt-desc.hfstol`, `.hfst` files, or any other
   upstream analyser blob that directly ships the transducer.
 - The factual JSON tables generated from those analysers
-  (`{fi,et}_min.json` and any future production tables) — these belong
+  (`{fi,et}_min.json` and any future production tables) - these belong
   under `localdata/lemmatizer-fi-et/tables/`, gitignored.
 
 Maintainers may keep upstream analysers locally, for example under
@@ -113,7 +113,7 @@ traps before any general-purpose ranking runs.
 0. **Lexical-overlay short-circuit (PR #183).** Before the dict
    lookup, the store checks `pkg/lemmatizer-fi-et/lexadverbs` for the
    surface. The overlay catalogues forms whose productive analysis is
-   a known bug — Finnish `tuskin`/`varsin`/`yleensä` (closed-class
+   a known bug - Finnish `tuskin`/`varsin`/`yleensä` (closed-class
    adverbs the parser keeps unfolding as productive case forms),
    Finnish `vuotta`/`siitä`/`muuta` (kaikki-imported with bad
    lemmas), and Estonian `peale`/`jaoks`/`seal`/`välja` (closed-class
@@ -201,7 +201,7 @@ preserved). This means the merged resolution carries the right
 FEATS regardless of which source supplied the lemma.
 
 A documented residual: when the FST tables ship no MA-infinitive
-surface entries at all (the current state — the production tables
+surface entries at all (the current state - the production tables
 have verb headwords but not their MA-infinitive inflections), the
 dict-only candidate is the only option and the verb-lemma
 reconstruction (e.g. `tarjoamaan → tarjota`) is impossible at
@@ -214,13 +214,13 @@ forms included.
 `lookupFormCandidates` filters dict candidates through a two-tier
 blocklist before merge:
 
-- **`alwaysBadDictLemmasFI`** — lemmas that are never legitimate
+- **`alwaysBadDictLemmasFI`** - lemmas that are never legitimate
   standalone words. Short fragments (`as`, `taa`, `ku`),
   compound-clip prefixes (`sisä-`, `ylä-`), and documented
   kaikki-import bugs (`poli` for `poliisi` inflected forms).
-  Filtered regardless of surface — no learner asks for the bare
+  Filtered regardless of surface - no learner asks for the bare
   surface `sisä-` expecting that prefix as the lemma.
-- **`badSurfaceLemmaFI`** — (surface, lemma) pairs where the lemma
+- **`badSurfaceLemmaFI`** - (surface, lemma) pairs where the lemma
   is legitimate elsewhere but wrong for the specific trap surface.
   `(varsin, varsi)`, `(vuotta, vuo)`, `(siitä, siittää)`, etc.
   The bare-lemma lookup `varsi → varsi/NOUN` is preserved; only the
@@ -242,20 +242,20 @@ and is back-projected from `Case=` when possible.
 ### Voikko Voice extraction
 
 Voice on Voikko verbs comes from the `[P*]` (person) tag, not from a
-dedicated voice tag — Finnish passive is grammatically the "4th
+dedicated voice tag - Finnish passive is grammatically the "4th
 person":
 
 | Voikko `[P*]` | UD Person | UD Voice |
 |---|---|---|
 | `[P1]`, `[P2]`, `[P3]` | 1 / 2 / 3 | Act |
-| `[P4]` | (empty — P4 is not a UD Person) | Pass |
+| `[P4]` | (empty - P4 is not a UD Person) | Pass |
 
 Passive participles set Voice independently: `[Rt]` (TU-participle,
 passive past) and `[Ra]` (TAVA-participle, passive present) emit
 `Voice=Pass` via `applyParticiple`. Active participles (`[Rv]`,
 `[Ru]`, `[Rm]`, `[Re]`) leave Voice unset; `[R*]` always clears
 finite-only fields (Mood, Tense, Person) so a participle never
-composes contradictory FEATS like `Tense=Past|VerbForm=Part` — UD
+composes contradictory FEATS like `Tense=Past|VerbForm=Part` - UD
 encodes the past/present participle distinction in `PartForm=`, not
 `Tense=`.
 
@@ -269,7 +269,7 @@ The composition logic is centralised in
 which owns the `LegacyLabelToUDCase` / `UDCaseToLegacyLabel` maps and the
 `Compose(...)` / `ComposeMap(...)` functions. Both `voikkomap.Parse`
 and `giellaltmap.Parse` build a UD FEATS string from their structured
-fields at parse time and persist the result on `Analysis.Feats` —
+fields at parse time and persist the result on `Analysis.Feats` -
 voikkomap uses its local `composeFeats` (which delegates to
 `udfeats.ComposeMap` for the canonical alphabetical ordering),
 giellaltmap calls `udfeats.Compose` directly. As of `2026.05.07k`
@@ -318,7 +318,7 @@ go run ./cmd/genlemmatizertables \
 `VFST_PATH` must point to a local Voikko `mor.vfst`. The analyzer file,
 generated wordlist, and generated JSON table must not be committed.
 
-`scripts/setup-local.sh` invokes the FI generator best-effort — if
+`scripts/setup-local.sh` invokes the FI generator best-effort - if
 `VFST_PATH` is set, it generates; otherwise it skips with a warning
 and the FST step in custom-mode parsing is disabled until tables exist.
 

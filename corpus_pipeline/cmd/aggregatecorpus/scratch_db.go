@@ -90,7 +90,7 @@ CREATE INDEX IF NOT EXISTS idx_sid_final ON tmp_sentence_id(final_id);
 -- example_hash is the captured example sentence hash (or empty if the
 -- surface has no example). After tmp_sentence_id is populated, an
 -- UPDATE-FROM JOIN sets example_final_id to the matching deterministic
--- ID — that's the column the wordlist writer's JOIN reads. Two-step
+-- ID - that's the column the wordlist writer's JOIN reads. Two-step
 -- (insert + update) instead of correlated subqueries to keep this
 -- O(N) instead of O(N²) on 18M-surface ET.
 --

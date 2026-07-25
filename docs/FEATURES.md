@@ -1,4 +1,4 @@
-_Current as of 2026-07-03 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
+_Current as of 2026-07-03 - see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
 # FinnEst Features
 
@@ -21,7 +21,7 @@ FinnEst helps you read real Finnish and Estonian text by letting you
 pre-learn the vocabulary that actually appears in what you want to read.
 
 Instead of grinding generic frequency lists, you paste the text you want
-to read — an article, a chapter, a song — and FinnEst currently:
+to read - an article, a chapter, a song - and FinnEst currently:
 
 - breaks it into the unique words it contains
 - shows dictionary-backed lemmas, forms, definitions, examples, and token counts
@@ -62,7 +62,7 @@ The signed-in core loop is `paste -> inspect -> correct -> deck -> review`.
    from a curated embedded text. Inspect parses are ephemeral until you save a
    deck or submit parser feedback; see
    [What We Store During Alpha](#what-we-store-during-alpha).
-2. Inspect the parsed result. It opens on the **Read** tab — the source text
+2. Inspect the parsed result. It opens on the **Read** tab - the source text
    itself, with every parsed word colored by whether you already know it,
    already study it, or have yet to learn it. Tap a word for its meaning and to
    mark it known, add it to study, or ignore it. A **Words** tab holds the full
@@ -81,7 +81,7 @@ Cards are global. Today the implementation treats a learned word as the same
 `(lemma, POS)` across decks. The public-alpha target is surface-form-in-context
 review cards: preserve exact known surface forms as first-class learner
 evidence, then use lemma/POS resolution as derived data for coverage and card
-selection. Deleting a deck does not erase what you have learned — it only
+selection. Deleting a deck does not erase what you have learned - it only
 removes that particular source material.
 
 ## Language Selection
@@ -111,7 +111,7 @@ For each parsed text, the app shows:
   learners, "You already know X% of this text" plus a projection "Learn the top
   N words → Y%"; for anonymous visitors, the frequency framing "The N most
   frequent words carry Z% of it". X/Y/Z reuse the saved-deck comprehension
-  token-mass formula (known-or-ignored counts as covered) — see USER_FLOWS §2.
+  token-mass formula (known-or-ignored counts as covered) - see USER_FLOWS §2.
 
 Beyond the coverage reveal, automatic known/new labelling across the table and
 leverage-based row ordering remain planned product work, not part of the
@@ -122,28 +122,20 @@ current Inspect result.
 Some words in Estonian and Finnish look identical but can represent more than
 one dictionary lemma. For example, Estonian **joon** can be the noun "line"
 (`joon` SgN) or the 1st-person-singular form of the verb **jooma** ("to
-drink") — morphology alone can't always tell which sense the writer meant.
+drink") - morphology alone can't always tell which sense the writer meant.
 
-When the dictionary contains multiple candidates for a surface form,
-FinnEst creates a card for each candidate sense when you save that parse to
-a deck, and the deck's word count reflects all candidates. You review them
-independently; if one sense is irrelevant for your text, mark it known or
-ignored. The review card should show a sentence that clarifies the current
-meaning and point out when the same-looking word also exists as another sense,
-such as a verb form versus a noun. This behavior is dictionary-coverage
-dependent: if the current dictionary only has one candidate for a surface form,
-only one card is created.
-
-If the dictionary has no entry for a word, the parser's single best guess
-is used and only one card is created. The dictionary is only authoritative
-about ambiguity when it actually knows the word.
+FinnEst creates one card for the parser-selected sense when you save a parse.
+The **Multiple possible meanings** flow shows other supported candidates; a
+learner must explicitly choose an alternate before it becomes another card.
+This keeps inflectional dictionary noise from turning one source token into a
+set of unrelated study words while preserving intentional homograph study.
 
 **Deck expansion vs. the meaning-check candidate set.** Two candidate views
-exist and are deliberately kept separate. The **deck / import expansion** path
-(the word counts and cards above) stays dictionary-driven, so saving a deck
-creates a stable, well-glossed set of cards. The **meaning-check** candidate set
-(the **Multiple possible meanings** flow) additionally merges FST-known
-homograph readings the dictionary's form table omits — the classic Finnish
+exist and are deliberately kept separate. The **deck / import path** records
+the parser-selected sense, so saving a deck creates one stable card per token.
+The **meaning-check** candidate set (the **Multiple possible meanings** flow)
+additionally merges FST-known
+homograph readings the dictionary's form table omits - the classic Finnish
 cross-POS homographs `kuusi` (NOUN spruce / NUM six), `tuli` (NOUN fire /
 `tulla` VERB), and `voi` (NOUN butter / `voida` VERB) each store only one
 reading in the imported dictionary, so their second sense would otherwise be
@@ -215,8 +207,8 @@ Anonymous correction submission is out of scope for alpha.
 - Source text is stored only when you make the parse durable: saving it as a
   deck, or submitting parser feedback. Feedback stores the original context so
   admins can review the correction. Feedback comes in two forms: a concrete
-  correction (base form + part of speech), or a **flag-only** report — "this
-  looks wrong, I don't know the fix" — which stores the flagged word and context
+  correction (base form + part of speech), or a **flag-only** report - "this
+  looks wrong, I don't know the fix" - which stores the flagged word and context
   without a proposed answer (shipped 2026-07-04).
 - Raw retained source text is kept for 30 days, then purged by the
   `make purge-parse-context` retention run. Decks, cards, feedback rows, and
@@ -249,8 +241,8 @@ FinnEst is positioned around four technical bets:
 - **Fast parser**: a custom Rust analyzer optimized for the
   paste-to-deck flow, not for academic completeness.
 - **Benchmarked quality**: every release is measured against an
-  external reference — Omorfi for Finnish, EstNLTK / Vabamorf for
-  Estonian — and against frozen gold datasets in `docs/baselines/`.
+  external reference - Omorfi for Finnish, EstNLTK / Vabamorf for
+  Estonian - and against frozen gold datasets in `docs/baselines/`.
 - **User correction loop**: real users submit parser corrections from inspect
   and deck-detail result rows; admins triage them; accepted lemma/POS *and
   grammar-label* corrections feed authoritative `custom_overrides` lexical
@@ -270,7 +262,7 @@ FinnEst is positioned around four technical bets:
   because that is the unit a learner actually has to recognize when
   reading running text. Our 2026-05-07 baseline measurement found
   that the top-1000 inflected forms cover ~65–73% of subtitle text
-  but only ~40–43% of written news/literature in both languages —
+  but only ~40–43% of written news/literature in both languages -
   register effects dwarf the FI-vs-ET gap. This drives how we
   calibrate comprehension prediction. See
   [`docs/CROSS_LANGUAGE_STRATEGY.md` "Measurable

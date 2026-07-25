@@ -198,7 +198,7 @@ func TestCaseLabelFromFeats(t *testing.T) {
 	}
 	for _, tc := range cases {
 		// "_" is a CoNLL-U sentinel; the importer normalizes it before calling
-		// caseLabelFromFeats, but be defensive — empty result is fine.
+		// caseLabelFromFeats, but be defensive - empty result is fine.
 		feats := tc.feats
 		if feats == "_" {
 			feats = ""

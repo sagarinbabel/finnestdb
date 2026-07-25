@@ -56,7 +56,7 @@ function App() {
   function signIn() {
     setUser({ name: "sagar", initial: "S" });
     setAuthOpen(false);
-    // From the flow: "carry forward anonymous parses" — drop them on the dashboard
+    // From the flow: "carry forward anonymous parses" - drop them on the dashboard
     setRoute(hasDecks ? "decks" : "decks");
   }
   function signOut() { setUser(null); setRoute("landing"); }
@@ -184,7 +184,7 @@ function App() {
       <KnownWordsImport open={knownWordsOpen} onClose={() => setKnownWordsOpen(false)}
         onImported={() => { setHasDecks(true); setTweak("coldStart", false); setRoute("decks"); }} />
 
-      <div id="toast" className="toast">—</div>
+      <div id="toast" className="toast">-</div>
 
       <TweaksPanel title="Tweaks" defaultPosition={{ right: 24, bottom: 24 }}>
         <TweakSection label="Demo state">

@@ -1,6 +1,6 @@
 # Deployment Runbook
 
-_Current as of 2026-07-02 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
+_Current as of 2026-07-02 - see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
 How to run FinEstDB in production. This is the operational companion to
 [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md): the checklist says what must
@@ -15,7 +15,7 @@ internet ── Caddy (TLS, edge body cap, security headers)
                 │ 127.0.0.1:8080
             FinEstDB Go server (cmd/server, APP_ENV=production)
                 │
-            finnestdb.db (SQLite, WAL mode — dictionary + ALL user data)
+            finnestdb.db (SQLite, WAL mode - dictionary + ALL user data)
 ```
 
 - The app binds loopback only (`FINNESTDB_LISTEN_ADDR=127.0.0.1:8080`), so
@@ -27,13 +27,13 @@ internet ── Caddy (TLS, edge body cap, security headers)
 ## Host requirements
 
 - Linux x86_64 with systemd; 2+ cores, 4+ GB RAM.
-- Disk: 5+ GB for `finnestdb.db`, plus backup space — with default rotation
+- Disk: 5+ GB for `finnestdb.db`, plus backup space - with default rotation
   (7 daily + 4 weekly) budget roughly 12× the compressed backup size. Check
   with `du -sh finnestdb.db` and one trial run of `scripts/backup-db.sh`.
 - `sqlite3` CLI (used by the backup script's online `.backup`).
 - Build toolchain (Go ≥ 1.25.11 and Rust stable) on the host, or build the
   artifacts elsewhere on a matching platform and copy them.
-- Go **1.25.11 or newer is a security requirement**, not a preference — older
+- Go **1.25.11 or newer is a security requirement**, not a preference - older
   toolchains have reachable stdlib vulnerabilities (see the 2026-06-03
   verification report).
 
@@ -73,11 +73,11 @@ make db-invariants   # SQLite integrity, orphans, overlap, source breakdown
 With `APP_ENV=production` the server refuses to start on a missing, stub, or
 undersized DB (defaults: 20M FI / 6M ET forms; see
 [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) "Runtime Reproducibility").
-`FINNESTDB_ALLOW_DEGRADED_DB=1` disables that guard — emergency use only,
+`FINNESTDB_ALLOW_DEGRADED_DB=1` disables that guard - emergency use only,
 never in a normal deployment.
 
 Also load the correction-loop safety data (and re-run whenever the committed
-gold sets change — add it to the update procedure):
+gold sets change - add it to the update procedure):
 
 ```bash
 make import-gold-surfaces   # gold_surfaces table backs the Phase-4 accept guard
@@ -90,13 +90,13 @@ make import-gold-surfaces   # gold_surfaces table backs the Phase-4 accept guard
 | `APP_ENV` | `production` | Secure cookies + DB readiness guard |
 | `FINNESTDB_LISTEN_ADDR` | `127.0.0.1:8080` | Loopback bind behind the proxy |
 | `FINNESTDB_TRUST_FORWARD_HEADERS` | `1` | See "Rate limiting behind a proxy" |
-| `FINNESTDB_ADMIN_EMAILS` | comma-separated | Admin bootstrap — **pre-register every address** |
-| `FINNESTDB_ANON_MAX_CHARS` | `300000` (default) | Text-size cap for unauthenticated `/api/parse`; enforced before parser work. Signed-in cap stays 1,500,000. Local load test (2026-07-04) found no reason to lower this — see [`launch-readiness/2026-07-04-load-test.md`](launch-readiness/2026-07-04-load-test.md). |
-| `FINNESTDB_PARSER_MAX_CONCURRENCY` | `max(2, NumCPU-1)` (default) | Caps concurrent calls into the parser (`/api/parse` and deck-save). Leave unset unless the production host's core count and co-located services justify a different number — see the load-test report. |
+| `FINNESTDB_ADMIN_EMAILS` | comma-separated | Admin bootstrap - **pre-register every address** |
+| `FINNESTDB_ANON_MAX_CHARS` | `300000` (default) | Text-size cap for unauthenticated `/api/parse`; enforced before parser work. Signed-in cap stays 1,500,000. Local load test (2026-07-04) found no reason to lower this - see [`launch-readiness/2026-07-04-load-test.md`](launch-readiness/2026-07-04-load-test.md). |
+| `FINNESTDB_PARSER_MAX_CONCURRENCY` | `max(2, NumCPU-1)` (default) | Caps concurrent calls into the parser (`/api/parse` and deck-save). Leave unset unless the production host's core count and co-located services justify a different number - see the load-test report. |
 | `FINNESTDB_PARSER_QUEUE_TIMEOUT_MS` | `2000` (default) | How long a parse request waits for a free parser slot before returning 503 + `Retry-After`. |
 | `FINNESTDB_PRODUCTION_MIN_FORMS_FI/ET` | unset | Only when the artifact policy changes |
 | `FINNESTDB_ALLOW_DEGRADED_DB` | unset | Emergency-only guard override |
-| `FINNESTDB_FSRS_ENABLED` | unset (**ON**) | Review scheduler selection (**opt-OUT** since 2026-07-04). Unset/empty runs the **FSRS scheduler** — the shipped default — for `POST /api/study/answer`. Set `0`/`false`/`no`/`off` to fall back to the deterministic step scheduler; that is the **rollback lever**. See "FSRS scheduler rollout". |
+| `FINNESTDB_FSRS_ENABLED` | unset (**ON**) | Review scheduler selection (**opt-OUT** since 2026-07-04). Unset/empty runs the **FSRS scheduler** - the shipped default - for `POST /api/study/answer`. Set `0`/`false`/`no`/`off` to fall back to the deterministic step scheduler; that is the **rollback lever**. See "FSRS scheduler rollout". |
 
 ## FSRS scheduler rollout
 
@@ -110,8 +110,8 @@ real-DB smoke.
 State from both schedulers coexists in `card_state.fsrs_json` via a version
 discriminator (legacy `{"step","streak"}` vs. `{"v":2,"fsrs":{…}}`), and
 `next_due` / `last_answer_at` / `introduced_at` keep working regardless, so the
-scheduler choice is reversible per card. Migration is lazy on first rating — no
-bulk `card_state` rewrite — deriving a conservative FSRS seed from the card's
+scheduler choice is reversible per card. Migration is lazy on first rating - no
+bulk `card_state` rewrite - deriving a conservative FSRS seed from the card's
 existing interval (see [srs-deck-spec.md](srs-deck-spec.md) "Implemented FSRS
 state model").
 
@@ -126,7 +126,7 @@ Rollback is a single flag flip, no data migration:
    the card's current interval, so a card does **not** snap back to step 0 and
    lose earned progress. This byte-identical-to-the-step-scheduler guarantee is
    pinned by `TestRecordReviewAnswerFlagOffByteIdenticalToStepScheduler`.
-3. Flipping the flag back to unset resumes FSRS from the current interval — the
+3. Flipping the flag back to unset resumes FSRS from the current interval - the
    round trip is validated end to end by `TestFSRSValidationRollbackDrill`.
 
 ### Re-validating before a scheduler change
@@ -140,7 +140,7 @@ go test ./internal/store/ -run TestFSRSValidation -count=1 -v
 
 It exercises seeded histories across new/learning/mature/legacy/NULL shapes, a
 1k-card lazy-migration scale check, the rollback round trip, and a read-only
-real-DB smoke — all on temp DBs; the shared DB is never written.
+real-DB smoke - all on temp DBs; the shared DB is never written.
 
 ## Rate limiting behind a proxy
 
@@ -168,7 +168,7 @@ domain's A/AAAA records at the host and set the real domain in the file.
 
 The app versions its own JS/CSS so a deploy never leaves a browser running stale
 `app.js` (this bit an operator during manual testing after a `git pull`). It is
-handled entirely in-process — no build step, no CDN config:
+handled entirely in-process - no build step, no CDN config:
 
 - On startup the server hashes `web/app.js` and `web/styles.css` (short sha256)
   and logs the stamps: `asset app.js versioned as ?v=<hash>`.
@@ -209,16 +209,16 @@ systemctl daemon-reload
 systemctl enable --now finnestdb finnestdb-backup.timer finnestdb-purge.timer
 ```
 
-- `finnestdb.service` — the app, `Restart=always`, loopback bind.
-- `finnestdb-backup.timer` — nightly 03:15 UTC online backup with rotation.
-- `finnestdb-purge.timer` — daily 04:00 UTC retention purge
+- `finnestdb.service` - the app, `Restart=always`, loopback bind.
+- `finnestdb-backup.timer` - nightly 03:15 UTC online backup with rotation.
+- `finnestdb-purge.timer` - daily 04:00 UTC retention purge
   (`parse_sessions.source_text` older than 30 days), per the privacy policy in
   [`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md).
 
 ## Backups and restore
 
 `scripts/backup-db.sh` uses SQLite's online `.backup` (safe against a live
-WAL database — never `cp` the raw file while the server runs), integrity-checks
+WAL database - never `cp` the raw file while the server runs), integrity-checks
 the copy before rotating anything out, gzips, and keeps 7 daily + 4 weekly.
 
 **Restore drill** (run it once before launch, not during your first incident):
@@ -233,7 +233,7 @@ curl -fsS https://<domain>/api/health
 ```
 
 Keep at least one recent backup off the host (object storage or another
-machine) — a dead disk must not take the only copies with it.
+machine) - a dead disk must not take the only copies with it.
 
 ## Latency expectations
 
@@ -261,7 +261,7 @@ review-deck-read traffic and reports per-endpoint latency percentiles plus
 values are in
 [`launch-readiness/2026-07-04-load-test.md`](launch-readiness/2026-07-04-load-test.md).
 **That report must be re-run against the production host** before the
-1,000-concurrent-user go-live gate can close — laptop numbers only prove the
+1,000-concurrent-user go-live gate can close - laptop numbers only prove the
 shedding mechanism works, not the production host's actual capacity. Example:
 
 ```bash
@@ -280,11 +280,11 @@ go build -o bin/loadtest ./cmd/loadtest
   review.
 - **Timer health**: `systemctl list-timers finnestdb-*` in the same cron;
   alert if a timer's last run failed (`systemctl is-failed finnestdb-backup`).
-- **Disk**: alert at 80% — the DB, WAL, and backups all grow.
+- **Disk**: alert at 80% - the DB, WAL, and backups all grow.
 - **Parser saturation**: 503 responses from `/api/parse` (or deck-save) mean
   the parser concurrency semaphore is shedding load; both 429 (rate limit)
   and 503 (parser saturation) responses carry `Retry-After` and are logged.
-  Grep app logs for these and alert on a sustained rate — an occasional 503
+  Grep app logs for these and alert on a sustained rate - an occasional 503
   under a burst is the semaphore working as designed, but a sustained rate
   means `FINNESTDB_PARSER_MAX_CONCURRENCY` may need raising (if the host has
   spare CPU) or the host needs more capacity.
@@ -297,7 +297,7 @@ tracked separately in TODO.md "Observability" and are not launch-gating.
 ```bash
 cd /opt/finnestdb/src && git pull
 make parser && go build -o /opt/finnestdb/bin/server ./cmd/server
-# The app serves EVERYTHING under its web root. Exclude dev artifacts —
+# The app serves EVERYTHING under its web root. Exclude dev artifacts -
 # node_modules is bloat, and Playwright test-results/ contains traces and
 # screenshots that must never be publicly served.
 rsync -a --delete \
@@ -334,13 +334,13 @@ token mass across inflections; proper names are filtered. `-replace` deletes a
 prior official deck with the same title+lang (same teardown as deleting it
 from the admin UI) before reseeding, so reseeding never leaves a duplicate
 deck behind. Without `-replace`, a same-title deck already existing only
-prints a loud warning and still creates a duplicate — pass the flag whenever
+prints a loud warning and still creates a duplicate - pass the flag whenever
 you're intentionally reseeding.
 
 ## Pre-launch gate
 
 Before announcing the instance, complete the "Release Verification" section of
-[`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) against this host — including
-`make live-api-smoke` pointed at the live server — and pre-register every
+[`GO_LIVE_CHECKLIST.md`](GO_LIVE_CHECKLIST.md) against this host - including
+`make live-api-smoke` pointed at the live server - and pre-register every
 `FINNESTDB_ADMIN_EMAILS` address with `bin/resetpassword -create`. Then seed
 the starter decks (above).

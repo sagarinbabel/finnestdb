@@ -188,7 +188,7 @@ Samas toidukaupade kaupluste müügimahu vähenemine märtsis jätkus ning kahan
         <div className="freemium-cell">
           <div className="freemium-num">02</div>
           <div className="freemium-h">Copy or download</div>
-          <div className="freemium-p">Word list as plain text or CSV — drop straight into Anki, spreadsheet or software of choice.</div>
+          <div className="freemium-p">Word list as plain text or CSV - drop straight into Anki, spreadsheet or software of choice.</div>
         </div>
         <div className="freemium-cell">
           <div className="freemium-num">03</div>

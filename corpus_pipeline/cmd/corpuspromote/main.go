@@ -108,7 +108,7 @@ func promote(roots cli.Roots, lang, profile string) error {
 	}
 	state.NextProfile = ""
 	writePromotionState(derived, state)
-	fmt.Fprintf(os.Stderr, "[promote %s] done — last completed: %s\n", langLower, state.LastCompletedProfile)
+	fmt.Fprintf(os.Stderr, "[promote %s] done - last completed: %s\n", langLower, state.LastCompletedProfile)
 	return nil
 }
 

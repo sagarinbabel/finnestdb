@@ -1,4 +1,4 @@
-# Implementation Notes — superseded
+# Implementation Notes - superseded
 
 _Superseded 2026-05-07. This file is kept as a redirect stub so external
 links don't break._

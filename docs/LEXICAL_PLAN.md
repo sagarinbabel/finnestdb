@@ -53,7 +53,7 @@ ranks candidate rows by:
 The third rule was added in
 [PR #84](https://github.com/sagarinbabel/finnestdb/pull/84) ("source-aware
 lookup ranking") after the Ekilex bulk import surfaced PROPN homonyms
-beating common-noun lemmas — see
+beating common-noun lemmas - see
 [`docs/baselines/2026-05-06b-summary.md`](baselines/2026-05-06b-summary.md)
 for the regression-and-recovery story. **Whenever a new source lands,
 re-run the gold eval and freeze a new baseline before promoting it to
@@ -162,11 +162,11 @@ at query time by `source_priority`.
 
 Deliberately not used:
 
-- **Kielitoimiston sanakirja** — authoritative monolingual FI definitions,
+- **Kielitoimiston sanakirja** - authoritative monolingual FI definitions,
   but redistribution is restricted. Not bulk-imported. Revisit only if
   Wikisanakirja coverage proves insufficient and only as a runtime
   lookup that respects the license.
-- **fi.wiktionary directly** — kaikki.org already extracts and
+- **fi.wiktionary directly** - kaikki.org already extracts and
   normalizes Wiktionary, including the Finnish edition. Use it.
 
 ## Why This Path
@@ -179,7 +179,7 @@ Deliberately not used:
   translations and Finnish-language definitions; it is already wired up
   as an importer source.
 - All three sit behind the same `lemmas`/`forms` resolution layer, with
-  source provenance and priority — the mechanism the ET track is
+  source provenance and priority - the mechanism the ET track is
   building in [#67] and [#68].
 
 Reference pages:
@@ -251,7 +251,7 @@ fields in `dict_metadata`.
 - Input: official Kotus sanalista distribution (CSV/XML, current year).
 - Output: rows in `lemmas` with `source='kotus'`, `paradigm_class`
   filled, `gloss=NULL`.
-- Does *not* write to `forms` — the Voikko generator is responsible.
+- Does *not* write to `forms` - the Voikko generator is responsible.
 - For lemmas already present from kaikki.org: upgrade `paradigm_class`
   in place rather than insert a duplicate row at lower priority.
 
@@ -274,7 +274,7 @@ original Voikko seed plan.
 - Any production-table claim must record provenance, generator command,
   row counts, and fresh eval for the exact local tables used.
 
-### `cmd/importdict/` — kaikki.org (source key `kaikki`, default priority 10)
+### `cmd/importdict/` - kaikki.org (source key `kaikki`, default priority 10)
 
 Today's `cmd/importdict/main.go` is this adapter, untagged. Changes
 needed:
@@ -381,11 +381,11 @@ make compare-parsers-et
 
 The smoke-import path `make import-dict-et-ekilex` (which hits the live
 Ekilex API per word, requires `EKILEX_API_KEY`) is intentionally configured
-as a small smoke import. **Do not use it as the production data path** —
+as a small smoke import. **Do not use it as the production data path** -
 it is rate-limited, slow, and the bulk pipeline above is the canonical
 loader. See `Makefile` and `cmd/fetchekilex` for the bulk-scrape recipe.
 
-ET corrections follow the same shared correction path as Finnish — see
+ET corrections follow the same shared correction path as Finnish - see
 [`docs/PARSER_FEEDBACK_LOOP.md`](PARSER_FEEDBACK_LOOP.md).
 
 ## Resolution Layer
@@ -467,23 +467,23 @@ Remaining items to confirm during implementation:
   tables should live next to the generator/parser code and be locked
   before production tables are promoted.
 - **kaikki.org extraction of fi.wiktionary defs vs en.wiktionary
-  glosses.** Phase 2 (#85) deferred this — the write path hard-codes
+  glosses.** Phase 2 (#85) deferred this - the write path hard-codes
   `target_lang='EN'` because both FI and ET kaikki dumps are
   en.wiktionary extractions whose glosses are English. Loading
   fi.wiktionary's Finnish-language definitions into
   `definitions` (target_lang='FI') needs a separate kaikki dump
-  (`https://kaikki.org/fiwiktionary/`) and a future import path —
+  (`https://kaikki.org/fiwiktionary/`) and a future import path -
   not blocking Phase 3/4.
 
 ## See Also
 
-- [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md) — what
+- [`docs/CROSS_LANGUAGE_STRATEGY.md`](CROSS_LANGUAGE_STRATEGY.md) - what
   is shared vs. language-specific
-- [`docs/OMORFI_ADAPTER.md`](OMORFI_ADAPTER.md) — Omorfi as parser
+- [`docs/OMORFI_ADAPTER.md`](OMORFI_ADAPTER.md) - Omorfi as parser
   baseline; separate from generated-table shipping policy
 - [`internal/parserules/finnish.go`](../internal/parserules/finnish.go)
-  — runtime suffix stripping that complements stored forms
-- [`cmd/importdict/main.go`](../cmd/importdict/main.go) — current
+  - runtime suffix stripping that complements stored forms
+- [`cmd/importdict/main.go`](../cmd/importdict/main.go) - current
   single-source importer, refactored in Phase 2
 - PRs in flight: [#66] (ET plan), [#67] (source priority), [#68]
   (Ekilex importer)

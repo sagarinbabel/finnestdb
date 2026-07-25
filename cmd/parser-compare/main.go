@@ -6,11 +6,11 @@
 // Default report shape (no -baseline-dir):
 //
 //	One row per (dataset, parser) showing absolute lemma/POS/grammar/coverage
-//	numbers — the legacy "horizontal" view, useful for "see all parsers at once."
+//	numbers - the legacy "horizontal" view, useful for "see all parsers at once."
 //
 // With -baseline-dir <path>, each "now" report is paired with the matching
 // prior report (by dataset name) under -baseline-dir, and the headline becomes
-// a (custom-prev, custom-now, Δ, analyzer) table — the format the team
+// a (custom-prev, custom-now, Δ, analyzer) table - the format the team
 // requested 2026-05-07 so reports always answer "did our changes regress
 // against the analyzer upper bound?" The legacy view is still printed below
 // as an appendix.
@@ -103,7 +103,7 @@ func main() {
 		fmt.Println()
 		fmt.Println("---")
 		fmt.Println()
-		fmt.Println("## Appendix — full per-parser table")
+		fmt.Println("## Appendix - full per-parser table")
 		fmt.Println()
 	}
 	emitLegacyTable(now)
@@ -124,7 +124,7 @@ func main() {
 // each dataset is also expanded into rows, with explicit "prev" / "now"
 // labels so the two are visually distinct. When prev is nil but multiple now
 // reports were supplied, each row carries a short timestamp label derived
-// from the report's RunID — without this, two reports for the same dataset
+// from the report's RunID - without this, two reports for the same dataset
 // would render as duplicate-looking rows. Sidecars from cmd/parsertest
 // always pass a single report and don't trigger label rendering.
 func emitStratifiedTables(now []*eval.Report, prev map[string]*eval.Report) {
@@ -190,7 +190,7 @@ func emitStratifiedTables(now []*eval.Report, prev map[string]*eval.Report) {
 }
 
 // hasDuplicateDatasetParser reports whether any (dataset, parser) pair appears
-// more than once across the supplied reports — the signal that a user passed
+// more than once across the supplied reports - the signal that a user passed
 // e.g. an old and new run for the same gold set without -baseline-dir, and
 // the rendered rows must carry labels to stay distinguishable.
 func hasDuplicateDatasetParser(reports []*eval.Report) bool {
@@ -327,7 +327,7 @@ func baselineSelectionKey(r *eval.Report, filename string) string {
 // or analyzers.
 func emitBeforeAfterTable(now []*eval.Report, prev map[string]*eval.Report, mainParser string, bootstrap int, rng *rand.Rand) {
 	nameCounts := datasetNameCounts(now)
-	fmt.Printf("## Headline — %s before/after, with analyzer upper bound\n\n", mainParser)
+	fmt.Printf("## Headline - %s before/after, with analyzer upper bound\n\n", mainParser)
 	fmt.Println("Δ shows percentage-point change in the main parser since the prior report.")
 	if bootstrap > 0 {
 		fmt.Printf("Accuracy cells include 95%% case-level bootstrap CIs (B=%d, deterministic seed).\n", bootstrap)
@@ -354,15 +354,15 @@ func emitBeforeAfterTable(now []*eval.Report, prev map[string]*eval.Report, main
 			}
 
 			nowCell := formatAccuracyWithCI(nowVal, nowR, mainParser, m, bootstrap, rng)
-			prevCell := "—"
+			prevCell := "-"
 			if prevR != nil {
 				prevCell = formatAccuracyWithCI(prevVal, prevR, mainParser, m, bootstrap, rng)
 			}
-			delta := "—"
+			delta := "-"
 			if !math.IsNaN(nowVal) && !math.IsNaN(prevVal) {
 				delta = fmt.Sprintf("%+.1f", (nowVal-prevVal)*100)
 			}
-			analyzerCell := "—"
+			analyzerCell := "-"
 			if !math.IsNaN(analyzerVal) {
 				analyzerCell = formatAccuracyWithCI(analyzerVal, nowR, analyzer, m, bootstrap, rng)
 			}
@@ -426,7 +426,7 @@ func emitLegacyTable(reports []*eval.Report) {
 
 // emitFeatsAttributeTable prints per-UD-FEATS-attribute accuracy for each
 // (dataset, parser) pair. Only datasets with at least one parser reporting
-// per-attribute data are emitted — older gold sets that only carry
+// per-attribute data are emitted - older gold sets that only carry
 // GrammarLabel produce no rows. Each row covers one attribute (Case,
 // Number, Tense, …); the accuracy is computed against the gold tokens
 // whose FEATS contained that attribute.
@@ -511,7 +511,7 @@ var (
 	metricPOS   = metric{label: "POS", read: func(s eval.ParserSummary) float64 { return s.POSAccuracy }}
 	// metricLemmaPOS is the dictionary-entry attachment metric: did the
 	// surface form land on the right (lemma, POS) entry? First-class for
-	// language-learning quality alongside Grammar — see
+	// language-learning quality alongside Grammar - see
 	// docs/PARSER_EVAL_METHODOLOGY.md.
 	metricLemmaPOS = metric{label: "Lemma+POS", read: func(s eval.ParserSummary) float64 { return s.LemmaPOSAccuracy }}
 	metricGrammar  = metric{label: "Grammar", read: func(s eval.ParserSummary) float64 { return s.GrammarAccuracy }}
@@ -529,7 +529,7 @@ func summaryMetric(s eval.ParserSummary, m metric) float64 {
 // metricFromReport reads m for parser from r.Summary, falling back to per-case
 // recomputation for Lemma+POS on baselines that pre-date the field. The
 // fallback only triggers when the summary value is 0 yet the surrounding
-// Lemma/POS values prove the parser ran on the data — this preserves
+// Lemma/POS values prove the parser ran on the data - this preserves
 // "0% because we got nothing right" while fixing "0% because the field
 // didn't exist when the JSON was written."
 func metricFromReport(r *eval.Report, parser string, m metric) float64 {
@@ -543,8 +543,8 @@ func metricFromReport(r *eval.Report, parser string, m metric) float64 {
 	return summaryMetric(s, m)
 }
 
-// lemmaPOSDisplay returns LemmaPOSAccuracy from the summary, or — if absent
-// (old baselines pre-dating this metric) — recomputes it from the report's
+// lemmaPOSDisplay returns LemmaPOSAccuracy from the summary, or - if absent
+// (old baselines pre-dating this metric) - recomputes it from the report's
 // per-case Comparisons. Without this fallback, comparing a fresh report
 // against a pre-PR baseline directory would show "0.0%" for the prev cell
 // and read as a catastrophic regression rather than "metric not present in
@@ -566,11 +566,11 @@ func lemmaPOSDisplay(s eval.ParserSummary, r *eval.Report, parser string) float6
 }
 
 // formatAccuracyWithCI returns "82.3% ±0.4" when bootstrap > 0, else "82.3%".
-// Returns "—" for NaN. CIs are computed from per-case bootstrap resampling
+// Returns "-" for NaN. CIs are computed from per-case bootstrap resampling
 // of the report's case-level outcomes.
 func formatAccuracyWithCI(value float64, r *eval.Report, parser string, m metric, bootstrap int, rng *rand.Rand) string {
 	if math.IsNaN(value) {
-		return "—"
+		return "-"
 	}
 	if bootstrap <= 0 || r == nil || parser == "" {
 		return fmt.Sprintf("%.1f%%", value*100)

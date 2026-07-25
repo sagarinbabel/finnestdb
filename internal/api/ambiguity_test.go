@@ -128,7 +128,7 @@ func TestParseAmbiguityOmittedForAnonymous(t *testing.T) {
 	if len(resp.AmbiguousSurfaces) != 0 {
 		t.Fatalf("anonymous parse leaked ambiguity metadata: %+v", resp.AmbiguousSurfaces)
 	}
-	// The word list itself must still be present — anonymous parsing works.
+	// The word list itself must still be present - anonymous parsing works.
 	if len(resp.Words) == 0 {
 		t.Fatalf("anonymous parse returned no words")
 	}
@@ -200,7 +200,7 @@ func TestDeckSaveRejectsUnsupportedSelectedSense(t *testing.T) {
 }
 
 // TestKnownWordImportReportsAmbiguousCount proves the import summary counts
-// surfaces with more than one possible meaning (lazy resolution — no upfront
+// surfaces with more than one possible meaning (lazy resolution - no upfront
 // disambiguation).
 func TestKnownWordImportReportsAmbiguousCount(t *testing.T) {
 	api := newTestAPI(t)
@@ -266,7 +266,7 @@ func TestKnowThisMeaningRecordsKnownState(t *testing.T) {
 	if !known {
 		t.Fatalf("expected kuusi/NOUN recorded known after 'I know this meaning'")
 	}
-	// The sibling sense must remain unknown — knowing one homograph sense does
+	// The sibling sense must remain unknown - knowing one homograph sense does
 	// not mark the other.
 	otherKnown, err := api.store.IsKnownOrIgnored(user.ID, "FI", "kuusi", "NUM")
 	if err != nil {

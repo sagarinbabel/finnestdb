@@ -4,8 +4,8 @@
 // Covers:
 //   1. Signing in no longer loses your place: an anonymous parse is carried
 //      forward in sessionStorage and, after sign-in, the visitor returns to the
-//      results view (Read tab) re-rendered against the authenticated state — the
-//      reveal's known % becomes real — instead of being dropped on the dashboard.
+//      results view (Read tab) re-rendered against the authenticated state - the
+//      reveal's known % becomes real - instead of being dropped on the dashboard.
 //   2. The landing/Inspect textarea auto-grows with content instead of scrolling
 //      inside a fixed small box while the page below sits empty.
 //
@@ -118,7 +118,7 @@ test('landing textarea auto-grows with content instead of scrolling inside a fix
   const cap = await page.evaluate(() => Math.round(window.innerHeight * 0.7));
 
   // A modest multi-line paste (comfortably under the ~70vh cap) should grow the
-  // box to fit its content with NO inner scrollbar — the whole point: don't
+  // box to fit its content with NO inner scrollbar - the whole point: don't
   // scroll inside a small box while the page below is empty.
   const modest = Array.from({ length: 14 }, (_, i) => `Rivi numero ${i} tähän.`).join('\n');
   await ta.fill(modest);

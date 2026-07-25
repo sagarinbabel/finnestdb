@@ -471,7 +471,7 @@ body {
 }
 
 /* Catch-all disabled treatment so any .btn (textbox, sync, dialog confirm)
-   reads as inactive — previously only .btn-parse had this. */
+   reads as inactive - previously only .btn-parse had this. */
 .btn:disabled,
 .btn[aria-disabled="true"] {
     opacity: 0.55;
@@ -500,7 +500,7 @@ body {
     background: var(--bg-tertiary);
 }
 
-/* Destructive primary action — used by showConfirm({ danger: true }) for
+/* Destructive primary action - used by showConfirm({ danger: true }) for
    delete / unsubscribe / unpublish flows. */
 .btn-danger {
     background: #dc2626;
@@ -964,7 +964,7 @@ body {
 /* ── Results page ────────────────────────────────────────────────────────── */
 
 /* Pin the entire results page to the viewport so the page itself can never
-   scroll — only the sidebar and table-section scroll, inside their own
+   scroll - only the sidebar and table-section scroll, inside their own
    columns. position: fixed takes the page out of body flow, so no amount
    of inner content can push the body taller than 100vh. */
 #results-page.page {
@@ -999,7 +999,7 @@ body {
 }
 
 /* Two-row flex stack: the summary header stays put while only the table
-   section below scrolls. NOTE: do NOT set overflow:hidden here — Firefox
+   section below scrolls. NOTE: do NOT set overflow:hidden here - Firefox
    would then treat .results-body as the sticky scroll container instead
    of the actual scroller (.results-table-section), and the sticky thead
    wouldn't pin. The flex children's own constraints keep this in bounds. */
@@ -1224,7 +1224,7 @@ body {
 
 /* Visual frame stacking a fixed header table on top and a scrolling body
    table below. Splitting <thead> into its own table is the only way to
-   guarantee the header NEVER scrolls — `position: sticky` on table cells
+   guarantee the header NEVER scrolls - `position: sticky` on table cells
    misbehaves on Firefox when the scroll container has rounded corners.
    Both tables share class-based column widths so they line up exactly. */
 .results-table-section {
@@ -1323,7 +1323,7 @@ body {
 .no-grammar { color: var(--text-secondary); opacity: 0.5; font-style: normal; }
 .is-hidden { display: none; }
 
-/* Lemma cell — lemma + abbreviated POS pill on one line, optional example
+/* Lemma cell - lemma + abbreviated POS pill on one line, optional example
    below. The POS column itself has been removed; the abbreviated pill
    inherits column space from the lemma column. */
 .lemma-pos-grid {
@@ -2019,7 +2019,7 @@ body {
     cursor: not-allowed;
 }
 
-/* Portal tooltip — appended to <body> by initPortalTooltips so it can escape
+/* Portal tooltip - appended to <body> by initPortalTooltips so it can escape
    ancestor overflow:hidden / overflow-x:auto containers. Appears immediately
    on hover/focus. The trigger element marks itself with [data-tooltip="…"]. */
 .portal-tooltip {
@@ -2136,7 +2136,7 @@ body {
 /* ── Post-parse coverage reveal (aha moment #1) ──────────────────────────
    Self-contained block. A queued reading-surface redesign will re-home the
    #coverage-reveal panel; keep this block + renderCoverageReveal() as one
-   movable unit. Role tokens only — works across every theme skin. */
+   movable unit. Role tokens only - works across every theme skin. */
 .coverage-reveal {
     margin: 0.75rem 0 0.25rem;
 }
@@ -2265,7 +2265,7 @@ body {
    PR-3: Role-based visibility, nav, and surfaces
    ============================================================ */
 
-/* Generic role gate — JS toggles .role-hidden on [data-role-show] elements */
+/* Generic role gate - JS toggles .role-hidden on [data-role-show] elements */
 .role-hidden { display: none !important; }
 
 /* While auth is resolving, hide everything that depends on role to avoid flash */
@@ -2377,7 +2377,7 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     flex-wrap: wrap;
 }
 
-/* Anonymous landing parse form — the public demo. Sits under the hero copy,
+/* Anonymous landing parse form - the public demo. Sits under the hero copy,
    above the value grid. Left-aligned inside a centered card so the textarea
    and controls read like a form rather than centered marketing text. */
 .landing-parse-form {
@@ -4174,7 +4174,7 @@ a {
     margin: 0 auto;
     padding: 32px 32px 80px;
 }
-/* `.results-main` intentionally excluded — it owns its own viewport-locked
+/* `.results-main` intentionally excluded - it owns its own viewport-locked
    flex layout (see the dedicated rule near the top of this file). */
 
 .hero-section {
@@ -4252,7 +4252,7 @@ a {
     box-shadow: none;
 }
 
-/* Modal popups float on a backdrop, not inline with the flat-card grid — give
+/* Modal popups float on a backdrop, not inline with the flat-card grid - give
    them the rounded sitewide popup treatment instead of the squared card look. */
 .modal-card {
     border-radius: 14px;
@@ -4462,7 +4462,7 @@ a {
 }
 .field-picker-menu {
     /* Fixed so it escapes the modal-card and .anki-import-fields overflow
-       boxes — otherwise the dropdown gets clipped to whichever scroll
+       boxes - otherwise the dropdown gets clipped to whichever scroll
        container it lives in. Positioned via JS on open. */
     position: fixed;
     z-index: 2050;
@@ -5033,13 +5033,13 @@ h2 {
 /* ── Aalto skin · feel details (CSS-first, token-driven, aalto only) ──────
    The prototype's shape language: soft radii, hairline borders, serif
    reading surfaces, the italic-serif brand with accent dot. No markup
-   restructuring — everything keys off the existing DOM. */
+   restructuring - everything keys off the existing DOM. */
 
 [data-skin="aalto"] body {
     font-feature-settings: "ss01", "cv11";
 }
 
-/* Brand: prototype's .brand — italic display serif + accent dot, reading
+/* Brand: prototype's .brand - italic display serif + accent dot, reading
    "FinnEst" (owner correction, grill Q53: capital F + capital E). The ink
    skin's logo (::before "FinnEst" + ::after ".") is left untouched; here we
    restyle those same pseudo-elements for the Aalto voice. */
@@ -5152,45 +5152,7 @@ h2 {
     position: relative;
 }
 
-/* Vertical AALTO wordmark — aalto skin + wide viewport only. */
-.aalto-mark {
-    display: none;
-    position: absolute;
-    left: 12px;
-    top: 8px;
-    bottom: 80px;
-    width: 24px;
-    flex-direction: column;
-    align-items: center;
-    gap: 18px;
-    pointer-events: none;
-}
-[data-skin="aalto"] .aalto-mark { display: flex; }
-.aalto-mark .vstrip {
-    width: 8px;
-    flex: 1;
-    background-color: var(--birch);
-    background-image: repeating-linear-gradient(
-        0deg,
-        oklch(from var(--birch) calc(l - 0.10) c h / 0.4) 0 1px,
-        transparent 1px 9px,
-        oklch(from var(--birch) calc(l - 0.06) c h / 0.3) 9px 10px,
-        transparent 10px 32px
-    );
-    border-radius: 4px;
-}
-.aalto-mark .vlabel {
-    writing-mode: vertical-rl;
-    transform: rotate(180deg);
-    font-family: var(--font-mono);
-    font-size: 9.5px;
-    letter-spacing: 0.36em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    white-space: nowrap;
-}
-
-/* Savoy-vase silhouette — aalto skin + wide viewport only, with a
+/* Savoy-vase silhouette - aalto skin + wide viewport only, with a
    slow ambient drift. Reduced-motion visitors get the static form. */
 .vase-svg {
     display: none;
@@ -5245,9 +5207,10 @@ h2 {
     .landing-wrap .hero-eyebrow .pulse { animation: none; }
 }
 
-/* Hero headline + subtitle — override the base .hero-title/.hero-subtitle
+/* Hero headline + subtitle - override the base .hero-title/.hero-subtitle
    sizing for the landing only. */
-.landing-wrap .hero-title.hero-h {
+.landing-wrap .hero-title.hero-h,
+.about-main .about-hero h1 {
     font-family: var(--font-disp);
     font-size: clamp(40px, 7vw, 68px);
     font-weight: 400;
@@ -5257,22 +5220,25 @@ h2 {
     color: var(--text-primary);
     max-width: 18ch;
 }
-[data-skin="ink"] .landing-wrap .hero-title.hero-h { font-weight: 600; }
+[data-skin="ink"] .landing-wrap .hero-title.hero-h,
+[data-skin="ink"] .about-main .about-hero h1 { font-weight: 600; }
 .landing-wrap .hero-title.hero-h em {
     font-style: italic;
     color: var(--accent);
     font-weight: inherit;
 }
-.landing-wrap .hero-subtitle.hero-sub {
+.landing-wrap .hero-subtitle.hero-sub,
+.about-lede {
     font-size: 17px;
     color: var(--text-secondary);
-    max-width: 580px;
+    max-width: none;
     line-height: 1.55;
     margin-bottom: 36px;
     font-family: var(--font-disp);
     font-weight: 400;
 }
-[data-skin="ink"] .landing-wrap .hero-subtitle.hero-sub { font-family: var(--font-sans); }
+[data-skin="ink"] .landing-wrap .hero-subtitle.hero-sub,
+[data-skin="ink"] .about-lede { font-family: var(--font-sans); }
 .landing-wrap .hero-sub-quiet {
     display: block;
     margin-top: 10px;
@@ -5282,8 +5248,12 @@ h2 {
     font-family: var(--font-sans);
 }
 
-/* Paste box — soft radius, focus ring, birch-lined left edge under aalto. */
-.landing-wrap .landing-parse-form { margin: 0; }
+/* Paste box - soft radius, focus ring, birch-lined left edge under aalto. */
+.landing-wrap .landing-parse-form {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+}
 .landing-wrap .paste-box {
     position: relative;
     background: var(--bg-secondary);
@@ -5405,7 +5375,7 @@ h2 {
 }
 .demo-chip:disabled { opacity: 0.5; cursor: default; }
 
-/* Freemium strip — 3 columns; aalto gets the full-bleed blue band. */
+/* Freemium strip - 3 columns; aalto gets the full-bleed blue band. */
 .landing-wrap .freemium-strip.value-grid {
     margin-top: 64px;
     display: grid;
@@ -5461,35 +5431,6 @@ h2 {
 [data-skin="aalto"] .landing-wrap .freemium-h { color: var(--paper); }
 [data-skin="aalto"] .landing-wrap .freemium-p { color: oklch(from var(--paper) l c h / 0.78); }
 
-/* Colophon — quiet credit + palette swatches. */
-.colophon {
-    margin-top: 56px;
-    padding-top: 24px;
-    border-top: 1px solid var(--border);
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 18px;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-}
-.colophon .swatches { display: flex; gap: 6px; align-items: center; }
-.colophon .sw {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    display: inline-block;
-}
-.colophon .sw.b { background: var(--accent); border-color: var(--accent); }
-.colophon .sw.k { background: var(--text-primary); border-color: var(--text-primary); }
-.colophon .sw.w { background: var(--bg-primary); }
-[data-skin="aalto"] .colophon .sw.w { background: var(--paper); }
-[data-skin="aalto"] .colophon .sw.r { background: var(--birch); border-color: var(--birch-3, var(--birch)); }
-
 /* Word-list export controls on the results page (all roles). */
 .results-export {
     display: flex;
@@ -5502,7 +5443,7 @@ h2 {
 /* ── Mobile: decorations hide, paste foot stacks, single-column band ── */
 @media (max-width: 760px) {
     .landing-wrap { padding: 32px 20px 64px; }
-    .aalto-mark, .vase-svg { display: none !important; }
+    .vase-svg { display: none !important; }
     .landing-wrap .hero-title.hero-h { font-size: clamp(34px, 11vw, 46px); }
     [data-skin="aalto"] .landing-wrap .paste-box { padding-left: 0; }
     [data-skin="aalto"] .landing-wrap .paste-box::before { display: none; }
@@ -5512,11 +5453,10 @@ h2 {
     .landing-wrap .freemium-strip.value-grid { grid-template-columns: 1fr; }
     .landing-wrap .freemium-cell + .freemium-cell { border-left: none; border-top: 1px solid var(--border); }
     [data-skin="aalto"] .landing-wrap .freemium-cell + .freemium-cell { border-top: 1px solid oklch(from var(--paper) l c h / 0.18); }
-    .colophon { flex-direction: column; gap: 10px; }
 }
 
 /* ============================================================
-   READING SURFACE — Read / Words tabs + the living text.
+   READING SURFACE - Read / Words tabs + the living text.
    The Read view renders the source text with tappable, state-
    colored word spans; Words is the existing lemma table. Token
    colors consume the --known / --learning / --new role tokens
@@ -5582,7 +5522,7 @@ h2 {
 
 /* Tappable word span. Base = a "new" (unknown, no card) word gets a soft accent
    underline; known/learning override via role tokens; ignored renders neutral
-   (uncolored) — the least-noisy treatment for a deliberately suppressed word. */
+   (uncolored) - the least-noisy treatment for a deliberately suppressed word. */
 .read-token {
     cursor: pointer;
     border-radius: 3px;
@@ -5596,7 +5536,7 @@ h2 {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
 }
-/* new: not known, no study card — the words worth learning. */
+/* new: not known, no study card - the words worth learning. */
 .read-token.is-new {
     color: var(--new);
     text-decoration: underline;
@@ -5607,7 +5547,7 @@ h2 {
     color: var(--learning);
     background: color-mix(in srgb, var(--learning) 14%, transparent);
 }
-/* known: a settled word — quiet, low-emphasis. */
+/* known: a settled word - quiet, low-emphasis. */
 .read-token.is-known {
     color: var(--known);
 }

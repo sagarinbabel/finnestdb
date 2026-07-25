@@ -6,12 +6,12 @@
 // Source treebanks (all are CoNLL-U files from the UniversalDependencies
 // org on GitHub):
 //
-//	UD_Finnish-TDT  — Turku Dependency Treebank.       CC BY-SA 4.0
-//	UD_Finnish-FTB  — FinnTreeBank from Helsinki.      CC BY 4.0
-//	UD_Finnish-PUD  — Parallel UD test set.            CC BY-SA 3.0
-//	UD_Finnish-OOD  — Out-of-domain (poetry/dialogue). CC BY-SA 4.0
-//	UD_Estonian-EDT — Estonian Dependency Treebank.    CC BY-NC-SA 4.0
-//	UD_Estonian-EWT — Estonian Web Treebank.           CC BY-NC-SA 4.0
+//	UD_Finnish-TDT  - Turku Dependency Treebank.       CC BY-SA 4.0
+//	UD_Finnish-FTB  - FinnTreeBank from Helsinki.      CC BY 4.0
+//	UD_Finnish-PUD  - Parallel UD test set.            CC BY-SA 3.0
+//	UD_Finnish-OOD  - Out-of-domain (poetry/dialogue). CC BY-SA 4.0
+//	UD_Estonian-EDT - Estonian Dependency Treebank.    CC BY-NC-SA 4.0
+//	UD_Estonian-EWT - Estonian Web Treebank.           CC BY-NC-SA 4.0
 //
 // The Estonian treebanks are NC-licensed; output JSON for those is
 // gitignored (see .gitignore). Finnish treebanks are CC-BY / CC-BY-SA;
@@ -31,13 +31,13 @@
 //
 // Each non-comment line is one token with 10 tab-separated fields:
 //
-//	1. ID       — "1", "2", ... or "1-2" for multi-word tokens or "1.1" for empty nodes
-//	2. FORM     — surface form
-//	3. LEMMA    — canonical form
-//	4. UPOS     — universal POS tag
-//	5. XPOS     — language-specific POS (we ignore this — UPOS is sufficient)
-//	6. FEATS    — morphological features as Attr=Val|Attr=Val (or "_" for none)
-//	7-10        — dependency parse fields (we ignore these)
+//	1. ID       - "1", "2", ... or "1-2" for multi-word tokens or "1.1" for empty nodes
+//	2. FORM     - surface form
+//	3. LEMMA    - canonical form
+//	4. UPOS     - universal POS tag
+//	5. XPOS     - language-specific POS (we ignore this - UPOS is sufficient)
+//	6. FEATS    - morphological features as Attr=Val|Attr=Val (or "_" for none)
+//	7-10        - dependency parse fields (we ignore these)
 //
 // We emit one gold case per CoNLL-U sentence, skipping:
 //
@@ -55,7 +55,7 @@
 //   - For back-compat with the existing case-only grammar metric, we also
 //     project Case=Xxx into the legacy "grammar_label" field using the
 //     udCaseToLabel map below. Tokens with no Case attribute (or Nominative
-//     — left implicit per existing convention) get an empty grammar_label.
+//     - left implicit per existing convention) get an empty grammar_label.
 package main
 
 import (
@@ -118,7 +118,7 @@ func main() {
 		log.Fatalf("write %s: %v", *outputPath, err)
 	}
 
-	log.Printf("wrote %s — %d cases, %d tokens (skipped %d malformed sentences)",
+	log.Printf("wrote %s - %d cases, %d tokens (skipped %d malformed sentences)",
 		*outputPath, len(cases), totalTokens, skippedSentences)
 }
 
@@ -208,12 +208,12 @@ func parseConllu(r *os.File, idPrefix string) ([]udCase, int, int, error) {
 			continue
 		}
 		id := fields[0]
-		// Skip multi-word-token range rows (e.g. "1-2 don't") — the *child*
+		// Skip multi-word-token range rows (e.g. "1-2 don't") - the *child*
 		// rows that follow carry the morphology we want.
 		if strings.Contains(id, "-") {
 			continue
 		}
-		// Skip empty/elliptical nodes (e.g. "1.1") — they have no surface.
+		// Skip empty/elliptical nodes (e.g. "1.1") - they have no surface.
 		if strings.Contains(id, ".") {
 			continue
 		}
@@ -245,7 +245,7 @@ func parseConllu(r *os.File, idPrefix string) ([]udCase, int, int, error) {
 		}
 		// Count per-sentence surface occurrences. eval.findOccurrence
 		// counts the Nth parsed token with this surface, so repeats need
-		// explicit Occurrence > 1 — leave the first one with the implicit
+		// explicit Occurrence > 1 - leave the first one with the implicit
 		// default of 1 (handled by the eval `omitempty` zero-fallback).
 		if surfaceCounts == nil {
 			surfaceCounts = make(map[string]int)
@@ -295,7 +295,7 @@ func reconstructText(tokens []udToken) string {
 }
 
 // udCaseToLabel maps UD Case= values to the lowercase English case names
-// used in our existing gold sets. Nominative is intentionally absent — the
+// used in our existing gold sets. Nominative is intentionally absent - the
 // existing convention is to leave grammar_label empty for nominative
 // (e.g. fi-grammar-v1 has many bare-noun cases without grammar_label).
 //

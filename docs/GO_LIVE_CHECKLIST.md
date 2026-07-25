@@ -56,13 +56,13 @@ First-experience quality check:
     (18 cases, FI+ET for every journey) plus its fixture `.txt` files in the
     same directory, including the `kuusi`/`tuli`/`voi` homograph fixtures from
     "Ambiguity and meaning-check calibration" below.
-  - Go runner: [`cmd/firstexperiencerc`](../cmd/firstexperiencerc) — loads the
+  - Go runner: [`cmd/firstexperiencerc`](../cmd/firstexperiencerc) - loads the
     manifest, runs every `automation:"parser"` case through the real
     custom-mode parser (`internal/parsecore`, the same path `/api/parse`
     uses), and prints PASS/FAIL/SKIP-pending/MANUAL plus a summary. Exits
     nonzero only on an automated FAIL.
   - Playwright spec: [`web/tests/first-experience-rc.spec.ts`](../web/tests/first-experience-rc.spec.ts)
-    — imports the same manifest JSON and generates one test per
+    - imports the same manifest JSON and generates one test per
     `automation:"playwright"` case, `test.skip` for everything else.
   - **Complete 2026-07-04**: every journey in the manifest now runs
     automated, and `make first-experience-rc` finishes with **zero pending
@@ -76,14 +76,14 @@ First-experience quality check:
     journey: ambiguity homograph meanings panel`) checking the "Multiple
     possible meanings" panel renders >=2 candidates and the flag-only "None
     of these looks right" escape exists. That pass does not grade candidate
-    selection accuracy — the Go runner's `lemma_pos` assertions and
+    selection accuracy - the Go runner's `lemma_pos` assertions and
     `docs/PARSER_EVAL_METHODOLOGY.md`'s eval slice own that.
   - No manifest case remains `automation:"pending"`. The full 18-case
     matrix is either `parser` (Go runner, real custom-mode parse), or
     `playwright` (browser-driven journey pass, mocked APIs per
     `web/tests/first-experience-rc.spec.ts` conventions). The manual
     walkthrough for judgment calls (trustworthiness, clarity, first-screen
-    credibility) and the go/no-go call remain the human step — see
+    credibility) and the go/no-go call remain the human step - see
     `TODO.md` "First-experience quality bar" for that status.
 - Provide one top-level automated command, `make first-experience-rc`, that runs
   the parser fixture checks and Playwright RC specs, then points at the manual
@@ -203,7 +203,7 @@ Two operational consequences:
 
 2. **Admin emails must be claimed before launch.** `FINNESTDB_ADMIN_EMAILS`
    grants admin to whoever registers a listed email *first*, and emails are
-   not verified — an attacker who registers an unclaimed admin address gets
+   not verified - an attacker who registers an unclaimed admin address gets
    admin. Before opening registration to the public, pre-register every
    listed address:
 
@@ -251,7 +251,7 @@ Required before go-live:
 Current status: parser concurrency/backpressure, the anonymous-sheds-first
 mechanism, and a release-candidate load-test tool are implemented and
 validated locally (2026-07-04). **Production-host load testing is still
-required before this gate closes** — the local run proves the mechanism, not
+required before this gate closes** - the local run proves the mechanism, not
 production capacity. See
 [`launch-readiness/2026-07-04-load-test.md`](launch-readiness/2026-07-04-load-test.md)
 for full method, numbers, and the explicit re-run instruction.
@@ -293,7 +293,7 @@ Shipped 2026-07-04:
   Full numbers in the load-test report linked above.
 - [x] **Anonymous text-size cap re-checked, not changed**: the load test found
   no evidence to lower `FINNESTDB_ANON_MAX_CHARS` below the shipped default
-  of 300,000 — a near-cap anonymous parse at the `basic` parser mode (the
+  of 300,000 - a near-cap anonymous parse at the `basic` parser mode (the
   anonymous demo's actual default) is cheap even under concurrent bursts. See
   the report for the `custom`-mode caveat.
 
@@ -301,7 +301,7 @@ Still required before go-live (not shipped by this work):
 
 - **Re-run the load test against the actual production host** (or a
   like-for-like staging host) at 1,000 concurrent users. Laptop numbers do
-  not certify production capacity — different core count, disk, network path,
+  not certify production capacity - different core count, disk, network path,
   and DB cache warmth all change the concurrency at which shedding starts.
 - Confirm `FINNESTDB_PARSER_MAX_CONCURRENCY`'s computed default is sensible
   for the production host's actual core count and co-located services
@@ -367,7 +367,7 @@ and `et-linnu-keel-story` ("Linnu keel", Juhan Kunder, PD). The ET set now
 mirrors FI (one article + one story + one poem).
 
 Owner acknowledgment (Sagar, 2026-07-04): CC BY-SA texts in the catalog are
-accepted — attribution must stay visible wherever the text is shown (rendered
+accepted - attribution must stay visible wherever the text is shown (rendered
 on catalog cards since PR #264), and those texts plus any modified versions of
 them remain CC BY-SA. Having many such texts is fine; compliance is the
 requirement, not avoidance.
@@ -411,7 +411,7 @@ reviewer covers Estonian.
 
 Calibration so far (n=4 FI, 2026-07-04): the model over-rated BOTH sauna
 articles (the retired machine-written one and its Wikipedia replacement) by two
-bands each (model medium-hard → human easy-medium) — familiar-topic simplicity
+bands each (model medium-hard → human easy-medium) - familiar-topic simplicity
 is invisible to the lexical/structural signals, and article-genre texts look
 like the likeliest systematic miss. One-band misses in each direction on the
 two literary texts. Revisit weights once ~10 reviewed texts exist; consider a

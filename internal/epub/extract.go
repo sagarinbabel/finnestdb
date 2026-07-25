@@ -1,5 +1,5 @@
 // Package epub extracts plain text from a single EPUB file for use in the
-// learner-app import flow. It is intentionally pragmatic — not a full HTML
+// learner-app import flow. It is intentionally pragmatic - not a full HTML
 // parser. The logic mirrors corpus_pipeline/cmd/extractcorpus/extract_epub.go
 // (which lives in a separate Go module) but is scoped to one in-memory book
 // at a time rather than walking a corpus directory.
@@ -46,7 +46,7 @@ type BookMetadata struct {
 
 // ExtractMetadata returns the book's title/author from the EPUB's OPF
 // package, falling back to empty strings when fields are missing. Errors on
-// invalid zip but never on missing metadata — a metadata-less EPUB is valid.
+// invalid zip but never on missing metadata - a metadata-less EPUB is valid.
 func ExtractMetadata(r io.ReaderAt, size int64) (BookMetadata, error) {
 	zr, err := zip.NewReader(r, size)
 	if err != nil {
@@ -280,7 +280,7 @@ func readZipFileContents(f *zip.File, maxBytes int64) ([]byte, error) {
 
 // joinZipPath resolves an href like "Text/ch1.xhtml" relative to an OPF
 // directory like "OEBPS/". Drops a leading slash on href and collapses ".."
-// segments minimally (one-level only — EPUB hrefs almost never go above the
+// segments minimally (one-level only - EPUB hrefs almost never go above the
 // OPF directory).
 func joinZipPath(dir, href string) string {
 	href = strings.TrimPrefix(href, "/")
@@ -322,7 +322,7 @@ var reOPFItemProperties = regexp.MustCompile(`(?is)\bproperties="([^"]+)"`)
 
 // parseOPFManifest returns an id → href map of every <item> in the manifest.
 // Items marked with `properties="nav"` (EPUB3 navigation documents) are
-// skipped — they're the table-of-contents, not learner reading content.
+// skipped - they're the table-of-contents, not learner reading content.
 func parseOPFManifest(opf string) map[string]string {
 	manifestStart := strings.Index(opf, "<manifest")
 	manifestEnd := strings.Index(opf, "</manifest")
@@ -555,7 +555,7 @@ var entityReplacer = strings.NewReplacer(
 	"&nbsp;", " ",
 	"&#160;", " ",
 	"&hellip;", "…",
-	"&mdash;", "—",
+	"&mdash;", "-",
 	"&ndash;", "–",
 	"&rsquo;", "'",
 	"&lsquo;", "'",

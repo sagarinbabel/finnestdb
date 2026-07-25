@@ -4,7 +4,7 @@
 // mining/silver-candidates.tsv when external analyzer agrees with
 // parser_choice.
 //
-// Persistent batch adapter — one long-lived subprocess per language,
+// Persistent batch adapter - one long-lived subprocess per language,
 // JSON-line protocol over stdin/stdout. Avoids per-surface startup cost
 // (estnltk init takes ~1 s; per-surface shell-out at 5M surfaces is
 // ~58 days).
@@ -55,7 +55,7 @@ func main() {
 
 	wordlistPath := filepath.Join(derived, "wordlist.tsv")
 	if _, err := os.Stat(wordlistPath); err != nil {
-		log.Fatalf("wordlist.tsv not found at %s — run aggregatecorpus first", wordlistPath)
+		log.Fatalf("wordlist.tsv not found at %s - run aggregatecorpus first", wordlistPath)
 	}
 
 	// Detect external analyzer binary. If not present, we emit a

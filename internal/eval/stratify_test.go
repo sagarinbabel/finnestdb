@@ -8,7 +8,7 @@ import (
 
 // TestUposBucket pins the canonical mapping. PROPN/NUM/PUNCT each get their
 // own bucket because that's where headline accuracy hides regressions on
-// real-world treebanks (see docs/LEARNINGS.md §2026-05-07 — UD-TDT). Anything
+// real-world treebanks (see docs/LEARNINGS.md §2026-05-07 - UD-TDT). Anything
 // outside the documented set falls into "other" so a future surprise tag (X,
 // SYM) is visible rather than silently classed as open/closed.
 func TestUposBucket(t *testing.T) {
@@ -92,35 +92,35 @@ func TestComputeStratification_HappyPath(t *testing.T) {
 			CaseID: "fi-1",
 			Comparisons: map[string][]TokenCompare{
 				"custom": {
-					// open-class noun, in-dict, simple — fully correct
+					// open-class noun, in-dict, simple - fully correct
 					{
 						Surface:  "kirja",
 						Expected: TokenExpected{POS: "NOUN"},
 						Actual:   TokenActual{Found: true, Resolved: true, Source: "dict"},
 						Match:    TokenMatch{Lemma: true, POS: true, Grammar: true, Full: true},
 					},
-					// closed-class pronoun, in-dict, simple — POS only
+					// closed-class pronoun, in-dict, simple - POS only
 					{
 						Surface:  "se",
 						Expected: TokenExpected{POS: "PRON"},
 						Actual:   TokenActual{Found: true, Resolved: true, Source: "dict"},
 						Match:    TokenMatch{Lemma: false, POS: true, Grammar: true, Full: false},
 					},
-					// PROPN, oov, simple — all wrong
+					// PROPN, oov, simple - all wrong
 					{
 						Surface:  "Helsingin",
 						Expected: TokenExpected{POS: "PROPN"},
 						Actual:   TokenActual{Found: true, Resolved: false, Source: "dict"},
 						Match:    TokenMatch{Lemma: false, POS: false, Grammar: true, Full: false},
 					},
-					// NUM, in-dict, simple — fully correct
+					// NUM, in-dict, simple - fully correct
 					{
 						Surface:  "1990",
 						Expected: TokenExpected{POS: "NUM"},
 						Actual:   TokenActual{Found: true, Resolved: true, Source: "dict"},
 						Match:    TokenMatch{Lemma: true, POS: true, Grammar: true, Full: true},
 					},
-					// open-class noun, in-dict, compound (hyphen) — fully correct
+					// open-class noun, in-dict, compound (hyphen) - fully correct
 					{
 						Surface:  "EU-puhejohtaja",
 						Expected: TokenExpected{POS: "NOUN"},
@@ -302,7 +302,7 @@ func TestSidecarPathForReport(t *testing.T) {
 }
 
 // TestEvaluateOptions_StratifiedOff confirms the legacy schema is preserved
-// when the flag is off — the Stratification field should be nil on every
+// when the flag is off - the Stratification field should be nil on every
 // summary so the JSON matches existing baseline files byte-for-byte (modulo
 // timestamps).
 func TestEvaluateOptions_StratifiedOff(t *testing.T) {

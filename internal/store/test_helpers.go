@@ -4,7 +4,7 @@ package store
 // (notably internal/api, which cannot reach the unexported *DB.db handle or the
 // store package's own *_test.go helpers). They perform direct table writes/reads
 // with no product logic and are not used by any runtime code path. Keeping them
-// in a normal .go file — rather than an _test.go — is required so the api test
+// in a normal .go file - rather than an _test.go - is required so the api test
 // package can call them.
 
 // InsertFormForTest inserts a single (form, lemma, pos, lang) row into the forms
