@@ -132,7 +132,7 @@ func (externalAttachMorphologyRule) Name() string { return "attach_custom_morpho
 // Apply attaches custom GrammarLabel and/or Feats to an already-resolved
 // analyzer token when the analyzer has no morphology of its own and lemma/POS
 // agree. Fires for label-only customs (legacy case-suffix path), feats-only
-// customs (FST verb morphology like Number/Tense/Mood/Person — no case label),
+// customs (FST verb morphology like Number/Tense/Mood/Person - no case label),
 // and the both-present case. The earlier label-only gate dropped FEATS-only
 // FST analyses on the floor when omorfi/estnltk had the lemma but no FEATS.
 func (externalAttachMorphologyRule) Apply(_ string, token *parsecore.TokenResult, _, custom store.FormResolution) bool {
@@ -175,7 +175,7 @@ func resolveOmorfiCommandSpec() (string, error) {
 		// available, run them directly. Avoids requiring a per-shell env var
 		// for the common dev-environment case after `make setup-omorfi`.
 		//
-		// Search order for the adapter script (cwd-independent — covers
+		// Search order for the adapter script (cwd-independent - covers
 		// `go run` from the repo root, installed binaries, and systemd):
 		//   1. ./scripts/omorfi_adapter_example.py (cwd is the repo root)
 		//   2. <repo>/scripts/omorfi_adapter_example.py where <repo> is

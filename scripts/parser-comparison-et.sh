@@ -4,11 +4,11 @@
 # parsers across the Estonian gold datasets, then assemble the results into a
 # markdown comparison report.
 #
-# EstNLTK/Vabamorf is **required by default** — every Estonian baseline must
+# EstNLTK/Vabamorf is **required by default** - every Estonian baseline must
 # show the analyzer column so dict-only numbers are never read in isolation.
 # Run `make setup-nlp` once on a fresh machine. To bypass on a machine
 # where estnltk cannot be installed, pass --allow-missing-baseline (ad-hoc
-# local use only — never commit reports produced this way).
+# local use only - never commit reports produced this way).
 #
 # Usage:
 #   scripts/parser-comparison-et.sh
@@ -41,8 +41,8 @@ done
 
 if [[ ${#DATASETS[@]} -eq 0 ]]; then
     # Default discovery: every et/gold/*.json or *.json.gz EXCEPT dev splits (held-out
-    # discipline — see scripts/parser-comparison.sh comment). Globs both
-    # testdata/parser-eval/et/gold/ (committed ET gold — manual + grammar
+    # discipline - see scripts/parser-comparison.sh comment). Globs both
+    # testdata/parser-eval/et/gold/ (committed ET gold - manual + grammar
     # only) and localdata/parser-eval/et/gold/ (the NC-licensed UD-ET
     # dev/test files written by scripts/fetch-and-import-ud.sh). Without
     # the localdata glob, fresh clones would only see ~50 ET cases.
@@ -72,7 +72,7 @@ if $estnltk_available; then
     PARSERS="basic,custom,estnltk"
     echo ">> Including estnltk (adapter auto-detected)" >&2
 elif $ALLOW_MISSING; then
-    echo ">> WARNING: estnltk missing, --allow-missing-baseline set — running dict-only" >&2
+    echo ">> WARNING: estnltk missing, --allow-missing-baseline set - running dict-only" >&2
     echo ">>          Do NOT commit reports produced this way; analyzer parity is required." >&2
 else
     cat >&2 <<'EOF'
@@ -109,7 +109,7 @@ if $STRATIFIED; then
 fi
 
 for ds in "${DATASETS[@]}"; do
-    # Slug from the dataset *filename* (not the JSON `name` field) —
+    # Slug from the dataset *filename* (not the JSON `name` field) -
     # see scripts/parser-comparison.sh for the rationale.
     base="$(basename "$ds")"
     base="${base%.json.gz}"

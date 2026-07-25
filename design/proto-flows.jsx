@@ -1,9 +1,9 @@
 /* global React, FED_DATA */
 /*
- * proto-flows.jsx — additional flows from the user-flow diagram (PR #152):
+ * proto-flows.jsx - additional flows from the user-flow diagram (PR #152):
  *   - SignupRibbon  (anonymous results → SU)
  *   - SaveAsModal   (results → SP{} → DD)
- *   - CorrectionModal  (✎ Wrong? — flag-only OR right-answer)
+ *   - CorrectionModal  (✎ Wrong? - flag-only OR right-answer)
  *   - ColdStart     (first time, 0 decks)
  *   - KnownWordsImport  (cold start → KW → DL)
  *   - EphemeralBanner (parse opt-out toggle)
@@ -64,7 +64,7 @@ function SignupRibbon({ count, onSave, onDismiss }) {
             Save these <em style={{ color: "var(--birch)" }}>{count}</em> words?
           </div>
           <div className="mono" style={{ fontSize: 11, color: "oklch(from var(--paper) l c h / 0.65)", marginTop: 2, letterSpacing: "0.04em" }}>
-            We'll carry this parse into your first deck — free, no card required.
+            We'll carry this parse into your first deck - free, no card required.
           </div>
         </div>
       </div>
@@ -85,7 +85,7 @@ function SignupRibbon({ count, onSave, onDismiss }) {
   );
 }
 
-// ─── SaveAsModal — Save as → new deck OR add to existing ─────────────
+// ─── SaveAsModal - Save as → new deck OR add to existing ─────────────
 function SaveAsModal({ open, onClose, lang, count, onCreated }) {
   const [mode, setMode] = useStateF("new"); // new | existing
   const [name, setName] = useStateF("");
@@ -203,7 +203,7 @@ function SaveAsModal({ open, onClose, lang, count, onCreated }) {
             ))}
             {sameLangDecks.length === 0 && (
               <div className="mono" style={{ fontSize: 12, color: "var(--ink-mute)", padding: "16px 4px" }}>
-                No {lang === "FI" ? "Finnish" : "Estonian"} decks yet — switch to "New deck".
+                No {lang === "FI" ? "Finnish" : "Estonian"} decks yet - switch to "New deck".
               </div>
             )}
           </div>
@@ -223,7 +223,7 @@ function SaveAsModal({ open, onClose, lang, count, onCreated }) {
   );
 }
 
-// ─── CorrectionModal — ✎ Wrong? from any results row / review card ────
+// ─── CorrectionModal - ✎ Wrong? from any results row / review card ────
 function CorrectionModal({ open, onClose, target }) {
   // target = { lemma, pos, gloss, sentence, source }
   const [path, setPath] = useStateF("flag"); // "flag" | "edit"
@@ -245,7 +245,7 @@ function CorrectionModal({ open, onClose, target }) {
 
   function submit() {
     if (path === "flag") {
-      showToastF("Submitted ✓ flag-only — thanks");
+      showToastF("Submitted ✓ flag-only - thanks");
     } else {
       if (!lemma.trim() || !pos) { showToastF("Need at least lemma + POS"); return; }
       showToastF(`Submitted ✓ correction → ${lemma} (${pos})`);
@@ -262,7 +262,7 @@ function CorrectionModal({ open, onClose, target }) {
         <div className="disp" style={{ fontSize: 22, fontWeight: 500, letterSpacing: "-0.02em", marginTop: 4 }}>
           <span style={{ color: "var(--ink-mute)" }}>This row says</span>{" "}
           <em style={{ fontStyle: "italic", color: "var(--blue)" }}>
-            {target?.lemma || "—"}
+            {target?.lemma || "-"}
           </em>
         </div>
         {target?.sentence && (
@@ -277,10 +277,10 @@ function CorrectionModal({ open, onClose, target }) {
         )}
       </div>
 
-      {/* Two-path radio — bigger hit-target than a tiny radio dot */}
+      {/* Two-path radio - bigger hit-target than a tiny radio dot */}
       <div style={{ padding: "16px 26px 4px", display: "flex", flexDirection: "column", gap: 8 }}>
         {[
-          { v: "flag", title: "I don't know the answer", sub: "Just flag this row — we'll triage it.", recommended: true },
+          { v: "flag", title: "I don't know the answer", sub: "Just flag this row - we'll triage it.", recommended: true },
           { v: "edit", title: "Right answer is…", sub: "Propose lemma · POS · optional grammar + notes.", recommended: false },
         ].map(opt => (
           <button key={opt.v} onClick={() => setPath(opt.v)}
@@ -328,7 +328,7 @@ function CorrectionModal({ open, onClose, target }) {
               <label className="mono" style={{ display: "block", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--ink-mute)", marginBottom: 4 }}>POS</label>
               <select value={pos} onChange={e => setPos(e.target.value)}
                 style={{ width: "100%", padding: "8px 10px", background: "var(--bg)", border: "1px solid var(--line)", borderRadius: "var(--r-sm)", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--ink)", outline: "none", boxSizing: "border-box" }}>
-                <option value="">—</option>
+                <option value="">-</option>
                 {["NOUN","VERB","ADJ","ADV","PRON","NUM","CONJ","PROPN","MWE","INTJ"].map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
@@ -364,12 +364,12 @@ function CorrectionModal({ open, onClose, target }) {
   );
 }
 
-// ─── ColdStart — first-time / 0 decks dashboard ─────────────────────
+// ─── ColdStart - first-time / 0 decks dashboard ─────────────────────
 function ColdStart({ onPasteText, onImportKnown, onSeedTop1000 }) {
   return (
     <div style={{ maxWidth: 920, margin: "0 auto", padding: "56px 40px 80px" }}>
       <div className="mono" style={{ fontSize: 11, color: "var(--ink-mute)", letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 14 }}>
-        Welcome — let's get you started
+        Welcome - let's get you started
       </div>
       <h1 style={{
         fontFamily: "var(--font-disp)", fontWeight: 500, fontSize: 44,
@@ -379,11 +379,11 @@ function ColdStart({ onPasteText, onImportKnown, onSeedTop1000 }) {
         Three ways to seed your first <em style={{ fontStyle: "italic", color: "var(--blue)" }}>deck</em>.
       </h1>
       <p style={{ color: "var(--ink-soft)", fontSize: 16, fontFamily: "var(--font-disp)", maxWidth: 620, marginBottom: 36, lineHeight: 1.5 }}>
-        Pick one — or do all three. Decks layer, so anything you import becomes part of your "known words" baseline.
+        Pick one - or do all three. Decks layer, so anything you import becomes part of your "known words" baseline.
       </p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-        {/* Card 1 — paste */}
+        {/* Card 1 - paste */}
         <div className="panel" style={{ padding: "24px 22px 22px", display: "flex", flexDirection: "column", gap: 14, cursor: "pointer", transition: "border-color 0.12s" }}
           onMouseEnter={e => e.currentTarget.style.borderColor = "var(--blue)"}
           onMouseLeave={e => e.currentTarget.style.borderColor = "var(--line)"}
@@ -402,7 +402,7 @@ function ColdStart({ onPasteText, onImportKnown, onSeedTop1000 }) {
           </div>
         </div>
 
-        {/* Card 2 — known words */}
+        {/* Card 2 - known words */}
         <div className="panel" style={{ padding: "24px 22px 22px", display: "flex", flexDirection: "column", gap: 14, cursor: "pointer" }}
           onMouseEnter={e => e.currentTarget.style.borderColor = "var(--ink-mute)"}
           onMouseLeave={e => e.currentTarget.style.borderColor = "var(--line)"}
@@ -421,7 +421,7 @@ function ColdStart({ onPasteText, onImportKnown, onSeedTop1000 }) {
           </div>
         </div>
 
-        {/* Card 3 — seed deck (gated) */}
+        {/* Card 3 - seed deck (gated) */}
         <div className="panel" style={{
           padding: "24px 22px 22px", display: "flex", flexDirection: "column", gap: 14,
           borderStyle: "dashed",
@@ -574,7 +574,7 @@ function KnownWordsImport({ open, onClose, onImported }) {
   );
 }
 
-// ─── EphemeralBanner — top of parse view, opt-out toggle ─────────────
+// ─── EphemeralBanner - top of parse view, opt-out toggle ─────────────
 function EphemeralToggle({ value, onChange }) {
   return (
     <button onClick={() => onChange(!value)}
@@ -590,7 +590,7 @@ function EphemeralToggle({ value, onChange }) {
         fontSize: 11, letterSpacing: "0.04em",
         transition: "all 0.12s",
       }}
-      title={value ? "Ephemeral — this parse won't be saved to history" : "Saving to history (toggle off for ephemeral)"}>
+      title={value ? "Ephemeral - this parse won't be saved to history" : "Saving to history (toggle off for ephemeral)"}>
       <span style={{
         width: 7, height: 7, borderRadius: "50%",
         background: value ? "var(--birch)" : "var(--ink-mute)",
@@ -601,7 +601,7 @@ function EphemeralToggle({ value, onChange }) {
   );
 }
 
-// ─── DonePanel — review session complete ─────────────────────────────
+// ─── DonePanel - review session complete ─────────────────────────────
 function ReviewDoneCard({ count, onBack }) {
   return (
     <div style={{ padding: "80px 40px", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", maxWidth: 540, margin: "0 auto" }}>

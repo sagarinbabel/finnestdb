@@ -5,7 +5,7 @@
 76c53ac7dc18ab07145c10ac420209322632c0b1cdeb7e55f5166df918c17b86  localdata/lemmatizer-fi-et/tables/et_min.json
 908dae20fd643c92608b49c7b1ecd1d06208d05e6823512ec474505ef05376e3  localdata/lemmatizer-fi-et/tables/fi_min.json
 
-# ekilex/ (just file list + sizes — too many files to sha all):
+# ekilex/ (just file list + sizes - too many files to sha all):
 -rw-r--r--@ 1 sagar  staff  8196 May  7 17:38 localdata/ekilex/.DS_Store
 -rw-r--r--@ 1 sagar  staff  12177741 May  7 14:16 localdata/ekilex/forms/l.tsv
 -rw-r--r--@ 1 sagar  staff  14236028 May  7 14:16 localdata/ekilex/forms/m.tsv

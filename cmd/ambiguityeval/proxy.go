@@ -5,7 +5,7 @@ import "strings"
 // ClassifyProxy implements the structural confidence proxy defined in
 // docs/PARSER_EVAL_METHODOLOGY.md §"Confidence proxy": there is no numeric
 // confidence today, so calibration is measured against signals that already
-// exist — the size of the candidate set, and whether the parser's pick was
+// exist - the size of the candidate set, and whether the parser's pick was
 // corroborated by both a dictionary row and an FST analysis.
 //
 // candidateCount is the number of distinct (lemma, POS) candidates from

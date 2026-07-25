@@ -1,8 +1,8 @@
-# Finnish Parser Baseline — 2026-05-06
+# Finnish Parser Baseline - 2026-05-06
 
 Refresh of [`2026-04-28-fi-summary.md`](2026-04-28-fi-summary.md) on
 current `main` (commit `46d8b77`). Anchors PR 0 of the Finnish lexical
-plan — the reference point Phases 2–5 measure regressions/improvements
+plan - the reference point Phases 2–5 measure regressions/improvements
 against. See [`docs/LEXICAL_PLAN.md`](../LEXICAL_PLAN.md).
 
 ## Dictionary state
@@ -13,7 +13,7 @@ against. See [`docs/LEXICAL_PLAN.md`](../LEXICAL_PLAN.md).
 | ET | 6,178,514 | 354,231 | kaikki.org Estonian + Ekilex bulk drop (`cmd/importekilexdetails`) |
 
 The Finnish numbers are essentially unchanged from April since no new
-FI sources have landed yet — Phases 3 (Kotus) and 4 (Voikko) are the
+FI sources have landed yet - Phases 3 (Kotus) and 4 (Voikko) are the
 ones that grow this. The form count looks high because the multi-lemma
 schema ([#78](https://github.com/sagarinbabel/finnestdb/pull/78))
 preserves multiple `(lemma, pos)` candidates per surface form.
@@ -47,18 +47,18 @@ Each row is `lemma / POS / grammar / full / coverage` percentages.
 
 Mostly flat, with `fi-manual-v1` showing meaningful gains on `basic`
 (+11.4 lemma) and `custom` (+8.5 lemma). The most likely cause is
-[PR #65](https://github.com/sagarinbabel/finnestdb/pull/65) — Estonian
+[PR #65](https://github.com/sagarinbabel/finnestdb/pull/65) - Estonian
 case-suffix improvements were broad enough that some Finnish
 fallback rules picked up similar gains, plus tokenizer changes from
 [PR #65](https://github.com/sagarinbabel/finnestdb/pull/65) treating
 trailing `*` as punctuation. `custom` coverage on `fi-manual-v1` ticked
-down 2.6pp — worth investigating during Phase 2 work.
+down 2.6pp - worth investigating during Phase 2 work.
 
 ## Standing observations (unchanged from April)
 
 - **Grammar accuracy is 0% across the board.** No Finnish parser path
   emits a `grammar_label` because no source populates `feats` yet.
-  Phase 4 (Voikko) is the lever that fixes this — Voikko-generated
+  Phase 4 (Voikko) is the lever that fixes this - Voikko-generated
   rows ship UD-style features per inflected form. Until then, the
   custom path's case-suffix fallback rules don't typically fire
   because dict coverage already returns the lemma without going
@@ -101,7 +101,7 @@ Reading this:
   coverage is already high enough that fallback rules don't fire,
   and the two parsers run essentially the same code path.
 - The throughput claim in [`docs/DECISIONS.md`](../DECISIONS.md)
-  ("fast — Rust + dictionary lookup") now has a measured floor we
+  ("fast - Rust + dictionary lookup") now has a measured floor we
   can defend regressions against. It is not a hand-wave anymore.
 
 ## Files

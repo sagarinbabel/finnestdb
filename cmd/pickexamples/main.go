@@ -5,7 +5,7 @@
 //
 // Owner decision (2026-07-04): starter-deck cards must carry example sentences,
 // and individual sentences drawn from the local licensed corpora are an
-// acceptable source — single sentences used as dictionary-style usage examples,
+// acceptable source - single sentences used as dictionary-style usage examples,
 // never bulk text reproduction. See testdata/starter-examples/README.md.
 //
 // Ranking reuse: the target lemmas are exactly seedcolddeck's Top-N ranking
@@ -137,7 +137,7 @@ func main() {
 		log.Fatalf("rank lemmas: %v", err)
 	}
 	if len(entries) == 0 {
-		log.Fatal("no lemmas resolved — is the dictionary imported for this language?")
+		log.Fatal("no lemmas resolved - is the dictionary imported for this language?")
 	}
 	log.Printf("[%s] ranked %d lemmas (%d list forms unresolved)", *lang, len(entries), skipped)
 

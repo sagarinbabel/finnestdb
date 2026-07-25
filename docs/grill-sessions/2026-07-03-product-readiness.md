@@ -170,9 +170,9 @@ Stable product decisions from this grill:
   1000" official deck per language (PR
   [#246](https://github.com/sagarinbabel/finnestdb/pull/246), merged
   2026-07-03). That deck is accepted as the alpha cold-start mechanism. The
-  Q15/Q16 direction — Top 250 default CTA with 500/1000 milestones,
+  Q15/Q16 direction - Top 250 default CTA with 500/1000 milestones,
   individual test-out confirmations, no bulk mark-as-known, surface-first
-  re-keying — is preserved as follow-up work in `TODO.md`
+  re-keying - is preserved as follow-up work in `TODO.md`
   ("Cold-start milestones + individual test-out") and `docs/USER_FLOWS.md`
   §"Deck cold-start", not as a revert of #246.
 - **Q17 vs the 2026-06-20 launch note.** The launch stack documented the

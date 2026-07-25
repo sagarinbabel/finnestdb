@@ -31,7 +31,7 @@ var exampleColumns = []string{"lemma", "pos", "form", "sentence", "source_corpus
 
 // LoadExamples reads a starter-examples TSV (see cmd/pickexamples and
 // testdata/starter-examples/) and returns the first curated example per
-// (lemma, pos). Rows whose lang column mismatches lang are ignored — the TSV
+// (lemma, pos). Rows whose lang column mismatches lang are ignored - the TSV
 // has no lang column of its own, so lang is only used to build a helpful error
 // if the file is empty for the requested language; callers pass the matching
 // per-language artifact. When a (lemma, pos) has more than one row, the first

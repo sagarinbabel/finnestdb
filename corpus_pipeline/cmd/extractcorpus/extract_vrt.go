@@ -12,7 +12,7 @@ import (
 	"finnestdb/corpus_pipeline/internal/sources"
 )
 
-// extractVRT handles VRT format (Vertical Text — used by IMS Corpus
+// extractVRT handles VRT format (Vertical Text - used by IMS Corpus
 // Workbench, Yle Kielipankki, etc.). Format:
 //
 //   <text id="..." date="..." ...>
@@ -175,7 +175,7 @@ func extractVRTStream(rc io.Reader, slug, zipEntryName, rawPath string, textW *b
 				currentSentTokens = currentSentTokens[:0]
 				continue
 			}
-			// Other tags (paragraph, head, etc.) — ignore
+			// Other tags (paragraph, head, etc.) - ignore
 			continue
 		}
 		// Blank line: end of sentence

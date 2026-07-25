@@ -15,7 +15,7 @@ import (
 
 // extractHuggingFace handles HuggingFace dataset dumps. Two formats
 // supported:
-//   - JSONL (.jsonl, .jsonl.gz) — one record per line
+//   - JSONL (.jsonl, .jsonl.gz) - one record per line
 //   - Plain text (.txt, .txt.gz)
 //
 // For JSONL, the manifest's notes can specify which fields to use:
@@ -168,7 +168,7 @@ func assembleHFText(obj map[string]any, fields []string) string {
 		}
 		return strings.Join(parts, "\n")
 	}
-	// No hint — pick longest string field
+	// No hint - pick longest string field
 	var bestK string
 	var bestV string
 	for k, v := range obj {

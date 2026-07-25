@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 // Ported Claude Design "Aalto edition" landing (design/aalto-landing.jsx).
 // These specs encode WHY the port matters: the owner's verdict was that
-// "nothing has been carried through from the design prototype" — so they pin
+// "nothing has been carried through from the design prototype" - so they pin
 // the exact hero wording, the truthful eyebrow, the freemium band, and the
 // real demo-chip wiring against the anonymous /api/demo/text allowlist, so a
 // regression that drops the prototype look/behaviour fails a test.
@@ -32,7 +32,7 @@ test('hero reads the exact ported wording with italic-blue Suomi / Eesti', async
   // Owner-override subtitle verbatim, plus the quieter sign-in parenthetical.
   const sub = page.locator('.hero-subtitle.hero-sub');
   await expect(sub).toContainText(
-    'Drop in any Finnish or Estonian text — news, a chapter, a conversation. Learn it in context. Enjoy reading the article smoothly.',
+    'Drop in any Finnish or Estonian text - news, a chapter, a conversation. Learn it in context. Enjoy reading the article smoothly.',
   );
   await expect(sub.locator('.hero-sub-quiet')).toHaveText(
     '(sign in to export, create, sync and review your flashcards)',
@@ -59,13 +59,70 @@ test('freemium band renders i / ii / iii with the truth-adjusted wording', async
   await expect(cells).toHaveCount(3);
   // Cell i: the 300k / no-login claim is now TRUE (anon cap is 300,000).
   await expect(cells.nth(0)).toContainText('Up to 300k characters per paste. No login.');
-  // Cell ii: verbatim prototype "Copy or download" — made true by the anon
+  // Cell ii: verbatim prototype "Copy or download" - made true by the anon
   // export controls exercised in the results test below.
   await expect(cells.nth(1)).toContainText('Copy or download');
   await expect(cells.nth(1)).toContainText('Word list as plain text or CSV');
   // Cell iii: "Free Google sign-in" → "Free sign-up." (OAuth not shipped).
   await expect(cells.nth(2)).toContainText('Free sign-up.');
   await expect(cells.nth(2)).not.toContainText(/Google/i);
+});
+
+test('desktop hero copy and parser use the full landing content width', async ({ page }) => {
+  await mockAnonMe(page);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto('/');
+
+  // The owner expects the subtitle and parse box to span the same landing
+  // column as the blue three-step band, rather than looking like a narrow
+  // left-aligned slice of it.
+  const [subtitle, form, strip] = await Promise.all([
+    page.locator('.hero-subtitle.hero-sub').boundingBox(),
+    page.locator('#landing-form').boundingBox(),
+    page.locator('.freemium-strip').boundingBox(),
+  ]);
+  expect(subtitle).not.toBeNull();
+  expect(form).not.toBeNull();
+  expect(strip).not.toBeNull();
+  expect(subtitle!.width).toBeCloseTo(strip!.width, 0);
+  expect(form!.width).toBeCloseTo(strip!.width, 0);
+});
+
+test('About uses the same hero typography and omits design-only labels', async ({ page }) => {
+  await mockAnonMe(page);
+  for (const skin of ['aalto', 'ink']) {
+    await page.goto('/');
+    await page.evaluate((selectedSkin) => {
+      localStorage.setItem('skin', selectedSkin);
+      localStorage.setItem('theme', 'light');
+    }, skin);
+    await page.reload();
+
+    await expect(page.locator('.aalto-mark')).toHaveCount(0);
+    await expect(page.locator('.colophon')).toHaveCount(0);
+
+    const homeType = await page.locator('.hero-title.hero-h').evaluate((el) => {
+      const style = getComputedStyle(el);
+      return [style.fontFamily, style.fontSize, style.fontWeight, style.letterSpacing, style.lineHeight];
+    });
+    const homeLedeType = await page.locator('.hero-subtitle.hero-sub').evaluate((el) => {
+      const style = getComputedStyle(el);
+      return [style.fontFamily, style.fontSize, style.fontWeight, style.lineHeight];
+    });
+
+    await page.goto('/#/about');
+    const aboutType = await page.locator('.about-hero h1').evaluate((el) => {
+      const style = getComputedStyle(el);
+      return [style.fontFamily, style.fontSize, style.fontWeight, style.letterSpacing, style.lineHeight];
+    });
+    const aboutLedeType = await page.locator('.about-lede').evaluate((el) => {
+      const style = getComputedStyle(el);
+      return [style.fontFamily, style.fontSize, style.fontWeight, style.lineHeight];
+    });
+
+    expect(aboutType).toEqual(homeType);
+    expect(aboutLedeType).toEqual(homeLedeType);
+  }
 });
 
 test('demo chips load real embedded texts, fill the box, and set the language', async ({ page }) => {
@@ -127,7 +184,7 @@ test('anonymous results expose copy + download-CSV export (freemium cell ii is t
   expect(csv).toContain('"warm"');
 });
 
-// Mobile: the landing must be clean at 375 px — decorations hide, no overflow.
+// Mobile: the landing must be clean at 375 px - decorations hide, no overflow.
 test('landing is clean at 375 px with decorations hidden and no horizontal overflow', async ({ page }) => {
   await mockAnonMe(page);
   await page.setViewportSize({ width: 375, height: 812 });
@@ -135,8 +192,7 @@ test('landing is clean at 375 px with decorations hidden and no horizontal overf
 
   await expect(page.locator('.hero-title.hero-h')).toBeVisible();
   await expect(page.locator('.freemium-strip')).toBeVisible();
-  // The birch wordmark + vase silhouette are desktop-only decorations.
-  await expect(page.locator('.aalto-mark')).toBeHidden();
+  // The vase silhouette is a desktop-only decoration.
   await expect(page.locator('.vase-svg')).toBeHidden();
 
   const overflow = await page.evaluate(

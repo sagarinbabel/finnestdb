@@ -91,7 +91,7 @@ func extractMDLingQ(dir string, m sources.Manifest) error {
 
 // looksEstonian returns true if the line has any of the Estonian-marker
 // characters or has a high enough fraction of non-ASCII letters to be
-// likely-Estonian. Tolerant — better to keep an English line that slipped
+// likely-Estonian. Tolerant - better to keep an English line that slipped
 // through than drop a real Estonian sentence.
 func looksEstonian(s string) bool {
 	for _, r := range s {

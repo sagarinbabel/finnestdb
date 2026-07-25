@@ -256,7 +256,7 @@ func (p *persistentExternalCommand) withContext(action string, err error) error 
 	// When the child died (typical when its stdin/stdout pipes return EOF),
 	// `cmd.Wait()` in our goroutine drains and closes the stderr pipe before
 	// it publishes on `done`. We need that drain to finish before we read
-	// `p.stderr` — otherwise the fallback heuristic in isUnsupportedServerMode
+	// `p.stderr` - otherwise the fallback heuristic in isUnsupportedServerMode
 	// gets a bare "read response: EOF" with no "unrecognized arguments"
 	// detail, and the legacy one-shot fallback never fires.
 	//

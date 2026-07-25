@@ -22,7 +22,7 @@ const MaxTextChars = 1_500_000
 // Convention: YYYY.MM.DD followed by a lowercase iteration letter that maps
 // 1:1 to the dated entries in docs/PARSER_EVOLUTION.md (e.g. 2026.05.07j ↔
 // §2026-05-07j). For the SemVer-style `parser-vN` scheme used in
-// docs/SYSTEM_VERSIONING.md, see that doc — they are the same idea expressed
+// docs/SYSTEM_VERSIONING.md, see that doc - they are the same idea expressed
 // at different granularities, and SYSTEM_VERSIONING.md tracks the mapping.
 const ParserVersion = "2026.05.15b"
 
@@ -61,7 +61,7 @@ type ChapterInput struct {
 // ChapterResult is the per-chapter rollup the server returns alongside the
 // whole-book aggregation. The client uses TokenCount/LemmaCount for sidebar
 // labels and switches the displayed words list to Words when the user clicks
-// a chapter row — no extra HTTP needed.
+// a chapter row - no extra HTTP needed.
 type ChapterResult struct {
 	Title            string      `json:"title"`
 	CharCount        int         `json:"char_count"`
@@ -203,7 +203,7 @@ func Analyze(db *store.DB, lang, text, parserName string) (*ParseResult, error) 
 // (typically from the EPUB import flow). Each chapter is sent through the
 // analyzer separately so its sentences can be tagged with chapter_idx, but
 // the dictionary lookup, gloss lookup, and word enrichment passes happen
-// once across the whole book — collapsing N+1 HTTP round-trips down to one.
+// once across the whole book - collapsing N+1 HTTP round-trips down to one.
 // Per-chapter Words are computed by re-enriching each chapter's sentence
 // subset so the client can swap views without firing extra requests.
 func AnalyzeChapters(db *store.DB, lang string, chapters []ChapterInput, parserName string) (*ParseResult, error) {
@@ -420,7 +420,7 @@ func computeChapterResults(chapters []ChapterInput, sentences []SentenceResult, 
 // pipeline uses. Returns "" for null/empty/non-object payloads. Keys are
 // emitted in alphabetical order to match UD convention so equality checks
 // against gold strings are stable. Multi-value attributes (e.g. arrays) are
-// joined with "," — also UD convention.
+// joined with "," - also UD convention.
 func featsFromJSON(raw []byte) string {
 	if len(raw) == 0 {
 		return ""

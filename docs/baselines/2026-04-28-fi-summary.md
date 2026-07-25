@@ -1,4 +1,4 @@
-# Finnish Parser Baseline — 2026-04-28
+# Finnish Parser Baseline - 2026-04-28
 
 First frozen baseline after **B1** (gold-data expansion to 108 cases).
 Run on `claude/finalize-jpdb-clone-bdGL0` with the kaikki.org Finnish
@@ -25,7 +25,7 @@ dictionary imported (12.2M forms, 145K lemmas).
 2. **Grammar accuracy is 0% across the board.** The case-suffix
    enrichment rule does fire for novel inflected forms, but at 99%
    dict coverage the dict already returns the correct lemma and POS
-   without going through suffix-stripping — so no `grammar_label` is
+   without going through suffix-stripping - so no `grammar_label` is
    emitted. The eval only credits grammar when the parser produces a
    label, so this rounds to zero. Two ways to fix this in a later
    pass:
@@ -41,14 +41,14 @@ dictionary imported (12.2M forms, 145K lemmas).
 
 4. **fi-grammar-v1 has surprisingly high lemma accuracy (96.8%)**
    even on basic. This says the dict already covers most of the
-   grammatical phenomena directly — this dataset is a good ceiling
+   grammatical phenomena directly - this dataset is a good ceiling
    indicator, not a stress test for enrichment.
 
 ## Files
 
-- `2026-04-28-fi-core-v1.json.gz` — raw report
-- `2026-04-28-fi-manual-v1.json.gz` — raw report
-- `2026-04-28-fi-grammar-v1.json.gz` — raw report
+- `2026-04-28-fi-core-v1.json.gz` - raw report
+- `2026-04-28-fi-manual-v1.json.gz` - raw report
+- `2026-04-28-fi-grammar-v1.json.gz` - raw report
 
 ## Reproduction
 

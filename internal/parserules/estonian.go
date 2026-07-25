@@ -6,7 +6,7 @@ package parserules
 //
 // Estonian has the same broad case inventory as Finnish but with shorter
 // endings (no doubled consonants), so longest-first ordering matters even
-// more here — "sse" must come before "s" or it'd be stripped as inessive.
+// more here - "sse" must come before "s" or it'd be stripped as inessive.
 var EstonianCaseSuffixes = []CaseSuffix{
 	{"sse", "illative"},
 	{"st", "elative"},

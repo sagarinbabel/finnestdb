@@ -64,7 +64,7 @@ func parseByteSize(s string) (int64, error) {
 	return n, nil
 }
 
-// formatBytes returns "1.23 GB" / "456 MB" / "789 KB" / "12 B" — always
+// formatBytes returns "1.23 GB" / "456 MB" / "789 KB" / "12 B" - always
 // 1000-based to match the user-facing flag suffixes.
 func formatBytes(n int64) string {
 	switch {
@@ -95,13 +95,13 @@ func formatBytes(n int64) string {
 // would add to the file. If that fits under the budget, we copy the
 // encoded bytes verbatim to the underlying buffered writer and update
 // the running counter. If it doesn't fit, we drop the row and stop
-// accepting more. No file truncation — the file always ends on a row
+// accepting more. No file truncation - the file always ends on a row
 // boundary. The previous "estimate + os.File.Truncate" path could cut
 // mid-row when the estimate underran (csv quoting on tab-bearing
 // fields), corrupting the final TSV; that's gone.
 //
 // Per-row encoding cost: ~one extra small alloc per row plus a memcpy.
-// On 70 M ET sentences this is in the seconds, not minutes — well
+// On 70 M ET sentences this is in the seconds, not minutes - well
 // worth the corruption-proofing.
 
 type cappedTSVWriter struct {
@@ -150,7 +150,7 @@ func newCappedTSVWriter(path string, header []string, budget int64) (*cappedTSVW
 }
 
 // encodeRow runs the row through the private csv.Writer and returns the
-// encoded bytes (a slice into the probe buffer — must be consumed before
+// encoded bytes (a slice into the probe buffer - must be consumed before
 // the next encode). Returns false on csv.Writer failure.
 func (w *cappedTSVWriter) encodeRow(row []string) ([]byte, bool) {
 	w.probeBuf.Reset()

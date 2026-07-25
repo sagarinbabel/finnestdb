@@ -141,7 +141,7 @@ func main() {
 // for each parser in the report. Pulled out so the main path stays readable
 // and a future caller (e.g. a CI step that wants the markdown without
 // re-running the evaluator) can reuse it. The file mirrors the JSON report's
-// stratification data — re-running parsertest with -stratified is the only
+// stratification data - re-running parsertest with -stratified is the only
 // way to refresh it.
 func writeStratifiedSidecar(path string, report *eval.Report) error {
 	f, err := os.Create(path)
@@ -150,7 +150,7 @@ func writeStratifiedSidecar(path string, report *eval.Report) error {
 	}
 	defer f.Close()
 
-	fmt.Fprintf(f, "# Stratified eval — %s (%s)\n\n", report.Dataset.Name, report.Dataset.Language)
+	fmt.Fprintf(f, "# Stratified eval - %s (%s)\n\n", report.Dataset.Name, report.Dataset.Language)
 	fmt.Fprintf(f, "Run: %s · Generated: %s\n", report.RunID, report.Generated)
 	if report.GitCommit != "" {
 		fmt.Fprintf(f, " · Commit: `%s`", report.GitCommit)

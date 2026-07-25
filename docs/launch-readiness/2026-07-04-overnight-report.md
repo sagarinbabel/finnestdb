@@ -1,4 +1,4 @@
-# Overnight Launch-Gate Run — 2026-07-04
+# Overnight Launch-Gate Run - 2026-07-04
 
 Audience: Sagar and Michael. This is the "what happened while you slept"
 report and the go-live handoff. Everything below is merged to `main` and CI-green
@@ -10,8 +10,8 @@ report and the go-live handoff. Everything below is merged to `main` and CI-gree
 | PR | What | Gate |
 |---|---|---|
 | [#250](https://github.com/sagarinbabel/finnestdb/pull/250) | 2026-07-03 product-readiness grill promoted into durable docs (CONTEXT.md, Decisions 23–29, alpha gates, go/no-go rubric, FinnEst naming), reconciled with the merged launch stack | Documentation consolidation, brand pass |
-| [#251](https://github.com/sagarinbabel/finnestdb/pull/251) | `docs/FOR_MICHAEL.md` — local run/test path + question→doc routing table; GETTING_STARTED refresh | Handoff |
-| [#252](https://github.com/sagarinbabel/finnestdb/pull/252) | FI/ET journey-first parity audit — **conditional pass**, full parity in every exercised learner journey | FI/ET equal status |
+| [#251](https://github.com/sagarinbabel/finnestdb/pull/251) | `docs/FOR_MICHAEL.md` - local run/test path + question→doc routing table; GETTING_STARTED refresh | Handoff |
+| [#252](https://github.com/sagarinbabel/finnestdb/pull/252) | FI/ET journey-first parity audit - **conditional pass**, full parity in every exercised learner journey | FI/ET equal status |
 | [#253](https://github.com/sagarinbabel/finnestdb/pull/253) | Flag-only parser feedback (Phase 1b): report "this looks wrong" without proposing a fix; no lexical writeback until an admin supplies a concrete correction | Parser feedback |
 | [#254](https://github.com/sagarinbabel/finnestdb/pull/254) | First-experience RC pack skeleton: shared manifest, Go runner, Playwright spec, `make first-experience-rc` | First-experience bar |
 | [#255](https://github.com/sagarinbabel/finnestdb/pull/255) | Anonymous parser demo: landing paste→parse→explore, `FINNESTDB_ANON_MAX_CHARS` (20k default) enforced pre-parse, signup ribbon | Anonymous demo |
@@ -35,40 +35,40 @@ behavior · known-word import docs · production safety.
 Open (all with concrete remaining steps, none blocked on code that doesn't
 exist):
 
-1. **First-experience quality bar** — RC skeleton runs; pending cases:
-   anonymous-demo FI/ET (surface now exists — unskip is a small follow-up),
+1. **First-experience quality bar** - RC skeleton runs; pending cases:
+   anonymous-demo FI/ET (surface now exists - unskip is a small follow-up),
    known-word-import FI/ET, parser-feedback ET. Final RC pass + manual
    walkthrough is the launch decision itself.
-2. **1,000-concurrent target** — re-run `cmd/loadtest` on the production host;
+2. **1,000-concurrent target** - re-run `cmd/loadtest` on the production host;
    wire parser latency/rejection into monitoring.
-3. **Embedded catalog** — full 36-text matrix + human difficulty sanity-check.
-4. **Review readiness** — staging validation with seeded histories, then flip
+3. **Embedded catalog** - full 36-text matrix + human difficulty sanity-check.
+4. **Review readiness** - staging validation with seeded histories, then flip
    `FINNESTDB_FSRS_ENABLED`.
-5. **Surface-first learner model** — known-vocabulary table (cards are done).
-6. **Ambiguous meaning flow** — needs the Finnish-first ambiguity eval slice
+5. **Surface-first learner model** - known-vocabulary table (cards are done).
+6. **Ambiguous meaning flow** - needs the Finnish-first ambiguity eval slice
    first; deliberately not attempted overnight.
 
 ## Human actions needed (the go-live checklist for you two)
 
-1. **Michael — run it locally**: follow [`docs/FOR_MICHAEL.md`](../FOR_MICHAEL.md)
+1. **Michael - run it locally**: follow [`docs/FOR_MICHAEL.md`](../FOR_MICHAEL.md)
    top to bottom. It was written tonight for exactly this.
-2. **Michael — deploy**: execute [`docs/DEPLOYMENT.md`](../DEPLOYMENT.md) on the
+2. **Michael - deploy**: execute [`docs/DEPLOYMENT.md`](../DEPLOYMENT.md) on the
    host. Note the new env vars (`FINNESTDB_ANON_MAX_CHARS`,
    `FINNESTDB_PARSER_MAX_CONCURRENCY`, `FINNESTDB_PARSER_QUEUE_TIMEOUT_MS`,
-   `FINNESTDB_FSRS_ENABLED` — leave FSRS off at first deploy) and the seeding
+   `FINNESTDB_FSRS_ENABLED` - leave FSRS off at first deploy) and the seeding
    steps: `make import-gold-surfaces` + `cmd/seedcolddeck` for both languages
    (**this closes ledger item PARITY-1**).
-3. **Michael — production load re-run**: `cmd/loadtest` against the real host
+3. **Michael - production load re-run**: `cmd/loadtest` against the real host
    per [`2026-07-04-load-test.md`](2026-07-04-load-test.md).
-4. **Sagar — catalog sanity-check (FI)** and find an **Estonian reviewer (ET)**:
+4. **Sagar - catalog sanity-check (FI)** and find an **Estonian reviewer (ET)**:
    six texts await `difficulty_review` sign-off; ET Gutenberg is effectively
    empty, so sourcing more real published ET texts is an open question.
-5. **Sagar — parity-audit QA account**: user 28
+5. **Sagar - parity-audit QA account**: user 28
    (`parity-audit-2026-07-04@example.test`, admin) plus probe rows are in the
-   local DB — keep as a standing QA account or delete per the audit's cleanup
+   local DB - keep as a standing QA account or delete per the audit's cleanup
    appendix.
-6. **Sagar — parser baseline re-freeze** (maintainer-local FST tables needed).
-7. **Both — the launch call**: run `make first-experience-rc`, do the manual
+6. **Sagar - parser baseline re-freeze** (maintainer-local FST tables needed).
+7. **Both - the launch call**: run `make first-experience-rc`, do the manual
    walkthrough in `GO_LIVE_CHECKLIST.md`, grade findings, and apply the
    go/no-go rubric.
 

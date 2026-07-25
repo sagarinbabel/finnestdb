@@ -1,4 +1,4 @@
-# Estonian Parser Baseline — 2026-05-06
+# Estonian Parser Baseline - 2026-05-06
 
 Refresh of [`2026-04-28-et-summary.md`](2026-04-28-et-summary.md) on
 current `main` (commit `46d8b77`). Captures the post-Ekilex state and
@@ -45,7 +45,7 @@ the other way. Net: 12 tokens worse on basic.
 `internal/store/dict.go BatchLookupForms` uses a single-row `QueryRow`
 against `forms`. With the multi-lemma PK
 `(form, lang, lemma, pos)` and Ekilex contributing many homonym
-candidates, the lookup now returns "an arbitrary candidate" — and the
+candidates, the lookup now returns "an arbitrary candidate" - and the
 arbitrary one is often wrong. Pattern from the regressed cases:
 
 | Surface | Wanted | Got | Sense |
@@ -57,7 +57,7 @@ arbitrary one is often wrong. Pattern from the regressed cases:
 | `naeris` | `naerma`/VERB ("laughed") | `naeris`/NOUN | Noun homonym wins |
 | `keelt` | `keel`/NOUN ("language") | `kee`/NOUN | Different lemma form wins |
 
-Most of these are PROPN winning over NOUN — Estonian place names share
+Most of these are PROPN winning over NOUN - Estonian place names share
 inflected forms with common nouns, and the Ekilex bulk drop adds the
 proper-noun candidates.
 
@@ -74,7 +74,7 @@ trades coverage gains for accuracy losses.
 Two compounding issues:
 
 1. **`cmd/importekilexdetails` does not set the row-level `source` /
-   `source_priority` columns** on the lemmas/forms it inserts —
+   `source_priority` columns** on the lemmas/forms it inserts -
    only `dict_metadata`. All ET rows currently have `source=''`,
    `source_priority=0`. Even if the read path ranked by priority,
    it would have nothing to rank by.
@@ -95,14 +95,14 @@ Both need fixing before Phase 4. Suggested follow-up PR (call it
 
 ## Standing observations
 
-- **Grammar accuracy is 0%.** Same as Finnish — no source populates
+- **Grammar accuracy is 0%.** Same as Finnish - no source populates
   `feats` yet. Ekilex's morph codes are present in `data/ekilex/forms/`
   but the importer drops them rather than mapping into UD features.
   Worth picking up either alongside PR 0.5 or in parallel with the FI
   Phase 4 (Voikko) work.
 - **Coverage is ~100%** post-Ekilex. The bulk drop covers more than
   the gold set has cases for. Coverage is no longer the bottleneck for
-  Estonian — accuracy is.
+  Estonian - accuracy is.
 
 ## Measured throughput
 
@@ -117,7 +117,7 @@ single-threaded, warm cache) gives:
 | et-manual-v1 (4)   | basic   | 0.196 / 0.150 / 0.436 | 15.3k | 134k |
 | et-manual-v1       | custom  | 0.201 / 0.138 / 0.435 | 14.9k | 130k |
 
-`et-grammar-v1` clusters around **45–50k words/s** — same regime as
+`et-grammar-v1` clusters around **45–50k words/s** - same regime as
 the Finnish baselines. `et-manual-v1` is ~3× slower because its few
 cases contain the longest sentences in the eval corpus and all of
 the unresolved-token fallback paths fire on them; with only four
@@ -139,7 +139,7 @@ export DYLD_LIBRARY_PATH="$(pwd)/parser/target/release:$DYLD_LIBRARY_PATH"
 make import-dict-fi
 make import-dict-et
 make import-ekilex-et
-make import-ekilex-details-et   # the post-#78 piece — without this, ET coverage stays ~93%
+make import-ekilex-details-et   # the post-#78 piece - without this, ET coverage stays ~93%
 
 for ds in et-grammar-v1 et-manual-v1; do
   go run ./cmd/parsertest \

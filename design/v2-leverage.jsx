@@ -1,7 +1,7 @@
 /* global React, FED_DATA */
 
-// Plausible inflected forms + total possible cases per lemma — for the "forms seen" column.
-// Each form has its own learning status (known/learning/new) — learners study them as separate cards.
+// Plausible inflected forms + total possible cases per lemma - for the "forms seen" column.
+// Each form has its own learning status (known/learning/new) - learners study them as separate cards.
 // In Finnish/Estonian, nouns have ~14 cases × sg/pl; verbs have many tense/person combos.
 const FORMS_DATA = {
   "olla":     { total: 28, forms: [
@@ -72,7 +72,7 @@ function LeverageViewV2() {
       <div className="page-head">
         <div>
           <h1>Leverage</h1>
-          <div className="sub">Words ranked by how often they appear across your decks — learn these first for the biggest comprehension jump.</div>
+          <div className="sub">Words ranked by how often they appear across your decks - learn these first for the biggest comprehension jump.</div>
         </div>
         <div className="actions">
           <button className="btn">Add top 10 to queue</button>
@@ -131,7 +131,7 @@ function LeverageViewV2() {
                   <td>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                       {fd.forms.map(x => (
-                        <span key={x.f} className={`form-pill ${x.s}`} title={`${x.s} — click to study`}>
+                        <span key={x.f} className={`form-pill ${x.s}`} title={`${x.s} - click to study`}>
                           <span className="form-dot" />
                           {x.f}
                         </span>

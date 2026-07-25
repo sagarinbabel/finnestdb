@@ -7,7 +7,7 @@ package parserules
 // Stripping logic (applied by store.tryStripPossessive):
 //
 //	form → strip suffix → re-look up stripped form in forms table.
-//	Accept only if the stripped form IS in the forms table — this gives us
+//	Accept only if the stripped form IS in the forms table - this gives us
 //	dictionary validation. Otherwise reject and keep trying.
 //
 // Example: "kirjassani"

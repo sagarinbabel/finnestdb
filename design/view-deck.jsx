@@ -29,7 +29,7 @@ function DeckView({ deckId, onBack }) {
       <div className="page-body" style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 20 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
 
-          {/* Comprehension projection — Surasura-inspired */}
+          {/* Comprehension projection - Surasura-inspired */}
           <div className="panel">
             <div className="panel-head">
               <span className="panel-title">Comprehension projection</span>

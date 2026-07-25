@@ -67,7 +67,7 @@ func TestExtractTextStripsTagsAndDecodesEntities(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExtractTextFromBytes: %v", err)
 	}
-	if !strings.Contains(text, "Hello world & goodbye — ok.") {
+	if !strings.Contains(text, "Hello world & goodbye - ok.") {
 		t.Fatalf("entities not decoded:\n%s", text)
 	}
 	if strings.Contains(text, "var x = 1") || strings.Contains(text, "color: blue") {
@@ -137,7 +137,7 @@ func TestNaturalLessOrdersNumericSuffixes(t *testing.T) {
 }
 
 func TestExtractChaptersUsesSpineOrder(t *testing.T) {
-	// Filenames sort 1, 10, 11, 2 naturally — but the spine declares a
+	// Filenames sort 1, 10, 11, 2 naturally - but the spine declares a
 	// different order. Verify the spine wins.
 	container := `<?xml version="1.0"?><container><rootfiles>
 		<rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
@@ -183,7 +183,7 @@ func TestExtractChaptersUsesSpineOrder(t *testing.T) {
 }
 
 func TestExtractChaptersFallsBackWithoutContainerXML(t *testing.T) {
-	// No META-INF/container.xml at all — natural-sort fallback should kick in.
+	// No META-INF/container.xml at all - natural-sort fallback should kick in.
 	data := buildEPUB(t, map[string]string{
 		"OEBPS/Text/ch10.xhtml": `<html><body><h1>Ten</h1><p>Ten.</p></body></html>`,
 		"OEBPS/Text/ch2.xhtml":  `<html><body><h1>Two</h1><p>Two.</p></body></html>`,
@@ -244,7 +244,7 @@ func TestExtractMetadataMissingOPF(t *testing.T) {
 func TestExtractChaptersDropsHeadTitleAndDRMFile(t *testing.T) {
 	data := buildEPUB(t, map[string]string{
 		"OEBPS/Text/ch1.xhtml":               `<html><head><title>filename-leak</title></head><body><h1>Chapter One</h1><p>Body sentence.</p></body></html>`,
-		"OEBPS/rrOwnerInfo/rrOwnerInfo.html": `<html><body><p>iBooks DRM marker — should not appear.</p></body></html>`,
+		"OEBPS/rrOwnerInfo/rrOwnerInfo.html": `<html><body><p>iBooks DRM marker - should not appear.</p></body></html>`,
 	})
 
 	chapters, err := ExtractChaptersFromBytes(data)

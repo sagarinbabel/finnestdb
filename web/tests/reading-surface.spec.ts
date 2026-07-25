@@ -262,7 +262,7 @@ test('anonymous Read popover shows gloss only with a sign-in nudge, no actions',
   await page.locator('#landing-submit').click();
   await expect(page.locator('#results-page')).toHaveClass(/active/);
 
-  // Neutral coloring — no learner state exists for anonymous parses.
+  // Neutral coloring - no learner state exists for anonymous parses.
   await expect(page.locator('.read-token', { hasText: 'Kissa' })).toHaveClass(/is-neutral/);
 
   await page.locator('.read-token', { hasText: 'juoksee' }).click();

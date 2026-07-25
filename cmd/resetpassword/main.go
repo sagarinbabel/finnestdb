@@ -1,7 +1,7 @@
 // Command resetpassword is the operator-side password tool for the alpha,
 // where no self-service reset flow exists yet. It sets (or generates) a new
 // password for an account, revokes the account's active sessions, and can
-// pre-register accounts before public launch — which is how FINNESTDB_ADMIN_EMAILS
+// pre-register accounts before public launch - which is how FINNESTDB_ADMIN_EMAILS
 // addresses must be claimed, since that env var grants admin to whoever
 // registers the email first.
 //

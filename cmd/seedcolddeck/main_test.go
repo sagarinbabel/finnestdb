@@ -94,7 +94,7 @@ func newSeedTestDB(t *testing.T) (*store.DB, *store.User) {
 // path: a prior official deck with the same title+lang is deleted (through
 // DeleteDeck, so occurrence/sentences/subscriptions go with it) before the
 // caller reseeds, so re-running seedcolddeck with -replace never leaves two
-// "Top 1000 Finnish words" decks around — the operator pain this flag exists
+// "Top 1000 Finnish words" decks around - the operator pain this flag exists
 // to fix.
 func TestHandleExistingOfficialDeckReplaceDeletesPriorDeck(t *testing.T) {
 	db, owner := newSeedTestDB(t)
@@ -123,8 +123,8 @@ func TestHandleExistingOfficialDeckReplaceDeletesPriorDeck(t *testing.T) {
 }
 
 // TestHandleExistingOfficialDeckWithoutReplaceWarnsAndKeepsDuplicateRisk
-// proves the default (non -replace) path leaves the prior deck untouched —
-// only a loud warning is logged — matching the documented "print a loud
+// proves the default (non -replace) path leaves the prior deck untouched -
+// only a loud warning is logged - matching the documented "print a loud
 // warning" behavior so operators who forget the flag are told immediately
 // instead of silently ending up with the FIN duplicate-deck bug this task
 // fixes.
@@ -151,8 +151,8 @@ func TestHandleExistingOfficialDeckWithoutReplaceWarnsAndKeepsDuplicateRisk(t *t
 	}
 }
 
-// TestHandleExistingOfficialDeckNoPriorDeckIsANoop proves the common case —
-// first-ever run, no prior deck of this title — takes neither branch and
+// TestHandleExistingOfficialDeckNoPriorDeckIsANoop proves the common case -
+// first-ever run, no prior deck of this title - takes neither branch and
 // returns cleanly regardless of -replace.
 func TestHandleExistingOfficialDeckNoPriorDeckIsANoop(t *testing.T) {
 	db, owner := newSeedTestDB(t)
@@ -174,8 +174,8 @@ func TestHandleExistingOfficialDeckNoPriorDeckIsANoop(t *testing.T) {
 // TestSeedWithExamplesArtifactReachesReviewPayload is the end-to-end proof
 // that the real, checked-in fi-examples-v1.tsv (the artifact
 // docs/DEPLOYMENT.md and docs/FOR_MICHAEL.md tell operators to pass via
-// -examples) survives the full seedcolddeck pipeline — TopLemmas ranking,
-// LoadExamples, buildDeckSentences, CreateDeckWithSentencesOptions — and
+// -examples) survives the full seedcolddeck pipeline - TopLemmas ranking,
+// LoadExamples, buildDeckSentences, CreateDeckWithSentencesOptions - and
 // comes back out of GetNextReviewCard (what /api/review/next serves) as the
 // card's sentence text with the corpus-inflected surface form, not just the
 // bare lemma. Uses a temp-file DB seeded with only the forms/lemmas this test
@@ -228,7 +228,7 @@ func TestSeedWithExamplesArtifactReachesReviewPayload(t *testing.T) {
 		t.Fatalf("GetNextReviewCard: %v", err)
 	}
 	if card == nil {
-		t.Fatal("GetNextReviewCard returned nil — expected the seeded olla card")
+		t.Fatal("GetNextReviewCard returned nil - expected the seeded olla card")
 	}
 	if card.SentenceText != wantExample.Sentence {
 		t.Fatalf("card.SentenceText=%q, want the curated corpus sentence %q", card.SentenceText, wantExample.Sentence)

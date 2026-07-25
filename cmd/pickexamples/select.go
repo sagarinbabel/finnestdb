@@ -51,7 +51,7 @@ var (
 	digitRe = regexp.MustCompile(`[0-9]`)
 	urlRe   = regexp.MustCompile(`(?i)https?://|www\.|\.com|\.net|\.org`)
 	// speakerColonRe catches subtitle speaker labels like "MIES:" or "Anna:"
-	// at the start of a sentence — a transcript artifact, not natural prose.
+	// at the start of a sentence - a transcript artifact, not natural prose.
 	speakerColonRe = regexp.MustCompile(`^\s*\p{L}[\p{L}\s]*:`)
 	// midWordCapRe catches OCR / subtitle noise where an uppercase letter sits
 	// inside a word after a lowercase one ("mItä", "aIka", "vaI"). Real Finnish
@@ -61,7 +61,7 @@ var (
 	// dialogueJoinRe catches subtitle line joins where two lines merged into one
 	// "sentence" ("...hautajaisista.- Sinulla on..."): a terminal mark
 	// immediately followed by a dialogue dash.
-	dialogueJoinRe = regexp.MustCompile(`[.!?]\s*[-–—]`)
+	dialogueJoinRe = regexp.MustCompile(`[.!?]\s*[-–-]`)
 )
 
 // terminalPunct are the sentence-ending marks a complete sentence may end on.
@@ -97,7 +97,7 @@ func acceptable(c Candidate, freqRanks map[string]int) (bool, string) {
 
 	// Subtitle artifact: leading dash (dialogue dash). Checked before the
 	// capitalization gate so the more specific reason is reported.
-	if strings.HasPrefix(text, "-") || strings.HasPrefix(text, "–") || strings.HasPrefix(text, "—") {
+	if strings.HasPrefix(text, "-") || strings.HasPrefix(text, "–") || strings.HasPrefix(text, "-") {
 		return false, "leading-dash"
 	}
 
@@ -124,7 +124,7 @@ func acceptable(c Candidate, freqRanks map[string]int) (bool, string) {
 		return false, "unbalanced-quote"
 	}
 
-	// No digits or URLs — both read as noise on a vocabulary card.
+	// No digits or URLs - both read as noise on a vocabulary card.
 	if digitRe.MatchString(text) {
 		return false, "has-digit"
 	}
@@ -242,7 +242,7 @@ func score(c Candidate, freqRanks map[string]int) float64 {
 	if n > 0 {
 		meanRank := sum / n
 		// Scale so readability contributes on the order of a few hundred
-		// points at most — below the non-initial reward, above the tie-break.
+		// points at most - below the non-initial reward, above the tie-break.
 		s += 500 * (1 - meanRank/rareRankFallback)
 	}
 

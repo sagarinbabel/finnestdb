@@ -1,4 +1,4 @@
-# Gloss Coverage Audit — 2026-05-09
+# Gloss Coverage Audit - 2026-05-09
 
 This report measures lexical-source gloss coverage for the corpus wordlists
 under `localdata/{fi,et}-corpus/_derived/`. The before/after split brackets
@@ -11,20 +11,20 @@ roadmap (`corpus_pipeline/docs/PR_ROADMAP.md`).
 left-joins the parser-choice rows against the dictionary DB's `lemmas` table.
 Two metrics:
 
-- **Pair coverage** — distinct `(lemma, pos)` tuples in the wordlist whose
+- **Pair coverage** - distinct `(lemma, pos)` tuples in the wordlist whose
   `lemmas.gloss` is non-empty.
-- **Token coverage** — same join, weighted by each row's
+- **Token coverage** - same join, weighted by each row's
   `surface_count_total`. The user-experience number, since a wordlist row's
   frequency in the corpus is what determines how often a learner actually
   reads the gloss.
 
 Three buckets per metric:
 
-- *with gloss* — corpus pair joined to a dict row whose gloss is non-empty.
-- *in dict, no gloss* — corpus pair has a matching dict row but its gloss is
-  empty. The fillable bucket — meaning data exists somewhere; the import path
+- *with gloss* - corpus pair joined to a dict row whose gloss is non-empty.
+- *in dict, no gloss* - corpus pair has a matching dict row but its gloss is
+  empty. The fillable bucket - meaning data exists somewhere; the import path
   is the bottleneck.
-- *not in dict* — no matching dict row. Compounds, proper nouns, neologisms,
+- *not in dict* - no matching dict row. Compounds, proper nouns, neologisms,
   and FST-generated analyses for surfaces no dictionary lists.
 
 Reproduce:
@@ -47,13 +47,13 @@ go run ./cmd/glosscoverage -lang et -out reports/2026-05-09-coverage-et.json
 `kaikki` source: 259,145 lemmas / 100.00% coverage.
 
 FI is gloss-saturated for the entries the dictionary already lists. The 21.35%
-token gap is entirely "lemma not in dict" — compounds, proper nouns, and
+token gap is entirely "lemma not in dict" - compounds, proper nouns, and
 spurious FST analyses. No existing source fixes that bucket; deferred to a
 future PR (see `corpus_pipeline/docs/MEANING_SOURCES.md`).
 
 The audit produced no changes for FI between the before and after run.
 
-## ET Coverage — Before
+## ET Coverage - Before
 
 | Metric                       | Pairs                | Tokens (occurrences)        |
 |------------------------------|----------------------|-----------------------------|
@@ -73,7 +73,7 @@ The ekilex bulk import was joining only English translations into
 `lemmas.gloss`. Where Ekilex carried Estonian-language definitions but no EN
 translations, the import dropped them. That is the 4.63% token bucket.
 
-## ET Coverage — After
+## ET Coverage - After
 
 After re-running `cmd/importekilexdetails` against the same Ekilex source data
 with the new ET-definitions fallback path:
@@ -94,11 +94,11 @@ By source:
 
 ## What Changed
 
-- Ekilex source coverage rose from 37.84% to 89.13% — 91,316 lemma rows that
+- Ekilex source coverage rose from 37.84% to 89.13% - 91,316 lemma rows that
   previously had empty `gloss` got filled with `[ET] `-prefixed Estonian
   definitions.
 - ET token coverage rose from 73.95% to 78.36% (+4.41 percentage points).
-- The fillable in-dict-no-gloss bucket collapsed from 4.63% to 0.22% — only
+- The fillable in-dict-no-gloss bucket collapsed from 4.63% to 0.22% - only
   ~212k tokens remain in the bucket, all of them entries where Ekilex carries
   neither EN translations nor ET definitions (mostly POS=X invariables and
   abbreviations).
@@ -108,23 +108,23 @@ By source:
   to 319,609 by removing cross-POS leakage). Available for downstream
   consumers (the user-friendly wordlist export, future glossary tools).
 
-The "not in dict" bucket (21.42% of ET tokens, 95.12% of pairs) is unchanged —
+The "not in dict" bucket (21.42% of ET tokens, 95.12% of pairs) is unchanged -
 that gap requires new sources or compound decomposition, both out of scope
 for this PR.
 
-## Re-audit — post code-review fixes (T0054Z)
+## Re-audit - post code-review fixes (T0054Z)
 
 After the second pass of code-review fixes landed three importer changes:
 
-1. **Per-meaning POS attribution** — translations and definitions are now
+1. **Per-meaning POS attribution** - translations and definitions are now
    bucketed by the POS of their own meaning, not flattened across the
    whole entry. Entries whose meanings span multiple parts of speech
    (e.g. `aastatagune` ADJ + NOUN) no longer cross-pollinate.
-2. **Same-source ekilex gloss refresh** — pre-INSERT refresh keyed on
+2. **Same-source ekilex gloss refresh** - pre-INSERT refresh keyed on
    `source = 'ekilex'` rewrites `lemmas.gloss` for already-Ekilex-owned
    rows on every reimport, so it can't drift from the wipe-and-rebuilt
    `translations` / `definitions` tables.
-3. **Word-class fallback for meaningless entries** — entries that arrive
+3. **Word-class fallback for meaningless entries** - entries that arrive
    with zero meanings (or only unmappable ones) but a known
    `word_class` get an empty `(lemma, upos)` row keyed off
    `word_class`, so the form-import path can still attribute the lemma's
@@ -138,7 +138,7 @@ data on a DB seeded with the previous import produced:
   2,598 lemma rows touched (inserted/upgraded)
 159,092 gloss fills (pre-INSERT refresh + post-INSERT empty fill)
 186,494 translation rows
-319,609 definition rows                     (down from 326,349 — cross-POS leakage removed)
+319,609 definition rows                     (down from 326,349 - cross-POS leakage removed)
  78,813 form rows touched
 ```
 
@@ -160,16 +160,16 @@ Snapshots: `reports/2026-05-09-coverage-{fi,et}-after-T0054Z.json`.
 > before joining. The `by_dict_source` rows are wordlist-independent and
 > are the reliable post-fix delta.
 
-## Re-audit — round-4 fix (T0105Z)
+## Re-audit - round-4 fix (T0105Z)
 
 A fourth code-review pass tightened the same-source refresh:
 
-4. **Empty-clear path** — the pre-INSERT refresh used to skip rows
+4. **Empty-clear path** - the pre-INSERT refresh used to skip rows
    whose new gloss was empty, leaving `lemmas.gloss` showing stale
    text after the wipe-and-rebuild of translations / definitions
    produced no replacement (the (lemma, pos) only reached lemmaPOS
    via the word_class fallback). The refresh now fires
-   unconditionally — empty new gloss is a valid update target — and
+   unconditionally - empty new gloss is a valid update target - and
    the WHERE clause adds `COALESCE(gloss, '') <> ?` so the
    `glossFilled` counter only ticks when the value actually changes.
 
@@ -178,7 +178,7 @@ Re-running the importer on the post-T0054Z DB:
 ```
 180,630 unique (lemma, pos) entries
       0 lemma rows touched (no new entries; idempotent on the prior run)
-     27 gloss fills (clears + actual rewrites — no-op same-value updates filtered)
+     27 gloss fills (clears + actual rewrites - no-op same-value updates filtered)
 186,494 translation rows
 319,609 definition rows
       0 form rows touched

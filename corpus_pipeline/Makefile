@@ -95,9 +95,9 @@ fetch-corpus-dry-run:
 #
 # Produces 3 tarballs, since the total ~50-80 GB compressed is impractical
 # as a single file:
-#   finnestdb-bootstrap-code.tgz  — finnestdb.db + small derived files (~2 GB)
-#   finnestdb-bootstrap-fi.tgz    — localdata/fi-corpus/   (~25-40 GB)
-#   finnestdb-bootstrap-et.tgz    — localdata/et-corpus/   (~25-40 GB)
+#   finnestdb-bootstrap-code.tgz  - finnestdb.db + small derived files (~2 GB)
+#   finnestdb-bootstrap-fi.tgz    - localdata/fi-corpus/   (~25-40 GB)
+#   finnestdb-bootstrap-et.tgz    - localdata/et-corpus/   (~25-40 GB)
 #
 # Output land in <repoRoot> next to finnestdb.db.
 
@@ -121,7 +121,7 @@ bootstrap-tarball-code:
 
 # Transfer payload only: final derived artifacts + per-source provenance
 # (manifest.json + documents.jsonl). Excludes scratch DB/WAL/SHM, raw/
-# downloads, extracted text.txt, and per-book/deck derivatives — those
+# downloads, extracted text.txt, and per-book/deck derivatives - those
 # are large and reproducible-from-source, not "data we want to hand off."
 # A teammate can re-fetch raw/ via cmd/fetchcorpus if they need it.
 BOOTSTRAP_EXCLUDES := \
@@ -216,7 +216,7 @@ epub-deck-fi:
 epub-deck-et:
 	go run ./cmd/epubdeck -lang et $(if $(EPUB),-epub "$(EPUB)",)
 
-# ─── enrichcorpus (omorfi/estnltk batch — runs on demand, slow) ─────────
+# ─── enrichcorpus (omorfi/estnltk batch - runs on demand, slow) ─────────
 
 .PHONY: enrich-corpus enrich-corpus-fi enrich-corpus-et
 

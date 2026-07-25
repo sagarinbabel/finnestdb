@@ -231,7 +231,7 @@ func TestCatalogTextUnknownID404(t *testing.T) {
 // The landing demo-text endpoint is intentionally anonymous but restricted to a
 // fixed allowlist of embedded ids (the three "or try →" chips). These tests
 // encode both product guarantees: allowlisted texts serve without auth, and
-// everything else — including real-but-not-allowlisted catalog ids — 404s, so
+// everything else - including real-but-not-allowlisted catalog ids - 404s, so
 // the endpoint can't be used to enumerate the otherwise-private catalog.
 
 func TestDemoTextServesAllowlistedTextsAnonymously(t *testing.T) {
@@ -239,7 +239,7 @@ func TestDemoTextServesAllowlistedTextsAnonymously(t *testing.T) {
 
 	for id := range demoTextAllowlist {
 		req := httptest.NewRequest(http.MethodGet, "/api/demo/text/"+id, nil)
-		// No cookies — anonymous on purpose.
+		// No cookies - anonymous on purpose.
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {

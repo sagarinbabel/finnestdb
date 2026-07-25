@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>finnest — interactive prototype</title>
+<title>finnest - interactive prototype</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500;1,6..72,600&family=Inter+Tight:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
 
      DESIGN SYSTEM (declared up front so we stick to it):
 
-     Palette — light "Paimio" (default):
+     Palette - light "Paimio" (default):
        paper   oklch(0.97 0.012 78)   warm off-white, never pure white
        cream   oklch(0.93 0.022 80)   birch-cream secondary surface
        birch   oklch(0.81 0.060 75)   blond wood accent for sidebars/headers
@@ -21,30 +21,30 @@
        blue    oklch(0.48 0.115 248)  soft Nordic blue (FI/EE shared, dialed back from cobalt)
        blue-2  oklch(0.40 0.130 250)  deeper blue for headlines
        ink     oklch(0.20 0.020 250)  near-black with blue undertone (Estonian black)
-       red-acc oklch(0.55 0.16 30)    rare warm spark — used very sparingly
+       red-acc oklch(0.55 0.16 30)    rare warm spark - used very sparingly
 
-     Palette — dark "Sanatorium":
+     Palette - dark "Sanatorium":
        inverse with deeper blue ground; birch becomes a smoked oak tone
 
      Typography:
-       Newsreader   serif display — Sectra/Tiempos cousin, optical sizing, italics
+       Newsreader   serif display - Sectra/Tiempos cousin, optical sizing, italics
        Inter Tight  UI sans
        IBM Plex Mono code & data
 
      Shape language:
-       12 / 18 / 28 / 999 px radii — gentle, organic
+       12 / 18 / 28 / 999 px radii - gentle, organic
        1px hairlines, no harsh shadows; soft elevation only
        Savoy-vase silhouette as decorative motif (svg)
        Birch panels: 24px-wide vertical band with subtle wood-grain stripes
 
      Variants:
-       restrained — paper + blue accent, birch as single sidebar stripe
-       bolder     — visible birch panels on cards, vase silhouette in hero,
+       restrained - paper + blue accent, birch as single sidebar stripe
+       bolder     - visible birch panels on cards, vase silhouette in hero,
                     vertical "ALVAR AALTO" wordmark, full-bleed blue band
      ───────────────────────────────────────────────────────── */
 
   :root {
-    /* light "Paimio" — default */
+    /* light "Paimio" - default */
     --paper:    oklch(0.970 0.012 78);
     --paper-2:  oklch(0.945 0.018 80);
     --cream:    oklch(0.925 0.025 80);
@@ -151,7 +151,7 @@
   .num  { font-variant-numeric: tabular-nums; }
   .disp { font-family: var(--font-disp); font-feature-settings: "ss01"; }
 
-  /* ─── Birch grain — used as repeating background where wood shows ─── */
+  /* ─── Birch grain - used as repeating background where wood shows ─── */
   .birch-bg {
     background-color: var(--birch);
     background-image:
@@ -354,7 +354,7 @@
     font-weight: 400;
   }
 
-  /* Panels — soft, generous radii, no harsh borders */
+  /* Panels - soft, generous radii, no harsh borders */
   .panel {
     background: var(--bg-raise);
     border: 1px solid var(--line);
@@ -431,7 +431,7 @@
   .page-head .actions { display: flex; gap: 8px; align-items: center; }
   .page-body { padding: 0 40px 80px; }
 
-  /* Tags — softened, no uppercase shouting */
+  /* Tags - softened, no uppercase shouting */
   .tag {
     display: inline-flex;
     align-items: center;
@@ -642,7 +642,7 @@
     font-weight: 400;
   }
 
-  /* Paste box — softer, generous radius */
+  /* Paste box - softer, generous radius */
   .paste-box {
     position: relative;
     background: var(--bg-raise);
@@ -790,7 +790,7 @@
   }
   .demo-chip:hover { border-color: var(--ink); color: var(--ink); background: var(--cream); }
 
-  /* ─── FREEMIUM STRIP — restrained: 3-col plain;
+  /* ─── FREEMIUM STRIP - restrained: 3-col plain;
                            bolder: blue full-bleed band w/ vase ─── */
   .freemium-strip {
     margin-top: 64px;
@@ -927,7 +927,7 @@
 
   .loader { padding: 80px; text-align: center; color: var(--ink-mute); font-family: var(--font-mono); font-size: 12px; }
 
-  /* Aalto colophon — quiet credit at bottom of landing */
+  /* Aalto colophon - quiet credit at bottom of landing */
   .colophon {
     margin-top: 56px;
     padding-top: 24px;

@@ -1,4 +1,4 @@
-# Estonian Parser Baseline + Dictionary Verification — 2026-04-28
+# Estonian Parser Baseline + Dictionary Verification - 2026-04-28
 
 First Estonian baseline measurement after **C1** (gold dataset of
 50 cases) and **C2** (kaikki.org Estonian dictionary import).
@@ -11,7 +11,7 @@ First Estonian baseline measurement after **C1** (gold dataset of
 | FI | 12,262,117 | 145,672 | kaikki.org Finnish dump |
 
 Estonian has **~50× fewer forms** than Finnish in the kaikki.org
-data. This is a real coverage limitation, not a bug — kaikki.org's
+data. This is a real coverage limitation, not a bug - kaikki.org's
 Wiktionary-derived pipeline produces less material for Estonian
 than Finnish. Future Estonian work may need a richer source
 (e.g. EstNLTK lexicons, Sõnaveeb, etc.).
@@ -70,4 +70,4 @@ go run ./cmd/parsertest \
 
 ## Companion files
 
-- `2026-04-28-et-grammar-v1.json.gz` — raw eval report
+- `2026-04-28-et-grammar-v1.json.gz` - raw eval report

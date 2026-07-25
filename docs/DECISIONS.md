@@ -1,8 +1,8 @@
 # Decisions Log
 
-_Reverse-chronological — newest decisions at the top. See [CHANGELOG.md](CHANGELOG.md) for revisions._
+_Reverse-chronological - newest decisions at the top. See [CHANGELOG.md](CHANGELOG.md) for revisions._
 
-> **Note:** DECISIONS.md and CHANGELOG.md overlap by design — CHANGELOG records
+> **Note:** DECISIONS.md and CHANGELOG.md overlap by design - CHANGELOG records
 > *what* changed; DECISIONS records *why* we chose to change it that way.
 > Where a decision and a changelog entry describe the same event, both files
 > cross-link.
@@ -813,7 +813,7 @@ lookup pages for the reported words. The importer behavior is pinned by
 `cmd/importekilexdetails` tests; runtime behavior is pinned by
 `internal/store` and `pkg/lemmatizer-fi-et/lexadverbs` tests.
 
-**See also:** [CHANGELOG.md §2026-05-12 — Source-backed ET learner
+**See also:** [CHANGELOG.md §2026-05-12 - Source-backed ET learner
 cleanup](CHANGELOG.md), [PARSER_EVOLUTION.md §2026-05-12c](PARSER_EVOLUTION.md).
 
 ---
@@ -822,13 +822,13 @@ cleanup](CHANGELOG.md), [PARSER_EVOLUTION.md §2026-05-12c](PARSER_EVOLUTION.md)
 
 FinnEst is a **JPDB clone for Finnish and Estonian**. The core user flow:
 
-1. **Paste text** — User submits Finnish (or Estonian) text
-2. **Parse perfectly** — System extracts lemmas, POS, definitions
-3. **Review word list** — User sees all unique words with meanings
-4. **Mark known/unknown** — User indicates which words they already know
-5. **Create deck** — User saves unknown words as a study deck
-6. **SRS study** — Spaced repetition moves words from "learning" to "known"
-7. **Loop** — Next time user pastes text, known words are dimmed, focus is on new vocabulary
+1. **Paste text** - User submits Finnish (or Estonian) text
+2. **Parse perfectly** - System extracts lemmas, POS, definitions
+3. **Review word list** - User sees all unique words with meanings
+4. **Mark known/unknown** - User indicates which words they already know
+5. **Create deck** - User saves unknown words as a study deck
+6. **SRS study** - Spaced repetition moves words from "learning" to "known"
+7. **Loop** - Next time user pastes text, known words are dimmed, focus is on new vocabulary
 
 The value proposition: **pre-mine vocabulary before reading** so the reading experience
 is more enjoyable and comprehension is higher.
@@ -904,7 +904,7 @@ dictionary or FST analysis was defensibly wrong for a closed-class
 form, a frozen lexicalised adverb, or a known kaikki-import artefact.
 
 The first ship of the PR fired the overlay inside
-`Lemmatizer.Lemmatize` only — but `BatchLookupForms` consults the
+`Lemmatizer.Lemmatize` only - but `BatchLookupForms` consults the
 forms table BEFORE asking the FST, and the dict candidate won the
 merge-layer support-score tiebreak. The overlay was effectively
 dead code on every surface where kaikki had a row. Review feedback
@@ -926,7 +926,7 @@ Two design choices:
    analysis is returned outright and Steps 1 (dict) + 5 (FST) are
    skipped. Source tag `lex-overlay` marks the path for eval
    attribution. Custom-mode-only because the overlay is part of
-   the "custom enhancements" suite — basic-mode baselines stay
+   the "custom enhancements" suite - basic-mode baselines stay
    stable.
 
 2. **Bad-lemma blocklist is two-tiered**:
@@ -934,14 +934,14 @@ Two design choices:
      standalone words. Short fragments (`as`, `taa`, `ku`),
      compound-clip prefixes (`sisä-`, `ylä-`), and documented
      kaikki-import bugs (`poli` as the lemma for poliisi inflected
-     forms). Filtered regardless of surface or parser mode — no
+     forms). Filtered regardless of surface or parser mode - no
      learner asks for the bare surface `sisä-` expecting that
      prefix as the lemma.
    - `badSurfaceLemmaFI` for (surface, lemma) pairs where the
      lemma is legitimate elsewhere but wrong for the specific trap
      surface (`(varsin, varsi)`, `(vuotta, vuo)`,
      `(siitä, siittää)`, etc.). The lemma is preserved for
-     OTHER surfaces — `varsi → varsi/NOUN` keeps working in both
+     OTHER surfaces - `varsi → varsi/NOUN` keeps working in both
      modes.
 
 ### Reasoning
@@ -1000,7 +1000,7 @@ has for a surface form. Wiktionary-imported form-of rows (e.g.
 `olen → "first-person singular present indicative of olema"`) live alongside
 the base lemma (`olema → "be"`) and, until PR #185, both produced their own
 card or word-list entry during deck/parse expansion. Some surfaces also had
-candidates with empty glosses — `liiga/X` next to `liiga/ADV → "too"` — which
+candidates with empty glosses - `liiga/X` next to `liiga/ADV → "too"` - which
 similarly bloated the deck with rows the learner can't act on.
 
 ### Decision
@@ -1014,9 +1014,9 @@ gloss, suppress:
 
 Form-of detection is structural, not substring-based:
 
-- `candidate.Lemma == form` (case-insensitive, trimmed) — Wiktionary form-of
+- `candidate.Lemma == form` (case-insensitive, trimmed) - Wiktionary form-of
   rows are imported with the surface form as their own lemma.
-- Gloss contains no `;` or `,` — form-of glosses are single-clause.
+- Gloss contains no `;` or `,` - form-of glosses are single-clause.
 - Gloss parses as `<allowed morphology terms> of <single-word target>` after
   normalizing `-` and `/` to spaces. The allowed vocabulary covers
   case names, person/number, tense/mood/voice, infinitive/participle/gerund,
@@ -1024,7 +1024,7 @@ Form-of detection is structural, not substring-based:
   bare `form` / `inflection` markers.
 
 When no lexical alternative exists for a surface, all candidates are preserved
-— genuine unresolved / gap cases still surface to the learner.
+- genuine unresolved / gap cases still surface to the learner.
 
 ### Reasoning
 
@@ -1045,7 +1045,7 @@ overview still matches the count of the deck the user would save.
 
 PR [#185](https://github.com/sagarinbabel/finnestdb/pull/185).
 
-**See also:** [CHANGELOG.md §2026-05-12 — Deck/parse low-value dict-alternative
+**See also:** [CHANGELOG.md §2026-05-12 - Deck/parse low-value dict-alternative
 filter (PR #185)](CHANGELOG.md).
 
 ---
@@ -1081,7 +1081,7 @@ redirect rather than mirror.
 
 PR #135.
 
-**See also:** [CHANGELOG.md §2026-05-07 — Runtime docs parity pass](CHANGELOG.md).
+**See also:** [CHANGELOG.md §2026-05-07 - Runtime docs parity pass](CHANGELOG.md).
 
 ---
 
@@ -1091,8 +1091,8 @@ PR #135.
 
 ### Context
 
-We had two lexical-layer plan documents — `docs/LEXICAL_PLAN.md` (FI) and
-`docs/ESTONIAN_LEXICAL_PLAN.md` (ET) — and they had drifted independently.
+We had two lexical-layer plan documents - `docs/LEXICAL_PLAN.md` (FI) and
+`docs/ESTONIAN_LEXICAL_PLAN.md` (ET) - and they had drifted independently.
 The ET plan still recommended a smoke import path (`make
 import-dict-et-ekilex`) that the bulk Ekilex pipeline had superseded.
 
@@ -1105,7 +1105,7 @@ source choices and the EstNLTK adapter contract now live in a section
 
 ### Reasoning
 
-Duplicate plans rot independently. One canonical doc per language pair —
+Duplicate plans rot independently. One canonical doc per language pair -
 shared architecture in the body, language-specific deltas in clearly
 labelled sections.
 
@@ -1113,7 +1113,7 @@ labelled sections.
 
 PR #135.
 
-**See also:** [CHANGELOG.md §2026-05-06 — Lexical pipelines](CHANGELOG.md)
+**See also:** [CHANGELOG.md §2026-05-06 - Lexical pipelines](CHANGELOG.md)
 for the original two-doc landing.
 
 ---
@@ -1126,7 +1126,7 @@ for the original two-doc landing.
 
 Pre-PR-#127, the FST runtime in
 [`pkg/lemmatizer-fi-et/`](../pkg/lemmatizer-fi-et/) was wired in as a
-step-5 fallback only — it fired on dict miss. This made morphology a
+step-5 fallback only - it fired on dict miss. This made morphology a
 fallback rather than an evidence source: the parser couldn't surface FEATS
 for forms whose lemma resolved cleanly through the dict.
 
@@ -1143,7 +1143,7 @@ morphological attributes are visible
 ### Reasoning
 
 Dict-only resolution can't surface FEATS for forms whose lemma resolves
-cleanly through dict — the lemma is right but the morphology bucket is
+cleanly through dict - the lemma is right but the morphology bucket is
 empty. Parallel scoring + candidate merge gives FEATS coverage on dict
 hits without sacrificing dict's lemma accuracy. Per-attribute eval
 prevents silent regressions on individual features (Case, Number, Person,
@@ -1193,11 +1193,11 @@ completion and emits the bootstrap-tar instruction.
 PR #131. See [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md) "Single-folder
 bootstrap rule" section for the full policy and rationale.
 
-**See also:** [CHANGELOG.md §2026-05-07 — Single-folder data root](CHANGELOG.md).
+**See also:** [CHANGELOG.md §2026-05-07 - Single-folder data root](CHANGELOG.md).
 
 ---
 
-## Decision 14: `feats` column not backfilled on existing kaikki.org rows — REVERSED 2026-05-07k
+## Decision 14: `feats` column not backfilled on existing kaikki.org rows - REVERSED 2026-05-07k
 
 **Date:** 2026-05-06 · **Reversed:** 2026-05-07 (PR #139)
 
@@ -1226,11 +1226,11 @@ contribute FEATS.
 The original reasoning was wrong: kaikki form rows DO carry the
 morphology, just not in UD-FEATS shape. Each `forms[]` entry has a
 `Tags []string` field with exactly the lowercase English vocabulary
-that maps deterministically to UD FEATS — `["illative","singular"]`
+that maps deterministically to UD FEATS - `["illative","singular"]`
 → `Case=Ill|Number=Sing`. PR [#139](https://github.com/sagarinbabel/finnestdb/pull/139) implements this projection in
 `cmd/importdict/feats.go::kaikkiTagsToFeats`, covering Case (15 entries),
 Number, Person, Tense, Mood, Voice, VerbForm, Degree, Reflex (lexical-static),
-PronType. The translation is lossless — we're not synthesising FEATS we
+PronType. The translation is lossless - we're not synthesising FEATS we
 can't defend; we're reading the same morphological annotation from a
 different field of the same source.
 
@@ -1311,7 +1311,7 @@ Migrations are infrequent and append-only today.
 ### How to Revisit
 
 When the trigger conditions hit (non-additive migration, merge-conflict
-pressure, rollback need), introduce the real framework as a single PR —
+pressure, rollback need), introduce the real framework as a single PR -
 not lazily alongside a feature.
 
 ---
@@ -1341,7 +1341,7 @@ a layer of indirection without adding signal.
 
 ---
 
-## Decision 10: Adapter packaging — separate cmd/ binaries per rich source
+## Decision 10: Adapter packaging - separate cmd/ binaries per rich source
 
 **Date:** 2026-05-06
 
@@ -1357,11 +1357,11 @@ Each rich source gets its own `cmd/import<source>/` (or
 `cmd/gen<artifact>/`) binary, matching the precedent set when
 `cmd/importekilex/` landed on main:
 
-- `cmd/importkotus/` — Kotus sanalista TSV
-- `cmd/genlemmatizertables/` — generated FST tables (FI smoke today)
-- `cmd/importekilex/` — Ekilex public-headword snapshot
-- `cmd/importekilexdetails/` — bulk Ekilex reduced JSONL
-- `cmd/importdict/` — kaikki.org / Wiktionary (the original)
+- `cmd/importkotus/` - Kotus sanalista TSV
+- `cmd/genlemmatizertables/` - generated FST tables (FI smoke today)
+- `cmd/importekilex/` - Ekilex public-headword snapshot
+- `cmd/importekilexdetails/` - bulk Ekilex reduced JSONL
+- `cmd/importdict/` - kaikki.org / Wiktionary (the original)
 
 ### Reasoning
 
@@ -1372,7 +1372,7 @@ parsers in one entry point and dilute its responsibility.
 
 ### Note
 
-PRs #67 and #68 use the `-source-key` flag inside `cmd/importdict/` —
+PRs #67 and #68 use the `-source-key` flag inside `cmd/importdict/` -
 that work predates `cmd/importekilex/` landing on main and will likely
 rebase against the separate-binary pattern.
 
@@ -1435,7 +1435,7 @@ migrations.
 
 The Finnish plan needs translations and definitions; the Estonian plan
 benefits from them. Sequential landings would mean either ET ships
-without these tables and migrates later, or FI waits on ET — both worse
+without these tables and migrates later, or FI waits on ET - both worse
 than landing once.
 
 ---
@@ -1459,7 +1459,7 @@ tables. Both live under `localdata/lemmatizer-fi-et/` (gitignored).
 The runtime loads tables from disk on `New()`. Smoke fixtures (small
 hand-checked tables) live in
 [`testdata/lemmatizer/`](../testdata/lemmatizer/) and focused package
-tests — those exist purely to prove the integration path and are tiny.
+tests - those exist purely to prove the integration path and are tiny.
 
 See [`docs/ARTIFACT_POLICY.md`](ARTIFACT_POLICY.md) for the full policy.
 
@@ -1476,7 +1476,7 @@ package (using smoke fixtures) and a production-quality install requires
 running the generator locally and pointing the runtime at
 `localdata/lemmatizer-fi-et/tables/`.
 
-**See also:** [CHANGELOG.md §2026-05-06 — Lexical pipelines](CHANGELOG.md).
+**See also:** [CHANGELOG.md §2026-05-06 - Lexical pipelines](CHANGELOG.md).
 
 ---
 
@@ -1492,7 +1492,7 @@ as separate words. Pure numbers like `65` weren't tagged `NUM` either. The
 same construction is just as productive in Finnish (`65-vuotias`,
 `1990-luvulla`, etc.), and the tokenizer at
 [`parser/src/lib.rs`](../parser/src/lib.rs) takes an unused `_lang`
-parameter — Finnish was guaranteed to have the identical bug.
+parameter - Finnish was guaranteed to have the identical bug.
 
 ### Decision
 
@@ -1501,15 +1501,15 @@ add per-language entries to
 [`internal/parserules/finnish.go`](../internal/parserules/finnish.go) or
 [`internal/parserules/estonian.go`](../internal/parserules/estonian.go).
 
-- **R1** — split a chunk at the first hyphen where one side is pure digits and
+- **R1** - split a chunk at the first hyphen where one side is pure digits and
   the other starts with a letter (`65-aastane`, `65-vuotias`, `1990-luvulla`).
   Skip mixed-prefix abbreviations (`B1-tase`, `well-known`).
-- **R2** — `guess_pos` returns `NUM` for `^\d+$`, `^\d+\.\d+$`,
+- **R2** - `guess_pos` returns `NUM` for `^\d+$`, `^\d+\.\d+$`,
   `^\d+,\d+$`, with internal whitespace stripped.
-- **R3** — post-pass that merges `\d{1,3}( \d{3})+` runs into one NUM token.
+- **R3** - post-pass that merges `\d{1,3}( \d{3})+` runs into one NUM token.
   Form keeps spaces (`"250 000"`); lemma drops them (`"250000"`) so SI-spaced
   and unspaced numbers group as one entry in the words list.
-- **R4** — split a chunk at the only hyphen if both sides are pure digits
+- **R4** - split a chunk at the only hyphen if both sides are pure digits
   (`1990-2020`). Multi-hyphen forms (ISO dates `2026-05-06`) stay whole because
   R4 requires exactly one hyphen.
 
@@ -1532,7 +1532,7 @@ implementations would have been duplicate work with a high risk of drift.
   forms (no regression). A dedicated date detector can layer on later.
 - ET `65-aastast` (partitive of `65-aastane`) splits cleanly via R1 but
   `aastast` doesn't lemmatize back to `aastane` without a `-ne` ADJ
-  inflection table — separate piece of work.
+  inflection table - separate piece of work.
 - Negative numbers like `-5` stay as one token. Acceptable for alpha;
   negation is usually written `miinus 5` in both languages.
 
@@ -1549,7 +1549,7 @@ implementations would have been duplicate work with a high risk of drift.
   trace in
   [`docs/qa-reports/2026-05-06-numeric-hyphen-tokenization.md`](qa-reports/2026-05-06-numeric-hyphen-tokenization.md).
 
-**See also:** [CHANGELOG.md §2026-05-06 — Numeric-hyphen tokenization](CHANGELOG.md).
+**See also:** [CHANGELOG.md §2026-05-06 - Numeric-hyphen tokenization](CHANGELOG.md).
 
 ---
 
@@ -1567,7 +1567,7 @@ hit returns `(lemma, pos, grammar_label)`.
 
 The natural-feeling reaction to the 0% grammar-accuracy result on
 `grammar_label` (see `docs/baselines/2026-05-06b-summary.md`) is to grow this
-table — add more suffix entries, encode consonant gradation, handle ternary
+table - add more suffix entries, encode consonant gradation, handle ternary
 compounds, etc. Existing TODO items #15 (three-part compound splitting) and
 #16 (consonant gradation rules) point in that direction. We are choosing
 **not** to.
@@ -1594,7 +1594,7 @@ Two near-term exceptions are in scope:
    `pkg/lemmatizer-fi-et/udfeats::LegacyLabelToUDCase`). The `Case=` it
    emits is the only attribute it can safely commit to from a stripped
    suffix; Number/Tense/Mood/Person stay empty. The suffix table itself
-   is unchanged — the addition is a projection on top, not an extension.
+   is unchanged - the addition is a projection on top, not an extension.
 2. **Bug fixes** to existing entries if a wrong label is being attached.
 
 ### Reasoning
@@ -1604,7 +1604,7 @@ morphology. Five reasons, each grounded in real tokens from our gold sets:
 
 1. **Stem alternation can't be expressed by end-of-string rules.**
    `toas → tuba` (et-grammar-v1, inessive of "room"): suffix-strip removes
-   `s`, leaves `toa`, but the lemma is `tuba` — `o ↔ u` flips inside the
+   `s`, leaves `toa`, but the lemma is `tuba` - `o ↔ u` flips inside the
    stem with consonant alternation. A suffix table operates only on the
    suffix; it has no way to encode "after stripping `s`, also rewrite
    `oa → uba` for stems in grade-alternation class III." Encoding that is
@@ -1615,7 +1615,7 @@ morphology. Five reasons, each grounded in real tokens from our gold sets:
 
 2. **Suffix-shaped lemmas trigger false positives.** `aas` (meadow), `mees`
    (man), `loss` (castle) all end in `s`. Stripping `s` gives `aa` / `mee` /
-   `los` — none of which are lemmas. The table has no way to know which
+   `los` - none of which are lemmas. The table has no way to know which
    `-s` is paradigmatic and which is part of the lemma. An FST knows
    because it has the lexicon and the inflectional paradigm together.
 
@@ -1625,14 +1625,14 @@ morphology. Five reasons, each grounded in real tokens from our gold sets:
    suffix table emits one tuple `(lemma, label)`; the alternative is
    discarded. Real morphology produces a candidate set and lets the
    disambiguator pick. `pickBestFormCandidate` already exists for direct
-   dict — case-suffix-strip output should be folded into the same ranker
+   dict - case-suffix-strip output should be folded into the same ranker
    in the FST world, not the suffix world.
 
 4. **Compound interaction.** Estonian compounds extensively. Suffix-strip
    over-fires on compounds: `linnasüda` ("city heart") ending in
    suffix-shaped `a` parses as essive of a fake lemma. Compounds need to
    be split *before* suffix logic, and the split needs paradigm-class
-   awareness — FST territory.
+   awareness - FST territory.
 
 5. **We are already building a table-backed morphology path.** PRs
    [#107](https://github.com/sagarinbabel/finnestdb/pull/107),
@@ -1654,10 +1654,10 @@ The stopgap will not produce grammar labels for stem-alternating forms
 
 ### What This Closes
 
-- **TODO #15** (three-part compound splitting) — DEFER to FST migration.
+- **TODO #15** (three-part compound splitting) - DEFER to FST migration.
   The VFST handles compounds natively via concatenated `[Xp]...[X]`
   segments; see `pkg/lemmatizer-fi-et/voikkomap/` parser in PR #107.
-- **TODO #16** (consonant gradation rules in suffix-strip) — REJECT.
+- **TODO #16** (consonant gradation rules in suffix-strip) - REJECT.
   Gradation lives in the FST's lexicon-aware paradigm tables, not in
   string-rewrite rules over the surface.
 
@@ -1672,7 +1672,7 @@ gradation/ternary-compound logic in `internal/parserules/` or
 `internal/store/dict.go` should be redirected to
 `pkg/lemmatizer-fi-et/` instead.
 
-**See also:** [CHANGELOG.md §2026-05-06b — Eval harness parity + grammar-label stopgap](CHANGELOG.md).
+**See also:** [CHANGELOG.md §2026-05-06b - Eval harness parity + grammar-label stopgap](CHANGELOG.md).
 
 ---
 
@@ -1707,7 +1707,7 @@ propose a correction. The endpoint that accepts this feedback (`POST
 ### Trade-off Accepted
 
 Some users will hit a parser bug, want to flag it, and won't bother creating an
-account to do so — that signal is lost. We accept this for v1 in exchange for a
+account to do so - that signal is lost. We accept this for v1 in exchange for a
 clean, low-noise feedback queue.
 
 ### Related Source-Text Retention Decision
@@ -1764,7 +1764,7 @@ The remaining retention work is:
 If parser-quality work outgrows the volunteer feedback signal, revisit anonymous
 "light feedback" as a separate, rate-limited path with its own queue.
 
-**See also:** [CHANGELOG.md §2026-04-29 — Consumer alpha execution plan](CHANGELOG.md).
+**See also:** [CHANGELOG.md §2026-04-29 - Consumer alpha execution plan](CHANGELOG.md).
 
 ---
 
@@ -1780,7 +1780,7 @@ not intuition.
 ### Infrastructure Built
 
 - **Gold datasets:** `testdata/parser-eval/fi/gold/fi-manual-v1.json` (22 cases)
-- **Eval CLI:** `cmd/parsertest` — runs parsers against datasets, outputs accuracy metrics
+- **Eval CLI:** `cmd/parsertest` - runs parsers against datasets, outputs accuracy metrics
 - **Metrics:** Lemma accuracy, POS accuracy, grammar label accuracy, coverage, timing
 
 ### Evaluation Workflow
@@ -1816,8 +1816,8 @@ This requires:
 - Automated git workflow
 
 **Update 2026-05-06c:** the gold dataset expanded from 22 cases to ~14k
-committed FI cases via UD treebank ingestion (Plan C / PR 1) — see
-[CHANGELOG.md §2026-05-06c — UD treebank gold expansion](CHANGELOG.md).
+committed FI cases via UD treebank ingestion (Plan C / PR 1) - see
+[CHANGELOG.md §2026-05-06c - UD treebank gold expansion](CHANGELOG.md).
 
 ---
 
@@ -1890,7 +1890,7 @@ The FST migration shipped via PRs
 [#129](https://github.com/sagarinbabel/finnestdb/pull/129) /
 [#130](https://github.com/sagarinbabel/finnestdb/pull/130). The FST runtime
 in [`pkg/lemmatizer-fi-et/`](../pkg/lemmatizer-fi-et/) is now wired in
-parallel with dict step 1 — see Decision 16 above. Production tables are
+parallel with dict step 1 - see Decision 16 above. Production tables are
 generated locally; smoke fixtures are committed (Decision 9).
 
 ---
@@ -1923,7 +1923,7 @@ work. The question: should we use Omorfi directly, or build our own parser?
 
 We accept that our parser may not match Omorfi's accuracy on edge
 cases. The goal is **comparable lemma/POS accuracy with deployment
-and licensing properties Omorfi can't give us** — speed is a
+and licensing properties Omorfi can't give us** - speed is a
 property we own, not the headline argument.
 
 ### How We Measure Success
@@ -1934,7 +1934,7 @@ property we own, not the headline argument.
   `chars/s` per parser per dataset. Current floor on Finnish is
   ~40–50k words/s on `custom` against the 2026-05-06 dictionary state;
   treat anything below that on the same datasets as a regression to
-  triage. Speed claims must always cite a measurement — comparing
+  triage. Speed claims must always cite a measurement - comparing
   finnestdb against external baselines requires running both under the
   same harness, not eyeballing numbers from external papers.
 - **Coverage:** Percentage of tokens resolved to dictionary entries.
@@ -1961,13 +1961,13 @@ _Questions are date-tagged with the date they were first recorded._
    FST-like morphological analysis for unseen words? Current heuristics may
    plateau at ~95%. _Partial answer 2026-05-07: FST runtime now contributes
    in parallel with dict (Decision 16); the question evolves to "production
-   table coverage targets" — see LEXICAL_PLAN.md "Production generated-table
+   table coverage targets" - see LEXICAL_PLAN.md "Production generated-table
    scope" open question._
 
 2. **(2026-04-28) Gold data source:** Should we use Omorfi to generate
    candidate annotations, then human-verify? Or fully manual annotation?
    _Partial answer 2026-05-06c: UD treebanks now provide ~14k committed
-   FI cases / ~8k local-only ET cases of human-checked morphology — see
+   FI cases / ~8k local-only ET cases of human-checked morphology - see
    CHANGELOG.md §2026-05-06c. Manual gold remains for targeted regression
    probes._
 
@@ -1995,31 +1995,31 @@ _Questions are date-tagged with the date they were first recorded._
 
 | Phase | Work | Status |
 |-------|------|--------|
-| A1 | Parse Experience — results table polish, coverage gauge | Largely shipped |
-| A2 | Deck Creation — "Save as Deck" CTA from results | Shipped |
-| A3 | Known Words — mark known/ignored in results table | Shipped |
-| A4 | Navigation Shell — nav bar, dark theme alignment | Shipped |
-| A5 | SRS Core — review queue, card scheduling, session UI | Shipped |
-| A6 | Known Words Loop — SRS → known list → dims in future parses | Shipped |
-| A7 | Import Known Words — upload CSV of already-known vocabulary | See TODO.md |
+| A1 | Parse Experience - results table polish, coverage gauge | Largely shipped |
+| A2 | Deck Creation - "Save as Deck" CTA from results | Shipped |
+| A3 | Known Words - mark known/ignored in results table | Shipped |
+| A4 | Navigation Shell - nav bar, dark theme alignment | Shipped |
+| A5 | SRS Core - review queue, card scheduling, session UI | Shipped |
+| A6 | Known Words Loop - SRS → known list → dims in future parses | Shipped |
+| A7 | Import Known Words - upload CSV of already-known vocabulary | See TODO.md |
 
 ### Track B: Parser Quality (Development Infrastructure)
 
 | Phase | Work | Status |
 |-------|------|--------|
-| B1 | Gold Data Expansion — 100+ annotated FI sentences | Shipped (~14k via UD) |
-| B2 | Baseline Benchmark — record current accuracy/speed | Shipped |
-| B3 | Rule Consolidation — all rules in one file | Shipped |
-| B4 | Omorfi Comparison — side-by-side accuracy measurement | Shipped |
-| B5 | Auto-Improvement Loop — autoresearch-style experiments | Parked post-live idea |
+| B1 | Gold Data Expansion - 100+ annotated FI sentences | Shipped (~14k via UD) |
+| B2 | Baseline Benchmark - record current accuracy/speed | Shipped |
+| B3 | Rule Consolidation - all rules in one file | Shipped |
+| B4 | Omorfi Comparison - side-by-side accuracy measurement | Shipped |
+| B5 | Auto-Improvement Loop - autoresearch-style experiments | Parked post-live idea |
 
 ### Track C: Estonian (Parallel Path)
 
 | Phase | Work | Status |
 |-------|------|--------|
-| C1 | Estonian Gold Data — expand from 1 to 50+ cases | Shipped (~8k via UD-ET) |
-| C2 | Estonian Dictionary — verify kaikki.org coverage | Shipped (Ekilex bulk) |
-| C3 | Estonian Rules — case suffixes, compounds | Shipped |
+| C1 | Estonian Gold Data - expand from 1 to 50+ cases | Shipped (~8k via UD-ET) |
+| C2 | Estonian Dictionary - verify kaikki.org coverage | Shipped (Ekilex bulk) |
+| C3 | Estonian Rules - case suffixes, compounds | Shipped |
 
 ---
 
@@ -2033,7 +2033,7 @@ _Questions are date-tagged with the date they were first recorded._
 | 2026-05-06 | Decision 5 added: freeze the case-suffix table; further morphology work goes into generated morphology tables under `pkg/lemmatizer-fi-et/tables/` |
 | 2026-05-06 | Decision 6 added: numeric-hyphen tokenization (R1–R4) lives in the shared Rust tokenizer, no per-language rule tables |
 | 2026-05-06 | Decisions 7–14 absorbed from `LEXICAL_PLAN.md` "Locked Decisions" (generated-table deployment, translations/definitions tables, production-table deferral, adapter packaging, Kotus distribution, ALTER TABLE migrations, Wikisanakirja for FI defs, kaikki.org `feats` not backfilled) |
-| 2026-05-07 | Decision 15 added: single-folder bootstrap rule — every gitignored runtime artifact lives under `localdata/` |
+| 2026-05-07 | Decision 15 added: single-folder bootstrap rule - every gitignored runtime artifact lives under `localdata/` |
 | 2026-05-07 | Decision 16 added: FST contributes candidates in parallel with dict step 1 (PRs #127/#129/#130) |
 | 2026-05-07 | Decision 17 added: ESTONIAN_LEXICAL_PLAN consolidated into `docs/LEXICAL_PLAN.md` (PR #135) |
 | 2026-05-07 | Decision 18 added: IMPLEMENTATION.md split into PARSER_FEEDBACK_LOOP.md + README sections (PR #135) |

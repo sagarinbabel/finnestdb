@@ -1,4 +1,4 @@
-# Release Verification — 2026-07-02
+# Release Verification - 2026-07-02
 
 Scope: full release-verification suite from `docs/GO_LIVE_CHECKLIST.md`, run at
 the tip of the launch PR stack (#240–#247, branch `ops/security-review-fin27`)
@@ -41,7 +41,7 @@ verb as lemma (*hengitys*→*hengittää* ×10, *hapetus*→*hapettaa* ×9,
 (`BatchLookupForms` → picker) was not touched by any PR in the stack (the
 #240 dict change only affects rows with `source='custom_overrides'`, of which
 the live DB has zero). What did change since the baseline froze is the
-intentional `forms.feats` backfill re-import — the candidate picker is
+intentional `forms.feats` backfill re-import - the candidate picker is
 FEATS-aware (PR #139), so newly FEATS-bearing candidates shift tie-breaks on
 ambiguous inflected forms. The effect is a wash across FI UD sets (+/−0.05pp)
 except the clinical OOD set, whose vocabulary is dense in exactly the
@@ -50,7 +50,7 @@ deverbal-noun ambiguity class.
 **Disposition:** justified, not blocking. Two follow-ups recorded:
 
 1. Re-freeze a post-reimport baseline (next letter per the baseline naming
-   convention) so future runs diff against the current intended data state —
+   convention) so future runs diff against the current intended data state -
    maintainer call, since FINAL baselines require maintainer-local FST tables.
 2. The deverbal-noun ranking flips are the exact error class the now-live
    correction loop (#247) handles: one accepted correction per surface fixes

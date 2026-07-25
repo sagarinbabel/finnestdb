@@ -40,7 +40,7 @@ correction-overlay tables are not built yet.
 ### Always attach a parse session
 
 - Inspect results already carry `parse_id` from `POST /api/parse`.
-- Reopened deck detail should also carry a real `parse_id` — either the
+- Reopened deck detail should also carry a real `parse_id` - either the
   deck's originating `parse_session`, or a new "replay" session created
   on open.
 - Avoid any UX that exposes the button but cannot submit.
@@ -77,25 +77,25 @@ correction-overlay tables are not built yet.
 Parse-feedback rows live in `parse_feedback` per
 `internal/store/db.go::CreateParseFeedback`. Each row stores:
 
-- `parse_session_id` — back-pointer to the parse run that produced this token
-- `user_id` — feedback submitter (login required per
+- `parse_session_id` - back-pointer to the parse run that produced this token
+- `user_id` - feedback submitter (login required per
   [`docs/DECISIONS.md` Decision 4](DECISIONS.md))
-- `lang`, `parser`, `surface` — what was being parsed
-- `occurrence` — stable token reference (sentence index, token index)
-- `original_lemma`, `original_pos`, `original_grammar_label` — what the
+- `lang`, `parser`, `surface` - what was being parsed
+- `occurrence` - stable token reference (sentence index, token index)
+- `original_lemma`, `original_pos`, `original_grammar_label` - what the
   parser said
-- `proposed_lemma`, `proposed_pos`, `proposed_grammar_label` — what the
+- `proposed_lemma`, `proposed_pos`, `proposed_grammar_label` - what the
   user thinks it should say (empty for flag-only rows)
-- `flag_only` — `1` when the learner reported "this looks wrong" without
+- `flag_only` - `1` when the learner reported "this looks wrong" without
   proposing a fix; `0` for a concrete correction
-- `note` — free-form context
-- `status` — `submitted` / `accepted` / `rejected` / `needs_follow_up`
+- `note` - free-form context
+- `status` - `submitted` / `accepted` / `rejected` / `needs_follow_up`
   (admin-managed)
 
 A concrete correction requires `proposed_lemma` and `proposed_pos`. Flag-only
 reports (`flag_only=1`, shipped 2026-07-04) let learners report "none of these
 meanings looks right" without inventing a correction; their proposed columns stay
-empty. The columns remain `NOT NULL` — a SQLite table rebuild just to relax two
+empty. The columns remain `NOT NULL` - a SQLite table rebuild just to relax two
 constraints was disproportionate, so validation enforces non-empty proposed
 fields only when `flag_only=0`. An admin can attach a concrete lemma/POS to a
 flag-only row at accept time, converting it into a normal parser-identity
@@ -215,8 +215,8 @@ quarantined content. Historical `review_log` rows and past reviews are
 untouched, and admin views can include quarantined content with issue metadata.
 
 Fixing (restoring) a quarantined issue returns the same study item to
-circulation. Because suppression is a live query filter — no card or scheduler
-rows are deleted at quarantine time — restore is a pure status flip and the
+circulation. Because suppression is a live query filter - no card or scheduler
+rows are deleted at quarantine time - restore is a pure status flip and the
 card's existing `card_state` (due date, history) is preserved. Quarantine pauses
 circulation; it does not reset memory. Creating a new study item for a changed
 learning target identity (wrong lemma/POS, homograph split, phrase replacing a
@@ -227,11 +227,11 @@ single token) remains future overlay work.
 _Shipped 2026-07-04 (Phase 1c)._ Admin triage requires one simple category
 before an issue can be quarantined or restored:
 
-- `parser_issue` — parser identity or grammar analysis appears wrong.
-- `bad_card_content` — learner-facing cue, explanation, sense, phrase boundary,
+- `parser_issue` - parser identity or grammar analysis appears wrong.
+- `bad_card_content` - learner-facing cue, explanation, sense, phrase boundary,
   or presentation is wrong or misleading.
-- `source_extraction_issue` — source sentence/text extraction is faulty.
-- `not_sure` — needs investigation before routing.
+- `source_extraction_issue` - source sentence/text extraction is faulty.
+- `not_sure` - needs investigation before routing.
 
 The full correction taxonomy stays available as optional detail for deeper
 cleanup and reporting. Urgent quarantine is not blocked on precise taxonomy
@@ -317,7 +317,7 @@ instead of pretending the parser lemma was wrong.
 
 ## Estonian uses the same path
 
-The correction flow is shared — language-specific differences live in
+The correction flow is shared - language-specific differences live in
 analyzer choice and lexical sources, not in how users report mistakes
 or how admins review them. ET-specific source choices live in
 [`LEXICAL_PLAN.md`](LEXICAL_PLAN.md) "Estonian-specific source choices
@@ -329,10 +329,10 @@ must not share overlay rows, morphology assumptions, or gold fixtures.
 
 ## See also
 
-- [`docs/DECISIONS.md`](DECISIONS.md) Decision 4 — why parse feedback
+- [`docs/DECISIONS.md`](DECISIONS.md) Decision 4 - why parse feedback
   requires login.
-- [`TODO.md`](../TODO.md) "Close the self-improving feedback loop" —
+- [`TODO.md`](../TODO.md) "Close the self-improving feedback loop" -
   the 5-phase plan to wire accepted corrections into lexical updates
   (Phases 1–4 live as of 2026-07-02; Phase 5 source re-ranking parked).
-- [`docs/FEATURES.md`](FEATURES.md) "User correction loop" — how the
+- [`docs/FEATURES.md`](FEATURES.md) "User correction loop" - how the
   feature is positioned to users.

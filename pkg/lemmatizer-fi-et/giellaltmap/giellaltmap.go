@@ -77,7 +77,7 @@ func Parse(out string) Analysis {
 	}
 	a.Lemma = lemmaBuilder.String()
 
-	// Parse tags from the LAST segment — that's where the inflection lives.
+	// Parse tags from the LAST segment - that's where the inflection lives.
 	tags := strings.Split(lastSeg, "+")
 	if len(tags) > 1 {
 		applyTags(&a, tags[1:])

@@ -188,7 +188,7 @@ import-dict-et-recommended: import-dict-et import-ekilex-et import-ekilex-detail
 # Recommended Finnish setup. Layered:
 # - kaikki.org base dictionary (translations, glosses, forms)
 # - Kotus Nykysuomen sanalista (paradigm_class for ~104k headwords; CC BY 4.0)
-# Voikko paradigm seed (Phase 4) lands later — see docs/FINNISH_LEXICAL_PLAN.md.
+# Voikko paradigm seed (Phase 4) lands later - see docs/FINNISH_LEXICAL_PLAN.md.
 import-dict-fi-recommended: import-dict-fi import-kotus-fi
 
 # One-command local setup: build dictionaries if missing, then run.
@@ -213,7 +213,7 @@ import-ekilex-et:
 # produced by `make reduce-ekilex`) into lemmas + forms. Loads ~178k lemma
 # rows and ~6.2M form rows; runtime ~15s on a fast SSD. Empty-gloss guard
 # preserves any pre-existing kaikki English glosses. POS attribution uses
-# the form's morph_code to disambiguate homonyms — see
+# the form's morph_code to disambiguate homonyms - see
 # cmd/importekilexdetails for the table.
 import-ekilex-details-et:
 	go run ./cmd/importekilexdetails -db finnestdb.db -data localdata/ekilex
@@ -264,7 +264,7 @@ fetch-ekilex:
 #   - definitions/<letter>.jsonl: per-word lemma + morphology + meanings
 #   - forms/<letter>.tsv:         one row per inflected form (lemma, form, morph_code)
 # Sharding is by first lowercase letter of the lemma (Estonian alphabet plus
-# "_other"). Tests cover one fixture per inflection class encountered so far —
+# "_other"). Tests cover one fixture per inflection class encountered so far -
 # run `go test ./cmd/reduceekilex/` to verify, or `go test ./cmd/reduceekilex/
 # -update-golden` to refresh fixtures after intentional reducer changes.
 reduce-ekilex:
@@ -283,7 +283,7 @@ reimport-dict: reimport-dict-fi reimport-dict-et
 
 # verify-dict prints row counts per (table, lang, source) so you can quickly
 # confirm a re-import populated what it should. Phase 2 (translations table)
-# is hard to verify by eyeballing the UI — this gives a one-glance answer to
+# is hard to verify by eyeballing the UI - this gives a one-glance answer to
 # "did kaikki translations land?" / "did Ekilex translations land?".
 verify-dict:
 	@echo "── lemmas ──"
@@ -375,7 +375,7 @@ setup-nlp: $(OMORFI_MODEL)
 	@$(NLP_VENV)/bin/python -c "from omorfi import Omorfi; o = Omorfi(); o.load_analyser('$(OMORFI_MODEL)'); print('omorfi: OK')"
 	@NLTK_DATA="$$(pwd)/.cache/nltk_data" MPLCONFIGDIR="$$(pwd)/.cache/matplotlib" $(NLP_VENV)/bin/python -c "from estnltk import Text; t = Text('Poes ootasin sõpra.'); t.tag_layer(['words', 'morph_analysis']); print('estnltk: OK')"
 
-# Legacy aliases — point at the unified venv.
+# Legacy aliases - point at the unified venv.
 setup-omorfi: setup-nlp
 setup-estnltk: setup-nlp
 
@@ -431,7 +431,7 @@ first-experience-rc: parser
 	go run ./cmd/firstexperiencerc
 	@export LD_LIBRARY_PATH="$$(pwd)/parser/target/release:$${LD_LIBRARY_PATH:-}"; \
 	cd web && npx playwright test tests/first-experience-rc.spec.ts
-	@echo "Manual walkthrough: see docs/GO_LIVE_CHECKLIST.md 'First-experience quality check' — instructions live there (no separate doc)."
+	@echo "Manual walkthrough: see docs/GO_LIVE_CHECKLIST.md 'First-experience quality check' - instructions live there (no separate doc)."
 
 # ── Manual gold UD FEATS enrichment ──────────────────────────────────────────
 #
@@ -456,12 +456,12 @@ enrich-gold-feats: parser
 #
 # FI dev/test files are committed under testdata/parser-eval/fi/gold/ (CC BY
 # / CC BY-SA). ET dev/test and all train splits live under
-# localdata/parser-eval/{fi,et}/{gold,gold-train}/ — gitignored. ET sources
+# localdata/parser-eval/{fi,et}/{gold,gold-train}/ - gitignored. ET sources
 # are CC BY-NC-SA so derivatives can't be redistributed; train splits are
 # kept local because they're large (12k–25k cases each) and only used for
 # OOV/coverage analysis. See docs/data_enhancement.md for the full ledger.
 #
-# Re-running is idempotent and fast (~30s) — the heavy step is the initial
+# Re-running is idempotent and fast (~30s) - the heavy step is the initial
 # clone (~50 MB per treebank, cached under localdata/ud-cache/).
 import-ud-gold-fi:
 	@bash scripts/fetch-and-import-ud.sh fi
@@ -475,15 +475,15 @@ import-ud-gold: import-ud-gold-fi import-ud-gold-et
 #
 # Two flavors:
 #
-#   make eval        — held-out test sets only (baseline discipline). Skips
+#   make eval        - held-out test sets only (baseline discipline). Skips
 #                      gold/<name>-dev-v*.json files the same way
 #                      `make compare-parsers{,-et}` do. This is the right
 #                      target for CI and "is my change ready to land" checks.
 #
-#   make eval-watch  — test + dev splits. Use this in the per-commit watch
+#   make eval-watch  - test + dev splits. Use this in the per-commit watch
 #                      loop while iterating on a fix; dev sets are noisier
 #                      but catch regressions earlier. Don't quote numbers
-#                      from this in PR bodies — they include unfrozen dev
+#                      from this in PR bodies - they include unfrozen dev
 #                      data.
 #
 # Both glob the committed gold under testdata/parser-eval/ and any local-only
@@ -515,7 +515,7 @@ eval-check: eval
 #
 # Fetches Finnish-language books from Project Gutenberg into the silver-tier
 # corpus at localdata/silver-fi/. Polite scraper (1.5s between requests).
-# Idempotent — re-running skips books already in the manifest.
+# Idempotent - re-running skips books already in the manifest.
 #
 # The default target (500k tokens) covers ~14 books from the most popular
 # l.fi search results. Override with TARGET_TOKENS=N to fetch more or less.

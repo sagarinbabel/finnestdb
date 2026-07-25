@@ -199,7 +199,7 @@ func (c *apiClient) publicWords(ctx context.Context, datasetCode string) ([]publ
 		return nil, fmt.Errorf("public_word returned %d entries but none matched lang=est (schema may have changed)", len(raw))
 	}
 	if zeroIDs > 0 {
-		return nil, fmt.Errorf("public_word returned %d entries with wordId=0 — refusing to write a partial snapshot", zeroIDs)
+		return nil, fmt.Errorf("public_word returned %d entries with wordId=0 - refusing to write a partial snapshot", zeroIDs)
 	}
 	return out, nil
 }
@@ -324,7 +324,7 @@ func cmdSample(args []string) error {
 	keyEnv := fs.String("key-env", "EKILEX_API_KEY", "")
 	queue := fs.String("queue", "localdata/ekilex/eki-public-words-2026-et.jsonl", "")
 	outDir := fs.String("out-dir", "localdata/ekilex/details/samples", "")
-	wordsFlag := fs.String("words", "koer,maja,jooksma,kell,või", "comma-separated lemmas; only the first matching word_id is returned for duplicate lemmas — use -word-ids for explicit coverage")
+	wordsFlag := fs.String("words", "koer,maja,jooksma,kell,või", "comma-separated lemmas; only the first matching word_id is returned for duplicate lemmas - use -word-ids for explicit coverage")
 	idsFlag := fs.String("word-ids", "", "comma-separated word_ids (overrides -words)")
 	variants := fs.String("datasets-compare", "eki,", "comma-separated dataset filters; empty value = no filter")
 	fs.Parse(args)

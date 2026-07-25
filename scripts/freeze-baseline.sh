@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# scripts/freeze-baseline.sh — copy a parser-eval run from
+# scripts/freeze-baseline.sh - copy a parser-eval run from
 # reports/parser-eval/ into docs/baselines/ under the canonical filename
 # convention and PARSER_EVOLUTION.md/SYSTEM_VERSIONING.md cross-reference.
 # Per-dataset JSON reports are gzip-compressed to keep docs diffs and line
@@ -132,7 +132,7 @@ if [[ "$copied" -eq 0 ]]; then
 fi
 
 echo >&2
-echo "Done — froze $copied file(s) under prefix ${PREFIX}." >&2
+echo "Done - froze $copied file(s) under prefix ${PREFIX}." >&2
 echo "Next steps:" >&2
 echo "  1. Add a row to docs/PARSER_EVOLUTION.md trend table + a ### ${DATE_FMT}${REV}-${T_STAMP} entry." >&2
 echo "  2. Add a row at the top of docs/SYSTEM_VERSIONING.md § Parser evaluation baseline history." >&2

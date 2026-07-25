@@ -16,7 +16,7 @@ async function mockAnonMe(page: Page, anonMax = 300000): Promise<void> {
   });
 }
 
-// Successful anonymous parse response (no parse_id — ephemeral). Two words,
+// Successful anonymous parse response (no parse_id - ephemeral). Two words,
 // one with a definition so coverage is non-zero.
 async function mockAnonParse(page: Page): Promise<void> {
   await page.route('**/api/parse', async (route) => {
@@ -104,7 +104,7 @@ test('sign-up ribbon dismisses per session and reappears on the next parse', asy
   await page.locator('#anon-ribbon-dismiss').click();
   await expect(ribbon).toBeHidden();
 
-  // Back to the landing form, parse again — the ribbon must reappear.
+  // Back to the landing form, parse again - the ribbon must reappear.
   await page.locator('#results-back').click();
   await expect(page.locator('#landing-page')).toHaveClass(/active/);
   await page.locator('#landing-text').fill(finnishText + ' Uusi lause tähän.');
@@ -137,6 +137,6 @@ test('anonymous over-cap parse surfaces the limit message and sign-up CTA', asyn
   await page.locator('#landing-submit').click();
   await expect(page.locator('.toast.error')).toContainText(/limited to 30 characters/i);
   await expect(page.locator('.toast.error')).toContainText(/[Ss]ign up/);
-  // Still on the landing page — no results rendered.
+  // Still on the landing page - no results rendered.
   await expect(page.locator('#landing-page')).toHaveClass(/active/);
 });

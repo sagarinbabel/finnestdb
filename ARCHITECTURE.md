@@ -1,6 +1,6 @@
 # FinnEst Architecture
 
-_Current as of 2026-05-09 — see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
+_Current as of 2026-05-09 - see [docs/CHANGELOG.md](docs/CHANGELOG.md) for revisions._
 
 Role-aware Finnish and Estonian reading app focused on dictionary-backed
 lemmatization, deck creation, review, parser feedback, and parser evaluation.
@@ -191,7 +191,7 @@ Files:
 
 - `cmd/server/main.go`
 - `internal/api/handlers.go`
-- `internal/auth/` — password hashing, session creation/validation,
+- `internal/auth/` - password hashing, session creation/validation,
   registration, admin user management
 
 Responsibilities:
@@ -236,23 +236,23 @@ Responsibilities:
 
 Files:
 
-- `internal/store/db.go` — schema + `EnsureXxx` migration helpers
-- `internal/store/dict.go` — `BatchLookupForms`, `BatchLookupAllForms`
+- `internal/store/db.go` - schema + `EnsureXxx` migration helpers
+- `internal/store/dict.go` - `BatchLookupForms`, `BatchLookupAllForms`
   (multi-lemma), `BatchLookupGlosses`, Finnish possessive stripping
-- `cmd/importdict/` — kaikki.org JSONL or Ekilex API → SQLite (chooses
+- `cmd/importdict/` - kaikki.org JSONL or Ekilex API → SQLite (chooses
   shape via `-source-key`)
-- `cmd/importekilex/` — compact Ekilex public-headword snapshot loader
-- `cmd/importekilexdetails/` — loads the reduced Ekilex data drop
+- `cmd/importekilex/` - compact Ekilex public-headword snapshot loader
+- `cmd/importekilexdetails/` - loads the reduced Ekilex data drop
   (`localdata/ekilex/{definitions,forms}/`) into the dictionary tables;
   ~178k lemmas + ~6.2M form rows
-- `cmd/importkotus/` — Kotus sanalista TSV → SQLite, populates `paradigm_class`
-- `cmd/fetchekilex/` — resumable Ekilex `/api/word/details` scraper
-- `cmd/reduceekilex/` — reduces raw payloads into sharded JSONL + TSV
+- `cmd/importkotus/` - Kotus sanalista TSV → SQLite, populates `paradigm_class`
+- `cmd/fetchekilex/` - resumable Ekilex `/api/word/details` scraper
+- `cmd/reduceekilex/` - reduces raw payloads into sharded JSONL + TSV
   artifacts, with golden tests covering all 41 Estonian inflection classes
-- `cmd/genlemmatizertables/` — generates FI/ET lemmatizer JSON tables
+- `cmd/genlemmatizertables/` - generates FI/ET lemmatizer JSON tables
   under `localdata/lemmatizer-fi-et/tables/` from local analyser files
   (`mor.vfst` for FI, `.hfstol` for ET; no analyser blob committed)
-- `cmd/fetchfrequency/` — downloads public FI/ET frequency baselines
+- `cmd/fetchfrequency/` - downloads public FI/ET frequency baselines
   (OpenSubtitles + UD treebanks) into `localdata/frequency/` for
   comparison against user-aggregated frequency
 
@@ -280,7 +280,7 @@ Responsibilities:
 
 The `forms` table uses `PRIMARY KEY (form, lang, lemma, pos)` so a single
 surface form can map to multiple `(lemma, pos)` candidates. This models
-homonyms — e.g. ET `joon` is both the noun "line" (`SgN` of `joon`) and
+homonyms - e.g. ET `joon` is both the noun "line" (`SgN` of `joon`) and
 the 1st-person-singular form of the verb `jooma` ("to drink"). At deck
 ingest time, every dict candidate becomes its own `occurrence` row and
 its own card; the parser's single pick is only used when the dict has
@@ -318,7 +318,7 @@ Fallback when `meaning.pos` is empty (uses entry-level `word_class`):
 | `verb` | `VERB` |
 | `muutumatu` | `X` |
 
-Forms in `forms/<letter>.tsv` carry only `(lemma, form, morph_code)` —
+Forms in `forms/<letter>.tsv` carry only `(lemma, form, morph_code)` -
 they don't say which homonym a form belongs to. When a lemma has multiple
 homonyms with different POS (e.g. `jooma` is both VERB and NOUN), the
 importer disambiguates by classifying the morph code: codes prefixed
@@ -330,20 +330,20 @@ and only attribute to non-VERB POSes.
 
 Files:
 
-- `corpus_pipeline/cmd/fetchcorpus/` — source registry downloads into
+- `corpus_pipeline/cmd/fetchcorpus/` - source registry downloads into
   `localdata/{fi,et}-corpus/<source>/raw/`
-- `corpus_pipeline/cmd/extractcorpus/` — format-specific text extraction
+- `corpus_pipeline/cmd/extractcorpus/` - format-specific text extraction
   for EPUB, VRT, Leipzig, CSV, HTML, Hugging Face, Markdown, SKVR, gzip,
   fixtures, and miscellaneous text sources
-- `corpus_pipeline/cmd/aggregatecorpus/` — deterministic aggregation into
+- `corpus_pipeline/cmd/aggregatecorpus/` - deterministic aggregation into
   canonical and learner-facing TSV exports
 - `corpus_pipeline/cmd/corpusverify/` and
-  `corpus_pipeline/cmd/corpuspromote/` — smoke/pilot/full QA gates and
+  `corpus_pipeline/cmd/corpuspromote/` - smoke/pilot/full QA gates and
   promotion state
-- `corpus_pipeline/cmd/enrichcorpus/` — analyzer-agreement enrichment for
+- `corpus_pipeline/cmd/enrichcorpus/` - analyzer-agreement enrichment for
   silver parser-improvement candidates
-- `corpus_pipeline/cmd/epubdeck/` — per-book wordlist/deck export
-- `corpus_pipeline/cmd/glosscoverage/` — dictionary gloss-coverage audit
+- `corpus_pipeline/cmd/epubdeck/` - per-book wordlist/deck export
+- `corpus_pipeline/cmd/glosscoverage/` - dictionary gloss-coverage audit
 - `corpus_pipeline/docs/CORPUS_PIPELINE.md`
 
 Responsibilities:
@@ -367,35 +367,35 @@ later without changing the parser/eval contracts.
 
 Files:
 
-- `cmd/parsertest/main.go` — runs gold datasets across selected parsers
-- `cmd/parser-compare/main.go` — assembles markdown comparison tables
+- `cmd/parsertest/main.go` - runs gold datasets across selected parsers
+- `cmd/parser-compare/main.go` - assembles markdown comparison tables
   from one or more `cmd/parsertest` reports
-- `cmd/importud/main.go` — converts Universal Dependencies CoNLL-U files
+- `cmd/importud/main.go` - converts Universal Dependencies CoNLL-U files
   into our parser-eval gold JSON; drives Plan C / PR 1 corpus expansion
-- `cmd/corpusmine/main.go` — mines cleaned corpus text for
+- `cmd/corpusmine/main.go` - mines cleaned corpus text for
   disagreement-heavy gold candidates
-- `cmd/autoresearch/main.go` — parked post-live idea for automated
+- `cmd/autoresearch/main.go` - parked post-live idea for automated
   rule-ablation loops; not active alpha scope
-- `scripts/fetch-and-import-ud.sh` — clone UD treebanks and run importud
-- `scripts/parser-comparison.sh` · `scripts/parser-comparison-et.sh` —
+- `scripts/fetch-and-import-ud.sh` - clone UD treebanks and run importud
+- `scripts/parser-comparison.sh` · `scripts/parser-comparison-et.sh` -
   always include the analyzer baseline (omorfi/estnltk); fail fast when
   missing
-- `cmd/scrapegutenberg/main.go` — Plan C / PR 3 silver-corpus scraper
+- `cmd/scrapegutenberg/main.go` - Plan C / PR 3 silver-corpus scraper
   for Project Gutenberg Finnish books
 - `internal/eval/eval.go`
-- `testdata/parser-eval/{fi,et}/gold/` — committed gold (FI UD CC BY,
+- `testdata/parser-eval/{fi,et}/gold/` - committed gold (FI UD CC BY,
   manual sets, fi-grammar-v1)
-- `localdata/parser-eval/{fi,et}/{gold,gold-train}/` — gitignored
+- `localdata/parser-eval/{fi,et}/{gold,gold-train}/` - gitignored
   parser-eval gold for sources we can't redistribute (NC-licensed ET UD
   dev/test) and for splits we just don't want auto-discovered (FI/ET
   UD train splits, used for OOV/coverage only). All under localdata/
   per the single-folder bootstrap rule.
-- `localdata/silver-fi/` — legacy Plan C silver-tier corpus
+- `localdata/silver-fi/` - legacy Plan C silver-tier corpus
   (Gutenberg-FI raw text + JSONL manifest)
-- `localdata/{fi,et}-corpus/_derived/mining/` — corpus-pipeline mining outputs such
+- `localdata/{fi,et}-corpus/_derived/mining/` - corpus-pipeline mining outputs such
   as unresolved, ambiguous, parser-disagreement, internal-consensus, and
   silver-candidate TSVs
-- `docs/baselines/` — frozen baseline reports per parser/language
+- `docs/baselines/` - frozen baseline reports per parser/language
 - `docs/PARSER_EVAL_DATASETS.md`
 - `docs/OMORFI_ADAPTER.md` · `docs/OMORFI_COMPARISON.md`
 - `docs/AUTORESEARCH.md`
@@ -430,8 +430,8 @@ gitignored bootstrap state fits in a single zip of `localdata/`.
 |---------------|----------------|-----------:|----------:|------------:|---------------------------------------------------------------------------------|
 | Finnish-TDT   | CC BY-SA 4.0   |     1,554  |    1,358  |     12,204  | committed: `testdata/parser-eval/fi/gold/ud-fi-tdt-{test,dev}-v1.json.gz`; train at `localdata/parser-eval/fi/gold-train/ud-fi-tdt-train-v1.json` |
 | Finnish-FTB   | CC BY 4.0      |     1,867  |    1,875  |     14,972  | committed: `testdata/parser-eval/fi/gold/ud-fi-ftb-{test,dev}-v1.json.gz`; train at `localdata/parser-eval/fi/gold-train/ud-fi-ftb-train-v1.json` |
-| Finnish-PUD   | CC BY-SA 3.0   |     1,000  |        — |          — | committed: `testdata/parser-eval/fi/gold/ud-fi-pud-test-v1.json.gz`               |
-| Finnish-OOD   | CC BY-SA 4.0   |     2,106  |        — |          — | committed: `testdata/parser-eval/fi/gold/ud-fi-ood-test-v1.json.gz`               |
+| Finnish-PUD   | CC BY-SA 3.0   |     1,000  |        - |          - | committed: `testdata/parser-eval/fi/gold/ud-fi-pud-test-v1.json.gz`               |
+| Finnish-OOD   | CC BY-SA 4.0   |     2,106  |        - |          - | committed: `testdata/parser-eval/fi/gold/ud-fi-ood-test-v1.json.gz`               |
 | Estonian-EDT  | CC BY-NC-SA    |     3,190  |    3,110  |     24,419  | local-only: `localdata/parser-eval/et/gold/ud-et-edt-{test,dev}-v1.json` + `localdata/parser-eval/et/gold-train/ud-et-edt-train-v1.json` |
 | Estonian-EWT  | CC BY-NC-SA    |       910  |      823  |      5,375  | local-only: `localdata/parser-eval/et/gold/ud-et-ewt-{test,dev}-v1.json` + `localdata/parser-eval/et/gold-train/ud-et-ewt-train-v1.json` |
 

@@ -99,7 +99,7 @@ test('signed-in cold start: dashboard catalog -> pick text -> auto-parses and op
   // With no known words, the card prompts import rather than showing coverage.
   await expect(page.locator('#dashboard-catalog')).toContainText('Import known words');
 
-  // Pick the text: it opens like a book — parses immediately (no intermediate
+  // Pick the text: it opens like a book - parses immediately (no intermediate
   // Parse click) and lands on the results page's Read tab.
   await page.locator('#dashboard-catalog [data-catalog-id="fi-sample-story"]').click();
 

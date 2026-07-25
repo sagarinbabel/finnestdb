@@ -13,7 +13,7 @@ function LeverageView() {
         <div>
           <h1>Leverage</h1>
           <div className="sub">
-            Highest-impact words across your library — learn these first to maximize comprehension.
+            Highest-impact words across your library - learn these first to maximize comprehension.
           </div>
         </div>
         <div className="actions">

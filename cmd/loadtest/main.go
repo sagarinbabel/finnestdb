@@ -1,7 +1,7 @@
 // Command loadtest is a dependency-free HTTP load generator for FinEstDB's
 // public-alpha capacity gate (see docs/GO_LIVE_CHECKLIST.md "Capacity and
-// Graceful Degradation"). It models the GO_LIVE traffic mix — anonymous
-// paste/parse, signed-in parse, and signed-in review/deck reads — against a
+// Graceful Degradation"). It models the GO_LIVE traffic mix - anonymous
+// paste/parse, signed-in parse, and signed-in review/deck reads - against a
 // running server, and reports per-endpoint latency percentiles, throughput,
 // and error/429/503 counts.
 //
@@ -40,7 +40,7 @@ import (
 
 // Short FI/ET texts, deliberately tiny so a laptop-scale run models request
 // *volume* rather than accidentally load-testing parser throughput on long
-// documents (that is a separate, already-measured concern — see
+// documents (that is a separate, already-measured concern - see
 // docs/DEPLOYMENT.md "Latency expectations"). Real anonymous demo traffic is
 // dominated by short pastes, not book-length uploads.
 var (
@@ -302,7 +302,7 @@ func run(cfg config) Summary {
 	}
 
 	// Stop the run after cfg.duration (measured from run start, not counting
-	// ramp-up separately — ramp-up is "part of" the duration window).
+	// ramp-up separately - ramp-up is "part of" the duration window).
 	go func() {
 		select {
 		case <-time.After(cfg.duration):

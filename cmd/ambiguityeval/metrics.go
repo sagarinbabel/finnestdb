@@ -2,7 +2,7 @@ package main
 
 import "sort"
 
-// SenseKey identifies a dictionary sense by (lemma, POS) — the same join key
+// SenseKey identifies a dictionary sense by (lemma, POS) - the same join key
 // dictionary entries are keyed by (see docs/PARSER_EVAL_METHODOLOGY.md's
 // Lemma+POS framing). Comparisons are case-sensitive exact matches: gold
 // lemma/POS values are curated, and the parser's own casing convention
@@ -21,15 +21,15 @@ type Proxy string
 
 const (
 	// ProxySingle: the candidate set has exactly one (lemma, POS) for the
-	// surface — treated as high-confidence.
+	// surface - treated as high-confidence.
 	ProxySingle Proxy = "single"
 	// ProxyMultiAgree: two or more distinct candidates, but the pick was
 	// corroborated by both a dictionary row and an FST analysis (Source
-	// contains "dict" and an "fst_" tag) — raised confidence within the
+	// contains "dict" and an "fst_" tag) - raised confidence within the
 	// multi bucket.
 	ProxyMultiAgree Proxy = "dict_fst_agree"
 	// ProxyMulti: two or more distinct candidates with no dict/FST
-	// corroboration — low confidence by default, the parser is choosing
+	// corroboration - low confidence by default, the parser is choosing
 	// among genuine homographs.
 	ProxyMulti Proxy = "multi"
 )
@@ -58,7 +58,7 @@ type CaseResult struct {
 // CandidateInclusion reports whether the expected sense is present in the
 // candidate set the product can actually offer. If false, neither the
 // single Meaning Check nor Multiple possible meanings can be honestly shown
-// for this case — the correct sense is unreachable regardless of ranking.
+// for this case - the correct sense is unreachable regardless of ranking.
 func (c CaseResult) CandidateInclusion() bool {
 	for _, cand := range c.Candidates {
 		if cand == c.Expected {

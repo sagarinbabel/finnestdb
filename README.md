@@ -10,9 +10,9 @@ workbench.
 - [How to Run & Test](#how-to-run--test)
   - [Prerequisites](#prerequisites)
   - [Quick start](#quick-start)
-    - [A — You got a `finnestdb-bootstrap.tgz`](#a--you-got-a-finnestdb-bootstraptgz-from-a-teammate)
-    - [B — Setting up from scratch](#b--setting-up-from-scratch)
-    - [C — Compile only, no data](#c--compile-only-no-data-import)
+    - [A - You got a `finnestdb-bootstrap.tgz`](#a--you-got-a-finnestdb-bootstraptgz-from-a-teammate)
+    - [B - Setting up from scratch](#b--setting-up-from-scratch)
+    - [C - Compile only, no data](#c--compile-only-no-data-import)
   - [Frontend Build](#frontend-build)
   - [Refreshing dictionary data](#refreshing-dictionary-data)
     - [Refreshing the Ekilex data](#refreshing-ekilex-data)
@@ -45,7 +45,7 @@ Output: word list with real base forms + English definitions
 
 This approach requires a one-time dictionary import (~5 min, ~500MB) but
 produces dramatically better results than any rule-based stemmer for Finnish
-and Estonian — languages with highly agglutinative morphology.
+and Estonian - languages with highly agglutinative morphology.
 
 ### Finnish possessive suffix stripping
 
@@ -66,7 +66,7 @@ are stripped at enrichment time:
 
 Suffixes are tried longest-first (`-nsa/-nsä/-mme/-nne` before `-ni/-si`)
 to avoid partial matches. The stripped result is **always validated against
-the dictionary** — preventing false positives where a suffix strip produces a
+the dictionary** - preventing false positives where a suffix strip produces a
 non-word. Estonian does not use this rule (different possessive marking system).
 
 ### Sentence context tracking
@@ -135,7 +135,7 @@ during dev/setup, not at runtime.
 Pick whichever path matches your situation. Each leaves you with a server on
 **http://localhost:8080**.
 
-#### A — You got a `finnestdb-bootstrap.tgz` from a teammate
+#### A - You got a `finnestdb-bootstrap.tgz` from a teammate
 
 The tarball contains the populated `finnestdb.db` and the fetched/reduced data
 under `localdata/`. Untar next to the repo and you skip every fetch and import:
@@ -147,7 +147,7 @@ tar xzf path/to/finnestdb-bootstrap.tgz   # extracts localdata/ + finnestdb.db
 make run
 ```
 
-#### B — Setting up from scratch
+#### B - Setting up from scratch
 
 ```bash
 git clone https://github.com/sagarinbabel/finnestdb.git
@@ -156,7 +156,7 @@ bash scripts/setup-local.sh   # builds parser, fetches data, populates finnestdb
 make run
 ```
 
-`scripts/setup-local.sh` is the single bootstrap entry point — see
+`scripts/setup-local.sh` is the single bootstrap entry point - see
 [`docs/ARTIFACT_POLICY.md`](docs/ARTIFACT_POLICY.md) for what data lives where.
 It is idempotent: re-running skips already-fetched content. Knobs:
 
@@ -174,7 +174,7 @@ If you only need the dictionary lookup path running, the fast variant is:
 SKIP_UD=1 SKIP_SILVER=1 bash scripts/setup-local.sh
 ```
 
-#### C — Compile only, no data import
+#### C - Compile only, no data import
 
 ```bash
 make build       # builds Rust parser + Go server binary
@@ -196,7 +196,7 @@ make doctor
 
 Reports DB presence + per-source row counts, FST table presence, analyzer
 venv presence (`.venv`), Ekilex shard presence,
-UD cache, frequency baselines, and the Rust parser shared library — each
+UD cache, frequency baselines, and the Rust parser shared library - each
 with a one-line hint for the missing pieces. Returns `0` unless the DB
 or the FI/ET dictionary is missing entirely; everything else is
 informational so you understand the *degraded modes* your setup implies
@@ -270,7 +270,7 @@ Recommended Estonian import (reliable, fast at import time, assumes
 make import-dict-et-recommended
 ```
 
-`make run` does **not** auto-import — import once via path A, B, or one of
+`make run` does **not** auto-import - import once via path A, B, or one of
 the targets above, then `make run` every subsequent time. The data persists
 in `finnestdb.db`.
 
@@ -300,20 +300,20 @@ them when refreshing the latest Ekilex data or rebuilding a bootstrap from
 scratch. The full pipeline is four ordered steps; bootstrap users will only
 need step 4:
 
-1. **Fetch the list of words** — `make fetch-ekilex-refresh`
+1. **Fetch the list of words** - `make fetch-ekilex-refresh`
    - re-fetches `/api/public_word/eki` and overwrites the local headword list
      (`localdata/ekilex/eki-public-words-2026-et.jsonl`, gitignored)
    - only updates if the headword set has changed
-2. **Scrape per-word details** — `make fetch-ekilex`
+2. **Scrape per-word details** - `make fetch-ekilex`
    - see setup instructions below
    - goes through the wordlist from step 1 and pulls `/api/word/details` for every `word_id`
    - writes gzipped raw payloads under `localdata/ekilex/details/raw/` (gitignored)
-3. **Extract / reduce** — `make reduce-ekilex`
+3. **Extract / reduce** - `make reduce-ekilex`
    - reduces the raw payloads into sharded local artifacts under `localdata/ekilex/`:
      - `definitions/<letter>.jsonl`: extracts lemma + morphology + meanings
      - `forms/<letter>.tsv`: a list of inflected forms, one row per inflected form with the corresponding lemma
    - golden-tested; see the `reduce-ekilex` notes in [Makefile](Makefile).
-4. **Load into the dictionary** — `make import-ekilex-details-et`
+4. **Load into the dictionary** - `make import-ekilex-details-et`
    - bulk-loads the reduced data into the lemma/form/translation tables in
      `finnestdb.db`
    - this is the only step required at deploy time
@@ -330,7 +330,7 @@ Prerequisites:
 - Export `EKILEX_API_KEY` (create one in your Ekilex user profile; sent as
   the `ekilex-api-key` header). Without it the command exits immediately.
 - Disk: gzipped raw payloads land under `localdata/ekilex/details/raw/`
-  (gitignored) — budget ~1–2 GB for the full Estonian set.
+  (gitignored) - budget ~1–2 GB for the full Estonian set.
 
 Behavior:
 
@@ -353,7 +353,7 @@ make fetch-ekilex EKILEX_RPS=16 EKILEX_WORKERS=16
 
 The defaults (16/16) have been run end-to-end against the full Estonian
 headword set without issues. Pushing above ~20 rps / 20 workers tends to
-upset the upstream API — the circuit breaker starts tripping repeatedly and
+upset the upstream API - the circuit breaker starts tripping repeatedly and
 overall throughput drops. Treat 20/20 as a soft ceiling unless you've
 verified the API can sustain more.
 
@@ -517,7 +517,7 @@ Golden dataset guidance:
 
 The app checks whether pasted or file-loaded text matches the selected language:
 
-- **Estonian detection:** the character `õ` is unique to Estonian — its presence is a strong signal
+- **Estonian detection:** the character `õ` is unique to Estonian - its presence is a strong signal
 - **Finnish detection:** `ä` and `ö` appear in >1.5% of letters in typical Finnish text
 - **Detected FI/ET mismatch:** high-confidence pasted or file-loaded text warns
   and blocks parsing until you switch languages
@@ -556,7 +556,7 @@ What still does **not** exist yet in the browser-facing parser flow:
 What **does** exist now for parser research:
 - FST candidate scoring in parallel with dict step 1 (post-PR #127)
   with candidate-merge FEATS enrichment (post-PR #129)
-- per-attribute FEATS eval (Case, Number, Tense, Mood, Voice, Person —
+- per-attribute FEATS eval (Case, Number, Tense, Mood, Voice, Person -
   post-PR #130)
 - ~9.8k FI committed gold cases + ~37.9k ET local-only (CC BY-NC-SA);
   ~37k FI train (local). See [`docs/data_enhancement.md`](docs/data_enhancement.md)
@@ -576,12 +576,12 @@ Product-surface limitations (alpha):
   paste, first-column `.txt` / `.csv` / `.tsv` / `.md` import, and
   AnkiConnect local-deck import/sync; Anki `.apkg` upload is not implemented.
 - admin parse-feedback triage UI is functional but minimal
-- review scheduling is a hand-rolled step scheduler, **not FSRS** —
+- review scheduling is a hand-rolled step scheduler, **not FSRS** -
   see [`docs/srs-deck-spec.md`](docs/srs-deck-spec.md) and
   [`TODO.md`](TODO.md) "Migrate alpha scheduler to real FSRS"
 - accepted lemma/POS parse corrections now write `custom_overrides`
   lexical rows when an admin accepts them; grammar/FEATS corrections and
-  eval-gated promotion remain future work — see [`TODO.md`](TODO.md)
+  eval-gated promotion remain future work - see [`TODO.md`](TODO.md)
   "Self-improving feedback loop"
 
 So the custom mode is stronger than the basic mode for many dictionary-backed
@@ -619,14 +619,14 @@ will close most of the long tail.
                           definitions, paradigm_class, feats)
   dict.go                 BatchLookupForms / BatchLookupGlosses
 /parser                   Rust tokenizer / sentence splitter (heuristic, with R1–R4
-                          numeric-hyphen rules — see DECISIONS.md Decision 6)
+                          numeric-hyphen rules - see DECISIONS.md Decision 6)
 /pkg/lemmatizer-fi-et     Generated-table FST runtime (loads from localdata/)
 /corpus_pipeline          Offline corpus fetch/extract/aggregate/verify/promote
                           tooling and learner-facing corpus exports
 /web                      Frontend (HTML, CSS, TypeScript)
 /design                   Design prototypes and direction explorations: JSX/HTML
                           mockups (Aalto direction, branding, app flows) +
-                          screenshot uploads. Tracked source — see PR #152.
+                          screenshot uploads. Tracked source - see PR #152.
 /Inclusive_Sans           Inclusive Sans variable + static font family used by
                           the design prototypes. OFL-licensed (OFL.txt + README.txt
                           ship with the family).
@@ -637,7 +637,7 @@ will close most of the long tail.
                           FI/ET train splits, generated lemmatizer tables, public
                           frequency baselines. `tar czf finnestdb-bootstrap.tgz
                           localdata/ finnestdb.db` captures the entire bootstrap
-                          state — see docs/ARTIFACT_POLICY.md for the policy.
+                          state - see docs/ARTIFACT_POLICY.md for the policy.
 /testdata/parser-eval     Frozen gold datasets per language (CC BY/BY-SA only;
                           NC-licensed gold lives under localdata/parser-eval/)
 /testdata/lemmatizer      Hand-authored unit-test fixtures for pkg/lemmatizer-fi-et
@@ -651,37 +651,37 @@ finnestdb-prd-alpha.md    Full product requirements document (historical)
 order"](TODO.md#llm-handoff-read-order). It points to the public-alpha gates,
 launch issue ledger, go/no-go rubric, decisions, and implementation specs.
 
-**Doc index:** [`docs/INDEX.md`](docs/INDEX.md) — single map of every doc
+**Doc index:** [`docs/INDEX.md`](docs/INDEX.md) - single map of every doc
 in this repo, organized by purpose. Read this first if you're not sure
 where to look.
 
-**Collaborator quickstart:** [`docs/FOR_MICHAEL.md`](docs/FOR_MICHAEL.md) —
+**Collaborator quickstart:** [`docs/FOR_MICHAEL.md`](docs/FOR_MICHAEL.md) -
 run/test the app locally plus a question→doc routing table for humans and
 their agents.
 
 Architecture and ops:
 - [Architecture](ARCHITECTURE.md) and [docs/SYSTEM_VERSIONING.md](docs/SYSTEM_VERSIONING.md)
-- [docs/ARTIFACT_POLICY.md](docs/ARTIFACT_POLICY.md) — what's allowed in git, what lives under `localdata/`
-- [docs/data_enhancement.md](docs/data_enhancement.md) — ledger of every external corpus pulled in
-- [corpus_pipeline/docs/CORPUS_PIPELINE.md](corpus_pipeline/docs/CORPUS_PIPELINE.md) — offline corpus fetch/extract/aggregate/verify/promote/enrich pipeline, learner exports, and QA gates
+- [docs/ARTIFACT_POLICY.md](docs/ARTIFACT_POLICY.md) - what's allowed in git, what lives under `localdata/`
+- [docs/data_enhancement.md](docs/data_enhancement.md) - ledger of every external corpus pulled in
+- [corpus_pipeline/docs/CORPUS_PIPELINE.md](corpus_pipeline/docs/CORPUS_PIPELINE.md) - offline corpus fetch/extract/aggregate/verify/promote/enrich pipeline, learner exports, and QA gates
 - [Documentation Changelog](docs/CHANGELOG.md) · [Decisions Log](docs/DECISIONS.md)
 - [Go-Live Checklist](docs/GO_LIVE_CHECKLIST.md)
-- [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) — redirect stub (split across README, PARSER_FEEDBACK_LOOP, ARCHITECTURE)
-- [Implementation Analysis](IMPLEMENTATION_ANALYSIS.md) — historical pre-implementation notes (banner)
+- [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) - redirect stub (split across README, PARSER_FEEDBACK_LOOP, ARCHITECTURE)
+- [Implementation Analysis](IMPLEMENTATION_ANALYSIS.md) - historical pre-implementation notes (banner)
 
 Product and strategy:
-- [docs/FEATURES.md](docs/FEATURES.md) — current learner-facing product vision/framing
-- [docs/USER_FLOWS.md](docs/USER_FLOWS.md) — screen-level consumer alpha journeys
-- [TODO / Findings](TODO.md) — active execution roadmap/backlog
-- [PRD (Alpha)](finnestdb-prd-alpha.md) — historical planning context
-- [docs/CROSS_LANGUAGE_STRATEGY.md](docs/CROSS_LANGUAGE_STRATEGY.md) — what is shared vs. language-specific
-- [docs/ideas.md](docs/ideas.md) — exploratory roadmap, includes AI-native phasing
+- [docs/FEATURES.md](docs/FEATURES.md) - current learner-facing product vision/framing
+- [docs/USER_FLOWS.md](docs/USER_FLOWS.md) - screen-level consumer alpha journeys
+- [TODO / Findings](TODO.md) - active execution roadmap/backlog
+- [PRD (Alpha)](finnestdb-prd-alpha.md) - historical planning context
+- [docs/CROSS_LANGUAGE_STRATEGY.md](docs/CROSS_LANGUAGE_STRATEGY.md) - what is shared vs. language-specific
+- [docs/ideas.md](docs/ideas.md) - exploratory roadmap, includes AI-native phasing
 
 Lexical pipelines:
-- [docs/LEXICAL_PLAN.md](docs/LEXICAL_PLAN.md) — combined FI + ET lexical layer architecture (Kotus + kaikki.org for FI; EstNLTK + EKI/Ekilex for ET; shared schema and source-priority resolver)
+- [docs/LEXICAL_PLAN.md](docs/LEXICAL_PLAN.md) - combined FI + ET lexical layer architecture (Kotus + kaikki.org for FI; EstNLTK + EKI/Ekilex for ET; shared schema and source-priority resolver)
 
 Parser tooling:
-- [docs/PARSER_EVOLUTION.md](docs/PARSER_EVOLUTION.md) — chronological log of parser-quality measurements and what moved them
+- [docs/PARSER_EVOLUTION.md](docs/PARSER_EVOLUTION.md) - chronological log of parser-quality measurements and what moved them
 - [docs/OMORFI_ADAPTER.md](docs/OMORFI_ADAPTER.md) · [docs/OMORFI_COMPARISON.md](docs/OMORFI_COMPARISON.md)
 - [docs/PARSER_EVAL_DATASETS.md](docs/PARSER_EVAL_DATASETS.md)
 - [docs/AUTORESEARCH.md](docs/AUTORESEARCH.md)

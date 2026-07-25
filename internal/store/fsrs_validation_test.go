@@ -105,8 +105,8 @@ func dueDaysFromPayload(t *testing.T, raw string, now time.Time) float64 {
 // -----------------------------------------------------------------------------
 
 // TestFSRSValidationSeededHistory constructs the four realistic card shapes the
-// rollout protocol calls out — new, learning mid-step, mature long-interval,
-// legacy {step,streak} state — plus a NULL-state card, flips the flag ON, and
+// rollout protocol calls out - new, learning mid-step, mature long-interval,
+// legacy {step,streak} state - plus a NULL-state card, flips the flag ON, and
 // rates through several simulated days with a deterministic clock. It asserts
 // the FSRS scheduling invariants the gate requires:
 //   - Again shortens vs. Good; Easy lengthens vs. Good (per rating).
@@ -224,7 +224,7 @@ func TestFSRSValidationSeededHistory(t *testing.T) {
 //
 // Note on FSRS learning steps: a brand-new card rated Good enters *learning*
 // state with a ~10-minute next_due (FSRS's learning ladder), not a multi-day
-// interval — so "introduced" does not mean "gone from the queue". The queue
+// interval - so "introduced" does not mean "gone from the queue". The queue
 // keys off next_due vs. wall-clock CURRENT_TIMESTAMP, so this drill sets
 // next_due explicitly (far future / past) to make queue membership
 // deterministic rather than racing the injected clock against wall time.
@@ -234,7 +234,10 @@ func TestFSRSValidationDueQueueAndNewLimit(t *testing.T) {
 	// Pin the daily new-card limit to 2 for a deterministic gate check.
 	setNewPerDay(t, db, user.ID, 2)
 
-	now := time.Date(2026, 7, 4, 9, 0, 0, 0, time.UTC)
+	// remainingNewCardsToday uses the real UTC date, so introductions must be
+	// recorded on that same date. A fixed calendar date silently stops
+	// exercising the quota once the day passes.
+	now := time.Now().UTC()
 
 	// Three brand-new cards; the daily limit is 2, so only two may be introduced.
 	var newCards []int64
@@ -283,7 +286,7 @@ func TestFSRSValidationDueQueueAndNewLimit(t *testing.T) {
 	}
 
 	// Property 2: due-queue ordering keys off next_due. Make one introduced FSRS
-	// card overdue against wall clock and confirm it is surfaced — proving the
+	// card overdue against wall clock and confirm it is surfaced - proving the
 	// queue reads next_due regardless of the scheduler that wrote the row.
 	past := time.Now().UTC().Add(-1 * time.Hour)
 	if _, err := db.db.Exec(
@@ -470,7 +473,7 @@ func TestFSRSValidationRollbackDrill(t *testing.T) {
 		t.Fatalf("phase A: expected a multi-day FSRS interval, got %.2fd", intervalDaysBeforeRollback)
 	}
 
-	// Phase B: rollback — flag OFF. The step scheduler must answer without error,
+	// Phase B: rollback - flag OFF. The step scheduler must answer without error,
 	// write a legacy step payload (not FSRS), and NOT snap the step to 0.
 	now = parseStoredTime(t, stA2.nextDue.String)
 	if err := db.recordReviewAnswerAt(user.ID, cardID, "good", now, false); err != nil {
@@ -491,7 +494,7 @@ func TestFSRSValidationRollbackDrill(t *testing.T) {
 		t.Fatalf("phase B: rollback next_due not in the future")
 	}
 
-	// Phase C: flip ON again — FSRS must resume from the step state without
+	// Phase C: flip ON again - FSRS must resume from the step state without
 	// corruption, deriving a fresh conservative seed from the current interval.
 	now = parseStoredTime(t, stB.nextDue.String)
 	if err := db.recordReviewAnswerAt(user.ID, cardID, "good", now, true); err != nil {
@@ -514,7 +517,7 @@ func TestFSRSValidationRollbackDrill(t *testing.T) {
 // cards/card_state rows from the shared finnestdb.db into a temp DB and runs the
 // FSRS + rollback drill against those real row shapes. It catches shape drift
 // synthetic seeds miss (unexpected fsrs_json shapes, NULL patterns, timestamp
-// formats). It NEVER writes to the shared DB — it only ATTACHes it read-only and
+// formats). It NEVER writes to the shared DB - it only ATTACHes it read-only and
 // copies out.
 //
 // Skips (does not fail) when the shared DB is absent, so CI without the 5GB

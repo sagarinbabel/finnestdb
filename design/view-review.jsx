@@ -12,7 +12,7 @@ function ReviewView() {
       grammar: "Essive singular (-nä)",
       pos: "NOUN",
       morph: [{ stem: "toissapäivä", suffix: "nä" }],
-      examples: [{ text: "Toissapäivänä menin pankkiin.", source: "Konsta Punkkinen — vol I" }],
+      examples: [{ text: "Toissapäivänä menin pankkiin.", source: "Konsta Punkkinen - vol I" }],
     }
   ];
   const [revealed, setRevealed] = useStateR(false);
@@ -133,7 +133,7 @@ function ReviewView() {
           )}
         </div>
 
-        {/* Right — session info */}
+        {/* Right - session info */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16, position: "sticky", top: 16, alignSelf: "start" }}>
           <div className="panel" style={{ padding: 18 }}>
             <div className="mono" style={{ fontSize: 10, color: "var(--ink-mute)", letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: 14 }}>

@@ -128,7 +128,7 @@ func main() {
 	}
 	fmt.Fprintf(os.Stderr, "VERIFY PASS (lang=%s profile=%s)", langLower, *profile)
 	if len(res.SoftWarnings) > 0 {
-		fmt.Fprintf(os.Stderr, " — %d soft warning(s)\n", len(res.SoftWarnings))
+		fmt.Fprintf(os.Stderr, " - %d soft warning(s)\n", len(res.SoftWarnings))
 	} else {
 		fmt.Fprintln(os.Stderr)
 	}

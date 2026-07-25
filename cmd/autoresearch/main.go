@@ -199,7 +199,7 @@ func run(datasetPath, rulesPath, parserMode, dbPath, metricName string, minDelta
 		if exp.Delta >= -minDelta {
 			exp.Verdict = "kept"
 			fmt.Printf("KEPT (Δ %s = %+.4f pts)\n", metricName, exp.Delta)
-			// In MVP we revert anyway — we're just measuring impact, not
+			// In MVP we revert anyway - we're just measuring impact, not
 			// permanently mutating. A future "greedy" mode could keep accepted
 			// changes by updating originalBytes.
 		} else {
@@ -220,7 +220,7 @@ func run(datasetPath, rulesPath, parserMode, dbPath, metricName string, minDelta
 
 // candidate identifies a single suffix entry (one possessive string literal,
 // or one CaseSuffix struct literal) at a precise byte range in the rule file.
-// Mutating just that range — instead of the whole line — keeps each
+// Mutating just that range - instead of the whole line - keeps each
 // experiment attributable to exactly one rule, even when the source line
 // packs multiple entries together (e.g. `{"ssa", "inessive"}, {"ssä", "inessive"},`).
 type candidate struct {
@@ -237,7 +237,7 @@ var caseSuffixRE = regexp.MustCompile(`\{\s*"[^"]+"\s*,\s*"[^"]+"\s*\}`)
 
 // possessiveSuffixRE matches a single bare string literal in the
 // FinnishPossessiveSuffixes slice. The literal must follow the slice
-// opening `{`, a comma, or the start of the line — this prevents matching
+// opening `{`, a comma, or the start of the line - this prevents matching
 // strings inside doc comments. The trailing comma is intentionally NOT
 // consumed so the next iteration can re-anchor on it.
 var possessiveSuffixRE = regexp.MustCompile(`(?m)(?:^|,|\{)\s*("[^"]+")`)

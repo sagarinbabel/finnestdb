@@ -74,7 +74,7 @@ worktree path that should be passed as `HFSTOL_PATH` or symlinked into
 A **single shared venv** lives at `.venv/` in the project root. It contains
 both `omorfi` (Finnish morphological analyzer) and `estnltk` (Estonian
 Vabamorf-backed analyzer). Never create separate `.venv-omorfi/` or
-`.venv-estnltk/` directories — those are legacy names kept only as fallback
+`.venv-estnltk/` directories - those are legacy names kept only as fallback
 lookups in the Go code and scripts.
 
 ### Setup
@@ -97,7 +97,7 @@ All Go code (`evalparsers.go`, `enrichgoldfeats`, `doctor`) and shell scripts
 ### In worktrees
 
 The `.venv/` and `finnestdb.db` both live in the **main repo root**, not in
-worktrees. Always symlink them in — never copy or recreate them in a
+worktrees. Always symlink them in - never copy or recreate them in a
 worktree:
 
 ```bash
@@ -168,4 +168,4 @@ full ET/FI corpus work are:
 | `~/.cache/omorfi/` | HFST model files for omorfi |
 | `finnestdb.db` | 5+ GB SQLite dictionary database |
 | `localdata/` | Gitignored runtime artifacts, corpora, tables |
-| `corpus_pipeline/` | Tracked pipeline source (has its own `.venv/` — separate) |
+| `corpus_pipeline/` | Tracked pipeline source (has its own `.venv/` - separate) |

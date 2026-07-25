@@ -13,7 +13,7 @@ import (
 
 // extractGZ handles plain text gzip files (the OPUS .txt.gz format).
 // One sentence per line in the input. We pass them through to text.txt
-// with blank lines marking document boundaries — for OPUS we don't have
+// with blank lines marking document boundaries - for OPUS we don't have
 // document structure, so we group into pseudo-documents of N lines each
 // for sentence_ix locality.
 func extractGZ(dir string, m sources.Manifest) error {

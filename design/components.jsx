@@ -28,7 +28,7 @@ function Spark({ data, color = "var(--accent)", width = 120, height = 28, fill =
   );
 }
 
-// Heat strip — coverage visualization
+// Heat strip - coverage visualization
 function HeatStrip({ coverage = 0.8, segments = 60, accent = "var(--accent-2)" }) {
   const cells = [];
   for (let i = 0; i < segments; i++) {

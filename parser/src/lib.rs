@@ -52,7 +52,7 @@ fn is_punct(c: char) -> bool {
             | '*'
             | '«'
             | '»'
-            | '—'
+            | '-'
             | '–'
             | '…'
             | '\u{201C}'
@@ -159,14 +159,14 @@ fn is_all_digits(s: &str) -> bool {
 
 /// Try to split a chunk at a numeric hyphen boundary (rules R1 and R4).
 ///
-/// R1 — digit/letter boundary: split at the first hyphen where one side is
+/// R1 - digit/letter boundary: split at the first hyphen where one side is
 /// pure digits and the other starts with a letter. Examples that split:
 /// `65-aastane`, `1990-luvulla`, `aastane-65`. Examples that don't:
 /// `B1-tase` (mixed prefix), `well-known` (no digits).
 ///
-/// R4 — single-hyphen digit/digit range: if there is exactly one hyphen and
+/// R4 - single-hyphen digit/digit range: if there is exactly one hyphen and
 /// both sides are pure digits, split there. Examples that split: `1990-2020`,
-/// `12-15`. Examples that don't: `2026-05-06` (two hyphens — date pattern
+/// `12-15`. Examples that don't: `2026-05-06` (two hyphens - date pattern
 /// stays whole).
 ///
 /// Returns `Some([left, "-", right])` on a split, `None` otherwise.
@@ -332,7 +332,7 @@ fn tokenize(sentence: &str) -> Vec<(String, bool)> {
                         && parts[1].chars().all(|c| c.is_ascii_digit())
                     {
                         tokens.push((decimal, false));
-                        // No trailing punct to emit — the digits consumed everything.
+                        // No trailing punct to emit - the digits consumed everything.
                         continue;
                     }
                 }
@@ -404,9 +404,9 @@ fn create_token(form: &str, is_punct_token: bool) -> Token {
 
 /// Simple POS guessing based on form (stub implementation).
 ///
-/// R2: forms made up entirely of ASCII digits — optionally with a single
+/// R2: forms made up entirely of ASCII digits - optionally with a single
 /// `.` or `,` decimal separator, optionally with internal whitespace acting
-/// as a thousand separator — are tagged `NUM` before any other heuristic
+/// as a thousand separator - are tagged `NUM` before any other heuristic
 /// runs. This catches `65`, `1990`, `3.14`, `12,50`, and `250 000`.
 fn guess_pos(form: &str) -> String {
     let stripped: String = form.chars().filter(|c| !c.is_whitespace()).collect();
@@ -591,7 +591,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_mixed_punct() {
-        // "word)." → ["word", ")", "."]  — the user's explicit pain point
+        // "word)." → ["word", ")", "."]  - the user's explicit pain point
         let tokens = forms("word).");
         assert_eq!(tokens, vec!["word", ")", "."]);
     }
@@ -716,7 +716,7 @@ mod tests {
 
     #[test]
     fn test_tokenize_iso_date_does_not_split() {
-        // R4 only fires on a single hyphen — ISO dates have two and stay whole.
+        // R4 only fires on a single hyphen - ISO dates have two and stay whole.
         let tokens = forms("2026-05-06");
         assert_eq!(tokens, vec!["2026-05-06"]);
     }

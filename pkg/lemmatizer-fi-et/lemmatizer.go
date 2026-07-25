@@ -47,7 +47,7 @@ type Lemmatizer struct {
 // New constructs a Lemmatizer reading FI/ET tables from the directory
 // resolved by LEMMATIZER_TABLES_DIR (falling back to DefaultTablesDir).
 // Returns an error wrapping ErrNoTables when neither table is present
-// — callers in production paths (e.g. internal/store) treat that as
+// - callers in production paths (e.g. internal/store) treat that as
 // "FST disabled" rather than fatal so a fresh clone without
 // scripts/setup-local.sh still serves the dict-only path.
 func New() (*Lemmatizer, error) {
@@ -122,7 +122,7 @@ func (l *Lemmatizer) Close() error {
 //     curated analysis (FI: `tuskin` returns ADV not the productive
 //     instructive of `tuska`; ET: `peale` returns ADP not the
 //     allative of `pea`). When an overlay hit fires, the FST
-//     readings are dropped entirely — the overlay asserts the
+//     readings are dropped entirely - the overlay asserts the
 //     correct answer.
 //   - The MA-infinitive normaliser rewrites Finnish FEATS on verb
 //     surfaces like `tarjoamaan` where the analyzer's noun-cousin

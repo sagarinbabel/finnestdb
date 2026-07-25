@@ -1,4 +1,4 @@
-# ML Ideas — FinnEst
+# ML Ideas - FinnEst
 
 _Created: 2026-05-07. Status: ideas, not commitments. Refresh after the FST
 lemmatizer migration (PRs #106–#112) lands and the post-FST baseline is
@@ -42,8 +42,8 @@ context tokens, candidate POS tags from the FST. Output: argmax over
 candidate (lemma, POS) pairs.
 
 **Data.** UD-Finnish-TDT and UD-Estonian-EDT, already public, CC BY-SA
-(EDT is BY-NC-SA — non-commercial only, watch this). Plus user-corrected
-parses from the existing `parse_feedback` table — that's the moat.
+(EDT is BY-NC-SA - non-commercial only, watch this). Plus user-corrected
+parses from the existing `parse_feedback` table - that's the moat.
 
 **Cost.** Training: hours on a laptop CPU. Model: a few MB. Inference:
 microseconds per token, deterministic given trained weights.
@@ -77,15 +77,15 @@ different layers. Suggested layout:
    Train one CRF per language using a Go CRF implementation.
    Candidates: vendor a ~500-line CRF (the algorithm is
    well-documented), or call `crfsuite` via subprocess for the first
-   spike, then port to pure Go. Avoid Python at runtime — the deploy
+   spike, then port to pure Go. Avoid Python at runtime - the deploy
    story stays single-binary.
 3. **Model artifact**: ship as `data/models/disambiguator-fi.crfsuite`
    and `data/models/disambiguator-et.crfsuite` (or our own Go-native
    format if we vendor the trainer). A few MB each. Embed via
    `go:embed` if we want zero runtime filesystem coupling, or
-   disk-load the same way `pkg/lemmatizer-fi-et` loads its tables —
+   disk-load the same way `pkg/lemmatizer-fi-et` loads its tables -
    pick consistently with the table-policy direction.
-4. **Integration point — gated on candidate merging.** The natural
+4. **Integration point - gated on candidate merging.** The natural
    place to insert the disambiguator is *after* both dict and FST have
    surfaced their candidates, so the CRF picks among the union. That
    "candidate merging" architectural correction was the closed
@@ -100,7 +100,7 @@ different layers. Suggested layout:
    This means the work doesn't block on parser-architecture decisions
    and the model is ready the day the integration point is.
 6. **Eval.** Per-language accuracy delta on the **homonym subset** of
-   gold — filter `testdata/parser-eval/{fi,et}/gold/*` to cases where
+   gold - filter `testdata/parser-eval/{fi,et}/gold/*` to cases where
    dict returned ≥2 candidates for the surface form. Report
    lemma/POS/full accuracy lift on that subset; aggregate-level lift
    will be small because most tokens are unambiguous. The interesting
@@ -114,7 +114,7 @@ different layers. Suggested layout:
    the model ships.
 
 **Confidence on this sequencing: high.** Parallel-safe is the load-
-bearing claim — verified by inspection of the file boundaries between
+bearing claim - verified by inspection of the file boundaries between
 this work and the FEATS PR. Confidence on the lift estimate (5–10pp
 on the homonym subset): moderate; it depends on whether the homonyms
 in the gold set are linguistically tractable from the local context
@@ -131,7 +131,7 @@ surface form as a stub lemma. A small char-level seq2seq trained on
 (form, lemma) pairs from UD treebanks can guess sensible lemmas for OOV.
 
 **Approach.** Char-level BiLSTM or small transformer encoder-decoder.
-Stanza ships exactly this for FI and ET — about 50 MB per language, ~99%
+Stanza ships exactly this for FI and ET - about 50 MB per language, ~99%
 accuracy on UD test set, sub-millisecond per word.
 
 **Cost.** Training: a few GPU-hours (or a day on CPU). Inference: ms per
@@ -218,7 +218,7 @@ we publish the resulting ranking + coverage curves.
 contingent on the public-list survey being thorough; revisit once the
 ranking is computed and compared against the public baselines documented in `docs/FREQUENCY_BASELINES.md`.
 
-### 2c. Comprehension prediction (CORE FEATURE — already in spec)
+### 2c. Comprehension prediction (CORE FEATURE - already in spec)
 
 **Problem solved.** Given any text, predict the user's comprehension %
 of it before they read.
@@ -239,7 +239,7 @@ UI work plus the frequency-aggregation backend from 2b.
 
 ---
 
-## 3. Sentence-level ML — the "cached corpus" strategy
+## 3. Sentence-level ML - the "cached corpus" strategy
 
 This is the direction where the project intentionally bends the "free
 at inference" rule.
@@ -250,8 +250,8 @@ There are two distinct kinds of sentence-level work:
 
 | Flow | Input | Cache hit rate | Approach |
 |---|---|---|---|
-| **Curated corpus** | a fixed library of ~100k learner-friendly sentences chosen by the project | 100% — every sentence is precomputed | precompute LLM translations, context labels, difficulty ratings; serve from cache |
-| **User-pasted text** | arbitrary text the user pastes | ~0% — combinatorial sentence space | either small on-device model, API at request time, or graceful degradation to word-level only |
+| **Curated corpus** | a fixed library of ~100k learner-friendly sentences chosen by the project | 100% - every sentence is precomputed | precompute LLM translations, context labels, difficulty ratings; serve from cache |
+| **User-pasted text** | arbitrary text the user pastes | ~0% - combinatorial sentence space | either small on-device model, API at request time, or graceful degradation to word-level only |
 
 Conflating these two flows is the failure mode. They need different
 infrastructure.
@@ -345,7 +345,7 @@ the review flow, which doesn't exist yet (Phase 5).
 
 Already in the project plan
 ([`docs/srs-deck-spec.md`](srs-deck-spec.md)). Not "ML" in the
-training sense, but a learned scheduling model — relevant when this
+training sense, but a learned scheduling model - relevant when this
 doc is refreshed.
 
 ---

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# scripts/setup-local.sh — single-entry-point bootstrap for a fresh clone.
+# scripts/setup-local.sh - single-entry-point bootstrap for a fresh clone.
 #
 # Fetches every third-party data artifact into ./localdata/ (gitignored),
 # generates derived tables, and populates ./finnestdb.db so that
 # `./finnestdb` can serve immediately.
 #
 # Per docs/ARTIFACT_POLICY.md, none of the data this script writes is
-# tracked in git. Re-running is idempotent — sources that are already
+# tracked in git. Re-running is idempotent - sources that are already
 # present are skipped.
 #
 # Single-folder bootstrap rule (2026-05-07): every artifact this script
@@ -94,7 +94,7 @@ mkdir -p localdata/{kotus,ekilex/{details/raw,definitions,forms},silver-fi/raw,l
 # ── 3. Kotus Nykysuomen sanalista ─────────────────────────────────────────────
 KOTUS_FILE="localdata/kotus/nykysuomensanalista2024.txt"
 if [[ -f "$KOTUS_FILE" ]]; then
-    log "Kotus sanalista already present at $KOTUS_FILE — skipping fetch."
+    log "Kotus sanalista already present at $KOTUS_FILE - skipping fetch."
 else
     log "Fetching Kotus Nykysuomen sanalista 2024 (CC BY 4.0)…"
     curl -fsSL --max-time 120 \
@@ -106,11 +106,11 @@ fi
 # ── 4. Ekilex public-word snapshot ────────────────────────────────────────────
 EKILEX_QUEUE="localdata/ekilex/eki-public-words-2026-et.jsonl"
 if [[ -f "$EKILEX_QUEUE" ]]; then
-    log "Ekilex public-word snapshot already present — skipping refresh."
+    log "Ekilex public-word snapshot already present - skipping refresh."
 else
     log "Fetching Ekilex public-word snapshot (ET, /api/public_word/eki)…"
     # Note: the no-key path is announced up front in the plan header. If the
-    # endpoint rejects an unauthenticated request we just skip — the parser
+    # endpoint rejects an unauthenticated request we just skip - the parser
     # still works without ET enrichment.
     make fetch-ekilex-refresh || true
     if [[ ! -f "$EKILEX_QUEUE" ]]; then
@@ -121,16 +121,16 @@ fi
 
 # ── 5. Ekilex /api/word/details (the long part) ───────────────────────────────
 if [[ -n "${SKIP_EKILEX_DETAILS:-}" ]]; then
-    warn "SKIP_EKILEX_DETAILS set — skipping Ekilex details scrape + reduce."
+    warn "SKIP_EKILEX_DETAILS set - skipping Ekilex details scrape + reduce."
 elif [[ -z "${EKILEX_API_KEY:-}" ]]; then
-    warn "EKILEX_API_KEY not set — skipping Ekilex details scrape."
+    warn "EKILEX_API_KEY not set - skipping Ekilex details scrape."
     warn "   Without it, parser still runs but lacks rich ET morphology + glosses."
     warn "   Get a free key at https://ekilex.ee/, then re-run this script."
 elif [[ ! -f "$EKILEX_QUEUE" ]]; then
-    warn "Ekilex queue missing at $EKILEX_QUEUE — skipping details scrape."
+    warn "Ekilex queue missing at $EKILEX_QUEUE - skipping details scrape."
     warn "   Re-run after fetch-ekilex-refresh succeeds."
 elif [[ -d "localdata/ekilex/definitions" && -n "$(ls -A localdata/ekilex/definitions 2>/dev/null)" ]]; then
-    log "Ekilex reduced shards already present at localdata/ekilex/{definitions,forms}/ — skipping fetch."
+    log "Ekilex reduced shards already present at localdata/ekilex/{definitions,forms}/ - skipping fetch."
 else
     log "Scraping Ekilex /api/word/details (this can take several hours)…"
     log "  Tune via EKILEX_WORKERS / EKILEX_RPS env vars."
@@ -141,9 +141,9 @@ fi
 
 # ── 6. UD treebanks ───────────────────────────────────────────────────────────
 if [[ -n "${SKIP_UD:-}" ]]; then
-    warn "SKIP_UD set — skipping UD treebank fetch."
+    warn "SKIP_UD set - skipping UD treebank fetch."
 elif [[ -d "localdata/ud-cache" && -n "$(ls -A localdata/ud-cache 2>/dev/null)" ]]; then
-    log "UD treebanks already present at localdata/ud-cache/ — skipping fetch."
+    log "UD treebanks already present at localdata/ud-cache/ - skipping fetch."
 else
     log "Fetching UD treebanks (FI + ET) → localdata/ud-cache/, gold → testdata/parser-eval/fi/gold/ + localdata/parser-eval/{fi,et}/…"
     bash scripts/fetch-and-import-ud.sh both
@@ -151,9 +151,9 @@ fi
 
 # ── 7. Gutenberg-FI silver ────────────────────────────────────────────────────
 if [[ -n "${SKIP_SILVER:-}" ]]; then
-    warn "SKIP_SILVER set — skipping Gutenberg silver scrape."
+    warn "SKIP_SILVER set - skipping Gutenberg silver scrape."
 elif [[ -f "localdata/silver-fi/manifest.jsonl" ]]; then
-    log "Gutenberg-FI silver already present — skipping scrape."
+    log "Gutenberg-FI silver already present - skipping scrape."
 else
     log "Scraping Gutenberg-FI silver corpus (~500k tokens, ~4 MB)…"
     make scrape-gutenberg-fi
@@ -183,12 +183,12 @@ fi
 # merge/scoring path is reduced.
 LEMMATIZER_FI_TABLE="localdata/lemmatizer-fi-et/tables/fi_min.json"
 if [[ -f "$LEMMATIZER_FI_TABLE" ]]; then
-    log "Lemmatizer FI table already present at $LEMMATIZER_FI_TABLE — skipping gen."
+    log "Lemmatizer FI table already present at $LEMMATIZER_FI_TABLE - skipping gen."
 elif [[ -n "${VFST_PATH:-}" ]]; then
     log "Generating lemmatizer FI table from $VFST_PATH …"
     make gen-lemmatizer-tables-fi VFST_PATH="$VFST_PATH"
 else
-    warn "VFST_PATH not set — skipping lemmatizer FI table generation."
+    warn "VFST_PATH not set - skipping lemmatizer FI table generation."
     warn "   Without it, the FI FST candidate merge/scoring path is reduced."
     warn "   To enable: install libvoikko (e.g. brew install libvoikko on macOS) and"
     warn "   re-run with VFST_PATH=/path/to/mor.vfst (locate via 'voikkospell -t')."
@@ -198,12 +198,12 @@ LEMMATIZER_ET_TABLE="localdata/lemmatizer-fi-et/tables/et_min.json"
 DEFAULT_HFSTOL_PATH="localdata/lemmatizer-fi-et/analyser-gt-desc.hfstol"
 HFSTOL_FOR_GEN="${HFSTOL_PATH:-$DEFAULT_HFSTOL_PATH}"
 if [[ -f "$LEMMATIZER_ET_TABLE" ]]; then
-    log "Lemmatizer ET table already present at $LEMMATIZER_ET_TABLE — skipping gen."
+    log "Lemmatizer ET table already present at $LEMMATIZER_ET_TABLE - skipping gen."
 elif [[ -f "$HFSTOL_FOR_GEN" ]]; then
     log "Generating lemmatizer ET table from $HFSTOL_FOR_GEN …"
     make gen-lemmatizer-tables-et HFSTOL_PATH="$HFSTOL_FOR_GEN"
 else
-    warn "HFSTOL_PATH not set and default analyser missing at $DEFAULT_HFSTOL_PATH — skipping lemmatizer ET table generation."
+    warn "HFSTOL_PATH not set and default analyser missing at $DEFAULT_HFSTOL_PATH - skipping lemmatizer ET table generation."
     warn "   Without it, the ET FST candidate merge/scoring path is reduced."
     warn "   Run 'make doctor' and read docs/LOCAL_TOOLING.md before assuming the analyser is absent."
 fi
@@ -213,10 +213,10 @@ fi
 # Used as comparison anchors for the user-aggregated frequency work.
 # See docs/FREQUENCY_BASELINES.md.
 if [[ -n "${SKIP_FREQUENCY:-}" ]]; then
-    warn "SKIP_FREQUENCY set — skipping frequency baseline fetch."
+    warn "SKIP_FREQUENCY set - skipping frequency baseline fetch."
 elif [[ -d "localdata/frequency/fi" && -d "localdata/frequency/et" && \
         -f "localdata/frequency/fi/opensubtitles-2018-fi-50k.txt" ]]; then
-    log "Frequency baselines already present — skipping fetch."
+    log "Frequency baselines already present - skipping fetch."
 else
     log "Fetching public frequency baselines (~10 MB)…"
     make fetch-frequency-baselines || warn "fetch-frequency-baselines failed; continuing."
@@ -227,16 +227,16 @@ log ""
 log "Setup complete."
 log ""
 log "Repo state:"
-log "  finnestdb.db                     — populated SQLite, ~$(du -h finnestdb.db 2>/dev/null | awk '{print $1}')"
-log "  localdata/kotus/                 — Kotus sanalista, $(du -sh localdata/kotus 2>/dev/null | awk '{print $1}')"
-log "  localdata/ekilex/                — Ekilex shards, $(du -sh localdata/ekilex 2>/dev/null | awk '{print $1}')"
-log "  localdata/silver-fi/             — Gutenberg silver, $(du -sh localdata/silver-fi 2>/dev/null | awk '{print $1}')"
-log "  localdata/ud-cache/              — UD treebank clones, $(du -sh localdata/ud-cache 2>/dev/null | awk '{print $1}')"
-log "  localdata/parser-eval/           — local-only parser-eval gold, $(du -sh localdata/parser-eval 2>/dev/null | awk '{print $1}')"
-log "  localdata/lemmatizer-fi-et/      — generated lemmatizer tables, $(du -sh localdata/lemmatizer-fi-et 2>/dev/null | awk '{print $1}')"
-log "  localdata/frequency/             — public frequency baselines, $(du -sh localdata/frequency 2>/dev/null | awk '{print $1}')"
+log "  finnestdb.db                     - populated SQLite, ~$(du -h finnestdb.db 2>/dev/null | awk '{print $1}')"
+log "  localdata/kotus/                 - Kotus sanalista, $(du -sh localdata/kotus 2>/dev/null | awk '{print $1}')"
+log "  localdata/ekilex/                - Ekilex shards, $(du -sh localdata/ekilex 2>/dev/null | awk '{print $1}')"
+log "  localdata/silver-fi/             - Gutenberg silver, $(du -sh localdata/silver-fi 2>/dev/null | awk '{print $1}')"
+log "  localdata/ud-cache/              - UD treebank clones, $(du -sh localdata/ud-cache 2>/dev/null | awk '{print $1}')"
+log "  localdata/parser-eval/           - local-only parser-eval gold, $(du -sh localdata/parser-eval 2>/dev/null | awk '{print $1}')"
+log "  localdata/lemmatizer-fi-et/      - generated lemmatizer tables, $(du -sh localdata/lemmatizer-fi-et 2>/dev/null | awk '{print $1}')"
+log "  localdata/frequency/             - public frequency baselines, $(du -sh localdata/frequency 2>/dev/null | awk '{print $1}')"
 log ""
-log "Single-folder bootstrap — everything above lives under ./localdata/."
+log "Single-folder bootstrap - everything above lives under ./localdata/."
 log "To hand a teammate a fast-bootstrap zip (skips every fetch above):"
 log "  tar czf finnestdb-bootstrap.tgz localdata/ finnestdb.db"
 log "  # send the .tgz; they untar in repo root and run ./finnestdb"

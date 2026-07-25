@@ -3,18 +3,18 @@
 //
 // Inputs (relative to -data):
 //
-//	definitions/<letter>.jsonl  — per-word lemma + morphology + meanings
-//	forms/<letter>.tsv          — one row per (lemma, form, morph_code)
+//	definitions/<letter>.jsonl  - per-word lemma + morphology + meanings
+//	forms/<letter>.tsv          - one row per (lemma, form, morph_code)
 //
 // Outputs land in the lemmas and forms tables. Every (lemma, pos) pair from
 // every Ekilex meaning becomes a lemmas row; every (lemma, form, pos) tuple
 // becomes a forms row. The new multi-lemma forms PK (form, lang, lemma, pos)
-// allows ambiguous surface forms to map to multiple homonyms — see
+// allows ambiguous surface forms to map to multiple homonyms - see
 // internal/store EnsureMultiLemmaSchema.
 //
 // Glosses come from the union of EN translations across the meanings that
 // share a (lemma, pos), deduplicated case-insensitively and joined with "; ".
-// Each meaning is attributed to its own POS only — an entry whose meanings
+// Each meaning is attributed to its own POS only - an entry whose meanings
 // span multiple parts of speech (e.g. ADJ + NOUN) does not cross-pollinate.
 // Lemmas with no EN translations fall back to the first matching ET
 // definition with a `[ET] ` prefix (cap glossFallbackMaxLen runes). Entries
@@ -80,7 +80,7 @@ var posMap = map[string]string{
 
 // wordClassFallback applies when a meaning has no `pos` field. The Ekilex
 // `word_class` field at the entry level is one of "noomen", "verb",
-// "muutumatu", or empty — coarser than meaning-level codes.
+// "muutumatu", or empty - coarser than meaning-level codes.
 var wordClassFallback = map[string]string{
 	"noomen":    "NOUN",
 	"verb":      "VERB",
@@ -137,7 +137,7 @@ func main() {
 	// Pass 1: walk definitions and aggregate per (lemma, pos) so the gloss
 	// column gets the merged EN translations across all homonyms instead of
 	// only the first inserted one. (A naive per-entry write loses real
-	// glosses — e.g. aste#1 "step" vs aste#2 "degree" both collapse to
+	// glosses - e.g. aste#1 "step" vs aste#2 "degree" both collapse to
 	// aste/NOUN, and one would shadow the other.)
 	log.Println("Pass 1: aggregating definitions → lemmas")
 	lemmaPOS, aggStats, err := aggregateDefinitions(defDir)
@@ -170,7 +170,7 @@ func main() {
 	// Pass 2.5: write per-meaning translations. Phase 2 of the lexical
 	// plan: the read path consults the translations table first, so each
 	// EN translation gets its own row with a stable sense_idx. Mirrors
-	// cmd/importdict's PR #85 pattern — wipe-and-rebuild inside the
+	// cmd/importdict's PR #85 pattern - wipe-and-rebuild inside the
 	// transaction so a failure here doesn't leave Ekilex translations in
 	// an empty intermediate state.
 	log.Println("Pass 2.5: writing translation rows")
@@ -183,7 +183,7 @@ func main() {
 	// Pass 2.6: write per-meaning Estonian-language definitions. The
 	// definitions table is the structured source-language counterpart of
 	// translations. Wipe-and-rebuild for the same reason translations
-	// does — a re-import after upstream Ekilex pruned senses must not
+	// does - a re-import after upstream Ekilex pruned senses must not
 	// leave stale rows behind.
 	log.Println("Pass 2.6: writing Estonian definition rows")
 	definitionsWritten, err := writeDefinitions(db, lemmaPOS)
@@ -214,7 +214,7 @@ func main() {
 // lemmaPOSMap maps a lemma to a set of POS values, each carrying the
 // accumulated EN translations across every Ekilex entry that contributed
 // to that (lemma, pos) pair. Multiple homonyms of the same lemma collapse
-// here when they share a POS — e.g. aste#1 ("step") and aste#2 ("degree"):
+// here when they share a POS - e.g. aste#1 ("step") and aste#2 ("degree"):
 // both are NOUN, so their translations merge into one
 // `lemmaPOSMap["aste"]["NOUN"]` slice.
 type lemmaPOSMap map[string]map[string]*lemmaPOSData
@@ -233,7 +233,7 @@ type lemmaPOSData struct {
 
 	// definitionsET holds Estonian-language definitions accumulated across
 	// every meaning entry that contributed to this (lemma, pos) pair.
-	// Order is insertion-order-stable — duplicates are dropped (case-
+	// Order is insertion-order-stable - duplicates are dropped (case-
 	// sensitive match, since Estonian definitions don't have the same
 	// case-collision pattern that EN translations do). The gloss-fallback
 	// path uses the first entry as a `[ET] `-prefixed gloss when no EN
@@ -286,7 +286,7 @@ func (m lemmaPOSMap) add(lemma, upos string, translations, definitionsET []strin
 
 // chooseCasing breaks ties between two translations that share a lowercase
 // form. A translation that begins with an uppercase letter wins over its
-// all-lowercase variant — proper nouns and acronyms are the dominant cause
+// all-lowercase variant - proper nouns and acronyms are the dominant cause
 // of case collisions in real Ekilex data ("Calvinism" / "calvinism",
 // "Turbot" / "turbot"). When neither or both have an uppercase first
 // letter, we fall back to lexicographic order for determinism so re-runs
@@ -329,7 +329,7 @@ func countLemmaPOS(m lemmaPOSMap) int {
 }
 
 // aggregateStats records soft failures encountered while walking the
-// definitions JSONL — silent skips would let upstream schema drift go
+// definitions JSONL - silent skips would let upstream schema drift go
 // unnoticed.
 type aggregateStats struct {
 	badLines   int
@@ -339,7 +339,7 @@ type aggregateStats struct {
 }
 
 // aggregateDefinitions walks definitions/*.jsonl and builds the lemmaPOSMap.
-// No DB writes happen here — the returned aggregator is consumed by
+// No DB writes happen here - the returned aggregator is consumed by
 // writeLemmas and importForms. The stats struct surfaces soft failures
 // (JSON parse errors, lemma-less entries, entries with no resolvable POS)
 // so we can log a summary instead of skipping silently.
@@ -418,7 +418,7 @@ func aggregateDefinitions(dir string) (lemmaPOSMap, *aggregateStats, error) {
 			// (lemma, upos) row keyed by word_class so the form-import path
 			// can still attribute forms to this lemma. Real Ekilex carries
 			// ~19k such fallback-importable lemmas (e.g. verbs like
-			// "alajahtuma") whose definitions/forms files split — meanings
+			// "alajahtuma") whose definitions/forms files split - meanings
 			// often live in a paired entry while forms still need a target
 			// (lemma, pos) to attach to.
 			if !hasAnyPOS {
@@ -442,7 +442,7 @@ func aggregateDefinitions(dir string) (lemmaPOSMap, *aggregateStats, error) {
 
 // writeLemmas issues one INSERT OR IGNORE + one conditional UPDATE per
 // aggregated (lemma, pos), with the merged Ekilex gloss. Returns
-// (newRowsInserted, glossFillsApplied) — both measured from RowsAffected
+// (newRowsInserted, glossFillsApplied) - both measured from RowsAffected
 // so they reflect actual database changes, not insert attempts.
 func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	tx, err := db.Begin()
@@ -455,7 +455,7 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	// `ekilex` BEFORE the upsert below has a chance to source-upgrade
 	// anything. This is the bookkeeping that lets us tell "row was already
 	// Ekilex-owned at the start of this run" apart from "row will be
-	// Ekilex-owned after the upgrade fires" — once stmtInsert has run, the
+	// Ekilex-owned after the upgrade fires" - once stmtInsert has run, the
 	// two are indistinguishable from the source column alone.
 	//
 	// Why: lemmas.gloss is a denormalized cache of the (lemma, pos) entry
@@ -464,7 +464,7 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	// where the EN translation changed, was removed, fell back to an ET
 	// definition, or disappeared entirely (the (lemma, pos) is now reached
 	// only via the word_class fallback) would otherwise leave lemmas.gloss
-	// pointing at stale text. The refresh fires unconditionally — empty
+	// pointing at stale text. The refresh fires unconditionally - empty
 	// new gloss is allowed and clears the cache to match the now-empty
 	// translations / definitions tables.
 	//
@@ -475,7 +475,7 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	//
 	// Higher-priority rows (custom_overrides at priority 100) and rows
 	// owned by a different lower-priority source (e.g. kaikki) are
-	// untouched — only `source = 'ekilex'` rows match. Kaikki bootstrap
+	// untouched - only `source = 'ekilex'` rows match. Kaikki bootstrap
 	// glosses preserved through a previous Ekilex source-upgrade keep
 	// their text on the *first* same-source reimport, but a second one
 	// will replace them with the current Ekilex output: that's the price
@@ -493,9 +493,9 @@ func writeLemmas(db *sql.DB, lemmaPOS lemmaPOSMap) (int, int, error) {
 	// Upsert: insert a fresh row, or upgrade an existing row's source /
 	// source_priority when this import is *strictly stronger* (higher
 	// priority). `<` instead of `<=` so same-priority self-conflicts during
-	// a single import don't fire no-op updates — keeps RowsAffected
+	// a single import don't fire no-op updates - keeps RowsAffected
 	// honestly counting "rows whose source actually changed plus rows newly
-	// inserted." Gloss is intentionally not part of the conflict update —
+	// inserted." Gloss is intentionally not part of the conflict update -
 	// the pre-INSERT refresh above handles already-ekilex-owned rows; the
 	// post-INSERT empty-gloss fill below handles freshly-upgraded rows
 	// whose gloss column was empty.
@@ -624,13 +624,13 @@ func writeTranslations(db *sql.DB, lemmaPOS lemmaPOSMap) (int, error) {
 // into the definitions table. The translations table holds target-language
 // (EN) glosses; this is the source-language (ET) counterpart, used by:
 //
-//   - the user-friendly wordlist exporter when an EN gloss is unavailable —
+//   - the user-friendly wordlist exporter when an EN gloss is unavailable -
 //     so the row carries a meaning, even if it's in Estonian.
 //   - future glossary tools that want the original EKI definitions (longer,
 //     more nuanced than EN translations) for advanced learners.
 //
 // sense_idx preserves Ekilex's per-meaning ordering as definitions arrive
-// from the JSONL — entries earlier in `meanings[]` get lower sense_idx.
+// from the JSONL - entries earlier in `meanings[]` get lower sense_idx.
 // Wipe-and-rebuild within a transaction so a re-import after upstream
 // pruning doesn't leave stale rows behind.
 func writeDefinitions(db *sql.DB, lemmaPOS lemmaPOSMap) (int, error) {
@@ -681,7 +681,7 @@ const glossFallbackMaxLen = 240
 
 // orderedTranslations returns deduplicated translations in upstream Ekilex
 // meaning order. Used both for the lemmas.gloss `; `-joined cache and for
-// assigning sense_idx in the translations table — the same order in both
+// assigning sense_idx in the translations table - the same order in both
 // places keeps `lemmas.gloss[0]` and `translations[sense_idx=0]`
 // referentially consistent for a given (lemma, pos).
 func orderedTranslations(d *lemmaPOSData) []string {
@@ -701,7 +701,7 @@ func orderedTranslations(d *lemmaPOSData) []string {
 //
 // When no EN translations are available for a (lemma, pos), the first
 // Estonian-language definition is returned with the `[ET] ` prefix as a
-// fallback — better to ship "[ET] kuke kujutis varasema aja aabitsa kaanel"
+// fallback - better to ship "[ET] kuke kujutis varasema aja aabitsa kaanel"
 // than an empty gloss, since the empty case is what the user-friendly
 // wordlist would otherwise render as a blank meaning. The prefix lets
 // downstream renderers tell EN translations apart from ET fallbacks and
@@ -750,7 +750,7 @@ func utf8Truncate(s string, n int) string {
 // morphFormClass categorises an Ekilex morph_code as verbal, nominal, or
 // unknown so we can attribute each form to the right POS when a lemma has
 // multiple homonyms (e.g. ET "jooma" is both VERB drink and NOUN
-// drinking-party — the verb's IndPrSg1 form must not be emitted under NOUN).
+// drinking-party - the verb's IndPrSg1 form must not be emitted under NOUN).
 type morphFormClass int
 
 const (
@@ -792,12 +792,12 @@ func posMatchesMorphClass(upos string, class morphFormClass) bool {
 // importForms walks forms/*.tsv and inserts (form, lemma, pos) rows. POS is
 // taken from lemmaPOS[lemma], filtered against the morph_code: verbal codes
 // get attributed to VERB only, nominal codes to non-VERB POSes. This matters
-// when a lemma has multiple homonyms with different POS — see
+// when a lemma has multiple homonyms with different POS - see
 // classifyMorphCode for the rules.
 //
 // Returns the count of rows actually inserted (RowsAffected==1). Tuples
 // already present from a previous import (e.g. the same canonical form
-// being emitted under multiple morph codes — "joodud" PtsPtIps and
+// being emitted under multiple morph codes - "joodud" PtsPtIps and
 // PtsPtIpsNeg both yield (joodud, jooma, VERB)) only insert once and are
 // not re-counted.
 func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
@@ -925,7 +925,7 @@ func importForms(db *sql.DB, dir string, lemmaPOS lemmaPOSMap) (int, error) {
 			poss, ok := lemmaPOS[lemma]
 			if !ok {
 				// Form belongs to a lemma we didn't import (no meanings or
-				// definitions left after filtering). Drop it — without a POS
+				// definitions left after filtering). Drop it - without a POS
 				// the row would be useless for parser lookup anyway.
 				continue
 			}
@@ -1011,7 +1011,7 @@ func ensureDictMetadataTable(db *sql.DB) error {
 }
 
 // ensureSchema creates the lemmas, forms, and dict_metadata tables if they
-// don't exist — same shape used by the server's initSchema. Then runs the
+// don't exist - same shape used by the server's initSchema. Then runs the
 // shared idempotent migrations so the schema matches what cmd/server uses
 // even when the importer runs against a fresh DB. Order matters:
 //   - EnsureMultiLemmaSchema lifts the legacy (form, lang) PK to

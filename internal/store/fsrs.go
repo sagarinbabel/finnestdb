@@ -127,7 +127,7 @@ func deriveFSRSCard(legacy ReviewSchedule, nextDue, lastAnswerAt *time.Time, now
 	param := gofsrs.DefaultParam()
 	card.State = gofsrs.Review
 	card.Stability = intervalDays
-	// Default initial difficulty for a "Good" first rating — a neutral middle
+	// Default initial difficulty for a "Good" first rating - a neutral middle
 	// starting point, since the step scheduler tracked no difficulty signal.
 	card.Difficulty = clampDifficulty(param.W[4])
 	card.Reps = uint64(legacy.Streak)
@@ -192,8 +192,8 @@ func FSRSScheduleForRating(
 // touched a card, the step scheduler must keep working without corruption.
 //
 // When the stored payload is FSRS, we cannot recover a Step/Streak, so we
-// derive a ReviewSchedule.Step from the current interval (next_due - now) —
-// bucketed into the step ladder — and hand it to the normal step scheduler.
+// derive a ReviewSchedule.Step from the current interval (next_due - now) -
+// bucketed into the step ladder - and hand it to the normal step scheduler.
 // A fresh/legacy payload is parsed as a ReviewSchedule directly.
 func stepScheduleFromStoredState(
 	rawFSRSJSON string,

@@ -4,7 +4,7 @@ import { expect, test, type Page } from '@playwright/test';
 //   1. The deck list meta line shows the headline "N% comprehension" when the
 //      backend supplies comprehension_pct (and omits it for empty decks).
 //   2. The deck detail view renders the projection panel from
-//      GET /api/decks/:id/comprehension — headline percentage plus the
+//      GET /api/decks/:id/comprehension - headline percentage plus the
 //      "learn these next" before → after expansion.
 //
 // API calls are mocked so the tests don't depend on the live Go server.

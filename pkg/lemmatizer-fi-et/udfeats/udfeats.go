@@ -253,7 +253,7 @@ func IsMaInfinitiveSurface(surface string) bool {
 // vowels (e/i/u) inside the translative are neutral, so harmony only
 // shows up in the preceding stem vowel.
 var aInfLongSuffixes = [10]string{
-	// 3sg/3pl (kseen) — Finnish 3rd-person possessive doesn't distinguish
+	// 3sg/3pl (kseen) - Finnish 3rd-person possessive doesn't distinguish
 	// singular and plural in this construction.
 	"akseen", "äkseen",
 	// 1sg (kseni)
@@ -343,7 +343,7 @@ func NormalizeMaInfinitive(surface, pos, feats string) string {
 	// Strip the noun-cousin signature (Person=3, Number=Sing) and assert
 	// the MA-infinitive markers. Other features (Clitic, etc.) are
 	// preserved. Voice=Act is added when no Voice attribute is present
-	// — MA-infinitives default to active voice in UD; passive MA
+	// - MA-infinitives default to active voice in UD; passive MA
 	// forms would have arrived with Voice=Pass already.
 	if pairs["Person"] == "3" {
 		delete(pairs, "Person")

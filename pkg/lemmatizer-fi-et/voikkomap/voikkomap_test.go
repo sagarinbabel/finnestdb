@@ -98,7 +98,7 @@ func TestParse_Infinitive(t *testing.T) {
 
 func TestParse_PassiveP4(t *testing.T) {
 	// puhutaan = puhua, passive present indicative.
-	// [P4] is the Finnish passive — voice signal, NOT a UD Person value.
+	// [P4] is the Finnish passive - voice signal, NOT a UD Person value.
 	a := Parse("[Lt][Xp]puhua[X]puhu[Tt][Ap][P4][Ef]taan")
 	if a.Voice != "Pass" {
 		t.Errorf("voice=%q want Pass", a.Voice)
@@ -123,7 +123,7 @@ func TestParse_ActiveP1ImpliesVoice(t *testing.T) {
 func TestParse_ParticipleClearsFiniteFields(t *testing.T) {
 	// Defense-in-depth: if a contaminated reading ever co-emits T*/A*/P*
 	// with R*, applyParticiple must clear the finite-only fields so the
-	// composed FEATS doesn't carry e.g. Tense=Past|VerbForm=Part — UD
+	// composed FEATS doesn't carry e.g. Tense=Past|VerbForm=Part - UD
 	// uses PartForm for the past/present participle distinction, not
 	// Tense.
 	a := Parse("[Lt][Tt][Ai][P1][Rv][Xp]puhua[X]puhu[Sn][Ny]va")

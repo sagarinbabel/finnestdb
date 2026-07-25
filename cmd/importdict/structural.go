@@ -16,7 +16,7 @@ import (
 // yle_subs/build_surface_target_decks.py:_STRUCTURAL_GLOSS_PATTERNS,
 // where the same regexes drove a pre-build audit that fails the deck
 // build when any structural gloss leaks into the override file.
-// Catching them at kaikki ingest closes the leak one layer earlier —
+// Catching them at kaikki ingest closes the leak one layer earlier -
 // every downstream consumer (deck builder, API, web UI) gets the
 // meaning gloss by default.
 //
@@ -25,13 +25,13 @@ import (
 // definition ("a regional inflection of the verb 'to be'") must not
 // be filtered out.
 //
-// Note on Unicode: Go's RE2 \w is ASCII-only — a naïve port of the
+// Note on Unicode: Go's RE2 \w is ASCII-only - a naïve port of the
 // Python original would miss "partitive singular of ääni" or
 // "genitive singular of õun" because `ä`/`õ` are not in \w. The
 // case-of-headword pattern below uses \pL (Unicode letter class)
 // instead. The other patterns end in \b, where the boundary fires
-// between the ASCII letter `f` of "of" and the following space —
-// regardless of what letter starts the headword that follows — so
+// between the ASCII letter `f` of "of" and the following space -
+// regardless of what letter starts the headword that follows - so
 // they handle umlauts correctly already.
 var structuralGlossPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)^inflection of\b`),

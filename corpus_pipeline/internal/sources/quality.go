@@ -7,7 +7,7 @@ import "sort"
 // not in the registry, in which case callers should sort them after known
 // sources but still deterministically by slug.
 //
-// Tiers — current as of v1 corpus build:
+// Tiers - current as of v1 corpus build:
 //
 //	0  hand-authored / human-curated (fixture, manual, lingq-parallel)
 //	1  cleaned books, broadcaster news (epub, Yle, ERR, Riigikogu)
@@ -108,7 +108,7 @@ var qualityTiersET = map[string]int{
 }
 
 // SortForAggregation returns a *copy* of manifests in the order Phase 1
-// should ingest them. Aggregation-only — Discover() still sorts globally
+// should ingest them. Aggregation-only - Discover() still sorts globally
 // by slug for tools that care about source identity (extractcorpus,
 // fetchcorpus, etc).
 //

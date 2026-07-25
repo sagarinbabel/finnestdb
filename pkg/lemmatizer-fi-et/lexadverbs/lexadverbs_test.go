@@ -53,12 +53,12 @@ func TestLookupFI_Hits(t *testing.T) {
 func TestLookupFI_Misses(t *testing.T) {
 	// Productive forms the FST already gets right must NOT be shadowed.
 	// If you find yourself adding one of these to the overlay, you're
-	// shadowing the parser instead of fixing it — push back into the
+	// shadowing the parser instead of fixing it - push back into the
 	// FST or document why the overlay is the right layer.
 	misses := []string{
 		"",         // empty
 		"pankki",   // bare noun, no shadowing needed
-		"menemään", // MA-infinitive — handled by udfeats.NormalizeMaInfinitive, not here
+		"menemään", // MA-infinitive - handled by udfeats.NormalizeMaInfinitive, not here
 		"talossa",  // ordinary inessive
 		"juoksen",  // ordinary verb
 		"hyvä",     // bare adjective
@@ -168,7 +168,7 @@ func TestLookupET_Misses(t *testing.T) {
 		"maja",        // house
 		"sõpra",       // partitive noun, productive
 		"raamatupoes", // long compound noun
-		"tuskin",      // FI overlay key — must NOT hit the ET table
+		"tuskin",      // FI overlay key - must NOT hit the ET table
 		"varsin",      // FI overlay key
 	}
 	for _, s := range misses {
@@ -182,7 +182,7 @@ func TestFIAndETOverlaysAreIndependent(t *testing.T) {
 	// The two overlays are different bug catalogues. A surface that
 	// appears in one MUST NOT cross-contaminate lookups in the other.
 	// Today there's no overlap, but a future addition could introduce
-	// one accidentally — this test fails loudly when that happens so
+	// one accidentally - this test fails loudly when that happens so
 	// the maintainer makes an explicit choice.
 	for fiSurface := range fiOverlay {
 		if _, ok := etOverlay[fiSurface]; ok {

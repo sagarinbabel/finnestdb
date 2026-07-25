@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>finnest — user flow diagram</title>
+<title>finnest - user flow diagram</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&display=swap" rel="stylesheet">
@@ -191,7 +191,7 @@
   .legend .new      .swatch { background: oklch(from var(--accent) l c h / 0.25); border: 1px solid var(--accent); }
   .legend .leverage .swatch { background: oklch(from var(--learning) l c h / 0.25); border: 1px solid oklch(0.65 0.16 50); }
 
-  /* Mermaid container styling — we let Mermaid render SVG, then apply font tweaks */
+  /* Mermaid container styling - we let Mermaid render SVG, then apply font tweaks */
   .mermaid {
     font-family: var(--font-sans) !important;
     text-align: center;
@@ -234,7 +234,7 @@
 
 <main class="page">
   <div class="page-head">
-    <h1>User flow — consumer alpha</h1>
+    <h1>User flow - consumer alpha</h1>
     <p class="lede">
       Four diagrams covering the full consumer alpha. The macro flow shows
       every path through the product; the leverage flow details the
@@ -400,7 +400,7 @@ flowchart LR
       The comprehension projection ("learn 20 words → 81%") is only useful
       if the user can see <em>which</em> 20 words, review them as a focused
       deck, and watch coverage climb as they learn. This is the full
-      end-to-end flow — the core motivation loop.
+      end-to-end flow - the core motivation loop.
     </p>
 
     <div class="panel">
@@ -413,7 +413,7 @@ flowchart TD
     ADJ["Adjust target %<br/>slider: 75 → 85 → 90 → 95<br/>list grows/shrinks live"]
     UNCHECK["Uncheck words<br/>user doesn't want"]
     CTA["'Create study deck'<br/>button at bottom"]
-    SAM{"SaveAsModal<br/>words pre-populated<br/>name: 'Kalevala — top 20'"}
+    SAM{"SaveAsModal<br/>words pre-populated<br/>name: 'Kalevala - top 20'"}
     NEWDD["New deck detail<br/>⚡ leverage badge"]
     REV["Review session<br/>scoped to leverage deck"]
     UPDATE["Coverage updates<br/>62% → 68% → 74% → 81%"]
@@ -459,7 +459,7 @@ flowchart TD
     <p class="section-sub">
       The leverage page is the other entry into the study-deck flow.
       User picks a deck scope, sees aggregate comprehension, and
-      creates a study deck from the top N words — same SaveAsModal
+      creates a study deck from the top N words - same SaveAsModal
       endpoint as deck-detail.
     </p>
 

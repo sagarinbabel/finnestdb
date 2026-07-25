@@ -11,8 +11,8 @@ committed baseline table.
 
 ## Files
 
-- `fi-ambiguity-v1.json` — Finnish slice (headline; the first-language slice).
-- `et-ambiguity-v1.json` — Estonian parity slice (follow-up; smaller).
+- `fi-ambiguity-v1.json` - Finnish slice (headline; the first-language slice).
+- `et-ambiguity-v1.json` - Estonian parity slice (follow-up; smaller).
 
 Both live under `testdata/parser-eval/` (data, correctly committed), NOT under a
 language `gold/` dir, because they are consumed by a focused ambiguity runner,
@@ -60,12 +60,12 @@ disambiguation of the target, not whole-sentence accuracy.
 
 Field notes:
 
-- `ambiguity_class` — every sentence for one homograph shares this key, so the
+- `ambiguity_class` - every sentence for one homograph shares this key, so the
   runner can report per-class selection accuracy (the unit the threshold rule
   operates on).
-- `target: true` — the single scored token. Runner metrics (candidate inclusion,
+- `target: true` - the single scored token. Runner metrics (candidate inclusion,
   selection accuracy, calibration) are computed only on target tokens.
-- `expected_candidates` — the *full* sense set for this surface, independent of
+- `expected_candidates` - the *full* sense set for this surface, independent of
   which sentence it appears in. Same list across all sentences of a class. Used
   for the candidate-inclusion metric (is the correct sense reachable at all?) and
   to detect the FI kaikki-gap failure mode where a real sense is absent from the

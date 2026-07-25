@@ -1,4 +1,4 @@
-> **Provenance.** Snapshot taken on the head of `claude/pr1-vfst-go-runtime` before merge to main, capturing the FST stack at "PR 1/4 (VFST runtime, FI) just landed." Restored to main on 2026-05-07 from git via `git show d6d82a7^:docs/baselines/<file>` so the FST stack lift is attributable per-PR — see [`../PARSER_EVOLUTION.md`](../PARSER_EVOLUTION.md) §2026-05-06f.
+> **Provenance.** Snapshot taken on the head of `claude/pr1-vfst-go-runtime` before merge to main, capturing the FST stack at "PR 1/4 (VFST runtime, FI) just landed." Restored to main on 2026-05-07 from git via `git show d6d82a7^:docs/baselines/<file>` so the FST stack lift is attributable per-PR - see [`../PARSER_EVOLUTION.md`](../PARSER_EVOLUTION.md) §2026-05-06f.
 > Later stages intentionally changed some measured numbers. In particular, PR2 raised `fi-core` custom coverage from 95.7% here to 100.0% in the final snapshot.
 
 # Parser comparison (20260506T201010Z, parsers: basic,custom)

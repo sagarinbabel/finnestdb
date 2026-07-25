@@ -258,7 +258,7 @@ func TestBatchLookupAllForms_FI_PreservesLegitMaNoun(t *testing.T) {
 	// voimassa (linguistically valid: "while being able to"). For the
 	// homonym-expansion path, we deliberately do NOT mix the FST verb
 	// reading into the candidate list when the dict already has a
-	// non-demoted candidate — that prevents the deck from offering
+	// non-demoted candidate - that prevents the deck from offering
 	// the wrong headword for context like "Sopimus on voimassa"
 	// where voima/NOUN is what the learner actually sees.
 	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
@@ -293,7 +293,7 @@ func TestBatchLookupAllForms_FI_PreservesLegitMaNoun(t *testing.T) {
 // raw dict list passes through unchanged (no FST consultation, no
 // unintended de-duplication). Uses a non-A/MA surface so neither bias
 // fires, plus a separate test for an A/MA surface whose only dict row
-// is already correct (verb stemmed, not noun-cousin) — the FST hint
+// is already correct (verb stemmed, not noun-cousin) - the FST hint
 // must not double-count the same (lemma, pos).
 func TestBatchLookupAllForms_FI_PreservesGenuineHomonym(t *testing.T) {
 	// kuusi: real Finnish homonym (NOUN "spruce" / NOUN "six" / NUM "six").
@@ -333,7 +333,7 @@ func TestBatchLookupAllForms_FI_PreservesGenuineHomonym(t *testing.T) {
 // replacement), but no substitute is added. The deck/parse path then
 // falls through to the parser's pick via expandTokenLemmas.
 func TestBatchLookupAllForms_FI_NoFSTKeepsFilteredDict(t *testing.T) {
-	// No installTestLemmatizerTable call — LEMMATIZER_TABLES_DIR stays empty.
+	// No installTestLemmatizerTable call - LEMMATIZER_TABLES_DIR stays empty.
 	t.Setenv("LEMMATIZER_TABLES_DIR", t.TempDir())
 	db := newTestDB(t)
 	seedForms(t, db, [][4]string{
@@ -343,7 +343,7 @@ func TestBatchLookupAllForms_FI_NoFSTKeepsFilteredDict(t *testing.T) {
 	got := db.BatchLookupAllForms([]string{"mennäkseen"}, "FI", "custom")
 
 	// Without an FST to substitute the correct headword, returning the buggy
-	// self-key would be worse than returning nothing — expandTokenLemmas
+	// self-key would be worse than returning nothing - expandTokenLemmas
 	// falls back to the parser's pick, which has its own FST-driven lemma.
 	if c, present := got["mennäkseen"]; present && len(c) > 0 {
 		t.Errorf("mennäkseen with no FST: expected dropped (absent or empty), got %+v", c)
@@ -357,12 +357,12 @@ func TestBatchLookupAllForms_FI_NoFSTKeepsFilteredDict(t *testing.T) {
 // table stores only ONE reading per cross-POS homograph surface
 // (kuusi→NUM only), so the second sense (kuusi/NOUN "spruce") was never
 // offerable. With MergeFSTReadings the FST-known NOUN reading merges in,
-// so BOTH senses of kuusi become offerable for the meaning-check UI —
+// so BOTH senses of kuusi become offerable for the meaning-check UI -
 // while the default (deck) path stays dict-only.
 func TestBatchLookupAllForms_MergeFST_OffersHomographSecondSense(t *testing.T) {
 	// Mirror production: dict has kuusi/NUM only; the FST knows both the
 	// NOUN "spruce" reading and the NUM "six" reading (emission order is a
-	// priority signal — NOUN emitted before NUM here).
+	// priority signal - NOUN emitted before NUM here).
 	installTestLemmatizerTable(t, "FI", map[string][]lemmatizer.Analysis{
 		"kuusi": {
 			{Lemma: "kuusi", UPOS: "NOUN", Feats: "Number=Sing", Raw: "generated-table"},
@@ -649,7 +649,7 @@ func TestEnsureMultiLemmaSchema_PreservesRowsAndAddsMultiLemmaSupport(t *testing
 		t.Errorf("insert second occurrence row: %v", err)
 	}
 
-	// Migration is idempotent — re-running is a no-op.
+	// Migration is idempotent - re-running is a no-op.
 	if err := EnsureMultiLemmaSchema(raw); err != nil {
 		t.Fatalf("EnsureMultiLemmaSchema (re-run): %v", err)
 	}
@@ -693,7 +693,7 @@ func TestBackfillLegacyKaikkiProvenance(t *testing.T) {
 		-- Two legacy FI rows (kaikki, but missing provenance):
 		INSERT INTO lemmas (lemma, pos, gloss, lang) VALUES ('pankki', 'NOUN', 'bank', 'FI');
 		INSERT INTO forms  (form, lemma, pos, lang)  VALUES ('pankissa', 'pankki', 'NOUN', 'FI');
-		-- One ET row already labeled (Ekilex import path) — must be preserved:
+		-- One ET row already labeled (Ekilex import path) - must be preserved:
 		INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority)
 		    VALUES ('koer', 'NOUN', 'dog', 'ET', 'ekilex', 20);
 		INSERT INTO forms  (form, lemma, pos, lang, source, source_priority)
@@ -809,7 +809,7 @@ func TestBatchLookupForms_Found(t *testing.T) {
 
 func TestBatchLookupForms_NotFound(t *testing.T) {
 	db := newTestDB(t)
-	// No rows seeded — all lookups should miss.
+	// No rows seeded - all lookups should miss.
 
 	got := db.BatchLookupForms([]string{"viisutubettaja"}, "FI", "basic")
 
@@ -820,7 +820,7 @@ func TestBatchLookupForms_NotFound(t *testing.T) {
 
 func TestBatchLookupForms_EmptyTable(t *testing.T) {
 	db := newTestDB(t)
-	// Empty forms table — must not panic, must return empty map.
+	// Empty forms table - must not panic, must return empty map.
 
 	got := db.BatchLookupForms([]string{"pankki", "kirja", "talo"}, "FI", "basic")
 
@@ -839,7 +839,7 @@ func TestBatchLookupForms_CaseFolding(t *testing.T) {
 		{"pankkiin", "pankki", "NOUN", "FI"},
 	})
 
-	// "Pankkiin" is the sentence-start capitalised variant — should still resolve.
+	// "Pankkiin" is the sentence-start capitalised variant - should still resolve.
 	got := db.BatchLookupForms([]string{"Pankkiin", "PANKKIIN"}, "FI", "basic")
 
 	assertResolution(t, got, "Pankkiin", "pankki", "NOUN", "dict")
@@ -908,7 +908,7 @@ func TestCompoundSplit_Found(t *testing.T) {
 
 func TestCompoundSplit_MinPartLength(t *testing.T) {
 	db := newTestDB(t)
-	// "on" is only 2 chars — too short for a compound part (min 3 runes).
+	// "on" is only 2 chars - too short for a compound part (min 3 runes).
 	seedForms(t, db, [][4]string{
 		{"on", "olla", "VERB", "FI"},
 		{"gelma", "gelma", "NOUN", "FI"},
@@ -924,7 +924,7 @@ func TestCompoundSplit_MinPartLength(t *testing.T) {
 
 func TestCompoundSplit_BothPartsMustExist(t *testing.T) {
 	db := newTestDB(t)
-	// Seed only the left half — right half doesn't exist.
+	// Seed only the left half - right half doesn't exist.
 	seedForms(t, db, [][4]string{
 		{"pankki", "pankki", "NOUN", "FI"},
 	})
@@ -945,7 +945,7 @@ func TestCompoundSplit_Estonian(t *testing.T) {
 
 	got := db.BatchLookupForms([]string{"raamatukogu"}, "ET", "custom")
 
-	// This won't match because "raamatu" is not in forms — need the inflected form.
+	// This won't match because "raamatu" is not in forms - need the inflected form.
 	// Seed the proper inflected form instead.
 	if _, ok := got["raamatukogu"]; ok {
 		// If it matches, it means "raamatu" and "kogu" or some other split worked.
@@ -970,7 +970,7 @@ func TestCompoundSplit_MultiByte(t *testing.T) {
 
 func TestCaseSuffixStrip_Inessive(t *testing.T) {
 	db := newTestDB(t)
-	// Seed "talo" as a lemma (not just a form) — case suffix strip validates
+	// Seed "talo" as a lemma (not just a form) - case suffix strip validates
 	// against the lemmas table.
 	seedLemmas(t, db, [][4]string{
 		{"talo", "NOUN", "house", "FI"},
@@ -1027,7 +1027,7 @@ func TestFeatsFromCaseLabel(t *testing.T) {
 
 func TestCaseSuffixStrip_ShortStemRejected(t *testing.T) {
 	db := newTestDB(t)
-	// "o" would be the stem after stripping "-ssa" from "ossa" — too short (< 3).
+	// "o" would be the stem after stripping "-ssa" from "ossa" - too short (< 3).
 	seedLemmas(t, db, [][4]string{
 		{"o", "NOUN", "o letter", "FI"},
 	})
@@ -1109,7 +1109,7 @@ func TestFallbackChainOrdering(t *testing.T) {
 	if r.Lemma != "kirja" || r.POS != "NOUN" {
 		t.Errorf("kirjassa: got {%q %q}, want {kirja NOUN}", r.Lemma, r.POS)
 	}
-	// Source must start with "dict" — the dict path won. Suffix attachment may
+	// Source must start with "dict" - the dict path won. Suffix attachment may
 	// append "+fst_label" or "+case_suffix_label" but the dict prefix proves
 	// priority order.
 	if !strings.HasPrefix(r.Source, "dict") {
@@ -1121,7 +1121,7 @@ func TestFallbackChainOrdering(t *testing.T) {
 // label-attachment paths where, after a successful direct-dict resolution,
 // the parser additively attaches a GrammarLabel. Two paths can do this in
 // priority order: the FST step-promotion path (fst_label) and the
-// case-suffix stopgap (case_suffix_label). Either is acceptable here — the
+// case-suffix stopgap (case_suffix_label). Either is acceptable here - the
 // invariant under test is that grammar accuracy on dict-resolved tokens
 // isn't structurally 0% in custom mode. Whichever path fires must agree on
 // "inessive" for "talossa".
@@ -1153,7 +1153,7 @@ func TestBatchLookupForms_AttachCaseLabelOnDictHit(t *testing.T) {
 
 // TestBatchLookupForms_AttachCaseLabelBasicModeSkips verifies that the
 // stopgap is gated on parserMode == "custom". The "basic" parser must keep
-// emitting empty grammar labels on dict hits — its identity is "no rules
+// emitting empty grammar labels on dict hits - its identity is "no rules
 // beyond direct dict."
 func TestBatchLookupForms_AttachCaseLabelBasicModeSkips(t *testing.T) {
 	db := newTestDB(t)
@@ -1180,7 +1180,7 @@ func TestBatchLookupForms_AttachCaseLabelBasicModeSkips(t *testing.T) {
 
 // TestBatchLookupForms_AttachCaseLabelLemmaMismatchSkips verifies that a
 // label is NOT attached when the case-suffix-strip lemma differs from the
-// dict lemma — that means the suffix path is analyzing a different word and
+// dict lemma - that means the suffix path is analyzing a different word and
 // the label would be wrong (e.g. dict says PROPN "Linnas", suffix-strip
 // would say "inessive of linna").
 func TestBatchLookupForms_AttachCaseLabelLemmaMismatchSkips(t *testing.T) {
@@ -1190,7 +1190,7 @@ func TestBatchLookupForms_AttachCaseLabelLemmaMismatchSkips(t *testing.T) {
 		{"linnas", "linnas", "PROPN", "ET"},
 	})
 	// But the lemmas table also has a different lemma the suffix-strip would
-	// arrive at — that's the false-positive we must reject.
+	// arrive at - that's the false-positive we must reject.
 	seedLemmas(t, db, [][4]string{
 		{"linna", "NOUN", "city", "ET"},
 	})
@@ -1741,7 +1741,7 @@ func TestBatchLookupGlosses_NotFound(t *testing.T) {
 
 func TestBatchLookupGlosses_NullGloss(t *testing.T) {
 	db := newTestDB(t)
-	// Insert a lemma with NULL gloss — should be absent from result (treated as no gloss).
+	// Insert a lemma with NULL gloss - should be absent from result (treated as no gloss).
 	_, err := db.db.Exec(
 		`INSERT INTO lemmas (lemma, pos, gloss, lang) VALUES ('jokin', 'PRON', NULL, 'FI')`,
 	)
@@ -1819,7 +1819,7 @@ func TestBatchLookupForms_DemotesPROPNOnLowercaseSurface(t *testing.T) {
 }
 
 func TestBatchLookupForms_AllowsPROPNOnUppercaseSurface(t *testing.T) {
-	// Sentence-initial or genuinely-capitalized surface — both lemma cases
+	// Sentence-initial or genuinely-capitalized surface - both lemma cases
 	// are plausible, so source priority decides.
 	db := newTestDB(t)
 	seedFormsWithSource(t, db, []struct {
@@ -1836,7 +1836,7 @@ func TestBatchLookupForms_AllowsPROPNOnUppercaseSurface(t *testing.T) {
 		t.Fatal("Linnas: expected resolution")
 	}
 	// Both case-match and POS-pref scores are equal for "Linnas", so
-	// source priority decides — Ekilex (priority 20) wins over kaikki (10).
+	// source priority decides - Ekilex (priority 20) wins over kaikki (10).
 	if r.Lemma != "Linna" || r.POS != "PROPN" {
 		t.Errorf("Linnas: got %s/%s, want Linna/PROPN", r.Lemma, r.POS)
 	}
@@ -1975,7 +1975,7 @@ func TestBatchLookupForms_DeterministicTiebreak(t *testing.T) {
 
 func TestBatchLookupForms_LegacyRowsWithEmptySource(t *testing.T) {
 	// Pre-#67 rows have source='' and source_priority=0. Lookup must still
-	// work — the case-match and POS heuristics should fire even without
+	// work - the case-match and POS heuristics should fire even without
 	// source metadata.
 	db := newTestDB(t)
 	seedFormsWithSource(t, db, []struct {
@@ -1998,7 +1998,7 @@ func TestBatchLookupForms_LegacyRowsWithEmptySource(t *testing.T) {
 // on every form and a scaled morphologyScore tiebreak started picking
 // VERB readings over NOUN readings purely because verbs structurally carry
 // more FEATS attributes (Mood/Number/Person/Tense/VerbForm/Voice ≈ 6) than
-// nouns (Case/Number ≈ 2). The picker has no contextual disambiguation —
+// nouns (Case/Number ≈ 2). The picker has no contextual disambiguation -
 // when both candidates have FEATS, it must defer to the deterministic
 // fallback (source priority → lemma asc) rather than vote on FEATS density.
 func TestBatchLookupForms_DoesNotPickVerbHomonymOnFEATSDensity(t *testing.T) {
@@ -2126,7 +2126,7 @@ func TestBatchLookupForms_NormalizesETDictionaryVerbForm(t *testing.T) {
 // (Case=Nom|Number=Sing) but its projected GrammarLabel is "" because Nom
 // is implicit per UD convention. A scaled morphologyScore that gave +1 for
 // non-empty GrammarLabel made any non-Nom homonym beat the Nom reading on
-// otherwise-equal candidates — observed for "mees" (man, NOUN/Nom) losing
+// otherwise-equal candidates - observed for "mees" (man, NOUN/Nom) losing
 // to "mesi" (honey, NOUN/Ine) in the et-grammar set.
 func TestBatchLookupForms_NominativeNotPunishedByEmptyGrammarLabel(t *testing.T) {
 	db := newTestDB(t)
@@ -2475,7 +2475,7 @@ func TestBatchLookupForms_LexOverlayBeatsDictTrap(t *testing.T) {
 // dropping `varsi` globally also removed the legitimate noun lookup
 // for surface `varsi → varsi/NOUN` (a real Finnish noun meaning
 // "stalk"). The blocklist must be (surface, lemma)-keyed for these
-// non-fragment lemmas — only filter when the surface is the trap.
+// non-fragment lemmas - only filter when the surface is the trap.
 func TestBatchLookupForms_BadLemmaFilterPreservesLegitimateLookup(t *testing.T) {
 	db := newTestDB(t)
 	seedFormsWithSource(t, db, []struct {
@@ -2692,7 +2692,7 @@ func TestPickBestResolutionCandidate_AInfLongBias(t *testing.T) {
 		{
 			name:    "tarjotakseen FST-only path resolves to verb",
 			surface: "tarjotakseen",
-			// No dict candidate — only the FST verb reading. Still must
+			// No dict candidate - only the FST verb reading. Still must
 			// resolve correctly. (This is a smoke that adding the bias
 			// doesn't break the FST-only happy path.)
 			fstRes: FormResolution{
@@ -2711,7 +2711,7 @@ func TestPickBestResolutionCandidate_AInfLongBias(t *testing.T) {
 			if tc.dictRes.Lemma != "" {
 				cands = append(cands, resolutionCandidate{
 					res:            tc.dictRes,
-					sourcePriority: 10, // strong dict priority — bias must override
+					sourcePriority: 10, // strong dict priority - bias must override
 					hasDict:        true,
 					fstOrder:       9999,
 				})
@@ -2730,7 +2730,7 @@ func TestPickBestResolutionCandidate_AInfLongBias(t *testing.T) {
 	}
 
 	// Non-A-long surface: bias must NOT fire. tarjotaan is the passive
-	// present indicative of tarjota — same lemma, but a different
+	// present indicative of tarjota - same lemma, but a different
 	// inflection that doesn't carry the -kseen suffix family.
 	dictNoun := resolutionCandidate{
 		res:            FormResolution{Lemma: "talo", POS: "NOUN", Feats: "Case=Ine"},
@@ -2788,7 +2788,7 @@ func TestPickBestResolutionCandidate_EstonianVerbInflectionBias(t *testing.T) {
 	}
 
 	// Negative control: arstiks. NOUN candidate is INFLECTED (lemma=arst
-	// != surface=arstiks, translative case). Bias must not fire — verb
+	// != surface=arstiks, translative case). Bias must not fire - verb
 	// arstima is the wrong answer (kaikki artifact). Falls through to
 	// the binary-morphologyScore-and-alphabetical chain that picks
 	// arst/NOUN.
@@ -2850,7 +2850,7 @@ func TestAInfLongBias(t *testing.T) {
 		{"ymmärtääkseen", FormResolution{Lemma: "ymmärtääkseen", POS: "ADV"}, -1},
 		// Mixed-case lemma-equals-surface still demotes (EqualFold).
 		{"Mennäkseen", FormResolution{Lemma: "mennäkseen", POS: "VERB"}, -1},
-		// A-long surface but candidate has neither signature — bias is 0.
+		// A-long surface but candidate has neither signature - bias is 0.
 		// (e.g. an FST reading that happens to land here without the
 		// A-long markers, or a noun reading.)
 		{"mennäkseen", FormResolution{Lemma: "mennä", POS: "NOUN", Feats: "Case=Tra|Number=Sing"}, 0},
@@ -2887,7 +2887,7 @@ func TestMaInfinitiveBias(t *testing.T) {
 		{"tarjoamaan", FormResolution{POS: "VERB", Lemma: "tarjoama"}, -1},
 		// Legitimate -ma/-mä noun on a MA-shape surface (voima "force",
 		// ryhmä "group", asema "station", oireyhtymä "syndrome", …).
-		// Must NOT be demoted — the POS=NOUN tag distinguishes a real
+		// Must NOT be demoted - the POS=NOUN tag distinguishes a real
 		// noun from the kaikki noun-cousin mis-tag.
 		{"voimassa", FormResolution{POS: "NOUN", Lemma: "voima"}, 0},
 		{"ryhmässä", FormResolution{POS: "NOUN", Lemma: "ryhmä"}, 0},
@@ -2914,7 +2914,7 @@ func TestMaInfinitiveBias(t *testing.T) {
 
 func TestBatchLookupSenses_ReturnsAllSensesInOrder(t *testing.T) {
 	// All senses from the winning source, in sense_idx ASC order. The
-	// first sense is the same string BatchLookupGlosses returns — the
+	// first sense is the same string BatchLookupGlosses returns - the
 	// two APIs must agree on "the primary gloss". The schema has one
 	// lemma row per (lemma, pos, lang); the JOIN in the senses query
 	// couples each translation row to that single source row.
@@ -2959,7 +2959,7 @@ func TestBatchLookupSenses_ReturnsAllSensesInOrder(t *testing.T) {
 		}
 	}
 	// Verify the first sense's text matches what BatchLookupGlosses
-	// returns — the two APIs must agree on what "the primary gloss" is.
+	// returns - the two APIs must agree on what "the primary gloss" is.
 	primary := db.BatchLookupGlosses([]LemmaKey{{"pää", "NOUN"}}, "FI")[LemmaKey{"pää", "NOUN"}]
 	if primary != senses[0].Text {
 		t.Errorf("primary disagreement: BatchLookupGlosses=%q, senses[0]=%q",
@@ -2970,7 +2970,7 @@ func TestBatchLookupSenses_ReturnsAllSensesInOrder(t *testing.T) {
 func TestBatchLookupSenses_HigherPrioritySourceWinsLemmaAndDictatesSenses(t *testing.T) {
 	// After ekilex takes over the lemma row (priority 20 > kaikki's 10),
 	// only ekilex's translation rows JOIN successfully. Stale kaikki
-	// translations are silently ignored — mirroring the documented
+	// translations are silently ignored - mirroring the documented
 	// BatchLookupGlosses behaviour. This guards the invariant that
 	// BatchLookupSenses NEVER surfaces senses whose source no longer
 	// owns the lemma row.
@@ -3049,18 +3049,18 @@ func TestPickBestVFSTAnalysis_PreservesSurfaceCase(t *testing.T) {
 	turkuPropn := lemmatizer.Analysis{Lemma: "Turku", UPOS: "PROPN", GrammarLabel: "inessive"}
 	analyses := []lemmatizer.Analysis{turkuNoun, turkuPropn}
 
-	// Capitalized surface — PROPN candidate should win even though
+	// Capitalized surface - PROPN candidate should win even though
 	// the noun reading came first in FST priority order.
 	if got := pickBestVFSTAnalysis("Turussa", analyses); got.Lemma != "Turku" || got.UPOS != "PROPN" {
 		t.Errorf("Turussa: got (%q, %q), want (Turku, PROPN)", got.Lemma, got.UPOS)
 	}
 
-	// Lowercase surface — common-noun reading should win, demoting PROPN.
+	// Lowercase surface - common-noun reading should win, demoting PROPN.
 	if got := pickBestVFSTAnalysis("turussa", analyses); got.Lemma != "turku" || got.UPOS != "NOUN" {
 		t.Errorf("turussa: got (%q, %q), want (turku, NOUN)", got.Lemma, got.UPOS)
 	}
 
-	// Single analysis — identity (no scoring needed, no panic).
+	// Single analysis - identity (no scoring needed, no panic).
 	if got := pickBestVFSTAnalysis("Turussa", analyses[:1]); got.UPOS != "NOUN" {
 		t.Errorf("single analysis: got %q, want NOUN", got.UPOS)
 	}
@@ -3068,7 +3068,7 @@ func TestPickBestVFSTAnalysis_PreservesSurfaceCase(t *testing.T) {
 
 // TestPickBestVFSTAnalysis_TiePreservesFSTOrder confirms that when two
 // analyses score identically on the case/POS heuristic, the original FST
-// priority order is preserved — protects the deterministic VFST > Giellalt
+// priority order is preserved - protects the deterministic VFST > Giellalt
 // ordering inside the lemmatizer package from being scrambled by the
 // stable-sort tiebreak.
 func TestPickBestVFSTAnalysis_TiePreservesFSTOrder(t *testing.T) {
@@ -3092,7 +3092,7 @@ func TestSurfaceCandidates_ReturnsAmbiguousSurfacesWithGloss(t *testing.T) {
 	seedForms(t, db, [][4]string{
 		{"joon", "joon", "NOUN", "ET"},
 		{"joon", "jooma", "VERB", "ET"},
-		{"vesi", "vesi", "NOUN", "ET"}, // single sense — must be excluded
+		{"vesi", "vesi", "NOUN", "ET"}, // single sense - must be excluded
 	})
 	seedLemmas(t, db, [][4]string{
 		{"joon", "NOUN", "line", "ET"},
@@ -3105,7 +3105,7 @@ func TestSurfaceCandidates_ReturnsAmbiguousSurfacesWithGloss(t *testing.T) {
 		t.Fatalf("SurfaceCandidates: %v", err)
 	}
 	if _, ok := got["vesi"]; ok {
-		t.Errorf("vesi has one sense — must not be reported ambiguous")
+		t.Errorf("vesi has one sense - must not be reported ambiguous")
 	}
 	if _, ok := got["missing"]; ok {
 		t.Errorf("missing surface must be absent")
@@ -3163,7 +3163,7 @@ func TestSurfaceCandidates_ExcludesQuarantinedSense(t *testing.T) {
 		t.Fatalf("SurfaceCandidates after quarantine: %v", err)
 	}
 	if _, ok := got["joon"]; ok {
-		t.Fatalf("joon dropped to one sense after quarantine — must not be reported ambiguous, got %+v", got["joon"])
+		t.Fatalf("joon dropped to one sense after quarantine - must not be reported ambiguous, got %+v", got["joon"])
 	}
 }
 

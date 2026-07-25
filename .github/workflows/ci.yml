@@ -52,7 +52,7 @@ jobs:
         run: go test ./internal/...
 
   # ── Lint ─────────────────────────────────────────────────────────────────
-  # Static analysis only — no test execution. Fast feedback for obvious
+  # Static analysis only - no test execution. Fast feedback for obvious
   # mistakes. `go vet` for Go (skipping the cgo package which would need
   # the Rust build), `tsc --noEmit` for the TypeScript frontend.
   lint:
@@ -89,7 +89,7 @@ jobs:
 
   # ── Playwright ───────────────────────────────────────────────────────────
   # End-to-end browser tests. Boots the Go server via playwright's
-  # webServer config — requires the Rust parser to be built first.
+  # webServer config - requires the Rust parser to be built first.
   playwright:
     name: Playwright
     runs-on: ubuntu-latest

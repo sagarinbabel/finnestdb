@@ -73,7 +73,7 @@ normalization layer.
 The recommended path is `make setup-nlp`, which creates a unified `.venv/`
 at the project root containing both omorfi and estnltk, and downloads the
 HFST models into `~/.cache/omorfi/`. After that, no environment variables
-need to be exported — `internal/evalparsers` auto-discovers
+need to be exported - `internal/evalparsers` auto-discovers
 `.venv/bin/python` next to the bundled adapter at
 `scripts/omorfi_adapter_example.py`.
 

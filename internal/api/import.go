@@ -80,7 +80,7 @@ func (a *API) HandleImportExtract(w http.ResponseWriter, r *http.Request) {
 
 	// char_count reflects the source's ORIGINAL length, not the length of
 	// the (possibly truncated) returned text. The frontend uses this for
-	// the "X / 1,500,000" counter — if the book is bigger than the cap we
+	// the "X / 1,500,000" counter - if the book is bigger than the cap we
 	// still want the user to see the real number so the overflow state is
 	// honest. `truncated` tells the client the returned text was clipped.
 	originalCharCount := utf8.RuneCountInString(text)
@@ -128,7 +128,7 @@ func extractUploadedContent(file io.Reader, filename string, size int64) (string
 		if err != nil {
 			return "", nil, epub.BookMetadata{}, err
 		}
-		// Best-effort metadata read — a malformed OPF shouldn't fail the
+		// Best-effort metadata read - a malformed OPF shouldn't fail the
 		// whole import. zero-value metadata is fine.
 		meta, _ := epub.ExtractMetadataFromBytes(data)
 		out := make([]ImportChapter, 0, len(chapters))

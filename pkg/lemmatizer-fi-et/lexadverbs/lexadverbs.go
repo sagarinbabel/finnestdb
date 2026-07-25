@@ -7,17 +7,17 @@
 //
 //   - Adverbs that the FST decomposes as a productive case form whose
 //     lemma is etymologically related but pedagogically wrong.
-//     `tuskin` is a frozen instructive plural of `tuska` (pain) — it
+//     `tuskin` is a frozen instructive plural of `tuska` (pain) - it
 //     means "barely / hardly" and has nothing to do with pain in
 //     modern Finnish. `varsin` is an adverb "quite / rather", not the
 //     adessive of `varsi` (stalk). `enemmän` is the comparative
 //     adverb "more"; its lemma is `paljon`, not `paljo`.
 //   - Lexicalised location/manner adverbs that always carry one
-//     meaning regardless of the productive case ending — `perillä`
+//     meaning regardless of the productive case ending - `perillä`
 //     "at destination", `peräisin` "originally from", `tarpeeksi`
 //     "enough".
 //   - Surface forms whose FST output trips known analyser-trap lemmas
-//     (`as`, `varsi`, `sisä-`, `ylä-`, `poli`) — the curated entry
+//     (`as`, `varsi`, `sisä-`, `ylä-`, `poli`) - the curated entry
 //     ships the correct lemma even when the FST disagrees.
 //
 // What does NOT belong here:
@@ -69,7 +69,7 @@ var fiExactOverlay = map[string]Analysis{
 //
 // The etOverlay below mirrors this structure for Estonian. The two
 // maps are independent (different bug catalogues, different
-// pedagogical conventions) — keep them separate even when a surface
+// pedagogical conventions) - keep them separate even when a surface
 // shape coincidentally matches across languages.
 var fiOverlay = map[string]Analysis{
 	"asiaan": {
@@ -123,7 +123,7 @@ var fiOverlay = map[string]Analysis{
 		Feats:    "Mood=Ind|Number=Sing|Person=1|Tense=Past|VerbForm=Fin|Voice=Act",
 	},
 	"siitä": {
-		// Suspicious (siitä, siittää) per yle_subs — the analyzer ranks
+		// Suspicious (siitä, siittää) per yle_subs - the analyzer ranks
 		// the verb `siittää` ("conceive") first. The dominant reading
 		// is the demonstrative pronoun in the elative.
 		Lemma:        "se",
@@ -154,7 +154,7 @@ var fiOverlay = map[string]Analysis{
 		UPOS:  "ADV",
 	},
 	"vuotta": {
-		// Suspicious (vuotta, vuo) per yle_subs — the analyzer ranks a
+		// Suspicious (vuotta, vuo) per yle_subs - the analyzer ranks a
 		// rare noun `vuo` first. The dominant reading is the partitive
 		// of `vuosi` ("year").
 		Lemma:        "vuosi",

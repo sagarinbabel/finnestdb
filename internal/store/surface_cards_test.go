@@ -93,7 +93,7 @@ func TestSurfaceCardCreationHomographTwoSenses(t *testing.T) {
 }
 
 // TestSurfaceCardCreationDistinctSurfacesSameLemma proves that the same lemma
-// under two different inflections seeds two surface cards — surface-in-context
+// under two different inflections seeds two surface cards - surface-in-context
 // is the review identity, so "koira" and "koiran" are separate cards.
 func TestSurfaceCardCreationDistinctSurfacesSameLemma(t *testing.T) {
 	db := newTestDB(t)
@@ -226,7 +226,7 @@ func TestReviewCardHomographNote(t *testing.T) {
 
 // TestSurfaceScopeQuarantineSuppressesCard proves a surface-only quarantine
 // issue (empty lemma/pos) now suppresses review CARDS whose surface_norm
-// matches — not just deck occurrences. Cards gained a surface_norm column, so
+// matches - not just deck occurrences. Cards gained a surface_norm column, so
 // surface-scope suppression reaches them.
 func TestSurfaceScopeQuarantineSuppressesCard(t *testing.T) {
 	db := newTestDB(t)
@@ -275,7 +275,7 @@ func TestSurfaceCardMigrationPreservesStateAndBackfillsSurface(t *testing.T) {
 	}
 
 	// Legacy schema: cards already lang-scoped (post ensureLangScopedCardsTable)
-	// but WITHOUT surface_norm — the pre-surface-migration state.
+	// but WITHOUT surface_norm - the pre-surface-migration state.
 	legacySchema := `
 	CREATE TABLE users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -426,7 +426,7 @@ func TestSurfaceCardMigrationPreservesStateAndBackfillsSurface(t *testing.T) {
 // TestDeckFilteredReviewReturnsDeckSurfaceCard proves the deck filter in
 // GetNextReviewCard is surface-scoped. Cards are surface-specific, so when
 // deck A contains "koira" and deck B contains "koiran" (same lemma/POS),
-// reviewing deck B must serve the koiran card with deck B's sentence — not
+// reviewing deck B must serve the koiran card with deck B's sentence - not
 // deck A's koira card wearing a deck B example. A (lemma, pos)-only deck
 // membership check passes both cards and, ordered by id, returns the wrong one.
 func TestDeckFilteredReviewReturnsDeckSurfaceCard(t *testing.T) {
@@ -475,8 +475,8 @@ func TestDeckFilteredReviewReturnsDeckSurfaceCard(t *testing.T) {
 
 // TestDeckStatsDueCountIsSurfaceScoped proves GetUserDeckStats counts a lemma
 // as due in a deck only when the due card belongs to one of THAT deck's
-// surface forms. A due "koira" card (deck A) must not make deck B — which only
-// contains "koiran" — report a due review the learner cannot actually get.
+// surface forms. A due "koira" card (deck A) must not make deck B - which only
+// contains "koiran" - report a due review the learner cannot actually get.
 func TestDeckStatsDueCountIsSurfaceScoped(t *testing.T) {
 	db := newTestDB(t)
 	user := createTestUser(t, db, "learner@example.com")

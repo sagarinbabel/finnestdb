@@ -1,11 +1,11 @@
 package main
 
-// FI source registry — v1 minimal: 4 verified OPUS sources for pilot.
+// FI source registry - v1 minimal: 4 verified OPUS sources for pilot.
 // Sizes are point-in-time from the OPUS API research turn; the fetcher's
 // own HEAD probe records actual byte counts at run time.
 //
 // Adding a new source: define it here with a verified URL + format.
-// Folder-driven sources (epub, manual, fixture) are NOT in this registry —
+// Folder-driven sources (epub, manual, fixture) are NOT in this registry -
 // they're discovered by walking <lang>-corpus/*/manifest.json.
 var sourcesFI = []Source{
 	{
@@ -106,7 +106,7 @@ var sourcesFI = []Source{
 		URL:      "https://object.pouta.csc.fi/OPUS-OpenSubtitles/v2024/mono/fi.txt.gz",
 		Filename: "fi.txt.gz",
 		License:  "OpenSubtitles ToS (local-only)",
-		Notes:    "Movie/TV subtitles, conversational. ~1.07 GB. Big — fetch deliberately.",
+		Notes:    "Movie/TV subtitles, conversational. ~1.07 GB. Big - fetch deliberately.",
 	},
 	{
 		Slug:     "opus-ted2020",

@@ -74,7 +74,7 @@ func TestParserLimiterAnonShedBeforeSignedIn(t *testing.T) {
 }
 
 // TestParserLimiterQueueTimeoutRespected confirms a blocked acquire returns
-// close to the configured timeout, not immediately and not indefinitely —
+// close to the configured timeout, not immediately and not indefinitely -
 // callers use this value to decide the Retry-After they hand back to
 // clients, so it must be trustworthy.
 func TestParserLimiterQueueTimeoutRespected(t *testing.T) {
@@ -97,7 +97,7 @@ func TestParserLimiterQueueTimeoutRespected(t *testing.T) {
 }
 
 // TestParserLimiterReleaseFreesSlotForNextWaiter confirms a released slot is
-// immediately available to a subsequent acquire — otherwise every stage after
+// immediately available to a subsequent acquire - otherwise every stage after
 // the first burst would degrade forever instead of recovering once load
 // drops.
 func TestParserLimiterReleaseFreesSlotForNextWaiter(t *testing.T) {
@@ -266,6 +266,6 @@ func TestNonParseEndpointsBypassParserLimiter(t *testing.T) {
 	mux.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
-		t.Fatalf("GET /api/decks status=%d want %d — non-parse endpoints must not go through the parser semaphore", rec.Code, http.StatusOK)
+		t.Fatalf("GET /api/decks status=%d want %d - non-parse endpoints must not go through the parser semaphore", rec.Code, http.StatusOK)
 	}
 }

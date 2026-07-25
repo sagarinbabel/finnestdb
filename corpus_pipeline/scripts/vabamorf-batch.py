@@ -6,7 +6,7 @@ to stdout: surface\tlemma\tUPOS\tfeats\tanalysis_count.
 
 Uses vabamorf directly (the C++ Estonian morphology engine that estnltk
 wraps internally). Lower-overhead than estnltk's Text-layer pipeline,
-and a clean parallel to FI's omorfi adapter — both are the underlying
+and a clean parallel to FI's omorfi adapter - both are the underlying
 language-specific FST analyzers.
 
 Invoked by Go via cmd/enrichcorpus when -lang et (preferred path).
@@ -65,7 +65,7 @@ def parse_form(form: str) -> str:
         elif p in ('Pres', 'Past'):
             feats['Tense'] = p
         elif p in ('o', 'b', 'd', 'da', 'tav', 'tud', 'mata'):
-            # Various Estonian verb forms — leave as InfForm
+            # Various Estonian verb forms - leave as InfForm
             feats['InfForm'] = p
     return '|'.join(f'{k}={v}' for k, v in sorted(feats.items()))
 

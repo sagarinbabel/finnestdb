@@ -1,7 +1,7 @@
 /* global React, FED_DATA, LandingView, DecksView, ReviewViewV2,
    SignupRibbon, EphemeralToggle, ReviewDoneCard */
 /*
- * proto-screens.jsx — wraps the existing v2 screens to inject the
+ * proto-screens.jsx - wraps the existing v2 screens to inject the
  * cross-cutting flow-diagram features:
  *   • LandingViewProto:  + ✎ Wrong? on results rows, sign-up ribbon
  *                        for anonymous, ephemeral toggle

@@ -4,11 +4,11 @@
 # the Finnish gold datasets, then assemble the results into a markdown
 # comparison report.
 #
-# Omorfi is **required by default** — every Finnish baseline report must show
+# Omorfi is **required by default** - every Finnish baseline report must show
 # the analyzer column so dict-only numbers are never read in isolation. Run
 # `make setup-nlp` once on a fresh machine to install it. To bypass on a
 # machine where omorfi cannot be installed, pass --allow-missing-baseline
-# (intended for ad-hoc local experiments only — never for committed reports).
+# (intended for ad-hoc local experiments only - never for committed reports).
 #
 # Usage:
 #   scripts/parser-comparison.sh                                       # default datasets, stdout
@@ -49,7 +49,7 @@ if [[ ${#DATASETS[@]} -eq 0 ]]; then
     # We glob both testdata/parser-eval/fi/gold/ (committed FI gold) and
     # localdata/parser-eval/fi/gold/ (any local-only FI gold a teammate
     # has dropped in via setup-local.sh). The same merge applies on the
-    # ET side — see scripts/parser-comparison-et.sh.
+    # ET side - see scripts/parser-comparison-et.sh.
     while IFS= read -r f; do DATASETS+=("$f"); done \
         < <(ls \
             testdata/parser-eval/fi/gold/*.json testdata/parser-eval/fi/gold/*.json.gz \
@@ -65,11 +65,11 @@ fi
 PARSERS="basic,custom"
 
 # Auto-detect omorfi. Run modes the user might have configured:
-#   - $FINNESTDB_OMORFI_CMD set (explicit adapter override) — wins over everything
+#   - $FINNESTDB_OMORFI_CMD set (explicit adapter override) - wins over everything
 #   - .venv/bin/python + scripts/omorfi_adapter_example.py (unified venv
 #     from `make setup-nlp`; falls back to legacy .venv-omorfi/)
 #   - $OMORFI_ANALYSE_HFST set and pointing at a real file (custom model
-#     location — the adapter itself looks here first)
+#     location - the adapter itself looks here first)
 #   - Repo-local cache:   ./.cache/omorfi/omorfi.analyse.hfst
 #   - User-level cache:   ~/.cache/omorfi/omorfi.analyse.hfst
 omorfi_available=false
@@ -93,7 +93,7 @@ if $omorfi_available; then
     PARSERS="basic,custom,omorfi"
     echo ">> Including omorfi (model auto-detected)" >&2
 elif $ALLOW_MISSING; then
-    echo ">> WARNING: omorfi missing, --allow-missing-baseline set — running dict-only" >&2
+    echo ">> WARNING: omorfi missing, --allow-missing-baseline set - running dict-only" >&2
     echo ">>          Do NOT commit reports produced this way; analyzer parity is required." >&2
 else
     cat >&2 <<'EOF'

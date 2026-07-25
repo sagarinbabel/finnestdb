@@ -1,4 +1,4 @@
-# enrichgoldfeats diff — fi-manual v1
+# enrichgoldfeats diff - fi-manual v1
 
 16 token(s) need a manual look:
 

@@ -33,7 +33,7 @@ type FormResolution struct {
 }
 
 // Suffix tables (FinnishPossessiveSuffixes, FinnishCaseSuffixes,
-// EstonianCaseSuffixes) live in the parserules package — see
+// EstonianCaseSuffixes) live in the parserules package - see
 // internal/parserules/ for the data and how to extend it.
 
 // BatchLookupForms resolves a slice of surface forms to their canonical
@@ -168,7 +168,7 @@ func (d *DB) BatchLookupForms(forms []string, lang string, parserMode string) ma
 		}
 
 		// Step 5: FST morphological analysis (FI + ET). Catches forms the
-		// SQLite-driven steps couldn't resolve — e.g. less-common
+		// SQLite-driven steps couldn't resolve - e.g. less-common
 		// derivations, compounds whose halves aren't both in the forms
 		// table, and rare inflected forms whose lemmas aren't in the
 		// lemmas table. For FI this hits both libvoikko (VFST) and
@@ -218,8 +218,8 @@ func pickBestFSTAnalysis(surface string, analyses []lemmatizer.Analysis) (lemmat
 // using the same case/POS scoring as the dictionary path, plus a strict
 // initial-case match so capitalized surfaces ("Turussa") prefer lemmas
 // that also start uppercase ("Turku") over lowercase homonyms ("turku").
-// Ties fall back to alphabetic lemma order — same chain as
-// pickBestFormCandidate — so behavior matches the dict path exactly.
+// Ties fall back to alphabetic lemma order - same chain as
+// pickBestFormCandidate - so behavior matches the dict path exactly.
 func pickBestVFSTAnalysis(surface string, analyses []lemmatizer.Analysis) lemmatizer.Analysis {
 	if len(analyses) == 1 {
 		return analyses[0]
@@ -262,7 +262,7 @@ func strictCaseMatchScore(surface, lemma string) int {
 // formCandidate is the internal shape used while ranking multi-lemma matches.
 // Source / SourcePriority come from the row-level dictionary metadata; older
 // rows that pre-date the source-priority work have empty strings and zero
-// priority, which is fine — the case-match and POS heuristics still rank them.
+// priority, which is fine - the case-match and POS heuristics still rank them.
 // Feats is the per-form UD FEATS string (e.g. "Case=Ine|Number=Sing"); empty
 // for rows imported from sources without per-form morphology (e.g.
 // kaikki.org). Populated for ET via Ekilex morph_codes (PR Plan-C/4).
@@ -368,7 +368,7 @@ func hasSpecialCapitalization(s string) bool {
 // standalone word: short fragments kaikki ships as their own headword
 // (`as`, `taa`, `ku`), and compound-clip prefixes that only ever
 // appear as the left half of a compound (`sisä-`, `ylä-`). Filtering
-// these is safe regardless of which surface is being looked up — a
+// these is safe regardless of which surface is being looked up - a
 // learner typing the surface `sisä-` is overwhelmingly likely to
 // want the compound it belongs to, not the bare prefix.
 //
@@ -380,7 +380,7 @@ func hasSpecialCapitalization(s string) bool {
 //
 // `poli` is a special case: kaikki ships it as the lemma for
 // `poliisi` inflected forms (a documented import bug). Treating
-// it as always-bad is defensible — no learner asking for the
+// it as always-bad is defensible - no learner asking for the
 // surface `poli` is looking for the kaikki "poli" entry.
 var alwaysBadDictLemmasFI = map[string]struct{}{
 	"as":    {},
@@ -394,7 +394,7 @@ var alwaysBadDictLemmasFI = map[string]struct{}{
 // badSurfaceLemmaFI is the (surface, lemma) pair blocklist. Each
 // entry is a kaikki/analyser mapping that ranks first for the trap
 // surface but loses to the correct answer on every learner-facing
-// occurrence. The lemma is preserved for OTHER surfaces — `varsi`
+// occurrence. The lemma is preserved for OTHER surfaces - `varsi`
 // is filtered out only for surface `varsin`, not for the bare
 // noun lookup `varsi`.
 //
@@ -653,7 +653,7 @@ func pickBestResolutionCandidate(surface, lang string, candidates []resolutionCa
 		// candidate at the same-or-higher source priority has
 		// lemma==surface (a noun in citation form). The signal: the
 		// surface IS the noun's lemma, so the noun reading is the
-		// canonical citation form — but the surface is ALSO a fully
+		// canonical citation form - but the surface is ALSO a fully
 		// inflected verb form. Prefer the verb. Captures peatus →
 		// peatuma/VERB, joon → jooma/VERB, naeris → naerma/VERB
 		// where the noun reading is the citation form of a different
@@ -726,7 +726,7 @@ func maInfinitiveBias(surface string, res FormResolution) int {
 	// deverbal -ma noun (e.g. tarjoamaan/tarjoama, lähtemään/lähtemä,
 	// hautaamaan/hautaama) but mis-tagged POS=VERB. The dict-side
 	// NormalizeMaInfinitive rewrites their FEATS to look like a real
-	// MA-infinitive (Case=X|InfForm=Ma|VerbForm=Inf|Voice=Act) — but
+	// MA-infinitive (Case=X|InfForm=Ma|VerbForm=Inf|Voice=Act) - but
 	// the lemma is the part that's wrong. Demote those before granting
 	// the verb promotion below.
 	//
@@ -736,7 +736,7 @@ func maInfinitiveBias(surface string, res FormResolution) int {
 	// inflection on MA-shape surfaces (voimassa = "in force",
 	// ryhmästä = "from the group"). Demoting those would silently
 	// drop the only correct reading. The kaikki self-key bug
-	// specifically mis-tags the inflected -ma noun form as VERB —
+	// specifically mis-tags the inflected -ma noun form as VERB -
 	// the POS=VERB gate is what distinguishes the trap from the
 	// legit homonym.
 	if res.POS == "VERB" &&
@@ -756,8 +756,8 @@ func maInfinitiveBias(surface string, res FormResolution) int {
 // otherwise. Surfaces that don't match the A-long suffix pattern
 // always return 0, so this is a no-op for the common case.
 //
-// Voikko emits A-inf-long readings with no Case= attribute — the
-// translative is implicit in the construction — so the signature is
+// Voikko emits A-inf-long readings with no Case= attribute - the
+// translative is implicit in the construction - so the signature is
 // VerbForm=Inf + InfForm=1 + Person[psor]=N. The basic A-infinitive
 // (the citation form `mennä`) shares InfForm=1 but has no
 // Person[psor], which is why we require both.
@@ -786,7 +786,7 @@ func aInfLongBias(surface string, res FormResolution) int {
 // maxNonVerbCitationPriority returns the highest source priority of
 // any non-VERB candidate whose lemma matches surface (a noun/adj in
 // citation form). Returns -1 when no such candidate exists or lang is
-// not ET — the ET verb-inflection bias is then a no-op.
+// not ET - the ET verb-inflection bias is then a no-op.
 func maxNonVerbCitationPriority(surface, lang string, candidates []resolutionCandidate) int {
 	if lang != "ET" {
 		return -1
@@ -813,7 +813,7 @@ func maxNonVerbCitationPriority(surface, lang string, candidates []resolutionCan
 // form). Otherwise 0.
 //
 // Why this is the right signal: when the surface IS the noun's
-// lemma, the noun reading is the canonical citation form — no case
+// lemma, the noun reading is the canonical citation form - no case
 // morphology distinguishes the noun-as-form from the noun-as-lemma.
 // The surface could equally well be a fully inflected verb form
 // (peatus = peatuma+Past+3Sg). Preferring the verb in that
@@ -825,7 +825,7 @@ func maxNonVerbCitationPriority(surface, lang string, candidates []resolutionCan
 // tee/NOUN, koolis → kool/NOUN, kirja → kiri/NOUN): in those cases
 // the highest-priority noun candidate is an inflected case form
 // (lemma != surface), so maxNounCitationPriority returns -1 and this
-// bias is a no-op — the existing ranking falls through.
+// bias is a no-op - the existing ranking falls through.
 func etVerbInflectionBias(c resolutionCandidate, maxNounCitationPriority int) int {
 	if maxNounCitationPriority < 0 {
 		return 0
@@ -882,7 +882,7 @@ func morphologyScore(res FormResolution) int {
 // lookupLexOverlay returns the curated lexadverbs analysis as a
 // FormResolution when one exists for (lang, surface). The overlay
 // catalogues surfaces where the productive dict/FST analysis is a
-// known bug — `tuskin` (kaikki ships as form of `tuska`), `asiaan`
+// known bug - `tuskin` (kaikki ships as form of `tuska`), `asiaan`
 // (form of bad lemma `as`), `vuotta` (form of bad lemma `vuo`),
 // `peale` (allative of `pea`), and so on. Each entry is asserted as
 // the right answer; this short-circuit ensures it actually wins the
@@ -972,7 +972,7 @@ func featsFromFSTAnalysis(a lemmatizer.Analysis) string {
 // featsFromCaseLabel projects a lowercase English case name (the
 // grammar_label vocabulary) into a minimal UD FEATS string. Used by the
 // case-suffix stripping path so a token resolved purely from suffix
-// removal still carries Case= in its FEATS — without this, the FEATS
+// removal still carries Case= in its FEATS - without this, the FEATS
 // comparison silently scores those tokens as missing.
 //
 // Returns "" for "" / "nominative" (Nom is implicit per UD convention)
@@ -994,7 +994,7 @@ func featsFromCaseLabel(label string) string {
 // returns the lowercase English case name used by our existing
 // grammar_label vocabulary. Returns "" when FEATS has no Case= attribute
 // or when the value is Nominative (left implicit per existing convention,
-// matching cmd/importud/main.go). Thin alias for udfeats.CaseFromFeats —
+// matching cmd/importud/main.go). Thin alias for udfeats.CaseFromFeats -
 // retained at this name because it's the dict layer's vocabulary anchor.
 func caseFromFeats(feats string) string {
 	return udfeats.CaseFromFeats(feats)
@@ -1009,7 +1009,7 @@ func caseFromFeats(feats string) string {
 //  2. POS sanity: a lowercase surface demotes PROPN. Same motivation.
 //  3. Source priority: higher dictionary `source_priority` wins among
 //     candidates that pass the case/POS filters equally.
-//  4. Deterministic tiebreak: source name asc, lemma asc, POS asc — same
+//  4. Deterministic tiebreak: source name asc, lemma asc, POS asc - same
 //     candidate set always returns the same pick.
 //
 // The heuristic deliberately under-claims: it will not turn `naeris`/NOUN
@@ -1054,7 +1054,7 @@ func caseMatchScore(surface, lemma string) int {
 	}
 	// Asymmetry: lowercase surface + uppercase lemma is the bad case
 	// (PROPN-style homonym beating a common noun). Uppercase surface +
-	// lowercase lemma is fine — sentence-initial capitalization is common.
+	// lowercase lemma is fine - sentence-initial capitalization is common.
 	if !startsUpper(surface) && startsUpper(lemma) {
 		return 0
 	}
@@ -1081,7 +1081,7 @@ func startsUpper(s string) bool {
 // possessive suffixes and re-looking up the stripped form. Returns the resolved
 // FormResolution and true if a dictionary match is found after stripping.
 //
-// form must already be lowercased — BatchLookupForms normalises before calling.
+// form must already be lowercased - BatchLookupForms normalises before calling.
 func tryStripPossessive(stmt *sql.Stmt, form, lang string) (FormResolution, bool) {
 	for _, suffix := range parserules.FinnishPossessiveSuffixes {
 		if !strings.HasSuffix(form, suffix) {
@@ -1116,7 +1116,7 @@ func tryStripPossessive(stmt *sql.Stmt, form, lang string) (FormResolution, bool
 //	        (i.e. the right is the bare head). This handles cases like
 //	        ET "rongi|sõit" where the left is a genitive-marked stem and
 //	        the right is the head lemma. The compound lemma is the
-//	        surface left + rightLemma — gluing on the left's bare lemma
+//	        surface left + rightLemma - gluing on the left's bare lemma
 //	        would lose the genitive marker (the et-0032 "Rongisõit" →
 //	        "rongõis" bug surfaced this).
 //
@@ -1171,7 +1171,7 @@ func tryCompoundSplit(stmtForms *sql.Stmt, form, lang string) (FormResolution, b
 			continue
 		}
 		// Use the surface left (which carries the genitive marker), not
-		// leftLemma — otherwise the genitive linker is dropped.
+		// leftLemma - otherwise the genitive linker is dropped.
 		_ = leftLemma
 		_ = leftPOS
 		return FormResolution{
@@ -1197,7 +1197,7 @@ func tryCompoundSplit(stmtForms *sql.Stmt, form, lang string) (FormResolution, b
 //
 // The lemma-equality guard prevents false positives where the suffix happens
 // to terminate a different word (e.g. dict says `aas` "meadow", suffix-strip
-// would say "inessive of `aa`" — different lemma, no label attached).
+// would say "inessive of `aa`" - different lemma, no label attached).
 func attachCaseLabelIfStemMatches(stmtLemmas *sql.Stmt, dictResolution FormResolution, lower, lang string) FormResolution {
 	suffixes := parserules.FinnishCaseSuffixes
 	if lang == "ET" {
@@ -1213,7 +1213,7 @@ func attachCaseLabelIfStemMatches(stmtLemmas *sql.Stmt, dictResolution FormResol
 }
 
 // tryCaseSuffixStrip strips case suffixes and validates the stem against the
-// lemmas table (stricter than forms — reduces false positives from short suffixes).
+// lemmas table (stricter than forms - reduces false positives from short suffixes).
 //
 // form must already be lowercased. The suffixes table is provided by the
 // caller from the parserules package.
@@ -1296,7 +1296,7 @@ func uniqueNonEmptyStrings(values []string) []string {
 }
 
 // BatchLookupAllForms returns every learner-facing (lemma, pos) candidate for
-// each surface form — used at deck-ingest time to expand homonyms into one
+// each surface form - used at deck-ingest time to expand homonyms into one
 // occurrence row per candidate (e.g. ET "joon" → both joon/NOUN and
 // jooma/VERB). In custom mode, lexical-overlay surfaces short-circuit to the
 // curated single reading because those entries are known raw-dict/analyzer
@@ -1317,7 +1317,7 @@ func uniqueNonEmptyStrings(values []string) []string {
 // this, deck creation and the /api/parse `words` listing would still
 // show `tarjoamaan→tarjoama`, `mennäkseen→mennäkseen`, and
 // `ymmärtääkseen→ADV` even after BatchLookupForms picks the right
-// headword for the sentence-level token — see the discussion on the
+// headword for the sentence-level token - see the discussion on the
 // MA/A-inf-long table-regen PR for the failure mode.
 //
 // Forms with no direct dict hit are absent from the result map. Each form's
@@ -1346,7 +1346,7 @@ type AllFormsOptions struct {
 	//
 	// FST readings are appended BELOW authoritative dict/override candidates
 	// (source-priority model, DECISIONS.md Decision 21) and deduped by
-	// (lemma, POS) against them — an FST reading that corroborates an existing
+	// (lemma, POS) against them - an FST reading that corroborates an existing
 	// dict candidate is dropped, never re-listed. Lexical-overlay and accepted
 	// custom-override short-circuits are still authoritative and suppress the
 	// FST merge for that surface. FI only today; ET candidate inclusion is
@@ -1368,7 +1368,7 @@ func (d *DB) BatchLookupAllFormsWithOptions(forms []string, lang, parserMode str
 // the dictionary (or the gloss-fallback path) has one, and a source marker.
 // FST-only candidates (kaikki lists one reading per homograph surface; the FST
 // merge supplies the missing sense) carry Source "fst" and may have an empty
-// Gloss — the UI renders them lemma + POS only.
+// Gloss - the UI renders them lemma + POS only.
 type AmbiguityCandidate struct {
 	Lemma  string `json:"lemma"`
 	POS    string `json:"pos"`
@@ -1378,14 +1378,14 @@ type AmbiguityCandidate struct {
 
 // SurfaceCandidates resolves each surface to its full supported candidate set
 // for the ambiguity / meaning-check path and keeps only the surfaces that have
-// two or more distinct candidates after quarantine suppression — i.e. the
+// two or more distinct candidates after quarantine suppression - i.e. the
 // surfaces that qualify for "Multiple possible meanings". It is the single
 // server-side source of truth for that flow, reused by /api/parse enrichment and
 // the known-word import ambiguity count.
 //
 // Candidate inclusion uses BatchLookupAllFormsWithOptions{MergeFSTReadings:true}
 // (FI cross-POS homographs such as kuusi/tuli/voi need the FST merge; ET is
-// already complete via Ekilex — see PARSER_EVAL_METHODOLOGY.md §5). Quarantined
+// already complete via Ekilex - see PARSER_EVAL_METHODOLOGY.md §5). Quarantined
 // senses/surfaces are dropped via the loaded QuarantinedSenseFilter so a
 // suppressed reading is never offered. Glosses come from BatchLookupGlosses;
 // FST-only readings the dictionary can't gloss stay lemma+POS only.
@@ -1584,7 +1584,7 @@ func (d *DB) mergeFSTOnlyCandidates(surface, lower string, dictCandidates []Form
 // FI surface, drops dict candidates the biases would demote to -1, and
 // substitutes the FST's verb-headword reading when the surface matches
 // a non-finite paradigm slot. Returns the (possibly modified) candidate
-// list — nil when the corrected list is empty.
+// list - nil when the corrected list is empty.
 //
 // The single-pick path (BatchLookupForms) handles the same gap via
 // pickBestResolutionCandidate's tie-breakers; this function makes the
@@ -1593,7 +1593,7 @@ func (d *DB) mergeFSTOnlyCandidates(surface, lower string, dictCandidates []Form
 // their card won't match the headword for the sentence-level token.
 //
 // Negative pre-checks: if no candidate is demoted AND the surface
-// doesn't match a non-finite paradigm slot, this is a no-op — the
+// doesn't match a non-finite paradigm slot, this is a no-op - the
 // common case stays cheap.
 func correctFICandidates(d *DB, surface, lower string, candidates []FormResolution) []FormResolution {
 	if len(candidates) == 0 {
@@ -1613,7 +1613,7 @@ func correctFICandidates(d *DB, surface, lower string, candidates []FormResoluti
 	}
 
 	if !droppedAny {
-		// No dict row was demoted — homonym list is fine as-is. The common
+		// No dict row was demoted - homonym list is fine as-is. The common
 		// case (talossa, kissan, …) lands here.
 		return kept
 	}
@@ -1662,7 +1662,7 @@ type LemmaKey struct {
 // Phase 2 read path: prefer the translations table over lemmas.gloss when
 // both exist for the same source. The JOIN on
 // (lemma, pos, lang, source) deliberately couples each translation row
-// to its co-written lemma row — this lets us rank by lemmas.source_priority
+// to its co-written lemma row - this lets us rank by lemmas.source_priority
 // without adding a denormalized priority column to translations.
 //
 // Three cases the query handles together:
@@ -1756,7 +1756,7 @@ func learnerGlossOverride(lang string, key LemmaKey, source string) (string, boo
 // SourcePriority comes first across sources, then lower SenseIdx
 // within the same source. The first element of the slice returned by
 // BatchLookupSenses is therefore the same string BatchLookupGlosses
-// returns — multi-sense callers can drop the first to get
+// returns - multi-sense callers can drop the first to get
 // "alternative meanings" without re-querying.
 type Sense struct {
 	Text           string // the gloss text (already trimmed; never empty)
@@ -1774,8 +1774,8 @@ type Sense struct {
 //
 // Ranking order matches BatchLookupGlosses: source_priority DESC
 // (kaikki=10, EKI=20, custom=100), then sense_idx ASC (first sense
-// wins inside a source). Callers that want a richer ranking — e.g.
-// length-aware tiebreaks, or filtering by POS in context — should
+// wins inside a source). Callers that want a richer ranking - e.g.
+// length-aware tiebreaks, or filtering by POS in context - should
 // compose that on top of this slice rather than mutate the storage
 // query.
 //
@@ -1788,8 +1788,8 @@ type Sense struct {
 // lookup), where the downstream deck builder wants multi-sense data
 // to render context-appropriate front cues for polysemous lemmas
 // (`pää` → "head" generally, "on top of" in `kirjoituspöydän päällä`).
-// The lookup itself is fast — sub-millisecond per key on an indexed
-// translations table — so callers are free to fetch many at once.
+// The lookup itself is fast - sub-millisecond per key on an indexed
+// translations table - so callers are free to fetch many at once.
 func (d *DB) BatchLookupSenses(lemmas []LemmaKey, lang string) map[LemmaKey][]Sense {
 	result := make(map[LemmaKey][]Sense, len(lemmas))
 	if len(lemmas) == 0 {

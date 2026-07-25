@@ -1,4 +1,4 @@
-# Project Learnings — Empirical Findings
+# Project Learnings - Empirical Findings
 
 This document captures findings from running real evaluation against the
 parser, especially when those findings contradicted prior assumptions or
@@ -12,7 +12,7 @@ to be revisited.
 
 ---
 
-## 2026-05-12 — Downstream Finnish deck overrides mostly transfer to Estonian as trap classes
+## 2026-05-12 - Downstream Finnish deck overrides mostly transfer to Estonian as trap classes
 
 **Source:** read-only sweep of the downstream Anki deck builder at
 `/Users/sagar/Downloads/projects/yle_subs`, which consumes FinnEst
@@ -93,7 +93,7 @@ fixtures from the target language's own high-frequency corpus output.
 
 ---
 
-## 2026-05-07 — Pre-policy FST scheduling experiment was not production evidence
+## 2026-05-07 - Pre-policy FST scheduling experiment was not production evidence
 
 **Source:** historical integration test merging pre-policy versions of PRs
 [#106-#112](https://github.com/sagarinbabel/finnestdb/pull/112)
@@ -115,10 +115,10 @@ or eval claim for the current PR stack.
 |--------------------|------:|----------------:|----------------------------:|-----------------------------:|
 | fi-grammar manual  |    80 |            0.0% |                        1.4% |                    **60.8%** |
 | fi-manual-v1       |    22 |            0.0% |                       13.3% |                    **20.0%** |
-| ud-fi-tdt-test     | 1,554 |               — |                           — |                    **28.1%** |
+| ud-fi-tdt-test     | 1,554 |               - |                           - |                    **28.1%** |
 | et-grammar manual  |    50 |            0.0% |                        2.0% |                    **19.6%** |
 
-**Why the gap:** the FST is wired as `BatchLookupForms` step 5 — a
+**Why the gap:** the FST is wired as `BatchLookupForms` step 5 - a
 fallback that fires only when SQLite-driven steps 1-4 miss. For
 fi-grammar, ~95% of tokens hit step 1 (direct dict) and the FST never
 sees them. The stopgap (`attachCaseLabelIfStemMatches` from PR #109)
@@ -138,7 +138,7 @@ The old doc branch deferred fixing this as follow-up work.
    *augmentation* (dict supplies lemma+POS, FST supplies FEATS, attached
    to the same result) or *parallel candidates* (run both, merge with
    `pickBestFormCandidate` extended to score FEATS agreement). The
-   former is the smaller change — replaces the current stopgap.
+   former is the smaller change - replaces the current stopgap.
 2. **Delete the stopgap once promotion lands.** It's strictly
    subsumed by FST FEATS attachment.
 3. **Treat this as the canonical "scheduling vs capability" story.**
@@ -149,13 +149,13 @@ The old doc branch deferred fixing this as follow-up work.
 
 ---
 
-## 2026-05-07 — Estonian still falls behind FI (19.6% vs 60.8%) for two distinct reasons
+## 2026-05-07 - Estonian still falls behind FI (19.6% vs 60.8%) for two distinct reasons
 
 **Source:** same integration test as above. fi-grammar grammar = 60.8%;
-et-grammar grammar = 19.6% — same metric, similar curated dataset
+et-grammar grammar = 19.6% - same metric, similar curated dataset
 sizes, three-times-larger gap.
 
-**Reason 1 — stem alternation defeats the suffix-strip stopgap.**
+**Reason 1 - stem alternation defeats the suffix-strip stopgap.**
 `toas → tuba` (et-0001, inessive of "room"): the stopgap strips `-s`,
 gets stem `toa`, looks up `toa` in lemmas, doesn't find it (lemma is
 `tuba` due to consonant gradation `o↔u` inside the stem). So no label
@@ -165,7 +165,7 @@ attached. Same with `Naabri → naaber` (epenthetic vowel insertion),
 gradation too but most stem alternations leave the stem-end intact;
 ET's are more invasive.
 
-**Reason 2 — the much bigger one — Ekilex carries FEATS-equivalent
+**Reason 2 - the much bigger one - Ekilex carries FEATS-equivalent
 morph_code per form, and we throw it away on import.**
 
 ```
@@ -206,13 +206,13 @@ discarded before reaching the `forms` table.
    `GrammarLabel` projection.
 
 **Estimated impact:** ET grammar accuracy from 19.6% → ~95% in one
-PR. No FST step promotion required for Estonian — Ekilex covers ~178k
+PR. No FST step promotion required for Estonian - Ekilex covers ~178k
 lemmas / ~6.2M forms, which captures the long tail Finnish doesn't
 have a comparable source for.
 
 ---
 
-## 2026-05-07 — UD-TDT (1,554 cases) showed real-world lemma accuracy is 53.4%, not 97%
+## 2026-05-07 - UD-TDT (1,554 cases) showed real-world lemma accuracy is 53.4%, not 97%
 
 **Source:** integration test, ud-fi-tdt-test-v1.json.gz (Plan C / PR 1
 ingest, ~21k tokens).
@@ -228,7 +228,7 @@ ingest, ~21k tokens).
 **Why the curated sets misled us:** they were built to exercise specific
 parser features (case-rich noun phrases, possessives, compounds), with
 sentences chosen to have words the dict could resolve. UD-TDT is a real
-treebank — it has proper nouns, foreign words, hyphenated forms,
+treebank - it has proper nouns, foreign words, hyphenated forms,
 abbreviations, technical vocabulary, named entities, dates, numerals,
 informal punctuation. The dict catches ~96% of *some* lemma for them
 (coverage 96.1%) but the lemma we picked was wrong about half the

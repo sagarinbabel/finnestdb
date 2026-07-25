@@ -21,7 +21,7 @@ import (
 //   - Periodic commits keep WAL bounded; at default flushEvery=50k the
 //     WAL stays well under 1 GB during phase 2.
 //
-// The flusher does not hold open the connection — caller passes in
+// The flusher does not hold open the connection - caller passes in
 // s.scratch and is responsible for closing it.
 
 type wordlistFlusher struct {

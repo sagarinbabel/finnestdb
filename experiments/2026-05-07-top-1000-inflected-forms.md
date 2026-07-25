@@ -1,4 +1,4 @@
-# Top-1000 inflected forms — seed deck research plan
+# Top-1000 inflected forms - seed deck research plan
 
 _Created 2026-05-07. Ships a static, register-aware top-1000 inflected-form
 table for Finnish and Estonian, primarily so a brand-new user with no
@@ -21,7 +21,7 @@ Produce, for each of FI and ET:
 
 This is **not** the same as the
 [`TODO.md` research goal "Discover the most-frequent inflected forms
-in user-pasted text"](../TODO.md) — that one is the live, UGC-driven
+in user-pasted text"](../TODO.md) - that one is the live, UGC-driven
 ranking that updates as users paste. This experiment is the **static,
 shippable baseline** that exists before any user has pasted anything.
 The two are complementary: the static list bootstraps the cold-start
@@ -39,7 +39,7 @@ within seconds of sign-up.
 It is also the cheapest way to ship a comprehension-prediction signal
 *per language* before the user has any deck. Once we have the list
 plus its coverage curve, we can show on the dashboard "you know N of
-the top 1000 Finnish forms — that's ~X% of typical written Finnish."
+the top 1000 Finnish forms - that's ~X% of typical written Finnish."
 
 ## Source corpora
 
@@ -58,9 +58,9 @@ written. We will reproduce them, not replace them.
 
 ### Already in the repo, not yet wired into this pipeline
 
-- `localdata/fi-corpus/` — the Finnish corpus the project is already
+- `localdata/fi-corpus/` - the Finnish corpus the project is already
   carrying. Tokenize through `parsecore` and aggregate.
-- `localdata/kaikki/` — kaikki.org JSONL imports. Not a frequency
+- `localdata/kaikki/` - kaikki.org JSONL imports. Not a frequency
   source, but the source of truth for definitions; every row in the
   output TSVs gets its definition from here via the existing dict
   lookup chain.
@@ -88,14 +88,14 @@ Single Go binary, e.g. `cmd/buildtop1000`, with these stages:
 1. **Collect**. For each `(lang, register)` pair, read every source
    file, extract raw text. For EPUBs, walk the manifest spine, parse
    each XHTML document, strip tags. For OpenSubtitles + UD, the data
-   is already form/count tabular — preserve the upstream count column;
+   is already form/count tabular - preserve the upstream count column;
    we won't re-tokenize text we don't have.
 
 2. **Tokenize through `parsecore`**. For raw-text sources (EPUBs,
    `fi-corpus`), use the project's own Rust tokenizer so the output's
    tokenization matches what the consumer alpha will produce when a
    user pastes the same text. Aligning tokenization is the single most
-   important methodological choice — without it, the seed deck and
+   important methodological choice - without it, the seed deck and
    the user's parses disagree on what counts as one form.
 
 3. **Aggregate**. Per `(lang, register, form)` → integer count. Strip
@@ -107,7 +107,7 @@ Single Go binary, e.g. `cmd/buildtop1000`, with these stages:
    lookup chain (`internal/store.BatchLookupForms`) to resolve to
    `(lemma, pos)`, pick a definition, and pick a representative
    example sentence (preferring a UD-source sentence when available
-   — UD is rights-cleared for non-commercial use; subtitle sentences
+   - UD is rights-cleared for non-commercial use; subtitle sentences
    are not).
 
 5. **Rank and write**. For each `(lang, register)`, write
@@ -145,21 +145,21 @@ Committed to git:
 - `docs/baselines/top-1000-inflected-forms-et-subtitle.tsv`
 - `docs/baselines/top-1000-inflected-forms-et-written.tsv`
 - `docs/baselines/top-1000-inflected-forms-et-merged.tsv`
-- `docs/baselines/top-1000-coverage-curves.md` — top-N coverage
+- `docs/baselines/top-1000-coverage-curves.md` - top-N coverage
   table, mirroring the format in
   [`docs/FREQUENCY_BASELINES.md`](../docs/FREQUENCY_BASELINES.md).
 
 Not committed:
 
 - The intermediate tokenized form-count files
-  (`localdata/derived/topN/...`) — re-derivable, tied to a specific
+  (`localdata/derived/topN/...`) - re-derivable, tied to a specific
   `parsecore` build, not stable.
 
 ## Open methodological choices
 
 **Whether to weight subtitle vs. written equally in the merged list.**
 The dictation said "70% or 80% or whatever the distribution is" of
-running text — but as
+running text - but as
 [`docs/FREQUENCY_BASELINES.md`](../docs/FREQUENCY_BASELINES.md) shows,
 top-1000 coverage is 65–73% for subtitle and 40–43% for written. They
 are different distributions, not noisy samples of one. Recommendation:
@@ -217,7 +217,7 @@ two-week research bet:
 
 - **Day 10**. Manual review of FI top-50 by a Finnish-fluent reviewer
   for sanity. (The Estonian top-50 will need an analogous reviewer
-  before launch — flagged on
+  before launch - flagged on
   [`TODO.md`](../TODO.md) when the deck-detail page rolls out.)
 
 ## Concrete asks for the user
@@ -229,7 +229,7 @@ To unblock day 1:
    directory.
 2. Confirm whether you have any ET EPUBs at hand. If not, the ET
    merged list will lean more on UD + OpenSubtitles, which is fine
-   for v1 — flag it to me and I'll widen the EPUB-source weight in
+   for v1 - flag it to me and I'll widen the EPUB-source weight in
    the FI merged list rather than wait for ET parity.
 3. Decide whether the cold-start CTA should be visible to users who
    already have ≥1 deck. Recommendation: yes, but moved from the

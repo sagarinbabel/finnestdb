@@ -108,7 +108,7 @@ function App() {
       <Inspector word={inspectWord} onClose={() => setInspectWord(null)} />
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} onSignIn={signIn} reason={authReason} />
 
-      <div id="toast" className="toast">—</div>
+      <div id="toast" className="toast">-</div>
 
       <TweaksPanel title="Tweaks" defaultPosition={{ right: 24, bottom: 24 }}>
         <TweakSection label="Aalto intensity">

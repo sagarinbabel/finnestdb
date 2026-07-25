@@ -1,4 +1,4 @@
-# Corpus pipeline — operator manual
+# Corpus pipeline - operator manual
 
 Reference card for the corpus pipeline that lives at
 `corpus_pipeline/`. All paths are relative to the main
@@ -36,7 +36,7 @@ flowchart TB
 
 ---
 
-## Quick reference — every make target
+## Quick reference - every make target
 
 Run from `cd corpus_pipeline/`. The core fetch/extract/aggregate/verify/
 promote/enrich/gloss targets have `-fi`, `-et`, and no-suffix (= both)
@@ -53,7 +53,7 @@ their own language scope.
 | `make corpus-verify[-fi/-et] PROFILE=…` | Hard/soft gate check, exit nonzero on fail | After aggregate | <5 s | `_derived/qa-gate.json` (+ `errors/` on fail) |
 | `make corpus-promote[-fi/-et] PROFILE=…` | Chain extract→aggregate→verify; smoke→pilot→full ladder | When advancing through profiles | depends on profile | promotion-state.json updated |
 | `make corpus-cache-clear` | Wipe `_derived/cache/` when present | After parser/dict changes or cache experiments | <1 s | clears cache if it exists |
-| `make bootstrap-tarball` | 3-way split tarball (code, fi, et) — lean recipe excludes raw/text/scratch/cache | Before handoff to another machine | ~30-45 min serial, less in parallel | `finnestdb-bootstrap-{code,fi,et}.tgz` in `localdata/bootstraps/` (~25 GB total compressed). See "Bootstrap tarballs" section below |
+| `make bootstrap-tarball` | 3-way split tarball (code, fi, et) - lean recipe excludes raw/text/scratch/cache | Before handoff to another machine | ~30-45 min serial, less in parallel | `finnestdb-bootstrap-{code,fi,et}.tgz` in `localdata/bootstraps/` (~25 GB total compressed). See "Bootstrap tarballs" section below |
 | `make gloss-coverage[-fi/-et]` | Audit dict-DB gloss coverage against the wordlist (pair + token-weighted) | Before/after a meaning-source import | <30 s | `reports/<date>-coverage-{lang}.json` |
 
 The `PROFILE` Makefile variable defaults to `smoke`. Override with
@@ -79,25 +79,25 @@ Existing `_derived/` directories built before that export existed must rerun
 
 `cmd/corpusverify` exits nonzero on hard-gate fail and writes:
 
-- `_derived/qa-gate.json` — machine-readable gate results
-- `_derived/errors/error_report.txt` — human-readable summary
+- `_derived/qa-gate.json` - machine-readable gate results
+- `_derived/errors/error_report.txt` - human-readable summary
 - Appends to `_derived/errors/error-history.jsonl` (timestamped, append-only)
 
 Workflow when you (or Claude) hit a hard fail:
 
-1. **Read** `_derived/errors/error_report.txt` — names the specific gate that failed.
-2. **Read** `_derived/qa-gate.json` — machine-readable detail.
+1. **Read** `_derived/errors/error_report.txt` - names the specific gate that failed.
+2. **Read** `_derived/qa-gate.json` - machine-readable detail.
 3. **Diagnose**: extractor bug? Aggregator schema mismatch? Source data quirk?
 4. **Fix** in `corpus_pipeline/` source.
 5. **Append** a `repaired.jsonl` entry with `{utc, fix_id, error_class,
-   original_error_utc, fix_description}` (omit `git_head_sha` —
+   original_error_utc, fix_description}` (omit `git_head_sha` -
    we're no-commit local).
 6. **Restart**: `make corpus-promote-{fi|et}` resumes via
    `promotion-state.json` (skips passed profiles).
 7. **Loop** until clean.
 
 If a known `error_class` re-appears within ~7 days of a `repaired.jsonl`
-entry, the verifier flags it as **regression** in the report — catches
+entry, the verifier flags it as **regression** in the report - catches
 silent reverts and pipeline drift.
 
 ---
@@ -115,7 +115,7 @@ git status --porcelain | grep -v '^?? localdata/' | grep -v '^?? design/'
 
 The corpus pipeline should not create new tracked changes outside
 `corpus_pipeline/` unless a PR explicitly says why. Pre-existing unrelated
-state (`design/*` untracked, etc.) is fine — only the intended delta matters.
+state (`design/*` untracked, etc.) is fine - only the intended delta matters.
 
 ---
 
@@ -137,7 +137,7 @@ state (`design/*` untracked, etc.) is fine — only the intended delta matters.
 1. Drop files into `localdata/{lang}-corpus/<your-slug>/raw/`.
 2. Write `localdata/{lang}-corpus/<your-slug>/manifest.json` with
    `format: epub` (or whatever).
-3. `make extract-corpus aggregate-corpus`. (Skip fetch — folder-driven.)
+3. `make extract-corpus aggregate-corpus`. (Skip fetch - folder-driven.)
 
 ### Add an EPUB to the existing FI corpus
 
@@ -168,7 +168,7 @@ head -50 localdata/fi-corpus/_derived/mining/unresolved.tsv
 
 ### Recover an example sentence from the canonical wordlist
 
-`wordlist.tsv` carries `example_ref_type` + `example_ref_id` only — the
+`wordlist.tsv` carries `example_ref_type` + `example_ref_id` only - the
 example body is recoverable by joining against `sentences.tsv` (or
 `poems.tsv` when `example_ref_type=poem`). The user-friendly export at
 `wordlist_user_friendly.tsv` works the same way.
@@ -220,15 +220,15 @@ make bootstrap-tarball-et           # localdata/et-corpus minus excludes
 
 **What ships** (intentional handoff payload):
 
-- `_derived/` — wordlist.tsv, wordlist_user_friendly.tsv, wordlist-enriched.tsv,
+- `_derived/` - wordlist.tsv, wordlist_user_friendly.tsv, wordlist-enriched.tsv,
   sentences.tsv, sentences_user_friendly.tsv, sentence_occurrences.tsv,
   documents.tsv, manifest.tsv, poems.tsv
-- `_derived/mining/` — silver-candidates, parser-disagreements,
+- `_derived/mining/` - silver-candidates, parser-disagreements,
   internal-consensus-candidates, high-frequency-ambiguous, unresolved,
   poetry-unresolved
 - `_derived/build_metadata.json`, `qa-report.json`, `qa-gate.json`
 - Per-source `manifest.json` (~300 B each) and `documents.jsonl`
-  (provenance — needed to resolve `documents.tsv` rows back to their
+  (provenance - needed to resolve `documents.tsv` rows back to their
   raw source location)
 - The `code` tarball additionally ships `finnestdb.db`,
   `localdata/lemmatizer-fi-et/`, `localdata/ekilex/`, `localdata/kaikki/`,
@@ -237,11 +237,11 @@ make bootstrap-tarball-et           # localdata/et-corpus minus excludes
 **What's excluded** (large + reproducible from source):
 
 - `_derived/_scratch.db` + WAL/SHM (deleted after each aggregate; up to 36 GB during a run)
-- `_derived/cache/` (parser cache — auto-rebuilds)
+- `_derived/cache/` (parser cache - auto-rebuilds)
 - per-source `raw/` (50+ GB FI; re-fetch via `cmd/fetchcorpus`)
 - per-source `text.txt` (regenerate via `cmd/extractcorpus`)
 - `epub/per-book/`, `epub/decks/` (EPUB-specific intermediates)
-- `<source>/poems.jsonl` (poetry sources — empty for FI/ET v1)
+- `<source>/poems.jsonl` (poetry sources - empty for FI/ET v1)
 - `.DS_Store`
 
 The exclude list lives in `Makefile` under the `BOOTSTRAP_EXCLUDES` variable.
@@ -377,7 +377,7 @@ the main repo's `scripts/setup-local.sh` to rebuild.
 ```
 
 Pure-Go zip + XHTML strip. If a book has unusual encoding (e.g. nested
-zip, or DRM), it may fail. The book is logged and skipped — other books
+zip, or DRM), it may fail. The book is logged and skipped - other books
 continue. Failed-extraction books appear in stderr; check
 `<source>/per-book/` for missing entries.
 
@@ -393,6 +393,6 @@ concurrent workers). For now, work around by aggregating per-source:
 
 ### Pipeline runs but `wordlist.tsv` looks empty/wrong
 
-Check `_derived/qa-report.json` totals — `unresolved_rate_prose` near
+Check `_derived/qa-report.json` totals - `unresolved_rate_prose` near
 1.0 means the parser isn't resolving anything (FST tables missing? db
 empty?). Also check `mining/unresolved.tsv` for what's slipping through.

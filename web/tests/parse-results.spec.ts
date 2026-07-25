@@ -504,7 +504,7 @@ test('user can save inspected results as a deck and review the first due card', 
 // random paragraph? We should display it nicely."). The save modal must
 // prefill a derived title from the pasted text's first clause/sentence
 // (store.DeriveTitle / the client-side deriveTitle mirror), not a raw
-// "Finnish: <first 48 chars>" dump — and the learner must still be able to
+// "Finnish: <first 48 chars>" dump - and the learner must still be able to
 // see and accept that suggestion before it becomes the deck's real title.
 test('paste a paragraph, save modal prefills a derived title, deck list shows it', async ({ page }) => {
   let meDecks: Array<{ id: number; title: string; lang: string; known: number; unique: number; due: number }> = [];
@@ -547,7 +547,7 @@ test('paste a paragraph, save modal prefills a derived title, deck list shows it
 
   await page.getByRole('button', { name: 'Save as deck' }).click();
   // The suggestion is prefilled BEFORE saving, and is still an editable
-  // input the learner could change — this assertion is the core contract.
+  // input the learner could change - this assertion is the core contract.
   await expect(page.locator('#results-deck-title')).toHaveValue('Kissa juoksee.');
 
   await page.locator('#results-save-submit').click();
@@ -803,7 +803,7 @@ test('inspect lang mismatch warning blocks parse until switching site language',
   await expect(page.locator('#inspect-submit')).toBeEnabled();
 });
 
-test('inspect does not auto-switch the site language on paste — it warns instead', async ({ page }) => {
+test('inspect does not auto-switch the site language on paste - it warns instead', async ({ page }) => {
   // Inspect must never silently flip the user's site-wide language behind
   // their back. Pasting the other language surfaces the warning + switch
   // button and disables Parse until the user explicitly confirms.
@@ -829,7 +829,7 @@ test('inspect does not auto-switch the site language on paste — it warns inste
   expect(patchCalls).toEqual([]);
 });
 
-test('inspect does not auto-switch the site language on file load — it warns instead', async ({ page }) => {
+test('inspect does not auto-switch the site language on file load - it warns instead', async ({ page }) => {
   await mockMe(page, 'user', { activeLanguage: 'ET' });
   const patchCalls: Array<unknown> = [];
   await page.route('**/api/me/languages', async (route) => {
@@ -854,7 +854,7 @@ test('inspect does not auto-switch the site language on file load — it warns i
 
 // The anonymous parser demo makes /results reachable without sign-in (it renders
 // the demo parse), but an anonymous visitor hitting /#/results with no cached
-// parse has nothing to show — the guard sends them to the landing parse form,
+// parse has nothing to show - the guard sends them to the landing parse form,
 // NOT to sign-in, since anonymous parsing is a first-class public surface.
 test('anonymous user hitting /#/results with no parse lands on the landing form', async ({ page }) => {
   await mockMe(page, 'anon');
@@ -907,7 +907,7 @@ test('signing out clears prior parse results from memory and route', async ({ pa
 
   // Navigating back to the cached results route: with the parse cleared, the
   // anonymous visitor has nothing to restore, so the guard sends them to the
-  // landing form — and the prior signed-in table (with correction buttons) is
+  // landing form - and the prior signed-in table (with correction buttons) is
   // gone.
   await page.goto('/#/results');
   await expect(page.locator('#landing-page')).toHaveClass(/active/);
@@ -934,7 +934,7 @@ test('correction submit shows error toast on backend failure', async ({ page }) 
   await expect(page.locator('#correction-modal')).not.toHaveClass(/hidden/);
   await page.locator('#correction-submit').click();
 
-  // Modal stays open and an error toast surfaces — no fake success.
+  // Modal stays open and an error toast surfaces - no fake success.
   await expect(page.locator('.toast.error')).toContainText(/try again/i);
   await expect(page.locator('#correction-modal')).not.toHaveClass(/hidden/);
 });
@@ -1188,7 +1188,7 @@ test('epub upload sends chapters payload and chapter clicks reuse the cache', as
 
   await page.goto('/#/inspect');
 
-  // Drive the hidden file input directly — playwright's file_chooser is the
+  // Drive the hidden file input directly - playwright's file_chooser is the
   // supported way; the dropzone is just visual UX over this input.
   await page.locator('#inspect-file').setInputFiles({
     name: 'tiny.epub',
@@ -1349,7 +1349,7 @@ test('languages page Add adds the language to the studying list', async ({ page 
 });
 
 test('languages page Remove disabled when only one language remains', async ({ page }) => {
-  // Mirrors "at least one language required" — the Remove button on the
+  // Mirrors "at least one language required" - the Remove button on the
   // user's only language is disabled, with the explanation in a tooltip.
   await mockMe(page, 'user', { activeLanguage: 'FI', learningLanguages: ['FI'] });
   await page.goto('/#/languages');

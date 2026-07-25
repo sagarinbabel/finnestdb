@@ -176,7 +176,7 @@
         ],
         "notes": "Known parser limitation, asserted rather than hidden: 'kuusi' the spruce (NOUN) and 'kuusi' the number six (NUM) both surface as the bare form 'kuusi' and the parser currently collapses both occurrences into a single (kuusi, NUM) word-list entry (count=2) instead of splitting NOUN vs NUM senses. See docs/PARSER_EVAL_METHODOLOGY.md 'Ambiguity and meaning-check calibration'. UI-level coverage (Multiple possible meanings panel with >=2 candidates and the flag-only escape) is asserted by web/tests/first-experience-rc.spec.ts 'fi journey: ambiguity homograph meanings panel', driven by a mocked ambiguous_surfaces payload for this pair; candidate-selection accuracy is out of scope for that test (see web/tests/ambiguity-meanings.spec.ts for the full feature coverage)."
       },
-      "notes": "Homograph case from docs/PARSER_EVAL_METHODOLOGY.md: kuusi NUM 'six' vs NOUN 'spruce'. Verified against the real custom parser 2026-07-04 — confirms the parser does not yet disambiguate; the UI should show 'Multiple possible meanings' rather than a confident Meaning Check for this pair."
+      "notes": "Homograph case from docs/PARSER_EVAL_METHODOLOGY.md: kuusi NUM 'six' vs NOUN 'spruce'. Verified against the real custom parser 2026-07-04 - confirms the parser does not yet disambiguate; the UI should show 'Multiple possible meanings' rather than a confident Meaning Check for this pair."
     },
     {
       "id": "fi-ambiguity-tuli",
@@ -191,7 +191,7 @@
         ],
         "notes": "Known parser limitation, asserted rather than hidden: 'tuli' NOUN 'fire' and 'tuli' VERB 'came' (from tulla) both surface as the bare form 'tuli', and the parser currently lemmatizes both occurrences to (tulla, VERB) (count=2) instead of splitting a NOUN 'fire' sense out."
       },
-      "notes": "Homograph case from docs/PARSER_EVAL_METHODOLOGY.md: tuli VERB 'came' vs NOUN 'fire'. Verified against the real custom parser 2026-07-04 — confirms the NOUN 'fire' sense is not resolved separately."
+      "notes": "Homograph case from docs/PARSER_EVAL_METHODOLOGY.md: tuli VERB 'came' vs NOUN 'fire'. Verified against the real custom parser 2026-07-04 - confirms the NOUN 'fire' sense is not resolved separately."
     },
     {
       "id": "fi-ambiguity-voi",
@@ -221,7 +221,7 @@
           { "lemma": "kuusk", "pos": "NOUN" },
           { "lemma": "kuus", "pos": "NOUN" }
         ],
-        "notes": "ET mirrors the FI 'tuli' collapse: 'tuli' NOUN 'fire' and 'tuli'/'tulla' VERB 'came/come' both surface as forms of 'tuli', and the parser resolves all occurrences to (tulema, VERB) (count=3) rather than splitting out a NOUN 'fire' sense. 'kuusk' (spruce) and 'kuus' (six) are spelled distinctly in Estonian and are NOT a homograph pair here, unlike FI 'kuusi' — included so the case documents that ET does not inherit every FI ambiguity 1:1. UI-level coverage (Multiple possible meanings panel with >=2 candidates and the flag-only escape) is asserted by web/tests/first-experience-rc.spec.ts 'et journey: ambiguity homograph meanings panel', driven by a mocked ambiguous_surfaces payload for the ET 'tuli' pair; candidate-selection accuracy is out of scope for that test."
+        "notes": "ET mirrors the FI 'tuli' collapse: 'tuli' NOUN 'fire' and 'tuli'/'tulla' VERB 'came/come' both surface as forms of 'tuli', and the parser resolves all occurrences to (tulema, VERB) (count=3) rather than splitting out a NOUN 'fire' sense. 'kuusk' (spruce) and 'kuus' (six) are spelled distinctly in Estonian and are NOT a homograph pair here, unlike FI 'kuusi' - included so the case documents that ET does not inherit every FI ambiguity 1:1. UI-level coverage (Multiple possible meanings panel with >=2 candidates and the flag-only escape) is asserted by web/tests/first-experience-rc.spec.ts 'et journey: ambiguity homograph meanings panel', driven by a mocked ambiguous_surfaces payload for the ET 'tuli' pair; candidate-selection accuracy is out of scope for that test."
       },
       "notes": "PARSER_EVAL_METHODOLOGY.md's kuusi/tuli/voi ambiguity slice is explicitly Finnish-first (see 'Start Finnish-first, then add Estonian parity cases'). This ET case exercises the real custom parser on Estonian sentences covering the same three concepts (spruce/six, fire/came, butter/may) and documents which collapse translates to Estonian (tuli) and which does not (kuusk vs kuus is not a collision in ET orthography). A dedicated ET-native ambiguity slice with its own homograph pairs is still pending; this fixture is a starting point, not a replacement for that work. Verified against the real custom parser 2026-07-04; TOTAL TOKENS=45."
     },

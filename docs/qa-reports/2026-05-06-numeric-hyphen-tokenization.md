@@ -19,7 +19,7 @@ This report records:
 
 Manual parser testing on Estonian text. The user pasted a sentence that
 contained `65-aastane` ("65-year-old") and noticed neither `65` nor
-`aastane` showed up as separate words in the words list — `65-aastane`
+`aastane` showed up as separate words in the words list - `65-aastane`
 was being treated as one unresolved unit. Pure numeric tokens like `65`
 also weren't tagged `NUM`.
 
@@ -47,7 +47,7 @@ into the bug:
 
 1. `is_punct` does not include the ASCII hyphen `-`, so `tokenize`
    keeps hyphenated chunks intact ("well-known" stayed together by
-   design — but so did `65-aastane`).
+   design - but so did `65-aastane`).
 2. `guess_pos` had no `NUM` branch, so all-digit tokens defaulted to
    `NOUN` with the digits as their lemma.
 3. The whitespace-based chunker emitted `250` and `000` as separate
@@ -56,24 +56,24 @@ into the bug:
 ## The fix
 
 Four rules in `parser/src/lib.rs`. All four are tokenizer-only and apply
-to both languages — no entries added to
+to both languages - no entries added to
 [`internal/parserules/finnish.go`](../../internal/parserules/finnish.go)
 or [`internal/parserules/estonian.go`](../../internal/parserules/estonian.go).
 
-- **R1 — digit/letter hyphen split.** In a chunk, find the first hyphen
+- **R1 - digit/letter hyphen split.** In a chunk, find the first hyphen
   where one side is pure digits and the other starts with a letter;
   split there into `digits`, `-` (PUNCT), `letters`. Triggers:
   `65-aastane`, `65-vuotias`, `1990-luvulla`. Skips: `B1-tase`,
   `well-known`.
-- **R2 — `NUM` POS detection.** In `guess_pos`, return `NUM` for forms
+- **R2 - `NUM` POS detection.** In `guess_pos`, return `NUM` for forms
   matching `^\d+$`, `^\d+\.\d+$`, or `^\d+,\d+$`. Whitespace inside the
   form is stripped before matching so SI thousand notation also matches.
-- **R3 — thousand-space merge.** Post-pass over the token list. A
+- **R3 - thousand-space merge.** Post-pass over the token list. A
   non-punct `\d{1,3}` token followed by one or more `\d{3}` non-punct
   tokens collapses into a single token whose form preserves the spaces
   (`"250 000"`); `create_token` strips the spaces when forming the
   lemma so `"250 000"` and `"250000"` group as one entry.
-- **R4 — single-hyphen digit/digit range split.** If a chunk has
+- **R4 - single-hyphen digit/digit range split.** If a chunk has
   exactly one hyphen and both sides are pure digits, split into
   `NUM`, `-` (PUNCT), `NUM`. Triggers: `1990-2020`, `12-15`. ISO dates
   like `2026-05-06` have two hyphens and stay whole.
@@ -151,7 +151,7 @@ raske      NOUN   resolved   rask        dict
 .          PUNCT             .           punct
 ```
 
-`B1-tase` stays whole because `B1` is not pure digits — R1 skipped.
+`B1-tase` stays whole because `B1` is not pure digits - R1 skipped.
 
 `Kohtumine toimub 2026-05-06 hommikul.` (regression check)
 
@@ -180,7 +180,7 @@ vuotias    NOUN   stub       vuotias     stub     (* see "Pre-existing dict gaps
 
 `65` is NUM. `vuotias` is now a separate token; the dict didn't
 resolve it as ADJ in this run because the bare form is missing from
-the FI form table — that is a separate Voikko/Wiktionary coverage
+the FI form table - that is a separate Voikko/Wiktionary coverage
 issue, not a tokenizer one (Phase 4 will close it).
 
 `1990-luvulla syntyi paljon lapsia.`
@@ -253,7 +253,7 @@ The existing gold sets contain no numeric-hyphen sentences, so they do
 not measure the new behavior. The probe above is the qualitative
 measurement of the fix's effect; gold-set deltas are zero by
 construction. A focused gold dataset for numeric tokens is a
-natural next-up — see Follow-ups.
+natural next-up - see Follow-ups.
 
 ## Test additions
 
@@ -297,11 +297,11 @@ get conflated with this PR:
 - Add a focused gold dataset
   (`testdata/parser-eval/{et,fi}/gold/{et,fi}-numeric-v1.json`) so the
   numeric-hyphen behavior gets a permanent eval slot. Defer to the next
-  PR — the change here is intentionally tokenizer-only.
+  PR - the change here is intentionally tokenizer-only.
 - ET `-ne` adjective inflection table so `65-aastast` (partitive of
   `65-aastane`) lemmatizes back to `aastane` after R1 splits it.
   Currently splits cleanly, but `aastast` falls to the case-suffix
   stripper which lands on `aasta` (wrong). Separate piece of work.
 - Optional: digit-`-`-digit range with 1–3 digit sides (sports scores
-  `2-1`, page ranges `12-15` already split — confirmed in the probe).
+  `2-1`, page ranges `12-15` already split - confirmed in the probe).
   No change required; just noting that R4 covers them.

@@ -1,4 +1,4 @@
-# FI bounded aggregate — full run 2026-05-09 21:26 → 2026-05-11 00:56
+# FI bounded aggregate - full run 2026-05-09 21:26 → 2026-05-11 00:56
 
 ## Outcome: ✅ clean completion, no cap hits
 
@@ -23,12 +23,12 @@ Defaults `scratch=true`. parser_version=`dev-20260509`, fst_tables_sha=`908dae20
 
 ## Totals
 
-- **14,661,583** unique surfaces (100% prose — no poetry sources in budget)
+- **14,661,583** unique surfaces (100% prose - no poetry sources in budget)
 - **763.5M** tokens
 - **68,820,256** unique sentences
-- **110,398,854** sentence occurrences (1.6× ratio — opensubtitles dedup helps)
+- **110,398,854** sentence occurrences (1.6× ratio - opensubtitles dedup helps)
 - **1,694,544** documents
-- **0** poems (none of the FI poetry sources — skvr, runosto-net — are in our v1 source registry yet)
+- **0** poems (none of the FI poetry sources - skvr, runosto-net - are in our v1 source registry yet)
 
 ## Budget audit
 
@@ -70,7 +70,7 @@ Both came in cleanly under cap.
 | internal-consensus (basic ∩ custom ∩ FST) | 56,824 |
 | silver-candidates | absent (only enrichcorpus writes this) |
 
-**Unresolved rate: 0.002%** — extraordinarily low; FST + dict cover virtually everything.
+**Unresolved rate: 0.002%** - extraordinarily low; FST + dict cover virtually everything.
 
 ## Output files (canonical TSVs)
 
@@ -101,11 +101,11 @@ Bounded-memory design held end-to-end on a 27.5h run. The four reviewer fixes (P
 
 ## Anomaly in QA report
 
-`totals.sentences_unique = 0` is wrong — the actual count is 68.8M (per phase-4 step 2 log). The QA writer is not pulling this count correctly. Cosmetic bug; not a data correctness issue. **TODO**: investigate qaReport.totals.sentences_unique calculation in main.go.
+`totals.sentences_unique = 0` is wrong - the actual count is 68.8M (per phase-4 step 2 log). The QA writer is not pulling this count correctly. Cosmetic bug; not a data correctness issue. **TODO**: investigate qaReport.totals.sentences_unique calculation in main.go.
 
 ## Next steps
 
 1. ✅ Delete _scratch.db (~36 GB reclaimed)
-2. → Re-enrich FI (via `cmd/enrichcorpus`) — adds external-analyzer agreement labels for silver-candidates
+2. → Re-enrich FI (via `cmd/enrichcorpus`) - adds external-analyzer agreement labels for silver-candidates
 3. → Re-enrich ET
 4. → Bootstrap tarballs (`make bootstrap-tarball`)

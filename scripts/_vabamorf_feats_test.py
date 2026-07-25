@@ -59,7 +59,7 @@ CASES = [
     ("", "V", {}),
     ("nonsense_code", "V", {}),
 
-    # Edge: Vabamorf never emits "sg n" on a verb — that's a noun shape.
+    # Edge: Vabamorf never emits "sg n" on a verb - that's a noun shape.
     # If the tagger mislabels POS as V, we still try to interpret each
     # token: "sg" is unknown in the verb table, "n" matches 1sg-pres-ind.
     # Documented for transparency; not a realistic input from Vabamorf.

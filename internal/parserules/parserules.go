@@ -2,14 +2,14 @@
 // custom parser's enrichment chain (possessive stripping, compound splitting,
 // case-suffix stripping).
 //
-// All rules are pure data — no DB access, no I/O. The functions in
+// All rules are pure data - no DB access, no I/O. The functions in
 // internal/store/dict.go consume these tables when resolving surface forms.
 //
 // File layout:
 //
-//	parserules.go  — shared types
-//	finnish.go     — Finnish (FI) suffix tables
-//	estonian.go    — Estonian (ET) suffix tables
+//	parserules.go  - shared types
+//	finnish.go     - Finnish (FI) suffix tables
+//	estonian.go    - Estonian (ET) suffix tables
 //
 // To extend the parser with a new rule:
 //

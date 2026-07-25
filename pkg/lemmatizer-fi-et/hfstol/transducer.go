@@ -87,7 +87,7 @@ func parse(data []byte) (*Transducer, error) {
 	//   bytes 0-3: "HFST"
 	//   byte 4:    0x00 (separator)
 	//   bytes 5-6: remaining_header_len (uint16 LE)
-	//   byte 7:    0x00 (second separator) — required by HFST's reader
+	//   byte 7:    0x00 (second separator) - required by HFST's reader
 	//   bytes 8..8+remaining_header_len: property-bag (null-terminated key/value pairs)
 	if len(data) < 8 {
 		return nil, fmt.Errorf("hfstol: file too short (%d bytes)", len(data))
@@ -227,7 +227,7 @@ func (t *Transducer) parseAlphabet(start int, numSymbols uint16) (int, error) {
 				t.symbolToDiacritic[i] = ofv
 				continue
 			}
-			// Not a recognised flag — fall through and treat as opaque tag.
+			// Not a recognised flag - fall through and treat as opaque tag.
 		}
 
 		runes := []rune(sym)

@@ -3,9 +3,9 @@
 //
 // Two metrics:
 //
-//	pair coverage  — distinct (lemma, pos, lang) tuples in the wordlist whose
+//	pair coverage  - distinct (lemma, pos, lang) tuples in the wordlist whose
 //	                 lemmas.gloss is non-empty. The lemma table view.
-//	token coverage — same join, but weighted by the surface_count_total of
+//	token coverage - same join, but weighted by the surface_count_total of
 //	                 each parser-choice row. The user-experience view, since
 //	                 a wordlist row's frequency in the corpus is what drives
 //	                 how often a learner actually sees the gloss.
@@ -55,7 +55,7 @@ type Report struct {
 	BySource        []SourceSummary `json:"by_dict_source"`
 }
 
-// CoverageBucket carries the four-way split — has gloss, in dict but missing
+// CoverageBucket carries the four-way split - has gloss, in dict but missing
 // gloss, not in dict, and the implicit total via With/InDictNoGloss/NotInDict.
 type CoverageBucket struct {
 	Total         int64   `json:"total"`
@@ -76,7 +76,7 @@ type SourceSummary struct {
 	Coverage   string `json:"coverage_pct"`
 }
 
-// pairKey identifies a (lemma, pos) tuple. lang is implicit — one report per
+// pairKey identifies a (lemma, pos) tuple. lang is implicit - one report per
 // language.
 type pairKey struct {
 	Lemma string
@@ -165,7 +165,7 @@ func main() {
 }
 
 // readCorpusPairs streams the wordlist TSV and accumulates token weights per
-// (lemma, pos) pair. Only parser-choice rows count — without that filter, a
+// (lemma, pos) pair. Only parser-choice rows count - without that filter, a
 // surface with N analyses would be counted N times for the same surface_count
 // total, inflating both pair and token totals.
 func readCorpusPairs(path string) (map[pairKey]int64, int64, int64, error) {
@@ -207,7 +207,7 @@ func readCorpusPairs(path string) (map[pairKey]int64, int64, int64, error) {
 			continue
 		}
 		uniqueSurfaces[fields[iSurface]] = struct{}{}
-		// "1" / "true" both accepted defensively — different writers stamped
+		// "1" / "true" both accepted defensively - different writers stamped
 		// the column differently across versions.
 		if fields[iParser] != "1" && fields[iParser] != "true" {
 			continue

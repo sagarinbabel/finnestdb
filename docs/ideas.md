@@ -97,7 +97,7 @@ not parse upload.
 ### Author-partnered learnable texts (owner vision, 2026-07-04)
 
 Longer-term catalog direction beyond PD/CC sources: collaborate directly with
-authors who want their work hosted and made learnable — especially easy-Finnish
+authors who want their work hosted and made learnable - especially easy-Finnish
 (selkokieli) texts. Many are funded through Finnish cultural grants, so authors
 may be open to licensed hosting for learners. This would give the catalog
 modern, purpose-written easy texts that public-domain sources structurally
@@ -151,7 +151,7 @@ load-bearing part of the product rather than a bolt-on. The highest-leverage
 move is a Claude-powered tutor grounded in the learner's own deck state, then
 growing outward.
 
-### Phase 1 — LLM-grounded explanations (small surface, high value)
+### Phase 1 - LLM-grounded explanations (small surface, high value)
 
 - New Go handler `POST /api/explain` taking `{lemma, surface, sentence}`,
   returning a streamed natural-language explanation: morphology breakdown,
@@ -160,7 +160,7 @@ growing outward.
   (`claude-sonnet-4-6`) for quality/latency, Haiku 4.5
   (`claude-haiku-4-5-20251001`) for a cheap fast path.
 - Ground the prompt with the existing dictionary entry pulled from
-  `internal/store` (we already have structured lookups — no embeddings needed
+  `internal/store` (we already have structured lookups - no embeddings needed
   yet).
 - Use **prompt caching** on the system prompt + per-lemma dictionary chunk.
   The dictionary context is large and stable per lemma → ideal cache target,
@@ -170,30 +170,30 @@ growing outward.
   `internal/api/handlers.go`, new `web/explain.ts` UI module, route
   registration in `cmd/server/main.go`.
 
-### Phase 2 — Conversational practice partner
+### Phase 2 - Conversational practice partner
 
 - New `/api/chat` endpoint with multi-turn history persisted to SQLite (add a
   `chats` table to `internal/store`).
 - System prompt enforces target language (FI or ET), CEFR level inferred from
   deck mastery, corrections in the learner's L1.
 - **Tool use**: expose `lookup_lemma`, `add_to_deck`, `mark_card_due`,
-  `list_due_cards` as Claude tools. This is the agentic piece — the AI takes
+  `list_due_cards` as Claude tools. This is the agentic piece - the AI takes
   real actions against the DB on the user's behalf.
 - Critical files: `internal/ai/tools.go` (tool schemas + dispatch),
   `internal/api/chat.go`, store extension in `internal/store/chats.go`.
 
-### Phase 3 — Hybrid parser fallback
+### Phase 3 - Hybrid parser fallback
 
 - When `internal/parsecore` returns "unknown" for a token (rare lemma,
   code-switching, typo), fall back to an LLM call that returns a structured
-  `MorphAnalysis` JSON. Deterministic parsers stay primary — LLM is the long
+  `MorphAnalysis` JSON. Deterministic parsers stay primary - LLM is the long
   tail.
 - Cache results in a new SQLite table keyed on `(surface, lang)` so each
   unknown is paid for once across all users.
 - Critical files: extend `internal/parsecore/registry.go` with a `claude`
   adapter; new `internal/store/parse_cache.go`.
 
-### Phase 4 — Embeddings for semantic features
+### Phase 4 - Embeddings for semantic features
 
 - Add an embedding column (BLOB + cosine in Go is fine at SQLite scale;
   pgvector if we outgrow it) to `dictionary_glosses` and `sentences`.
@@ -202,7 +202,7 @@ growing outward.
 - Unlocks: "sentences using X in a similar sense", "recommend next reading at
   my level", deduping near-identical cards in `internal/store/cards.go`.
 
-### Phase 5 — Speech (optional, transformative)
+### Phase 5 - Speech (optional, transformative)
 
 - Whisper for ASR on user-recorded pronunciation; LLM judges fluency and
   gives feedback. Out of scope for a first cut.
@@ -225,5 +225,5 @@ grounding) before committing to bigger changes.
   explanation stream in. Compare Sonnet 4.6 vs Haiku 4.5 on quality and
   latency.
 - Cost check: log `cache_read_input_tokens` vs `input_tokens` from the API
-  response — cache hit rate should be >80% on repeated lookups for the same
+  response - cache hit rate should be >80% on repeated lookups for the same
   lemma.

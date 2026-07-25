@@ -1,4 +1,4 @@
-// FinnEst — frontend with three role-aware surfaces:
+// FinnEst - frontend with three role-aware surfaces:
 //   anonymous landing/about/signin, authenticated user product, admin workbench.
 
 const MAX_CHARS = 1_500_000;
@@ -179,12 +179,12 @@ function languageName(lang: string): string {
     return LANGUAGE_NAMES[lang] || lang;
 }
 
-// Inline SVG flags — flat, cartoony, system-font-independent. Returned as a
+// Inline SVG flags - flat, cartoony, system-font-independent. Returned as a
 // string and injected via innerHTML next to language labels. Each flag uses
 // `class="lang-flag"`; CSS sizes them via the parent's font-size (height: 1em)
 // and adds the rounded-corner / soft-shadow treatment that gives them a
 // sticker-like look. Pass `tooltip` to attach data-tooltip directly to the
-// SVG element so the portal tooltip fires only over actual flag pixels —
+// SVG element so the portal tooltip fires only over actual flag pixels -
 // not the surrounding flexbox gap of any wrapper. Keep in sync with
 // SUPPORTED_LANGUAGES.
 function languageFlag(lang: string, tooltip?: string): string {
@@ -247,7 +247,7 @@ interface KnownWordsImportResponse {
     unresolved: string[];
 }
 
-// PUT /api/known-words response — used by the Anki sync/replace flow. Splits
+// PUT /api/known-words response - used by the Anki sync/replace flow. Splits
 // the diff result so the UI can report adds vs removes separately.
 interface KnownWordsReplaceResponse {
     added:      KnownLemma[];
@@ -540,7 +540,7 @@ const OTHER_POS = ['PRON', 'DET', 'ADP', 'NUM', 'CCONJ', 'SCONJ', 'PART', 'INTJ'
 //
 // The Aalto skin is now the *default* face of the product (owner decision:
 // the Claude Design prototype is the product's look). A first-time visitor with
-// no saved choice gets Aalto · Paimio light. Saved choices are always honored —
+// no saved choice gets Aalto · Paimio light. Saved choices are always honored -
 // only the fallback default changed. The Ink skin stays fully selectable in the
 // picker. To revert the default to the pre-prototype Ink · dark, change the two
 // fallbacks in readThemeSkin/readThemeMode back to 'ink'/'dark'.
@@ -574,7 +574,7 @@ function applyTheme(skin: ThemeSkin, mode: ThemeMode): void {
     root.setAttribute('data-skin', skin);
     root.setAttribute('data-theme', mode);
     // Trigger icon mirrors the active mode (a sun in dark mode invites switching
-    // to light, and vice versa — matching the prior single-toggle affordance).
+    // to light, and vice versa - matching the prior single-toggle affordance).
     document.querySelectorAll('.theme-icon').forEach(el => {
         el.textContent = mode === 'light' ? '🌙' : '☀️';
     });
@@ -681,7 +681,7 @@ function showToast(message: string, type: 'info' | 'success' | 'error' = 'info',
 // Every confirmation, prompt, or "are you sure?" message must go through
 // showConfirm() / showPrompt(). The dialog markup lives in #dialog-modal in
 // index.html and is reused for both call types. Browser-native dialogs
-// (window.alert / confirm / prompt) are forbidden — see .claude/CLAUDE.md.
+// (window.alert / confirm / prompt) are forbidden - see .claude/CLAUDE.md.
 // For non-blocking info/error notifications, use showToast() above.
 
 interface ConfirmOptions {
@@ -704,11 +704,11 @@ interface PromptOptions extends ConfirmOptions {
 
 // Tracks the currently-open dialog so a superseding open() can resolve the
 // prior one to null (cancel-equivalent) before stealing the modal markup.
-// Without this, the first Promise would hang forever — listeners get torn
+// Without this, the first Promise would hang forever - listeners get torn
 // down, but the resolve() function was never called.
 let activeDialog: { cancel: () => void } | null = null;
 
-// Last dialog's "Don't show this again" checkbox state — captured by
+// Last dialog's "Don't show this again" checkbox state - captured by
 // openDialog when a rememberLabel is provided so showConfirmWithRemember can
 // surface it alongside the confirm/cancel result.
 let lastDialogRemember = false;
@@ -728,7 +728,7 @@ function openDialog(opts: PromptOptions & { prompt: boolean }): Promise<string |
         const confirmBtn    = document.getElementById('dialog-modal-confirm') as HTMLButtonElement | null;
         const cancelBtn     = document.getElementById('dialog-modal-cancel')  as HTMLButtonElement | null;
         if (!modal || !titleEl || !messageEl || !inputWrap || !input || !confirmBtn || !cancelBtn || !backdrop) {
-            // Markup missing — fall back to native dialogs so the user never
+            // Markup missing - fall back to native dialogs so the user never
             // gets a silently dropped confirmation.
             if (opts.prompt) resolve(window.prompt(opts.message, opts.initialValue) ?? null);
             else resolve(window.confirm(opts.message) ? '' : null);
@@ -756,7 +756,7 @@ function openDialog(opts: PromptOptions & { prompt: boolean }): Promise<string |
         }
 
         // Optional "Don't show this again"-style checkbox. Hidden by default
-        // — only callers passing rememberLabel see it, and only that caller
+        // - only callers passing rememberLabel see it, and only that caller
         // reads lastDialogRemember afterwards.
         lastDialogRemember = false;
         if (rememberWrap && rememberInput) {
@@ -828,7 +828,7 @@ async function showConfirmWithRemember(opts: ConfirmOptions & { rememberLabel: s
 // Confirm dialog whose Confirm button doubles as the loading indicator. The
 // caller supplies a `classify` function that maps the resolved value to a
 // success/error state. The button is disabled the moment the dialog opens
-// and stays disabled until classify returns success — at which point it
+// and stays disabled until classify returns success - at which point it
 // flips to its normal confirmLabel and re-enables. On failure the button
 // label switches to the error text and stays disabled, so the user can only
 // cancel out.
@@ -867,7 +867,7 @@ async function showConfirmWithStatus<T>(
     // and shows the dialog). Then override the button with our spinner. If
     // we called setButton before, openDialog's textContent assignment would
     // wipe the spinner and the dialog would appear with a plain disabled
-    // button — looking unresponsive to the user.
+    // button - looking unresponsive to the user.
     const dialogPromise = openDialog({ ...opts, prompt: false });
     setButton('loading', opts.loadingText);
 
@@ -1039,7 +1039,7 @@ function applyLanguagesResponse(langs: UserLanguagesResponse): void {
 // languages plus a trailing "Manage languages…" entry that routes to the
 // dedicated page. The toggle button shows the current active language;
 // clicking opens a custom listbox menu (we style it ourselves so it
-// matches the rest of the app — native <select> popups can't be themed).
+// matches the rest of the app - native <select> popups can't be themed).
 // Toggling *which* languages are studied happens on /languages.
 function renderNavLanguageSelector(): void {
     const toggle = document.getElementById('nav-language-toggle');
@@ -1162,12 +1162,12 @@ function onActiveLanguageChanged(): void {
     }
     if (currentRoute() === '/vocab') {
         // Vocab page reads from state.activeLanguage for stats, hint, and the
-        // POST/DELETE bodies — re-render and re-fetch the per-language list.
+        // POST/DELETE bodies - re-render and re-fetch the per-language list.
         renderVocabPage();
         void loadKnownWords();
     }
     if (currentRoute() === '/review') {
-        // Old card is for whatever language was active before — re-fetch.
+        // Old card is for whatever language was active before - re-fetch.
         state.currentReviewCard = null;
         renderReviewPage();
         void loadNextReviewCard(false);
@@ -1182,7 +1182,7 @@ function onActiveLanguageChanged(): void {
 // (inactive). Within each group, sort alphabetically by display name. The
 // active section comes first so the language the user is focused on is
 // always at the top; the divider makes it visually clear which set a
-// language belongs to. The user can't drop their last language — its
+// language belongs to. The user can't drop their last language - its
 // checkbox is disabled to prevent ending up in a zero-language state.
 function renderLanguagesPage(): void {
     const list = document.getElementById('languages-list');
@@ -1370,7 +1370,7 @@ async function handleSignout(): Promise<void> {
     try {
         await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
     } catch {
-        // Best-effort — even if the endpoint is missing, clear local state.
+        // Best-effort - even if the endpoint is missing, clear local state.
     }
     resetClientSessionState();
     showToast('Signed out', 'info');
@@ -1378,7 +1378,7 @@ async function handleSignout(): Promise<void> {
 }
 
 // Clears all signed-in client state and flips the UI back to the anonymous
-// role. Shared by sign-out and account deletion — the server has already
+// role. Shared by sign-out and account deletion - the server has already
 // invalidated (or deleted) the session by the time this runs.
 function resetClientSessionState(): void {
     state.user = null;
@@ -1415,7 +1415,7 @@ async function handleDeleteAccount(): Promise<void> {
     const email = state.user?.email;
     const confirmed = await showConfirm({
         title:        'Delete your account?',
-        message:      `This permanently deletes ${email ? `the account ${email}` : 'your account'} and everything in it — all decks, review history, parse history, parser feedback, and known and ignored words. This cannot be undone.`,
+        message:      `This permanently deletes ${email ? `the account ${email}` : 'your account'} and everything in it - all decks, review history, parse history, parser feedback, and known and ignored words. This cannot be undone.`,
         confirmLabel: 'Delete my account',
         danger:       true,
     });
@@ -1429,7 +1429,7 @@ async function handleDeleteAccount(): Promise<void> {
             credentials: 'same-origin',
         });
         if (!resp.ok) throw new Error(await resp.text() || 'Failed to delete account');
-        // Server has deleted the user and invalidated the session cookie —
+        // Server has deleted the user and invalidated the session cookie -
         // drop all client state and land on the signed-out landing page.
         resetClientSessionState();
         showToast('Your account and data have been deleted.', 'info');
@@ -1748,7 +1748,7 @@ function initSigninForm(): void {
             showToast(signinMode === 'register' ? `Welcome, ${data.user.email}` : `Welcome back, ${data.user.email}`, 'success');
             // Carry-forward (USER_FLOWS "Carry-forward of anonymous parses"):
             // if the visitor had a parse open before signing in, return them to
-            // it with learner enrichments now applied — not the dashboard.
+            // it with learner enrichments now applied - not the dashboard.
             await landAfterAuth();
         } catch (err: any) {
             errorEl.textContent = err.message || 'Sign-in failed';
@@ -1771,7 +1771,7 @@ function renderDashboard(): void {
     const setStat = (id: string, value: number | undefined): void => {
         const el = document.getElementById(id);
         if (!el) return;
-        el.textContent = value === undefined ? '—' : value.toLocaleString();
+        el.textContent = value === undefined ? '-' : value.toLocaleString();
     };
 
     setStat('stat-known',           state.dashboard?.known_count);
@@ -1784,7 +1784,7 @@ function renderDashboard(): void {
 
     // Cold start: learners with no decks at all get the embedded-text catalog
     // (USER_FLOWS §4). Returning learners with decks don't need it on the
-    // dashboard — Inspect still offers it.
+    // dashboard - Inspect still offers it.
     const noDecks = (state.dashboard?.decks || []).length === 0;
     renderCatalogSection('dashboard-cold-start', 'dashboard-catalog', noDecks);
 
@@ -1796,7 +1796,7 @@ function renderDashboard(): void {
     if (decks.length === 0) {
         const langLabel = languageName(state.activeLanguage);
         const hint = allDecks.length === 0
-            ? `No decks yet — paste some text under <a href="#/inspect">Parse</a>, or add a <a href="#/decks/official">Top 1000 starter deck</a>.`
+            ? `No decks yet - paste some text under <a href="#/inspect">Parse</a>, or add a <a href="#/decks/official">Top 1000 starter deck</a>.`
             : `No ${escapeHtml(langLabel)} decks yet. Switch the language in the top bar to see your other decks, or <a href="#/inspect">parse a ${escapeHtml(langLabel)} text</a>.`;
         decksList.innerHTML = `<p class="empty-state">${hint}</p>`;
         return;
@@ -1919,7 +1919,7 @@ function renderCatalogCard(e: CatalogEntry, hasKnownForLang: boolean): string {
 
 // pickCatalogText lazy-loads the full text and opens it "like a book": it drops
 // the text into the Inspect textarea (so re-parse/edit still works via the
-// Words/Inspect path), then parses immediately and lands on the Read tab — zero
+// Words/Inspect path), then parses immediately and lands on the Read tab - zero
 // intermediate clicks. The owner hit a dead end here before: the text stopped at
 // the textarea and there was no obvious next step (USER_FLOWS §"catalog").
 async function pickCatalogText(id: string): Promise<void> {
@@ -1968,7 +1968,7 @@ function renderInspectColdStart(): void {
 }
 
 // Renders the trailing-14-day review activity as plain CSS bars. Hidden until
-// the user has answered at least one review in the window — an all-zero chart
+// the user has answered at least one review in the window - an all-zero chart
 // on a fresh account reads as "something is broken", not "get started".
 function renderReviewActivityChart(days: { day: string; count: number }[]): void {
     const section = document.getElementById('dashboard-activity');
@@ -2038,7 +2038,7 @@ function renderHistoryPage(): void {
         const lang = escapeHtml(languageName(item.lang));
         const parser = escapeHtml(item.parser || 'custom');
         // item.title is the derived display title (store.DeriveTitle, same
-        // rule set as the deck-save modal's prefill) — it replaces the raw
+        // rule set as the deck-save modal's prefill) - it replaces the raw
         // truncated source_preview as the row's headline so raw pastes read
         // as cleanly here as a deliberately-named deck.
         const title = escapeHtml(item.title || '(empty text)');
@@ -2276,7 +2276,7 @@ function renderOfficialDecksTab(): void {
         const langName = deck.lang === 'FI' ? 'Finnish' : 'Estonian';
         const subscribed = !!deck.subscribed;
         const isOwner = !!deck.is_owner;
-        // Owner of the deck doesn't subscribe to their own publication — they
+        // Owner of the deck doesn't subscribe to their own publication - they
         // can manage it from "My decks". Other users get the studying-list
         // toggle.
         let actionBtn: string;
@@ -2312,7 +2312,7 @@ async function loadOfficialDecks(): Promise<void> {
         state.officialDecksLoaded = true;
     } catch (err: any) {
         // Surface the failure via toast but DON'T wipe state.officialDecks or
-        // mark the cache as loaded — wiping would render the misleading
+        // mark the cache as loaded - wiping would render the misleading
         // "No official decks have been published yet" empty state on a
         // network blip, and flipping officialDecksLoaded would suppress the
         // automatic retry on next visit. Keep what we had; let the user try
@@ -2330,7 +2330,7 @@ function renderVocabPage(): void {
     const total = document.getElementById('vocab-stat-total');
     if (total) {
         const v = state.dashboard?.known_count;
-        total.textContent = v === undefined ? '—' : v.toLocaleString();
+        total.textContent = v === undefined ? '-' : v.toLocaleString();
     }
     renderVocabLangStat();
     renderVocabAnkiSyncButton();
@@ -2371,7 +2371,7 @@ function renderKnownWordsPanel(): void {
     const summary = document.getElementById('known-words-summary');
     const hint = document.getElementById('known-words-lang-hint');
     if (hint) {
-        hint.textContent = `Importing in ${languageName(state.activeLanguage)} — switch the dropdown at the top to import in another language.`;
+        hint.textContent = `Importing in ${languageName(state.activeLanguage)} - switch the dropdown at the top to import in another language.`;
     }
     if (!list || !empty) return;
 
@@ -2707,7 +2707,7 @@ function saveAnkiPrefs(lang: string, prefs: AnkiImportPrefs): void {
     try {
         localStorage.setItem(ankiPrefsKey(lang), JSON.stringify(prefs));
     } catch {
-        // localStorage may be unavailable (private browsing). Silently skip —
+        // localStorage may be unavailable (private browsing). Silently skip -
         // the user just loses the preset for this session.
     }
 }
@@ -2862,7 +2862,7 @@ function pickBestField(
 
     if (candidates.length > 0) return candidates[0];
 
-    // No single-word fields and no name hints — pick whichever field at least
+    // No single-word fields and no name hints - pick whichever field at least
     // had any non-empty content, falling back to the first.
     const withContent = fields.find(f => (examples[f] || []).some(v => v.trim() !== ''));
     return withContent || fields[0];
@@ -2892,14 +2892,14 @@ function openAnkiImportModal(): void {
 // saved prefs. Fails over to the manual flow if discovery turns up no
 // matching decks.
 // Quick-action sync flow. Doesn't show the "Connect to Anki" modal up
-// front — instead surfaces the replace-mode confirmation dialog (if
+// front - instead surfaces the replace-mode confirmation dialog (if
 // applicable) with a status indicator that flips from a spinner to a check
 // mark once discovery completes. The full modal only appears at the running
 // stage, or when discovery surfaces a state change that needs review.
 async function openAnkiSyncModal(): Promise<void> {
     // Disable the trigger button for the duration of the sync so a frantic
     // double-click can't kick off two parallel imports. Re-enabled in the
-    // finally below — guarantees the button isn't left stuck on any error
+    // finally below - guarantees the button isn't left stuck on any error
     // or early-return path.
     const syncBtn = document.getElementById('vocab-anki-sync') as HTMLButtonElement | null;
     if (syncBtn) syncBtn.disabled = true;
@@ -2918,7 +2918,7 @@ function ankiReplaceConfirmMessage(langName: string, preserveManual: boolean): s
     if (preserveManual) {
         return `This will sync your ${langName} Anki-imported known-words to exactly what's in the selected Anki decks. Words you added through the textbox or a file will be kept; Anki-imported words not in this selection will be removed.`;
     }
-    return `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection — including ones you added through the textbox or a file — will be removed.`;
+    return `This will sync your ${langName} known-words to exactly what's in the selected Anki decks. Lemmas not in this selection - including ones you added through the textbox or a file - will be removed.`;
 }
 
 async function runAnkiSyncFlow(): Promise<void> {
@@ -2933,7 +2933,7 @@ async function runAnkiSyncFlow(): Promise<void> {
     initializeAnkiState(prefs, /* sync */ true);
     const sessionID = ankiImport.sessionID;
 
-    // Kick off discovery immediately — runs concurrently with whatever dialog
+    // Kick off discovery immediately - runs concurrently with whatever dialog
     // is shown so the user never waits for sequential steps. The promise
     // resolves to a structured result rather than throwing so the dialog can
     // surface "Anki ready" vs an actionable error without separate paths.
@@ -2945,7 +2945,7 @@ async function runAnkiSyncFlow(): Promise<void> {
 
     if (needsConfirm) {
         const langName = languageName(ankiImport.lang);
-        // No rememberLabel here — the "Skip confirmation on next sync" toggle
+        // No rememberLabel here - the "Skip confirmation on next sync" toggle
         // lives below the sync button on the vocab page now, so the dialog
         // stays focused on the confirm action.
         const dialog = await showConfirmWithStatus<SyncDiscoveryResultOrFailure>({
@@ -2958,12 +2958,12 @@ async function runAnkiSyncFlow(): Promise<void> {
             ? { state: 'success', text: 'Anki ready.' }
             : { state: 'error',   text: val.detail });
         dialogConfirmed = dialog.confirmed;
-        // status is the SyncDiscoveryResultOrFailure from runSyncDiscovery —
+        // status is the SyncDiscoveryResultOrFailure from runSyncDiscovery -
         // undefined only if the promise itself failed (shouldn't happen
         // since runSyncDiscovery catches everything).
         validation = dialog.status || { ok: false, reason: 'connect-failed', detail: 'Discovery did not complete.' };
         // If validation failed, fall through to the failure-handling
-        // branch below regardless of whether the user cancelled — the
+        // branch below regardless of whether the user cancelled - the
         // Confirm button was disabled so they could only cancel anyway.
         if (validation.ok && !dialogConfirmed) return; // user cancelled a healthy validation
     } else {
@@ -2982,7 +2982,7 @@ async function runAnkiSyncFlow(): Promise<void> {
     if (isAnkiImportCancelled(sessionID)) return;
     if (!validation.ok) {
         if (validation.reason === 'cancelled') return;
-        // Discovery turned up something the user should see — open the modal
+        // Discovery turned up something the user should see - open the modal
         // in the appropriate manual-flow stage with the toast we'd normally
         // show in the auto-advance path.
         if (validation.reason === 'connect-failed') {
@@ -3000,7 +3000,7 @@ async function runAnkiSyncFlow(): Promise<void> {
         return;
     }
 
-    // All clear — show the modal at the running stage and execute the
+    // All clear - show the modal at the running stage and execute the
     // import. The note snapshots are already in memory from discovery.
     // Flag the run as already-confirmed so runAnkiImport doesn't pop a
     // second replace dialog on top of the one the user just dismissed.
@@ -3048,14 +3048,14 @@ function isAnkiImportCancelled(sessionID: number): boolean {
 }
 
 // Open the modal at a specific stage. Used by the sync flow once discovery
-// has populated `ankiImport.allNotes` etc — we skip the "loading" stage
+// has populated `ankiImport.allNotes` etc - we skip the "loading" stage
 // because there's nothing left to load.
 function openAnkiModalAtStage(stage: AnkiStage): void {
     const modal = document.getElementById('anki-import-modal');
     if (!modal) return;
     modal.classList.remove('hidden');
     // The sync flow has already populated state but didn't render any
-    // section — fill in everything the target stage needs to look right.
+    // section - fill in everything the target stage needs to look right.
     if (stage === 'decks') {
         // Build the deck tree from the deckNames we cached during discovery.
         if (ankiImport.tree.length === 0) {
@@ -3188,7 +3188,7 @@ async function runSyncDiscovery(sessionID: number): Promise<SyncDiscoveryResultO
         if (isAnkiImportCancelled(sessionID)) return cancelled();
         ankiImport.fieldsByModel = fieldsByModel;
 
-        // Per-(model, field) examples — same as loadAnkiModelsForSelection,
+        // Per-(model, field) examples - same as loadAnkiModelsForSelection,
         // also auto-picks a field for models the user hasn't seen yet.
         const examplesByModel: Record<string, Record<string, string[]>> = {};
         for (const model of models) {
@@ -3263,7 +3263,7 @@ async function connectAndLoadDecks(): Promise<void> {
         for (const d of missingDecks) ankiImport.selected.delete(d);
         // Sync mode: route to the manual picker on ANY state mismatch
         // (missing deck, or zero remaining decks). This is the "no surprises"
-        // contract — the user explicitly hit Sync, they should review changes
+        // contract - the user explicitly hit Sync, they should review changes
         // before we apply a destructive replace. The deck-picker stage opens
         // pre-populated with whatever still exists.
         if (ankiImport.syncMode) {
@@ -3385,7 +3385,7 @@ function renderAnkiDeckSummary(): void {
 }
 
 function persistAnkiPrefs(): void {
-    // Preserve lastSyncAt + replaceConfirmSkip across writes — those are
+    // Preserve lastSyncAt + replaceConfirmSkip across writes - those are
     // managed by separate code paths (successful import / dismiss-dialog).
     const existing = loadAnkiPrefs(ankiImport.lang);
     saveAnkiPrefs(ankiImport.lang, {
@@ -3460,7 +3460,7 @@ function onAnkiDeckCheck(fullName: string, checked: boolean): void {
 
 // Step 2: discover the note models (card types) used in the user's selected
 // decks, then ask which field of each model holds the word. We sample a
-// handful of notes per deck rather than every note — fast enough that even a
+// handful of notes per deck rather than every note - fast enough that even a
 // 50-deck selection feels instant, and we'd never offer the user a field that
 // no real note has, since `modelFieldNames` returns the canonical schema.
 async function loadAnkiModelsForSelection(): Promise<void> {
@@ -3477,7 +3477,7 @@ async function loadAnkiModelsForSelection(): Promise<void> {
         //   - "notSuspended" = notes with at least one non-suspended card
         // We invert the suspended set so the snapshot's `suspended` flag is
         // true only when every card on the note is paused. Three queries per
-        // deck, fired in parallel — even for a few dozen decks the discovery
+        // deck, fired in parallel - even for a few dozen decks the discovery
         // step stays comfortably under a second.
         const perDeck = await Promise.all(decks.map(async (d) => {
             const [all, studied, notSuspended] = await Promise.all([
@@ -3502,7 +3502,7 @@ async function loadAnkiModelsForSelection(): Promise<void> {
         }
 
         // Fetch every note in the selected decks (chunked to keep payloads
-        // reasonable). We need the full data — not just a sample — so that
+        // reasonable). We need the full data - not just a sample - so that
         // (a) rare models that only appear later don't go missing and (b) the
         // estimate at the bottom of step 2 reflects the real set, not a
         // projection.
@@ -3537,7 +3537,7 @@ async function loadAnkiModelsForSelection(): Promise<void> {
 
         // Enumerate models from the full set (not just a sample) and grab
         // each model's canonical field list. modelFieldNames is the source
-        // of truth for which fields exist and in what order — sampled notes
+        // of truth for which fields exist and in what order - sampled notes
         // may omit empty fields entirely depending on the model definition.
         const modelSet = new Set<string>();
         for (const n of snapshots) modelSet.add(n.modelName);
@@ -3590,7 +3590,7 @@ async function loadAnkiModelsForSelection(): Promise<void> {
         renderAnkiImportEstimate();
 
         // Sync mode: skip the manual confirmation and run the import using
-        // the saved prefs — UNLESS Anki state has drifted in a way the user
+        // the saved prefs - UNLESS Anki state has drifted in a way the user
         // should review. Specifically:
         //   - A new card type has appeared in the discovered set that
         //     wasn't in the saved fieldByModel
@@ -3612,7 +3612,7 @@ async function loadAnkiModelsForSelection(): Promise<void> {
                 if (newModels.length > 0) parts.push(`${newModels.length} new card type${newModels.length === 1 ? '' : 's'}`);
                 if (goneModels.length > 0) parts.push(`${goneModels.length} card type${goneModels.length === 1 ? '' : 's'} removed`);
                 showToast(`Anki state has changed (${parts.join(', ')}). Review the field selection before syncing.`, 'info', 6000);
-                // Stay on the fields stage — the picker is already rendered.
+                // Stay on the fields stage - the picker is already rendered.
                 return;
             }
 
@@ -3673,7 +3673,7 @@ function renderAnkiFieldPickers(): void {
 
 function renderFieldOption(model: string, field: string, isSelected: boolean, examples: string[]): string {
     // Encode examples in a data attribute so the hover handler can read them
-    // without a separate state lookup. Newline-joined and escaped — the
+    // without a separate state lookup. Newline-joined and escaped - the
     // showFieldExamplesTip handler splits on \n when rendering.
     const exAttr = examples.length > 0 ? escapeAttr(examples.join('\n')) : '';
     const label = fieldDisplayLabel(field);
@@ -3710,7 +3710,7 @@ function openAnkiSettingsModal(): void {
 function closeAnkiSettingsModal(): void {
     document.getElementById('anki-settings-modal')?.classList.add('hidden');
     // If the import modal is open at the fields stage, refresh the estimate
-    // — toggle changes might have shifted what gets imported.
+    // - toggle changes might have shifted what gets imported.
     if (ankiImport.open) renderAnkiImportEstimate();
 }
 
@@ -3741,7 +3741,7 @@ function updateAnkiPref<K extends keyof AnkiImportPrefs>(key: K, value: AnkiImpo
     if (key === 'includeSuspended')        ankiImport.includeSuspended = value as boolean;
     if (key === 'replaceMode')             ankiImport.replaceMode = value as boolean;
     if (key === 'preserveManualOnReplace') ankiImport.preserveManualOnReplace = value as boolean;
-    // replaceConfirmSkip lives in prefs only — runAnkiImport reads it
+    // replaceConfirmSkip lives in prefs only - runAnkiImport reads it
     // directly at confirm time.
 }
 
@@ -3756,7 +3756,7 @@ function onSettingsIncludeSuspendedToggle(checked: boolean): void {
 function onSettingsReplaceModeToggle(checked: boolean): void {
     updateAnkiPref('replaceMode', checked);
     // The "Preserve manually-imported words" sub-option is only relevant
-    // when Replace is on — animate it in/out via the .expanded class.
+    // when Replace is on - animate it in/out via the .expanded class.
     const wrap = document.getElementById('anki-settings-preserve-manual-wrap');
     if (wrap) wrap.classList.toggle('expanded', checked);
 }
@@ -3771,7 +3771,7 @@ function onSettingsSkipConfirmToggle(checked: boolean): void {
 
 // Restore the five behavioural prefs to their out-of-the-box values for the
 // active language. Filter / decks / fieldByModel / lastSyncAt are left
-// untouched — "Reset defaults" is about the import behaviour, not which
+// untouched - "Reset defaults" is about the import behaviour, not which
 // decks you've picked or whether you've synced before.
 function onSettingsResetDefaults(): void {
     updateAnkiPref('includeNew', false);
@@ -3897,7 +3897,7 @@ function positionFieldPickerMenu(toggle: HTMLElement, menu: HTMLElement): void {
     menu.style.top = `${rect.bottom + 4}px`;
 
     // Measure with visibility:hidden so the layout cost is paid without a
-    // visible flash; then restore. The `hidden` class is left in place — the
+    // visible flash; then restore. The `hidden` class is left in place - the
     // caller flips it after we return.
     const prevVisibility = menu.style.visibility;
     menu.style.visibility = 'hidden';
@@ -4032,7 +4032,7 @@ async function runAnkiImport(): Promise<void> {
     persistAnkiPrefs();
 
     try {
-        // The note snapshots — including the studied/new flag — were fetched
+        // The note snapshots - including the studied/new flag - were fetched
         // during discovery, so we don't hit Anki again here. The filter
         // applies both the toggle and the per-model field choice.
         const notes = selectedAnkiNotes();
@@ -4046,9 +4046,9 @@ async function runAnkiImport(): Promise<void> {
                 if (ankiImport.allNotes.length === 0) {
                     detail.textContent = 'Selected decks are empty.';
                 } else if (!ankiImport.includeNew && hasNew && !ankiImport.allNotes.some(n => n.studied)) {
-                    detail.textContent = 'Every note in the selected decks is still "new" — turn on “Mark new cards as known” to import them.';
+                    detail.textContent = 'Every note in the selected decks is still "new" - turn on “Mark new cards as known” to import them.';
                 } else if (!ankiImport.includeSuspended && hasSuspended && !ankiImport.allNotes.some(n => !n.suspended)) {
-                    detail.textContent = 'Every note in the selected decks is suspended — turn on “Include suspended cards” to import them.';
+                    detail.textContent = 'Every note in the selected decks is suspended - turn on “Include suspended cards” to import them.';
                 } else {
                     detail.textContent = 'No notes had a non-empty value for the chosen fields.';
                 }
@@ -4058,7 +4058,7 @@ async function runAnkiImport(): Promise<void> {
         }
 
         // Process snapshots in chunks so the progress bar still moves on
-        // very large imports. The work is in-memory and fast — the chunk
+        // very large imports. The work is in-memory and fast - the chunk
         // boundary mostly exists to keep the UI thread responsive.
         const CHUNK = 500;
         const seen = new Set<string>();
@@ -4115,7 +4115,7 @@ async function runAnkiImport(): Promise<void> {
             await loadKnownWords();
             showToast('Vocabulary synced from Anki.', 'success');
         } else {
-            // Additive Anki import — tag new rows so a later sync can diff
+            // Additive Anki import - tag new rows so a later sync can diff
             // them. Manual rows (textbox/file/inspect/review) keep their
             // own source.
             const data = await postKnownWords(words, 'anki', ankiImport.lang, abortController.signal);
@@ -4182,7 +4182,7 @@ async function copyAnkiSetupConfig(): Promise<void> {
             button.disabled = false;
         }, 1500);
     } catch {
-        showToast('Could not access the clipboard — copy manually.', 'error');
+        showToast('Could not access the clipboard - copy manually.', 'error');
     }
 }
 
@@ -4372,7 +4372,7 @@ function formMaxChars(els: ParseFormElements): number {
     return els.anonCapped ? state.anonMaxChars : MAX_CHARS;
 }
 
-// Inspect's "language" is the site-wide active language — there's no
+// Inspect's "language" is the site-wide active language - there's no
 // per-form radio anymore. We expose it as a read-only BtnRadioLike so the
 // shared parse runner / warning code can stay generic across inspect and the
 // admin workbench (which still has a radio for parser testing).
@@ -4395,7 +4395,7 @@ function getInspectEls(): ParseFormElements | null {
     return { lang: inspectLangBinding, text, file, charCount: cc, warning: warn, switchBtn: swBtn, dropzone: dz, loadedPill: pill, chapterList: chap, loadedEpub: null };
 }
 
-// The anonymous landing demo is paste-only (no file upload, no EPUB) — file
+// The anonymous landing demo is paste-only (no file upload, no EPUB) - file
 // upload is a signed-in Inspect capability (USER_FLOWS §1). The shared
 // ParseFormElements interface still wants dropzone/file/pill/chapter nodes, so
 // we hand it detached stubs the landing path never wires or shows.
@@ -4463,7 +4463,7 @@ function initLandingForm(): void {
 // Landing "or try →" demo chips. Each chip pulls one curated embedded text from
 // the anonymous /api/demo/text/{id} allowlist, drops it into the paste box, sets
 // the FI/ET selector to the text's language, and scrolls the box into view. It
-// deliberately does NOT auto-parse — the visitor sees the text land in the box
+// deliberately does NOT auto-parse - the visitor sees the text land in the box
 // (and the char meter tick up) before pressing Parse, matching the prototype.
 function initLandingDemoChips(els: ParseFormElements): void {
     const chips = document.querySelectorAll<HTMLButtonElement>('.demo-chip[data-demo-id]');
@@ -4535,7 +4535,7 @@ function getWorkbenchEls(): ParseFormElements | null {
 }
 
 function updateCharCount(els: ParseFormElements): void {
-    // When an EPUB is held, the textarea is empty — count from the loaded
+    // When an EPUB is held, the textarea is empty - count from the loaded
     // book's totalChars so the user sees the real size, not "0 / 1,000,000".
     const count = els.loadedEpub
         ? els.loadedEpub.totalChars
@@ -4564,7 +4564,7 @@ function autoGrowTextarea(ta: HTMLTextAreaElement): void {
     ta.style.overflowY = ta.scrollHeight > maxPx ? 'auto' : 'hidden';
 }
 
-// Text the parser will actually see — the held EPUB when one is loaded, else
+// Text the parser will actually see - the held EPUB when one is loaded, else
 // whatever's in the textarea. Used for lang detection and submit gating.
 function effectiveSourceText(els: ParseFormElements): string {
     if (els.loadedEpub) return els.loadedEpub.fullText;
@@ -4722,7 +4722,7 @@ function renderChapterNav(): void {
         const cached = state.epubChapterCache.get(idx);
         const lemmasLabel = cached
             ? `${cached.words.length.toLocaleString()} lemma${cached.words.length === 1 ? '' : 's'}`
-            : '— lemmas';
+            : '- lemmas';
         return `${wordsLabel} · ${lemmasLabel}`;
     };
     const rowFor = (idx: number, label: string, sub: string, extraCls = ''): string => {
@@ -4790,7 +4790,7 @@ async function selectChapter(idx: number): Promise<void> {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',
-            // Chapter parses are auxiliary data — no parse_sessions row.
+            // Chapter parses are auxiliary data - no parse_sessions row.
             // The whole-book parse (-1) remains persistent; we never reach
             // this branch for -1 because the whole-book cache is seeded by
             // the user-initiated runParse before any chapter click.
@@ -4810,7 +4810,7 @@ async function selectChapter(idx: number): Promise<void> {
 }
 
 // Resolves after the next browser paint. Double rAF: the first callback fires
-// before the upcoming paint, the second fires before the paint AFTER that —
+// before the upcoming paint, the second fires before the paint AFTER that -
 // guaranteeing at least one paint has happened in between.
 function afterNextPaint(): Promise<void> {
     return new Promise(resolve =>
@@ -4849,7 +4849,7 @@ function clearLoadedEpub(els: ParseFormElements, gateInspectButton: boolean): vo
 }
 
 // Load a user-uploaded file. .epub is uploaded to the server, held in state,
-// and surfaced as a pill — the textarea is left empty and disabled until the
+// and surfaced as a pill - the textarea is left empty and disabled until the
 // user clears it. .txt/.md is read client-side and pasted into the textarea
 // (existing behavior).
 async function loadFileIntoForm(
@@ -4879,7 +4879,7 @@ async function loadFileIntoForm(
             bookAuthor: (data.book_author || '').trim(),
         };
         if (data.truncated) {
-            showToast(`EPUB is large — kept the first ${MAX_CHARS.toLocaleString()} characters for analysis.`, 'info');
+            showToast(`EPUB is large - kept the first ${MAX_CHARS.toLocaleString()} characters for analysis.`, 'info');
         }
         // Hide the textarea entirely while a book is held and show the
         // chapter list in its place. The pill's Clear button restores both.
@@ -4898,7 +4898,7 @@ async function loadFileIntoForm(
         return;
     }
 
-    // .txt / .md and unknown extensions — read client-side and populate the
+    // .txt / .md and unknown extensions - read client-side and populate the
     // textarea, dropping any previously held EPUB on this form.
     if (els.loadedEpub) clearLoadedEpub(els, gateInspectButton);
     try {
@@ -4912,7 +4912,7 @@ async function loadFileIntoForm(
 }
 
 // Wire drag/drop on the dropzone wrapper. preventDefault on dragover is
-// unconditional — gating it on a types.includes('Files') check is unreliable
+// unconditional - gating it on a types.includes('Files') check is unreliable
 // because some browsers (notably Firefox) hide types during dragover for
 // security and the drop event then never fires. The only thing we actually
 // need to gate is whether to process the dropped payload, which we do by
@@ -4932,7 +4932,7 @@ function wireDragDrop(els: ParseFormElements, gateInspectButton: boolean): void 
         setDragging(true);
     });
     zone.addEventListener('dragleave', (e) => {
-        // Only clear when the cursor actually leaves the dropzone — not when
+        // Only clear when the cursor actually leaves the dropzone - not when
         // it crosses an internal child boundary (textarea → CTA, etc.).
         // relatedTarget is where the cursor is going next; if it's still
         // inside the zone, ignore.
@@ -4979,7 +4979,7 @@ function maybeAutoSwitchFromIngest(
 // site-wide.
 //
 // Workbench (admin): the form's lang radio is local-only, so on a paste/file
-// that looks like the other language we still auto-switch the radio — it
+// that looks like the other language we still auto-switch the radio - it
 // doesn't touch site state and saves an extra click for the parser-testing
 // flow.
 function runLangDetectOnText(
@@ -4997,7 +4997,7 @@ function runLangDetectOnText(
         if (detected !== 'unknown' && detected !== els.lang.value) {
             els.lang.value = detected;
             const sourceLabel = source === 'paste' ? 'pasted text' : 'file content';
-            showToast(`Switched to ${detected === 'FI' ? 'Finnish' : 'Estonian'} — detected from ${sourceLabel}`, 'info');
+            showToast(`Switched to ${detected === 'FI' ? 'Finnish' : 'Estonian'} - detected from ${sourceLabel}`, 'info');
         }
     }
     updateLangWarning(els, gateInspectButton);
@@ -5056,7 +5056,7 @@ function initInspectForm(): void {
     });
 }
 
-// ── Workbench form (admin surface — keeps prior behavior) ──────────────────
+// ── Workbench form (admin surface - keeps prior behavior) ──────────────────
 
 function initWorkbenchForm(): void {
     const els = getWorkbenchEls();
@@ -5149,7 +5149,7 @@ async function runParse(
         activeBtn.textContent = 'Parsing…';
     }
 
-    // Fresh top-level parse — drop any per-chapter cache from a previous
+    // Fresh top-level parse - drop any per-chapter cache from a previous
     // EPUB. Whole-book result is re-cached below once the request returns,
     // and per-chapter entries are seeded from response.chapters when the
     // EPUB path is used.
@@ -5179,7 +5179,7 @@ async function runParse(
             try {
                 const parsed = JSON.parse(raw);
                 if (parsed && typeof parsed.error === 'string') msg = parsed.error;
-            } catch { /* not JSON — use raw text */ }
+            } catch { /* not JSON - use raw text */ }
             throw new Error(msg || resp.statusText);
         }
         const data: ParseResponse = await resp.json();
@@ -5240,7 +5240,7 @@ async function runParse(
 // top N, and sum their mass. Learning them lifts coverage to
 //   Y% = (coveredMass + unlockMass_N) / totalMass.
 // We compute N = 10 and N = 20 and show whichever adds the more compelling
-// jump — the larger marginal gain, preferring the smaller N on a tie so the
+// jump - the larger marginal gain, preferring the smaller N on a tie so the
 // ask stays small. All live-state reads go through currentLemmaState so an
 // in-session "mark known" keeps the reveal honest on re-render.
 
@@ -5300,7 +5300,7 @@ function computeCoverageReveal(data: ParseResponse): CoverageRevealModel {
         return sum;
     };
     // Choose the step size. When there are 10 or fewer unknowns, offer exactly
-    // those — a clean "learn these and you're done" ask. When there are more,
+    // those - a clean "learn these and you're done" ask. When there are more,
     // the step is 10 or 20 (never an in-between count): prefer the smaller ask
     // of 10, and only escalate to 20 when the full set of 20 exists AND the
     // extra 10 words buy a materially larger coverage jump (≥5 more points of
@@ -5365,7 +5365,7 @@ function renderCoverageReveal(data: ParseResponse, animate = true): void {
     }
 
     const approx = model.estimated ? '≈' : '';
-    // knownPct is the bar floor and, for signed-in, the count-up target — the
+    // knownPct is the bar floor and, for signed-in, the count-up target - the
     // "you already know X%" number. The gain segment previews the projected
     // lift to Y%. For anonymous there is no known floor (0), so the count-up
     // target is the frequency figure Z% itself.
@@ -5431,7 +5431,7 @@ function renderCoverageReveal(data: ParseResponse, animate = true): void {
 
     // Count-up the headline figure to figureTarget while the bar fills from 0 to
     // its known floor + projected gain, ~1.2s ease-out. The full bar animates
-    // from the known level up to the projected level — the preview of the lift.
+    // from the known level up to the projected level - the preview of the lift.
     const durationMs = 1200;
     setBars(0, 0);
     setFigure(0);
@@ -5443,8 +5443,8 @@ function renderCoverageReveal(data: ParseResponse, animate = true): void {
         const knownNow = knownPct * e;
         const gainNow = gainWidth * e;
         setBars(knownNow, gainNow);
-        // The headline figure counts to figureTarget — the number the user is
-        // meant to feel — settling exactly on the API-derived value.
+        // The headline figure counts to figureTarget - the number the user is
+        // meant to feel - settling exactly on the API-derived value.
         setFigure(Math.round(figureTarget * e));
         if (raw < 1) {
             coverageRevealRaf = requestAnimationFrame(tick);
@@ -5910,7 +5910,7 @@ async function ambiguityMarkKnown(lang: string, surface: string, lemma: string, 
 // No new server data: WordEntry.forms carries the exact (case-preserved) surface
 // strings each (lemma, pos) resolved from, so we tokenize the source text on the
 // client and match each surface back to its WordEntry(ies). A surface that maps
-// to more than one row is a homograph — routed to the ambiguity popover, which
+// to more than one row is a homograph - routed to the ambiguity popover, which
 // reuses the Multiple-possible-meanings rendering.
 
 const RESULTS_TAB_KEY = 'finnestdb:resultsTab:v1';
@@ -5942,7 +5942,7 @@ function buildFormIndex(data: ParseResponse): Map<string, WordEntry[]> {
 }
 
 // Token-status classification for the Read view. Returns the CSS state class for
-// a resolved surface. Ignored words render neutral (uncolored) — the least noisy
+// a resolved surface. Ignored words render neutral (uncolored) - the least noisy
 // treatment, since an ignored word is a deliberate "don't show me this" signal
 // and coloring it would add visual weight to something the learner suppressed.
 type ReadTokenStatus = 'known' | 'learning' | 'new' | 'neutral' | 'unresolved';
@@ -5975,8 +5975,8 @@ function readTokenStatus(rows: WordEntry[]): ReadTokenStatus {
 // TEXT_TOKEN_RE splits source text into word tokens vs. non-word runs while
 // keeping every character (so the rendered text is byte-faithful to the source
 // minus HTML escaping). \p{L}\p{N} word chars plus intra-word marks the parser
-// treats as part of a token (apostrophe, hyphen). Everything else — whitespace,
-// punctuation — is passed through as plain text.
+// treats as part of a token (apostrophe, hyphen). Everything else - whitespace,
+// punctuation - is passed through as plain text.
 const TEXT_TOKEN_RE = /[\p{L}\p{N}][\p{L}\p{N}'’\-]*/gu;
 
 // renderReadView renders state.currentSourceText into #read-text with paragraph
@@ -6412,7 +6412,7 @@ function showResults(data: ParseResponse, textPreview: string, parserMode: Parse
 
 // Show/hide the anonymous-only sign-up ribbon and privacy footer on the results
 // page. The ribbon is dismissible per session but reappears on the next parse
-// (USER_FLOWS §2) — startLandingParse resets state.anonRibbonDismissed. The
+// (USER_FLOWS §2) - startLandingParse resets state.anonRibbonDismissed. The
 // footer always shows for anonymous visitors. Both are additionally gated by
 // data-role-show="anon", so a signed-in user never sees them.
 function renderAnonResultsChrome(): void {
@@ -6433,7 +6433,7 @@ function initAnonResultsChrome(): void {
 // ── Word-list export (copy + CSV) ──────────────────────────────────────────
 //
 // Available to every role, anonymous included (landing freemium cell ii: "Copy
-// or download — word list as plain text or CSV"). Both formats are generated
+// or download - word list as plain text or CSV"). Both formats are generated
 // entirely client-side from the parse response already in memory: no server
 // call, nothing stored, so it works within the anonymous ephemeral guarantee.
 // The export controls hide in deck context (a saved deck has no ephemeral
@@ -6452,7 +6452,7 @@ function exportRows(data: ParseResponse): WordEntry[] {
 }
 
 function wordListAsText(data: ParseResponse): string {
-    // Tab-separated lemma / POS / definition — the shape that drops straight
+    // Tab-separated lemma / POS / definition - the shape that drops straight
     // into Anki or a spreadsheet paste.
     return exportRows(data)
         .map(w => [w.lemma, posLabel(w.pos), w.gloss || ''].join('\t'))
@@ -6537,7 +6537,7 @@ function persistLastParse(data: ParseResponse, textPreview: string, parserMode: 
         };
         sessionStorage.setItem(LAST_PARSE_KEY, JSON.stringify(payload));
     } catch {
-        // Quota exceeded or sessionStorage unavailable — silently skip; the
+        // Quota exceeded or sessionStorage unavailable - silently skip; the
         // page will just be empty after refresh, same as before.
     }
 }
@@ -6602,9 +6602,9 @@ function hasCarriedParse(): boolean {
 
 // landAfterAuth decides where a freshly-authenticated user lands. Carry-forward
 // (USER_FLOWS "Carry-forward of anonymous parses"): if a parse was open before
-// sign-in / account creation / session re-auth, restore it — re-rendered against
+// sign-in / account creation / session re-auth, restore it - re-rendered against
 // the now-authenticated state so the reveal's known % becomes real and learner
-// controls appear — instead of dropping the user on the dashboard and losing
+// controls appear - instead of dropping the user on the dashboard and losing
 // their place. With no carried context, land on the dashboard as before.
 async function landAfterAuth(): Promise<void> {
     if (hasCarriedParse() && await restoreLastParse()) return;
@@ -6669,7 +6669,7 @@ async function loadDeckDetail(deckID: number): Promise<void> {
 // Fetches and renders the token-weighted comprehension projection on the deck
 // detail view: headline percentage plus a "learn these next" list showing the
 // before → after coverage if the user learns the top unlock candidates.
-// Non-fatal on any failure — the deck page works without the projection.
+// Non-fatal on any failure - the deck page works without the projection.
 async function loadDeckComprehension(deckID: number): Promise<void> {
     const panel = document.getElementById('deck-comprehension');
     if (!panel) return;
@@ -6766,7 +6766,7 @@ function truncateToWordsForTitle(text: string, n: number): string {
 }
 
 // Matches a real sentence end (. ! ?), optionally followed by a closing
-// quote, followed by whitespace or end-of-string — mirrors reSentenceEnd in
+// quote, followed by whitespace or end-of-string - mirrors reSentenceEnd in
 // titles.go so "example.com" isn't mistaken for a sentence boundary.
 const SENTENCE_END_RE = /[.!?]["'”’]?(\s|$)/;
 
@@ -7505,7 +7505,7 @@ function openCorrectionModal(row: CorrectionRowContext, opts?: { forceFlagOnly?:
     // Two-path modal (USER_FLOWS §10): default to flag-only so a learner who
     // just knows something's wrong can report it in one click. The "None of
     // these looks right" entry point from Multiple possible meanings forces the
-    // flag-only path — it is parser feedback that the candidate list looks
+    // flag-only path - it is parser feedback that the candidate list looks
     // wrong, never a proposed correction.
     const flagRadio    = document.getElementById('correction-mode-flag')    as HTMLInputElement | null;
     const proposeRadio = document.getElementById('correction-mode-propose') as HTMLInputElement | null;
@@ -7516,7 +7516,7 @@ function openCorrectionModal(row: CorrectionRowContext, opts?: { forceFlagOnly?:
     syncCorrectionMode();
 
     // Backend requires authentication. Anonymous parses can't submit
-    // corrections — the feedback endpoint creates the parse_session
+    // corrections - the feedback endpoint creates the parse_session
     // lazily but it still has to belong to a user. Surface that
     // explicitly via the auth hint.
     const canSubmit = state.role === 'user' || state.role === 'admin';
@@ -7569,7 +7569,7 @@ function initCorrectionModal(): void {
             const row     = state.currentRow;
             const results = state.currentResults;
             if (!row || !results) {
-                showToast("Can't send correction — no parse loaded.", 'error');
+                showToast("Can't send correction - no parse loaded.", 'error');
                 return;
             }
 
@@ -7616,13 +7616,13 @@ function initCorrectionModal(): void {
                 body: JSON.stringify(body),
             });
             if (resp.ok) {
-                showToast(flagOnly ? 'Thanks — flagged for review.' : 'Thanks — correction sent.', 'success');
+                showToast(flagOnly ? 'Thanks - flagged for review.' : 'Thanks - correction sent.', 'success');
                 closeCorrectionModal();
             } else {
-                showToast("Couldn't send correction — please try again later.", 'error');
+                showToast("Couldn't send correction - please try again later.", 'error');
             }
         } catch {
-            showToast("Couldn't send correction — check your connection and try again.", 'error');
+            showToast("Couldn't send correction - check your connection and try again.", 'error');
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = orig;
@@ -7713,7 +7713,7 @@ async function handleDeckListClick(e: Event): Promise<void> {
                 body: JSON.stringify({ is_public: nextPublic }),
             });
             if (!resp.ok) throw new Error(await resp.text() || `${action} failed`);
-            // Catalog membership changes — bust the cache so the Official
+            // Catalog membership changes - bust the cache so the Official
             // tab reflects the new state on next view.
             state.officialDecksLoaded = false;
             await refreshDashboardData();
@@ -7913,13 +7913,13 @@ function initVocabAnkiImport(): void {
         void copyAnkiSetupConfig();
     });
 
-    // Import modal — close handlers.
+    // Import modal - close handlers.
     document.getElementById('anki-import-modal-close')?.addEventListener('click', closeAnkiImportModal);
     document.getElementById('anki-import-modal-backdrop')?.addEventListener('click', closeAnkiImportModal);
     document.getElementById('anki-import-cancel')?.addEventListener('click', closeAnkiImportModal);
     document.getElementById('anki-import-done')?.addEventListener('click', closeAnkiImportModal);
 
-    // Import modal — filter input + clear.
+    // Import modal - filter input + clear.
     const filterInput = document.getElementById('anki-import-filter') as HTMLInputElement | null;
     filterInput?.addEventListener('input', () => onAnkiFilterInput(filterInput.value));
     document.getElementById('anki-import-clear-filter')?.addEventListener('click', () => {
@@ -7927,7 +7927,7 @@ function initVocabAnkiImport(): void {
         onAnkiFilterInput('');
     });
 
-    // Import modal — deck tree click delegation.
+    // Import modal - deck tree click delegation.
     document.getElementById('anki-import-tree')?.addEventListener('click', (e) => {
         const target = e.target as HTMLElement | null;
         if (!target) return;
@@ -7944,7 +7944,7 @@ function initVocabAnkiImport(): void {
         if (name) onAnkiDeckCheck(name, target.checked);
     });
 
-    // Import modal — step transitions.
+    // Import modal - step transitions.
     document.getElementById('anki-import-next')?.addEventListener('click', () => {
         if (ankiImport.selected.size === 0) {
             showToast('Pick at least one deck to continue.', 'error');
@@ -7959,11 +7959,11 @@ function initVocabAnkiImport(): void {
         void runAnkiImport();
     });
 
-    // (The four behavioural toggles — include-new, include-suspended,
-    // replace-mode, preserve-manual — now live inside the Anki settings
+    // (The four behavioural toggles - include-new, include-suspended,
+    // replace-mode, preserve-manual - now live inside the Anki settings
     // popup. Their handlers are wired above with the settings popup.)
 
-    // Import modal — custom field picker (click to open/close + select).
+    // Import modal - custom field picker (click to open/close + select).
     const fieldsContainer = document.getElementById('anki-import-fields');
     fieldsContainer?.addEventListener('click', (e) => {
         const target = e.target as HTMLElement | null;
@@ -8052,7 +8052,7 @@ function initReviewPage(): void {
     });
 }
 
-// flagReviewCard submits flag-only parser feedback from the review card back —
+// flagReviewCard submits flag-only parser feedback from the review card back -
 // the "None of these looks right" escape (USER_FLOWS §9.4). It is parser
 // feedback ("the analysis looks wrong"), never a study/known action. The
 // feedback endpoint creates a lazy parse_session from the inline source_text
@@ -8082,12 +8082,12 @@ async function flagReviewCard(): Promise<void> {
             }),
         });
         if (resp.ok) {
-            showToast('Thanks — flagged for review.', 'success');
+            showToast('Thanks - flagged for review.', 'success');
         } else {
-            showToast("Couldn't flag this card — please try again later.", 'error');
+            showToast("Couldn't flag this card - please try again later.", 'error');
         }
     } catch {
-        showToast("Couldn't flag this card — check your connection and try again.", 'error');
+        showToast("Couldn't flag this card - check your connection and try again.", 'error');
     }
 }
 
@@ -8150,7 +8150,7 @@ function initAdminFeedbackPage(): void {
     });
 }
 
-// Portal-style tooltip — pseudo-element ::after tooltips get clipped by
+// Portal-style tooltip - pseudo-element ::after tooltips get clipped by
 // ancestor overflow (e.g. .word-table { overflow: hidden }), so we render a
 // single body-level element that's positioned via getBoundingClientRect and
 // can escape any ancestor stacking/clipping context.

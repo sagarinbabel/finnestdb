@@ -56,7 +56,7 @@ var ErrOverrideConflictsWithGold = errors.New("accepted correction contradicts t
 // loading failed (e.g. no tables under localdata/lemmatizer-fi-et/tables/
 // on a fresh clone without scripts/setup-local.sh). Callers must
 // tolerate a nil result and fall back to the SQLite-only resolution
-// chain. Both FI and ET share one loaded instance — the per-language
+// chain. Both FI and ET share one loaded instance - the per-language
 // analysis maps are read-only after lemmatizer.New() returns.
 func (d *DB) fstLemmatizer() *lemmatizer.Lemmatizer {
 	d.lemOnce.Do(func() {
@@ -102,7 +102,7 @@ type DeckStats struct {
 	Known  int
 	Unique int
 	// Due counts only introduced cards (review history or introduced_at set)
-	// that are due now. Never-introduced cards are NEW, not due — see
+	// that are due now. Never-introduced cards are NEW, not due - see
 	// CountDueCards.
 	Due        int
 	Subscribed bool
@@ -156,7 +156,7 @@ type ReviewCard struct {
 	SentenceText string
 	SourceDeck   string
 	// HomographNote is set when another of the user's cards shares this card's
-	// surface form under a different (lemma, pos) sense — the review UI shows a
+	// surface form under a different (lemma, pos) sense - the review UI shows a
 	// "same spelling, different word" contrast note. Empty otherwise.
 	HomographNote string
 	DeckCounts    [][2]string
@@ -219,7 +219,7 @@ type ParseSessionHistoryItem struct {
 	Parser      string `json:"parser"`
 	// Title is a derived-only display title (see DeriveTitle), computed at
 	// read time from the parse session's source text. Parse sessions have no
-	// title column of their own — deriving at render time avoids a schema
+	// title column of their own - deriving at render time avoids a schema
 	// change for a value that's fully determined by SourcePreview's raw text.
 	Title         string    `json:"title"`
 	SourcePreview string    `json:"source_preview"`
@@ -300,7 +300,7 @@ func (d *DB) initSchema() error {
 	);
 
 	-- A user has opted in to study an official deck. Owners of decks are NOT
-	-- listed here for their own decks — ownership implies study access.
+	-- listed here for their own decks - ownership implies study access.
 	CREATE TABLE IF NOT EXISTS user_deck_subscriptions (
 		user_id INTEGER NOT NULL,
 		deck_id INTEGER NOT NULL,
@@ -406,7 +406,7 @@ func (d *DB) initSchema() error {
 	-- One row per answered review, appended by RecordReviewAnswer. card_state
 	-- keeps only the latest answer; this log is what daily-activity stats on
 	-- the progress dashboard aggregate over. Rows accumulate from the moment
-	-- this table ships — there is no way to backfill history that was never
+	-- this table ships - there is no way to backfill history that was never
 	-- recorded.
 	CREATE TABLE IF NOT EXISTS review_log (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -514,7 +514,7 @@ func (d *DB) initSchema() error {
 	-- see duplicates and act once for every matching learner. Per DECISIONS.md
 	-- Decision 25 the alpha schema stays minimal: one issue row (this table)
 	-- plus parse_feedback.correction_issue_id. No separate quarantine_target or
-	-- event tables — duplicate/lifecycle evidence lives on the issue row and its
+	-- event tables - duplicate/lifecycle evidence lives on the issue row and its
 	-- linked parse_feedback rows.
 	--
 	-- Scope fingerprint = (lang, parser, norm_surface, lemma, pos). lemma/pos are
@@ -686,7 +686,7 @@ func EnsureCorrectionBackpointerColumns(db *sql.DB) error {
 // EnsureParseFeedbackFlagOnlyColumn backfills the flag_only column used by
 // flag-only parser feedback ("this analysis looks wrong; I don't know the
 // fix"). Fresh DBs already include the column in CREATE TABLE; older DB files
-// need the idempotent ALTER. proposed_lemma/proposed_pos stay NOT NULL — a
+// need the idempotent ALTER. proposed_lemma/proposed_pos stay NOT NULL - a
 // SQLite table rebuild just to relax two constraints is disproportionate, so
 // flag-only rows store empty strings and non-emptiness is enforced in
 // validation only when flag_only = 0.
@@ -860,7 +860,7 @@ func EnsureDictionarySourceColumns(db *sql.DB) error {
 // cmd/importdict before the provenance flags landed; every later writer
 // (Ekilex, Kotus, custom glosses) has always set both fields explicitly.
 //
-// Idempotent — the WHERE clause matches no rows after the first run, so
+// Idempotent - the WHERE clause matches no rows after the first run, so
 // re-applying is a no-op.
 func BackfillLegacyKaikkiProvenance(db *sql.DB) error {
 	const legacyKaikkiPriority = 10
@@ -926,8 +926,8 @@ func EnsureLexicalEntryTables(db *sql.DB) error {
 
 // EnsureMultiLemmaSchema rebuilds the forms and occurrence tables to allow
 // multiple (lemma, pos) rows per surface form / per token. This models
-// homonyms — e.g. ET "joon" is both the noun "line" (SgN of joon) and the
-// 1Sg of the verb "jooma" / drink — so a single occurrence of "joon" in a
+// homonyms - e.g. ET "joon" is both the noun "line" (SgN of joon) and the
+// 1Sg of the verb "jooma" / drink - so a single occurrence of "joon" in a
 // sentence creates one row per candidate, and "joon + 1, jooma + 1" both
 // hold for deck stats.
 //
@@ -973,7 +973,7 @@ func rebuildIfLegacyKey(db *sql.DB, table, keyClause string) error {
 		table,
 	).Scan(&createSQL)
 	if err == sql.ErrNoRows {
-		// Table doesn't exist yet — initSchema's CREATE handles fresh DBs.
+		// Table doesn't exist yet - initSchema's CREATE handles fresh DBs.
 		return nil
 	}
 	if err != nil {
@@ -1163,7 +1163,7 @@ func (d *DB) CreateSession(userID int64, tokenHash string, expiresAt time.Time) 
 // GetUserBySessionTokenHash looks up the active session by token hash and
 // returns the owning user. Returns (nil, nil) when no active session exists
 // (missing, expired, or revoked). When a session is matched, expires_at is
-// extended to (now + slidingWindow) before returning — this implements the
+// extended to (now + slidingWindow) before returning - this implements the
 // rolling-expiry behavior.
 func (d *DB) GetUserBySessionTokenHash(tokenHash string, slidingWindow time.Duration) (*User, error) {
 	var userID int64
@@ -1461,7 +1461,7 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 		var item DeckStats
 		// Subscribed is read straight from the SELECT, not derived from
 		// UserID-vs-caller. The latter only happens to be correct under
-		// today's WHERE clause (owned OR subscribed) — widening the listing
+		// today's WHERE clause (owned OR subscribed) - widening the listing
 		// later (shared decks, team decks, etc.) would silently break the
 		// invariant if we kept inferring it.
 		if err := rows.Scan(
@@ -1492,7 +1492,7 @@ func (d *DB) GetUserDeckStats(userID int64) ([]DeckStats, error) {
 //
 // Token identity is (sentence_id, token_ix): multi-lemma homonym expansion
 // stores one occurrence row per candidate, and a position counts as covered
-// when ANY of its candidates is known. Ignored lemmas count as covered —
+// when ANY of its candidates is known. Ignored lemmas count as covered -
 // "ignore" means "don't make me study this" (typically proper names), and
 // coverage is a reading-comprehension proxy, not a study queue. Coverage is
 // lemma-level; form-level display is a possible later toggle.
@@ -1516,7 +1516,7 @@ func (d *DB) DeckComprehension(userID, deckID int64, topN int) (*DeckComprehensi
 
 	// Phase 1c: quarantined occurrences are excluded from coverage and from the
 	// unlock ranking. A token position that only had suppressed candidates drops
-	// out of TotalTokens entirely — comprehension is a live view of study-able
+	// out of TotalTokens entirely - comprehension is a live view of study-able
 	// content, and quarantine removes content from circulation globally.
 	coveredFlags := `
 		SELECT o.sentence_id, o.token_ix,
@@ -1658,7 +1658,7 @@ func (d *DB) CreateDeckWithSentences(userID int64, title, lang string, sentences
 
 // CreateDeckWithSentencesOptions creates a deck and optionally marks it as
 // public (visible to all users under "Official decks"). Callers are
-// responsible for authorising the isPublic flag — see handleCreateDeck.
+// responsible for authorising the isPublic flag - see handleCreateDeck.
 func (d *DB) CreateDeckWithSentencesOptions(userID int64, title, lang string, isPublic bool, sentences []DeckSentenceInput) (int64, error) {
 	tx, err := d.db.Begin()
 	if err != nil {
@@ -1784,7 +1784,7 @@ type PublicDeckSummary struct {
 // ListPublicDecksForUser returns every is_public deck (including ones the
 // requesting user owns), alongside whether they've added it to their
 // studying list. The owner case is signaled via PublicDeckSummary.IsOwner so
-// the UI can render it without a meaningless "Add to studying" button — an
+// the UI can render it without a meaningless "Add to studying" button - an
 // admin verifying their own publication still wants to see it in the
 // catalog the way other users will.
 func (d *DB) ListPublicDecksForUser(userID int64) ([]PublicDeckSummary, error) {
@@ -1833,7 +1833,7 @@ func (d *DB) ListPublicDecksForUser(userID int64) ([]PublicDeckSummary, error) {
 		); err != nil {
 			return nil, err
 		}
-		// Due not meaningful in the catalog — reviews are user-scoped and the
+		// Due not meaningful in the catalog - reviews are user-scoped and the
 		// catalog row may not have any seeded cards yet.
 		item.Due = 0
 		item.IsOwner = item.UserID == userID
@@ -1897,11 +1897,11 @@ func (d *DB) SubscribeUserToPublicDeck(userID, deckID int64) error {
 	// 1. INSERT a surface-form card for each unique (surface_norm, lemma, pos)
 	//    in the deck the user hasn't already marked known or ignored. A lemma
 	//    that appears under several surface forms (different inflections) seeds
-	//    one card per surface — surface-in-context is the alpha card identity.
+	//    one card per surface - surface-in-context is the alpha card identity.
 	//    surface_norm = lower(surface); occurrences with an empty surface fall
 	//    back to the lemma so the card still has a stable axis. The unique index
 	//    on cards keeps this idempotent for users who re-subscribe. known/ignored
-	//    are still checked at (lemma, pos) sense scope — knowing a lemma
+	//    are still checked at (lemma, pos) sense scope - knowing a lemma
 	//    suppresses all of its surface cards.
 	if _, err := tx.Exec(
 		`INSERT OR IGNORE INTO cards (user_id, lang, surface_norm, lemma, pos, mwe_id)
@@ -1994,7 +1994,7 @@ func (d *DB) UnsubscribeUserFromPublicDeck(userID, deckID int64) error {
 
 // SetDeckIsPublic toggles a deck's official-deck status. Caller is
 // responsible for authorising the operation (admin-only at the handler
-// layer) — this method intentionally does not filter by user_id so admins
+// layer) - this method intentionally does not filter by user_id so admins
 // can re-publish decks they don't personally own. Returns sql.ErrNoRows if
 // the deck doesn't exist.
 func (d *DB) SetDeckIsPublic(deckID int64, isPublic bool) error {
@@ -2145,7 +2145,7 @@ type DeckDetails struct {
 //   - the user owns the deck;
 //   - the deck is currently public; or
 //   - the user has an active subscription (was studying the deck before it
-//     was unpublished — they keep read-only access).
+//     was unpublished - they keep read-only access).
 //
 // The third clause is the "grandfather" rule: unpublishing a deck must not
 // 404 learners who already added it to their studying list. GetUserDeckStats
@@ -2286,7 +2286,7 @@ func (d *DB) UpsertForm(form, lemma, pos, lang string) error {
 // SourceManual / SourceAnki tag where a known-lemma row came from. The
 // strings live on the wire (POST/PUT body and response) so they're stable
 // here too. Other strings are accepted by the store but rejected by the
-// handlers — keep the supported set small.
+// handlers - keep the supported set small.
 const (
 	SourceManual = "manual"
 	SourceAnki   = "anki"
@@ -2368,7 +2368,7 @@ func (d *DB) ImportKnownWords(userID int64, lang string, words []string, source 
 //     the sync.
 //
 // New rows are always inserted with source='anki' since they came from a
-// sync. INSERT OR IGNORE means an existing row keeps its current source —
+// sync. INSERT OR IGNORE means an existing row keeps its current source -
 // a word that's both in Anki and was previously marked manually stays
 // manual and is therefore preserved by the next "anki" scope sync.
 //
@@ -2403,7 +2403,7 @@ func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string, scope 
 		normalized = append(normalized, trimmed)
 	}
 
-	// Resolve outside the transaction — BatchLookupForms is read-only against
+	// Resolve outside the transaction - BatchLookupForms is read-only against
 	// the dictionary side of the store and we want to hold the write lock for
 	// as little time as possible.
 	resolutions := d.BatchLookupForms(normalized, lang, "custom")
@@ -2487,7 +2487,7 @@ func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string, scope 
 		}
 		// INSERT OR IGNORE: if a row already exists with source='manual' (so
 		// it wasn't in `current` because we filtered to anki-source), we
-		// leave it alone — the user marked this word through another path
+		// leave it alone - the user marked this word through another path
 		// and we don't want to "claim" it for Anki. RowsAffected lets us
 		// distinguish real inserts from ignored conflicts so `added`
 		// reflects what actually changed.
@@ -2657,7 +2657,7 @@ func (d *DB) MarkLemmaIgnored(userID int64, lang, lemma, pos string) error {
 // ignored lists for a user, returning the lemma to the neutral / unknown
 // state. If a deck containing this lemma was created while the lemma was
 // known/ignored, CreateDeckWithSentences would have skipped seeding card
-// rows — so we re-seed one surface-form card per distinct surface the lemma
+// rows - so we re-seed one surface-form card per distinct surface the lemma
 // appears under in the user's own or subscribed decks, so every surface form
 // is reachable from the review queue once the user has marked it unknown
 // again. When the lemma has no recorded occurrence surface, a single card
@@ -2781,7 +2781,7 @@ func (d *DB) CountKnownLemmasByLang(userID int64) (map[string]int, error) {
 
 // CountDueCards counts cards that are due for review. "Due" requires the
 // card to have been introduced already (has review history or an explicit
-// introduced_at) — a card that has never been shown to the learner is a NEW
+// introduced_at) - a card that has never been shown to the learner is a NEW
 // card, not a due one, even though its next_due is NULL by default. Mixing
 // the two made a brand-new account with two starter decks show "Due to
 // review: 2,000" instead of the correct near-zero count; new cards are
@@ -3031,7 +3031,7 @@ func (d *DB) RecordReviewAnswer(userID, cardID int64, rating string) error {
 // recordReviewAnswerAt is RecordReviewAnswer with an injectable clock and flag,
 // so scheduling can be tested deterministically. When fsrsEnabled is false it
 // routes through the step scheduler (byte-identical to the shipped behavior at
-// a given now, including on cards previously touched by FSRS — the rollback
+// a given now, including on cards previously touched by FSRS - the rollback
 // path). When true it routes through FSRS with lazy state derivation.
 func (d *DB) recordReviewAnswerAt(userID, cardID int64, rating string, now time.Time, fsrsEnabled bool) error {
 	tx, err := d.db.Begin()
@@ -3138,7 +3138,7 @@ type ReviewActivityDay struct {
 
 // ReviewActivity returns per-day answered-review counts for the trailing
 // `days` window (today included), oldest first, with zero-count days filled
-// in so the dashboard chart has a fixed-width axis. Dates are UTC — the log
+// in so the dashboard chart has a fixed-width axis. Dates are UTC - the log
 // writes CURRENT_TIMESTAMP and per-user timezones are not tracked in alpha.
 func (d *DB) ReviewActivity(userID int64, days int) ([]ReviewActivityDay, error) {
 	if days <= 0 {
@@ -3453,7 +3453,7 @@ func (d *DB) DeleteUserParseSessions(userID int64) (int64, error) {
 // insert: the feedback row is linked to a found-or-created issue by the
 // conservative scope fingerprint, and the issue's report/distinct-reporter
 // counts are recomputed. A report against a previously-fixed issue reopens it.
-// This wraps AROUND the existing intake — the parse_feedback columns and the
+// This wraps AROUND the existing intake - the parse_feedback columns and the
 // accepted-correction writeback (ReviewParseFeedback) are unchanged.
 func (d *DB) CreateParseFeedback(feedback ParseFeedback) (int64, error) {
 	tx, err := d.db.Begin()
@@ -3614,7 +3614,7 @@ var ErrCorrectionOnNonFlagOnly = errors.New("cannot attach a proposed correction
 //   - a concrete-correction row writes a custom_overrides lexical row (the
 //     existing eval-gated path);
 //   - a flag-only row with no supplied correction records the decision but
-//     performs NO lexical writeback — flag-only reports never touch the
+//     performs NO lexical writeback - flag-only reports never touch the
 //     lexicon, gold-candidate, or gold-guard paths on their own;
 //   - a flag-only row with a supplied correction is converted in place (its
 //     proposed fields are filled and flag_only cleared) and then flows through
@@ -3709,7 +3709,7 @@ func writeAcceptedParseFeedbackOverride(tx *sql.Tx, feedback ParseFeedback) erro
 
 	// Phase 4: eval-gated safety check. Refuse the override when the frozen
 	// gold sets know this surface and unanimously disagree with the proposal
-	// across enough occurrences — applying it would regress the eval. The
+	// across enough occurrences - applying it would regress the eval. The
 	// whole acceptance rolls back, so the feedback stays reviewable.
 	if err := checkOverrideAgainstGold(tx, lang, form, lemma, pos); err != nil {
 		return err
@@ -3717,7 +3717,7 @@ func writeAcceptedParseFeedbackOverride(tx *sql.Tx, feedback ParseFeedback) erro
 
 	// Phase 2: accepted grammar-label corrections ride the same override
 	// row as FEATS. The corrected feats live ONLY on the custom_overrides
-	// row — upstream imported rows stay pristine so a dictionary re-import
+	// row - upstream imported rows stay pristine so a dictionary re-import
 	// never silently reverts or duplicates a correction (deliberate
 	// deviation from the TODO sketch of editing the upstream row in place).
 	feats := featsFromCaseLabel(strings.ToLower(strings.TrimSpace(feedback.ProposedGrammarLabel)))
@@ -3761,7 +3761,7 @@ func writeAcceptedParseFeedbackOverride(tx *sql.Tx, feedback ParseFeedback) erro
 }
 
 // checkOverrideAgainstGold implements the correction-loop Phase 4 guard.
-// Empty gold_surfaces (importer never run) means no check — the guard cannot
+// Empty gold_surfaces (importer never run) means no check - the guard cannot
 // invent gold knowledge it doesn't have.
 func checkOverrideAgainstGold(tx *sql.Tx, lang, form, lemma, pos string) error {
 	var total, matching int
@@ -4352,7 +4352,7 @@ func (d *DB) ensureLangScopedCardsTable() error {
 // (ensureLangScopedCardsTable is the model). For each legacy card the surface
 // is backfilled from the most frequent occurrence surface for that card's
 // (lang, lemma, pos) across the user's own + subscribed decks, falling back to
-// the lemma itself when no occurrence exists. MWE cards keep surface_norm='' —
+// the lemma itself when no occurrence exists. MWE cards keep surface_norm='' -
 // they key on mwe_id. card_state rows are preserved by carrying the same card
 // ids forward.
 //

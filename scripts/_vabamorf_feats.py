@@ -8,15 +8,15 @@ for the estnltk parser mode.
 
 Vabamorf encodes morphology as a whitespace-separated string in the
 `form` attribute of each morph_analysis annotation. Examples:
-    "sg n"     — singular nominative noun
-    "pl ill"   — plural illative
-    "b"        — 3sg present indicative verb
-    "sin"      — 1sg past indicative verb
-    "ks"       — conditional (no person/number)
-    "ge"       — 2pl imperative
-    "tud"      — past participle passive
-    "ma"       — supine
-    "des"      — gerund
+    "sg n"     - singular nominative noun
+    "pl ill"   - plural illative
+    "b"        - 3sg present indicative verb
+    "sin"      - 1sg past indicative verb
+    "ks"       - conditional (no person/number)
+    "ge"       - 2pl imperative
+    "tud"      - past participle passive
+    "ma"       - supine
+    "des"      - gerund
 
 Coverage philosophy mirrors cmd/importekilexdetails/feats.go: map every
 code with a clear UD FEATS equivalent; return an empty dict for unknown
@@ -58,7 +58,7 @@ CASE_CODES = {
 }
 
 # ── Verbal: finite forms encode person × number × tense × mood × voice ─
-# Each entry is (Person, Number, Tense, Mood, Voice) — empty string when
+# Each entry is (Person, Number, Tense, Mood, Voice) - empty string when
 # the code doesn't constrain that attribute.
 FINITE_VERB_CODES: Dict[str, Dict[str, str]] = {
     # Present indicative active
@@ -92,12 +92,12 @@ FINITE_VERB_CODES: Dict[str, Dict[str, str]] = {
     "ge":  {"Person": "2", "Number": "Plur", "Tense": "Pres", "Mood": "Imp", "Voice": "Act", "VerbForm": "Fin"},
     "gu":  {"Person": "3",                   "Tense": "Pres", "Mood": "Imp", "Voice": "Act", "VerbForm": "Fin"},
 
-    # Quotative (Qot) — Estonian's hearsay mood (Vabamorf calls this
+    # Quotative (Qot) - Estonian's hearsay mood (Vabamorf calls this
     # "mineviku oblique"). Codes vary across EstNLTK versions; common ones:
     "vat":  {"Tense": "Pres", "Mood": "Qot", "Voice": "Act", "VerbForm": "Fin"},
     "nuvat": {"Tense": "Past", "Mood": "Qot", "Voice": "Act", "VerbForm": "Fin"},
 
-    # Passive present/past — the personal-form codes "takse"/"ti" alone
+    # Passive present/past - the personal-form codes "takse"/"ti" alone
     "takse": {"Tense": "Pres", "Mood": "Ind", "Voice": "Pass", "VerbForm": "Fin"},
     "ti":    {"Tense": "Past", "Mood": "Ind", "Voice": "Pass", "VerbForm": "Fin"},
     "tagu":  {"Tense": "Pres", "Mood": "Imp", "Voice": "Pass", "VerbForm": "Fin"},
@@ -178,7 +178,7 @@ def vabamorf_form_to_feats(form: str, partofspeech: str = "") -> Dict[str, str]:
                     feats.update(NONFINITE_VERB_CODES[tok])
 
     # Polarity=Neg may appear as a bare "neg" token even on non-verbs
-    # (rare) — fold it in.
+    # (rare) - fold it in.
     if "neg" in tokens and "Polarity" not in feats:
         feats["Polarity"] = "Neg"
 

@@ -1,8 +1,8 @@
-# FI aggregate — resume handoff (Claude restart at 22:38 May 10)
+# FI aggregate - resume handoff (Claude restart at 22:38 May 10)
 
 ## Process state at handoff
 - PID 88631 (go run wrapper) → PID 88638 (compiled binary)
-- PPID 1 (launchd) — fully detached from any terminal/Claude
+- PPID 1 (launchd) - fully detached from any terminal/Claude
 - Elapsed: ~25h12m (started 2026-05-09 21:26)
 - **Phase 2 active. Phase 1 complete (budget tripped on opensubtitles at 22:16).**
 
@@ -72,16 +72,16 @@ Look for these terminal log lines:
 - `[phase2] starting enrichment of N unique surfaces` (cleanly entered phase 2)
 - `[phase3] mining ...` 
 - `[phase4] writing wordlist.tsv ...`
-- `[phase4] done — total wall clock = ...` (full success)
+- `[phase4] done - total wall clock = ...` (full success)
 
 Then **before celebrating**:
 1. `ls -lh localdata/fi-corpus/_derived/*.tsv localdata/fi-corpus/_derived/qa-report.json`
 2. `wc -l localdata/fi-corpus/_derived/wordlist*.tsv localdata/fi-corpus/_derived/sentences*.tsv`
-3. `jq . localdata/fi-corpus/_derived/qa-report.json | head -40` — check budget_audit fields, partial/skipped lists
+3. `jq . localdata/fi-corpus/_derived/qa-report.json | head -40` - check budget_audit fields, partial/skipped lists
 4. Delete the now-stale scratch DB: `rm localdata/fi-corpus/_derived/_scratch.db*`
 5. Document FI run results in `corpus_pipeline/notes/2026-05-10-fi-full-aggregate.md`
 
-## After FI aggregate completes — next todo
+## After FI aggregate completes - next todo
 - [ ] Re-enrich FI + ET (via `cmd/enrichcorpus`)
 - [ ] Bootstrap tarballs (`make bootstrap-tarball`)
 

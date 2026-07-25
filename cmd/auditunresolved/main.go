@@ -164,7 +164,7 @@ func main() {
 	fmt.Fprintf(os.Stderr, "field empty/missing: %d notes\n", skipped)
 	fmt.Fprintf(os.Stderr, "unique surface forms: %d\n", len(words))
 
-	// 4. Run BatchLookupForms (custom mode) — same as /api/known-words.
+	// 4. Run BatchLookupForms (custom mode) - same as /api/known-words.
 	db, err := store.NewDB(dbPath)
 	if err != nil {
 		log.Fatalf("open db: %v", err)

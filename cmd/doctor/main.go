@@ -11,7 +11,7 @@
 //
 // The intent is to surface degraded modes, not to fail the build. A run
 // without FST tables, without an analyzer venv, or without Ekilex shards
-// is *valid* — the parser works degraded — and the report says so out loud
+// is *valid* - the parser works degraded - and the report says so out loud
 // so the user makes that call deliberately rather than discovering it from
 // surprise eval numbers.
 package main
@@ -33,7 +33,7 @@ import (
 )
 
 const (
-	// ANSI color codes — disabled with NO_COLOR or when stdout is not a tty.
+	// ANSI color codes - disabled with NO_COLOR or when stdout is not a tty.
 	cReset  = "\033[0m"
 	cBold   = "\033[1m"
 	cRed    = "\033[31m"
@@ -86,7 +86,7 @@ func main() {
 	checks = append(checks, checkRustParser())
 
 	fmt.Println()
-	fmt.Printf("%sfinnestdb doctor%s — checking %s\n", colors.bold, colors.reset, *dbPath)
+	fmt.Printf("%sfinnestdb doctor%s - checking %s\n", colors.bold, colors.reset, *dbPath)
 	fmt.Println()
 
 	for _, c := range checks {
@@ -238,7 +238,7 @@ func checkFSTTables() check {
 			name:   "FST lemmatizer tables",
 			level:  levelWarn,
 			detail: fmt.Sprintf("FI: %s\nET: missing", humanSize(fi)),
-			hint:   "ET FST generator not yet wired; FI step 5 enabled, ET runs dict-only — see docs/FST_LEMMATIZER_ROADMAP.md",
+			hint:   "ET FST generator not yet wired; FI step 5 enabled, ET runs dict-only - see docs/FST_LEMMATIZER_ROADMAP.md",
 		}
 	case hasET:
 		return check{
@@ -258,7 +258,7 @@ func checkFSTTables() check {
 }
 
 // checkFIAnalyser reports whether libvoikko and its mor.vfst transducer
-// are available locally — the prerequisites for `make gen-lemmatizer-tables-fi`.
+// are available locally - the prerequisites for `make gen-lemmatizer-tables-fi`.
 func checkFIAnalyser() []check {
 	voikko, _ := exec.LookPath("voikkospell")
 	if voikko == "" {
@@ -269,7 +269,7 @@ func checkFIAnalyser() []check {
 		return []check{{
 			name:   "FI morphological analyser (libvoikko)",
 			level:  levelWarn,
-			detail: "voikkospell not found on PATH — FI table regeneration is unavailable",
+			detail: "voikkospell not found on PATH - FI table regeneration is unavailable",
 			hint:   hint + ", then `make gen-lemmatizer-tables-fi VFST_PATH=/path/to/mor.vfst`",
 		}}
 	}
@@ -314,7 +314,7 @@ func findVFST() string {
 }
 
 // checkETAnalyser reports whether the Giellalt hfstol transducer is
-// present locally — the prerequisite for `make gen-lemmatizer-tables-et`.
+// present locally - the prerequisite for `make gen-lemmatizer-tables-et`.
 func checkETAnalyser() []check {
 	hfstolPath := findHFSTOL()
 	if hfstolPath == "" {
@@ -457,7 +457,7 @@ func checkEkilexShards() check {
 		return check{
 			name:   "Ekilex reduced shards (ET enrichment)",
 			level:  levelWarn,
-			detail: fmt.Sprintf("definitions=%v forms=%v — partial", hasDefs, hasForms),
+			detail: fmt.Sprintf("definitions=%v forms=%v - partial", hasDefs, hasForms),
 			hint:   "rerun `make reduce-ekilex` after a full `make fetch-ekilex`",
 		}
 	default:
@@ -502,7 +502,7 @@ func checkFrequencyBaselines() check {
 		return check{
 			name:   "Frequency baselines (calibration)",
 			level:  levelWarn,
-			detail: fmt.Sprintf("fi=%v et=%v — partial", hasFi, hasEt),
+			detail: fmt.Sprintf("fi=%v et=%v - partial", hasFi, hasEt),
 			hint:   "`make fetch-frequency-baselines`",
 		}
 	default:

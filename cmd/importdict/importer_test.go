@@ -874,7 +874,7 @@ func TestImportJSONL_StreamFailurePreservesExistingTranslations(t *testing.T) {
 	// returns an error before any batch commits, the pre-import
 	// translations DELETE must roll back along with the partial
 	// inserts. Otherwise a refresh that fails mid-stream leaves the
-	// dictionary with no translations for this source — strictly
+	// dictionary with no translations for this source - strictly
 	// worse than the pre-import state. Mirrors the existing
 	// "fail without leaving the dictionary incomplete" guarantee for
 	// forms/lemmas.

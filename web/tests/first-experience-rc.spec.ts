@@ -69,7 +69,7 @@ async function mockSignedInUser(page: Page, lang: 'FI' | 'ET'): Promise<void> {
 // Per CONTEXT.md "Anonymous Parser Demo": unsigned paste/parse/explore is
 // stateless and ephemeral. This journey pass reuses the mock conventions from
 // web/tests/anonymous-parser-demo.spec.ts (which already covers the demo in
-// detail — cap copy, sign-up ribbon, privacy footer) but drives the manifest's
+// detail - cap copy, sign-up ribbon, privacy footer) but drives the manifest's
 // own embedded-text fixture per language, and checks the explore surface
 // (Words tab table + POS filter) plus that signed-in-only controls are absent.
 
@@ -486,11 +486,11 @@ for (const lang of ['fi', 'et'] as const) {
 //
 // Journey coverage only: parses the manifest's ambiguity fixture sentence
 // (mocked, since the RC pack's job is journey coverage, not re-testing the
-// real FST-merge candidate quality — that lives in the "parser" automation
+// real FST-merge candidate quality - that lives in the "parser" automation
 // cases above and in the eval slice per docs/PARSER_EVAL_METHODOLOGY.md),
 // opens the ambiguous word's "Multiple possible meanings" panel, and checks
 // there are >= 2 candidates and the flag-only "None of these looks right"
-// escape exists. Does not grade which candidate is "correct" — see
+// escape exists. Does not grade which candidate is "correct" - see
 // web/tests/ambiguity-meanings.spec.ts for the full candidate-selection
 // feature coverage this journey pass does not duplicate.
 

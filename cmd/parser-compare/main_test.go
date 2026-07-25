@@ -112,7 +112,7 @@ func TestLemmaPOSDisplay_FallbackForOldBaselines(t *testing.T) {
 }
 
 // TestLemmaPOSDisplay_PreservesGenuineZero: when both Lemma and POS marginals
-// are zero, the metric is genuinely zero — fallback must not mask this as
+// are zero, the metric is genuinely zero - fallback must not mask this as
 // missing data.
 func TestLemmaPOSDisplay_PreservesGenuineZero(t *testing.T) {
 	r := fakeReport("custom", 5, 10, 0.0) // every token wrong
@@ -157,7 +157,7 @@ func TestBootstrapHalfWidth_UniformIsZero(t *testing.T) {
 
 // TestBootstrapHalfWidth_VarianceShrinksWithN: doubling the case count
 // should shrink the bootstrap CI half-width. Heterogeneous per-case
-// accuracy is required to see any width at all — half the cases are 100%
+// accuracy is required to see any width at all - half the cases are 100%
 // correct, the other half 0%.
 func TestBootstrapHalfWidth_VarianceShrinksWithN(t *testing.T) {
 	mkHetReport := func(nCases int) *eval.Report {
@@ -390,7 +390,7 @@ func mustParseTime(t *testing.T, raw string) time.Time {
 // to decide whether short-ID labels are needed when the user passes multiple
 // JSONs for the same gold set without -baseline-dir.
 func TestHasDuplicateDatasetParser(t *testing.T) {
-	// Two runs of the same dataset/parser combo — the case the reviewer
+	// Two runs of the same dataset/parser combo - the case the reviewer
 	// flagged as "duplicate-looking rows."
 	if !hasDuplicateDatasetParser([]*eval.Report{
 		{Dataset: eval.ReportDataset{Name: "fi-grammar"}, Parsers: []string{"basic", "custom"}},

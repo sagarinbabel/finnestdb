@@ -1,10 +1,10 @@
 # SRS and Deck System Draft
 
-_Current as of 2026-07-04 — see [CHANGELOG.md](CHANGELOG.md) for revisions._
+_Current as of 2026-07-04 - see [CHANGELOG.md](CHANGELOG.md) for revisions._
 
 > **Enabled by default (2026-07-04):** Surface-form card identity and narrow
 > FSRS are both shipped, and **FSRS is now the default review scheduler.** Review
-> cards are keyed by `(user_id, lang, surface_norm, lemma, pos)` —
+> cards are keyed by `(user_id, lang, surface_norm, lemma, pos)` -
 > surface-form-in-context, with `(lemma, pos)` as the sense discriminator
 > (homographs are separate sense cards, not collapsed). Narrow FSRS
 > (`go-fsrs/v3`, default parameters) runs the Again/Hard/Good/Easy review surface
@@ -102,7 +102,7 @@ FSRS lives in `internal/store/fsrs.go` and is the **default** scheduler as of
 2026-07-04. `FINNESTDB_FSRS_ENABLED` is opt-OUT (unset → FSRS on;
 `0`/`false`/`no`/`off` → step scheduler for rollback). Both schedulers share the
 existing `card_state.fsrs_json` column, distinguished by a version discriminator
-so a flag flip — or a rollback — never corrupts a card:
+so a flag flip - or a rollback - never corrupts a card:
 
 - **Legacy step payload:** `{"step":N,"streak":M}` (no `v` field), written by
   `nextAlphaStepScheduleForRating`.
@@ -113,7 +113,7 @@ so a flag flip — or a rollback — never corrupts a card:
 regardless of which scheduler wrote the row, so the due queue, daily new-card
 limit, and dashboard reporting are scheduler-agnostic.
 
-**Lazy migration on first rating** (whenever FSRS is active — the default — and
+**Lazy migration on first rating** (whenever FSRS is active - the default - and
 the card has no FSRS payload yet; there is no bulk `card_state` rewrite):
 
 - `NULL`/empty state → a fresh FSRS *new* card; FSRS initializes
@@ -504,17 +504,15 @@ include the quarantined rows with their correction-issue metadata.
 >   this" (typically proper names); coverage is a reading-comprehension proxy,
 >   not a study queue, and a name the user chose to skip should not depress
 >   their percentage.
-> - **Token identity is a position, not a row.** Multi-lemma homonym expansion
->   stores one occurrence row per candidate; a token position counts as covered
->   when ANY of its candidates is known.
-> - **Deck expansion stays dictionary-driven.** The candidates a deck save
->   expands come from `store.BatchLookupAllForms` (dict-only, filtered by
->   `filterLowValueAlternatives`), so deck word counts are stable and cards are
->   well-glossed. The FST-known homograph senses merged for the meaning-check
->   candidate set (2026-07-04, parser `2026.05.15b`;
->   `BatchLookupAllFormsWithOptions{MergeFSTReadings}`) are deliberately gated
->   off this path — they raise ambiguity offerability without inflating decks
->   with no-gloss or inflectional-form cards. See
+> - **Token identity is a position, not a row.** A default deck stores the
+>   parser-selected sense for that position. A learner can explicitly add a
+>   supported alternate sense through the meaning-check flow.
+> - **Deck creation follows the parser pick.** `store.BatchLookupAllForms`
+>   remains available for the meaning-check candidate set, while automatic deck
+>   creation records only the parser-selected sense. FST-known homograph senses
+>   merged by `BatchLookupAllFormsWithOptions{MergeFSTReadings}` are offered for
+>   explicit selection without inflating decks with no-gloss or
+>   inflectional-form cards. See
 >   [`FEATURES.md`](FEATURES.md) "Words With Multiple Senses".
 > - **Coverage is lemma-level** for v1; form-level display is a possible later
 >   toggle.
@@ -621,7 +619,7 @@ parser/dictionary evidence supports distinct meanings.
 When a quarantined card/content issue is fixed, the shipped alpha behavior
 (2026-07-04, Phase 1c) restores the existing review item and returns it to
 circulation with its existing `card_state` scheduler state and due history
-preserved — restore is a status flip, no scheduler reset. Creating a new card
+preserved - restore is a status flip, no scheduler reset. Creating a new card
 for a changed learning target identity (wrong lemma/POS, wrong sense, homograph
 split, phrase/MWE replacement, or invalid target retirement) and rendering
 corrected content remain future overlay work. Past review history is never
@@ -682,7 +680,7 @@ Recommendation:
 - Keep user-deck sentence context separate from the reusable example-sentence corpus.
 - For now, treat `example_sentences` as a corpus-owned dataset only, not a user-contributed table.
 
-> **Implemented (2026-07-04) — starter-deck example sentences.** The cold-start
+> **Implemented (2026-07-04) - starter-deck example sentences.** The cold-start
 > "Top N words" official deck now carries example sentences on its cards. Owner
 > decision (2026-07-04): individual sentences from the project's local licensed
 > corpora are acceptable as **dictionary-style single-sentence usage examples**
@@ -722,8 +720,8 @@ words will see 0% comprehension until those words are marked known.
 ### Ambiguous imported known words
 
 **Shipped 2026-07-04 (Multiple possible meanings branch).** `POST /api/known-words`
-returns `needs_sense_confirmation` — the count of imported surfaces with more
-than one supported meaning — so the import summary can honestly say *"N imported
+returns `needs_sense_confirmation` - the count of imported surfaces with more
+than one supported meaning - so the import summary can honestly say *"N imported
 forms have more than one possible meaning. We'll confirm those when they appear
 in context."* No upfront disambiguation runs. When such a surface later appears
 in a signed-in parse, `/api/parse` attaches it to `ambiguous_surfaces` and the
@@ -879,12 +877,12 @@ Behavior:
 
 ### Phase 2
 
-- Migrate review card identity to stable surface-form cards — **done
+- Migrate review card identity to stable surface-form cards - **done
   (2026-07-04)**
-- Integrate narrow runtime FSRS scheduling for alpha — **done and enabled by
+- Integrate narrow runtime FSRS scheduling for alpha - **done and enabled by
   default (2026-07-04); `FINNESTDB_FSRS_ENABLED` is now the opt-out rollback
   lever**
-- Attach scheduler state to those stable surface-card IDs — **done: FSRS state
+- Attach scheduler state to those stable surface-card IDs - **done: FSRS state
   lives in `card_state.fsrs_json` keyed to the surface-card id (2026-07-04)**
 - Support due reviews plus source-scoped new cards
 
@@ -898,7 +896,7 @@ Behavior:
 
 ## Open decisions
 
-- Exact schema shape for sense-aware surface-card keys — **resolved &
+- Exact schema shape for sense-aware surface-card keys - **resolved &
   implemented (2026-07-04)**
   - Resolved direction: alpha review cards are surface-form-in-context cards
     keyed by normalized surface plus resolved sense when parser/dictionary
