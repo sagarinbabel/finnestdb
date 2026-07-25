@@ -2722,39 +2722,212 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     text-align: left;
 }
 
-/* Three claims, each one backed by something the app actually does. */
-.why-points {
+/* ── The story strip ──
+   Four panels: one reader, one text, before and after. Each animated
+   element's natural state is its END state and the keyframes run from a
+   start state via animation-fill-mode: backwards, so switching motion
+   off (reduced-motion, or an old engine) leaves the finished picture
+   rather than a half-drawn one. */
+.story-strip {
     list-style: none;
-    margin: 26px 0 0;
+    margin: 22px 0 24px;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1px;
-    background: var(--border);
-    border: 1px solid var(--border);
-    border-radius: var(--r-md, 12px);
-    overflow: hidden;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
 }
-.why-points li {
-    background: var(--bg-secondary);
-    padding: 18px 20px 20px;
+.story-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
-.why-points h3 {
-    margin: 0 0 6px;
-    font-family: var(--font-disp, inherit);
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-.why-points p {
+.story-panel p {
     margin: 0;
     color: var(--text-secondary);
     font-size: 13.5px;
     line-height: 1.55;
 }
+.story-panel strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+.story-art {
+    padding: 10px 10px 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md, 12px);
+}
+.story-art svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
 
-@media (max-width: 860px) {
-    .why-points { grid-template-columns: minmax(0, 1fr); }
+/* Mari. Ink outline, paper fill, accent beanie and scarf. */
+.story-art .st-body {
+    fill: var(--bg-tertiary);
+    stroke: var(--text-primary);
+    stroke-width: 2;
+}
+.story-art .st-head {
+    fill: var(--bg-primary);
+    stroke: var(--text-primary);
+    stroke-width: 2;
+}
+.story-art .st-hat { fill: var(--accent); }
+.story-art .st-scarf { fill: var(--accent); opacity: 0.85; }
+.story-art .st-brim {
+    fill: none;
+    stroke: var(--text-primary);
+    stroke-width: 2;
+}
+.story-art .st-eyes circle { fill: var(--text-primary); }
+.story-art .st-mouth,
+.story-art .st-mouth-o {
+    fill: none;
+    stroke: var(--text-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+/* The text Mari is looking at, and what happens to it. */
+.story-art .st-page rect {
+    fill: var(--bg-primary);
+    stroke: var(--border);
+    stroke-width: 1;
+}
+.story-art .st-text rect {
+    fill: var(--text-primary);
+    opacity: 0.18;
+}
+.story-art .st-repeat rect { fill: var(--accent); }
+.story-art .st-known rect {
+    fill: var(--known, var(--success));
+    opacity: 0.85;
+}
+.story-art .st-veil { fill: var(--bg-primary); }
+.story-art .st-cards rect { fill: var(--bg-primary); stroke: var(--border); stroke-width: 1; }
+.story-art .st-card-line {
+    fill: var(--text-primary);
+    stroke: none;
+    opacity: 0.22;
+}
+.story-art .st-check {
+    fill: none;
+    stroke: var(--known, var(--success));
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.story-art .st-ask text {
+    fill: var(--accent);
+    font-family: var(--font-disp, inherit);
+    font-size: 21px;
+    font-weight: 600;
+    text-anchor: middle;
+}
+.story-art .st-tag {
+    fill: var(--text-secondary);
+    font-family: var(--font-mono, inherit);
+    font-size: 11px;
+    text-anchor: middle;
+}
+.story-art .st-meter-track {
+    fill: var(--text-primary);
+    opacity: 0.12;
+}
+.story-art .st-meter-fill {
+    fill: var(--known, var(--success));
+    transform-box: fill-box;
+    transform-origin: left center;
+    transform: scaleX(0.7);
+}
+
+/* Idle blink, offset per panel so the four don't blink in unison. */
+@keyframes st-blink {
+    0%, 93%, 100% { transform: scaleY(1); }
+    96% { transform: scaleY(0.1); }
+}
+.story-art .st-eyes circle {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: st-blink 5.5s ease-in-out infinite;
+}
+.story-panel:nth-child(2) .st-eyes circle { animation-delay: 1.4s; }
+.story-panel:nth-child(3) .st-eyes circle { animation-delay: 2.8s; }
+.story-panel:nth-child(4) .st-eyes circle { animation-delay: 4.1s; }
+
+/* Panel 1: the question marks drift. */
+@keyframes st-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+.story-art .st-ask text { animation: st-bob 3.4s ease-in-out infinite; }
+.story-art .st-ask text:nth-child(2) { animation-delay: 0.6s; }
+.story-art .st-ask text:nth-child(3) { animation-delay: 1.2s; }
+
+/* Panel 2: the same word lights up, line after line. */
+@keyframes st-pulse {
+    0%, 55%, 100% { opacity: 1; }
+    25% { opacity: 0.3; }
+}
+.story-art .st-repeat rect { animation: st-pulse 2.7s ease-in-out infinite; }
+.story-art .st-repeat rect:nth-child(2) { animation-delay: 0.9s; }
+.story-art .st-repeat rect:nth-child(3) { animation-delay: 1.8s; }
+
+/* Panel 3: the cards get ticked off, one by one. */
+@keyframes st-tick {
+    from { opacity: 0; transform: scale(0.4); }
+    to { opacity: 1; transform: none; }
+}
+.story-art .st-check {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: st-tick 0.45s 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+}
+.story-art .st-card:nth-child(2) .st-check { animation-delay: 0.9s; }
+.story-art .st-card:nth-child(3) .st-check { animation-delay: 1.4s; }
+
+/* Panel 4: the page turns readable and the meter climbs. */
+@keyframes st-reveal {
+    from { transform: translateX(0); }
+    to { transform: translateX(110px); }
+}
+.story-art .st-veil {
+    transform: translateX(110px);
+    animation: st-reveal 1.5s 0.5s ease-in-out backwards;
+}
+@keyframes st-fill {
+    from { transform: scaleX(0.2); }
+    to { transform: scaleX(0.7); }
+}
+.story-art .st-meter-fill { animation: st-fill 1.5s 0.5s ease-out backwards; }
+
+@media (prefers-reduced-motion: reduce) {
+    .story-art .st-eyes circle,
+    .story-art .st-ask text,
+    .story-art .st-repeat rect,
+    .story-art .st-check,
+    .story-art .st-veil,
+    .story-art .st-meter-fill {
+        animation: none;
+    }
+}
+
+.cov-lead-h {
+    margin: 26px 0 8px;
+    font-family: var(--font-disp, inherit);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+@media (max-width: 900px) {
+    .story-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+    .story-strip { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+    .story-art { max-width: 340px; }
 }
 @media (max-width: 620px) {
     .cov-frame { padding: 14px 12px 10px; }
