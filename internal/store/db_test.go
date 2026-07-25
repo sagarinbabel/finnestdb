@@ -86,6 +86,12 @@ func TestEnsureLexicalEnrichmentColumns_FreshDB(t *testing.T) {
 	if !tableExists(t, d.db, "definitions") {
 		t.Error("definitions table missing on fresh DB")
 	}
+	if !tableExists(t, d.db, "learning_targets") {
+		t.Error("learning_targets table missing on fresh DB")
+	}
+	if !tableExists(t, d.db, "correction_overlays") {
+		t.Error("correction_overlays table missing on fresh DB")
+	}
 }
 
 // TestEnsureLexicalEnrichmentColumns_BackfillsOldDB constructs a DB at the
@@ -270,6 +276,128 @@ func TestEnsureOccurrenceSurfaceColumn_BackfillsOldDB(t *testing.T) {
 	}
 	if err := EnsureOccurrenceSurfaceColumn(raw); err != nil {
 		t.Fatalf("EnsureOccurrenceSurfaceColumn rerun: %v", err)
+	}
+}
+
+func TestEnsureCorrectionOverlaySchema_BackfillsAndConstrains(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "old-corrections.db")
+	raw, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	defer raw.Close()
+
+	if tableExists(t, raw, "learning_targets") {
+		t.Fatal("learning_targets unexpectedly present in old-shape seed")
+	}
+	if tableExists(t, raw, "correction_overlays") {
+		t.Fatal("correction_overlays unexpectedly present in old-shape seed")
+	}
+
+	if err := EnsureCorrectionOverlaySchema(raw); err != nil {
+		t.Fatalf("EnsureCorrectionOverlaySchema: %v", err)
+	}
+	if !tableExists(t, raw, "learning_targets") {
+		t.Fatal("learning_targets not created by backfill")
+	}
+	if !tableExists(t, raw, "correction_overlays") {
+		t.Fatal("correction_overlays not created by backfill")
+	}
+
+	if _, err := raw.Exec(`
+		INSERT INTO learning_targets
+			(lang, target_kind, target_text, normalized_key, lemma, pos, feats, gloss, cue)
+		VALUES
+			('FI', 'proper_name', 'Maria', 'maria', 'Maria', 'PROPN', 'Number=Sing', '', 'person name'),
+			('FI', 'proper_name', 'Matti', 'matti', 'Matti', 'PROPN', 'Number=Sing', '', 'person name'),
+			('ET', 'proper_name', 'Maria', 'maria', 'Maria', 'PROPN', 'Number=Sing', '', 'person name')
+	`); err != nil {
+		t.Fatalf("insert language-separated targets: %v", err)
+	}
+	expectExecError(t, raw, `
+		INSERT INTO learning_targets
+			(lang, target_kind, target_text, normalized_key, lemma, pos, feats)
+		VALUES ('FI', 'proper_name', 'Maria', 'maria', 'Maria', 'PROPN', 'Number=Sing')
+	`)
+	expectExecError(t, raw, `
+		INSERT INTO learning_targets
+			(lang, target_kind, target_text, normalized_key)
+		VALUES ('FI', 'dictionary', 'Maria', 'maria')
+	`)
+
+	var targetID int64
+	if err := raw.QueryRow(`
+		SELECT id FROM learning_targets
+		WHERE lang = 'FI' AND target_kind = 'proper_name' AND normalized_key = 'maria'
+	`).Scan(&targetID); err != nil {
+		t.Fatalf("query target id: %v", err)
+	}
+	var secondTargetID int64
+	if err := raw.QueryRow(`
+		SELECT id FROM learning_targets
+		WHERE lang = 'FI' AND target_kind = 'proper_name' AND normalized_key = 'matti'
+	`).Scan(&secondTargetID); err != nil {
+		t.Fatalf("query second target id: %v", err)
+	}
+
+	insertOverlay := `
+		INSERT INTO correction_overlays
+			(lang, correction_type, scope, target_id, surface,
+			 original_lemma, original_pos, corrected_lemma, corrected_pos,
+			 source_type, source_ref, source_locator, sentence_hash, provenance, note)
+		VALUES
+			('FI', 'parser_identity', 'source', ?, 'Maria',
+			 'mari', 'NOUN', 'Maria', 'PROPN',
+			 'paste', 'manual-card-fix', 'sentence:1 token:3', 'sha256:test', 'accepted_feedback', 'proper name')
+	`
+	if _, err := raw.Exec(insertOverlay, targetID); err != nil {
+		t.Fatalf("insert overlay: %v", err)
+	}
+	expectExecError(t, raw, insertOverlay, targetID)
+	expectExecError(t, raw, `
+		INSERT INTO correction_overlays (lang, correction_type, scope)
+		VALUES ('ET', 'parser_identity', 'paragraph')
+	`)
+	expectExecError(t, raw, `
+		INSERT INTO correction_overlays (lang, correction_type, scope)
+		VALUES ('ET', 'translation', 'global')
+	`)
+
+	if _, err := raw.Exec(`
+		UPDATE correction_overlays SET active = 0
+		WHERE lang = 'FI' AND correction_type = 'parser_identity'
+	`); err != nil {
+		t.Fatalf("deactivate overlay: %v", err)
+	}
+	if _, err := raw.Exec(insertOverlay, targetID); err != nil {
+		t.Fatalf("insert replacement active overlay after deactivation: %v", err)
+	}
+
+	insertMeaningCue := `
+		INSERT INTO correction_overlays
+			(lang, correction_type, scope, target_id, replacement_text, provenance)
+		VALUES ('FI', 'meaning_cue', 'global', ?, ?, 'accepted_feedback')
+	`
+	if _, err := raw.Exec(insertMeaningCue, targetID, "female given name"); err != nil {
+		t.Fatalf("insert meaning cue for first target: %v", err)
+	}
+	if _, err := raw.Exec(insertMeaningCue, secondTargetID, "male given name"); err != nil {
+		t.Fatalf("insert meaning cue for distinct target: %v", err)
+	}
+	if _, err := raw.Exec(insertMeaningCue, targetID, "common Finnish name"); err != nil {
+		t.Fatalf("insert second meaning cue payload for same target: %v", err)
+	}
+	expectExecError(t, raw, insertMeaningCue, targetID, "female given name")
+
+	if err := EnsureCorrectionOverlaySchema(raw); err != nil {
+		t.Fatalf("EnsureCorrectionOverlaySchema rerun: %v", err)
+	}
+}
+
+func expectExecError(t *testing.T, db *sql.DB, query string, args ...interface{}) {
+	t.Helper()
+	if _, err := db.Exec(query, args...); err == nil {
+		t.Fatalf("expected Exec error for query:\n%s", query)
 	}
 }
 
