@@ -233,27 +233,447 @@
                 </p>
             </section>
 
-            <section class="about-steps">
-                <div class="about-step">
-                    <span class="about-step-num">1</span>
-                    <h3>Paste a text</h3>
-                    <p>Drop in a paragraph, an article, or a chapter in Finnish or Estonian - or, once you sign in, upload a whole EPUB.</p>
-                </div>
-                <div class="about-step">
-                    <span class="about-step-num">2</span>
-                    <h3>Parse the words</h3>
-                    <p>See every word in the text with its dictionary form, meaning, and how often it appears, so you know exactly what to learn before you read.</p>
-                </div>
-                <div class="about-step">
-                    <span class="about-step-num">3</span>
-                    <h3>Save a deck</h3>
-                    <p>Turn the text's vocabulary into review cards tied back to the source, and review them with spaced repetition in real example sentences.</p>
-                </div>
-                <div class="about-step">
-                    <span class="about-step-num">4</span>
-                    <h3>Read it, and measure how you're doing</h3>
-                    <p>Go back and read the text with its words in hand. Known-word and due-review counts update as you go, and each deck shows how much of it you already understand.</p>
-                </div>
+            <h2 class="about-how-heading">How it works</h2>
+
+            <!-- The four steps are drawn as a flow rather than a stack of cards.
+                 Each station keeps its heading and copy (the about-page
+                 Playwright assertions read .about-steps text) and gains a small
+                 specimen drawn from the app's own visual language: the
+                 birch-lined paste box, POS-tinted word chips, a stacked deck
+                 with the FSRS grade row, and the reading surface's
+                 known/learning/new token colors. The specimens are aria-hidden
+                 decoration - the text stays the accessible content. The dashed
+                 bracket underneath is the return path: step 4 hands the next
+                 text back to step 1. Word examples are the same sentence used as
+                 the landing paste-box placeholder. -->
+            <section class="about-steps about-flow" aria-label="How FinnEst works, in four steps">
+                <ol class="flow-track">
+                    <li class="flow-station">
+                        <div class="flow-art">
+                            <svg viewBox="0 0 260 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <clipPath id="flow-sheet-clip"><rect x="18" y="12" width="224" height="116" rx="12"></rect></clipPath>
+                                <rect class="fl-sheet" x="18.5" y="12.5" width="223" height="115" rx="12"></rect>
+                                <g clip-path="url(#flow-sheet-clip)">
+                                    <rect class="fl-birch" x="18" y="12" width="22" height="116"></rect>
+                                    <g class="fl-grain">
+                                        <path d="M25 26v34M25 70v46M31 18v52M31 80v38M36 34v30M36 74v40"></path>
+                                    </g>
+                                </g>
+                                <g class="fl-line">
+                                    <rect x="54" y="32" width="170" height="7" rx="3.5"></rect>
+                                    <rect x="54" y="51" width="152" height="7" rx="3.5"></rect>
+                                    <rect x="54" y="70" width="174" height="7" rx="3.5"></rect>
+                                    <rect x="54" y="89" width="64" height="7" rx="3.5"></rect>
+                                </g>
+                                <rect class="fl-caret" x="124" y="86" width="2" height="13" rx="1"></rect>
+                            </svg>
+                        </div>
+                        <div class="flow-copy">
+                            <h3><span class="flow-num" aria-hidden="true">1</span>Paste a text</h3>
+                            <p>Drop in a paragraph, an article, or a chapter in Finnish or Estonian - or, once you sign in, upload a whole EPUB.</p>
+                        </div>
+                    </li>
+                    <li class="flow-station">
+                        <div class="flow-art">
+                            <svg viewBox="0 0 260 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <g class="fl-chip">
+                                    <rect x="18.5" y="12.5" width="223" height="34" rx="10"></rect>
+                                    <rect x="18.5" y="53.5" width="223" height="34" rx="10"></rect>
+                                    <rect x="18.5" y="94.5" width="223" height="34" rx="10"></rect>
+                                </g>
+                                <circle class="fl-pos-verb" cx="36" cy="30" r="4"></circle>
+                                <circle class="fl-pos-noun" cx="36" cy="71" r="4"></circle>
+                                <circle class="fl-pos-adv" cx="36" cy="112" r="4"></circle>
+                                <g class="fl-surface">
+                                    <text x="50" y="34">menin</text>
+                                    <text x="50" y="75">pankkiin</text>
+                                    <text x="50" y="116">kiinni</text>
+                                </g>
+                                <g class="fl-arrow">
+                                    <text x="102" y="34">&#8594;</text>
+                                    <text x="118" y="75">&#8594;</text>
+                                    <text x="98" y="116">&#8594;</text>
+                                </g>
+                                <g class="fl-lemma">
+                                    <text x="120" y="34">mennä</text>
+                                    <text x="136" y="75">pankki</text>
+                                    <text x="116" y="116">kiinni</text>
+                                </g>
+                                <g class="fl-count">
+                                    <text x="228" y="34">3&#215;</text>
+                                    <text x="228" y="75">2&#215;</text>
+                                    <text x="228" y="116">1&#215;</text>
+                                </g>
+                            </svg>
+                        </div>
+                        <div class="flow-copy">
+                            <h3><span class="flow-num" aria-hidden="true">2</span>Parse the words</h3>
+                            <p>See every word in the text with its dictionary form, meaning, and how often it appears, so you know exactly what to learn before you read.</p>
+                        </div>
+                    </li>
+                    <li class="flow-station">
+                        <div class="flow-art">
+                            <svg viewBox="0 0 260 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <rect class="fl-card-back" x="46" y="18" width="168" height="104" rx="12" transform="rotate(-4 130 70)"></rect>
+                                <rect class="fl-card-mid" x="46" y="18" width="168" height="104" rx="12" transform="rotate(3.5 130 70)"></rect>
+                                <rect class="fl-card-face" x="46.5" y="18.5" width="167" height="103" rx="12"></rect>
+                                <text class="fl-card-lemma" x="66" y="50">mennä</text>
+                                <text class="fl-card-gloss" x="66" y="68">to go &#183; verb</text>
+                                <g class="fl-line">
+                                    <rect x="66" y="78" width="112" height="5" rx="2.5"></rect>
+                                    <rect x="66" y="88" width="82" height="5" rx="2.5"></rect>
+                                </g>
+                                <g class="fl-grade">
+                                    <rect x="66" y="102" width="26" height="9" rx="4.5"></rect>
+                                    <rect x="96" y="102" width="26" height="9" rx="4.5"></rect>
+                                    <rect class="is-picked" x="126" y="102" width="26" height="9" rx="4.5"></rect>
+                                    <rect x="156" y="102" width="26" height="9" rx="4.5"></rect>
+                                </g>
+                            </svg>
+                        </div>
+                        <div class="flow-copy">
+                            <h3><span class="flow-num" aria-hidden="true">3</span>Save a deck</h3>
+                            <p>Turn the text's vocabulary into review cards tied back to the source, and review them with spaced repetition in real example sentences.</p>
+                        </div>
+                    </li>
+                    <li class="flow-station">
+                        <div class="flow-art">
+                            <svg viewBox="0 0 260 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <g class="fl-line">
+                                    <rect x="18" y="14" width="34" height="7" rx="3.5"></rect>
+                                    <rect x="80" y="14" width="26" height="7" rx="3.5"></rect>
+                                    <rect x="110" y="14" width="18" height="7" rx="3.5"></rect>
+                                    <rect x="18" y="34" width="30" height="7" rx="3.5"></rect>
+                                    <rect x="86" y="34" width="22" height="7" rx="3.5"></rect>
+                                    <rect x="112" y="34" width="16" height="7" rx="3.5"></rect>
+                                    <rect x="18" y="54" width="22" height="7" rx="3.5"></rect>
+                                    <rect x="76" y="54" width="30" height="7" rx="3.5"></rect>
+                                    <rect x="110" y="54" width="18" height="7" rx="3.5"></rect>
+                                    <rect x="18" y="74" width="38" height="7" rx="3.5"></rect>
+                                    <rect x="110" y="74" width="18" height="7" rx="3.5"></rect>
+                                    <rect x="18" y="94" width="26" height="7" rx="3.5"></rect>
+                                    <rect x="108" y="94" width="20" height="7" rx="3.5"></rect>
+                                    <rect x="18" y="114" width="42" height="7" rx="3.5"></rect>
+                                </g>
+                                <g class="fl-tok-known">
+                                    <rect x="56" y="14" width="20" height="7" rx="3.5"></rect>
+                                    <rect x="52" y="34" width="30" height="7" rx="3.5"></rect>
+                                    <rect x="60" y="74" width="46" height="7" rx="3.5"></rect>
+                                    <rect x="48" y="94" width="28" height="7" rx="3.5"></rect>
+                                    <rect x="64" y="114" width="20" height="7" rx="3.5"></rect>
+                                </g>
+                                <g class="fl-tok-learning">
+                                    <rect x="44" y="54" width="28" height="7" rx="3.5"></rect>
+                                </g>
+                                <g class="fl-tok-new">
+                                    <rect x="80" y="94" width="24" height="7" rx="3.5"></rect>
+                                </g>
+                                <g transform="rotate(-90 198 62)">
+                                    <circle class="fl-ring-track" cx="198" cy="62" r="24"></circle>
+                                    <circle class="fl-ring-fill" cx="198" cy="62" r="24" stroke-dasharray="124 151" stroke-linecap="round"></circle>
+                                </g>
+                                <text class="fl-ring-label" x="198" y="67">82%</text>
+                                <text class="fl-ring-cap" x="198" y="103">understood</text>
+                            </svg>
+                        </div>
+                        <div class="flow-copy">
+                            <h3><span class="flow-num" aria-hidden="true">4</span>Read it, and measure how you're doing</h3>
+                            <p>Go back and read the text with its words in hand. Known-word and due-review counts update as you go, and each deck shows how much of it you already understand.</p>
+                        </div>
+                    </li>
+                </ol>
+                <p class="flow-return"><span>then bring the next text</span></p>
+            </section>
+
+            <!-- ── Why learn the words first? ────────────────────────────────
+                 The premise told as a four-panel story - one reader, one text,
+                 before and after - instead of an argument. Each panel is
+                 CSS-animated: an idle blink, the repeat pulse, the cards
+                 ticking in, then the reveal sweep and the meter. Every animated
+                 element's *natural* state is its end state (the keyframes run
+                 from a start state via animation-fill-mode: backwards), so
+                 prefers-reduced-motion just switches the motion off and nothing
+                 vanishes or sits half-drawn.
+
+                 The chart underneath is the receipt for the story: the
+                 frequency-coverage curves from docs/FREQUENCY_BASELINES.md
+                 "Coverage curves" (2026-05-07 baseline; OpenSubtitles 2018 vs
+                 UD treebank word tokens, FI and ET), each register drawn as a
+                 band spanning the FI and ET measurements - which is also the
+                 honest reading of that table: register moves the curve further
+                 than the language does. Numbers are hardcoded because the
+                 baselines are frozen artifacts; if that doc is remeasured,
+                 update the paths, the callouts and the <details> table
+                 together. Register must stay named next to any percentage here
+                 (see that doc's "Don't promise a fixed comprehension % at a
+                 fixed form count without specifying the register"). -->
+            <section class="about-why">
+                <h2>Why learn the words first?</h2>
+                <p class="about-why-lede">
+                    Meet Mari. They want to read a short story in Finnish.
+                </p>
+
+                <ol class="story-strip">
+                    <li class="story-panel">
+                        <div class="story-art">
+                            <svg viewBox="0 0 260 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <g class="st-page">
+                                    <rect x="140" y="38" width="104" height="112" rx="7"></rect>
+                                </g>
+                                <g class="st-text">
+                                    <rect x="152" y="56" width="80" height="6" rx="3"></rect>
+                                    <rect x="152" y="72" width="68" height="6" rx="3"></rect>
+                                    <rect x="152" y="88" width="80" height="6" rx="3"></rect>
+                                    <rect x="152" y="104" width="58" height="6" rx="3"></rect>
+                                    <rect x="152" y="120" width="76" height="6" rx="3"></rect>
+                                </g>
+                                <path class="st-body" d="M30 168 V140 Q30 116 62 116 Q94 116 94 140 V168 Z"></path>
+                                <path class="st-scarf" d="M46 110 h32 v9 q-16 7 -32 0 z"></path>
+                                <circle class="st-head" cx="62" cy="82" r="26"></circle>
+                                <path class="st-hat" d="M36.7 76 A26 26 0 0 1 87.3 76 Z"></path>
+                                <circle class="st-hat" cx="62" cy="50" r="4.5"></circle>
+                                <path class="st-brim" d="M35 76 H89"></path>
+                                <g class="st-eyes">
+                                    <circle cx="54" cy="86" r="2.8"></circle>
+                                    <circle cx="70" cy="86" r="2.8"></circle>
+                                </g>
+                                <path class="st-mouth" d="M55 99 h14"></path>
+                                <g class="st-ask">
+                                    <text x="98" y="44">?</text>
+                                    <text x="116" y="26">?</text>
+                                    <text x="84" y="22">?</text>
+                                </g>
+                            </svg>
+                        </div>
+                        <p><strong>Every word is new.</strong> Mari looks one up, then the next, then
+                            the next. Twenty minutes later they are two sentences in and remember none
+                            of it.</p>
+                    </li>
+
+                    <li class="story-panel">
+                        <div class="story-art">
+                            <svg viewBox="0 0 260 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <g class="st-page">
+                                    <rect x="140" y="38" width="104" height="112" rx="7"></rect>
+                                </g>
+                                <g class="st-text">
+                                    <rect x="152" y="56" width="30" height="6" rx="3"></rect>
+                                    <rect x="152" y="72" width="68" height="6" rx="3"></rect>
+                                    <rect x="186" y="88" width="46" height="6" rx="3"></rect>
+                                    <rect x="152" y="104" width="58" height="6" rx="3"></rect>
+                                    <rect x="186" y="120" width="42" height="6" rx="3"></rect>
+                                </g>
+                                <g class="st-repeat">
+                                    <rect x="188" y="56" width="26" height="6" rx="3"></rect>
+                                    <rect x="152" y="88" width="26" height="6" rx="3"></rect>
+                                    <rect x="152" y="120" width="26" height="6" rx="3"></rect>
+                                </g>
+                                <path class="st-body" d="M30 168 V140 Q30 116 62 116 Q94 116 94 140 V168 Z"></path>
+                                <path class="st-scarf" d="M46 110 h32 v9 q-16 7 -32 0 z"></path>
+                                <circle class="st-head" cx="62" cy="82" r="26"></circle>
+                                <path class="st-hat" d="M36.7 76 A26 26 0 0 1 87.3 76 Z"></path>
+                                <circle class="st-hat" cx="62" cy="50" r="4.5"></circle>
+                                <path class="st-brim" d="M35 76 H89"></path>
+                                <g class="st-eyes">
+                                    <circle cx="54" cy="86" r="2.8"></circle>
+                                    <circle cx="70" cy="86" r="2.8"></circle>
+                                </g>
+                                <circle class="st-mouth-o" cx="62" cy="99" r="3.4"></circle>
+                                <text class="st-tag" x="120" y="100">3&#215;</text>
+                            </svg>
+                        </div>
+                        <p><strong>Some words keep coming back.</strong> Most words in the story appear
+                            once. A small handful appear again and again - and those carry most of the
+                            sentences.</p>
+                    </li>
+
+                    <li class="story-panel">
+                        <div class="story-art">
+                            <svg viewBox="0 0 260 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <g class="st-cards">
+                                    <g class="st-card">
+                                        <rect x="146" y="34" width="92" height="32" rx="8"></rect>
+                                        <rect class="st-card-line" x="158" y="47" width="40" height="6" rx="3"></rect>
+                                        <path class="st-check" d="M212 50 l5 6 l9 -12"></path>
+                                    </g>
+                                    <g class="st-card">
+                                        <rect x="146" y="74" width="92" height="32" rx="8"></rect>
+                                        <rect class="st-card-line" x="158" y="87" width="32" height="6" rx="3"></rect>
+                                        <path class="st-check" d="M212 90 l5 6 l9 -12"></path>
+                                    </g>
+                                    <g class="st-card">
+                                        <rect x="146" y="114" width="92" height="32" rx="8"></rect>
+                                        <rect class="st-card-line" x="158" y="127" width="46" height="6" rx="3"></rect>
+                                        <path class="st-check" d="M212 130 l5 6 l9 -12"></path>
+                                    </g>
+                                </g>
+                                <path class="st-body" d="M30 168 V140 Q30 116 62 116 Q94 116 94 140 V168 Z"></path>
+                                <path class="st-scarf" d="M46 110 h32 v9 q-16 7 -32 0 z"></path>
+                                <circle class="st-head" cx="62" cy="82" r="26"></circle>
+                                <path class="st-hat" d="M36.7 76 A26 26 0 0 1 87.3 76 Z"></path>
+                                <circle class="st-hat" cx="62" cy="50" r="4.5"></circle>
+                                <path class="st-brim" d="M35 76 H89"></path>
+                                <g class="st-eyes">
+                                    <circle cx="54" cy="86" r="2.8"></circle>
+                                    <circle cx="70" cy="86" r="2.8"></circle>
+                                </g>
+                                <path class="st-mouth" d="M54 97 q8 7 16 0"></path>
+                            </svg>
+                        </div>
+                        <p><strong>Mari learns those first.</strong> Not the whole dictionary - the
+                            twenty-odd words that do the heavy lifting in this story. One sitting.</p>
+                    </li>
+
+                    <li class="story-panel">
+                        <div class="story-art">
+                            <svg viewBox="0 0 260 180" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                <clipPath id="story-page-clip"><rect x="140" y="30" width="104" height="104" rx="7"></rect></clipPath>
+                                <g class="st-page">
+                                    <rect x="140" y="30" width="104" height="104" rx="7"></rect>
+                                </g>
+                                <g class="st-known">
+                                    <rect x="152" y="46" width="30" height="6" rx="3"></rect>
+                                    <rect x="188" y="46" width="26" height="6" rx="3"></rect>
+                                    <rect x="152" y="62" width="44" height="6" rx="3"></rect>
+                                    <rect x="152" y="78" width="26" height="6" rx="3"></rect>
+                                    <rect x="186" y="78" width="46" height="6" rx="3"></rect>
+                                    <rect x="152" y="94" width="34" height="6" rx="3"></rect>
+                                    <rect x="152" y="110" width="26" height="6" rx="3"></rect>
+                                </g>
+                                <g class="st-text">
+                                    <rect x="202" y="62" width="18" height="6" rx="3"></rect>
+                                    <rect x="192" y="94" width="20" height="6" rx="3"></rect>
+                                    <rect x="186" y="110" width="22" height="6" rx="3"></rect>
+                                </g>
+                                <g clip-path="url(#story-page-clip)">
+                                    <rect class="st-veil" x="140" y="30" width="104" height="104"></rect>
+                                </g>
+                                <rect class="st-meter-track" x="140" y="146" width="104" height="9" rx="4.5"></rect>
+                                <rect class="st-meter-fill" x="140" y="146" width="104" height="9" rx="4.5"></rect>
+                                <path class="st-body" d="M30 168 V140 Q30 116 62 116 Q94 116 94 140 V168 Z"></path>
+                                <path class="st-scarf" d="M46 110 h32 v9 q-16 7 -32 0 z"></path>
+                                <circle class="st-head" cx="62" cy="82" r="26"></circle>
+                                <path class="st-hat" d="M36.7 76 A26 26 0 0 1 87.3 76 Z"></path>
+                                <circle class="st-hat" cx="62" cy="50" r="4.5"></circle>
+                                <path class="st-brim" d="M35 76 H89"></path>
+                                <g class="st-eyes">
+                                    <circle cx="54" cy="86" r="2.8"></circle>
+                                    <circle cx="70" cy="86" r="2.8"></circle>
+                                </g>
+                                <path class="st-mouth st-mouth-glad" d="M52 96 q10 10 20 0"></path>
+                            </svg>
+                        </div>
+                        <p><strong>Now they read it.</strong> Not every word - enough to follow the
+                            story, and enough to enjoy it. The words Mari learned stay learned, so the
+                            next story starts easier than this one did.</p>
+                    </li>
+                </ol>
+
+                <p class="about-why-read">
+                    That is the whole idea. Learn the words your text leans on, then read it.
+                </p>
+
+                <h3 class="cov-lead-h">And it is not just a nice story</h3>
+                <p class="about-why-read">
+                    We measured how far common words actually get you. In speech and subtitles, the
+                    1,000 most common word forms cover roughly two thirds of what you meet. In news and
+                    books, the same 1,000 cover about 40%. After that each extra word does less work -
+                    and <em>which</em> words are worth learning next depends entirely on what you are
+                    reading. That last part is the question your own text answers and a generic word
+                    list cannot.
+                </p>
+
+                <figure class="cov-fig">
+                    <div class="cov-frame">
+                        <p class="cov-title">How much of a text the most common word forms cover</p>
+                        <div class="cov-chart-scroll">
+                        <svg class="cov-chart" viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg"
+                             role="img" aria-labelledby="cov-svg-title cov-svg-desc">
+                            <title id="cov-svg-title">Coverage curves for Finnish and Estonian</title>
+                            <desc id="cov-svg-desc">Knowing the top 1,000 word forms covers 65 to 73 percent of
+                                subtitle dialogue but only 40 to 43 percent of news and literature. Both curves
+                                flatten after that: the top 10,000 forms reach 88 to 92 percent of dialogue and 69
+                                to 71 percent of written text. Each band spans the Finnish and Estonian
+                                measurements. Exact figures are in the table below the chart.</desc>
+
+                            <g class="cov-grid">
+                                <path d="M78 30H730M78 95H730M78 160H730M78 225H730"></path>
+                            </g>
+                            <path class="cov-axis" d="M78 290H730"></path>
+
+                            <g class="cov-ylab">
+                                <text x="68" y="34">100%</text>
+                                <text x="68" y="99">75</text>
+                                <text x="68" y="164">50</text>
+                                <text x="68" y="229">25</text>
+                                <text x="68" y="294">0</text>
+                            </g>
+
+                            <!-- Dialogue / subtitles: OpenSubtitles 2018, ET upper edge, FI lower. -->
+                            <path class="cov-band cov-spoken" d="M78 172.7 L305.9 119.7 L404 100.5 L502.1 83.3 L631.9 63.5 L730 51.1 L730 60.4 L631.9 76.8 L502.1 100.7 L404 120.5 L305.9 142.1 L78 192.5 Z"></path>
+                            <path class="cov-edge cov-spoken-edge" d="M78 172.7 L305.9 119.7 L404 100.5 L502.1 83.3 L631.9 63.5 L730 51.1"></path>
+                            <path class="cov-edge cov-spoken-edge" d="M78 192.5 L305.9 142.1 L404 120.5 L502.1 100.7 L631.9 76.8 L730 60.4"></path>
+
+                            <!-- News / literature: UD treebank word tokens, ET upper edge, FI lower. -->
+                            <path class="cov-band cov-written" d="M78 231 L305.9 196.1 L404 178.5 L502.1 158.4 L631.9 129.3 L730 106.2 L730 111.1 L631.9 136.3 L502.1 166 L404 185.7 L305.9 203.2 L78 235.7 Z"></path>
+                            <path class="cov-edge cov-written-edge" d="M78 231 L305.9 196.1 L404 178.5 L502.1 158.4 L631.9 129.3 L730 106.2"></path>
+                            <path class="cov-edge cov-written-edge" d="M78 235.7 L305.9 203.2 L404 185.7 L502.1 166 L631.9 136.3 L730 111.1"></path>
+
+                            <!-- The top-1,000 read-off, the number the whole argument turns on. -->
+                            <path class="cov-marker" d="M404 290V92"></path>
+                            <text class="cov-marker-lab" x="404" y="84">top 1,000 forms</text>
+                            <rect class="cov-plate" x="412" y="101" width="62" height="19" rx="4"></rect>
+                            <text class="cov-value" x="418" y="114">65-73%</text>
+                            <rect class="cov-plate" x="412" y="173" width="62" height="19" rx="4"></rect>
+                            <text class="cov-value" x="418" y="186">40-43%</text>
+
+                            <g class="cov-direct">
+                                <path class="cov-edge cov-spoken-edge" d="M556 40H572"></path>
+                                <text x="578" y="44">Speech &amp; subtitles</text>
+                                <path class="cov-edge cov-written-edge" d="M556 96H572"></path>
+                                <text x="578" y="100">News &amp; books</text>
+                            </g>
+
+                            <g class="cov-xlab">
+                                <text x="78" y="308">100</text>
+                                <text x="305.9" y="308">500</text>
+                                <text x="404" y="308">1k</text>
+                                <text x="502.1" y="308">2k</text>
+                                <text x="631.9" y="308">5k</text>
+                                <text x="730" y="308">10k</text>
+                            </g>
+                            <text class="cov-axis-title" x="404" y="338">word forms you know, most common first</text>
+                        </svg>
+                        </div>
+                        <ul class="cov-legend">
+                            <li><span class="cov-key cov-key-spoken"></span>Speech &amp; subtitles</li>
+                            <li><span class="cov-key cov-key-written"></span>News &amp; books</li>
+                            <li class="cov-legend-note">each band spans the Finnish and Estonian measurements</li>
+                        </ul>
+                    </div>
+                    <figcaption>
+                        Our own measurement. We count word forms - <em>menen</em>, <em>menin</em> and
+                        <em>mennä</em> separately - because forms are what you have to recognise while
+                        reading. Speech is film subtitles; written is news and literature.
+                    </figcaption>
+                    <details class="cov-data">
+                        <summary>See the numbers</summary>
+                        <div class="cov-data-scroll">
+                            <table>
+                                <caption>Share of running text covered by the top N word forms</caption>
+                                <thead>
+                                    <tr><th scope="col">Text</th><th scope="col">100</th><th scope="col">500</th><th scope="col">1,000</th><th scope="col">2,000</th><th scope="col">5,000</th><th scope="col">10,000</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><th scope="row">Finnish · subtitles</th><td>37.5%</td><td>56.9%</td><td>65.2%</td><td>72.8%</td><td>82.0%</td><td>88.3%</td></tr>
+                                    <tr><th scope="row">Estonian · subtitles</th><td>45.1%</td><td>65.5%</td><td>72.9%</td><td>79.5%</td><td>87.1%</td><td>91.9%</td></tr>
+                                    <tr><th scope="row">Finnish · written</th><td>20.9%</td><td>33.4%</td><td>40.1%</td><td>47.7%</td><td>59.1%</td><td>68.8%</td></tr>
+                                    <tr><th scope="row">Estonian · written</th><td>22.7%</td><td>36.1%</td><td>42.9%</td><td>50.6%</td><td>61.8%</td><td>70.7%</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                </figure>
             </section>
 
             <section class="landing-cta-section">
