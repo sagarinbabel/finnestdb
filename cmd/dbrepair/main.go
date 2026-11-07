@@ -30,6 +30,17 @@
 //     invisible to the review queue (every queue query INNER JOINs card_state)
 //     yet returns an error if answered directly.
 //
+// What it deliberately does NOT touch:
+//
+//   - correction_issues rows whose linked parse_feedback rows are all gone.
+//     Such a row is not a foreign-key orphan (nothing in it dangles), it just
+//     has no evidence left behind it, so it reads report_count = 0 and can
+//     never earn the threshold_candidate badge. Deleting or re-triaging those
+//     is a product call, not a repair. Tracked as ledger entry DATA-1 in
+//     TODO.md "Alpha launch issue ledger"; as of 2026-11-07 all 8 rows in the
+//     maintainer DB are in this state, 5 of them QA residue from the
+//     2026-07-04 walkthrough (zzqa* / zzlocal* surfaces).
+//
 // Usage:
 //
 //	go run ./cmd/dbrepair -db finnestdb.db           # report only

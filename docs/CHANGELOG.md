@@ -10,6 +10,23 @@ introduced or modified so the docs index stays navigable.
 records why we chose to change it that way. Where the same event appears
 in both files, both entries cross-link.
 
+## 2026-11-07 - TODO: DATA-1 ledger entry for the 8 evidence-less correction issues
+
+Running `cmd/dbrepair -fix` (shipped in PR #295) against the maintainer
+`finnestdb.db` recomputed 8 `correction_issues` report counts to zero, because
+every linked `parse_feedback` row had been deleted with its reporting user
+during the era when `DeleteUserCascade` did not recount. Inspecting those rows
+showed 5 of the 8 are QA residue from the 2026-07-04 first-experience
+walkthrough (`zzqa*` / `zzlocal*` surfaces) that nothing cleans up, so each
+future RC run adds more. Logged as ledger entry `DATA-1` (post-alpha) rather
+than fixed in `cmd/dbrepair`: an issue row with no linked reports is not a
+foreign-key orphan, so whether to retire or re-triage those rows is a product
+call, and the residue leak needs its own fix (clean up after the walkthrough,
+or flag QA fixtures so the admin queue filters them).
+
+- Modified: [`TODO.md`](../TODO.md) - new `DATA-1` row in the
+  [Alpha launch issue ledger](../TODO.md#alpha-launch-issue-ledger).
+
 ## 2026-07-04 - Docs: anonymous cap default corrected to 300,000 characters
 
 The runtime default for `FINNESTDB_ANON_MAX_CHARS` was raised from 20,000 to
