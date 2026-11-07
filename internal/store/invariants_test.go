@@ -1,6 +1,7 @@
 package store
 
 import (
+	"database/sql"
 	"errors"
 	"path/filepath"
 	"testing"
@@ -518,5 +519,140 @@ func TestSessionRenewalSkipsRevokedSessions(t *testing.T) {
 	}
 	if after != before {
 		t.Errorf("revoked session expiry moved from %q to %q", before, after)
+	}
+}
+
+// I-5b. Retracting an override restores the dictionary, it does not erase it.
+//
+// Why it matters: neither `lemmas` nor `forms` has source in its primary key,
+// so accepting a correction on an entry an importer already produced rewrites
+// that row IN PLACE rather than adding one beside it. A retraction that
+// deleted "the custom_overrides row" therefore deleted the imported
+// dictionary entry - taking its gloss with it, and affecting every other
+// surface form that resolved through that lemma. Found by review on #295.
+func TestRetractionRestoresDisplacedDictionaryRows(t *testing.T) {
+	db := invariantTestDB(t)
+
+	// An imported entry, as kaikki/Ekilex would leave it.
+	if err := db.InsertLemmaForTest("kissa", "NOUN", "cat (the animal)", "FI"); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.InsertFormForTest("kissat", "kissa", "NOUN", "FI"); err != nil {
+		t.Fatal(err)
+	}
+
+	u, err := db.CreateUser("i5b@example.com", "hash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	psID, err := db.CreateParseSession(&u.ID, "FI", ParserCustom, "kissat", 1, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fbID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: psID, UserID: u.ID, Lang: "FI", Parser: ParserCustom,
+		Surface: "kissat", ProposedLemma: "kissa", ProposedPOS: "NOUN",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.ReviewParseFeedback(fbID, u.ID, FeedbackStatusAccepted, "ok", nil); err != nil {
+		t.Fatal(err)
+	}
+	// Acceptance took the row over, as designed.
+	var src string
+	if err := db.db.QueryRow(
+		`SELECT source FROM lemmas WHERE lemma='kissa' AND pos='NOUN' AND lang='FI'`).Scan(&src); err != nil {
+		t.Fatal(err)
+	}
+	if src != SourceCustomOverrides {
+		t.Fatalf("after accept lemma source=%q, want %q", src, SourceCustomOverrides)
+	}
+
+	if _, err := db.RetractParseFeedbackOverride(fbID, u.ID, FeedbackStatusRejected, "wrong after all"); err != nil {
+		t.Fatalf("RetractParseFeedbackOverride: %v", err)
+	}
+
+	// The imported row is back, with its original source AND its gloss.
+	var gotSource, gotGloss string
+	var feedbackID sql.NullInt64
+	if err := db.db.QueryRow(
+		`SELECT source, COALESCE(gloss, ''), parse_feedback_id
+		   FROM lemmas WHERE lemma='kissa' AND pos='NOUN' AND lang='FI'`,
+	).Scan(&gotSource, &gotGloss, &feedbackID); err != nil {
+		t.Fatalf("the imported dictionary lemma was deleted by retraction: %v", err)
+	}
+	if gotSource == SourceCustomOverrides {
+		t.Errorf("lemma source is still %q after retraction", gotSource)
+	}
+	if gotGloss != "cat (the animal)" {
+		t.Errorf("lemma gloss=%q after retraction, want the imported gloss back", gotGloss)
+	}
+	if feedbackID.Valid {
+		t.Errorf("lemma still attributed to feedback %d after retraction", feedbackID.Int64)
+	}
+
+	var formSource string
+	if err := db.db.QueryRow(
+		`SELECT source FROM forms WHERE form='kissat' AND lang='FI' AND lemma='kissa' AND pos='NOUN'`,
+	).Scan(&formSource); err != nil {
+		t.Fatalf("the imported dictionary form was deleted by retraction: %v", err)
+	}
+	if formSource == SourceCustomOverrides {
+		t.Errorf("form source is still %q after retraction", formSource)
+	}
+
+	// The snapshot is consumed, so a stale restore cannot fire later.
+	var snapshots int
+	if err := db.db.QueryRow(
+		`SELECT COUNT(*) FROM parse_feedback_override_backup WHERE parse_feedback_id = ?`, fbID,
+	).Scan(&snapshots); err != nil {
+		t.Fatal(err)
+	}
+	if snapshots != 0 {
+		t.Errorf("%d override snapshot(s) left behind after retraction", snapshots)
+	}
+}
+
+// I-5c. An override that CREATED a dictionary row is removed on retraction,
+// not left behind as a phantom entry.
+func TestRetractionDeletesOverrideCreatedRows(t *testing.T) {
+	db := invariantTestDB(t)
+	// No imported entry this time: the acceptance is the only thing that will
+	// put kettu/NOUN in the dictionary.
+	if err := db.InsertFormForTest("ketut", "kettu", "NOUN", "FI"); err != nil {
+		t.Fatal(err)
+	}
+	u, err := db.CreateUser("i5c@example.com", "hash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	psID, err := db.CreateParseSession(&u.ID, "FI", ParserCustom, "ketut", 1, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fbID, err := db.CreateParseFeedback(ParseFeedback{
+		ParseSessionID: psID, UserID: u.ID, Lang: "FI", Parser: ParserCustom,
+		Surface: "ketut", ProposedLemma: "kettu", ProposedPOS: "NOUN",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.ReviewParseFeedback(fbID, u.ID, FeedbackStatusAccepted, "ok", nil); err != nil {
+		t.Fatal(err)
+	}
+	var created int
+	db.db.QueryRow(`SELECT COUNT(*) FROM lemmas WHERE lemma='kettu' AND pos='NOUN' AND lang='FI'`).Scan(&created)
+	if created != 1 {
+		t.Fatalf("accept created %d lemma rows, want 1", created)
+	}
+
+	if _, err := db.RetractParseFeedbackOverride(fbID, u.ID, FeedbackStatusRejected, "no"); err != nil {
+		t.Fatal(err)
+	}
+	var after int
+	db.db.QueryRow(`SELECT COUNT(*) FROM lemmas WHERE lemma='kettu' AND pos='NOUN' AND lang='FI'`).Scan(&after)
+	if after != 0 {
+		t.Errorf("%d phantom lemma row(s) survived retraction of the override that created them", after)
 	}
 }

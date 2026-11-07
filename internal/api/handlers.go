@@ -327,6 +327,13 @@ type ParseFeedbackReviewRequest struct {
 	ProposedLemma        string `json:"proposed_lemma"`
 	ProposedPOS          string `json:"proposed_pos"`
 	ProposedGrammarLabel string `json:"proposed_grammar_label"`
+	// Retract takes back an ALREADY-ACCEPTED correction: it restores whatever
+	// the acceptance displaced in the dictionary and then sets Status
+	// (rejected or needs_follow_up). Accepting is otherwise one-way, because a
+	// plain status change would leave the custom_overrides lexical row in
+	// place at priority 100 and the parser would keep serving the analysis the
+	// admin just rejected.
+	Retract bool `json:"retract"`
 }
 
 type ParseSessionsResponse struct {
@@ -2971,26 +2978,67 @@ func (a *API) handleAdminParseFeedback(w http.ResponseWriter, r *http.Request, a
 				GrammarLabel: strings.TrimSpace(req.ProposedGrammarLabel),
 			}
 		}
+		// Taking back an acceptance is a different operation from reviewing a
+		// submitted report, because the acceptance wrote a custom_overrides
+		// lexical row that a status change alone would leave in the
+		// dictionary. `retract: true` routes to the store helper that restores
+		// what the override displaced and then moves the status.
+		//
+		// Without this branch, the existing Reject / Follow up buttons simply
+		// broke for accepted rows once ReviewParseFeedback started refusing
+		// that transition: the admin got an opaque 500 and had no way at all
+		// to undo an accidental acceptance through the UI.
+		if req.Retract {
+			if req.Status == store.FeedbackStatusAccepted {
+				http.Error(w, "Retraction must land on rejected or needs_follow_up", http.StatusBadRequest)
+				return
+			}
+			goldAffected, err := a.store.RetractParseFeedbackOverride(
+				feedbackID, auth.UserID, req.Status, strings.TrimSpace(req.ReviewNote))
+			if err != nil {
+				a.writeParseFeedbackError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{
+				"status": req.Status,
+				// Surfaced rather than silently handled: a gold candidate may
+				// already have been exported into the frozen gold sets, where
+				// removing it would move eval baselines. That is a maintainer
+				// decision, not something a retraction should do on its own.
+				"gold_candidate_needs_review": goldAffected,
+			})
+			return
+		}
+
 		if err := a.store.ReviewParseFeedback(feedbackID, auth.UserID, req.Status, strings.TrimSpace(req.ReviewNote), correction); err != nil {
-			if err == sql.ErrNoRows {
-				http.Error(w, "Parse feedback not found", http.StatusNotFound)
-				return
-			}
-			if errors.Is(err, store.ErrCorrectionOnNonFlagOnly) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			// Phase-4 eval gate: the override would contradict the frozen
-			// gold sets. Nothing was applied; surface the reason so the
-			// admin can fix the gold set first if the gold itself is wrong.
-			if errors.Is(err, store.ErrOverrideConflictsWithGold) {
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-			http.Error(w, "Database error", http.StatusInternalServerError)
+			a.writeParseFeedbackError(w, err)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": req.Status})
+	}
+}
+
+// writeParseFeedbackError maps store errors from the admin review/retract paths
+// onto HTTP statuses. Kept in one place so both paths answer the same way.
+func (a *API) writeParseFeedbackError(w http.ResponseWriter, err error) {
+	switch {
+	case err == sql.ErrNoRows:
+		http.Error(w, "Parse feedback not found", http.StatusNotFound)
+	case errors.Is(err, store.ErrCorrectionOnNonFlagOnly):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	// Phase-4 eval gate: the override would contradict the frozen gold sets.
+	// Nothing was applied; surface the reason so the admin can fix the gold
+	// set first if the gold itself is wrong.
+	case errors.Is(err, store.ErrOverrideConflictsWithGold):
+		http.Error(w, err.Error(), http.StatusConflict)
+	// 409, not 500: the request is well-formed but the row is not in a state
+	// this action applies to. The message names what to do instead (retract).
+	case errors.Is(err, store.ErrIllegalTransition), errors.Is(err, store.ErrInvalidState):
+		http.Error(w, err.Error(), http.StatusConflict)
+	case errors.Is(err, store.ErrFeedbackNotAccepted):
+		http.Error(w, err.Error(), http.StatusConflict)
+	default:
+		http.Error(w, "Database error", http.StatusInternalServerError)
 	}
 }
 

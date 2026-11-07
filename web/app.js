@@ -6561,9 +6561,13 @@ function renderAdminFeedbackList() {
             ${reviewNote}
             <div class="admin-feedback-actions">
                 <input type="text" class="admin-feedback-review-input" data-review-note="${item.id}" placeholder="Review note (optional)" value="${escapeAttr(item.review_note || '')}">
+                ${item.status === 'accepted' ? `
+                <button type="button" class="btn btn-outline btn-sm" data-feedback-action="retract" data-feedback-id="${item.id}">Retract</button>
+                ` : `
                 <button type="button" class="btn btn-primary btn-sm" data-feedback-action="accepted" data-feedback-id="${item.id}">Accept</button>
                 <button type="button" class="btn btn-outline btn-sm" data-feedback-action="rejected" data-feedback-id="${item.id}">Reject</button>
                 <button type="button" class="btn btn-outline btn-sm" data-feedback-action="needs_follow_up" data-feedback-id="${item.id}">Follow up</button>
+                `}
             </div>
         </article>`;
     }).join('');
@@ -6604,16 +6608,29 @@ async function loadAdminFeedback() {
         showToast(err.message || 'Failed to load parser feedback.', 'error');
     }
 }
-async function reviewAdminFeedback(feedbackID, status) {
+async function reviewAdminFeedback(feedbackID, action) {
     const noteInput = document.querySelector(`[data-review-note="${feedbackID}"]`);
     const reviewNote = noteInput?.value.trim() || '';
+    const retract = action === 'retract';
+    const status = retract ? 'rejected' : action;
+    if (retract && !await showConfirm({
+        title: 'Retract this correction?',
+        message: 'The dictionary entry this correction overwrote will be restored, and the report goes back to Rejected. '
+            + 'If the correction already reached a gold candidate, that needs a separate look.',
+        confirmLabel: 'Retract',
+        danger: true,
+    })) {
+        return;
+    }
     // On a flag-only row the admin may supply a concrete correction (path b),
     // converting it to a normal parser-identity fix. Only send it when both
     // lemma and POS are filled and the row is being accepted.
     const lemmaInput = document.querySelector(`[data-correction-lemma="${feedbackID}"]`);
     const posInput = document.querySelector(`[data-correction-pos="${feedbackID}"]`);
     const body = { status, review_note: reviewNote };
-    if (status === 'accepted' && lemmaInput && posInput) {
+    if (retract)
+        body.retract = true;
+    if (status === 'accepted' && !retract && lemmaInput && posInput) {
         const lemma = lemmaInput.value.trim();
         const pos = posInput.value.trim();
         if (lemma || pos) {
@@ -6635,7 +6652,19 @@ async function reviewAdminFeedback(feedbackID, status) {
         if (!resp.ok) {
             throw new Error(await resp.text() || 'Failed to review parser feedback');
         }
-        showToast(`Feedback marked ${feedbackStatusLabel(status).toLowerCase()}.`, 'success');
+        if (retract) {
+            const payload = await resp.json().catch(() => ({}));
+            showToast('Correction retracted and the dictionary entry restored.', 'success');
+            if (payload?.gold_candidate_needs_review) {
+                // Surfaced rather than handled silently: the candidate may
+                // already be in the frozen gold sets, where removing it moves
+                // eval baselines. That is a maintainer call.
+                showToast('A gold candidate rests on this correction - review it before the next eval.', 'error');
+            }
+        }
+        else {
+            showToast(`Feedback marked ${feedbackStatusLabel(status).toLowerCase()}.`, 'success');
+        }
         await loadAdminFeedback();
     }
     catch (err) {

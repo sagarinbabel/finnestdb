@@ -1,11 +1,14 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"finnestdb/internal/store"
 )
 
 // Regression tests for the handler-layer halves of the 2026-11-07 invariant
@@ -152,4 +155,87 @@ func TestAdminIssueIllegalTransitionReturnsConflict(t *testing.T) {
 	// direct edge is what let a row carry both fixed_at and quarantined_at.
 	patchIssue(t, mux, adminCookies, issueID,
 		`{"action":"quarantine","reason":"actually still broken"}`, http.StatusConflict)
+}
+
+// I-5d. An accidentally accepted correction can be taken back through the
+// admin API, and the old status-only path fails loudly instead of with a 500.
+//
+// Why it matters: making acceptance one-way in the store broke the existing
+// Reject / Follow up buttons for accepted rows — handleAdminParseFeedback
+// turned the refused transition into an opaque HTTP 500, and nothing in
+// production called the replacement helper, so an accidentally accepted
+// correction could not be undone through the app at all. Found by review on
+// #295.
+func TestAdminCanRetractAnAcceptedCorrection(t *testing.T) {
+	t.Setenv("FINNESTDB_ADMIN_EMAILS", "admin@example.com")
+	api := newTestAPI(t)
+	mux := newTestMux(t, api)
+	adminCookies := loginAndReturnCookies(t, mux, "admin@example.com")
+	reporter := createTestUserForAPI(t, api, "reporter@example.com")
+
+	if err := api.store.InsertFormForTest("kissat", "kissa", "NOUN", "FI"); err != nil {
+		t.Fatal(err)
+	}
+	psID, err := api.store.CreateParseSession(&reporter.ID, "FI", "custom", "kissat", 1, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fbID, err := api.store.CreateParseFeedback(store.ParseFeedback{
+		ParseSessionID: psID, UserID: reporter.ID, Lang: "FI", Parser: "custom",
+		Surface: "kissat", ProposedLemma: "kissa", ProposedPOS: "NOUN",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	patchFeedback := func(body string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPatch,
+			fmt.Sprintf("/api/admin/parse-feedback?id=%d", fbID), strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req = requestWithCookies(req, adminCookies)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		return rec
+	}
+
+	if rec := patchFeedback(`{"status":"accepted","review_note":"looks right"}`); rec.Code != http.StatusOK {
+		t.Fatalf("accept: status=%d body=%q", rec.Code, rec.Body.String())
+	}
+
+	// The status-only reject is refused with 409 and a message that says what
+	// to do instead - not a 500.
+	rec := patchFeedback(`{"status":"rejected","review_note":"changed my mind"}`)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status-only reject of an accepted row: status=%d want 409; body=%q", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "retract") {
+		t.Errorf("the 409 should point the admin at retraction; body=%q", rec.Body.String())
+	}
+
+	// The retraction works and reports whether a gold candidate is implicated.
+	rec = patchFeedback(`{"status":"rejected","review_note":"wrong after all","retract":true}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("retract: status=%d body=%q", rec.Code, rec.Body.String())
+	}
+	var resp map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode retract response: %v", err)
+	}
+	if _, ok := resp["gold_candidate_needs_review"]; !ok {
+		t.Error("retract response should report gold_candidate_needs_review")
+	}
+
+	// The override is gone from the dictionary, which is the whole point.
+	var overrides int
+	if err := api.store.CountFormsBySourceForTest("custom_overrides", &overrides); err != nil {
+		t.Fatal(err)
+	}
+	if overrides != 0 {
+		t.Errorf("%d custom_overrides form row(s) survived the retraction", overrides)
+	}
+
+	// Retracting again is a 409, not a silent success.
+	if rec := patchFeedback(`{"status":"rejected","retract":true}`); rec.Code != http.StatusConflict {
+		t.Errorf("second retract: status=%d want 409", rec.Code)
+	}
 }
