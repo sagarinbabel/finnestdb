@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -261,17 +262,140 @@ func NewDB(dbPath string) (*DB, error) {
 	// _busy_timeout makes concurrent openers (server + CLI tools + cron jobs
 	// sharing one database file) wait up to 5s for a write lock instead of
 	// failing instantly with "database is locked".
-	db, err := sql.Open("sqlite3", dbPath+"?_busy_timeout=5000")
+	//
+	// Opening happens in two phases, because the schema migrations and the
+	// running app need OPPOSITE foreign-key settings.
+	//
+	// Phase 1 - migrations, enforcement OFF. Several of the Ensure*/ensure*
+	// functions below rebuild a table the SQLite way: CREATE <t>_new, copy,
+	// DROP <t>, RENAME <t>_new TO <t>. DROP TABLE on a parent performs an
+	// implicit delete, so dropping `cards` while review_log.card_id still
+	// references it is a foreign-key violation - even though an identical
+	// table goes back under the same name two statements later. SQLite's
+	// documented procedure for this requires foreign_keys to be off for the
+	// duration, and it cannot be toggled inside a transaction.
+	//
+	// PRAGMA defer_foreign_keys is NOT a substitute: the DROP increments the
+	// deferred-violation counter and the RENAME does not decrement it, so the
+	// transaction fails at COMMIT instead of at the DROP. Verified directly
+	// against sqlite3 before settling on this shape.
+	//
+	// Getting this wrong is not a subtle degradation - it stops the app
+	// opening any database old enough to still need these migrations, with
+	// "FOREIGN KEY constraint failed" from NewDB.
+	// _foreign_keys=on in the DSN is what makes the FOREIGN KEY declarations
+	// throughout the schema mean something: until now every one of them was
+	// decorative, orphan rows were insertable, and the two hand-written
+	// cascades (DeleteDeck, DeleteUserCascade) were the only thing between a
+	// delete and a dangling reference. go-sqlite3 applies DSN pragmas per
+	// connection, which is what the database/sql pool needs.
+	//
+	// It stops NEW orphans; it does not retroactively reject existing ones,
+	// since SQLite only checks statements it runs from here on.
+	db, err := sql.Open("sqlite3", dbPath+"?_busy_timeout=5000&_foreign_keys=on")
 	if err != nil {
 		return nil, err
 	}
 
 	store := &DB{db: db}
 	if err := store.initSchema(); err != nil {
+		db.Close()
 		return nil, err
 	}
 
+	// Report (never repair, and never fail) the references the pre-enforcement
+	// era left behind. Failing here would refuse to open a database the app
+	// opened fine yesterday; repairing here would mean silent destructive
+	// deletes on a multi-gigabyte file that every server, CLI tool and cron
+	// job opens. cmd/dbrepair is the deliberate, reviewable path.
+	logDanglingReferences(db)
+
 	return store, nil
+}
+
+// beginRebuildTx starts a transaction for a CREATE-copy-DROP-RENAME table
+// rebuild on a connection where foreign keys are NOT enforced.
+//
+// SQLite's documented procedure for this kind of rebuild requires enforcement
+// off for its duration: DROP TABLE on a parent performs an implicit delete, so
+// dropping `cards` while review_log.card_id references it fails with "FOREIGN
+// KEY constraint failed" even though an identical table is renamed back into
+// place two statements later. Getting this wrong stops the app opening any
+// database old enough to still need these migrations.
+//
+// Two things that do NOT work, both tried:
+//
+//   - PRAGMA defer_foreign_keys: the DROP increments the deferred-violation
+//     counter and the RENAME does not decrement it, so the transaction fails
+//     at COMMIT instead of at the DROP.
+//   - Setting the pragma on the pool: a pool-level Exec lands on whichever
+//     connection is free, not necessarily the one the rebuild then uses.
+//
+// So the pragma goes on a dedicated connection, which the caller must release
+// with endRebuildTx. The connection is taken from the same pool, so this adds
+// no handle and works for in-memory databases (where these rebuilds never run
+// anyway, the schema always being current).
+func beginRebuildTx(db *sql.DB) (*sql.Conn, *sql.Tx, error) {
+	ctx := context.Background()
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	if _, err := conn.ExecContext(ctx, `PRAGMA foreign_keys = OFF`); err != nil {
+		conn.Close()
+		return nil, nil, err
+	}
+	tx, err := conn.BeginTx(ctx, nil)
+	if err != nil {
+		conn.Close()
+		return nil, nil, err
+	}
+	return conn, tx, nil
+}
+
+// endRebuildTx restores enforcement on the rebuild connection and returns it to
+// the pool. Safe to defer immediately after beginRebuildTx.
+func endRebuildTx(conn *sql.Conn) {
+	if conn == nil {
+		return
+	}
+	// Restore the pragma before the connection goes back in the pool, so a
+	// later caller that happens to get this connection still has enforcement.
+	_, _ = conn.ExecContext(context.Background(), `PRAGMA foreign_keys = ON`)
+	_ = conn.Close()
+}
+
+// logDanglingReferences warns once at startup if the database still carries
+// orphan rows from before foreign keys were enforced, naming the repair tool.
+// Best-effort: a failure to run the check is not a reason to refuse to open.
+func logDanglingReferences(db *sql.DB) {
+	rows, err := db.Query(`PRAGMA foreign_key_check`)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+	counts := map[string]int{}
+	total := 0
+	for rows.Next() {
+		var table, parent sql.NullString
+		var rowid, fkid sql.NullInt64
+		if err := rows.Scan(&table, &rowid, &parent, &fkid); err != nil {
+			return
+		}
+		counts[table.String+" -> "+parent.String]++
+		total++
+	}
+	if total == 0 {
+		return
+	}
+	parts := make([]string, 0, len(counts))
+	for k, v := range counts {
+		parts = append(parts, fmt.Sprintf("%s (%d)", k, v))
+	}
+	sort.Strings(parts)
+	log.Printf("store: %d pre-existing orphan row(s) predate foreign-key enforcement: %s; "+
+		"they are inert but will not self-heal - run `go run ./cmd/dbrepair -fix` to clear them",
+		total, strings.Join(parts, ", "))
 }
 
 func (d *DB) initSchema() error {
@@ -279,6 +403,12 @@ func (d *DB) initSchema() error {
 	CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		email TEXT UNIQUE,
+		-- NOT A GATE. There is no email-verification flow: createUser inserts
+		-- a literal 1 here and nothing in the codebase ever reads this column
+		-- to decide anything. It is kept only so existing database files keep
+		-- their schema. Do not write a check against it believing addresses
+		-- have been confirmed - implement verification first, and set this
+		-- column from that flow.
 		email_verified INTEGER DEFAULT 0,
 		is_admin INTEGER DEFAULT 0,
 		settings_json TEXT DEFAULT '{"new_per_day":20,"retention":0.9,"theme":"system","learning_languages":["FI","ET"],"active_language":"FI"}'
@@ -398,7 +528,8 @@ func (d *DB) initSchema() error {
 		pos TEXT NOT NULL,
 		feats TEXT NOT NULL DEFAULT '',
 		supporter_count INTEGER NOT NULL,
-		status TEXT NOT NULL DEFAULT 'pending',
+		status TEXT NOT NULL DEFAULT 'pending'
+			CHECK (status IN ('pending', 'exported')),
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		UNIQUE(lang, surface, lemma, pos)
 	);
@@ -413,7 +544,8 @@ func (d *DB) initSchema() error {
 		user_id INTEGER NOT NULL,
 		card_id INTEGER NOT NULL,
 		lang TEXT NOT NULL DEFAULT '',
-		rating TEXT NOT NULL,
+		rating TEXT NOT NULL
+			CHECK (rating IN ('again', 'hard', 'good', 'easy')),
 		reviewed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		FOREIGN KEY(user_id) REFERENCES users(id),
 		FOREIGN KEY(card_id) REFERENCES cards(id)
@@ -428,7 +560,8 @@ func (d *DB) initSchema() error {
 		-- review marking) or 'anki' (Anki sync). Lets the Anki sync flow
 		-- scope its diff to only anki-source rows so words a user marked
 		-- through any other path stay protected.
-		source TEXT NOT NULL DEFAULT 'manual',
+		source TEXT NOT NULL DEFAULT 'manual'
+			CHECK (source IN ('manual', 'anki')),
 		PRIMARY KEY(user_id, lang, lemma, pos),
 		FOREIGN KEY(user_id) REFERENCES users(id)
 	);
@@ -496,7 +629,8 @@ func (d *DB) initSchema() error {
 		proposed_grammar_label TEXT,
 		flag_only INTEGER NOT NULL DEFAULT 0,
 		note TEXT,
-		status TEXT NOT NULL DEFAULT 'submitted',
+		status TEXT NOT NULL DEFAULT 'submitted'
+			CHECK (status IN ('submitted', 'accepted', 'rejected', 'needs_follow_up')),
 		review_note TEXT,
 		reviewed_by_user_id INTEGER,
 		reviewed_at DATETIME,
@@ -527,11 +661,16 @@ func (d *DB) initSchema() error {
 		norm_surface TEXT NOT NULL,
 		lemma TEXT NOT NULL DEFAULT '',
 		pos TEXT NOT NULL DEFAULT '',
-		-- open | quarantined | fixed | reopened
-		status TEXT NOT NULL DEFAULT 'open',
+		-- open | quarantined | fixed | reopened. Legal transitions are defined
+		-- by CanTransitionIssueStatus in states.go; this CHECK only constrains
+		-- the value set.
+		status TEXT NOT NULL DEFAULT 'open'
+			CHECK (status IN ('open', 'quarantined', 'fixed', 'reopened')),
 		-- alpha triage class, NULL until an admin triages:
 		-- parser_issue | bad_card_content | source_extraction_issue | not_sure
-		alpha_class TEXT,
+		alpha_class TEXT
+			CHECK (alpha_class IS NULL OR alpha_class IN
+				('parser_issue', 'bad_card_content', 'source_extraction_issue', 'not_sure')),
 		report_count INTEGER NOT NULL DEFAULT 0,
 		distinct_reporter_count INTEGER NOT NULL DEFAULT 0,
 		first_reported_at DATETIME,
@@ -547,10 +686,63 @@ func (d *DB) initSchema() error {
 		FOREIGN KEY(quarantined_by) REFERENCES users(id),
 		FOREIGN KEY(fixed_by) REFERENCES users(id)
 	);
+	-- What an accepted correction DISPLACED, so retracting it can put the
+	-- dictionary back instead of deleting a row it never created.
+	--
+	-- writeAcceptedParseFeedbackOverride upserts into lemmas and forms, whose
+	-- primary keys do NOT include source. So when a correction targets an
+	-- entry that an importer already produced - the common case - acceptance
+	-- rewrites that row's source/source_priority/parse_feedback_id IN PLACE
+	-- rather than adding a row beside it. A retraction that deleted "the
+	-- custom_overrides row" therefore deleted the imported dictionary entry,
+	-- taking its gloss with it and affecting every other surface form that
+	-- resolved through that lemma.
+	--
+	-- existed=0 means the override created the row and retraction deletes it;
+	-- existed=1 means it overwrote an importer's row, and retraction restores
+	-- the recorded values.
+	CREATE TABLE IF NOT EXISTS parse_feedback_override_backup (
+		parse_feedback_id INTEGER NOT NULL,
+		kind TEXT NOT NULL CHECK (kind IN ('lemma', 'form')),
+		lang TEXT NOT NULL,
+		form TEXT NOT NULL DEFAULT '',
+		lemma TEXT NOT NULL,
+		pos TEXT NOT NULL,
+		existed INTEGER NOT NULL,
+		prior_source TEXT,
+		prior_source_priority INTEGER,
+		prior_parse_feedback_id INTEGER,
+		prior_gloss TEXT,
+		prior_feats TEXT,
+		PRIMARY KEY (parse_feedback_id, kind, lang, form, lemma, pos),
+		FOREIGN KEY(parse_feedback_id) REFERENCES parse_feedback(id)
+	);
+
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_correction_issues_scope
 		ON correction_issues(lang, parser, norm_surface, lemma, pos);
 	CREATE INDEX IF NOT EXISTS idx_correction_issues_status
 		ON correction_issues(status);
+
+	-- Every cards row must have a card_state row. This is load-bearing in two
+	-- incompatible ways: GetNextReviewCard, CountDueCards, CountNewCards,
+	-- CardsInReview and remainingNewCardsToday all INNER JOIN card_state, so a
+	-- stateless card silently vanishes from the review queue; while
+	-- recordReviewAnswerAt SELECTs from card_state and returns sql.ErrNoRows,
+	-- so the same missing row surfaces to the learner as a failed answer.
+	--
+	-- Until now the invariant rested on every insert site remembering to seed
+	-- the state row (ensureCard does; the bulk path in
+	-- SubscribeUserToPublicDeck does it via a second statement that re-matches
+	-- occurrence surfaces rather than using the ids it just inserted). A
+	-- trigger makes it structurally true for every writer, including raw SQL
+	-- from the cmd/ tools, and makes that second bulk statement redundant
+	-- rather than load-bearing.
+	CREATE TRIGGER IF NOT EXISTS cards_seed_card_state
+	AFTER INSERT ON cards
+	BEGIN
+		INSERT OR IGNORE INTO card_state (card_id, fsrs_json, next_due, last_answer_at)
+		VALUES (new.id, NULL, NULL, NULL);
+	END;
 	`
 
 	_, err := d.db.Exec(schema)
@@ -628,6 +820,18 @@ func (d *DB) initSchema() error {
 		return err
 	}
 	if _, err := d.db.Exec(`CREATE INDEX IF NOT EXISTS idx_review_log_user_time ON review_log(user_id, reviewed_at)`); err != nil {
+		return err
+	}
+	// Backfill the invariant the cards_seed_card_state trigger now maintains,
+	// for cards inserted before the trigger existed. A no-op on a healthy
+	// database (the current one has zero stateless cards); cheap either way
+	// because the anti-join is index-driven on card_state's primary key.
+	if _, err := d.db.Exec(`
+		INSERT OR IGNORE INTO card_state (card_id, fsrs_json, next_due, last_answer_at)
+		SELECT c.id, NULL, NULL, NULL
+		  FROM cards c
+		  LEFT JOIN card_state cs ON cs.card_id = c.id
+		 WHERE cs.card_id IS NULL`); err != nil {
 		return err
 	}
 	if err := EnsureDictMetadataSchema(d.db); err != nil {
@@ -988,10 +1192,11 @@ func rebuildIfLegacyKey(db *sql.DB, table, keyClause string) error {
 		return err
 	}
 
-	tx, err := db.Begin()
+	conn, tx, err := beginRebuildTx(db)
 	if err != nil {
 		return err
 	}
+	defer endRebuildTx(conn)
 	defer tx.Rollback()
 
 	colDefs := make([]string, 0, len(cols))
@@ -1183,9 +1388,16 @@ func (d *DB) GetUserBySessionTokenHash(tokenHash string, slidingWindow time.Dura
 	}
 	if slidingWindow > 0 {
 		newExpiry := now.Add(slidingWindow)
+		// Repeat the liveness predicate from the SELECT above. Without it the
+		// renewal matched on token_hash alone, so a logout racing an in-flight
+		// request extended the expiry of a row that had just been revoked.
+		// Harmless in effect today (revoked_at still blocks authentication),
+		// but it meant "expires_at is only ever extended on a live session"
+		// was not actually true, and the guard costs one clause.
 		if _, err := d.db.Exec(
-			`UPDATE user_sessions SET expires_at = ? WHERE token_hash = ?`,
-			newExpiry, tokenHash,
+			`UPDATE user_sessions SET expires_at = ?
+			  WHERE token_hash = ? AND revoked_at IS NULL AND expires_at > ?`,
+			newExpiry, tokenHash, now,
 		); err != nil {
 			return nil, err
 		}
@@ -1274,12 +1486,55 @@ func (d *DB) DeleteUserCascade(userID int64) error {
 		userID, userID, userID); err != nil {
 		return err
 	}
+	// This user's admin actions on the global correction-issue ledger outlive
+	// their account - the issues belong to every learner, not to the admin who
+	// triaged them - so null the attribution rather than deleting the issue.
+	// These two columns reference users(id) and were previously left dangling,
+	// which is now a hard error with foreign_keys=ON.
+	if _, err := tx.Exec(
+		`UPDATE correction_issues SET quarantined_by = NULL WHERE quarantined_by = ?`,
+		userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(
+		`UPDATE correction_issues SET fixed_by = NULL WHERE fixed_by = ?`,
+		userID); err != nil {
+		return err
+	}
+
+	// Remember which issues this user's reports were grouped into, so the
+	// derived counts can be recomputed after the reports are gone. Without
+	// this, report_count and distinct_reporter_count keep counting rows that
+	// no longer exist - recountIssue defines them as COUNT over the linked
+	// parse_feedback rows, and deleting a user silently broke that identity.
+	// The live database already carries 8 such drifted rows, which is what
+	// drives the threshold_candidate badge in the admin queue.
+	affectedIssues, err := collectAffectedIssueIDs(tx, userID)
+	if err != nil {
+		return err
+	}
+	// parse_feedback_override_backup references parse_feedback(id), which is
+	// now an enforced foreign key, so its rows go first.
+	if _, err := tx.Exec(`
+		DELETE FROM parse_feedback_override_backup
+		 WHERE parse_feedback_id IN (
+		     SELECT id FROM parse_feedback
+		      WHERE user_id = ?
+		         OR parse_session_id IN (SELECT id FROM parse_sessions WHERE user_id = ?))`,
+		userID, userID); err != nil {
+		return err
+	}
 	if _, err := tx.Exec(`
 		DELETE FROM parse_feedback
 		 WHERE user_id = ?
 		    OR parse_session_id IN (SELECT id FROM parse_sessions WHERE user_id = ?)`,
 		userID, userID); err != nil {
 		return err
+	}
+	for _, issueID := range affectedIssues {
+		if err := recountIssue(tx, issueID); err != nil {
+			return err
+		}
 	}
 	if _, err := tx.Exec(`
 		DELETE FROM user_deck_subscriptions
@@ -1301,6 +1556,19 @@ func (d *DB) DeleteUserCascade(userID int64) error {
 		return err
 	}
 	if _, err := tx.Exec(`DELETE FROM decks WHERE user_id = ?`, userID); err != nil {
+		return err
+	}
+	// review_log before card_state/cards: it references both users(id) and
+	// cards(id), and was previously not deleted at all. Its rows survived
+	// account deletion with a dangling user_id, which is both a retention
+	// problem for an advertised "delete my account" feature and a correctness
+	// one - a recycled user id would inherit the dead account's review history
+	// in ReviewActivity. The live database currently has 4 such rows.
+	if _, err := tx.Exec(`
+		DELETE FROM review_log
+		 WHERE user_id = ?
+		    OR card_id IN (SELECT id FROM cards WHERE user_id = ?)`,
+		userID, userID); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(`
@@ -1335,6 +1603,32 @@ func (d *DB) DeleteUserCascade(userID int64) error {
 	}
 
 	return tx.Commit()
+}
+
+// collectAffectedIssueIDs returns the distinct correction_issues ids that the
+// given user's parse_feedback rows are grouped into, so a caller that is about
+// to delete those rows can recompute the issues' derived counts afterwards.
+func collectAffectedIssueIDs(tx *sql.Tx, userID int64) ([]int64, error) {
+	rows, err := tx.Query(`
+		SELECT DISTINCT correction_issue_id
+		  FROM parse_feedback
+		 WHERE correction_issue_id IS NOT NULL
+		   AND (user_id = ?
+		        OR parse_session_id IN (SELECT id FROM parse_sessions WHERE user_id = ?))`,
+		userID, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
 }
 
 type sqlReadWriter interface {
@@ -2308,6 +2602,9 @@ func (d *DB) ImportKnownWords(userID int64, lang string, words []string, source 
 	if source == "" {
 		source = SourceManual
 	}
+	if !IsValidKnownWordSource(source) {
+		return nil, nil, fmt.Errorf("%w: known-word source %q", ErrInvalidState, source)
+	}
 	normalized := make([]string, 0, len(words))
 	seen := make(map[string]struct{}, len(words))
 	for _, word := range words {
@@ -2322,22 +2619,41 @@ func (d *DB) ImportKnownWords(userID int64, lang string, words []string, source 
 		normalized = append(normalized, trimmed)
 	}
 
-	resolutions := d.BatchLookupForms(normalized, lang, "custom")
+	// Resolve before opening the transaction: BatchLookupForms is a read
+	// against the dictionary side of the store and holding the SQLite write
+	// lock across it would block every other writer. Mirrors ReplaceKnownWords.
+	resolutions := d.BatchLookupForms(normalized, lang, ParserCustom)
 	imported := make([]KnownLemma, 0, len(resolutions))
 	unresolved := make([]string, 0)
 	importedSeen := make(map[string]struct{}, len(resolutions))
+
+	// One transaction for the whole import. Previously each word was its own
+	// d.db.Exec, so an error partway through left the list half-imported -
+	// exactly the half-applied state ReplaceKnownWords documents a transaction
+	// to avoid. It also matters now that each word is two statements (insert
+	// known, clear ignored) that must not be observable apart.
+	tx, err := d.db.Begin()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer tx.Rollback()
+
 	for _, word := range normalized {
 		resolution, ok := resolutions[word]
 		if !ok || resolution.Lemma == "" || resolution.POS == "" {
 			unresolved = append(unresolved, word)
 			continue
 		}
-		if _, err := d.db.Exec(
-			`INSERT INTO user_known_lemmas (user_id, lang, lemma, pos, source) VALUES (?, ?, ?, ?, ?)
-			 ON CONFLICT(user_id, lang, lemma, pos) DO UPDATE SET source = excluded.source
-			 WHERE excluded.source = 'manual'`,
-			userID, lang, resolution.Lemma, resolution.POS, source,
-		); err != nil {
+		// Marking a lemma known must clear any "ignored" row for it: the two
+		// tables encode one tri-state (unknown / known / ignored) and a lemma
+		// in both is a contradiction. The four Mark*Known/Mark*Ignored methods
+		// have always deleted from the opposite table; this importer and
+		// ReplaceKnownWords did not, so ignoring a word and then importing a
+		// list (textbox, file, or Anki sync) containing any of its forms left
+		// rows in both. BatchLemmaStates evaluates `case known:` first, so the
+		// UI showed it as known while GetNextReviewCard's ignored-NOT EXISTS
+		// still excluded it from review - with no affordance to notice or fix.
+		if err := upsertKnownClearingIgnored(tx, userID, lang, resolution.Lemma, resolution.POS, source); err != nil {
 			return nil, nil, err
 		}
 		key := resolution.Lemma + "\x00" + resolution.POS
@@ -2352,7 +2668,33 @@ func (d *DB) ImportKnownWords(userID int64, lang string, words []string, source 
 		})
 	}
 
+	if err := tx.Commit(); err != nil {
+		return nil, nil, err
+	}
 	return imported, unresolved, nil
+}
+
+// upsertKnownClearingIgnored marks (lemma, pos) known for the user and removes
+// any ignored row for the same key, keeping the known/ignored tri-state
+// mutually exclusive.
+//
+// The source precedence rule is preserved exactly: a manual import upgrades an
+// existing anki row, while an anki import never claims an existing manual row
+// (that is what `WHERE excluded.source = 'manual'` on the upsert does).
+func upsertKnownClearingIgnored(q sqlReadWriter, userID int64, lang, lemma, pos, source string) error {
+	if _, err := q.Exec(
+		`INSERT INTO user_known_lemmas (user_id, lang, lemma, pos, source) VALUES (?, ?, ?, ?, ?)
+		 ON CONFLICT(user_id, lang, lemma, pos) DO UPDATE SET source = excluded.source
+		 WHERE excluded.source = 'manual'`,
+		userID, lang, lemma, pos, source,
+	); err != nil {
+		return err
+	}
+	_, err := q.Exec(
+		`DELETE FROM user_ignored_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
+		userID, lang, lemma, pos,
+	)
+	return err
 }
 
 // ReplaceKnownWords makes the user's known-words for one language exactly
@@ -2501,6 +2843,20 @@ func (d *DB) ReplaceKnownWords(userID int64, lang string, words []string, scope 
 		n, _ := res.RowsAffected()
 		if n > 0 {
 			added = append(added, KnownLemma{Lemma: k.lemma, POS: k.pos, Lang: lang})
+		}
+		// Keep the known/ignored tri-state mutually exclusive. See
+		// upsertKnownClearingIgnored: a word the user had ignored and that now
+		// arrives from an Anki sync must leave the ignored list, or it ends up
+		// in both tables and shows as "known" while staying out of review.
+		//
+		// Unconditional, not gated on n > 0: a row that already existed as
+		// known (so INSERT OR IGNORE was a no-op) may still have a stale
+		// ignored row beside it from before this fix.
+		if _, err := tx.Exec(
+			`DELETE FROM user_ignored_lemmas WHERE user_id = ? AND lang = ? AND lemma = ? AND pos = ?`,
+			userID, lang, k.lemma, k.pos,
+		); err != nil {
+			return nil, nil, nil, err
 		}
 	}
 
@@ -3034,6 +3390,17 @@ func (d *DB) RecordReviewAnswer(userID, cardID int64, rating string) error {
 // a given now, including on cards previously touched by FSRS - the rollback
 // path). When true it routes through FSRS with lazy state derivation.
 func (d *DB) recordReviewAnswerAt(userID, cardID int64, rating string, now time.Time, fsrsEnabled bool) error {
+	// Validate here, not only at the HTTP edge. ratingToFSRS maps any
+	// unrecognized string to Good and nextAlphaStepScheduleForRatingAt treats
+	// it as the default branch, so an unknown rating silently advanced the
+	// card's schedule instead of erroring - and review_log then recorded the
+	// bad value verbatim, where the progress dashboard counts it. The store is
+	// imported directly by ~30 cmd/ tools that never pass through the handler
+	// doing this check.
+	if !IsValidRating(rating) {
+		return fmt.Errorf("%w: review rating %q", ErrInvalidState, rating)
+	}
+
 	tx, err := d.db.Begin()
 	if err != nil {
 		return err
@@ -3180,13 +3547,34 @@ func (d *DB) ReviewActivity(userID int64, days int) ([]ReviewActivityDay, error)
 // CardsInReview counts the user's cards that have entered the review
 // rotation (introduced or answered at least once).
 func (d *DB) CardsInReview(userID int64) (int, error) {
+	// Filters deliberately match CountDueCards / CountNewCards: known,
+	// ignored, quarantine-suppressed and MWE cards are all excluded.
+	//
+	// They did not before. This query counted every card with any scheduler
+	// history, including ones the learner had since marked known or ignored,
+	// cards suppressed by a quarantined correction issue, and MWE cards the
+	// other two counters skip via `mwe_id IS NULL`. All three numbers are
+	// rendered side by side on the progress dashboard, so "cards in review"
+	// could exceed due + new with no single query being wrong - the kind of
+	// discrepancy that reads as a bug in the scheduler rather than in the
+	// counting.
 	var count int
 	err := d.db.QueryRow(
 		`SELECT COUNT(*)
 		   FROM cards c
 		   JOIN card_state cs ON cs.card_id = c.id
 		  WHERE c.user_id = ?
-		    AND (cs.introduced_at IS NOT NULL OR cs.last_answer_at IS NOT NULL)`,
+		    AND c.mwe_id IS NULL
+		    AND (cs.introduced_at IS NOT NULL OR cs.last_answer_at IS NOT NULL)
+		    AND NOT EXISTS (
+		        SELECT 1 FROM user_known_lemmas uk
+		         WHERE uk.user_id = c.user_id AND uk.lang = c.lang AND uk.lemma = c.lemma AND uk.pos = c.pos
+		    )
+		    AND NOT EXISTS (
+		        SELECT 1 FROM user_ignored_lemmas ui
+		         WHERE ui.user_id = c.user_id AND ui.lang = c.lang AND ui.lemma = c.lemma AND ui.pos = c.pos
+		    )
+		    AND NOT `+suppressedCardPredicate("c"),
 		userID,
 	).Scan(&count)
 	return count, err
@@ -3631,16 +4019,28 @@ func (d *DB) ReviewParseFeedback(feedbackID, reviewerUserID int64, status, revie
 	var feedback ParseFeedback
 	var proposedGrammarLabel sql.NullString
 	var flagOnly int
+	var currentStatus string
 	err = tx.QueryRow(
-		`SELECT id, lang, surface, proposed_lemma, proposed_pos, proposed_grammar_label, flag_only
+		`SELECT id, lang, surface, proposed_lemma, proposed_pos, proposed_grammar_label, flag_only, status
 		 FROM parse_feedback
 		 WHERE id = ?`,
 		feedbackID,
-	).Scan(&feedback.ID, &feedback.Lang, &feedback.Surface, &feedback.ProposedLemma, &feedback.ProposedPOS, &proposedGrammarLabel, &flagOnly)
+	).Scan(&feedback.ID, &feedback.Lang, &feedback.Surface, &feedback.ProposedLemma, &feedback.ProposedPOS, &proposedGrammarLabel, &flagOnly, &currentStatus)
 	if err == sql.ErrNoRows {
 		return sql.ErrNoRows
 	}
 	if err != nil {
+		return err
+	}
+
+	// Reject illegal review transitions before any side effect runs.
+	//
+	// This is what stopped an already-accepted row from being re-accepted
+	// (re-running the whole eval-gated writeback and gold-candidate promotion
+	// each time) or flipped to "rejected" while its custom_overrides lexical
+	// row quietly stayed in the dictionary at priority 100. Retraction is now
+	// an explicit, separate operation - see RetractParseFeedbackOverride.
+	if err := ValidateFeedbackTransition(currentStatus, status); err != nil {
 		return err
 	}
 	if proposedGrammarLabel.Valid {
@@ -3698,6 +4098,139 @@ func (d *DB) ReviewParseFeedback(feedbackID, reviewerUserID int64, status, revie
 	return tx.Commit()
 }
 
+// ErrFeedbackNotAccepted is returned when a retraction targets a feedback row
+// that was never accepted, so there is no override to take back.
+var ErrFeedbackNotAccepted = errors.New("only an accepted correction can be retracted")
+
+// RetractParseFeedbackOverride undoes an acceptance: it deletes the
+// custom_overrides lexical rows this feedback row wrote and moves the review
+// back to "rejected" (or "needs_follow_up"), recording the reason in
+// review_note.
+//
+// This edge did not exist before. Accepting a correction wrote a
+// custom_overrides row into `lemmas` and `forms` at source_priority 100 -
+// above every imported dictionary - and NOTHING in the codebase deleted a
+// custom_overrides row. A `grep` for SourceCustomOverrides found one writer
+// and no remover. An admin who accepted a wrong correction could flip the
+// status all they liked; the parser kept serving the bad analysis forever.
+//
+// Rows are matched on parse_feedback_id, which writeAcceptedParseFeedbackOverride
+// stamps on both the lemma and the form row, so a retraction removes exactly
+// what that acceptance wrote and cannot touch an override another report owns.
+// A row whose parse_feedback_id was overwritten by a later, higher-priority
+// acceptance for the same (form, lang, lemma, pos) is deliberately left alone -
+// it now belongs to that newer report.
+//
+// What this does NOT undo: a gold candidate already promoted off the back of
+// this acceptance. maybePromoteGoldCandidate counts distinct accepted reporters,
+// so dropping this row below the threshold does not retract an exported
+// candidate. That is reported, not silently patched - see the returned
+// goldCandidateAffected flag.
+func (d *DB) RetractParseFeedbackOverride(feedbackID, reviewerUserID int64, newStatus, reviewNote string) (goldCandidateAffected bool, err error) {
+	if newStatus != FeedbackStatusRejected && newStatus != FeedbackStatusNeedsFollowUp {
+		return false, fmt.Errorf("%w: retraction must land on %q or %q, got %q",
+			ErrInvalidState, FeedbackStatusRejected, FeedbackStatusNeedsFollowUp, newStatus)
+	}
+
+	tx, err := d.db.Begin()
+	if err != nil {
+		return false, err
+	}
+	defer tx.Rollback()
+
+	var (
+		status string
+		lang   string
+		form   string
+		lemma  string
+		pos    string
+	)
+	if err := tx.QueryRow(
+		`SELECT status, lang, lower(trim(surface)), proposed_lemma, proposed_pos
+		   FROM parse_feedback WHERE id = ?`,
+		feedbackID,
+	).Scan(&status, &lang, &form, &lemma, &pos); err != nil {
+		return false, err
+	}
+	if status != FeedbackStatusAccepted {
+		return false, ErrFeedbackNotAccepted
+	}
+
+	// Restore from the accept-time snapshot rather than deleting by
+	// parse_feedback_id. Deleting was wrong: neither lemmas nor forms has
+	// source in its primary key, so an override on an entry an importer
+	// already produced rewrote that row in place - and the delete then removed
+	// the imported dictionary entry, gloss and all, affecting every other
+	// surface form that resolved through that lemma.
+	restoredRows, err := restoreDisplacedRows(tx, feedbackID)
+	if err != nil {
+		return false, err
+	}
+	// Databases that accepted a correction before the snapshot table existed
+	// have nothing to restore from. Fall back to the old behavior for those,
+	// scoped to rows still attributed to this feedback id, so a retraction is
+	// still possible - but only when there is genuinely no snapshot, so the
+	// fallback can never shadow a correct restore.
+	if restoredRows == 0 {
+		var snapshots int
+		if err := tx.QueryRow(
+			`SELECT COUNT(*) FROM parse_feedback_override_backup WHERE parse_feedback_id = ?`,
+			feedbackID,
+		).Scan(&snapshots); err != nil {
+			return false, err
+		}
+		if snapshots == 0 {
+			if _, err := tx.Exec(
+				`DELETE FROM forms WHERE source = ? AND parse_feedback_id = ?`,
+				SourceCustomOverrides, feedbackID,
+			); err != nil {
+				return false, err
+			}
+			if _, err := tx.Exec(
+				`DELETE FROM lemmas WHERE source = ? AND parse_feedback_id = ?`,
+				SourceCustomOverrides, feedbackID,
+			); err != nil {
+				return false, err
+			}
+		}
+	}
+
+	// Report (do not silently mutate) whether a gold candidate rests on this
+	// acceptance. Un-promoting is a maintainer decision: the candidate may
+	// already have been exported into the frozen gold sets, where removing it
+	// would change eval baselines.
+	if err := tx.QueryRow(
+		`SELECT EXISTS (
+			SELECT 1 FROM gold_candidates
+			 WHERE lang = ? AND surface = ? AND lemma = ? AND pos = ?
+		)`,
+		lang, form, lemma, pos,
+	).Scan(&goldCandidateAffected); err != nil {
+		return false, err
+	}
+
+	res, err := tx.Exec(
+		`UPDATE parse_feedback
+		    SET status = ?, review_note = ?, reviewed_by_user_id = ?, reviewed_at = CURRENT_TIMESTAMP
+		  WHERE id = ? AND status = ?`,
+		newStatus, reviewNote, reviewerUserID, feedbackID, FeedbackStatusAccepted,
+	)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	if n == 0 {
+		return false, ErrFeedbackNotAccepted
+	}
+	if err := tx.Commit(); err != nil {
+		return false, err
+	}
+	return goldCandidateAffected, nil
+}
+
 func writeAcceptedParseFeedbackOverride(tx *sql.Tx, feedback ParseFeedback) error {
 	lemma := strings.TrimSpace(feedback.ProposedLemma)
 	pos := strings.TrimSpace(feedback.ProposedPOS)
@@ -3721,6 +4254,19 @@ func writeAcceptedParseFeedbackOverride(tx *sql.Tx, feedback ParseFeedback) erro
 	// never silently reverts or duplicates a correction (deliberate
 	// deviation from the TODO sketch of editing the upstream row in place).
 	feats := featsFromCaseLabel(strings.ToLower(strings.TrimSpace(feedback.ProposedGrammarLabel)))
+
+	// Record what these upserts are about to displace, BEFORE displacing it.
+	// Because neither primary key includes source, an override on an entry an
+	// importer already produced rewrites that row in place - so without this
+	// snapshot there is no way to tell "the override created this row" from
+	// "the override took over a kaikki/Ekilex row", and retraction cannot do
+	// anything better than delete.
+	if err := backupDisplacedLemmaRow(tx, feedback.ID, lang, lemma, pos); err != nil {
+		return err
+	}
+	if err := backupDisplacedFormRow(tx, feedback.ID, lang, form, lemma, pos); err != nil {
+		return err
+	}
 
 	if _, err := tx.Exec(
 		`INSERT INTO lemmas (lemma, pos, gloss, lang, source, source_priority, parse_feedback_id)
@@ -3758,6 +4304,150 @@ func writeAcceptedParseFeedbackOverride(tx *sql.Tx, feedback ParseFeedback) erro
 	// Phase 3: promote to a gold-case candidate once enough distinct users
 	// have independently submitted (and had accepted) the same correction.
 	return maybePromoteGoldCandidate(tx, lang, form, lemma, pos, feats)
+}
+
+// backupDisplacedLemmaRow snapshots the lemmas row an override is about to
+// overwrite, or records that no such row existed.
+func backupDisplacedLemmaRow(tx *sql.Tx, feedbackID int64, lang, lemma, pos string) error {
+	var (
+		priorSource   sql.NullString
+		priorPriority sql.NullInt64
+		priorFeedback sql.NullInt64
+		priorGloss    sql.NullString
+	)
+	err := tx.QueryRow(
+		`SELECT source, source_priority, parse_feedback_id, gloss
+		   FROM lemmas WHERE lemma = ? AND pos = ? AND lang = ?`,
+		lemma, pos, lang,
+	).Scan(&priorSource, &priorPriority, &priorFeedback, &priorGloss)
+	existed := 1
+	if err == sql.ErrNoRows {
+		existed = 0
+	} else if err != nil {
+		return err
+	}
+	_, err = tx.Exec(
+		`INSERT OR REPLACE INTO parse_feedback_override_backup
+			(parse_feedback_id, kind, lang, form, lemma, pos, existed,
+			 prior_source, prior_source_priority, prior_parse_feedback_id, prior_gloss, prior_feats)
+		 VALUES (?, 'lemma', ?, '', ?, ?, ?, ?, ?, ?, ?, NULL)`,
+		feedbackID, lang, lemma, pos, existed,
+		priorSource, priorPriority, priorFeedback, priorGloss,
+	)
+	return err
+}
+
+// backupDisplacedFormRow snapshots the forms row an override is about to
+// overwrite, or records that no such row existed.
+func backupDisplacedFormRow(tx *sql.Tx, feedbackID int64, lang, form, lemma, pos string) error {
+	var (
+		priorSource   sql.NullString
+		priorPriority sql.NullInt64
+		priorFeedback sql.NullInt64
+		priorFeats    sql.NullString
+	)
+	err := tx.QueryRow(
+		`SELECT source, source_priority, parse_feedback_id, feats
+		   FROM forms WHERE form = ? AND lang = ? AND lemma = ? AND pos = ?`,
+		form, lang, lemma, pos,
+	).Scan(&priorSource, &priorPriority, &priorFeedback, &priorFeats)
+	existed := 1
+	if err == sql.ErrNoRows {
+		existed = 0
+	} else if err != nil {
+		return err
+	}
+	_, err = tx.Exec(
+		`INSERT OR REPLACE INTO parse_feedback_override_backup
+			(parse_feedback_id, kind, lang, form, lemma, pos, existed,
+			 prior_source, prior_source_priority, prior_parse_feedback_id, prior_gloss, prior_feats)
+		 VALUES (?, 'form', ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)`,
+		feedbackID, lang, form, lemma, pos, existed,
+		priorSource, priorPriority, priorFeedback, priorFeats,
+	)
+	return err
+}
+
+// restoreDisplacedRows undoes one acceptance's lexical writeback using the
+// snapshot taken at accept time: rows the override created are deleted, rows it
+// overwrote are returned to their recorded source/priority/gloss/feats.
+//
+// Returns how many imported dictionary rows were restored (as opposed to
+// deleted), so the caller can say what actually happened.
+func restoreDisplacedRows(tx *sql.Tx, feedbackID int64) (restored int, err error) {
+	rows, err := tx.Query(
+		`SELECT kind, lang, form, lemma, pos, existed,
+		        prior_source, prior_source_priority, prior_parse_feedback_id, prior_gloss, prior_feats
+		   FROM parse_feedback_override_backup
+		  WHERE parse_feedback_id = ?`,
+		feedbackID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	type entry struct {
+		kind, lang, form, lemma, pos string
+		existed                      int
+		source                       sql.NullString
+		priority                     sql.NullInt64
+		feedback                     sql.NullInt64
+		gloss                        sql.NullString
+		feats                        sql.NullString
+	}
+	var entries []entry
+	for rows.Next() {
+		var e entry
+		if err := rows.Scan(&e.kind, &e.lang, &e.form, &e.lemma, &e.pos, &e.existed,
+			&e.source, &e.priority, &e.feedback, &e.gloss, &e.feats); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		entries = append(entries, e)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+
+	for _, e := range entries {
+		switch {
+		case e.kind == "lemma" && e.existed == 1:
+			if _, err := tx.Exec(
+				`UPDATE lemmas SET source = ?, source_priority = ?, parse_feedback_id = ?, gloss = ?
+				  WHERE lemma = ? AND pos = ? AND lang = ?`,
+				e.source, e.priority, e.feedback, e.gloss, e.lemma, e.pos, e.lang,
+			); err != nil {
+				return 0, err
+			}
+			restored++
+		case e.kind == "lemma":
+			if _, err := tx.Exec(
+				`DELETE FROM lemmas WHERE lemma = ? AND pos = ? AND lang = ? AND source = ?`,
+				e.lemma, e.pos, e.lang, SourceCustomOverrides,
+			); err != nil {
+				return 0, err
+			}
+		case e.kind == "form" && e.existed == 1:
+			if _, err := tx.Exec(
+				`UPDATE forms SET source = ?, source_priority = ?, parse_feedback_id = ?, feats = ?
+				  WHERE form = ? AND lang = ? AND lemma = ? AND pos = ?`,
+				e.source, e.priority, e.feedback, e.feats, e.form, e.lang, e.lemma, e.pos,
+			); err != nil {
+				return 0, err
+			}
+			restored++
+		default:
+			if _, err := tx.Exec(
+				`DELETE FROM forms WHERE form = ? AND lang = ? AND lemma = ? AND pos = ? AND source = ?`,
+				e.form, e.lang, e.lemma, e.pos, SourceCustomOverrides,
+			); err != nil {
+				return 0, err
+			}
+		}
+	}
+
+	_, err = tx.Exec(`DELETE FROM parse_feedback_override_backup WHERE parse_feedback_id = ?`, feedbackID)
+	return restored, err
 }
 
 // checkOverrideAgainstGold implements the correction-loop Phase 4 guard.
@@ -4214,7 +4904,20 @@ func (d *DB) ensureLangScopedKnownTable(table string) error {
 			PRIMARY KEY(user_id, lang, lemma, pos),
 			FOREIGN KEY(user_id) REFERENCES users(id)
 		)`, tmpTable)
-	if _, err := d.db.Exec(createStmt); err != nil {
+	// One transaction for the whole rebuild, with deferred foreign keys. This
+	// ran as four bare d.db.Exec calls before: besides tripping foreign-key
+	// enforcement on the DROP, an error partway through left the database with
+	// both <table> and <table>_new present, or with <table> dropped and
+	// nothing renamed into its place - a half-migrated schema that the next
+	// startup could not recognize either.
+	conn, tx, err := beginRebuildTx(d.db)
+	if err != nil {
+		return err
+	}
+	defer endRebuildTx(conn)
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(createStmt); err != nil {
 		return err
 	}
 
@@ -4223,16 +4926,16 @@ func (d *DB) ensureLangScopedKnownTable(table string) error {
 		 SELECT user_id, 'FI', lemma, pos FROM %s`,
 		tmpTable, table,
 	)
-	if _, err := d.db.Exec(insertStmt); err != nil {
+	if _, err := tx.Exec(insertStmt); err != nil {
 		return err
 	}
-	if _, err := d.db.Exec(`DROP TABLE ` + table); err != nil {
+	if _, err := tx.Exec(`DROP TABLE ` + table); err != nil {
 		return err
 	}
-	if _, err := d.db.Exec(`ALTER TABLE ` + tmpTable + ` RENAME TO ` + table); err != nil {
+	if _, err := tx.Exec(`ALTER TABLE ` + tmpTable + ` RENAME TO ` + table); err != nil {
 		return err
 	}
-	return nil
+	return tx.Commit()
 }
 
 func (d *DB) ensureLangScopedCardsTable() error {
@@ -4260,10 +4963,11 @@ func (d *DB) ensureLangScopedCardsTable() error {
 		return nil
 	}
 
-	tx, err := d.db.Begin()
+	conn, tx, err := beginRebuildTx(d.db)
 	if err != nil {
 		return err
 	}
+	defer endRebuildTx(conn)
 	defer tx.Rollback()
 
 	if _, err := tx.Exec(`
@@ -4381,10 +5085,11 @@ func (d *DB) ensureSurfaceScopedCardsTable() error {
 		return err
 	}
 
-	tx, err := d.db.Begin()
+	conn, tx, err := beginRebuildTx(d.db)
 	if err != nil {
 		return err
 	}
+	defer endRebuildTx(conn)
 	defer tx.Rollback()
 
 	if _, err := tx.Exec(`

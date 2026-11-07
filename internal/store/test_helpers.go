@@ -37,3 +37,9 @@ func (d *DB) HasCardForTest(userID int64, lang, lemma, pos string) (bool, error)
 	).Scan(&n)
 	return n > 0, err
 }
+
+// CountFormsBySourceForTest counts forms rows with the given source.
+// Test-only inspection helper.
+func (d *DB) CountFormsBySourceForTest(source string, out *int) error {
+	return d.db.QueryRow(`SELECT COUNT(*) FROM forms WHERE source = ?`, source).Scan(out)
+}

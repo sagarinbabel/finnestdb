@@ -40,6 +40,11 @@ var ErrIssueNeedsClass = errors.New("issue must be triaged with an alpha class b
 // the required reason.
 var ErrQuarantineReasonRequired = errors.New("quarantine requires a reason")
 
+// ErrIssueChangedConcurrently is returned when another admin changed the
+// issue's status between this request reading it and writing the new one. The
+// caller should re-read and decide again rather than retrying blindly.
+var ErrIssueChangedConcurrently = errors.New("correction issue was changed by someone else; reload and try again")
+
 // IsValidAlphaClass reports whether c is one of the four alpha triage classes.
 func IsValidAlphaClass(c string) bool {
 	switch c {
@@ -337,59 +342,148 @@ func (d *DB) TriageCorrectionIssue(issueID int64, alphaClass, adminNote string) 
 // (ErrQuarantineReasonRequired). Suppression is applied by the review/new-card
 // and stats queries filtering on quarantined issues - see
 // suppressedCardPredicate / suppressedOccurrencePredicate.
+//
+// Legal only from open or reopened (CanTransitionIssueStatus). A fixed issue
+// that is still broken comes back as "reopened" via a new learner report, which
+// is what bumps reopened_count and lets the admin queue tell a regression from
+// a fresh case; allowing fixed -> quarantined directly is what used to leave a
+// row carrying both fixed_at and quarantined_at with nothing to say which was
+// current.
 func (d *DB) QuarantineCorrectionIssue(issueID, adminUserID int64, reason string) error {
+	return d.TriageAndQuarantineCorrectionIssue(issueID, adminUserID, "", "", reason)
+}
+
+// TriageAndQuarantineCorrectionIssue classifies (when alphaClass is non-empty)
+// and quarantines in ONE transaction.
+//
+// The admin UI offers "classify and quarantine" as a single action, and the
+// handler used to implement it as two sequential store calls. That was not
+// atomic despite a comment claiming it was: a failure between them left the
+// issue classified but still in circulation, which looks identical in the queue
+// to an issue an admin triaged and deliberately left live. Passing an empty
+// alphaClass quarantines an already-triaged issue.
+func (d *DB) TriageAndQuarantineCorrectionIssue(issueID, adminUserID int64, alphaClass, adminNote, reason string) error {
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
 		return ErrQuarantineReasonRequired
 	}
-	issue, err := d.GetCorrectionIssue(issueID)
+	alphaClass = strings.TrimSpace(alphaClass)
+	if alphaClass != "" && !IsValidAlphaClass(alphaClass) {
+		return fmt.Errorf("invalid alpha class %q", alphaClass)
+	}
+
+	tx, err := d.db.Begin()
 	if err != nil {
 		return err
 	}
-	if issue.AlphaClass == "" {
+	defer tx.Rollback()
+
+	status, currentClass, err := lockIssueState(tx, issueID)
+	if err != nil {
+		return err
+	}
+	if alphaClass != "" {
+		if _, err := tx.Exec(
+			`UPDATE correction_issues SET alpha_class = ?, admin_note = ? WHERE id = ?`,
+			alphaClass, strings.TrimSpace(adminNote), issueID,
+		); err != nil {
+			return err
+		}
+		currentClass = alphaClass
+	}
+	if currentClass == "" {
 		return ErrIssueNeedsClass
 	}
-	res, err := d.db.Exec(
+	if err := ValidateIssueTransition(status, IssueStatusQuarantined); err != nil {
+		return err
+	}
+
+	// Compare-and-swap on status: if another admin moved the issue between the
+	// read above and this write, the UPDATE matches no row and we report a
+	// conflict rather than clobbering their decision.
+	//
+	// fixed_at / fixed_by / fix_note are cleared because they describe a fix
+	// that this quarantine contradicts. Leaving them is what made a row claim
+	// it was both fixed and quarantined.
+	res, err := tx.Exec(
 		`UPDATE correction_issues
 		    SET status = 'quarantined',
 		        quarantined_at = CURRENT_TIMESTAMP,
 		        quarantined_by = ?,
-		        quarantine_reason = ?
-		  WHERE id = ?`,
-		adminUserID, reason, issueID,
+		        quarantine_reason = ?,
+		        fixed_at = NULL,
+		        fixed_by = NULL,
+		        fix_note = NULL
+		  WHERE id = ? AND status = ?`,
+		adminUserID, reason, issueID, status,
 	)
 	if err != nil {
 		return err
 	}
-	return errIfNoRows(res)
+	if err := errIfNoRows(res); err != nil {
+		return ErrIssueChangedConcurrently
+	}
+	return tx.Commit()
 }
 
-// RestoreCorrectionIssue marks a quarantined issue fixed, returning its scoped
-// content to circulation. Because suppression is a live query filter (no card
-// or scheduler rows are deleted at quarantine time), restoring is a pure status
-// flip: the original card_state scheduler state is untouched throughout, so a
-// restored card resumes with its existing due date and history.
+// RestoreCorrectionIssue marks an issue fixed, returning its scoped content to
+// circulation. Because suppression is a live query filter (no card or scheduler
+// rows are deleted at quarantine time), restoring is a pure status flip: the
+// original card_state scheduler state is untouched throughout, so a restored
+// card resumes with its existing due date and history.
+//
+// Legal from open, quarantined or reopened. open -> fixed is a real case (an
+// issue triaged as source_extraction_issue and fixed upstream never needed
+// suppression), which is why quarantined_at stays NULL for those rows rather
+// than being back-filled: "was this ever suppressed?" has to stay answerable.
 func (d *DB) RestoreCorrectionIssue(issueID, adminUserID int64, fixNote string) error {
-	issue, err := d.GetCorrectionIssue(issueID)
+	tx, err := d.db.Begin()
 	if err != nil {
 		return err
 	}
-	if issue.AlphaClass == "" {
+	defer tx.Rollback()
+
+	status, alphaClass, err := lockIssueState(tx, issueID)
+	if err != nil {
+		return err
+	}
+	if alphaClass == "" {
 		return ErrIssueNeedsClass
 	}
-	res, err := d.db.Exec(
+	if err := ValidateIssueTransition(status, IssueStatusFixed); err != nil {
+		return err
+	}
+	res, err := tx.Exec(
 		`UPDATE correction_issues
 		    SET status = 'fixed',
 		        fixed_at = CURRENT_TIMESTAMP,
 		        fixed_by = ?,
 		        fix_note = ?
-		  WHERE id = ?`,
-		adminUserID, strings.TrimSpace(fixNote), issueID,
+		  WHERE id = ? AND status = ?`,
+		adminUserID, strings.TrimSpace(fixNote), issueID, status,
 	)
 	if err != nil {
 		return err
 	}
-	return errIfNoRows(res)
+	if err := errIfNoRows(res); err != nil {
+		return ErrIssueChangedConcurrently
+	}
+	return tx.Commit()
+}
+
+// lockIssueState reads the issue's current status and alpha class inside a
+// transaction, returning sql.ErrNoRows when the issue does not exist. Callers
+// pair it with a status-guarded UPDATE so the read is advisory, not a lock.
+func lockIssueState(tx *sql.Tx, issueID int64) (status, alphaClass string, err error) {
+	var class sql.NullString
+	err = tx.QueryRow(
+		`SELECT status, alpha_class FROM correction_issues WHERE id = ?`,
+		issueID,
+	).Scan(&status, &class)
+	if err != nil {
+		return "", "", err
+	}
+	return status, strings.TrimSpace(class.String), nil
 }
 
 func errIfNoRows(res sql.Result) error {

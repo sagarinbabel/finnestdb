@@ -327,6 +327,13 @@ type ParseFeedbackReviewRequest struct {
 	ProposedLemma        string `json:"proposed_lemma"`
 	ProposedPOS          string `json:"proposed_pos"`
 	ProposedGrammarLabel string `json:"proposed_grammar_label"`
+	// Retract takes back an ALREADY-ACCEPTED correction: it restores whatever
+	// the acceptance displaced in the dictionary and then sets Status
+	// (rejected or needs_follow_up). Accepting is otherwise one-way, because a
+	// plain status change would leave the custom_overrides lexical row in
+	// place at priority 100 and the parser would keep serving the analysis the
+	// admin just rejected.
+	Retract bool `json:"retract"`
 }
 
 type ParseSessionsResponse struct {
@@ -649,6 +656,9 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	user, err := a.store.GetUserByEmail(email)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			// Charge unknown addresses too, so probing for valid accounts is
+			// rate-limited the same way wrong passwords are.
+			a.rateLimits.noteFailedLogin(email)
 			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 			return
 		}
@@ -657,10 +667,12 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user.PasswordHash == "" {
+		a.rateLimits.noteFailedLogin(email)
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
 	if !auth.VerifyPassword(req.Password, user.PasswordHash) {
+		a.rateLimits.noteFailedLogin(email)
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
@@ -669,6 +681,8 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unable to create session", http.StatusInternalServerError)
 		return
 	}
+	// Correct credentials clear the account's failed-attempt budget.
+	a.rateLimits.clearLoginFailures(email)
 
 	writeJSON(w, http.StatusOK, LoginResponse{
 		Authenticated: true,
@@ -2489,6 +2503,12 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// req.Parser is deliberately NOT validated here: parsecore.Analyze /
+	// AnalyzeChapters check it against the parser registry, which is the single
+	// source of truth for which parsers exist, and the error is mapped to 400
+	// below. Duplicating the list in this handler would create exactly the kind
+	// of second definition that drifts.
+
 	hasText := len(req.Text) > 0
 	hasChapters := len(req.Chapters) > 0
 	if hasText == hasChapters {
@@ -2803,6 +2823,15 @@ func (a *API) handleParseFeedback(w http.ResponseWriter, r *http.Request, auth *
 		http.Error(w, "Parser and surface are required", http.StatusBadRequest)
 		return
 	}
+	// Validate against the parser registry before the value reaches the
+	// correction_issues scope fingerprint. This endpoint never calls
+	// parsecore.Analyze, so it was the one path where an arbitrary parser
+	// string reached the database - opening a second issue row for an analysis
+	// already tracked under the real parser name.
+	if !parsecore.IsRegisteredParser(parser) {
+		http.Error(w, fmt.Sprintf("unsupported parser %q", parser), http.StatusBadRequest)
+		return
+	}
 	// Flag-only reports capture "this looks wrong, I don't know the fix" and
 	// deliberately carry no proposed correction. A concrete correction still
 	// requires both proposed lemma and POS.
@@ -2949,26 +2978,67 @@ func (a *API) handleAdminParseFeedback(w http.ResponseWriter, r *http.Request, a
 				GrammarLabel: strings.TrimSpace(req.ProposedGrammarLabel),
 			}
 		}
+		// Taking back an acceptance is a different operation from reviewing a
+		// submitted report, because the acceptance wrote a custom_overrides
+		// lexical row that a status change alone would leave in the
+		// dictionary. `retract: true` routes to the store helper that restores
+		// what the override displaced and then moves the status.
+		//
+		// Without this branch, the existing Reject / Follow up buttons simply
+		// broke for accepted rows once ReviewParseFeedback started refusing
+		// that transition: the admin got an opaque 500 and had no way at all
+		// to undo an accidental acceptance through the UI.
+		if req.Retract {
+			if req.Status == store.FeedbackStatusAccepted {
+				http.Error(w, "Retraction must land on rejected or needs_follow_up", http.StatusBadRequest)
+				return
+			}
+			goldAffected, err := a.store.RetractParseFeedbackOverride(
+				feedbackID, auth.UserID, req.Status, strings.TrimSpace(req.ReviewNote))
+			if err != nil {
+				a.writeParseFeedbackError(w, err)
+				return
+			}
+			writeJSON(w, http.StatusOK, map[string]any{
+				"status": req.Status,
+				// Surfaced rather than silently handled: a gold candidate may
+				// already have been exported into the frozen gold sets, where
+				// removing it would move eval baselines. That is a maintainer
+				// decision, not something a retraction should do on its own.
+				"gold_candidate_needs_review": goldAffected,
+			})
+			return
+		}
+
 		if err := a.store.ReviewParseFeedback(feedbackID, auth.UserID, req.Status, strings.TrimSpace(req.ReviewNote), correction); err != nil {
-			if err == sql.ErrNoRows {
-				http.Error(w, "Parse feedback not found", http.StatusNotFound)
-				return
-			}
-			if errors.Is(err, store.ErrCorrectionOnNonFlagOnly) {
-				http.Error(w, err.Error(), http.StatusBadRequest)
-				return
-			}
-			// Phase-4 eval gate: the override would contradict the frozen
-			// gold sets. Nothing was applied; surface the reason so the
-			// admin can fix the gold set first if the gold itself is wrong.
-			if errors.Is(err, store.ErrOverrideConflictsWithGold) {
-				http.Error(w, err.Error(), http.StatusConflict)
-				return
-			}
-			http.Error(w, "Database error", http.StatusInternalServerError)
+			a.writeParseFeedbackError(w, err)
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]string{"status": req.Status})
+	}
+}
+
+// writeParseFeedbackError maps store errors from the admin review/retract paths
+// onto HTTP statuses. Kept in one place so both paths answer the same way.
+func (a *API) writeParseFeedbackError(w http.ResponseWriter, err error) {
+	switch {
+	case err == sql.ErrNoRows:
+		http.Error(w, "Parse feedback not found", http.StatusNotFound)
+	case errors.Is(err, store.ErrCorrectionOnNonFlagOnly):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+	// Phase-4 eval gate: the override would contradict the frozen gold sets.
+	// Nothing was applied; surface the reason so the admin can fix the gold
+	// set first if the gold itself is wrong.
+	case errors.Is(err, store.ErrOverrideConflictsWithGold):
+		http.Error(w, err.Error(), http.StatusConflict)
+	// 409, not 500: the request is well-formed but the row is not in a state
+	// this action applies to. The message names what to do instead (retract).
+	case errors.Is(err, store.ErrIllegalTransition), errors.Is(err, store.ErrInvalidState):
+		http.Error(w, err.Error(), http.StatusConflict)
+	case errors.Is(err, store.ErrFeedbackNotAccepted):
+		http.Error(w, err.Error(), http.StatusConflict)
+	default:
+		http.Error(w, "Database error", http.StatusInternalServerError)
 	}
 }
 
@@ -3047,22 +3117,20 @@ func (a *API) handleAdminCorrectionIssues(w http.ResponseWriter, r *http.Request
 		case "quarantine":
 			// The UI requires a class before enabling this action; enforce it
 			// server-side too. Triage-in-the-same-call is supported so an admin
-			// can classify and quarantine atomically.
-			if strings.TrimSpace(req.AlphaClass) != "" {
-				if !store.IsValidAlphaClass(strings.TrimSpace(req.AlphaClass)) {
-					http.Error(w, "alpha_class must be parser_issue, bad_card_content, source_extraction_issue, or not_sure", http.StatusBadRequest)
-					return
-				}
-				if err := a.store.TriageCorrectionIssue(issueID, req.AlphaClass, req.AdminNote); err != nil {
-					a.writeCorrectionIssueError(w, err)
-					return
-				}
+			// can classify and quarantine atomically - which now really is one
+			// transaction in the store, rather than two sequential calls that
+			// could half-apply.
+			if strings.TrimSpace(req.AlphaClass) != "" && !store.IsValidAlphaClass(strings.TrimSpace(req.AlphaClass)) {
+				http.Error(w, "alpha_class must be parser_issue, bad_card_content, source_extraction_issue, or not_sure", http.StatusBadRequest)
+				return
 			}
 			if strings.TrimSpace(req.Reason) == "" {
 				http.Error(w, "A reason is required to quarantine", http.StatusBadRequest)
 				return
 			}
-			if err := a.store.QuarantineCorrectionIssue(issueID, auth.UserID, req.Reason); err != nil {
+			if err := a.store.TriageAndQuarantineCorrectionIssue(
+				issueID, auth.UserID, req.AlphaClass, req.AdminNote, req.Reason,
+			); err != nil {
 				a.writeCorrectionIssueError(w, err)
 				return
 			}
@@ -3092,6 +3160,12 @@ func (a *API) writeCorrectionIssueError(w http.ResponseWriter, err error) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	case errors.Is(err, store.ErrQuarantineReasonRequired):
 		http.Error(w, err.Error(), http.StatusBadRequest)
+	case errors.Is(err, store.ErrIllegalTransition), errors.Is(err, store.ErrInvalidState):
+		// 409: the request is well-formed, but the issue is not in a state
+		// this action applies to (e.g. "restore" on an already-fixed issue).
+		http.Error(w, err.Error(), http.StatusConflict)
+	case errors.Is(err, store.ErrIssueChangedConcurrently):
+		http.Error(w, err.Error(), http.StatusConflict)
 	default:
 		http.Error(w, "Database error", http.StatusInternalServerError)
 	}
