@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"finnestdb/corpus_pipeline/internal/cli"
 	"finnestdb/corpus_pipeline/internal/fetcher"
@@ -58,6 +59,15 @@ func main() {
 		log.Fatalf("no sources in registry for lang=%s only=%s", langLower, *only)
 	}
 
+	// Track failures so the process can exit nonzero. Previously every
+	// per-source error printed "FAIL" to stderr and `continue`d, and main
+	// returned 0 - so a partially fetched corpus was indistinguishable from a
+	// complete one to the next stage and to any `make` target or CI step
+	// chaining them. Downstream stages infer "this source was fetched" purely
+	// from file presence, so a missing source silently shrinks the corpus
+	// rather than stopping the pipeline.
+	var failed []string
+
 	for _, src := range registry {
 		if src.URL == "" {
 			fmt.Fprintf(os.Stderr, "[fetch %s] %s: folder-driven (no URL) - skipped\n", langLower, src.Slug)
@@ -81,6 +91,7 @@ func main() {
 			size, err := fetcher.HEAD(src.URL)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "[fetch %s] %s: HEAD FAIL %v\n", langLower, src.Slug, err)
+				failed = append(failed, src.Slug)
 				continue
 			}
 			fmt.Fprintf(os.Stderr, "[fetch %s] %s: HEAD OK content-length=%d url=%s\n", langLower, src.Slug, size, src.URL)
@@ -90,9 +101,22 @@ func main() {
 		n, err := fetcher.Download(src.URL, outPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[fetch %s] %s: FAIL %v\n", langLower, src.Slug, err)
+			failed = append(failed, src.Slug)
 			continue
 		}
 		fmt.Fprintf(os.Stderr, "[fetch %s] %s: %d bytes → %s\n", langLower, src.Slug, n, outPath)
+	}
+
+	// Keep fetching every source (one dead mirror should not block the other
+	// twenty-nine) but report the failure in the exit status, so a human or a
+	// make target cannot mistake a partial corpus for a complete one.
+	if len(failed) > 0 {
+		fmt.Fprintf(os.Stderr, "\n[fetch %s] %d of %d source(s) FAILED: %s\n",
+			langLower, len(failed), len(registry), strings.Join(failed, ", "))
+		fmt.Fprintf(os.Stderr, "[fetch %s] the corpus under %s is INCOMPLETE - "+
+			"re-run fetchcorpus before extracting, or extraction will silently "+
+			"produce a smaller corpus than intended\n", langLower, roots.DataRoot)
+		os.Exit(1)
 	}
 }
 

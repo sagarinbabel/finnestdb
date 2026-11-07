@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -190,4 +191,50 @@ func HEAD(urlStr string) (int64, error) {
 		return 0, fmt.Errorf("HEAD %s: status %s", urlStr, resp.Status)
 	}
 	return resp.ContentLength, nil
+}
+
+// VerifyRawDir re-hashes every file under dir/raw/ that has a .sha256 sidecar
+// and reports the ones whose bytes no longer match.
+//
+// fetcher.Download writes a sidecar beside every file it fetches, but until
+// now nothing downstream read it: extractcorpus and aggregatecorpus inferred
+// "this source was fetched successfully" purely from the file being present.
+// A download truncated by a dropped connection on the final attempt, a disk
+// that filled mid-write, or a file edited by hand therefore flowed straight
+// through extraction into the learner artifacts, and the only symptom was a
+// corpus quietly smaller or worse than intended.
+//
+// Files without a sidecar are skipped, not failed: folder-driven sources
+// (EPUBs the maintainer drops in by hand) legitimately have none.
+//
+// Returns the list of mismatching paths; an empty list means everything that
+// could be checked is intact.
+func VerifyRawDir(dir string) ([]string, error) {
+	rawDir := filepath.Join(dir, "raw")
+	entries, err := os.ReadDir(rawDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var bad []string
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sha256") {
+			continue
+		}
+		sidecar := filepath.Join(rawDir, e.Name())
+		target := strings.TrimSuffix(sidecar, ".sha256")
+		ok, err := verifySidecar(target, sidecar)
+		if err != nil {
+			// A sidecar with no file beside it is itself a failure: the fetch
+			// recorded a hash and the payload is gone.
+			bad = append(bad, fmt.Sprintf("%s (%v)", target, err))
+			continue
+		}
+		if !ok {
+			bad = append(bad, target+" (sha256 mismatch)")
+		}
+	}
+	return bad, nil
 }

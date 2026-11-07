@@ -649,6 +649,9 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	user, err := a.store.GetUserByEmail(email)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			// Charge unknown addresses too, so probing for valid accounts is
+			// rate-limited the same way wrong passwords are.
+			a.rateLimits.noteFailedLogin(email)
 			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 			return
 		}
@@ -657,10 +660,12 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user.PasswordHash == "" {
+		a.rateLimits.noteFailedLogin(email)
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
 	if !auth.VerifyPassword(req.Password, user.PasswordHash) {
+		a.rateLimits.noteFailedLogin(email)
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
@@ -669,6 +674,8 @@ func (a *API) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unable to create session", http.StatusInternalServerError)
 		return
 	}
+	// Correct credentials clear the account's failed-attempt budget.
+	a.rateLimits.clearLoginFailures(email)
 
 	writeJSON(w, http.StatusOK, LoginResponse{
 		Authenticated: true,
@@ -2489,6 +2496,12 @@ func (a *API) HandleParse(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// req.Parser is deliberately NOT validated here: parsecore.Analyze /
+	// AnalyzeChapters check it against the parser registry, which is the single
+	// source of truth for which parsers exist, and the error is mapped to 400
+	// below. Duplicating the list in this handler would create exactly the kind
+	// of second definition that drifts.
+
 	hasText := len(req.Text) > 0
 	hasChapters := len(req.Chapters) > 0
 	if hasText == hasChapters {
@@ -2803,6 +2816,15 @@ func (a *API) handleParseFeedback(w http.ResponseWriter, r *http.Request, auth *
 		http.Error(w, "Parser and surface are required", http.StatusBadRequest)
 		return
 	}
+	// Validate against the parser registry before the value reaches the
+	// correction_issues scope fingerprint. This endpoint never calls
+	// parsecore.Analyze, so it was the one path where an arbitrary parser
+	// string reached the database - opening a second issue row for an analysis
+	// already tracked under the real parser name.
+	if !parsecore.IsRegisteredParser(parser) {
+		http.Error(w, fmt.Sprintf("unsupported parser %q", parser), http.StatusBadRequest)
+		return
+	}
 	// Flag-only reports capture "this looks wrong, I don't know the fix" and
 	// deliberately carry no proposed correction. A concrete correction still
 	// requires both proposed lemma and POS.
@@ -3047,22 +3069,20 @@ func (a *API) handleAdminCorrectionIssues(w http.ResponseWriter, r *http.Request
 		case "quarantine":
 			// The UI requires a class before enabling this action; enforce it
 			// server-side too. Triage-in-the-same-call is supported so an admin
-			// can classify and quarantine atomically.
-			if strings.TrimSpace(req.AlphaClass) != "" {
-				if !store.IsValidAlphaClass(strings.TrimSpace(req.AlphaClass)) {
-					http.Error(w, "alpha_class must be parser_issue, bad_card_content, source_extraction_issue, or not_sure", http.StatusBadRequest)
-					return
-				}
-				if err := a.store.TriageCorrectionIssue(issueID, req.AlphaClass, req.AdminNote); err != nil {
-					a.writeCorrectionIssueError(w, err)
-					return
-				}
+			// can classify and quarantine atomically - which now really is one
+			// transaction in the store, rather than two sequential calls that
+			// could half-apply.
+			if strings.TrimSpace(req.AlphaClass) != "" && !store.IsValidAlphaClass(strings.TrimSpace(req.AlphaClass)) {
+				http.Error(w, "alpha_class must be parser_issue, bad_card_content, source_extraction_issue, or not_sure", http.StatusBadRequest)
+				return
 			}
 			if strings.TrimSpace(req.Reason) == "" {
 				http.Error(w, "A reason is required to quarantine", http.StatusBadRequest)
 				return
 			}
-			if err := a.store.QuarantineCorrectionIssue(issueID, auth.UserID, req.Reason); err != nil {
+			if err := a.store.TriageAndQuarantineCorrectionIssue(
+				issueID, auth.UserID, req.AlphaClass, req.AdminNote, req.Reason,
+			); err != nil {
 				a.writeCorrectionIssueError(w, err)
 				return
 			}
@@ -3092,6 +3112,12 @@ func (a *API) writeCorrectionIssueError(w http.ResponseWriter, err error) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	case errors.Is(err, store.ErrQuarantineReasonRequired):
 		http.Error(w, err.Error(), http.StatusBadRequest)
+	case errors.Is(err, store.ErrIllegalTransition), errors.Is(err, store.ErrInvalidState):
+		// 409: the request is well-formed, but the issue is not in a state
+		// this action applies to (e.g. "restore" on an already-fixed issue).
+		http.Error(w, err.Error(), http.StatusConflict)
+	case errors.Is(err, store.ErrIssueChangedConcurrently):
+		http.Error(w, err.Error(), http.StatusConflict)
 	default:
 		http.Error(w, "Database error", http.StatusInternalServerError)
 	}

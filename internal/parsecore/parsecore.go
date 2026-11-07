@@ -233,6 +233,25 @@ func SupportedParsers() []string {
 	return names
 }
 
+// IsRegisteredParser reports whether name is a parser the production parse
+// path will accept. An empty name means the "basic" default, matching Analyze.
+//
+// Exported so callers that persist a parser name WITHOUT running a parse can
+// validate against the same registry Analyze uses, rather than hardcoding
+// their own copy of the list. The parse-feedback endpoint is the one that
+// needs this: it never calls Analyze, but it writes the name into
+// parse_sessions.parser and into the correction_issues scope fingerprint
+// (UNIQUE(lang, parser, norm_surface, lemma, pos)), so an arbitrary string
+// there opens a duplicate issue row for an analysis already tracked under the
+// real parser name - defeating the deduplication that ledger exists for.
+func IsRegisteredParser(name string) bool {
+	if name == "" {
+		return true
+	}
+	_, ok := registry()[name]
+	return ok
+}
+
 func registry() map[string]parser {
 	return map[string]parser{
 		"basic":  dictionaryParser{name: "basic", lookupMode: "basic", analyzer: parserffi.AnalyzeText},
