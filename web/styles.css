@@ -2505,40 +2505,710 @@ body[data-auth-state="loading"] [data-role-show] { display: none !important; }
     max-width: 36rem;
     margin: 0 auto;
 }
-.about-steps {
-    display: grid;
-    gap: 1.25rem;
-    margin-bottom: 3rem;
+/* ── About · "why pre-learning works" ───────────────────────────
+   The coverage-curve figure and the argument around it. Series colors
+   are their own per-skin tokens rather than raw --accent/--known: the
+   two hues have to stay inside a lightness band and clear a
+   colorblind-separation floor against the chart surface in every
+   skin/mode, which the role tokens are not chosen for. Identity is
+   never carried by color alone - each band is also direct-labeled,
+   dashed vs solid, and never crosses the other.
+   ------------------------------------------------------------------ */
+.about-why {
+    --fig-spoken: oklch(0.64 0.19 38);
+    --fig-written: oklch(0.64 0.11 155);
+    margin-bottom: 3.5rem;
 }
-.about-step {
-    background: var(--card-bg);
+[data-skin="ink"][data-theme="light"] .about-why {
+    --fig-spoken: oklch(0.55 0.19 35);
+    --fig-written: oklch(0.55 0.11 155);
+}
+[data-skin="aalto"] .about-why,
+[data-skin="aalto"][data-theme="light"] .about-why {
+    --fig-spoken: oklch(0.480 0.115 248);
+    --fig-written: oklch(0.55 0.10 155);
+}
+[data-skin="aalto"][data-theme="dark"] .about-why {
+    --fig-spoken: oklch(0.64 0.13 245);
+    --fig-written: oklch(0.64 0.11 155);
+}
+
+.about-why h2,
+.about-how-heading {
+    font-family: var(--font-disp, inherit);
+    font-size: clamp(22px, 3vw, 28px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin: 0 0 12px;
+}
+.about-how-heading {
+    margin-bottom: 20px;
+}
+.about-why-lede,
+.about-why-read {
+    max-width: 62ch;
+    margin: 0 0 14px;
+    color: var(--text-secondary);
+    font-size: 15px;
+    line-height: 1.65;
+}
+.about-why-read em {
+    font-style: italic;
+    color: var(--text-primary);
+}
+
+.cov-fig {
+    margin: 24px 0 26px;
+}
+.cov-frame {
+    padding: 18px 20px 14px;
+    background: var(--bg-secondary);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.5rem 1.5rem 1.5rem 4.5rem;
-    position: relative;
+    border-radius: var(--r-md, 12px);
 }
-.about-step-num {
-    position: absolute;
-    left: 1.25rem;
-    top: 1.25rem;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 50%;
-    background: var(--accent);
-    color: #fff;
+.cov-title {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.cov-chart {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+/* Recessive grid; the 0% baseline is the only structural line. */
+.cov-grid path {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 1;
+}
+.cov-axis {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 1.5;
+}
+.cov-chart text {
+    font-family: var(--font-mono, inherit);
+    font-size: 11px;
+    fill: var(--text-secondary);
+}
+.cov-ylab text { text-anchor: end; }
+.cov-xlab text { text-anchor: middle; }
+.cov-axis-title,
+.cov-marker-lab {
+    text-anchor: middle;
+    letter-spacing: 0.04em;
+}
+.cov-direct text {
+    font-family: var(--font-sans, inherit);
+    font-size: 12px;
+    fill: var(--text-primary);
+}
+
+.cov-band { stroke: none; }
+.cov-band.cov-spoken { fill: var(--fig-spoken); opacity: 0.18; }
+.cov-band.cov-written { fill: var(--fig-written); opacity: 0.18; }
+.cov-edge {
+    fill: none;
+    stroke-width: 1.75;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.cov-spoken-edge { stroke: var(--fig-spoken); }
+.cov-written-edge { stroke: var(--fig-written); stroke-dasharray: 6 4; }
+
+.cov-marker {
+    fill: none;
+    stroke: var(--text-secondary);
+    stroke-width: 1;
+    stroke-dasharray: 3 4;
+    opacity: 0.7;
+}
+.cov-plate {
+    fill: var(--bg-secondary);
+    stroke: var(--border);
+    stroke-width: 1;
+}
+.cov-value {
+    font-weight: 600;
+    fill: var(--text-primary);
+}
+
+.cov-legend {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 18px;
+    margin: 10px 0 0;
+    padding: 0;
+    font-size: 12px;
+    color: var(--text-primary);
+}
+.cov-legend li {
     display: flex;
     align-items: center;
-    justify-content: center;
-    font-weight: 700;
+    gap: 7px;
 }
-.about-step h3 {
-    margin: 0 0 0.4rem;
-    font-size: 1.1rem;
+.cov-key {
+    width: 16px;
+    height: 0;
+    border-top: 2px solid var(--fig-spoken);
 }
-.about-step p {
+.cov-key-written {
+    border-top-style: dashed;
+    border-top-color: var(--fig-written);
+}
+.cov-legend-note {
     color: var(--text-secondary);
+    font-family: var(--font-mono, inherit);
+    font-size: 10.5px;
+    letter-spacing: 0.03em;
+}
+
+.cov-fig figcaption {
+    margin: 12px 0 0;
+    max-width: 62ch;
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    line-height: 1.6;
+}
+.cov-data {
+    margin-top: 10px;
+    font-size: 12.5px;
+}
+.cov-data summary {
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-family: var(--font-mono, inherit);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.cov-data-scroll {
+    overflow-x: auto;
+    margin-top: 10px;
+}
+.cov-data table {
+    border-collapse: collapse;
+    font-size: 12.5px;
+    color: var(--text-primary);
+}
+.cov-data caption {
+    text-align: left;
+    color: var(--text-secondary);
+    font-size: 12px;
+    padding-bottom: 6px;
+}
+.cov-data th,
+.cov-data td {
+    padding: 5px 12px 5px 0;
+    text-align: right;
+    white-space: nowrap;
+    border-bottom: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+}
+.cov-data thead th,
+.cov-data tbody th {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+.cov-data tbody th,
+.cov-data caption {
+    text-align: left;
+}
+
+/* ── The story strip ──
+   Four panels: one reader, one text, before and after. Each animated
+   element's natural state is its END state and the keyframes run from a
+   start state via animation-fill-mode: backwards, so switching motion
+   off (reduced-motion, or an old engine) leaves the finished picture
+   rather than a half-drawn one. */
+.story-strip {
+    list-style: none;
+    margin: 22px 0 24px;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
+}
+.story-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.story-panel p {
     margin: 0;
-    font-size: 0.95rem;
+    color: var(--text-secondary);
+    font-size: 13.5px;
+    line-height: 1.55;
+}
+.story-panel strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+.story-art {
+    padding: 10px 10px 0;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md, 12px);
+}
+.story-art svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+/* Mari. Ink outline, paper fill, accent beanie and scarf. */
+.story-art .st-body {
+    fill: var(--bg-tertiary);
+    stroke: var(--text-primary);
+    stroke-width: 2;
+}
+.story-art .st-head {
+    fill: var(--bg-primary);
+    stroke: var(--text-primary);
+    stroke-width: 2;
+}
+.story-art .st-hat { fill: var(--accent); }
+.story-art .st-scarf { fill: var(--accent); opacity: 0.85; }
+.story-art .st-brim {
+    fill: none;
+    stroke: var(--text-primary);
+    stroke-width: 2;
+}
+.story-art .st-eyes circle { fill: var(--text-primary); }
+.story-art .st-mouth,
+.story-art .st-mouth-o {
+    fill: none;
+    stroke: var(--text-primary);
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+/* The text Mari is looking at, and what happens to it. */
+.story-art .st-page rect {
+    fill: var(--bg-primary);
+    stroke: var(--border);
+    stroke-width: 1;
+}
+.story-art .st-text rect {
+    fill: var(--text-primary);
+    opacity: 0.18;
+}
+.story-art .st-repeat rect { fill: var(--accent); }
+.story-art .st-known rect {
+    fill: var(--known, var(--success));
+    opacity: 0.85;
+}
+.story-art .st-veil { fill: var(--bg-primary); }
+.story-art .st-cards rect { fill: var(--bg-primary); stroke: var(--border); stroke-width: 1; }
+.story-art .st-card-line {
+    fill: var(--text-primary);
+    stroke: none;
+    opacity: 0.22;
+}
+.story-art .st-check {
+    fill: none;
+    stroke: var(--known, var(--success));
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.story-art .st-ask text {
+    fill: var(--accent);
+    font-family: var(--font-disp, inherit);
+    font-size: 21px;
+    font-weight: 600;
+    text-anchor: middle;
+}
+.story-art .st-tag {
+    fill: var(--text-secondary);
+    font-family: var(--font-mono, inherit);
+    font-size: 11px;
+    text-anchor: middle;
+}
+.story-art .st-meter-track {
+    fill: var(--text-primary);
+    opacity: 0.12;
+}
+.story-art .st-meter-fill {
+    fill: var(--known, var(--success));
+    transform-box: fill-box;
+    transform-origin: left center;
+    transform: scaleX(0.7);
+}
+
+/* Idle blink, offset per panel so the four don't blink in unison. */
+@keyframes st-blink {
+    0%, 93%, 100% { transform: scaleY(1); }
+    96% { transform: scaleY(0.1); }
+}
+.story-art .st-eyes circle {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: st-blink 5.5s ease-in-out infinite;
+}
+.story-panel:nth-child(2) .st-eyes circle { animation-delay: 1.4s; }
+.story-panel:nth-child(3) .st-eyes circle { animation-delay: 2.8s; }
+.story-panel:nth-child(4) .st-eyes circle { animation-delay: 4.1s; }
+
+/* Panel 1: the question marks drift. */
+@keyframes st-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+.story-art .st-ask text { animation: st-bob 3.4s ease-in-out infinite; }
+.story-art .st-ask text:nth-child(2) { animation-delay: 0.6s; }
+.story-art .st-ask text:nth-child(3) { animation-delay: 1.2s; }
+
+/* Panel 2: the same word lights up, line after line. */
+@keyframes st-pulse {
+    0%, 55%, 100% { opacity: 1; }
+    25% { opacity: 0.3; }
+}
+.story-art .st-repeat rect { animation: st-pulse 2.7s ease-in-out infinite; }
+.story-art .st-repeat rect:nth-child(2) { animation-delay: 0.9s; }
+.story-art .st-repeat rect:nth-child(3) { animation-delay: 1.8s; }
+
+/* Panel 3: the cards get ticked off, one by one. */
+@keyframes st-tick {
+    from { opacity: 0; transform: scale(0.4); }
+    to { opacity: 1; transform: none; }
+}
+.story-art .st-check {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: st-tick 0.45s 0.4s cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+}
+.story-art .st-card:nth-child(2) .st-check { animation-delay: 0.9s; }
+.story-art .st-card:nth-child(3) .st-check { animation-delay: 1.4s; }
+
+/* Panel 4: the page turns readable and the meter climbs. */
+@keyframes st-reveal {
+    from { transform: translateX(0); }
+    to { transform: translateX(110px); }
+}
+.story-art .st-veil {
+    transform: translateX(110px);
+    animation: st-reveal 1.5s 0.5s ease-in-out backwards;
+}
+@keyframes st-fill {
+    from { transform: scaleX(0.2); }
+    to { transform: scaleX(0.7); }
+}
+.story-art .st-meter-fill { animation: st-fill 1.5s 0.5s ease-out backwards; }
+
+@media (prefers-reduced-motion: reduce) {
+    .story-art .st-eyes circle,
+    .story-art .st-ask text,
+    .story-art .st-repeat rect,
+    .story-art .st-check,
+    .story-art .st-veil,
+    .story-art .st-meter-fill {
+        animation: none;
+    }
+}
+
+.cov-lead-h {
+    margin: 26px 0 8px;
+    font-family: var(--font-disp, inherit);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+@media (max-width: 900px) {
+    .story-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+    .story-strip { grid-template-columns: minmax(0, 1fr); gap: 22px; }
+    .story-art { max-width: 340px; }
+}
+@media (max-width: 620px) {
+    .cov-frame { padding: 14px 12px 10px; }
+    /* The chart holds its aspect ratio, so at 375px the type inside it would
+       shrink below legibility - let it scroll instead of shrink. */
+    .cov-chart-scroll { overflow-x: auto; }
+    .cov-chart { min-width: 520px; }
+}
+
+/* ── About · "how it works" flow diagram ────────────────────────
+   The four steps read left-to-right as a flow of stations, each with
+   a small SVG specimen (paste sheet, parsed word chips, deck stack,
+   read-and-measure surface), chevron connectors in the grid gaps, and
+   a dashed return bracket underneath for the loop back to step 1.
+   Everything is token-driven so it holds under both skins (ink /
+   aalto) and both modes; the specimens carry no text of their own
+   beyond the illustrative word forms.
+   ------------------------------------------------------------------ */
+.about-steps.about-flow {
+    --flow-gap: 34px;
+    margin-bottom: 3rem;
+}
+.flow-track {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0 var(--flow-gap);
+}
+.flow-station {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Specimen frame. Sits slightly off the page ground so the four
+   stations read as one row of exhibits. */
+.flow-art {
+    position: relative;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md, 12px);
+}
+.flow-art svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+/* Connectors live in the grid gap, centred on the specimen frames:
+   a hairline across the gap plus an accent chevron at its middle. */
+.flow-station:not(:last-child) .flow-art::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 100%;
+    width: var(--flow-gap);
+    border-top: 1px dashed var(--border);
+    transform: translateY(-50%);
+}
+.flow-station:not(:last-child) .flow-art::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: calc(100% + (var(--flow-gap) / 2));
+    width: 6px;
+    height: 6px;
+    border-top: 1.5px solid var(--accent);
+    border-right: 1.5px solid var(--accent);
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.flow-copy h3 {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    margin: 0 0 6px;
+    font-family: var(--font-disp, inherit);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+}
+.flow-copy p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 13.5px;
+    line-height: 1.55;
+}
+.flow-num {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 21px;
+    height: 21px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--bg-primary);
+    font-family: var(--font-mono, inherit);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    transform: translateY(2px);
+}
+
+/* Return path: a dashed bracket dropping out of the row, running back
+   under it, and pointing up into step 1 again. */
+.flow-return {
+    position: relative;
+    height: 42px;
+    margin: 24px 0 0;
+    border: 1px dashed var(--border);
+    border-top: 0;
+    border-radius: 0 0 var(--r-lg, 22px) var(--r-lg, 22px);
+}
+.flow-return::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 6px;
+    height: 6px;
+    border-top: 1.5px solid var(--accent);
+    border-left: 1.5px solid var(--accent);
+    transform: translate(-50%, -1px) rotate(45deg);
+}
+.flow-return span {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translate(-50%, 50%);
+    padding: 0 12px;
+    background: var(--bg-primary);
+    font-family: var(--font-mono, inherit);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* ── Specimen internals ──
+   Shared vocabulary: .fl-line is body text, .fl-sheet / .fl-chip /
+   .fl-card-face are paper, and word colouring reuses the POS tag
+   tokens and the reading surface's known / learning / new tokens. */
+.flow-art text {
+    font-family: var(--font-sans, inherit);
+    font-size: 12px;
+    fill: var(--text-primary);
+}
+.flow-art .fl-line rect {
+    fill: var(--text-primary);
+    opacity: 0.16;
+}
+.flow-art .fl-sheet,
+.flow-art .fl-chip rect,
+.flow-art .fl-card-face {
+    fill: var(--bg-primary);
+    stroke: var(--border);
+    stroke-width: 1;
+}
+.flow-art .fl-birch {
+    fill: var(--birch, var(--bg-tertiary));
+}
+.flow-art .fl-grain {
+    fill: none;
+    stroke: var(--text-primary);
+    stroke-width: 1;
+    opacity: 0.14;
+}
+.flow-art .fl-caret {
+    fill: var(--accent);
+}
+.flow-art .fl-pos-verb { fill: var(--pos-verb); }
+.flow-art .fl-pos-noun { fill: var(--pos-noun); }
+.flow-art .fl-pos-adv  { fill: var(--pos-adv); }
+.flow-art .fl-surface text { font-weight: 500; }
+.flow-art .fl-arrow text { fill: var(--text-secondary); }
+.flow-art .fl-lemma text {
+    font-family: var(--font-disp, inherit);
+    font-size: 13px;
+}
+.flow-art .fl-count text {
+    font-family: var(--font-mono, inherit);
+    font-size: 10.5px;
+    fill: var(--text-secondary);
+    text-anchor: end;
+}
+.flow-art .fl-card-back,
+.flow-art .fl-card-mid {
+    fill: var(--bg-tertiary);
+    stroke: var(--border);
+    stroke-width: 1;
+}
+.flow-art .fl-card-back { opacity: 0.6; }
+.flow-art .fl-card-lemma {
+    font-family: var(--font-disp, inherit);
+    font-size: 17px;
+}
+.flow-art .fl-card-gloss {
+    font-size: 11px;
+    fill: var(--text-secondary);
+}
+.flow-art .fl-grade rect {
+    fill: var(--text-primary);
+    opacity: 0.14;
+}
+.flow-art .fl-grade rect.is-picked {
+    fill: var(--accent);
+    opacity: 1;
+}
+.flow-art .fl-tok-known rect {
+    fill: var(--known, var(--success));
+    opacity: 0.8;
+}
+.flow-art .fl-tok-learning rect { fill: var(--learning, var(--warning)); }
+.flow-art .fl-tok-new rect { fill: var(--new, var(--accent)); }
+.flow-art .fl-ring-track,
+.flow-art .fl-ring-fill {
+    fill: none;
+    stroke-width: 7;
+}
+.flow-art .fl-ring-track { stroke: var(--border); }
+.flow-art .fl-ring-fill { stroke: var(--known, var(--success)); }
+.flow-art .fl-ring-label {
+    font-family: var(--font-mono, inherit);
+    font-size: 12px;
+    font-weight: 600;
+    text-anchor: middle;
+}
+.flow-art .fl-ring-cap {
+    font-family: var(--font-mono, inherit);
+    font-size: 8.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    fill: var(--text-secondary);
+    text-anchor: middle;
+}
+
+/* Two-up: connectors stay inside a row, so only odd stations keep one
+   (the wrap between rows is carried by reading order). */
+@media (max-width: 1040px) {
+    .about-steps.about-flow { --flow-gap: 28px; }
+    .flow-track {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 32px var(--flow-gap);
+    }
+    .flow-station:nth-child(2n) .flow-art::before,
+    .flow-station:nth-child(2n) .flow-art::after {
+        display: none;
+    }
+}
+
+/* Single column: the flow turns vertical and the chevrons point down. */
+@media (max-width: 620px) {
+    .flow-track {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 30px;
+    }
+    .flow-station .flow-art::before,
+    .flow-station .flow-art::after {
+        display: none;
+    }
+    .flow-station:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        bottom: -21px;
+        width: 6px;
+        height: 6px;
+        border-right: 1.5px solid var(--accent);
+        border-bottom: 1.5px solid var(--accent);
+        transform: translateX(-50%) rotate(45deg);
+    }
+    .flow-station { position: relative; }
+    .flow-return { height: 32px; margin-top: 20px; }
+    .flow-return span { font-size: 10px; padding: 0 8px; }
 }
 
 /* ── Sign-in ────────────────────────────────────────────────── */
@@ -4227,8 +4897,7 @@ a {
 
 .value-grid,
 .dashboard-stats,
-.dashboard-actions,
-.about-steps {
+.dashboard-actions {
     gap: 1px;
     background: var(--border);
     border: 1px solid var(--border);
@@ -4239,7 +4908,6 @@ a {
 .value-card,
 .stat-card,
 .action-card,
-.about-step,
 .signin-card,
 .placeholder-card,
 .review-card,
@@ -4660,15 +5328,13 @@ a {
 }
 
 .value-card h3,
-.action-card h3,
-.about-step h3 {
+.action-card h3 {
     color: var(--text-primary);
     font-size: 15px;
 }
 
 .value-card p,
 .action-card p,
-.about-step p,
 .dashboard-lede,
 .decks-lede,
 .review-lede,
@@ -5086,7 +5752,6 @@ h2 {
 [data-skin="aalto"] .value-grid,
 [data-skin="aalto"] .dashboard-stats,
 [data-skin="aalto"] .dashboard-actions,
-[data-skin="aalto"] .about-steps,
 [data-skin="aalto"] .data-table {
     border-radius: var(--r-md);
 }

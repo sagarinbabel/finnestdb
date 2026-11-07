@@ -566,6 +566,20 @@ Open work, organized by area. Each entry is brief; follow cross-links for detail
 
 - [ ] **Highest-leverage study ordering across decks**. Extend new-card ranking to consider comprehension gain across all study-list decks, not just `token_count` within a single source; user weighting (high/medium/low) for deck priority. Cross-deck variant of marginal gain.
 
+- [ ] **Next-text recommendation from coverage**. Every input exists and is
+  shipped, but nothing ranks: `store.DeckComprehension` scores a saved deck, the
+  post-parse coverage reveal scores a fresh parse, and `GET /api/catalog` already
+  returns per-entry **Personalized Text Fit** rendered as the `catalog-fit`
+  pill. The learner still has to pick. Open shape: rank candidate texts (catalog
+  first, later the learner's own history and redistributable corpus texts) by fit
+  against a target comprehension band, so the product can answer "what should I
+  read next?" instead of only "how hard is this one?". Two constraints to design
+  against, not around: (a) a recommendation is only as good as known-word truth,
+  and known state stays explicit-evidence-only per Decision 10 - do not start
+  inferring known words from passive exposure counts to widen the signal;
+  (b) the fit number is register-dependent (`docs/FREQUENCY_BASELINES.md`), so a
+  target band calibrated on subtitles does not transfer to prose.
+
 - [ ] **Source-agnostic learning-target correction overlays**. Implement the
   DB-backed model described in [`docs/CORRECTION_TAXONOMY.md`](docs/CORRECTION_TAXONOMY.md):
   learning targets can be lemma, surface, phrase, or proper-name entries, and
